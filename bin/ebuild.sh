@@ -3,6 +3,30 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
+# Hurray for per-ebuild logging.
+if [ ! -z "${PORT_LOGDIR}" ] && [ "$*" != "depend" ]; then
+	if [ -f ${T}/successful ]; then
+		rm -f ${T}/successful
+	fi
+
+	if [ -z "${PORT_LOGGING}" ]; then
+		export PORT_LOGGING=1
+		export SANDBOX_WRITE="$SANDBOX_WRITE:${PORT_LOGDIR}"
+		touch "${PORT_LOGDIR}/$(date +%y%m%d)-${PF}.log"
+		chmod g+w "${PORT_LOGDIR}/$(date +%y%m%d)-${PF}.log" &> /dev/null
+		$0 $* 2>&1 | tee -a "${PORT_LOGDIR}/$(date +%y%m%d)-${PF}.log"
+		if [ -f ${T}/successful ]; then
+			exit 0
+		else
+			exit 1
+		fi
+	fi
+fi
+
+if [ -f "${WORKDIR}/environment" ]; then
+	source "${WORKDIR}/environment"
+fi
+
 if [ -n "$#" ]
 then
 	ARGS="${*}"
@@ -650,6 +674,8 @@ dyn_compile() {
 	echo "$PF" > PF
 	echo "$SLOT" > SLOT
 	echo "$RDEPEND" > RDEPEND
+	echo "$CDEPEND" > CDEPEND
+	echo "$PDEPEND" > PDEPEND
 	echo "$PROVIDE" > PROVIDE
 	cp ${EBUILD} ${PF}.ebuild
 	if [ -n "$DEBUGBUILD" ]
@@ -937,6 +963,11 @@ then
 fi
 set +f
 
+# Setup for persistent variables.
+
+# Grab a list of variables that are now not legal to change between
+# stages of the ebuild. Restore them prior each phase. This allows us
+# to keep variables in between stages.
 for myarg in $*
 do
 	case $myarg in
@@ -965,12 +996,10 @@ do
 		fi
 		if [ "$PORTAGE_DEBUG" = "0" ]
 		then
-			dyn_setup
 			dyn_${myarg}
 			#Allow non-zero return codes since they can be caused by &&
 		else
 			set -x
-			dyn_setup
 			dyn_${myarg}
 			#Allow non-zero return codes since they can be caused by &&
 			set +x
@@ -982,8 +1011,7 @@ do
 		#for example, awking and piping a file in /tmp requires a temp file to be created
 		#in /etc.  If pkg_setup is in the sandbox, both our lilo and apache ebuilds break.
 		export SANDBOX_ON="0"
-		if [ "$PORTAGE_DEBUG" = "0" ]
-		then
+		if [ "$PORTAGE_DEBUG" = "0" ]; then
 			dyn_${myarg}
 		else
 			set -x
@@ -1042,3 +1070,9 @@ do
 		exit 1
 	fi
 done
+
+# Save current environment and touch a success file. (echo for success)
+set > ${T}/environment &>/dev/null
+touch ${T}/successful &>/dev/null
+chmod g+w ${T}/environment ${T}/successful &>/dev/null
+echo -n ""

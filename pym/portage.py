@@ -30,7 +30,7 @@ try:
 	portage_gid=grp.getgrnam("portage")[2]
 except KeyError:
 	portage_uid=0
-	portage_gid=0
+	portage_gid=wheelgid
 	print
 	print red("portage: 'portage' user or group missing. Please update baselayout")
 	print red(  "         and merge portage user(250) and group(250) into your passwd")
@@ -170,10 +170,7 @@ def tokenize(mystring):
 				accum=""
 			if level==0:
 				return None
-			try: # paranoia; level == len(prevlists) _should_ be an invariant
-				curlist=prevlists.pop()
-			except IndexError:
-				return None
+			curlist=prevlists.pop()
 			level=level-1
 		elif x in string.whitespace:
 			if accum:
@@ -1238,6 +1235,7 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 			os.chown(settings["BUILD_PREFIX"],portage_uid,portage_gid)
 			os.chown(settings["BUILDDIR"],portage_uid,portage_gid)
 			os.chown(settings["T"],portage_uid,portage_gid)
+			os.chmod(settings["T"],02770)
 	except OSError, e:
 		print "!!! File system problem. (ReadOnly?)"
 		print "!!!"+str(e)
@@ -2018,6 +2016,8 @@ def dep_eval(deplist):
 def dep_zapdeps(unreduced,reduced):
 	"""Takes an unreduced and reduced deplist and removes satisfied dependencies.
 	Returned deplist contains steps that must be taken to satisfy dependencies."""
+	if not unreduced:
+		return None
 	if unreduced[0]=="||":
 		if dep_eval(reduced):
 			#deps satisfied, return None
