@@ -250,6 +250,50 @@ Tell emerge to run in verbose mode.  Currently this flag causes emerge to print 
 Displays the version number of \fBemerge\fR.  It cannot be used in
 conjunction with other options; the name and format of the action
 is a convention.
+.SH "OUTPUT"
+While utilizing emerge and the pretend/verbose flags, the output
+may be a little hard to understand for the first time.  This section
+exists to explain what the shorthanded information means.
+.TP
+.B [blocks B     ] app-text/dos2unix (from pkg app-text/hd2u-0.8.0)
+Dos2unix is Blocking hd2u from being emerged.  Blockers are defined when
+two packages will clobber each others files, or otherwise cause some form
+of breakage in your system.  However, blockers usually do not need to be
+simultaneously emerged because they usually provide the same functionality.
+.TP
+.B [ebuild  N    ] app-games/qstat-25c
+Qstat is New to your system, and will be emerged for the first time.
+.TP
+.B [ebuild   R   ] sys-apps/sed-4.0.5
+Sed 4.0.5 has already been emerged, but if you run the command, then portage will
+Re-emerge the specified package (sed in this case).
+.TP
+.B [ebuild     U ] net-fs/samba-2.2.8_pre1 [2.2.7a]
+Samba 2.2.7a has already been emerged and can be Updated to version 2.2.8_pre1.
+.TP
+.B [ebuild     UD] media-libs/libgd-1.8.4 [2.0.11]
+Libgd 2.0.11 is already emerged, but if you run the command, then portage will
+Downgrade to version 1.8.4 for you.
+.br
+This may occur if a newer version of a package has been masked because it is
+broken or it creates a security risk on your system and a fix has not been
+released yet.
+.br
+Another reason this may occur is if a package you are trying to emerge requires
+an older version of a package in order to emerge succesfully.  In this case,
+libgd 2.x is incompatible with libgd 1.x.  This means that packages that were
+created with libgd 1.x will not compile with 2.x and must downgrade libgd first
+before they can emerge.
+.TP
+.B [ebuild     U-] x11-base/xfree-4.3.0 [4.2.99.902]
+Xfree 4.2.99.902 was injected in your system (see \fBinject\fR for more info),
+and a newer version of xfree is available.
+.TP
+.B [ebuild    U ] net-analyzer/nmap-3.15_beta2 [3.15_beta1] -gtk -gnome
+The -gtk and -gnome reflect the status of \fBUSE\fR variables when emerging nmap.  Here
+we see that nmap can use the \fBUSE\fR variables gtk and gnome, but that your current
+settings have gtk and gnome disabled.  So optional support for gtk and gnome will
+not be enabled in nmap when you emerge it.
 .SH "NOTES"
 You should almost always precede any package install or update
 attempt with a \fB\-\-pretend\fR install or update.  This lets
