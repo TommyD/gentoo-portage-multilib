@@ -44,9 +44,10 @@ def CONTENTScheck(path):
 
 if __name__ == '__main__':
 	import sys
-	if (len(sys.argv) != 2):
+	if (len(sys.argv) != 2 or sys.argv[1] == "--help"):
 		print "This program compares md5sums in the file /var/db/pkg/category/package/CONTENTS"
-		print "with the md5sums of the actual files on the filesystem."
+		print "with the md5sums of the actual files on the filesystem"
+		print "(and makes sure that symlinks point to the right files)."
 		print "\nUsage: chkcontents path/to/CONTENTS"
 		sys.exit(1)
 	CONTENTScheck(sys.argv[1])
