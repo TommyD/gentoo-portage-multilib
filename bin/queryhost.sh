@@ -1,27 +1,44 @@
+#!/bin/bash
 
-#!/bin/sh
+# Ping a single host and collect the round-trip time.  Unfortunately
+# this measures latency, not bandwidth, but it's better than nothing.
+pinghost() {
+    local host result
 
-hping() {
-  host=`echo $1 | sed -e 's:.*\://::' -e 's:/.*::'`
-  result=`ping -c3 -q ${host} 2>/dev/null`
-  if [ -n "$result" ]
-  then
-    if [ -z "`echo $result | sed 's:.*0 packets received.*:N:'`" ]
-    then
-      result=`echo $result | sed -e "s:.*= [0-9|\.]*/::" -e "s:/[0-9|\.]* ms::" | awk '{ printf ("%04i\n",(atof $1)) }'`
-      echo $result $1
+    # Extract the hostname from the URL
+    host="${1#*://}"; host="${host%%/*}"
+
+    # Attempt to ping the host three times, with an overall timeout of
+    # 10 seconds.
+    result=`ping -q -c3 -w10 ${host} 2>/dev/null`
+
+    # Extract average ping time, truncated to integer
+    result="${result%.?/*}"
+    result="${result##*/}"
+
+    # Test for sensible $result and return.  If zero packets were
+    # received, then $result will not be sensible since the above
+    # extraction would have failed.
+    if [ "$result" -gt 0 ] 2>/dev/null; then
+	return $result
     else
-      echo 9999 $1
+	return 9999
     fi
-  fi
 }
+
+# Ping all of the hosts in parallel, collate the output.
 pingall() {
+    local i output
 
-  for i in $1
-  do
-    hping $i
-  done
+    for i in $*
+    do
+	# Do this as a single printf so it happens as a single
+	# "write".  This is so that the writes coming from the
+	# multiple processes aren't mixed within a line.  It should
+	# usually work.  :-)
+	( pinghost $i; echo $? $i ) &
+    done
+    wait
 }
-pingall "$1" | sort | sed -e "s:[0-9]* ::"
-#pingall "$1"
 
+pingall $1 | sort -n | awk '{print $NF}'
