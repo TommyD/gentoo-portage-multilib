@@ -594,8 +594,7 @@ else:
 		print green("***")+" the local copy of metadata.dtd needs to be refetched, doing that now"
 		print
 		try:
-			import transports.bundled_lib
-			fetcher=transports.bundled_lib.BundledConnection()
+			fetcher=portage.get_preferred_fetcher()
 
 			val=fetcher.fetch("http://www.gentoo.org/dtd/metadata.dtd",file_name="%s/metadata.dtd" % 
 				portage.CACHE_PATH)

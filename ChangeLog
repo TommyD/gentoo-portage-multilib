@@ -7,6 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  07 Nov 2004; Brian Harring <ferringb@gentoo.org> bin/repoman: converted repoman
+  over to using the users preferred fetcher (via portage.get_preferred_fetcher,
+  oddly enough).
+
   07 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/transports/fetchcommmand.py:
   corrected an issue where it wasn't correctly parsing out an appropriate distdir
   when file_name was specified.
