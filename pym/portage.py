@@ -3403,13 +3403,19 @@ class portdbapi(dbapi):
 		except:
 			self.auxpickle={}
 		self.auxpickle[self.root] = self.auxcache
+
 		try:
 			cPickle.dump(self.auxpickle, file("/var/cache/edb/auxcache.pickle", "w"), 1)
-			os.chown("/var/cache/edb/auxcache.pickle",uid,portage_gid)
-			os.chmod("/var/cache/edb/auxcache.pickle",0664)
 		except Exception, e:
 			print "!!! Failed to save auxcache"
 			print "!!! "+str(e)
+			return
+			
+		try:
+			os.chown("/var/cache/edb/auxcache.pickle", uid, portage_gid)
+			os.chmod("/var/cache/edb/auxcache.pickle",0664)
+		except Exception, e:
+			pass
 		
 	def finddigest(self,mycpv):
 		try:
