@@ -792,7 +792,7 @@ def spawn(mystring,debug=0,free=0):
 		myargs=[]
 		if ("sandbox" in features) and (not free):
 			mycommand="/usr/lib/portage/bin/sandbox"
-			myargs=["sandbox",mystring]
+			myargs=["["+settings["PF"]+"] sandbox",mystring]
 		else:
 			mycommand="/bin/bash"
 			if debug:

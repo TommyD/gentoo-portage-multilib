@@ -725,6 +725,7 @@ inherit() {
 				debug-print "inherit: $1 -> $location"
 				source "$location" || die "died sourcing $location in inherit()"
 				#continue processing, skip sourcing of one in $ECLASSDIR
+				shift
 				continue
 			fi
 		fi

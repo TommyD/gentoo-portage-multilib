@@ -5,13 +5,15 @@
   Bug 5926 -- If the fetchonly AND pretend flags are specified, then
               portage should give a list of all the SRC_URIs so that
               they can be downloaded or sent into another app.
+  Made sandbox display name in 'ps' as '[$PF] sandbox'.
 
   13 Oct 2002; Nicholas Jones <carpaski@gentoo.org> emerge:
   Bug 5926 -- See portage.py for today. (emerge -pf)
-	Typo fixes.
+  Typo fixes.
 
   13 Oct 2002; Nicholas Jones <carpaski@gentoo.org> ebuild.sh:
-	Added -q to unzip to make it quiet like the others.
+  Added -q to unzip to make it quiet like the others.
+  Bug 6033 -- Fix for infinate loop in eclasses in portage overlay.
 
   12 Oct 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: fix for
   doebuild() so that our rsync mirror will contain full digests and not just
