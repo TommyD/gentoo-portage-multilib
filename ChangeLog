@@ -9,7 +9,11 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
-  30 Aug 2004; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: fixed two
+  30 Aug 2004; Jason Stubbs <jstubbs@gentoo.org> pym/emerge: Added python 2.2
+  compatibility fix. (#62128) Added fix to fail nicely on missing
+  /etc/gentoo-release. (#62149)
+
+  30 Aug 2004; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Fixed two
   bugs in bindbapi.aux_get() preventing retrieval of information about tbz2s.
 
   26 Aug 2004; Brian Harring <ferringb@gentoo.org> bin/etc-update: minor 

@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-import os,sys,platform
+import os,sys
 os.environ["PORTAGE_CALLER"]="emerge"
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 
@@ -468,7 +468,7 @@ def getportageversion():
 		libcver="unavailable"
 
 	gccver = getgccversion()
-	unameout=platform.uname()[2]+" "+platform.uname()[4]+" "+platform.uname()[5]
+	unameout=os.uname()[2]+" "+os.uname()[4]
 
 	return "Portage " + portage.VERSION +" ("+profilever+", "+gccver+", "+libcver+", "+unameout+")"
 
@@ -2487,7 +2487,10 @@ elif "info"==myaction:
 	print getportageversion()
 	print "================================================================="
 	print "System uname: "+unameout
-	os.system("cat /etc/gentoo-release")
+	if os.path.exists("/etc/gentoo-release"):
+		os.system("cat /etc/gentoo-release")
+	else:
+		print "Unknown Host Operating System"
 	
 	output=commands.getstatusoutput("distcc --version")
 	if not output[0]:
