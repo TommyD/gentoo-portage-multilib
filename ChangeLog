@@ -7,6 +7,8 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  22 Oct 2004; Brian Harring <ferringb@gentoo.org> ebuild.sh: silencing use/has.
+
 *portage-2.0.51 (20 Oct 2004): Everyone loves finding bugs in stable!
 
   20 Oct 2004; Nicholas Jones <carpaski@gentoo.org> emerge: Fixed the result
