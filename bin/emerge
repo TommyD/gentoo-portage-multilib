@@ -954,13 +954,10 @@ class depgraph:
 							myargv=sys.argv
 							myr=0
 							for myra in range(len(myargv)):
-								print "Considering:",myargv[myr]
 								if myargv[myr][0:len("portage")]=="portage":
-									print "deleted:",myargv[myr]
 									del myargv[myr]
 									myr-=1
 								if myargv[myr][0:len("sys-apps/portage")]=="sys-apps/portage":
-									print "deleted:",myargv[myr]
 									del myargv[myr]
 									myr-=1
 								myr+=1
@@ -969,7 +966,6 @@ class depgraph:
 
 		if ("--pretend" not in myopts) and (mergecount>0):
 			portage.env_update()
-
 
 		#by doing an exit this way, --fetchonly can continue to try to
 		#fetch everything even if a particular download fails.

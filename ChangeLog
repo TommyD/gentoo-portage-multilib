@@ -1,6 +1,19 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-2.0.47_pre4 (03 Jan 2003): UserPriv Works + Per-Ebuild logging
+
+	04 Jan 2003; Nicholas Jones <carpaski@gentoo.org> :
+	tokenize() fixups to remedy the || reduce problems. 
+
+	04 Jan 2003; Nicholas Jones <carpaski@gentoo.org> prepall:
+	Fixup for '//' problem.
+
+  03 Jan 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh:
+  Support for per-ebuild logging via PORT_LOGDIR variable. ebuild.sh
+  now can do usermode compiles _and_ maintain the enviroment with a
+  few minor restrictions like changing portage variables.
+
 *portage-2.0.47_pre3 (02 Jan 2003): Forward port of fixes & New fixes
 
   02 Jan 2003; Nicholas Jones <carpaski@gentoo.org> emerge:

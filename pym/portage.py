@@ -159,18 +159,19 @@ def tokenize(mystring):
 			if accum:
 				curlist.append(accum)
 				accum=""
-			newlist=[]
-			curlist.append(newlist)
 			prevlists.append(curlist)
-			curlist=newlist
+			curlist=[]
 			level=level+1
 		elif x==")":
 			if accum:
 				curlist.append(accum)
 				accum=""
 			if level==0:
+				print "!!! tokenizer: Unmatched left parenthesis in:\n'"+mystring+"'"
 				return None
+			newlist=curlist
 			curlist=prevlists.pop()
+			curlist.append(newlist)
 			level=level-1
 		elif x in string.whitespace:
 			if accum:
@@ -178,10 +179,11 @@ def tokenize(mystring):
 				accum=""
 		else:
 			accum=accum+x
-	if level!=0:
-		return None
 	if accum:
 		curlist.append(accum)
+	if (level!=0):
+		print "!!! tokenizer: Exiting with unterminated parenthesis in:\n'"+mystring+"'"
+		return None
 	return newtokens
 
 def evaluate(mytokens,mydefines,allon=0):
@@ -719,24 +721,24 @@ def ExtractKernelVersion(base_dir):
 aumtime=0
 
 def autouse(myvartree):
-        "returns set of USE variables auto-enabled due to packages being installed"
-        global usedefaults
-        if profiledir==None:
-                return ""
-        myusevars=""
-        for x in usedefaults:
-                mysplit=string.split(x)
-                if len(mysplit)<2:
-                        #invalid line
-                        continue
-                myuse=mysplit[0]
-                mydep=x[len(mysplit[0]):]
-                #check dependencies; tell depcheck() to ignore settings["USE"] since we are still forming it.
-                myresult=dep_check(mydep,myvartree.dbapi,use="no")
-                if myresult[0]==1 and not myresult[1]:
-                        #deps satisfied, add USE variable...
-                        myusevars=myusevars+" "+myuse
-        return myusevars
+	"returns set of USE variables auto-enabled due to packages being installed"
+	global usedefaults
+	if profiledir==None:
+		return ""
+	myusevars=""
+	for x in usedefaults:
+		mysplit=string.split(x)
+		if len(mysplit)<2:
+			#invalid line
+			continue
+		myuse=mysplit[0]
+		mydep=x[len(mysplit[0]):]
+		#check dependencies; tell depcheck() to ignore settings["USE"] since we are still forming it.
+		myresult=dep_check(mydep,myvartree.dbapi,use="no")
+		if myresult[0]==1 and not myresult[1]:
+			#deps satisfied, add USE variable...
+			myusevars=myusevars+" "+myuse
+	return myusevars
 
 class config:
 	def __init__(self):
@@ -2016,7 +2018,7 @@ def dep_eval(deplist):
 def dep_zapdeps(unreduced,reduced):
 	"""Takes an unreduced and reduced deplist and removes satisfied dependencies.
 	Returned deplist contains steps that must be taken to satisfy dependencies."""
-	if not unreduced:
+	if unreduced==[]:
 		return None
 	if unreduced[0]=="||":
 		if dep_eval(reduced):

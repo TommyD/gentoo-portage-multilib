@@ -12,6 +12,9 @@ if [ ! -z "${PORT_LOGDIR}" ] && [ "$*" != "depend" ]; then
 	if [ -z "${PORT_LOGGING}" ]; then
 		export PORT_LOGGING=1
 		export SANDBOX_WRITE="$SANDBOX_WRITE:${PORT_LOGDIR}"
+		install -d ${PORT_LOGDIR} &>/dev/null
+		chown root:portage ${PORT_LOGDIR} &>/dev/null
+		chmod g+rwxs ${PORT_LOGDIR} &> /dev/null
 		touch "${PORT_LOGDIR}/$(date +%y%m%d)-${PF}.log"
 		chmod g+w "${PORT_LOGDIR}/$(date +%y%m%d)-${PF}.log" &> /dev/null
 		$0 $* 2>&1 | tee -a "${PORT_LOGDIR}/$(date +%y%m%d)-${PF}.log"
@@ -963,11 +966,6 @@ then
 fi
 set +f
 
-# Setup for persistent variables.
-
-# Grab a list of variables that are now not legal to change between
-# stages of the ebuild. Restore them prior each phase. This allows us
-# to keep variables in between stages.
 for myarg in $*
 do
 	case $myarg in

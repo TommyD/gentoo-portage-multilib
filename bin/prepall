@@ -22,7 +22,12 @@ done
 # Move aclocals
 for i in `find "${D}"/ -name "aclocal" -type d 2>/dev/null` ; do
 	[ -z "${i}" ] && continue
-	[ "${i}" == "${D}usr/share/aclocal" ] && continue
+
+	# Strip double '/'
+	dir1="`echo "${i}" | sed  -e 's://:/:g'`"
+	dir2="`echo "${D}/usr/share/aclocal" | sed  -e 's://:/:g'`"
+	
+	[ "${dir1}" == "${dir2}" ] && continue
 
 	echo "moving aclocal: /${i/${D}/}"
 	install -d "${D}"usr/share/aclocal
