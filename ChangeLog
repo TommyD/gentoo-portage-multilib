@@ -7,6 +7,11 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  10 Nov 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild.sh:
+  Dropping all support for reloading env attributes from a .51 dump.
+  It wasn't implemented correctly, and it's not worth the duct tape
+  and questionable code to try and half-ass support it.
+
   10 Nov 2004; Brian Harring <ferringb@gentoo.org> bin/etc-update:
   Fixed etc-update so it actually runs; long story short, the portageq
   calls for getting CONFIG_PROTECT(|_MASK) were wrong.

@@ -272,19 +272,25 @@ load_environ() {
 		[ -z "$COMPLETED_EBUILD_PHASES" ] && COMPLETED_EBUILD_PHASES="$c"
 	fi
 	[ ! -z $DEBUGGING ] && echo "loading environment from $src" >&2
+
+	# XXX: note all of the *very careful* handling of bash env dumps through this code, and the fact 
+	# it took 4 months to get it right.  There's a reason you can't just pipe the $(export) to a file.
+	# because of that, I'm stating screw .51 envs.  
+	# They were implemented wrong, as I stated when the export kludge was added.
+	# so we're just dropping the attributes.  .51-r4 should carry a fixed version, .51 -> .51-r3
+	# aren't worth the trouble.  Drop all inline declare's that would be executed.
+	# ~harring
+	function declare() {
+		:
+	}
 	if [ -f "$src" ]; then
-		# note, this *originally* filtered without assumption of declarative commands
-		# that is no longer true w/ .51, due to the export kludge that was added.
-		# so this filter gets uglier by extension.
-		# this is a source of potential bugs, the declare -x filter.
-		# if you have funcs that are having part of the declare's nuked, this is the cause.
-		# sorry, it has to be this way, unless someone has a better idea. ~brian 
 		eval "$({ [ "${src%.bz2}" != "${src}" ] && bzcat "$src" || cat "${src}"
-			} | egrep -v "^(declare -x |)$(gen_filter $DONT_EXPORT_VARS)=")"
+			} | egrep -v "^$(gen_filter $DONT_EXPORT_VARS)=")"
 	else
 		echo "ebuild=${EBUILD}, phase $EBUILD_PHASE" >&2
 		return 1
 	fi
+	unset declare
 	if [ -f "${BUILDDIR}/.completed_stages" ]; then
 		COMPLETED_EBUILD_PHASES=`cat ${BUILDDIR}/.completed_stages`
 	else
