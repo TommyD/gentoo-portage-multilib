@@ -1,8 +1,10 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
-  4 Feb 2002; G.Bevin <gbevin@gentoo.org> make.conf :
+  4 Feb 2002; G.Bevin <gbevin@gentoo.org> make.conf, make.globals :
   added description and default entry for the imlib USE variable
+  added flag to prozilla to disable prozilla's waiting for a user's keypress
+  when a failure occurs
   
   4 Feb 2002; G.Bevin <gbevin@gentoo.org> output.py :
   bugfix, write read() function instead of red(), doh !
