@@ -2,6 +2,11 @@
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+  20 Aug 2002; Martin Schlemmer <azarah@gentoo.org> :
+
+  Fix spawn_shell() and main() in sandbox.c to properly return fail
+  status.
+
   19 Aug 2002; Martin Schlemmer <azarah@gentoo.org> :
 
   The new canonicalize() function in libsandbox.c also resolved symlinks,

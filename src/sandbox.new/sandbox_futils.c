@@ -1,3 +1,7 @@
+/*
+ * $Header$
+ */
+
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -14,8 +18,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include "sandbox.h"
 
+#include "sandbox.h"
 		
 
 char *get_sandbox_path(char *argv0)
