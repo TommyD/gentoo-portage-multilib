@@ -267,28 +267,22 @@ load_environ() {
 
 	if [ -n "$1" ]; then
 		src="$1"
-#	elif [ "${PORT_ENV_FILE:-unset}" != "unset" ]; then
-#		src="$PORT_ENV_FILE"
-#	else
-#		if [ -f "${T}/environment" ]; then
-#			src="${T}/environment"
-#		else
-#			die "unable to find a valid env. to reload; tried ${T}/environment, but it doesn't exist."
-#			return 1
-#		fi
 		local c=COMPLETED_EBUILD_PHASES
 		COMPLETED_EBUILD_PHASES="`cat ${BUILDDIR}/.completed_stages 2> /dev/null`"
 		[ -z "$COMPLETED_EBUILD_PHASES" ] && COMPLETED_EBUILD_PHASES="$c"
-#		echo "COMPLETED_EBUILD_PHASE loaded=${COMPLETED_EBUILD_PHASES}" >&2
 	fi
 	[ ! -z $DEBUGGING ] && echo "loading environment from $src" >&2
 	if [ -f "$src" ]; then
+		# note, this *originally* filtered without assumption of declarative commands
+		# that is no longer true w/ .51, due to the export kludge that was added.
+		# so this filter gets uglier by extension.
+		# this is a source of potential bugs, the declare -x filter.
+		# if you have funcs that are having part of the declare's nuked, this is the cause.
+		# sorry, it has to be this way, unless someone has a better idea. ~brian 
 		eval "$({ [ "${src%.bz2}" != "${src}" ] && bzcat "$src" || cat "${src}"
-			} | egrep -v "^$(gen_filter $DONT_EXPORT_VARS)=")"
+			} | egrep -v "^(declare -x |)$(gen_filter $DONT_EXPORT_VARS)=")"
 	else
 		echo "ebuild=${EBUILD}, phase $EBUILD_PHASE" >&2
-#		echo "dir=`ls ${EBUILD%/*}`" >&2
-#		die "wth, load_environ called yet $src doesn't exist.  phase=${EBUILD_PHASE}"
 		return 1
 	fi
 	if [ -f "${BUILDDIR}/.completed_stages" ]; then
