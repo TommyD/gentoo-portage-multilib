@@ -3462,6 +3462,7 @@ class dblink:
 			#next line: we dont rely on mtimes for symlinks anymore.
 			#try:
 			if (pkgfiles[obj][0] not in ("dir","fif","dev","sym")) and (lmtime != pkgfiles[obj][1]):
+				print lmtime,pkgfiles[obj][1]
 				print "--- !mtime", pkgfiles[obj][0], obj
 				continue
 			#except KeyError:
@@ -3798,7 +3799,7 @@ class dblink:
 				mymtime=movefile(mysrc,mydest,thismtime,mystat)
 				if mymtime!=None:
 					print ">>>",mydest,"->",myto
-					outfile.write("sym "+myrealdest+" -> "+myto+" "+`mymtime`+"\n")
+					outfile.write("sym "+myrealdest+" -> "+myto+" "+str(mymtime)+"\n")
 				else:
 					print "!!!",mydest,"->",myto
 			elif S_ISDIR(mymode):
@@ -3939,7 +3940,7 @@ class dblink:
 					zing="---"
 				if mymtime!=None:
 					zing=">>>"
-					outfile.write("obj "+myrealdest+" "+mymd5+" "+`mymtime`+"\n")
+					outfile.write("obj "+myrealdest+" "+mymd5+" "+str(mymtime)+"\n")
 				print zing,mydest
 			else:
 				# we are merging a fifo or device node
