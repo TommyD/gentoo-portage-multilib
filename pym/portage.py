@@ -4368,7 +4368,7 @@ class portdbapi(dbapi):
 		if not cps:
 			#invalid cat/pkg-v
 			return 0
-		if self.findname2(cps[0]+"/"+cps2[1]):
+		if self.findname(cps[0]+"/"+cps2[1]):
 			return 1
 		else:
 			return 0

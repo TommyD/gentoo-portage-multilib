@@ -7,6 +7,13 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  05 Dec 2004; Nicholas Jones <carpaski@gentoo.org> pym/portage.py: swegener
+  made quite a find in portdbapi.cpv_exists, the comparison on the tuple
+  returned by findname2 always evaluated true.
+
+  05 Dec 2004; Nicholas Jones <carpaski@gentoo.org> bin/: Added SpanKY's
+  patch for stripping coherency -- All stripping is performed in prepstrip.
+
   28 Nov 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild-daemon.sh: 
   Correction of return code for execute_phases w/ logging.
 

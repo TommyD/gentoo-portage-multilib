@@ -7,29 +7,33 @@ if [ "${FEATURES//*nostrip*/true}" == "true" ] || [ "${RESTRICT//*nostrip*/true}
 	echo "nostrip"
 	STRIP="/bin/false"
 else
-	if [ ! -z "${CBUILD}" ] && [ "${CBUILD}" != "${CHOST}" ]; then
-		STRIP=${CHOST}-strip
-	else
-		STRIP=strip
-	fi
+	STRIP="${STRIP:-${CHOST}-strip}"
+	type -p ${STRIP} > /dev/null || STRIP=strip
 fi
 
-echo "strip: "
+STRIP_FLAGS="${STRIP_FLAGS:---strip-unneeded}"
+
+echo "strip: ${STRIP_FLAGS}"
 retval=0
-for x in "$@"; do # "$@" quotes each element... Plays nice with spaces.
+
+for x in "$@" ; do
 	if [ -d "${x}" ]; then
 		# We only want files. So make a pass for each directory and call again.
 		find "${x}" -type f \( -perm -0100 -or -perm -0010 -or -perm -0001 -or -name '*.so' -or -name '*.so.*' \) -print0 |
 				$XARGS -0 -n500 prepstrip
 	else
 		f=$(file "${x}")
+		if [ -z "${f/*current ar archive*/}" ]; then
+			echo "   ${x:${#D}:${#x}}"
+			${STRIP} -g "${x}"
+		fi
 		if [ -z "${f/*SB executable*/}" ]; then
 			echo "   ${x:${#D}:${#x}}"
 			${STRIP} "${x}"
 		fi
 		if [ -z "${f/*SB shared object*/}" ]; then
 			echo "   ${x:${#D}:${#x}}"
-			${STRIP} --strip-unneeded "${x}"
+			${STRIP} ${STRIP_FLAGS} "${x}"
 
 			if [ -x /usr/bin/readelf ] ; then
 				/usr/bin/readelf -d "${x}" | grep TEXTREL > /dev/null
@@ -48,4 +52,5 @@ for x in "$@"; do # "$@" quotes each element... Plays nice with spaces.
 		fi
 	fi
 done
+
 exit ${retval}

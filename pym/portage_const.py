@@ -23,7 +23,7 @@ PROFILE_PATH            = "/etc/make.profile"
 LOCALE_DATA_PATH        = PORTAGE_BASE_PATH+"/locale"
 
 EBUILD_SH_BINARY        = PORTAGE_BIN_PATH+"/ebuild.sh"
-EBUILD_DAEMON_PATH	= PORTAGE_BIN_PATH+"/ebuild-daemon.sh"
+EBUILD_DAEMON_PATH      = PORTAGE_BIN_PATH+"/ebuild-daemon.sh"
 
 SANDBOX_BINARY          = "/usr/bin/sandbox"
 # XXX compatibility hack.  this shouldn't ever hit a stable release.
@@ -48,13 +48,13 @@ CUSTOM_MIRRORS_FILE     = USER_CONFIG_PATH+"/mirrors"
 SANDBOX_PIDS_FILE       = "/tmp/sandboxpids.tmp"
 CONFIG_MEMORY_FILE      = PRIVATE_PATH + "/config"
 
-CONFCACHE_FILE		= CACHE_PATH+"/confcache"
-CONFCACHE_LIST		= CACHE_PATH+"/confcache_files.anydbm"
+CONFCACHE_FILE          = CACHE_PATH+"/confcache"
+CONFCACHE_LIST          = CACHE_PATH+"/confcache_files.anydbm"
 
-LIBFAKEROOT_PATH	= "/usr/lib/libfakeroot.so"
-FAKEROOT_PATH		= "/usr/bin/fakeroot"
+LIBFAKEROOT_PATH        = "/usr/lib/libfakeroot.so"
+FAKEROOT_PATH           = "/usr/bin/fakeroot"
 
-RSYNC_BIN		= "/usr/bin/rsync"
-RSYNC_HOST		= "rsync.gentoo.org/gentoo-portage"
+RSYNC_BIN               = "/usr/bin/rsync"
+RSYNC_HOST              = "rsync.gentoo.org/gentoo-portage"
 
-CVS_BIN			= "/usr/bin/cvs"
+CVS_BIN                 = "/usr/bin/cvs"
