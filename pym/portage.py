@@ -261,6 +261,10 @@ elif ostype=="Darwin":
 	userland="BSD"
 	lchown=os.chown
 	os.environ["XARGS"]="xargs"	
+elif ostype=="OpenBSD":
+	userland="BSD"
+	lchown=os.chown
+	os.environ["XARGS"]="xargs"	
 else:
 	writemsg(red("Operating system")+" \""+ostype+"\" "+red("currently unsupported. Exiting.")+"\n")
 	sys.exit(1)
@@ -1781,7 +1785,7 @@ class config:
 				match = x[mykey]
 				break
 
-		if match and mykey in ["PORTAGE_BINHOST"]:
+		if 0 and match and mykey in ["PORTAGE_BINHOST"]:
 			# These require HTTP Encoding
 			try:
 				import urllib
@@ -1826,8 +1830,8 @@ class config:
 		for x in self.keys(): 
 			mydict[x]=self[x]
 		if not mydict.has_key("HOME") and mydict.has_key("BUILD_PREFIX"):
-			writemsg("*** HOME not set. Setting to "+mydict["BUILD_PREFIX"]+"\n")
-			mydict["HOME"]=mydict["BUILD_PREFIX"]
+			writemsg("*** HOME not set. Setting to "+mydict["BUILD_PREFIX"]+"/homedir\n")
+			mydict["HOME"]=mydict["BUILD_PREFIX"]+"/homedir"
 		return mydict
 
 # XXX fd_pipes should be a way for a process to communicate back.
@@ -1878,8 +1882,11 @@ def spawn(mystring,mysettings,debug=0,free=0,droppriv=0,fd_pipes=None):
 					pass
 			else:
 				writemsg("portage: Unable to drop root for "+str(mystring)+"\n")
-
-		os.execve(mycommand,myargs,mysettings.environ())
+		
+		try:
+			os.execve(mycommand,myargs,mysettings.environ())
+		except Exception, e:
+			raise str(e)+":\n   "+mycommand+" "+string.join(myargs)
 		# If the execve fails, we need to report it, and exit
 		# *carefully* --- report error here
 		os._exit(1)
@@ -2477,6 +2484,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		mysettings["PATH"]=PORTAGE_BIN_PATH+":"+mysettings["PATH"]
 
 	mysettings["BUILD_PREFIX"] = mysettings["PORTAGE_TMPDIR"]+"/portage"
+	mysettings["HOME"]         = mysettings["BUILD_PREFIX"]+"/homedir"
 	mysettings["PKG_TMPDIR"]   = mysettings["PORTAGE_TMPDIR"]+"/portage-pkg"
 	mysettings["BUILDDIR"]     = mysettings["BUILD_PREFIX"]+"/"+mysettings["PF"]
 
@@ -4827,8 +4835,11 @@ class eclass_cache:
 	def close_caches(self):
 		for x in self.packages.keys():
 			for y in self.packages[x].keys():
-				self.packages[x][y].sync()
-				self.packages[x][y].close()
+				try:
+					self.packages[x][y].sync()
+					self.packages[x][y].close()
+				except Exception,e:
+					writemsg("Exception when closing DB: %s: %s\n" % (Exception,e))
 				del self.packages[x][y]
 			del self.packages[x]
 
@@ -5103,7 +5114,6 @@ class portdbapi(dbapi):
 					raise "Lock is already held by me?"
 				self.lock_held = 1
 				mylock = lockfile(mydbkey,unlinkfile=1)
-				
 
 				myret=doebuild(myebuild,"depend","/",self.mysettings,dbkey=mydbkey)
 				if myret:
@@ -5119,6 +5129,8 @@ class portdbapi(dbapi):
 					mylines=mycent.readlines()
 					mycent.close()
 				except (IOError, OSError):
+					unlockfile(mylock)
+					self.lock_held = 0
 					writemsg(str(red("\naux_get():")+" (1) Error in "+mycpv+" ebuild.\n"
 					  "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
 					raise KeyError
@@ -6258,6 +6270,21 @@ class dblink:
 		#write out our collection of md5sums
 		if cfgfiledict.has_key("IGNORE"):
 			del cfgfiledict["IGNORE"]
+
+		# XXXX: HACK! PathSpec is very necessary here.
+		if not os.path.exists(destroot+PRIVATE_PATH):
+			os.mkdirs(destroot+PRIVATE_PATH)
+			os.chown(destroot+PRIVATE_PATH,os.getuid(),portage_gid)
+			os.chmod(destroot+PRIVATE_PATH,02770)
+			dirlist = prefix_array(listdir(destroot+PRIVATE_PATH),destroot+PRIVATE_PATH+"/")
+			while dirlist:
+				dirlist.sort()
+				dirlist.reverse() # Gets them in file-before basedir order
+				x = dirlist[0]
+				if os.path.isdir(x):
+					dirlist += prefix_array(listdir(x),x+"/")
+					continue
+				os.unlink(destroot+PRIVATE_PATH+"/"+x)
 
 		mylock = lockfile(destroot+CONFIG_MEMORY_FILE)
 		writedict(cfgfiledict,destroot+CONFIG_MEMORY_FILE)

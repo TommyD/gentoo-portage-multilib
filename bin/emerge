@@ -422,7 +422,14 @@ def getgccversion():
 
 def getportageversion():
 	try:
-		profilever=os.path.basename(os.path.normpath(os.readlink("/etc/make.profile")))
+		import re
+		profilever = os.path.normpath("///"+os.readlink("/etc/make.profile"))
+		basepath   = os.path.normpath("///"+portage.settings["PORTDIR"]+"/profiles")
+		if re.match(basepath,profilever):
+			profilever = profilever[len(basepath)+1:]
+		else:
+			profilever = "!"+profilever
+		del basepath
 	except:
 		profilever="unavailable"
 	libcver=[]

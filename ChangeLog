@@ -9,6 +9,23 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  21 Jun 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Disabled the
+  URL encoding for BINHOST as it will take a lot of work to get it right.
+  Execve try/except added to handle missing binaries and such. Changed the
+  default HOME to be TMPDIR/homedir. Try/except on db close operations. Add
+  in missing unlocks. Hacked in the /var/lib/portage in a chroot fix.
+
+  21 Jun 2004; Nicholas Jones <carpaski@gentoo.org> emerge: Added more info
+  into the profile for the stacked profiles.
+
+  21 Jun 2004; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: The userland
+  fixes for *BSD. QA Notice fix for IUSE verbosity on global scope stuff.
+  Missing quote fix for QA intercepters. Return 0 in the use_* functions.
+  Removed AA from the readonly list.
+
+  21 Jun 2004; Nicholas Jones <carpaski@gentoo.org> dohtml: Karl's update
+  which is mostly a rewrite.
+
   21 Jun 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge:
   Modified emerge to build up a fakedb regardless of 'empty' in params, 
   and to incrementally add any packages added to the dep graph.

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# Copyright 1999-2003 Gentoo Technologies, Inc.
+# Copyright 1999-2004 Gentoo Technologies, Inc.
 # Distributed under the terms of the GNU General Public License v2
 # Author Karl Trygve Kalleberg <karltk@gentoo.org>
 # $Header$
@@ -30,7 +30,13 @@
 #  - will do as 'dohtml -r', but ignore directories named CVS, SCCS, RCS
 #
 
-import os,sys,string,os.path
+import os
+import sys
+import types
+import optparse
+
+__version__ = "0.1.2"
+__author__ = "Karl Trygve Kalleberg <karltk@gentoo.org>"
 
 def dodir(path):
 	os.system("install -d " + path)
@@ -38,64 +44,99 @@ def dodir(path):
 def dofile(src,dst):
 
 	os.system("install -m0644 " + src + " " + dst)
-		
-def install(basename, dirname, recurse=0, prefix=""):
+
+def install(basename, dirname, options, prefix=""):
 
 	fullpath = basename
 	if prefix: fullpath = prefix + "/" + fullpath
 	if dirname: fullpath = dirname + "/" + fullpath
-		
-	if DOCDESTTREE:
-		destdir = D + "usr/share/doc/" + PF + "/" + DOCDESTTREE + "/" + prefix
-	else:
-		destdir = D + "usr/share/doc/" + PF + "/html/" + prefix
 
-#	print fullpath, destdir
-	
+	if options.DOCDESTTREE:
+		destdir = options.D + "usr/share/doc/" + options.PF + "/" + options.DOCDESTTREE + "/" + options.doc_prefix + "/" + prefix
+	else:
+		destdir = options.D + "usr/share/doc/" + options.PF + "/html/" + options.doc_prefix + "/" + prefix
+
 	if os.path.isfile(fullpath):
 		ext = os.path.splitext(basename)[1]
-		if len(ext) and ext[1:] in allowed_exts:
+		if len(ext) and ext[1:] in options.allowed_exts:
 			dodir(destdir)
 			dofile(fullpath, destdir + "/" + basename)
-	elif recurse and os.path.isdir(fullpath) and \
-	     basename not in disallowed_dirs:
+	elif options.recurse and os.path.isdir(fullpath) and \
+	     basename not in options.disallowed_dirs:
 		for i in os.listdir(fullpath):
 			pfx = basename
 			if prefix: pfx = prefix + "/" + pfx
-			install(i, dirname, recurse, pfx)
+			install(i, dirname, options, pfx)
 
-skip = 0
-files = []
-D=os.environ["D"]
-PF=os.environ["PF"]
-DOCDESTTREE=os.environ["DOCDESTTREE"]
-allowed_exts = [ 'png', 'gif', 'html', 'htm', 'jpg', 'css', 'js' ]
-disallowed_dirs = [ 'CVS' ]
-recurse = 0
+def parse_args():
 
-for i in xrange(1,len(sys.argv)):
-	if skip:
-		skip = skip - 1
-		continue
-		
-	if sys.argv[i]	== "-A":
-		allowed_exts = allowed_exts+string.split(sys.argv[i + 1], ',')
-		skip = 1
-		continue
-	elif sys.argv[i]	== "-a":
-		allowed_exts = string.split(sys.argv[i + 1], ',')
-		skip = 1
-		continue
-	elif sys.argv[i] == "-x":
-		disallowed_dirs = string.split(sys.argv[i + 1], ',')
-		skip = 1
-		continue
-	elif sys.argv[i] == "-r":
-		recurse = 1
-		continue
-	files.append(sys.argv[i])
+	default_allowed_exts = [ 'png', 'gif', 'html', 'htm', 'jpg', 'css', 'js' ]
+	default_disallowed_dirs = [ 'CVS' ]
 
-for i in files:
-	basename = os.path.basename(i)
-	dirname  = os.path.dirname(i)
-	install(basename, dirname, recurse)
+	parser = optparse.OptionParser(version="%prog " + __version__ + "\nAuthor: " + __author__)
+
+	parser.add_option("-A", "--append-allowed-exts", 
+			dest = "append_allowed_exts",
+			action = "append",
+			metavar = "ALLOWED",
+			default = [],
+			help = "append to allowed file extensions")
+	parser.add_option("-a", "--set-allowed-exts",
+			dest = "allowed_exts", 
+			metavar = "ALLOWED",
+			default = default_allowed_exts,
+			help = "set allowed file extensions")
+	parser.add_option("-f", "--allowed-files",
+			dest = "allowed_files",
+			action = "append",
+			metavar = "ALLOWED",
+			default = [],
+			help = "allowed extenionless files")
+	parser.add_option("-x", "--set-disallowed-dirs",
+			dest = "disallowed_dirs", 
+			metavar = "DISALLOWED",
+			default = default_disallowed_dirs,
+			help = "set disallowed directories")
+	parser.add_option("-r", "--recurse",
+			dest = "recurse", default = False,
+			action = "store_true",
+			help = "recurse into subdirectories")
+	parser.add_option("-V", "--verbose",
+                  	action="count", dest="verbose", default=0,
+                  	help="print status messages to stdout")						
+	parser.add_option("-p", "--doc-prefix",
+			dest = "doc_prefix", 
+			metavar = "DOCPREFIX",
+			default = "",
+			help = "prefix inside the /usr/share/doc/${PF}/html/ directory")
+	
+	return parser.parse_args()
+
+def main():
+
+	(options, args) = parse_args()
+
+	options.ensure_value("D", os.environ["D"])
+	options.ensure_value("PF", os.environ["PF"])
+	options.ensure_value("DOCDESTTREE", os.environ["DOCDESTTREE"])
+	
+	if type(options.allowed_exts) == types.StringType:
+		options.allowed_exts = options.allowed_exts.split(",")
+
+	exts = []
+	for x in options.allowed_exts + options.append_allowed_exts:
+		exts += x.split(",")
+	options.allowed_exts = exts
+
+	if options.verbose >= 3:
+		print "Allowed extensions:", options.allowed_exts
+		print "Document prefix : '" + options.doc_prefix	 + "'"
+		print "Allowed files :", options.allowed_files
+
+	for x in args:
+		basename = os.path.basename(x)
+		dirname  = os.path.dirname(x)
+		install(basename, dirname, options)
+
+if __name__ == "__main__":
+	main()
