@@ -526,8 +526,8 @@ class config:
 		self.hardset(mykey,string.join(mysetting," "))
 	
 	def populate(self):
-		self.configdict["conf"]=getconfig(root+"etc/make.conf")
-		self.configdict["globals"]=getconfig(root+"etc/make.globals")
+		self.configdict["conf"]=getconfig("/etc/make.conf")
+		self.configdict["globals"]=getconfig("/etc/make.globals")
 		self.configdict["env"]=self.configdict["origenv"].copy()
 		self.configdict["defaults"]=getconfig(profiledir+"/make.defaults")
 		self.configlist=[self.configdict["env"],self.configdict["conf"],self.configdict["defaults"],self.configdict["globals"]]
@@ -2908,16 +2908,11 @@ if not os.path.exists(root+"var/tmp"):
 	os.mkdir(root+"var",0755)
 	os.mkdir(root+"var/tmp",01777)
 os.umask(022)
-profiledir=None
-if root!="/":
-	if os.path.exists(root+"etc/make.profile/make.defaults"):
-		profiledir=root+"etc/make.profile"
-if not profiledir:
-	if os.path.exists("/etc/make.profile/make.defaults"):
-		profiledir="/etc/make.profile"
-	else:
-		print "!!! Couldn't find an /etc/make.profile directory; exiting."
-		sys.exit(1)
+if os.path.exists("/etc/make.profile/make.defaults"):
+	profiledir="/etc/make.profile"
+else:
+	print "!!! Couldn't find an /etc/make.profile directory; exiting."
+	sys.exit(1)
 #from here on in we can assume that profiledir is set to something valid
 db={}
 virts=getvirtuals("/")
