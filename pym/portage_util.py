@@ -644,27 +644,4 @@ def abssymlink(symlink):
 		mydir=os.path.dirname(symlink)
 		mylink=mydir+"/"+mylink
 	return os.path.normpath(mylink)
-def match_to_list(mypkg,mylist):
-	"""(pkgname,list)
-	Searches list for entries that matches the package.
-	"""
-	matches=[]
-	for x in mylist:
-		if match_from_list(x,[mypkg]):
-			if x not in matches:
-				matches.append(x)
-	return matches
 
-def best_match_to_list(mypkg,mylist):
-	"""(pkgname,list)
-	Returns the most specific entry (assumed to be the longest one)
-	that matches the package given.
-	"""
-	# XXX Assumption is wrong sometimes.
-	maxlen = 0
-	bestm  = None
-	for x in match_to_list(mypkg,mylist):
-		if len(x) > maxlen:
-			maxlen = len(x)
-			bestm  = x
-	return bestm

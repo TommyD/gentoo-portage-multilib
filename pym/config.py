@@ -4,7 +4,8 @@ import sys #has a few daft sys.exit
 
 import portage_util, portage_versions, portage_dep
 from portage_util import getconfig, grabfile, grab_multiple, grabfile_package, grabdict, writemsg, grabdict_package, \
-	abssymlink, best_match_to_list, flatten
+	abssymlink, flatten
+
 
 from portage_file import listdir
 from portage_data import portage_gid
@@ -451,7 +452,7 @@ class config:
 	def setcpv(self,mycpv,use_cache=1):
 		self.modifying()
 		self.mycpv = mycpv
-		self.pusekey = best_match_to_list(self.mycpv, self.pusedict.keys())
+		self.pusekey = portage_dep.best_match_to_list(self.mycpv, self.pusedict.keys())
 		if self.pusekey:
 			newpuse = " ".join(self.pusedict[self.pusekey])
 		else:

@@ -1965,7 +1965,7 @@ def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
 		else:
 			mykey = portage_dep.dep_getkey(deplist[mypos])
 			if mysettings and mysettings.pprovideddict.has_key(mykey) and \
-			        match_from_list(deplist[mypos], mysettings.pprovideddict[mykey]):
+			        portage_dep.match_from_list(deplist[mypos], mysettings.pprovideddict[mykey]):
 				deplist[mypos]=True
 			else:
 				if mode:
@@ -2061,208 +2061,6 @@ def best(mymatches):
 			p2=portage_versions.catpkgsplit(bestmatch)[1:]
 	return bestmatch		
 
-def match_from_list(mydep,candidate_list):
-	if mydep[0] == "!":
-		mydep = mydep[1:]
-
-	mycpv     = portage_dep.dep_getcpv(mydep)
-	mycpv_cps = portage_versions.catpkgsplit(mycpv) # Can be None if not specific
-
-	if not mycpv_cps:
-		cat,pkg = portage_versions.catsplit(mycpv)
-		ver     = None
-		rev     = None
-	else:
-		cat,pkg,ver,rev = mycpv_cps
-		if mydep == mycpv:
-			raise KeyError, "Specific key requires an operator (%s) (try adding an '=')" % (mydep)
-
-	if ver and rev:
-		operator = portage_dep.get_operator(mydep)
-		if not operator:
-			writemsg("!!! Invanlid atom: %s\n" % mydep)
-			return []
-	else:
-		operator = None
-
-	mylist = []
-
-	if operator == None:
-		for x in candidate_list:
-			xs = portage_versions.pkgsplit(x)
-			if xs == None:
-				if x != mycpv:
-					continue
-			elif xs[0] != mycpv:
-				continue
-			mylist.append(x)
-
-	elif operator == "=": # Exact match
-		if mycpv in candidate_list:
-			mylist = [mycpv]
-	
-	elif operator == "=*": # glob match
-		# The old verion ignored _tag suffixes... This one doesn't.
-		for x in candidate_list:
-			if x[0:len(mycpv)] == mycpv:
-				mylist.append(x)
-
-	elif operator == "~": # version, any revision, match
-		for x in candidate_list:
-			xs = portage_versions.catpkgsplit(x)
-			if xs[0:2] != mycpv_cps[0:2]:
-				continue
-			if xs[2] != ver:
-				continue
-			mylist.append(x)
-
-	elif operator in [">", ">=", "<", "<="]:
-		for x in candidate_list:
-			try:
-				result = portage_versions.pkgcmp(portage_versions.pkgsplit(x), [cat+"/"+pkg,ver,rev])
-			except SystemExit, e:
-				raise
-			except:
-				writemsg("\nInvalid package name: %s\n" % x)
-				sys.exit(73)
-			if result == None:
-				continue
-			elif operator == ">":
-				if result > 0:
-					mylist.append(x)
-			elif operator == ">=":
-				if result >= 0:
-					mylist.append(x)
-			elif operator == "<":
-				if result < 0:
-					mylist.append(x)
-			elif operator == "<=":
-				if result <= 0:
-					mylist.append(x)
-			else:
-				raise KeyError, "Unknown operator: %s" % mydep
-	else:
-		raise KeyError, "Unknown operator: %s" % mydep
-	
-
-	return mylist
-				
-
-def match_from_list_original(mydep,mylist):
-	"""(dep,list)
-	Reduces the list down to those that fit the dep
-	"""
-	mycpv=portage_dep.dep_getcpv(mydep)
-	if portage_dep.isspecific(mycpv):
-		cp_key=portage_versions.catpkgsplit(mycpv)
-		if cp_key==None:
-			return []
-	else:
-		cp_key=None
-	#Otherwise, this is a special call; we can only select out of the ebuilds specified in the specified mylist
-	if (mydep[0]=="="):
-		if cp_key==None:
-			return []
-		if mydep[-1]=="*":
-			#example: "=sys-apps/foo-1.0*"
-			try:
-				#now, we grab the version of our dependency...
-				mynewsplit=cp_key[2].split('.')
-				#split it...
-				mynewsplit[-1]=`int(mynewsplit[-1])+1`
-				#and increment the last digit of the version by one.
-				#We don't need to worry about _pre and friends because they're not supported with '*' deps.
-				new_v=".".join(mynewsplit)+"_alpha0"
-				#new_v will be used later in the code when we do our comparisons using portage_versions.pkgcmp()
-			except SystemExit, e:
-				raise
-			except:
-				#erp, error.
-				return [] 
-			mynodes=[]
-			cmp1=cp_key[1:]
-			cmp1[1]=cmp1[1]+"_alpha0"
-			cmp2=[cp_key[1],new_v,"r0"]
-			for x in mylist:
-				cp_x=portage_versions.catpkgsplit(x)
-				if cp_x==None:
-					#hrm, invalid entry.  Continue.
-					continue
-				#skip entries in our list that do not have matching categories
-				if cp_key[0]!=cp_x[0]:
-					continue
-				# ok, categories match. Continue to next step.	
-				if ((portage_versions.pkgcmp(cp_x[1:],cmp1)>=0) and (portage_versions.pkgcmp(cp_x[1:],cmp2)<0)):
-					# entry is >= the version in specified in our dependency, and <= the version in our dep + 1; add it:
-					mynodes.append(x)
-			return mynodes
-		else:
-			# Does our stripped key appear literally in our list?  If so, we have a match; if not, we don't.
-			if mycpv in mylist:
-				return [mycpv]
-			else:
-				return []
-	elif (mydep[0]==">") or (mydep[0]=="<"):
-		if cp_key==None:
-			return []
-		if (len(mydep)>1) and (mydep[1]=="="):
-			cmpstr=mydep[0:2]
-		else:
-			cmpstr=mydep[0]
-		mynodes=[]
-		for x in mylist:
-			cp_x=portage_versions.catpkgsplit(x)
-			if cp_x==None:
-				#invalid entry; continue.
-				continue
-			if cp_key[0]!=cp_x[0]:
-				continue
-			if eval("portage_versions.pkgcmp(cp_x[1:],cp_key[1:])"+cmpstr+"0"):
-				mynodes.append(x)
-		return mynodes
-	elif mydep[0]=="~":
-		if cp_key==None:
-			return []
-		myrev=-1
-		for x in mylist:
-			cp_x=portage_versions.catpkgsplit(x)
-			if cp_x==None:
-				#invalid entry; continue
-				continue
-			if cp_key[0]!=cp_x[0]:
-				continue
-			if cp_key[2]!=cp_x[2]:
-				#if version doesn't match, skip it
-				continue
-			myint = int(cp_x[3][1:])
-			if myint > myrev:
-				myrev   = myint
-				mymatch = x
-		if myrev == -1:
-			return []
-		else:
-			return [mymatch]
-	elif cp_key==None:
-		if mydep[0]=="!":
-			return []
-			#we check ! deps in emerge itself, so always returning [] is correct.
-		mynodes=[]
-		cp_key=mycpv.split("/")
-		for x in mylist:
-			cp_x=portage_versions.catpkgsplit(x)
-			if cp_x==None:
-				#invalid entry; continue
-				continue
-			if cp_key[0]!=cp_x[0]:
-				continue
-			if cp_key[1]!=cp_x[1]:
-				continue
-			mynodes.append(x)
-		return mynodes
-	else:
-		return []
-
-
 class portagetree:
 	def __init__(self,root="/",virtual=None,clone=None):
 		global portdb
@@ -2351,11 +2149,11 @@ class dbapi:
 		mydep=dep_expand(origdep,mydb=self)
 		mykey=portage_dep.dep_getkey(mydep)
 		mycat=mykey.split("/")[0]
-		return match_from_list(mydep,self.cp_list(mykey,use_cache=use_cache))
+		return portage_dep.match_from_list(mydep,self.cp_list(mykey,use_cache=use_cache))
 
 	def match2(self,mydep,mykey,mylist):
 		writemsg("DEPRECATED: dbapi.match2\n")
-		match_from_list(mydep,mylist)
+		portage_dep.match_from_list(mydep,mylist)
 
 	def counter_tick(self,myroot,mycpv=None):
 		return self.counter_tick_core(myroot,incrementing=1,mycpv=mycpv)
@@ -2766,7 +2564,7 @@ class vardbapi(dbapi):
 			if self.matchcache.has_key(mycat):
 				del self.mtdircache[mycat]
 				del self.matchcache[mycat]
-			return match_from_list(mydep,self.cp_list(mykey,use_cache=use_cache))
+			return portage_dep.match_from_list(mydep,self.cp_list(mykey,use_cache=use_cache))
 		try:
 			curmtime=os.stat(self.root+VDB_PATH+"/"+mycat)[stat.ST_MTIME]
 		except SystemExit, e:
@@ -2779,7 +2577,7 @@ class vardbapi(dbapi):
 			self.mtdircache[mycat]=curmtime
 			self.matchcache[mycat]={}
 		if not self.matchcache[mycat].has_key(mydep):
-			mymatch=match_from_list(mydep,self.cp_list(mykey,use_cache=use_cache))
+			mymatch=portage_dep.match_from_list(mydep,self.cp_list(mykey,use_cache=use_cache))
 			self.matchcache[mycat][mydep]=mymatch
 		return self.matchcache[mycat][mydep][:]
 	
@@ -3066,7 +2864,7 @@ class portdbapi(dbapi):
 					myatom = x[1:]
 				else:
 					myatom = x
-				if not match_to_list(mycpv, [myatom]):
+				if not portage_dep.match_to_list(mycpv, [myatom]):
 					rValue.append("profile")
 					break
 
@@ -3093,7 +2891,7 @@ class portdbapi(dbapi):
 
 		cp = portage_dep.dep_getkey(mycpv)
 		if pkgdict.has_key(cp):
-			matches = match_to_list(mycpv, pkgdict[cp].keys())
+			matches = portage_dep.match_to_list(mycpv, pkgdict[cp].keys())
 			for match in matches:
 				pgroups.extend(pkgdict[cp][match])
 
@@ -3495,18 +3293,18 @@ class portdbapi(dbapi):
 			#get all visible matches (from xmatch()), then choose the best one
 		elif level=="bestmatch-list":
 			#dep match -- find best match but restrict search to sublist 
-			myval=best(match_from_list(mydep,mylist))
+			myval=best(portage_dep.match_from_list(mydep,mylist))
 			#no point is calling xmatch again since we're not caching list deps
 		elif level=="match-list":
 			#dep match -- find all matches but restrict search to sublist (used in 2nd half of visible())
-			myval=match_from_list(mydep,mylist)
+			myval=portage_dep.match_from_list(mydep,mylist)
 		elif level=="match-visible":
 			#dep match -- find all visible matches
-			myval=match_from_list(mydep,self.xmatch("list-visible",None,mydep=mydep,mykey=mykey))
+			myval=portage_dep.match_from_list(mydep,self.xmatch("list-visible",None,mydep=mydep,mykey=mykey))
 			#get all visible packages, then get the matching ones
 		elif level=="match-all":
 			#match *all* visible *and* masked packages
-			myval=match_from_list(mydep,self.cp_list(mykey))
+			myval=portage_dep.match_from_list(mydep,self.cp_list(mykey))
 		else:
 			print "ERROR: xmatch doesn't handle",level,"query!"
 			raise KeyError
@@ -3597,7 +3395,7 @@ class portdbapi(dbapi):
 			pgroups=groups[:]
 			cp = portage_dep.dep_getkey(mycpv)
 			if cp in pkgdict:
-				matches = match_to_list(mycpv, pkgdict[cp].keys())
+				matches = portage_dep.match_to_list(mycpv, pkgdict[cp].keys())
 				for atom in matches:
 					pgroups.extend(pkgdict[cp][atom])
 			match=0
@@ -3848,7 +3646,7 @@ class binarytree(packagetree):
 		writemsg("mydep: %s\n" % mydep, 1)
 		mykey=portage_dep.dep_getkey(mydep)
 		writemsg("mykey: %s\n" % mykey, 1)
-		mymatch=best(match_from_list(mydep,self.dbapi.cp_list(mykey)))
+		mymatch=best(portage_dep.match_from_list(mydep,self.dbapi.cp_list(mykey)))
 		writemsg("mymatch: %s\n" % mymatch, 1)
 		if mymatch==None:
 			return ""

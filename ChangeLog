@@ -7,6 +7,12 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  08 Mar 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py, pym/portage_dep.py,
+  pym/portage_util.py, pym/config.py:  Moved match_from_list, match_to_* stuff
+  into portage_dep, and updated references, and fixed a few bugs related to 
+  match_* locations from last check in.
+  Threw out match_from_list_original func- it's dead code.
+
   06 Mar 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py: Harring's law 
   in effect- stupid one line bugs do not rear their head till the delta hits the 
   repository... :/
