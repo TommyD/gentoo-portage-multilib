@@ -247,6 +247,9 @@ CHOST="hppa-unknown-linux-gnu"
 #  'buildpkg'    causes binary packages to be created of all packages that 
 #                are merged.
 #  'ccache'      enables ccache support via CC.
+#  'collision-protect'
+#                this will prevent packages from overwriting files that
+#                are owned by another package or by no package at all.
 #  'cvs'         feature for developers that causes portage to enable all
 #                cvs features (commits, adds) and all USE flags in SRC_URI
 #                will be applied for digests.
