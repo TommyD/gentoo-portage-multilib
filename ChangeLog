@@ -9,6 +9,11 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  29 Jul 2004; Brian Harring <ferringb@gentoo.org> bin/repoman: Added check for
+  files over 20k in a packages files directory.  file.size, repoman treats it 
+  as a a failure.  Added the repoman manpage entries for file.size, and 
+  file.executable (I missed file.executable earlier).
+
   28 Jul 2004; Masatomo Nakano <nakano@gentoo.org> pym/portage.py: Fixed a bug
   emerge doesn't pkg_setup() with -k/-K option. (#25152)
 
@@ -26,7 +31,7 @@
 
   26 Jul 2004; Brian Harring <ferringb@gentoo.org> bin/emerge:
   Removed the `which blah` calls- A) stage1 lacks which, B) which searches
-  $PATH- all sane shells do this already when handed a command not that 
+  $PATH- all sane shells do this already when handed a command that 
   isn't absolute path.  These which calls were used in 
   commands.getstatusoutput() calls, which starts up a shell with
   the arg passed to the shell, so "`which blar` args" isn't needed.
