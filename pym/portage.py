@@ -1931,13 +1931,27 @@ class dblink:
 			#directory
 			elif os.path.isdir(x):
 				mystat=os.stat(x)
-				if not os.path.exists(rootfile):
+				if os.path.exists(rootfile):
+					if os.path.islink(rootfile) and os.path.isdir(rootfile):
+						#a symlink to an existing directory will work for us; keep it:
+						print "---",rootfile+"/"
+					elif os.path.isdir(rootfile):
+						#a normal directory will work too
+						print "---",rootfile+"/"
+					else:
+						#a non-directory and non-symlink-to-directory.  Won't work for us.  Move out of the way.
+						movefile(rootfile,rootfile+".backup")
+						print "bak",rootfile,rootfile+".backup"
+						#now create our directory
+						os.mkdir(rootfile)
+						os.chmod(rootfile,mystat[0])
+						os.chown(rootfile,mystat[4],mystat[5])
+						print ">>>",rootfile+"/"
+				else:				
 					os.mkdir(rootfile)
 					os.chmod(rootfile,mystat[0])
 					os.chown(rootfile,mystat[4],mystat[5])
 					print ">>>",rootfile+"/"
-				else:
-					print "---",rootfile+"/"
 				outfile.write("dir "+expandpath(relfile)+"\n")
 				#enter directory, recurse
 				os.chdir(x)

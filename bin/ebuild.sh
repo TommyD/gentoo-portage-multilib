@@ -3,7 +3,10 @@
 shopt -s expand_aliases
 source /etc/profile.env > /dev/null 2>&1
 export PATH="/sbin:/usr/sbin:/usr/lib/portage/bin:/bin:/usr/bin:${ROOTPATH}"
-if [ -e /etc/rc.d/config/functions ]
+if [ -e /etc/init.d/functions.sh ]
+then
+	source /etc/init.d/functions.sh > /dev/null 2>&1
+elif [ -e /etc/rc.d/config/functions ]
 then
 	source /etc/rc.d/config/functions > /dev/null 2>&1
 fi
