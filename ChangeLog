@@ -2,6 +2,9 @@
 # Copyright 2000-2004 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  27 Jan 2004; Masatomo Nakano <nakano@gentoo.org> portage.py: Fixed
+  autouse bug. autouse were ignored.
+
   21 Jan 2004; Nicholas Jones <carpaski@gentoo.org> emerge: Output failed
   cache updates during emerge sync.
 

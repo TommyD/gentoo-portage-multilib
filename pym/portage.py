@@ -1066,13 +1066,8 @@ def autouse(myvartree):
 	if profiledir==None:
 		return ""
 	myusevars=""
-	for x in usedefaults:
-		mysplit=string.split(x)
-		if len(mysplit)<2:
-			#invalid line
-			continue
-		myuse=mysplit[0]
-		mydep=x[len(mysplit[0]):]
+	for myuse in usedefaults:
+		mydep = string.join(usedefaults[myuse])
 		#check dependencies; tell depcheck() to ignore settings["USE"] since we are still forming it.
 		myresult=dep_check(mydep,myvartree.dbapi,None,use="no")
 		if myresult[0]==1 and not myresult[1]:
