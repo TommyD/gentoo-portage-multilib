@@ -24,7 +24,8 @@ export USE="\-*"
 \fBACCEPT_KEYWORDS\fR = \fI[space delimited list of KEYWORDS]\fR
 Enable testing of ebuilds that have not yet been deemed 'stable'.  Users
 of the 'x86' architecture would set this to '~x86' while ppc users would
-set this to '~ppc'. This is an incremental variable. Only define a ~arch.
+set this to '~ppc'.  This is an incremental variable.  Only define a 
+~arch.
 .br
 Defaults to the value of $ARCH.
 .TP
@@ -102,7 +103,8 @@ Defaults to ${PORTDIR}/distfiles.
 \fBFEATURES\fR = \fI"sandbox buildpkg ccache distcc userpriv usersandbox"\fR
 Defines actions portage takes by default.  These options should
 not be changed by anyone but developers and/or maintainers.  'sandbox' is an important
-part of \fBFEATURES\fR and should not be disabled by default.
+part of \fBFEATURES\fR and should not be disabled by default.  This is 
+an incremental variable.
 .RS
 .TP
 .B autoaddcvs
