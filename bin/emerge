@@ -700,8 +700,8 @@ if "--unmerge" in myopts:
 			# ask user for confirmation
 			print "The following packages are going to be unmerged :"
 			for full_path in full_paths.keys():
-				package_name=os.path.basename(full_path)
-				print "    "+package_name[:-1*len(".ebuild")]
+				package_parts=split(full_path, "/")
+				print "    "+package_parts[4]+"/"+package_parts[5]
 			answer=raw_input("Do you want to proceed (y/N)?")
 			if len(answer)==0 or string.lower(answer[0]) != "y":
 				print "Unmerging has been aborted."
