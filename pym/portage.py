@@ -226,7 +226,7 @@ def env_update():
 			continue
 		pos=pos+1
 
-	specials={"KDEDIR":[],"PATH":[],"CLASSPATH":[],"LDPATH":[],"MANPATH":[],"INFODIR":[],"ROOTPATH":[]}
+	specials={"KDEDIRS":[],"PATH":[],"CLASSPATH":[],"LDPATH":[],"MANPATH":[],"INFODIR":[],"ROOTPATH":[]}
 	env={}
 
 	for x in fns:
