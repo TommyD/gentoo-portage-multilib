@@ -1,6 +1,9 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  21 Jul 2002; Phil Bordelon <sunflare@gentoo.org> emerge: Readded the sync
+  help to the list of help options now that emerge --help sync works again.
+
 *portage-2.0.15 (16 Jul 2002)
 
   15 Jul 2002; Daniel Robbins <drobbins@gentoo.org> emake: no longer falls back
