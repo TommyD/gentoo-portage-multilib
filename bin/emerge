@@ -7,7 +7,7 @@ import os,sys
 os.environ["PORTAGE_CALLER"]="emerge"
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 
-import emergehelp,xpak,string,re,commands,time,shutil,traceback,atexit,signal,socket
+import emergehelp,xpak,string,re,commands,time,shutil,traceback,atexit,signal,socket,types
 from stat import *
 from output import *
 
@@ -258,6 +258,18 @@ def countdown(secs=5, doing="Starting"):
 			sys.stdout.flush()
 			time.sleep(1)
 		print
+
+# formats a size given in bytes nicely
+def format_size(mysize):
+	if type(mysize) != types.IntType:
+		return mysize
+	mystr=str(mysize/1024)
+	mycount=len(mystr)
+	while (mycount > 3):
+		mycount-=3
+		mystr=mystr[:mycount]+","+mystr[mycount:]
+	return mystr+" kB"
+
 
 def getgccversion():
 	"""
@@ -513,7 +525,7 @@ class search:
 					catpack=portage.pkgsplit(match)[0]
 				if full_package:
 					try:
-						desc, homepage = portage.portdb.aux_get(full_package,["DESCRIPTION","HOMEPAGE"])
+						desc, homepage, license = portage.portdb.aux_get(full_package,["DESCRIPTION","HOMEPAGE","LICENSE"])
 					except KeyError:
 						print "emerge: search: aux_get() failed, skipping"
 						continue
@@ -551,6 +563,7 @@ class search:
 						print "     ", darkgreen("Size of downloaded files:"),mysum[0]
 						print "     ", darkgreen("Homepage:")+"   ",homepage
 						print "     ", darkgreen("Description:"),desc
+						print "     ", darkgreen("License:")+"    ",license
 						print
 		print
 	#
@@ -1106,6 +1119,7 @@ class depgraph:
 		changelogs=[]
 		p=[]
 		intree=False
+		totalsize=0
 		
 		for x in mylist:
 			fetch=" "
@@ -1172,8 +1186,14 @@ class depgraph:
 					myoldbest=blue("["+myoldbest+"]")
 
 				iuse=""
+				mysize=0
 				if "--verbose" in myopts:
-					iuse_split = string.split(portage.portdb.aux_get(x[2],["IUSE"])[0], " ")
+					try:
+						iuse_split = string.split(portage.portdb.aux_get(x[2],["IUSE"])[0], " ")
+					except:
+						portage.writemsg("!!! Error getting IUSE (report this to bugs.gentoo.org)\n")
+						portage.writemsg("!!! %s\n" % x)
+						iuse_split = []
 					iuse_split.sort()
 					for ebuild_iuse in iuse_split:
 						if not ebuild_iuse:
@@ -1182,6 +1202,15 @@ class depgraph:
 							iuse=iuse+red("+"+ebuild_iuse)+" "
 						else:
 							iuse=iuse+blue("-"+ebuild_iuse)+" "
+					if x[0] == "ebuild":
+						mysize=portage.portdb.getsize(x[2], debug=edebug)
+						if type(mysize) == types.IntType:
+							totalsize+=mysize
+
+				if "--verbose" in myopts:
+					verboseadd=iuse+" "+format_size(mysize)
+				else:
+					verboseadd=iuse
 
 				xs=portage.pkgsplit(x[2])
 				if xs[2]=="r0":
@@ -1215,9 +1244,9 @@ class depgraph:
 						if (oldlp-len(myprint)) > 0:
 							myprint=myprint+" "*(oldlp-len(myprint))
 						myprint=myprint+myoldbest
-						myprint=myprint+darkgreen("  to "+x[1])+" "+iuse
+						myprint=myprint+darkgreen("  to "+x[1])+" "+verboseadd
 					else:
-						myprint="["+x[0]+" "+addl+"] "+darkgreen(x[2])+" "+myoldbest+" "+darkgreen("to "+x[1])+" "+iuse
+						myprint="["+x[0]+" "+addl+"] "+darkgreen(x[2])+" "+myoldbest+" "+darkgreen("to "+x[1])+" "+verboseadd
 				else:
 					if "--columns" in myopts:
 						myprint="["+x[0]+" "+addl+"] "+indent+darkgreen(xs[0])
@@ -1226,12 +1255,12 @@ class depgraph:
 						myprint=myprint+green(" ["+xs[1]+xs[2]+"] ")
 						if (oldlp-len(myprint)) > 0:
 							myprint=myprint+(" "*(oldlp-len(myprint)))
-						myprint=myprint+myoldbest+"  "+iuse
+						myprint=myprint+myoldbest+"  "+verboseadd
 					else:
 						if x[3]=="nomerge":
-							myprint=darkblue("[nomerge      ] "+indent+x[2]+" "+myoldbest+" ")+iuse
+							myprint=darkblue("[nomerge      ] "+indent+x[2]+" "+myoldbest+" ")+verboseadd
 						else:
-							myprint="["+x[0]+" "+addl+"] "+indent+darkgreen(x[2])+" "+myoldbest+" "+iuse
+							myprint="["+x[0]+" "+addl+"] "+indent+darkgreen(x[2])+" "+myoldbest+" "+verboseadd
 				p.append(myprint)
 
 			if ("--tree" not in myopts):
@@ -1263,6 +1292,10 @@ class depgraph:
 		for x in p:
 			print x
 
+		if "--verbose" in myopts:
+			print
+			print "Total size of downloads: "+format_size(totalsize)
+		
 		if "--changelog" in myopts:
 			print
 			for revision,text in changelogs:
@@ -1333,6 +1366,8 @@ class depgraph:
 					if ("--pretend" not in myopts):
 						sys.exit(1)
 
+		#buildsyspkg: I need mysysdict also on resume (moved from the else block)
+		mysysdict=genericdict(syslist)
 		if ("--resume" in myopts):
 			# We're resuming.
 			print green("*** Resuming merge...")
@@ -1343,7 +1378,6 @@ class depgraph:
 		else:
 			myfavs=portage.grabfile(portage.root+"var/cache/edb/world")
 			myfavdict=genericdict(myfavs)
-			mysysdict=genericdict(syslist)
 			for x in range(len(mylist)):
 				if mylist[x][3]!="nomerge":
 					# Add to the mergelist
@@ -1384,6 +1418,10 @@ class depgraph:
 				print ">>> emerge ("+str(mergecount)+" of "+str(len(mymergelist))+")",x[pkgindex],"to",x[1]
 				emergelog(" >>> emerge ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" to "+x[1])
 			self.pkgsettings["EMERGE_FROM"] = x[0][:]
+			#buildsyspkg: Check if we need to _force_ binary package creation
+			issyspkg = ("buildsyspkg" in myfeat) \
+					and mysysdict.has_key(portage.cpv_getkey(x[2])) \
+					and not ("--buildpkg" in myopts)
 			if x[0] in ["ebuild","blocks"]:
 				if (x[0]=="blocks") and ("--fetchonly" not in myopts):
 					raise Exception, "Merging a blocker"
@@ -1395,7 +1433,11 @@ class depgraph:
 						print	
 						returnme=1
 					continue
-				elif "--buildpkg" in myopts:
+				elif "--buildpkg" in myopts or issyspkg:
+					#buildsyspkg: Sounds useful to display something, but I don't know if we should also log it
+					if issyspkg:
+						print ">>> This is a system package, let's pack a rescue tarball."
+						#emergelog(">>> This is a system package, let's pack a rescue tarball.")
 					#create pkg, then merge pkg
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Cleaning ("+x[pkgindex]+"::"+y+")")
 					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug)
@@ -1518,6 +1560,8 @@ class depgraph:
 def unmerge(unmerge_action, unmerge_files):
 	candidate_catpkgs=[]
 	global_unmerge=0
+	
+	mysettings = portage.config(clone=portage.settings)
 	
 	if not unmerge_files or "world" in unmerge_files or "system" in unmerge_files:
 		if "unmerge"==unmerge_action:
@@ -1654,8 +1698,8 @@ def unmerge(unmerge_action, unmerge_files):
 		return 0
 	#the real unmerging begins, after a short delay....
 	
-	if portage.settings["CLEAN_DELAY"]:
-		secs=string.atoi(portage.settings["CLEAN_DELAY"])
+	if mysettings["CLEAN_DELAY"]:
+		secs=string.atoi(mysettings["CLEAN_DELAY"])
 	else:
 		secs=5
 	countdown(secs, ">>> Unmerging")
@@ -1666,7 +1710,7 @@ def unmerge(unmerge_action, unmerge_files):
 			emergelog("=== Unmerging... ("+y+")")
 			mysplit=string.split(y,"/")
 			#unmerge...
-			retval=portage.unmerge(mysplit[0],mysplit[1],portage.root,unmerge_action not in ["clean","prune"])
+			retval=portage.unmerge(mysplit[0],mysplit[1],portage.root,mysettings,unmerge_action not in ["clean","prune"])
 			if retval:
 				emergelog(" !!! unmerge FAILURE: "+y)
 			else:
@@ -1813,6 +1857,8 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 				rsynccommand=rsynccommand+" --exclude-from "+portage.settings["RSYNC_EXCLUDEFROM"]
 			else:
 				print "!!! RSYNC_EXCLUDEFROM specified, but file does not exist."
+		if portage.settings.has_key("RSYNC_RATELIMIT"):
+			rsynccommand = rsynccommand+ " --bwlimit="+portage.settings["RSYNC_RATELIMIT"]+" "
 
 		servertimestampdir=portage.settings["PORTAGE_TMPDIR"]+"/sync/"
 
@@ -2209,7 +2255,7 @@ else:
 	if ("--resume" in myopts) and portage.mtimedb.has_key("resume"):
 		myresumeopts=portage.mtimedb["resume"]["myopts"][:]
 		if "--skipfirst" in myresumeopts:
-			del myresumeopts["--skipfirst"]
+			myresumeopts.remove("--skipfirst")
 		for myopt in myopts:
 			if myopt not in myresumeopts:
 				myresumeopts.append(myopt)

@@ -545,7 +545,12 @@ def env_update(makelinks=1):
 			continue
 		pos=pos+1
 
-	specials={"KDEDIRS":[],"PATH":[],"CLASSPATH":[],"LDPATH":[],"MANPATH":[],"INFODIR":[],"INFOPATH":[],"ROOTPATH":[],"CONFIG_PROTECT":[],"CONFIG_PROTECT_MASK":[],"PRELINK_PATH":[],"PRELINK_PATH_MASK":[]}
+	specials={
+	  "KDEDIRS":[],"PATH":[],"CLASSPATH":[],"LDPATH":[],"MANPATH":[],
+		"INFODIR":[],"INFOPATH":[],"ROOTPATH":[],"CONFIG_PROTECT":[],
+		"CONFIG_PROTECT_MASK":[],"PRELINK_PATH":[],"PRELINK_PATH_MASK":[],
+		"ADA_INCLUDE_PATH":[], "ADA_OBJECTS_PATH":[]
+	}
 	env={}
 
 	for x in fns:
@@ -1022,9 +1027,10 @@ class config:
 			if profiledir:
 				self.mygcfg=getconfig("/etc/make.profile/make.defaults")
 				if self.mygcfg==None:
-					writemsg("!!! Parse error in /etc/make.defaults. Never modify this file.\n")
-					writemsg("!!! 'emerge sync' may fix this. If it does not then please report\n")
-					writemsg("!!! this to bugs.gentoo.org and, if possible, a dev on #gentoo (IRC)\n")
+					writemsg("!!! Parse error in /etc/make.profile/make.defaults. Never modify this file.\n")
+					writemsg("!!! 'rm -Rf /usr/portage/profiles; emerge sync' may fix this. If it does\n")
+					writemsg("!!! not then please report this to bugs.gentoo.org and, if possible, a dev\n")
+					writemsg("!!! on #gentoo (irc.freenode.org)\n")
 					sys.exit(1)
 			self.configlist.append(self.mygcfg)
 			self.configdict["defaults"]=self.configlist[-1]
@@ -1116,8 +1122,11 @@ class config:
 		else:
 			writemsg("No pkg setup for settings instance?\n")
 			sys.exit(17)
-			
+		
 		if os.path.exists(infodir):
+			if os.path.exists(infodir+"/environment"):
+				self.configdict["pkg"]["PORT_ENV_FILE"] = infodir+"/environment"
+
 			myre = re.compile('^[A-Z]+$')
 			for filename in listdir(infodir,filesonly=1,EmptyOnError=1):
 				if myre.match(filename):
@@ -1125,9 +1134,9 @@ class config:
 						mydata = string.strip(open(infodir+"/"+filename).read())
 						if len(mydata)<2048:
 							if filename == "USE":
-								self[filename] = "-* "+mydata
+								self.configdict["pkg"][filename] = "-* "+mydata
 							else:
-								self[filename] = mydata
+								self.configdict["pkg"][filename] = mydata
 					except:
 						writemsg("!!! Unable to read file: %s\n" % infodir+"/"+filename)
 						pass
@@ -1803,6 +1812,11 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0):
 	mypv        = os.path.basename(ebuild_path)[:-7]
 	mycpv       = cat+"/"+mypv
 
+	mysplit=pkgsplit(mypv,0)
+	if mysplit==None:
+		writemsg("!!! Error: PF is null '%s'; exiting.\n" % mypv)
+		return 1
+
 	mysettings.reset()
 	mysettings.setcpv(mycpv)
 	
@@ -1815,10 +1829,6 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0):
 
 	if not os.path.exists(myebuild):
 		writemsg("!!! doebuild: "+str(myebuild)+" not found for "+str(mydo)+"\n")
-		return 1
-
-	if myebuild[-7:]!=".ebuild":
-		writemsg("!!! doebuild: "+str(myebuild)+" does not appear to be an ebuild file.\n")
 		return 1
 
 	if debug: # Otherwise it overrides emerge's settings.
@@ -1837,11 +1847,6 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0):
 	
 	mysettings["ECLASSDIR"]   = mysettings["PORTDIR"]+"/eclass"
 	mysettings["SANDBOX_LOG"] = mycpv
-
-	mysplit=pkgsplit(mysettings["PF"],0)
-	if mysplit==None:
-		print "!!! Error: PF is null; exiting."
-		return 1
 
 	mysettings["P"]  = mysplit[0]+"-"+mysplit[1]
 	mysettings["PN"] = mysplit[0]
@@ -1999,7 +2004,10 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0):
 			return unmerge(mysettings["CATEGORY"],mysettings["PF"],myroot)
 
 	# if any of these are being called, handle them -- running them out of the sandbox -- and stop now.
-	if mydo in ["help","clean","setup","prerm","postrm","preinst","postinst","config"]:
+	if mydo in ["help","clean","setup"]:
+		return spawn("/usr/sbin/ebuild.sh "+mydo,mysettings,debug,free=1)
+	elif mydo in ["prerm","postrm","preinst","postinst","config"]:
+		mysettings.load_infodir(pkg_dir)
 		return spawn("/usr/sbin/ebuild.sh "+mydo,mysettings,debug,free=1)
 	
 	try: 
@@ -2222,9 +2230,8 @@ def merge(mycat,mypkg,pkgloc,infloc,myroot,mysettings,myebuild=None):
 	mylink=dblink(mycat,mypkg,myroot,mysettings)
 	return mylink.merge(pkgloc,infloc,myroot,myebuild)
 	
-def unmerge(cat,pkg,myroot,mytrimworld=1):
-	tmpsettings = config(clone=settings)
-	mylink=dblink(cat,pkg,myroot,tmpsettings)
+def unmerge(cat,pkg,myroot,mysettings,mytrimworld=1):
+	mylink=dblink(cat,pkg,myroot,mysettings)
 	if mylink.exists():
 		mylink.unmerge(trimworld=mytrimworld)
 	mylink.delete()
@@ -3378,13 +3385,17 @@ class dbapi:
 	def invalidentry(self, mypath):
 		match = re.search(".*/-MERGING-(.*)",mypath)
 		if match:
-			writemsg(red("INCOMPLETE MERGE:")+match[0]+"\n")
+			writemsg(red("INCOMPLETE MERGE:")+mypath+"\n")
 		else:
 			if re.search("portage_lockfile$",mypath):
-				writemsg("Lockfile removed: %s\n" % mypath)
-				unlockfile((mypath,None,None))
+				if not os.environ.has_key("PORTAGE_MASTER_PID"):
+					writemsg("Lockfile removed: %s\n" % mypath)
+					unlockfile((mypath,None,None))
+				else:
+					# Nothing we can do about it. We're probably sandboxed.
+					pass
 			else:
-				writemsg("!!! Invalid db entry: %s" % mypath)
+				writemsg("!!! Invalid db entry: %s\n" % mypath)
 
 
 
@@ -3605,7 +3616,7 @@ class vardbapi(dbapi):
 				continue
 			ps=pkgsplit(x)
 			if not ps:
-				self.dbapi.invalidentry(self.root+"var/db/pkg/"+mysplit[0]+"/"+x)
+				self.invalidentry(self.root+"var/db/pkg/"+mysplit[0]+"/"+x)
 				continue
 			if len(mysplit) > 1:
 				if ps[0]==mysplit[1]:
@@ -3628,7 +3639,7 @@ class vardbapi(dbapi):
 				y = y[1:]
 			mysplit=catpkgsplit(y)
 			if not mysplit:
-				self.dbapi.invalidentry(self.root+"var/db/pkg/"+x)
+				self.invalidentry(self.root+"var/db/pkg/"+y)
 				continue
 			mykey=mysplit[0]+"/"+mysplit[1]
 			if not mykey in returnme:
@@ -4260,6 +4271,22 @@ class portdbapi(dbapi):
 				returnme.append("")
 		return returnme
 		
+	def getsize(self,mypkg,debug=0):
+		# Pull the size of the downloads
+		mysum=0
+		mydigest=self.finddigest(mypkg)
+
+		mymd5s=digestParseFile(mydigest)
+		if not mymd5s:
+			if debug:
+				print "!!! Exception:",e
+			return "[empty/missing/bad digest]"
+		for myfile in mymd5s.keys():
+			distfile=settings["DISTDIR"]+"/"+myfile
+			if not os.access(distfile, os.R_OK):
+				mysum+=int(mymd5s[myfile][1])
+		return mysum
+
 	def cpv_exists(self,mykey):
 		"Tells us whether an actual ebuild exists on disk (no masking)"
 		cps2=mykey.split("/")
@@ -4737,6 +4764,8 @@ class dblink:
 		self.dbdir    = self.dbpkgdir
 	
 		self.settings = mysettings
+		if self.settings==1:
+			raise ValueError
 	
 		self.myroot=myroot
 		self.updateprotect()
@@ -4862,14 +4891,24 @@ class dblink:
 		if not pkgfiles:
 			print "No package files given... Grabbing a set."
 			pkgfiles=self.getcontents()
+
 		# Now, don't assume that the name of the ebuild is the same as the
 		# name of the dir; the package may have been moved.
 		myebuildpath=None
-		mystuff=listdir(self.dbdir,EmptyOnError=1)
-		for x in mystuff:
-			if x[-7:]==".ebuild":
-				myebuildpath=self.dbdir+"/"+x
-				break
+		
+		# We should use the environement file if possible,
+		# as it has all sourced files already included.
+		# XXX: Need to ensure it doesn't overwrite any important vars though.
+		if os.access(self.dbdir+"/environment.bz2", os.R_OK):
+			spawn("bzip2 -d "+self.dbdir+"/environment.bz2",self.settings,free=1)
+		
+		if not myebuildpath:
+			mystuff=listdir(self.dbdir,EmptyOnError=1)
+			for x in mystuff:
+				if x[-7:]==".ebuild":
+					myebuildpath=self.dbdir+"/"+x
+					break
+
 		#do prerm script
 		if myebuildpath and os.path.exists(myebuildpath):
 			a=doebuild(myebuildpath,"prerm",self.myroot,self.settings)

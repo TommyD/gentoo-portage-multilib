@@ -1080,6 +1080,9 @@ else:
 	if "--pretend" in myoptions:
 		print "(/usr/bin/cvs -q commit -F "+commitmessagefile+")"
 	else:
+		mymsg=open(commitmessagefile,"a")
+		mymsg.write(" (Manifest recommit)")
+		mymsg.close()
 		retval=os.system("/usr/bin/cvs -q commit -F "+commitmessagefile)
 		if retval:
 			print "!!! Exiting on cvs (shell) error code:",retval

@@ -2,6 +2,25 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  10 Dec 2003; Nicholas Jones <carpaski@gentoo.org> chkcontents: Uses portage
+	functions to do md5sum calcs.
+
+  10 Dec 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Removed try()
+	as it isn't used, and was deprecated for a long while. Genone's fetching
+	size display added for --verbose. License display added. Added a little
+	debug for IUSE so we can figure out the binary package --verbose IUSE
+	issues that are randomly reported. XXXXXXXXXXXXXXXXXXX's 'buildsyspkg'
+	patch for building only system packages into tbz2s. Unmerge fix for new
+	settings instances. RSYNC_RATELIMIT added.
+	
+  10 Dec 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: ADA path
+	variables added to specials for env_update. Error messaeg correction for
+	make.defaults syntax errors. Unmerge now uses the environment file, if it
+	exists, to get the complete environment back to perform unmerge operations.
+	load_infodir() uses pkg settings completely now. Fixed the passing of
+	settings in unmerge and dblink. Fixed an issue regarding unlinking lockfiles
+	while inside of a sandbox.
+	
   09 Dec 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh, *.sh:
 	Moved helper scripts into bin/functions and made them sourceable -- they
 	now will die in cases where sub-parts fail. dodoc and keepdir are now

@@ -420,19 +420,6 @@ pkg_postrm()
 	return
 }
 
-try() {
-	env "$@"
-	if [ "$?" != "0" ]
-	then
-		echo 
-		echo '!!! '"ERROR: the $1 command did not complete successfully."
-		echo '!!! '"(\"$*\")"
-		echo '!!! '"Since this is a critical task, ebuild will be stopped."
-		echo
-		exit 1
-	fi
-}
-
 # Used to generate the /lib/cpp and /usr/bin/cc wrappers
 gen_wrapper() {
 	cat > $1 << END
