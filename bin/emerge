@@ -341,7 +341,7 @@ class search:
 					mycat = match.split("/")[0]
 					mypkg = match.split("/")[1] + "-" + myversion
 
-					mydigest = portage.config()["PORTDIR"] + "/"  + match + "/files/digest-" + mypkg
+					mydigest = portage.settings["PORTDIR"] + "/"  + match + "/files/digest-" + mypkg
 					
 					try:
 						myfile = open(mydigest,"r")
