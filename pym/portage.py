@@ -1995,7 +1995,10 @@ class dblink:
 		self.pkg=pkg
 		self.slot=slot
 		pkg_parts=pkgsplit(pkg)
-		pkg_slot=pkg_parts[0]
+		if pkg_parts:
+			pkg_slot=pkg_parts[0]
+		else:
+			pkg_slot=pkg
 		if slot != "" and slot != "0":
 			pkg_slot = pkg_slot+"-"+slot
 		self.dbdir=myroot+"/var/db/pkg/"+cat+"/"+pkg_slot
