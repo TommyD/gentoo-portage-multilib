@@ -401,7 +401,7 @@ pkg_postrm()
 
 try() {
 	env "$@"
-	if [ $? -ne 0 ]
+	if [ "$?" != "0" ]
 	then
 		echo 
 		echo '!!! '"ERROR: the $1 command did not complete successfully."

@@ -751,12 +751,19 @@ def autouse(myvartree):
 class config:
 	def __init__(self):
 		global incrementals
+		self.usemasks=[]
 		self.configlist=[]
 		self.backupenv={}
 		# back up our incremental variables:
 		global profiledir
 		self.configdict={}
 		# configlist will contain: [ globals, (optional) profile, make.conf, backupenv (incrementals), origenv ]
+
+		#get the masked use flags
+		if os.path.exists("/etc/make.profile/use.mask"):
+			usemasks=grabfile("/etc/make.profile/use.mask")
+		if os.path.exists("/etc/portage/use.mask"):
+			usemasks=usemasks+grabfile("/etc/portage/use.mask")
 
 		self.mygcfg=getconfig("/etc/make.globals")
 		if self.mygcfg==None:
@@ -853,7 +860,11 @@ class config:
 			#store setting in last element of configlist, the original environment:
 			self.configlist[-1][mykey]=string.join(mysetting," ")
 		#cache split-up USE var in a global
-		usesplit=string.split(self.configlist[-1]["USE"])
+		usesplit=[]
+		for x in string.split(self.configlist[-1]["USE"]):
+			if x not in self.usemasks:
+				usesplit.append(x)
+		
 		# Pre-Pend ARCH variable to USE settings so '-*' in env doesn't kill arch.
 		if profiledir:
 			if self.configdict["defaults"].has_key("ARCH"):
@@ -4351,8 +4362,3 @@ for x in pkglines:
 del pkglines
 groups=settings["ACCEPT_KEYWORDS"].split()
 
-#get the arch variables
-if os.path.exists(settings["PORTDIR"]+"/profiles/arch.list"):
-	archkeys=grabfile(settings["PORTDIR"]+"/profiles/arch.list")
-else:
-	archkeys=[]
