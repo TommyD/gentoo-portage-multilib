@@ -1,0 +1,232 @@
+#!/usr/bin/python
+# $Header$
+#
+# dispatch-conf -- Integrate modified configs, post-emerge
+#
+#  Copyright 2002 Gentoo Technologies, Inc.
+#  Distributed under the terms of the GNU Public License v2
+#
+#  Jeremy Wohl (http://igmus.org)
+#  Id: dispatch-conf,v 1.13 2003/02/05 09:39:31 jeremyw Exp
+#
+# TODO
+#  dialog menus
+#
+
+import os, sys, string, re, commands, shutil
+import portage
+
+FIND_EXTANT_CONFIGS  = "find %s -iname '._cfg????_*'"
+DIFF_CONTENTS        = 'diff -Nau %s %s'
+DIFF_CVS_INTERP      = 'diff -Nau %s %s | grep "^[+-][^+-]" | grep -v "# .Header:.*"'
+DIFF_WSCOMMENTS      = 'diff -Nau %s %s | grep "^[+-][^+-]" | grep -v "^[-+]#" | grep -v "^[-+][:space:]*$"'
+MERGE                = 'sdiff --suppress-common-lines --output=%s %s %s'
+
+MANDATORY_OPTS  = [ 'archive-dir', 'diff', 'pager', 'replace-cvs', 'replace-wscomments' ]
+
+class dispatch:
+    options = {}
+
+    def grind (self, config_paths):
+        confs = []
+        count = 0
+
+        self.read_my_config ()
+
+        #
+        # Build list of extant configs
+        #
+    
+        for path in config_paths.split ():
+            if not os.path.exists (path):
+                continue
+        
+            confs += self.massage (os.popen (FIND_EXTANT_CONFIGS % (path,)).readlines ())
+
+        #
+        # Remove new configs identical to current
+        #                  and
+        # Auto-replace configs a) whose differences are simply CVS interpolations,
+        #                  or  b) whose differences are simply ws or comments,
+        #                  or  c) in paths now unprotected by CONFIG_PROTECT_MASK,
+        #
+    
+        def f (conf):
+            same_file = len(commands.getoutput (DIFF_CONTENTS   % (conf ['current'], conf ['new']))) == 0
+            same_cvs  = len(commands.getoutput (DIFF_CVS_INTERP % (conf ['current'], conf ['new']))) == 0
+            same_wsc  = len(commands.getoutput (DIFF_WSCOMMENTS % (conf ['current'], conf ['new']))) == 0
+
+            # Do options permit?
+            same_cvs  = same_cvs and self.options ['replace-cvs'] == 'yes'
+            same_wsc  = same_wsc and self.options ['replace-wscomments'] == 'yes'
+
+            if same_file:
+                os.unlink (conf ['new'])
+                return False
+            elif same_cvs or same_wsc or conf ['dir'] in portage.settings ['CONFIG_PROTECT_MASK'].split ():
+                self.replace (conf ['new'], conf ['current'])
+                return False
+            else:
+                return True
+
+        confs = filter (f, confs)
+
+        #
+        # Interactively process remaining
+        #
+    
+        for conf in confs:
+            count = count + 1
+
+            while 1:
+                os.system ((self.options ['diff'] + '| %s') % (conf ['current'], conf ['new'], self.options ['pager']))
+
+                print
+                print '>> (%i of %i) -- %s' % (count, len(confs), conf ['current'])
+                print '>> q quit, h help, n skip, f fuse/merge, k kill new, s supercede w/new',
+
+                c = getch ()
+                
+                if c == 'q':
+                    sys.exit (0)
+                if c == 'h':
+                    self.do_help ()
+                    continue
+                elif c == 'n':
+                    break
+                elif c == 'f':
+                    merged = '/tmp/dispatch-conf.merged.%i' % (os.getpid (),)
+                    print
+                    os.system (MERGE % (merged, conf ['current'], conf ['new']))
+                    os.rename (merged, conf ['new'])
+                    continue
+                elif c == 'k':
+                    os.remove (conf ['new'])
+                    break
+                elif c == 's':
+                    self.replace (conf ['new'], conf ['current'])
+                    break
+                else:
+                    continue
+
+
+    def replace (self, newconf, curconf):
+        """Archive existing config, then replace current with new"""
+        full = os.path.join (self.options ['archive-dir'], curconf.lstrip ('/'))
+
+        try:
+            os.makedirs (os.path.dirname (full))
+        except:
+            pass
+
+        count = 1
+        while count < 1000:
+            archive = full + '.' + str(count)
+
+            if os.path.exists (archive):
+                count = count + 1
+                continue
+            else:
+                try:
+                    shutil.copy2 (curconf, archive)
+                except (IOError, os.error), why:
+                    print >> sys.stderr, 'dispatch-conf: Error copying %s to %s: %s; fatal' % \
+                          (curconf, archive, str(why))
+                try:
+                    os.rename (newconf, curconf)
+                except (IOError, os.error), why:
+                    print >> sys.stderr, 'dispatch-conf: Error renaming %s to %s: %s; fatal' % \
+                          (newconf, curconf, str(why))
+                break
+        else:
+            print >> sys.stderr, 'dispatch-conf: Error archiving files -- exhausted slots???; fatal'
+            sys.exit (1)
+
+
+    def massage (self, newconfigs):
+        """Sort, rstrip, remove old versions, break into triad hash.
+
+        Triad is dictionary of current (/etc/make.conf), new (/etc/._cfg0003_make.conf)
+        and dir (/etc).
+
+        We keep ._cfg0002_conf over ._cfg0001_conf and ._cfg0000_conf.
+        """
+        h = {}
+
+        newconfigs.sort ()
+
+        for nconf in newconfigs:
+            nconf = nconf.rstrip ()
+            conf  = re.sub (r'\._cfg\d+_', '', nconf)
+            dir   = re.match (r'^(.+)/', nconf).group (1)
+
+            if h.has_key (conf):
+                os.remove (h [conf] ['new'])
+            
+            h [conf] = { 'current' : conf, 'dir' : dir, 'new' : nconf }
+
+        configs = h.values ()
+        configs.sort (lambda a, b: cmp(a ['current'], b ['current']))
+
+        return configs
+
+
+    def do_help (self):
+        print; print
+
+        print '  q -- quit'
+        print '  h -- this screen'
+        print '  n -- next/skip to next config, leave all intact'
+        print '  f -- interactively fuse/merge current and new configs'
+        print '  k -- kill/remove new config and continue'
+        print '  s -- supercede current config with new and continue'
+
+        print; print 'press any key to return to diff...',
+    
+        getch ()
+    
+
+    def read_my_config (self):
+        try:
+            opts = portage.getconfig ('/etc/dispatch-conf.conf')
+        except:
+            opts = None
+
+        if not opts:
+            print >> sys.stderr, 'dispatch-conf: Error reading /etc/dispatch-conf.conf; fatal'
+            sys.exit (1)
+
+        for key in MANDATORY_OPTS:
+            if not opts.has_key (key):
+                print >> sys.stderr, 'dispatch-conf: Missing option "%s" in /etc/dispatch-conf.conf; fatal' % (key,)
+
+        if not (os.path.exists (opts ['archive-dir']) and os.path.isdir (opts ['archive-dir'])):
+            print >> sys.stderr, 'dispatch-conf: Config archive dir [%s] must exist; fatal' % (opts ['archive-dir'],)
+            sys.exit (1)
+
+        self.options = opts
+    
+
+def getch ():
+    # from ASPN - Danny Yoo
+    #
+    import sys, tty, termios
+    
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    try:
+        tty.setraw(sys.stdin.fileno())
+        ch = sys.stdin.read(1)
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    return ch
+
+        
+# run
+d = dispatch ()
+
+if len(sys.argv) > 1:
+    # for testing
+    d.grind (string.join (sys.argv [1:]))
+else:
+    d.grind (portage.settings ['CONFIG_PROTECT'])
