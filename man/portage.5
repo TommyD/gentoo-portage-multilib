@@ -61,9 +61,7 @@ use.local.desc
 .br
 use.mask
 .TP
-.BR /var/cache/edb/
-virtuals
-.br
+.BR /var/lib/portage/
 world
 .SH GLOSSARY
 In the following sections, some terminology may be foreign to you or used 
@@ -507,26 +505,8 @@ Just like the \fBuse.mask\fR found in \fB/etc/make.profile/\fR.  See
 above for more information.
 .RE
 .TP
-.BR /var/cache/edb/
+.BR /var/lib/portage/
 .RS
-.TP
-.BR virtuals
-Everytime a package is emerged that provides a virtual, that virtual to package 
-mapping is recorded here.
-
-.I Format:
-.br
-\- the virtual followed by the DEPEND atom bases that provide it
-
-.I Example:
-.br
-virtual/inetd sys-apps/xinetd
-.br
-virtual/opengl media-video/nvidia-glx x11-base/xfree
-.br
-virtual/mta net-mail/qmail
-.br
-virtual/editor app-editors/vim app-editors/nano
 .TP
 .BR world
 Every time you emerge a package, the package that you requested is 
