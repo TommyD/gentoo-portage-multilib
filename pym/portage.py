@@ -112,7 +112,7 @@ def listdir(mypath,recursive=0,filesonly=0,ignorecvs=0,ignorelist=[],EmptyOnErro
 		x=0
 		while x<len(ftype):
 			if ftype[x]==1 and not (ignorecvs and (len(list[x])>=3) and (("/"+list[x][-3:])=="/CVS")):
-				ignored=listdir(mypath+"/"+list[x],recursive,filesonly,ignorecvs,EmptyOnError)
+				ignored=listdir(mypath+"/"+list[x],recursive,filesonly,ignorecvs,ignorelist,EmptyOnError)
 				m,l,f = dircache[mypath+"/"+list[x]]
 				l=l[:]
 				for y in range(0,len(l)):
