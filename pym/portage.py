@@ -343,13 +343,13 @@ def grabfile(myfilename):
 
 def grabdict(myfilename):
 	"""This function grabs the lines in a file, normalizes whitespace and returns lines in a dictionary"""
+	newdict={}
 	try:
 		myfile=open(myfilename,"r")
 	except IOError:
-		return []
+		return newdict 
 	mylines=myfile.readlines()
 	myfile.close()
-	newdict={}
 	for x in mylines:
 		#the split/join thing removes leading and trailing whitespace, and converts any whitespace in the line
 		#into single spaces.
@@ -970,8 +970,8 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 	if "digest" in features:
 		#generate digest if it doesn't exist.
 		digestgen(checkme,overwrite=0)
-	
-	if mydo=="digest":
+	elif mydo=="digest":
+		digestgen(checkme,overwrite=1)
 		return 0
 		
 	if not digestcheck(checkme):

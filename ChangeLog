@@ -1,6 +1,12 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-1.8.9_pre35 (29 Mar 2002)
+
+  29 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, emerge: digest
+  generation fixes; emerge --update will now update dependents even if the main
+  package hasn't been updated.  getdict() fix, fixing a traceback.
+
 *portage-1.8.9_pre34 (28 Mar 2002)
 
   28 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: Added an indent
