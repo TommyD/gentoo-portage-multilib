@@ -1017,9 +1017,6 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 		if retval: return retval
 		return merge(settings["CATEGORY"],settings["PF"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot,myebuild=settings["EBUILD"])
 	elif mydo=="package":
-		retval=spawn("/usr/sbin/ebuild.sh setup")
-		if retval:
-			return retval
 		for x in ["","/"+settings["CATEGORY"],"/All"]:
 			if not os.path.exists(settings["PKGDIR"]+x):
 				os.makedirs(settings["PKGDIR"]+x)
@@ -1041,7 +1038,7 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 			print
 			return 0
 		else:
-			return spawn("/usr/sbin/ebuild.sh unpack compile install package")
+			return spawn("/usr/sbin/ebuild.sh setup unpack compile install package")
 
 def isfifo(x):
 	mymode=os.lstat(x)[ST_MODE]

@@ -1,6 +1,13 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  21 Apr 2002; Daniel Robbins <drobbins@gentoo.org>: portage.py: package
+  building now executes the "setup" stage along with the unpack, compile,
+  install stages so that global variables can be shared.  This fixes an issue
+  with woodchip's new apache ebuild and closes bug #1813.
+
+*portage-1.9.1 
+
 *portage-1.9.0 (16 Apr 2002)
 
   16 Apr 2002; Daniel Robbins <drobbins@gentoo.org>: portage.py: fetching
