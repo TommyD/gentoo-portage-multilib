@@ -15,8 +15,11 @@ class FsBased(template.database):
 		self._gid = gid
 		self._base = basepath
 		self._perms = perms
-
 		super(FsBased, self).__init__(label, auxdbkeys, **config)
+
+		if self.label.startswith(os.path.sep):
+			# normpath.
+			self.label = os.path.sep + os.path.normpath(self.label).lstrip(os.path.sep)
 
 
 	def _ensure_access(self, path, mtime=-1):
@@ -32,12 +35,20 @@ class FsBased(template.database):
 			return False
 		return True
 
-	def _ensure_dirs(self, base, path):
-		for dir in os.path.sep.split(path.lstrip("/").rstrip("/")):
-			base += dir
+	def _ensure_dirs(self, path=None):
+		"""with path!=None, ensure beyond self._base.  otherwise, ensure self._base"""
+		if path:
+			path = os.path.dirname(path)
+			base = self._base
+		else:
+			path = self._base
+			base='/'
+
+		for dir in path.lstrip(os.path.sep).rstrip(os.path.sep).split(os.path.sep):
+			base = os.path.join(base,dir)
 			if not os.path.exists(base):
-				os.mkdir(base, self.perms | 0111)
-				os.chown(base, -1, self.gid)
+				os.mkdir(base, self._perms | 0111)
+				os.chown(base, -1, self._gid)
 				
 
 	

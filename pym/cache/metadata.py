@@ -4,12 +4,11 @@ import cache_errors
 
 # store the current key order *here*.
 class database(fs_template.FsBased):
-
-	# do not screw with this ordering. _eclasses_ needs to be last
+	complete_eclass_entries = False
 	auxdbkey_order=('DEPEND', 'RDEPEND', 'SLOT', 'SRC_URI',
 		'RESTRICT',  'HOMEPAGE',  'LICENSE', 'DESCRIPTION',
-		'KEYWORDS',  'IUSE', 'CDEPEND',
-		'PDEPEND',   'PROVIDE','_eclasses_')
+		'KEYWORDS',  'INHERITED', 'IUSE', 'CDEPEND',
+		'PDEPEND',   'PROVIDE')
 
 	def __init__(self, label, auxdbkeys, **config):
 		super(database,self).__init__(label, auxdbkeys, **config)
@@ -30,33 +29,11 @@ class database(fs_template.FsBased):
 				d[k] = v.rstrip("\n")
 		except (OSError, IOError),e:
 			if isinstance(e,IOError) and e.errno == 2:
-#				print "caught for %s" % cpv, e
-#				l=os.listdir(os.path.dirname(os.path.join(self._base,cpv)))
-#				l.sort()
-#				print l
 				raise KeyError(cpv)
 			raise cache_errors.CacheCorruption(cpv, e)
 
-		try:	d["_mtime_"] = os.fstat(myf.fileno()).st_mtime
-		except OSError, e:	
-			myf.close()
-			raise cache_errors.CacheCorruption(cpv, e)
-		myf.close()
-		try:
-			e=d["_eclasses_"].rstrip().lstrip().split("\t")
-			# occasionally screwed up fields come in from above.  no clue why, but it's annoying.
-			if e == [""]:
-				e=[]
-			if len(e) % 3 != 0:
-				raise cache_errors.CacheCorruption(cpv, "_eclasses_ field was of invalid len %i" % len(e))
-
-			d["_eclasses_"] = {}
-			for x in range(0,len(e), 3):
-				d["_eclasses_"][e[0]] = (e[1], long(e[2]))
-
-		except IndexError, e:
-#			print "caught exception internally, e=",e
-			raise cache_errors.CacheCorruption(cpv, e)
+		try:		d["_mtime_"] = os.lstat(os.path.join(self._base, cpv)).st_mtime
+		except OSError, e:raise cache_errors.CacheCorruption(cpv, e)
 		return d
 
 
@@ -73,21 +50,19 @@ class database(fs_template.FsBased):
 					raise cache_errors.CacheCorruption(cpv, e)
 			else:
 				raise cache_errors.CacheCorruption(cpv, e)
+
 		
+#			try:	
+#				s = os.path.split(cpv)
+#				if len(s[0]) == 0:
+#					s = s[1]
+#				else:
+#					s = s[0]
+#				os._ensure_dirs(s)
+#
+#			except (OSError, IOError), e:
 
-		for x in self.auxdbkey_order:
-			if x == "_eclasses_":
-				# note no newline. this is intention, don't screw with it.
-				l=[]
-				for k,v in values.get(x,{}).items():
-					l.append("%s\t%s\t%s" % (k, v[0], str(v[1])))
-				myf.write("\t".join(l))
-				myf.write("\n")
-				del l
-			else:
-				myf.write(values.get(x,"")+"\n")
-
-#		myf.writelines( [ values.get(x,"")+"\n" for x in self.auxdbkey_order] )
+		myf.writelines( [ values.get(x,"")+"\n" for x in self.auxdbkey_order] )
 		myf.close()
 		self._ensure_access(fp, mtime=values["_mtime_"])
 		#update written.  now we move it.

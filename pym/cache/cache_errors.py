@@ -1,4 +1,6 @@
-class InitializationError(Exception):
+class CacheError(Exception):	pass
+
+class InitializationError(CacheError):
 	def __init__(self, class_name, error):
 		self.error, self.class_name = error, class_name
 	def __str__(self):
@@ -6,19 +8,19 @@ class InitializationError(Exception):
 			(self.class_name, str(self.error))
 
 
-class CacheCorruption(Exception):
+class CacheCorruption(CacheError):
 	def __init__(self, key, ex):
 		self.key, self.ex = key, ex
 	def __str__(self):
 		return "%s is corrupt: %s" % (self.key, str(self.ex))
 
 
-class GeneralCacheCorruption(CacheCorruption):
+class GeneralCacheCorruption(CacheError):
 	def __init__(self,ex):	self.ex = ex
 	def __str__(self):	return "corruption detected: %s" % str(self.ex)
 
 
-class InvalidRestriction(Exception):
+class InvalidRestriction(CacheError):
 	def __init__(self, key, restriction, exception=None):
 		if exception == None:	exception = ''
 		self.key, self.restriction, self.ex = key, restriction, ex
@@ -27,7 +29,7 @@ class InvalidRestriction(Exception):
 			(self.key, self.restriction, str(self.ex))
 
 
-class ReadOnlyRestriction(Exception):
+class ReadOnlyRestriction(CacheError):
 	def __init__(self, info=''):
 		self.info = info
 	def __str__(self):

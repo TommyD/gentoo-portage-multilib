@@ -7,6 +7,21 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  08 Mar 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py, bin/emerge, 
+  cache/*, pym/eclass_cache.py :  Cache refactoring.  Eclass_cache is now just 
+  a dict of stacked eclasses, but doesn't track per pkg eclasses.
+  That is left up to the cache.  The cache now ignores/drops INHERITED- this 
+  is replaced by _eclasses_, which is a serialized dict of 
+  {eclass name: (on disk location, long(mtime))}.  Note the tuple- returns from the 
+  cache subsystem *should* be tuples, just the same as mtime should be a long.
+  aux_get *should* return INHERITED, but it should do it dynamically.
+  Basically, INHERITED is determined on the fly from the cache's _eclasses_ setting.
+  Beyond that, a sql cache template was added, along with a sqlite example.
+  flat_list, along with a metadata/cache specific backend, and cache.util.mirror_cache, 
+  for metadata transfers.
+  Note all existing cache modules/implementations are now invalidated.  Sorry.  Upgrade em.
+  Existing cache's on disk are invalidated also, with the exemption of portdir/metadata/cache.
+
   08 Mar 2005; Marius Mauch <genone@gentoo.org> pym/portage.py, pym/ebuild.py:
   Fixing fetch restriction code. Replace references to PORTAGE_RESTRICT with 
   just RESTRICT and fix broken writemsg() calls.

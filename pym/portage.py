@@ -3000,19 +3000,24 @@ class portdbapi(dbapi):
 		
 		self.depcachedir = self.mysettings.depcachedir
 
-		self.eclassdb = eclass_cache.cache(self.porttree_root, self.mysettings)
+		self.eclassdb = eclass_cache.cache(self.porttree_root, self.mysettings["PORTDIR_OVERLAY"].split())
 
 		self.metadb       = {}
 		self.metadbmodule = self.mysettings.load_best_module("portdbapi.metadbmodule")
 		
-		self.auxdb        = {}
-		self.auxdbmodule  = self.mysettings.load_best_module("portdbapi.auxdbmodule")
-
 		#if the portdbapi is "frozen", then we assume that we can cache everything (that no updates to it are happening)
 		self.xcache={}
 		self.frozen=0
 
 		self.porttrees=[self.porttree_root]+self.mysettings["PORTDIR_OVERLAY"].split()
+
+		filtered_auxdbkeys = [x for x in auxdbkeys if not x.startswith("UNUSED")]
+		self.auxdbmodule  = self.mysettings.load_best_module("portdbapi.auxdbmodule")
+		self.auxdb        = {}
+		for x in self.porttrees:
+			self.auxdb[x] = self.auxdbmodule(x, filtered_auxdbkeys, basepath=portage_const.DEPCACHE_PATH, 
+				gid=portage_gid)
+
 
 	def getmaskingreason(self,mycpv):
 		mysplit = portage_versions.catpkgsplit(mycpv)
@@ -3118,75 +3123,45 @@ class portdbapi(dbapi):
 		return rValue
 
 
-	def regen_keys(self,cleanse_stale=True,verbose=True,src_cache=None,debug=False):
+	def regen_keys(self,cleanse_stale=True):
 		"""walk all entries of this instance to update the cache.
 		If the cache is pregenned, pass it in via src_cache, and the cache will be updated
 		from that instance.
 		cleanse_stale controls whether or not the cache's old/stale entries are removed.
 		This is useful both for emerge metadata, and emerge regen (moreso for regen)"""
-		l=self.cp_all()
-		l.sort()
-		if not len(l):
-			return
-		oldcat = portage_versions.catsplit(l[0])[0]
-		savelist = []
 
-		for p in l:
-			cat=portage_versions.catsplit(p)[0]
-			if cleanse_stale and oldcat != cat:
-				for x in range(0,len(savelist)):
-					savelist[x] = portage_versions.catsplit(savelist[x])[1]
-				for tree in self.porttrees:
-					if not self.auxdb.get(tree,{}).has_key(oldcat):
-						continue
-					elif len(savelist) == 0:
-						self.auxdb[tree][oldcat].clear()
-					else:
-						for cpv in self.auxdb[tree][oldcat].keys():
-							if cpv not in savelist:
-								self.auxdb[tree][oldcat].del_key(cpv)
-				savelist = []
-				oldcat = cat
+		import cache.cache_errors
+		valid_nodes = {}
+		for x in self.cp_all():
+#			print "processing pkg %s" % x
+			for y in self.cp_list(x):
+				valid_nodes[y] = None
+				try:	self.aux_get(y,["_mtime_"])
+				except cache.cache_errors.CacheError, ce:
+					print "Cache Exception-", ce
+					del ce
+		for loc, tree in self.auxdb.items():
+			print "cleansing cache for tree at %s" % loc
+			for x in tree.keys():
+				if x not in valid_nodes:
+					try:	del tree[x]
+					except (KeyError, cache.cache_errors.CacheError):
+						pass
 
-			mymatches=self.xmatch("match-all",p)
-			if cleanse_stale:
-				savelist.extend(mymatches)
-			if verbose:
-				print "processing %s" % p
-			for cpv in mymatches:
-				try:
-					foo=self.aux_get(cpv,[],debug=debug,metacachedir=src_cache)
-				except SystemExit, e:
-					raise
-				except Exception, e:
-					print "\n  error processing %s, continuing... (%s)" % (cpv, str(e))
-
-		if cleanse_stale:
-			for x in range(0,len(savelist)):
-				savelist[x] = portage_versions.catsplit(savelist[x])[1]
-			for tree in self.porttrees:
-				if not self.auxdb.get(tree,{}).has_key(oldcat):
-					continue
-				elif len(savelist) == 0:
-					self.auxdb[tree][oldcat].clear()
-				else:
-					for cpv in self.auxdb[tree][oldcat].keys():
-						if cpv not in savelist:
-							self.auxdb[tree][oldcat].del_key(cpv)
 
 	def close_caches(self):
-		for x in self.auxdb.keys():
-			for y in self.auxdb[x].keys():
-				self.auxdb[x][y].sync()
-				self.auxdb[x][y].close()
-				del self.auxdb[x][y]
-			del self.auxdb[x]
-		self.eclassdb.close_caches()
+		pass
+#			for y in self.auxdb[x].keys():
+#				self.auxdb[x][y].sync()
+#				self.auxdb[x][y].close()
+#				del self.auxdb[x][y]
+#			del self.auxdb[x]
+#		self.eclassdb.close_caches()
 
 	def flush_cache(self):
-		self.metadb = {}
-		self.auxdb  = {}
-		self.eclassdb.flush_cache()
+		self.metadb.clear()
+		self.auxdb.clear()
+#		self.eclassdb.flush_cache()
 		
 	def finddigest(self,mycpv):
 		try:
@@ -3284,69 +3259,49 @@ class portdbapi(dbapi):
 					raise portage_exception.SecurityViolation, "Error in verification of signatures: %(errormsg)s" % {"errormsg":str(e)}
 				writemsg("!!! Manifest is missing or inaccessable: %(manifest)s\n" % {"manifest":myManifestPath})
 
-		if mylocation not in self.auxdb:
-			self.auxdb[mylocation] = {}
+#		XXX no no.
+#
+#		if mylocation not in self.auxdb:
+#			self.auxdb[mylocation] = {}
 
-		if not self.auxdb[mylocation].has_key(cat):
-			self.auxdb[mylocation][cat] = self.auxdbmodule(self.depcachedir+"/"+mylocation,cat,auxdbkeys,uid,portage_gid)
 
-		if os.access(myebuild, os.R_OK):
-			emtime=os.stat(myebuild)[stat.ST_MTIME]
-		else:
+		try:
+			emtime = os.stat(myebuild).st_mtime
+		except (OSError, IOError):
 			writemsg("!!! aux_get(): ebuild for '%(cpv)s' does not exist at:\n" % {"cpv":mycpv})
 			writemsg("!!!            %s\n" % myebuild)
 			raise KeyError
 
 		mydata={}
 
-		# when mylocation is not overlay directorys and metacachedir is set,
-		# we use cache files, which is usually on /usr/portage/metadata/cache/.
-		if mylocation==self.mysettings["PORTDIR"] and metacachedir and self.metadb[cat].has_key(pkg):
-
-			doregen = True
-			mydata=self.metadb[cat][pkg]
-			if self.auxdb[mylocation][cat].has_key(pkg):
-				data = self.auxdb[mylocation][cat][pkg]
-				doregen = not (data["_mtime_"] == mydata["_mtime_"] and \
-					self.eclassdb.is_current(mylocation,cat,pkg,mydata.get("INHERITED","").split()) )
-#				doregen = mymeta["_mtime_"] != self.auxdb[mylocation][cat][pkg]["_mtime_"]
-#				if not doregen:
-#					if not self.eclassdb.is_current(mylocation,cat,pkg,mydata.get("INHERITED","").split()):
-#						doregen = True
-					
-#				mydata=mymeta
-#			if self.metadb[cat].get_timestamp(pkg) != self.auxdb[mylocation][cat].get_timestamp(pkg):
-#				doregen = True
-#				mydata = self.metadb[cat][pkg]
-#			else:
-#				mydata = self.metadb[cat][pkg]
-#				if not self.eclassdb.is_current(mylocation,cat,pkg,mydata.get("INHERITED","").split()):
-#					doregen = True
-
-			if doregen:
-				self.auxdb[mylocation][cat][pkg] = mydata
-				self.auxdb[mylocation][cat].sync()
-				self.eclassdb.update_package(mylocation,cat,pkg,mydata["INHERITED"].split())
-		else:
+		# fix the indenting, lazy ass.
+		if True:
 			doregen=False
 			try:
-				mydata = self.auxdb[mylocation][cat][pkg]
-				doregen = not (emtime == long(mydata.get("_mtime_",0)) and self.eclassdb.is_current(mylocation,cat, \
-					pkg,mydata.get("INHERITED","").split()))
+				mydata = self.auxdb[mylocation][mycpv]
+				if emtime != long(mydata.get("_mtime_",0)):
+					doregen=True
+				elif len(mydata.get("_eclasses_",())) > 0:
+					doregen = not self.eclassdb.is_eclass_data_valid(mydata["_eclasses_"])
+
 			except SystemExit,e:
 				raise
 			except Exception, e:
-				print "caught exception", e
+#				print "exception 1=", e
 				doregen = True
 				if not isinstance(e, KeyError):
 					# CorruptionError is the likely candidate
 					writemsg("auxdb exception: (%s): %s\n" % (mylocation+"::"+cat+"/"+pkg,str(e)))
-					if self.auxdb[mylocation][cat].has_key(pkg):
-						self.auxdb[mylocation][cat].del_key(pkg)
-						self.auxdb[mylocation][cat].sync()
+#					if self.auxdb[mylocation][cat].has_key(pkg):
+#						self.auxdb[mylocation][cat].del_key(pkg)
+#						self.auxdb[mylocation][cat].sync()
+
+					try:	del self.auxdb[mycpv]
+					except KeyError: pass
 
 			writemsg("auxdb is valid: "+str(not doregen)+" "+str(pkg)+"\n", 2)
 			if doregen:
+#				print "doregen for %s, " % mycpv,doregen
 				writemsg("doregen: %s %s\n" % (doregen,mycpv), 2)
 				writemsg("Generating cache entry(0) for: "+str(myebuild)+"\n",1)
 
@@ -3354,6 +3309,8 @@ class portdbapi(dbapi):
 				# XXX: through doebuild. Need to isolate this somehow...
 				self.mysettings.reset()
 
+				# XXX: is this truly required?
+				# ~harring.
 				if self.lock_held:
 					raise "Lock is already held by me?"
 
@@ -3362,25 +3319,24 @@ class portdbapi(dbapi):
 				mydata=ebuild.ebuild_handler().get_keys(myebuild,self.mysettings)
 				self.lock_held = 0
 
-				for x in auxdbkeys:
-					if x not in mydata:
-						mydata[x] = ""
 				mydata["_mtime_"] = emtime
+				if mydata.get("INHERITED", False):
+					mydata["_eclasses_"] = self.eclassdb.get_eclass_data( \
+						mydata["INHERITED"].split() )
+					del mydata["INHERITED"]
 
-				self.auxdb[mylocation][cat][pkg] = mydata
-				self.auxdb[mylocation][cat].sync()
-				if not self.eclassdb.update_package(mylocation, cat, pkg, mydata.get("INHERITED","").split()):
-					print "failed updating eclass cache"
-					sys.exit(1)
+				self.auxdb[mylocation][mycpv] = mydata
+#				if not self.eclassdb.update_package(mylocation, cat, pkg, mydata.get("INHERITED","").split()):
+#					print "failed updating eclass cache"
+#					sys.exit(1)
 
 		#finally, we look at our internal cache entry and return the requested data.
 		returnme = []
 		for x in mylist:
-			if mydata.has_key(x):
-				returnme.append(mydata[x])
+			if x == "INHERITED":
+				returnme.append(mydata.get("_eclasses_",{}).keys())
 			else:
-				returnme.append("")
-
+				returnme.append(mydata.get(x,""))
 		return returnme
 
 	def getfetchlist(self,mypkg,useflags=None,mysettings=None,all=0):

@@ -7,103 +7,66 @@ class cache:
 	"""
 	Maintains the cache information about eclasses used in ebuild.
 	"""
-	def __init__(self,porttree_root,settings):
+	def __init__(self,porttree_root,overlays=[]):
 		self.porttree_root = porttree_root
-		self.settings = settings
-		self.depcachedir = self.settings.depcachedir[:]
 
-		self.dbmodule = self.settings.load_best_module("eclass_cache.dbmodule")
+		self.eclasses = {} # {"Name": ("location","_mtime_")}
 
-		self.packages = {} # {"PV": {"eclass1": ["location", "_mtime_"]}}
-		self.eclasses = {} # {"Name": ["location","_mtime_"]}
-		
-		self.porttrees=self.settings["PORTDIR_OVERLAY"].split()+[self.porttree_root]
+		# screw with the porttree ordering, w/out having bash inherit match it, and I'll hurt you.
+		# ~harring
+		self.porttrees = [self.porttree_root]+overlays
+		self.porttrees = tuple(map(portage_file.normpath, self.porttrees))
+		self._master_eclass_root = os.path.join(self.porttrees[0],"eclass")
 		self.update_eclasses()
 
 	def close_caches(self):
-		for x in self.packages.keys():
-			for y in self.packages[x].keys():
-				try:
-					self.packages[x][y].sync()
-					self.packages[x][y].close()
-				except SystemExit, e:
-					raise
-				except Exception,e:
-					writemsg("Exception when closing DB: %s: %s\n" % (Exception,e))
-				del self.packages[x][y]
-			del self.packages[x]
+		import traceback
+		traceback.print_stack()
+		print "%s close_cache is deprecated" % self.__class__
+		self.eclasses.clear()
 
 	def flush_cache(self):
-		self.packages = {}
-		self.eclasses = {}
+		import traceback
+		traceback.print_stack()
+		print "%s flush_cache is deprecated" % self.__class__
+
 		self.update_eclasses()
 
 	def update_eclasses(self):
 		self.eclasses = {}
 		eclass_len = len(".eclass")
-#		for x in suffix_array(self.porttrees, "/eclass"):
 		for x in [portage_file.normpath(os.path.join(y,"eclass")) for y in self.porttrees]:
-			if x and os.path.exists(x):
-				dirlist = os.listdir(x)
-				for y in dirlist:
-					if y[-eclass_len:]==".eclass":
-						ys=y[:-eclass_len]
-						try:
-							ymtime=os.stat(x+"/"+y).st_mtime
-						except OSError:
-							continue
-						self.eclasses[ys] = [x, ymtime]
+			if not os.path.isdir(x):
+				continue
+			for y in [y for y in os.listdir(x) if y.endswith(".eclass")]:
+				try:
+					mtime=os.stat(x+"/"+y).st_mtime
+				except OSError:
+					continue
+				ys=y[:-eclass_len]
+				self.eclasses[ys] = (x, long(mtime))
 	
-	def setup_package(self, location, cat, pkg):
-		if not self.packages.has_key(location):
-			self.packages[location] = {}
+	def is_eclass_data_valid(self, ec_dict):
+#		print "checking", ec_dict
+		if not isinstance(ec_dict, dict):
+			return False
+		for eclass, tup in ec_dict.iteritems():
+			if eclass not in self.eclasses or tuple(tup) != self.eclasses[eclass]:
+#				print "failed"
+				return False
 
-		if not self.packages[location].has_key(cat):
+		return True
+
+	def get_eclass_data(self, inherits, from_master_only=False):
+		ec_dict = {}
+		for x in inherits:
 			try:
-				self.packages[location][cat] = self.dbmodule(self.depcachedir+"/"+location, cat+"-eclass", [], -1, portage_gid)
-			except SystemExit, e:
+				ec_dict[x] = self.eclasses[x]
+			except:
+				print "ec=",ec_dict
+				print "inherits=",inherits
 				raise
-			except Exception, e:
-				writemsg("\n!!! Failed to open the dbmodule for eclass caching.\n")
-				writemsg("!!! Generally these are permission problems. Caught exception follows:\n")
-				writemsg("!!! "+str(e)+"\n")
-				writemsg("!!! Dirname:  "+str(self.depcachedir+"/"+location)+"\n")
-				writemsg("!!! Basename: "+str(cat+"-eclass")+"\n\n")
-				sys.exit(123)
-	
-	def sync(self, location, cat, pkg):
-		if self.packages[location].has_key(cat):
-			self.packages[location][cat].sync()
-	
-	def update_package(self, location, cat, pkg, eclass_list):
-		self.setup_package(location, cat, pkg)
-		if not eclass_list:
-			return 1
+			if from_master_only and self.eclasses[x][0] != self._master_eclass_root:
+				return None
 
-		data = {}
-		for x in eclass_list:
-			if x not in self.eclasses:
-				writemsg("Eclass '%s' does not exist for '%s'\n" % (x, cat+"/"+pkg))
-				return 0
-			data[x] = [self.eclasses[x][0],self.eclasses[x][1]]
-		
-		self.packages[location][cat][pkg] = data
-		self.sync(location,cat,pkg)
-		return 1
-
-	def is_current(self, location, cat, pkg, eclass_list):
-		self.setup_package(location, cat, pkg)
-
-		if not eclass_list:
-			return 1
-
-		if not (self.packages[location][cat].has_key(pkg) and self.packages[location][cat][pkg] and eclass_list):
-			return 0
-
-		myp = self.packages[location][cat][pkg]
-		for x in eclass_list:
-			if not (x in self.eclasses and myp.has_key(x) and myp[x][0] == self.eclasses[x][0] and
-				myp[x][1] == self.eclasses[x][1]):
-				return 0
-
-		return 1			
+		return ec_dict

@@ -1,7 +1,12 @@
 import cache_errors
 
 class database(object):
-	# XXX questionable on storing the auxdbkeys
+	# this is for metadata/cache transfer.
+	# basically flags the cache needs be updated when transfered cache to cache.
+	# leave this.
+
+	complete_eclass_entries_ = True
+
 	def __init__(self, label, auxdbkeys, readonly=False, **config):
 		""" initialize the derived class; specifically, store label/keys"""
 		self._known_keys = auxdbkeys
@@ -11,7 +16,8 @@ class database(object):
 	
 	def __getitem__(self, cpv):
 		"""get cpv's values.
-		override this in derived classess"""
+		override this in derived classess
+		note _eclassees_ key *must* be handled"""
 		raise NotImplementedError
 
 
@@ -24,7 +30,8 @@ class database(object):
 			
 
 	def _setitem(self, name, values):
-		"""__setitem__ calls this after readonly checks.  override it in derived classes"""
+		"""__setitem__ calls this after readonly checks.  override it in derived classes
+		note _eclassees_ key *must* be handled"""
 		raise NotImplementedError
 
 
@@ -46,8 +53,10 @@ class database(object):
 
 
 	def keys(self):
-		raise NotImplementedError
+		return tuple(self.iterkeys())
 
+	def iterkeys(self):
+		raise NotImplementedError
 
 	def get_matches(self, match_dict):
 		"""generic function for walking the entire cache db, matching restrictions to

@@ -11,14 +11,23 @@ class database(fs_template.FsBased):
 		default_db = config.get("dbtype","anydbm")
 		if not default_db.startswith("."):
 			default_db = '.' + default_db
+
 		self._db_path = os.path.join(self._base, fs_template.gen_label(self._base, self.label)+default_db)
 
+		self.__db = None
 		try:
 			self.__db = anydbm_module.open(self._db_path, "c", self._perms)
 			try:
+				self._ensure_dirs()
+				self._ensure_dirs(self._db_path)
 				self._ensure_access(self._db_path)
+				
 			except (OSError, IOError), e:
 				raise cache_errors.InitializationError(self.__clas__, e)
+			# try again if failed
+			if self.__db == None:
+				self.__db = anydbm_module.open(self._db_path, "c", self._perms)
+
 
 		except anydbm_module.error, e:
 			# XXX handle this at some point
@@ -37,8 +46,8 @@ class database(fs_template.FsBased):
 		del self.__db[cpv]
 
 
-	def keys(self):
-		return self.__db
+	def iterkeys(self):
+		return iter(self.__db)
 
 
 	def has_key(self, cpv):

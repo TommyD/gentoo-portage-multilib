@@ -187,12 +187,14 @@ class SQLDatabase(template.database):
 		return self.con.rowcount > 0
 
 
-	def keys(self):
+	def iterkeys(self):
 		try:	self.con.execute("SELECT cpv FROM %s WHERE label=%s" % 
 				(self.SCHEMA_PACKAGE_NAME, self.label))
 		except self._BaseError, e:
 			raise cache_errors.GeneralCacheCorruption(e)
-		return [ row[0] for row in self.con.fetchall() ]
+#		return [ row[0] for row in self.con.fetchall() ]
+		for x in self.con.fetchall():
+			yield row[0]
 
 	def get_matches(self,match_dict):
 		query_list = []

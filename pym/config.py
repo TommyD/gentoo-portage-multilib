@@ -84,9 +84,8 @@ class config:
 			if self.modules["user"] == None:
 				self.modules["user"] = {}
 			self.modules["default"] = {
-				"portdbapi.metadbmodule": "portage_db_flat.database",
-				"portdbapi.auxdbmodule":  "portage_db_flat.database",
-				"eclass_cache.dbmodule":  "portage_db_cpickle.database",
+				"portdbapi.metadbmodule": "cache.metadata.database",
+				"portdbapi.auxdbmodule":  "cache.flat_list.database",
 			}
 			
 			self.usemask=[]

@@ -3130,19 +3130,41 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 		except:
 			pass
 		# we don't make overlay trees cache here.
-		backup_porttrees=portage.portdb.porttrees
-		portage.portdb.porttrees=[portage.portdb.porttree_root]
-		mynodes=portage.portdb.cp_all()
-		mynodes.sort()
-		pcnt=0
-		pcntstr=""
-		pcntcount=len(mynodes)/100.0
-		nextupdate=pcntcount
-		current=0
-		# need to add a callback option to regen_keys to take advantage of the happy spinny eye-candy stuff.
-		portage.portdb.regen_keys(src_cache=myportdir+"/metadata/cache",debug=("cachedebug" in portage.features),
-			verbose=False)
-		portage.portdb.porttrees=backup_porttrees
+		#grab our own eclass_cache.
+		ec = portage.eclass_cache.cache(portage.portdb.porttree_root)
+		# kinda ugly.
+		cm = portage.settings.load_best_module("portdbapi.metadbmodule")
+		cmi = cm("metadata/cache", cm.auxdbkey_order, basepath=myportdir)
+		
+		def quicky_cpv_generator(dbapi):
+			for x in dbapi.cp_all():
+				for y in dbapi.cp_list(x):
+					yield y
+
+		import cache.util
+		# mangle the settings var.
+		config=portage.config(clone=portage.settings)
+		config["PORTDIR_OVERLAY"] = ''
+		config["PORTDIR"] = myportdir
+		pdb=portage.portdbapi(myportdir, config)
+		cache.util.mirror_cache(quicky_cpv_generator(pdb), cmi, 
+			pdb.auxdb[myportdir], eclass_cache=ec,
+			verbose_instance=cache.util.non_quiet_mirroring())
+		del ec
+		del cmi
+		del cm
+		del pdb
+#		mynodes=portage.portdb.cp_all()
+#		mynodes.sort()
+#		pcnt=0
+#		pcntstr=""
+#		pcntcount=len(mynodes)/100.0
+#		nextupdate=pcntcount
+#		current=0
+#		# need to add a callback option to regen_keys to take advantage of the happy spinny eye-candy stuff.
+#		portage.portdb.regen_keys(src_cache=myportdir+"/metadata/cache",debug=("cachedebug" in portage.features),
+#			verbose=False)
+#		portage.portdb.porttrees=backup_porttrees
 		sys.stdout.write("\n\n")
 		sys.stdout.flush()
 
@@ -3163,7 +3185,7 @@ elif myaction=="regen":
 	emergelog(" === regen")
 	#regenerate cache entries
 	print "Regenerating cache entries... "
-	portage.portdb.regen_keys(debug=1)
+	portage.portdb.regen_keys()
 	print "done!"
 # HELP action
 elif "config"==myaction:
