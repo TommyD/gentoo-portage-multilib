@@ -277,6 +277,9 @@ void setenv_sandbox_write(char *home_dir, char *portage_tmp_dir, char *var_tmp_d
     strcpy(sandbox_write_var, "");
     strcat(sandbox_write_var, "/dev/zero:/dev/fd/:/dev/null:/dev/pts/:/dev/vc/:/dev/tty:/tmp/");
     strcat(sandbox_write_var, ":");
+    /* NGPT support */
+    strcat(sandbox_write_var, "/dev/shm/ngpt");
+    strcat(sandbox_write_var, ":");
     strcat(sandbox_write_var, "/var/log/scrollkeeper.log");
     strcat(sandbox_write_var, ":");
     strcat(sandbox_write_var, home_dir);
