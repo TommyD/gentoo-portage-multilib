@@ -2546,7 +2546,7 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 
 
 	if os.path.exists(myportdir+"/metadata/cache") and updatecache_flg:
-		print "\n>>> Updating Portage cache...  ",
+		print "\n>>> Updating Portage cache:      ",
 		os.umask(0002)
 		cachedir = os.path.normpath(portage.settings.depcachedir)
 		if cachedir in ["/",    "/bin", "/dev",  "/etc",  "/home",
@@ -2590,12 +2590,23 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 		portage.portdb.porttrees=[portage.portdb.porttree_root]
 		mynodes=portage.portdb.cp_all()
 		mynodes.sort()
+		pcnt=0
+		pcntstr=""
+		pcntcount=len(mynodes)/100.0
+		nextupdate=pcntcount
+		current=0
 		for x in mynodes:
+			current += 1
+			if current >= nextupdate:
+				pcnt += 1
+				nextupdate += pcntcount
+				pcntstr = str(pcnt)
+				sys.stdout.write("\b"*(len(pcntstr)+1)+pcntstr+"%")
+				sys.stdout.flush()
 			myxsplit=x.split("/")
 			mymatches=portage.portdb.xmatch("match-all",x)
 			mymatches.sort()
 			for y in mymatches:
-				update_spinner()
 				try:
 					ignored=portage.portdb.aux_get(y,[],metacachedir=myportdir+"/metadata/cache",debug=("cachedebug" in portage.features))
 				except SystemExit, e:
@@ -2603,7 +2614,7 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 				except Exception, e:
 					print "\nFailed cache update:",y,e
 		portage.portdb.porttrees=backup_porttrees
-		sys.stdout.write("\b\b  ...done!\n\n")
+		sys.stdout.write("\n\n")
 		sys.stdout.flush()
 
 	portage.portageexit()

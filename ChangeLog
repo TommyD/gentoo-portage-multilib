@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  24 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> emerge: Added a percentage
+  counter to the cache update phase based on patch from #68694
+
   24 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> portage.py:
   s/macos/ppc-macos/ change.
 
