@@ -3,7 +3,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-cd ${PORTAGE_TMPDIR}
+cd ${PORTAGE_TMPDIR} &> /dev/null
+cd ${BUILD_PREFIX} &> /dev/null
 
 if [ "$*" != "depend" ] && [ "$*" != "clean" ]; then
 	if [ -f ${T}/successful ]; then
@@ -794,6 +795,21 @@ dyn_install() {
 	#|| abort_install "fail"
 	prepall
 	cd ${D}
+
+	declare -i UNSAFE=0
+	for i in $(find ${D}/ -type f -perm -2002); do
+		UNSAFE=$(($UNSAFE + 1))
+		echo "UNSAFE SetGID: $i"
+	done
+	for i in $(find ${D}/ -type f -perm -4002); do
+		UNSAFE=$(($UNSAFE + 1))
+		echo "UNSAFE SetUID: $i"
+	done
+	
+	if [[ $UNSAFE > 0 ]]; then
+		die "There are unsafe files. Portage will not install them."
+	fi
+
 	echo ">>> Completed installing into ${D}"
 	echo
 	cd ${BUILDDIR}
@@ -1102,7 +1118,7 @@ do
 		dbkey=${PORTAGE_CACHEDIR}/${CATEGORY}/${PF}
 		if [ ! -d ${PORTAGE_CACHEDIR}/${CATEGORY} ]
 		then
-			install -d -g wheel -m2775 ${PORTAGE_CACHEDIR}/${CATEGORY}
+			install -d -g ${PORTAGE_GID} -m2775 ${PORTAGE_CACHEDIR}/${CATEGORY}
 		fi
 		# Make it group writable. 666&~002==664
 		umask 002
@@ -1140,11 +1156,12 @@ done
 if [ "$myarg" != "clean" ]; then
 	# Save current environment and touch a success file. (echo for success)
 	umask 002
-	set > ${T}/environment &>/dev/null
+	set > ${T}/environment 2>/dev/null
 	chown portage:portage ${T}/environment &>/dev/null
 	chmod g+w ${T}/environment &>/dev/null
 fi
 touch ${T}/successful  &>/dev/null
 chown portage:portage ${T}/successful &>/dev/null
 chmod g+w ${T}/successful &>/dev/null
-true
+
+exit 0

@@ -19,32 +19,142 @@ actions=[
 "regen", "rsync",  "search",   "sync", "system", "unmerge", "world"
 ]
 options=[
-"--buildpkg",     "--buildpkgonly", "--changelog",    "--columns",
-"--debug",        "--deep",         "--emptytree",    "--fetchonly",
-"--help",         "--noconfmem",    "--nodeps",       "--noreplace",
-"--nospinner",    "--oneshot",      "--onlydeps",     "--pretend",
-"--quiet",        "--resume",       "--searchdesc",   "--selective",
-"--update",       "--upgradeonly",  "--usepkg",       "--usepkgonly",
+"--buildpkg",     "--buildpkgonly",
+"--changelog",    "--columns",
+"--debug",        "--deep",
+"--emptytree",    "--fetchonly",
+"--help",         "--noconfmem",
+"--nodeps",       "--noreplace",
+"--nospinner",    "--oneshot",
+"--onlydeps",     "--pretend",
+"--quiet",        "--resume",
+"--searchdesc",   "--selective",
+"--update",       "--upgradeonly",
+"--usepkg",       "--usepkgonly",
 "--verbose",      "--version"
 ]
+
 shortmapping={
 "b":"--buildpkg",  "B":"--buildpkgonly",
-"c":"clean",       "C":"unmerge",
+"c":"--clean",     "C":"--unmerge",
 "d":"--debug",     "D":"--deep",
 "e":"--emptytree",
 "f":"--fetchonly",
 "h":"--help",
-"i":"inject",
+"i":"--inject",
 "k":"--usepkg",    "K":"--usepkgonly",
 "l":"--changelog",
 "n":"--noreplace",
 "o":"--onlydeps",  "O":"--nodeps",
-"p":"--pretend",   "P":"prune",
+"p":"--pretend",   "P":"--prune",
 "q":"--quiet",
-"s":"search",      "S":"--searchdesc",
+"s":"--search",    "S":"--searchdesc",
 "u":"--update",    "U":"--upgradeonly",
 "v":"--verbose",   "V":"--version"
 }
+
+myaction=None
+myopts=[]
+myfiles=[]
+edebug=0
+
+#Freeze the portdbapi for enhanced performance:
+portage.portdb.freeze()
+
+# process short actions and options
+tmpcmdline=sys.argv[1:]
+tmpcmdline.extend(portage.settings["EMERGE_OPTS"].split())
+cmdline=[]
+for x in tmpcmdline:
+	if x[0:1]=="-"and x[1:2]!="-":
+		for y in x[1:]:
+			if shortmapping.has_key(y):
+				if shortmapping[y] in cmdline:
+					print
+					print "*** Warning: Redundant use of",shortmapping[y]
+				else:
+					cmdline.append(shortmapping[y])
+			else:
+				print "!!! Error: -"+y+" is an invalid short action or option."
+				sys.exit(1)
+	else:
+		cmdline.append(x)
+
+# process the command arguments
+for x in cmdline:
+	if len(x)>=2 and x[0:2]=="--":
+			if x in options:
+				myopts.append(x)
+			elif x[2:] in actions:
+				if x[2:]=="rsync":
+					print
+					print red("*** --rsync has been deprecated.")
+					print red("***   Please use '--sync' instead.")
+				if myaction:
+					print
+					print red("!!!")+green(" Multiple actions requested... Please choose one only.")
+					print red("!!!")+" '"+darkgreen("--"+myaction)+"' "+red("or")+" '"+darkgreen(x)+"'"
+					print
+					sys.exit(1)
+				myaction=x[2:]
+			else:
+				print "!!! Error:",x,"is an invalid option."
+				sys.exit(1)
+	elif (not myaction) and (x in actions):
+		print red("*** Deprecated use of action '"+x+"'")
+		if myaction=="rsync":
+			print red("***   Please use '--sync' instead.")
+		else:
+			print red("***   Please use '--"+x+"' instead.")
+		if myaction:
+			print
+			print red("!!!")+green(" Multiple actions requested... Please choose one only.")
+			print red("!!! '")+darkgreen("--"+myaction)+"' "+red("or")+" '"+darkgreen("--"+x)+"'"
+			print
+			sys.exit(1)
+		myaction=x
+	elif x[-1]=="/":	
+		# this little conditional helps tab completion
+		myfiles.append(x[:-1])
+	else:
+		myfiles.append(x)
+
+if (myaction in ["world", "system"]) and myfiles:
+	print "emerge: please specify a package class (\"world\" or \"system\") or individual packages, but not both."
+	sys.exit(1)
+
+# Kill noauto as it will break merges otherwise.
+while 'noauto' in portage.features:
+	del portage.features[portage.features.index('noauto')]
+
+# Always create packages if FEATURES=buildpkg
+# Imply --buildpkg if --buildpkgonly
+if ("buildpkg" in portage.features) or ("--buildpkgonly" in myopts):
+	if "--buildpkg" not in myopts:
+		myopts.append("--buildpkg")
+
+# Also allow -S to invoke search action (-sS)
+if ("--searchdesc" in myopts) and (not myaction):
+	myaction = "search"
+
+# Also allow -K to apply --usepkg/-k
+if ("--usepkgonly" in myopts) and not ("--usepkg" in myopts):
+	myopts.append("--usepkg")
+
+# Also allow -U to apply --update/-u
+if ("--upgradeonly" in myopts) and not ("--update" in myopts):
+	print ">>> --upgradeonly implies --update... adding --update to options."
+	myopts.append("--update")
+
+# Set so that configs will be merged regardless of remembered status
+if ("--noconfmem" in myopts):
+	portage.settings["NOCONFMEM"]="1"
+
+# Set various debug markers... They should be merged somehow.
+if ("--debug" in myopts):
+	portage.settings["PORTAGE_DEBUG"]="1"
+	portage.debug=1
+
 
 def emergelog(mystr):
 	try:
@@ -94,84 +204,19 @@ def getportageversion():
 		gccver="gcc-"+gccout[1]
 	return "Portage " + portage.VERSION +" ("+profilever+", "+gccver+", glibc-"+glibcver+")"
 
-
 def help():
 	# Move all the help stuff out of this file.
 	emergehelp.help(myaction,myopts,havecolor)
 
-myaction=None
-myopts=[]
-myfiles=[]
-edebug=0
-
-#Freeze the portdbapi for enhanced performance:
-portage.portdb.freeze()
-
-# process short actions and options
-tmpcmdline=sys.argv[1:]
-tmpcmdline.extend(portage.settings["EMERGE_OPTS"].split())
-cmdline=[]
-for x in tmpcmdline:
-	if x[0:1]=="-"and x[1:2]!="-":
-		for y in x[1:]:
-			if shortmapping.has_key(y):
-				if shortmapping[y] in cmdline:
-					print
-					print "*** Warning: Redundant use of",shortmapping[y]
-				else:
-					cmdline.append(shortmapping[y])
-			else:
-				print "!!! Error: -"+y+" is an invalid short action or option."
-				sys.exit(1)
-	else:
-		cmdline.append(x)
-
-# process the command arguments
-for x in cmdline:
-	if len(x)>=2 and x[0:2]=="--":
-			if x in options:
-				myopts.append(x)
-			else:
-				print "!!! Error:",x,"is an invalid option."
-				sys.exit(1)
-	elif (not myaction) and (x in actions):
-		myaction=x
-	elif x[-1]=="/":	
-		# this little conditional helps tab completion
-		myfiles.append(x[:-1])
-	#elif (myaction) and (x in actions):
-	#	#catch "world system" and "world foo" issues....
-	#	print "emerge: please specify either \""+myaction+"\" or \""+x+"\", but not both."
-	#	sys.exit(1)
-	else:
-		myfiles.append(x)
-
-if (myaction in ["world", "system"]) and myfiles:
-	print "emerge: please specify a package class (\"world\" or \"system\") or individual packages, but not both."
-	sys.exit(1)
-
-# Always create packages if FEATURES=buildpkg
-# Imply --buildpkg if --buildpkgonly
-if ("buildpkg" in portage.features) or ("--buildpkgonly" in myopts):
-	if "--buildpkg" not in myopts:
-		myopts.append("--buildpkg")
-
-# Also allow -S to invoke search action (-sS)
-if ("--searchdesc" in myopts) and (not myaction):
-		myaction = "search"
-
-# Also allow -K to apply --usepkg
-if ("--usepkgonly" in myopts) and not ("--usepkg" in myopts):
-		myopts.append("--usepkg")
-
-# Set so that configs will be merged regardless of remembered status
-if ("--noconfmem" in myopts):
-		portage.settings["NOCONFMEM"]="1"
-
 # check if root user is the current user for the actions where emerge needs this
 if ("--pretend" in myopts) or (myaction=="search"):
 	if not portage.secpass:
-		print "emerge: wheel group membership required for \"--pretend\" and search."
+		if portage.wheelgid==portage.portage_gid:
+			print "emerge: wheel group membership required for \"--pretend\" and search."
+			print "emerge: wheel group use is being deprecated. Please update group and passwd to"
+			print "        include the portage user as noted above, and then use group portage."
+		else:
+			print "emerge: portage group membership required for \"--pretend\" and search."
 		sys.exit(1)
 elif "--version" in myopts:
 	print getportageversion()
@@ -1518,8 +1563,14 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 					pass
 		sys.stdout.write("\b\b  ...done!\n\n")
 		sys.stdout.flush()
-	mynewpv=portage.portdb.xmatch("bestmatch-visible","sys-apps/portage")
+
+	#mynewpv=portage.portdb.xmatch("bestmatch-visible","sys-apps/portage")
+	mylist=portage.portdb.cp_list("sys-apps/portage")
+	myvisi=portage.portdb.visible(mylist)
+	mynewpv=portage.best(myvisi)
+
 	mycurpv=portage.best(portage.db[portage.root]["vartree"].dbapi.match("sys-apps/portage"))
+
 	if(mycurpv!=mynewpv):
 		print
 		print red(" * ")+bold("An update to portage is available.")+" It is _highly_ recommended"

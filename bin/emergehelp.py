@@ -11,10 +11,10 @@ def shorthelp():
 	print
 	print bold("Usage:")
 	print "   "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] [ "+turquoise("ebuildfile")+" | "+turquoise("tbz2file")+" | "+turquoise("dependency")+" ] [ ... ]"
-	print "   "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] < "+turquoise("system")+" | "+turquoise("world")+" >"
-	print "   "+turquoise("emerge")+" < "+turquoise("sync")+" | "+turquoise("rsync")+" | "+turquoise("info")+" >"
+	print "   "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] < "+turquoise("--system")+" | "+turquoise("--world")+" >"
+	print "   "+turquoise("emerge")+" < "+turquoise("--sync")+" | "+turquoise("--info")+" >"
 	print "   "+turquoise("emerge")+" "+turquoise("--resume")+" ["+green("--pretend")+"]"
-	print "   "+turquoise("emerge")+" "+turquoise("--help")+" [ "+green("system")+" | "+green("config")+" | "+green("rsync")+" ] "
+	print "   "+turquoise("emerge")+" "+turquoise("--help")+" [ "+green("--system")+" | "+green("--config")+" | "+green("--rsync")+" ] "
 	print bold("Options:")+" "+green("-")+"["+green("bcCdDefhikKlnoOpPsSuUvV")+"] ["+green("--oneshot")+"] ["+green("--noconfmem")+"]"
 	print bold("Actions:")+" [ clean | depclean | inject | prune | regen | search | unmerge ]"
 	print

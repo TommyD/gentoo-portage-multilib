@@ -2,55 +2,83 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+  25 Feb 2003; Nicholas Jones <carpaski@gentoo.org> *: Update docs and help
+	to match the deprecation of actions without '--' preceding them.
+
+  25 Feb 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Message
+	updates. Fix secpass for portage user. Set PORTAGE_GID for ebuild.sh to
+	use regardless of GID in use (wheel/portage). Only try and delete things
+	in PORTAGE_TMPDIR if we have perms to do it... see secpass note. Moved the
+	cachedir creation after settings in created so that we can use spawn instead
+	of system for the calls to 'chown/chmod -R'. Fix the note on make.defaults.
+
+  25 Feb 2003; Nicholas Jones <carpaski@gentoo.org> emerge: Move all actions
+	into '--action' form -- Notify of deprecated usages. Moved the functions
+	from the top of emerge down below the command line parser for readability.
+	Kill FEATURES=noauto if we're running emerge -- it can break things. Make
+	-U imply -u so people aren't confused. --debug now enables all debug
+	variables in portage. Fix wheel/portage group requirements messages. Get
+	the current portage version when doing rsync via the portage tree's files
+	and not the loaded cache so that it is aware of changes immediately instead
+	of the next run. 
+
+  25 Feb 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Try to change
+	to good a good path at the start of the ebuild to prevent operations from
+	happening in places like home. After the ebuild's install phase, check to
+	see if any unsafe perm combo's exist and die if they do. Fix permissions
+	on the cachedir as we're changing them to root:portage. &> on environment
+	file prevented it from actually creating the file -- changed to 2>. Change
+	'true' to 'exit 0' to be a bit more explicit about what we're doing.
+
   24 Feb 2003; Alain Penders <alain@gentoo.org> repoman: Added nested/sub-shell
-        die testing.
+  die testing.
 
   23 Feb 2003; Alain Penders <alain@gentoo.org>: Added bin/portageq tool to
-        provide access to portage internal information without using APIs that
-	are changing.  All tools that currently access portage information by
-	importing portage.py and poking around in it should switch to using
-	this tool instead.
-	Changed some tools in bin/ to use it, so those won't break either.
+  provide access to portage internal information without using APIs that
+  are changing.  All tools that currently access portage information by
+  importing portage.py and poking around in it should switch to using this
+  tool instead. Changed some tools in bin/ to use it, so those won't break
+  either.
 
 *portage-2.0.47-r3 (17 Feb 2003): Wicked Fast, BugFree v2, UserPriv
 
   22 Feb 2003; Nicholas Jones <carpaski@gentoo.org> bin/: added dispatch-conf
-	and db-fix.pl to the bins. Looking at dispatch-conf to replace etc-update
-	written by Jeremy Wohl (bug 14079). db-fix.pl is a rescue tool that Blizzy
-	wrote up to recreate/repair counter files in the DB -- shouldn't be needed
-	anymore as portage fixes the counter at every load of the counter, but we
-	will hang on to it just in case.
+  and db-fix.pl to the bins. Looking at dispatch-conf to replace etc-update
+  written by Jeremy Wohl (bug 14079). db-fix.pl is a rescue tool that Blizzy
+  wrote up to recreate/repair counter files in the DB -- shouldn't be needed
+  anymore as portage fixes the counter at every load of the counter, but we
+  will hang on to it just in case.
 
   22 Feb 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: moved the
-	wheelgid references to portage_gid references. Wheel is being deprecated.
-	Added notice to baselayout message that group portage controls everything
-	now. Killed the BASH_ENV settings -- moved the reference to /etc/portage/
-	in case it's desired in some way -- This fixes AROUND ONE HUNDRED reports
-	on 2.0.47-r2. Try/catch invalid tbz2's -- should fix a couple bad tarball
-	bugs. Make the prelink call spawn'd without sandbox. buildpkg/userpriv
-	fix via actionmap (Jasmin Buchert; bug 16106).
+  wheelgid references to portage_gid references. Wheel is being deprecated.
+  Added notice to baselayout message that group portage controls everything
+  now. Killed the BASH_ENV settings -- moved the reference to /etc/portage/
+  in case it's desired in some way -- This fixes AROUND ONE HUNDRED reports
+  on 2.0.47-r2. Try/catch invalid tbz2's -- should fix a couple bad tarball
+  bugs. Make the prelink call spawn'd without sandbox. buildpkg/userpriv
+  fix via actionmap (Jasmin Buchert; bug 16106).
 
   22 Feb 2003; Nicholas Jones <carpaski@gentoo.org> emerge: --upgradeonly
-	added from jrray's patch; added some slot handling. --deep got a short
-	flag 'D'. 'info' can be run by non-root. '--quiet' kills all but package
-	names on searches. Basic slot detection added to the pretend output so
-	that it doesn't always say downgrade. Ignore block list when fetching.
-	Can use RSYNC_EXCLUDEFROM to select a from for rsync to --exclude-from;
-	(Michael Sterrett; Bug 15882). 'emerge rsync' deletes the dbcachedir
-	before it begins updates. Catch	exceptions during rsync cache regen.
+  added from jrray's patch; added some slot handling. --deep got a short
+  flag 'D'. 'info' can be run by non-root. '--quiet' kills all but package
+  names on searches. Basic slot detection added to the pretend output so
+  that it doesn't always say downgrade. Ignore block list when fetching.
+  Can use RSYNC_EXCLUDEFROM to select a from for rsync to --exclude-from;
+  (Michael Sterrett; Bug 15882). 'emerge rsync' deletes the dbcachedir
+  before it begins updates. Catch  exceptions during rsync cache regen.
 
   22 Feb 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: General fixes
-	to the spelling of things. 'cd $PORT_TMPDIR' corrected to the actual vars
-	name. Stripping distcc from PATH if it is there before portage sets it.
-	Same with ccache. If we try to compile with out unpacking, complain. Make
-	sure to chown files to user portage. 
+  to the spelling of things. 'cd $PORT_TMPDIR' corrected to the actual vars
+  name. Stripping distcc from PATH if it is there before portage sets it.
+  Same with ccache. If we try to compile with out unpacking, complain. Make
+  sure to chown files to user portage. 
 
   22 Feb 2003; Nicholas Jones <carpaski@gentoo.org> cnf/*: CFLAGS notes,
-	pentium4 breaks things. Added more descriptions for FEATURES. Added
-	RSYNC_EXCLUDEFROM description.
+  pentium4 breaks things. Added more descriptions for FEATURES. Added
+  RSYNC_EXCLUDEFROM description.
 
   22 Feb 2003; Nicholas Jones <carpaski@gentoo.org> *: Updates to the
-	copyright headers.
+  copyright headers.
   
 *portage-2.0.47-r2 (17 Feb 2003): Wicked Fast, BugFree, UserPriv
 
@@ -75,7 +103,7 @@
   Trivial touchups in spacing. Only write worldfile if not --pretend. Fix
   losing-packages-to-be-merged during merge bug. Allow options to change
   in a --resume call so that --buildpkg and such may be added.
-	
+  
   17 Feb 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Added a
   PREROOTPATH to allow special paths to be added prior to root and ebuild's
   required pathes. ${S} is now generated prior to sourcing an ebuild so
@@ -114,7 +142,7 @@
 
   14 Feb 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Added
   resume to mtimedbkeys.
-	
+  
   14 Feb 2003; Nicholas Jones <carpaski@gentoo.org> emerge: --columns
   flag to support column output in --pretend. --resume support added
   to restart portage with the package list with which it stopped -- data
@@ -138,20 +166,20 @@
   config files. Extra message in --version about missing gcc and sourcing
   /etc/profile to get it. Yanked the majority of the rsync cachedb update
   code -- Moved it to aux_get.
-	
+  
   13 Feb 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Typo fixes.
   aux_get() now has a metacachedb param for using metadata cache over the
   initial call to doebuild() -- Should speed up rsync users regen time.
   Added support for --noconfmem via settings["NOCONFMEM"] in treewalk().
   Added sys.exit(1) on failure to move files during merge. Comment
   realignment.
-	
+  
   11 Feb 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Fix the
   depcache code by adding in a missing stat call after regeneration.
   Call portageexit() in exithandler() so that mtimedb gets written out
   on cancelled runs. Add in --quiet option. Currently only kills the
   processing messages on emerge regen.
-	
+  
   11 Feb 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Fix the
   eclass code to remove the double inherits cause by eclasses managing
   that on their own.
@@ -166,13 +194,13 @@
   07 Feb 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Make per-
   ebuild logs use the counter to get a chronological list instead of a
   timestamp based one.
-	
+  
   07 Feb 2003; Nicholas Jones <carpaski@gentoo.org> emerge: If a package
   is requested to be updated but is not merged, still add it to world.
-	
+  
   07 Feb 2003; Nicholas Jones <carpaski@gentoo.org> *: Update to help.
   Mostly comments on --verbose. Clarification on make.conf* mirrorselect.
-		
+    
 *portage-2.0.46-r11 (04 Feb 2003): Fixups
 
   04 Feb 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: distcc
@@ -262,7 +290,7 @@
   Forced HOME to BUILD_PREFIX regardless of user. Added in a 'rm -Rf' notice
   to readonly-fs/Full-Disk notices. Disabled the usepkg on buildpkg function
   of portage. digraph.hasallzeros() added -- Determines if tree is zero depth.
-	
+  
   06 Jan 2003; Nicholas Jones <carpaski@gentoo.org> cnf/*: Added in the
   PORT_LOGDIR option and description. Also added a GENTOO_MIRRORS section
   back into the make.conf* files so that users are aware that they need to
@@ -327,7 +355,7 @@
   More info provided for portage-user-missing message. FEATURES=sandboxuser
   not provides sandbox in compile phase along with userpriv. mtimedb
   exception should actually be caught now.
-	
+  
 *portage-2.0.47_pre1 (21 Dec 2002): Feature: userpriv compiles
 
   21 Dec 2002; Nicholas Jones <carpaski@gentoo.org> *:
@@ -359,7 +387,7 @@
 
   18 Dec 2002; Nicholas Jones <carpaski@gentoo.org> ebuild.sh:
   use_{enable,with}() work now. Rearranged auxdbkeys again.
-	
+  
   17 Dec 2002; Martin Schlemmer <azarah@gentoo.org> bin/ebuild.sh:
   Regenerate /lib/cpp and /usr/bin/cc in pkg_setup if they are not
   files to ease the broken pkg_postrm() some gcc have.
@@ -389,15 +417,15 @@
 *portage-2.0.45-r5 (13 Dec 2002): Feature addition: PDEPEND+fixes
 
   13 Dec 2002; Nicholas Jones <carpaski@gentoo.org> emerge/portage.py:
-	Added restart on portage upgrade code and adjusted ebuild to accomplish
-	this until version matches -r5.
+  Added restart on portage upgrade code and adjusted ebuild to accomplish
+  this until version matches -r5.
 
 *portage-2.0.45-r4 (11 Dec 2002): Feature addition: PDEPEND
 
   11 Dec 2002; Nicholas Jones <carpaski@gentoo.org> ebuild.sh/portage.py:
   Added [CDEPEND, PDEPEND, REBUILD] to auxdbkeys and updated ebuild.sh.
   Prevented autoclean on fetchonly.
-	
+  
   11 Dec 2002; Nicholas Jones <carpaski@gentoo.org> emerge:
   Added support for PDEPEND. Rewrote some dep handling variables for
   readability and ease of use.
@@ -407,7 +435,7 @@
   09 Dec 2002; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Fixed
   use_enable() and use_with() so that they actually work -- also don't
   have to specify 2nd parameter, 1st is assumed. 
-	
+  
   09 Dec 2002; Nicholas Jones <carpaski@gentoo.org> emerge: Added previous
   version/downgrade messages to --pretend. Extra message to notify of dep
   calculation failure as bad deps can exit portage without error.
@@ -438,7 +466,7 @@
   doing stat on it. Enabled full eclass()/inherit code. Added code to
   flushmtimedb() entries by key name. } <-- aux_get() fixups. Made
   starttime into a long... time.time() is apparently overflowing int().
-	
+  
   02 Dec 2002; Nicholas Jones <carpaski@gentoo.org> bin/*:
   prep*: Fixed missed man pages and corrected loops to be fairly complete
   in the included files. quickpkg: Loop to do each in $@ (Peter Sharp).
@@ -475,7 +503,7 @@
 
   11 Nov 2002; Nicholas Jones <carpaski@gentoo.org> *:
   bin/*: fixes for spaces-in-filename issues, lots of quotes added. conf/*:
-  touched up comments and warning. Added RSYNC_RETRIES.	ebuild.sh: exit now
+  touched up comments and warning. Added RSYNC_RETRIES.  ebuild.sh: exit now
   reports the failing ebuild's $CATEGORY/$PF. Added EXTRA_ECONF to econf().
   emake: added EXTRA_EMAKE. emerge: RSYNC_RETRIES curtasy of Christopher
   Sharp. Random comment fixes. portage.py: Random touchups. KV extraction
@@ -522,7 +550,7 @@
   AUTOCLEAN="yes" on by default. Added in a clean phase after the merge
   phase so clashing library versions do not remain installed when ldconfig
   is run. This should close up the symlinks-being-removed bugs.
-	
+  
   27 Oct 2002; Nicholas Jones <carpaski@gentoo.org> cnf/*:
   Miscelaneous typo fixes. Added PORTDIR_OVERLAY description in make.conf.
 
@@ -595,7 +623,7 @@
   Bug 9308: Symlinks were being killed by ldconfig, fixed by changing
   how/when ldconfig was allowed to set symlinks.  rsync command touchups,
   --delete-after so that a failed rsync won't leave a user
-  without/with-few packages in portage.	More warnings to depclean.
+  without/with-few packages in portage.  More warnings to depclean.
 
   20 Oct 2002; Nicholas Jones <carpaski@gentoo.org> ebuild.sh:
   Added die to gzip in unpack()
@@ -2523,10 +2551,10 @@
     pretend operation
   - changed emerge invocation arguments to be in a new universal interface
     format this has been decided to be :
-	'emerge --action --option --option [packageset]'
-	some features however don't respect this, but that's since they are not
-	package installation related and are easier to use as straight commands
-	eg: emerge rsync
+  'emerge --action --option --option [packageset]'
+  some features however don't respect this, but that's since they are not
+  package installation related and are easier to use as straight commands
+  eg: emerge rsync
   - added UNMERGE_DELAY var to make.globals and support it in emerge to obtain
     the number of seconds to wait
   - support for NOCOLOR="yes" as wel as NOCOLOR="true"
@@ -2766,7 +2794,7 @@
 
   07 Jan 2002; G.Bevin <gbevin@gentoo.org> :
   sandbox included in portage
-	
+  
 *portage 1.8.1 (30 Dec 2001)
 
   29 Dec 2001; Daniel Robbins <drobbins@gentoo.org> :
@@ -2869,80 +2897,80 @@
 Portage 1.6.11, released 18 Oct 2001
 ====================================
 
-	*portage.py; device nodes are now not unmerged at all.
+  *portage.py; device nodes are now not unmerged at all.
 
 
 Portage 1.6.10, released 18 Oct 2001 
 ===================================
 
-	*ebuild.sh: A and AA fix; now any A="foo" lines in the ebuild are ignored,
-	allowing ebuilds with them to continue working.
-	
-	*portage.py: remove gnome-apps, gnome-office, gnome-libs, add gnome-extra
-	categories.
+  *ebuild.sh: A and AA fix; now any A="foo" lines in the ebuild are ignored,
+  allowing ebuilds with them to continue working.
+  
+  *portage.py: remove gnome-apps, gnome-office, gnome-libs, add gnome-extra
+  categories.
 
-	*ebuild.sh, portage.py: You can now use USE variables in SRC_URI to
-	conditionally include archives.  In MAINTAINER mode, all archives are
-	automatically included so that maintainers can check SRC_URIs and also
-	generate complete digests.  A new file-based DEPEND and RDEPEND-passing
-	mechanism has been added.
-	
-	*ebuild.sh Now adds filesize to the digest files
+  *ebuild.sh, portage.py: You can now use USE variables in SRC_URI to
+  conditionally include archives.  In MAINTAINER mode, all archives are
+  automatically included so that maintainers can check SRC_URIs and also
+  generate complete digests.  A new file-based DEPEND and RDEPEND-passing
+  mechanism has been added.
+  
+  *ebuild.sh Now adds filesize to the digest files
 
 Portage 1.6.9, released 15 Sep 2001
 ===================================
 
-	*portage.py
-	unmerge() now does not touch device nodes.  Unlinking them or touching them
-	in any way is bad practice.
+  *portage.py
+  unmerge() now does not touch device nodes.  Unlinking them or touching them
+  in any way is bad practice.
 
 
 Portage 1.6.8, released 12 Sep 2001
 ===================================
 
-	*portage.py
-	movefile() will now unlink() destfile if it is a symlink.  Should fix 
-	problems where file gets created at symlink target rather than replacing
-	the symlink.
+  *portage.py
+  movefile() will now unlink() destfile if it is a symlink.  Should fix 
+  problems where file gets created at symlink target rather than replacing
+  the symlink.
 
-	*queryhost.sh (agriffis)
-	Parallel pinging and other fixes.
+  *queryhost.sh (agriffis)
+  Parallel pinging and other fixes.
 
 Portage 1.6.7, released 05 Sep 2001
 ===================================
 
-	*portage.py
-	(last-minute fix)
-	CONFIG_PROTECT unmerge protection is now observed for symlinks, fifos and
-	device nodes.
-	
-	*portage.py
-	Fixes for unmerging CONFIG_PROTECTed files.  Protected files are now *not*
-	unlinked from the filesystem.  Messier but safer, and simplifies package
-	upgrades.
+  *portage.py
+  (last-minute fix)
+  CONFIG_PROTECT unmerge protection is now observed for symlinks, fifos and
+  device nodes.
+  
+  *portage.py
+  Fixes for unmerging CONFIG_PROTECTed files.  Protected files are now *not*
+  unlinked from the filesystem.  Messier but safer, and simplifies package
+  upgrades.
 
-	*emerge
-	Emerge output cleanups for GNU info directory generation.  New --verbose
-	mode; new CONFIG_PROTECT scanning feature to let people know when there are
-	config files to be updated.  New "--help config" docs to explain how to
-	do it.
+  *emerge
+  Emerge output cleanups for GNU info directory generation.  New --verbose
+  mode; new CONFIG_PROTECT scanning feature to let people know when there are
+  config files to be updated.  New "--help config" docs to explain how to
+  do it.
 
 Portage 1.6.6, released 01 Sep 2001
 ====================================
 
-	*portage.py
-	Upgraded directory merging over existing objects.  Existing symlinks that
-	point to existing directories will be kept and used as is; directories will
-	be used as-is; any other objects (broken symlinks, files) will be copied
-	to origfilename.backup and a ne directory will be created in its place.
+  *portage.py
+  Upgraded directory merging over existing objects.  Existing symlinks that
+  point to existing directories will be kept and used as is; directories will
+  be used as-is; any other objects (broken symlinks, files) will be copied
+  to origfilename.backup and a ne directory will be created in its place.
 
 Portage 1.6.5, released 31 Aug 2001
 ====================================
-	
-	*emerge 
-	Fixes for handling multiple ebuilds, packages and/or dependencies on
-	the command-line.
+  
+  *emerge 
+  Fixes for handling multiple ebuilds, packages and/or dependencies on
+  the command-line.
 
-	*portage.py 
-	An optimization to the digraph class so that the firstzero() method finds
-	matches in close to the order that keys were added to the digraph.
+  *portage.py 
+  An optimization to the digraph class so that the firstzero() method finds
+  matches in close to the order that keys were added to the digraph.

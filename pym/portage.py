@@ -21,14 +21,17 @@ try:
 	if (not secpass) and (wheelgid in os.getgroups()):
 		secpass=1
 except KeyError:
-	print "portage initialization: your system doesn't have a \"wheel\" group."
-	print "Please fix this so that Portage can operate correctly (It's normally GID 10)"
+	print "portage initialization: your system doesn't have a 'wheel' group."
+	print "Please fix this as it is a normal system requirement. 'wheel' is GID 10"
+	print "'emerge baselayout' and an 'etc-update' should remedy this problem."
 	pass
 
 #Discover the uid and gid of the portage user/group
 try:
 	portage_uid=pwd.getpwnam("portage")[2]
 	portage_gid=grp.getgrnam("portage")[2]
+	if (secpass==0):
+		secpass=1
 except KeyError:
 	portage_uid=0
 	portage_gid=wheelgid
@@ -832,6 +835,7 @@ class config:
 			if self.configdict.has_key(x):
 				#prepend db to list to get correct order
 				self.uvlist[0:0]=[self.configdict[x]]		
+		self.configdict["env"]["PORTAGE_GID"]=str(portage_gid)
 		self.regenerate()
 	
 	def regenerate(self,useonly=0):
@@ -1294,10 +1298,11 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 	try:
 		if ("userpriv" in features) and portage_uid and portage_gid:
 			settings["HOME"]=settings["BUILD_PREFIX"]+"/homedir"
-			if os.path.exists(settings["HOME"]):
-				spawn("rm -Rf "+settings["HOME"], free=1)
-			if not os.path.exists(settings["HOME"]):
-				os.makedirs(settings["HOME"])
+			if (secpass==2):
+				if os.path.exists(settings["HOME"]):
+					spawn("rm -Rf "+settings["HOME"], free=1)
+				if not os.path.exists(settings["HOME"]):
+					os.makedirs(settings["HOME"])
 		elif ("userpriv" in features):
 			del features[features.index("userpriv")]
 	except Exception, e:
@@ -4269,34 +4274,12 @@ if not os.path.exists(root+"var/tmp"):
 		print "portage: couldn't create /var/tmp; exiting."
 		sys.exit(1)
 
-cachedirs=["/var/cache/edb"]
-if root!="/":
-	cachedirs.append(root+"var/cache/edb")
-if not os.environ.has_key("SANDBOX_ACTIVE"):
-	for cachedir in cachedirs:
-		if not os.path.exists(cachedir):
-			os.makedirs(cachedir,0755)
-			print ">>>",cachedir,"doesn't exist, creating it..."
-		if not os.path.exists(cachedir+"/dep"):
-			os.makedirs(cachedir+"/dep",2755)
-			print ">>>",cachedir+"/dep","doesn't exist, creating it..."
-		try:
-			os.chown(cachedir,uid,portage_gid)
-			os.chmod(cachedir,0775)
-		except OSError:
-			pass
-		try:
-			os.chown(cachedir+"/dep",uid,portage_gid)
-			os.chmod(cachedir+"/dep",02775)
-		except OSError:
-			pass
-	
 os.umask(022)
 profiledir=None
 if os.path.exists("/etc/make.profile/make.defaults"):
 	profiledir="/etc/make.profile"
 else:
-	print ">>> Note: /etc/make.profile isn't available; an 'emerge sync' will probably fix this."
+	print ">>> Note: /etc/make.profile/make.defaults isn't available; an 'emerge sync' will probably fix this."
 #from here on in we can assume that profiledir is set to something valid
 db={}
 
@@ -4329,6 +4312,32 @@ else:
 	usedefaults=[]
 settings=config()
 
+cachedirs=["/var/cache/edb"]
+if root!="/":
+	cachedirs.append(root+"var/cache/edb")
+if not os.environ.has_key("SANDBOX_ACTIVE"):
+	for cachedir in cachedirs:
+		if not os.path.exists(cachedir):
+			os.makedirs(cachedir,0755)
+			print ">>>",cachedir,"doesn't exist, creating it..."
+		if not os.path.exists(cachedir+"/dep"):
+			os.makedirs(cachedir+"/dep",2755)
+			print ">>>",cachedir+"/dep","doesn't exist, creating it..."
+		try:
+			os.chown(cachedir,uid,portage_gid)
+			os.chmod(cachedir,0775)
+		except OSError:
+			pass
+		try:
+			mystat=os.lstat(cachedir+"/dep")
+			os.chown(cachedir+"/dep",uid,portage_gid)
+			os.chmod(cachedir+"/dep",02775)
+			if mystat[ST_GID]!=portage_gid:
+				spawn("chown -R "+str(uid)+":"+str(portage_gid)+" "+cachedir+"/dep",free=1)
+				spawn("chmod -R u+rw,g+rw "+cachedir+"/dep",free=1)
+		except OSError:
+			pass
+	
 def flushmtimedb(record):
 	if mtimedb:
 		if record in mtimedb.keys():
