@@ -239,6 +239,7 @@ class tbz2:
 		if not self.scan():
 			raise IOError
 		if cleanup and os.path.exists(datadir):
+			# XXX: Potentially bad
 			os.system("rm -Rf "+datadir+"/*")
 		if not os.path.exists(datadir):
 			os.makedirs(datadir)
@@ -261,6 +262,7 @@ class tbz2:
 		myfile.flush()
 		myfile.close()
 		if cleanup:
+			# XXX: Potentially bad
 			os.system("rm -Rf "+datadir)
 		return 1
 

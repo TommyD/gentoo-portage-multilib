@@ -7,6 +7,11 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  15 Nov 2004; Nicholas Jones <carpaski@gentoo.org> portage.py, portage_gpg.py:
+  Fixes for the gso changes in gpg. Removed the 'virtuals' file handling
+  which caused an empty file to be recreated. Added XXX marks on potentially
+  bad calls.
+
   14 Nov 2004; Brian Harring <ferringb@gentoo.org> spec/emerge.syntax:
   Bye bye emerge.syntax, we hardly knew ye.
 

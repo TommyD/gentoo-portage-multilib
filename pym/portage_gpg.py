@@ -11,10 +11,12 @@ import portage_checksum
 import portage_exec
 
 GPG_BINARY       = "/usr/bin/gpg"
-GPG_OPTIONS      = " --lock-never --no-random-seed-file --no-greeting --no-sig-cache "
-GPG_VERIFY_FLAGS = " --verify "
-GPG_KEYDIR       = " --homedir '%s' "
-GPG_KEYRING      = " --keyring '%s' "
+GPG_OPTIONS      = ["--lock-never","--no-random-seed-file",
+                    "--no-greeting", "--no-sig-cache"]
+GPG_VERIFY_FLAGS = ["--verify"]
+
+GPG_KEYDIR       = "--homedir" 
+GPG_KEYRING      = "--keyring"
 
 UNTRUSTED = 0
 EXISTS    = UNTRUSTED + 1
@@ -30,21 +32,13 @@ def fileStats(filepath):
 
 
 class FileChecker:
-	def __init__(self,keydir=None,keyring=None,requireSignedRing=False,minimumTrust=EXISTS,home=None):
+	def __init__(self,keydir=None,keyring=None,requireSignedRing=False,minimumTrust=EXISTS):
 		self.minimumTrust     = TRUSTED  # Default we require trust. For rings.
 		self.keydir           = None
 		self.keyring          = None
 		self.keyringPath      = None
 		self.keyringStats     = None
 		self.keyringIsTrusted = False
-		if home==None:
-			try:
-				home=os.environ["HOME"]
-			except KeyError:
-				import traceback
-				traceback.print_stack()
-				raise Exception("no home var specified, and it ain't in the env. we're screwed")
-		self.home=home
 	
 		if (keydir != None):
 			# Verify that the keydir is valid.
@@ -110,17 +104,17 @@ class FileChecker:
 		if not os.path.isfile(filename):
 			raise portage_exception.CommandNotFound, filename
 
-		command = GPG_BINARY + GPG_VERIFY_FLAGS + GPG_OPTIONS
+		command = [GPG_BINARY] + GPG_VERIFY_FLAGS + GPG_OPTIONS
 		if self.keydir:
-			command += GPG_KEYDIR % (self.keydir)
+			command += [GPG_KEYDIR]  + [self.keydir]
 		if self.keyring:
-			command += GPG_KEYRING % (self.keyring)
+			command += [GPG_KEYRING] + [self.keyring]
 		
 		if sigfile:
-			command += " '"+sigfile+"'"
-		command += " '"+filename+"'"
+			command += [sigfile]
+		command += [filename]
 	
-		result,output = portage_exec.spawn_get_output(command,raw_exit_code=True,env={"HOME":self.home})
+		result,output = portage_exec.spawn_get_output(command,raw_exit_code=True,collect_fds=[1,2])
 		
 		signal = result & 0xff
 		result = (result >> 8)
@@ -129,6 +123,10 @@ class FileChecker:
 			raise SignalCaught, "Signal: %d" % (signal)
 	
 		trustLevel     = UNTRUSTED
+
+		if len(output) == 0:
+			raise portage_exception.UnknownCondition, "GPG generated no output: exited with %d" % (result)
+
 		if result == 0:
 			trustLevel   = TRUSTED
 			#if output.find("WARNING") != -1:

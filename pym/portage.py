@@ -2159,7 +2159,6 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 #	retval=ebuild.ebuild_handler().process_phase(mydo, mysettings,myebuild,myroot,debug=debug,listonly=listonly,fetchonly=fetchonly,cleanup=cleanup,dbkey=None,use_cache=1,fetchall=0,tree="porttree",allstages=allstages,use_info_env=use_info_env)
 	return retval
 
-
 	
 expandcache={}
 
@@ -3877,12 +3876,12 @@ class portdbapi(dbapi):
 			self.manifestVerifyLevel   = portage_gpg.EXISTS
 			if "strict" in self.mysettings.features:
 				self.manifestVerifyLevel = portage_gpg.MARGINAL
-				self.manifestVerifier = portage_gpg.FileChecker(self.mysettings["PORTAGE_GPG_DIR"], "gentoo.gpg", minimumTrust=self.manifestVerifyLevel,self.home=mysettings["HOME"])
+				self.manifestVerifier = portage_gpg.FileChecker(self.mysettings["PORTAGE_GPG_DIR"], "gentoo.gpg", minimumTrust=self.manifestVerifyLevel)
 			elif "severe" in self.mysettings.features:
 				self.manifestVerifyLevel = portage_gpg.TRUSTED
-				self.manifestVerifier = portage_gpg.FileChecker(self.mysettings["PORTAGE_GPG_DIR"], "gentoo.gpg", requireSignedRing=True, minimumTrust=self.manifestVerifyLevel,self.home=mysettings["HOME"])
+				self.manifestVerifier = portage_gpg.FileChecker(self.mysettings["PORTAGE_GPG_DIR"], "gentoo.gpg", requireSignedRing=True, minimumTrust=self.manifestVerifyLevel)
 			else:
-				self.manifestVerifier = portage_gpg.FileChecker(self.mysettings["PORTAGE_GPG_DIR"], "gentoo.gpg", minimumTrust=self.manifestVerifyLevel,self.home=mysettings["HOME"])
+				self.manifestVerifier = portage_gpg.FileChecker(self.mysettings["PORTAGE_GPG_DIR"], "gentoo.gpg", minimumTrust=self.manifestVerifyLevel)
 
 		#self.root=settings["PORTDIR"]
 		self.porttree_root = porttree_root
@@ -4165,7 +4164,7 @@ class portdbapi(dbapi):
 				elif self.manifestVerifier:
 					if not self.manifestVerifier.verify(myManifestPath):
 						# Verification failed the desired level.
-						raise portage_exception.UntrustedSignature, "Untrusted Manifest: %(manifest)s" % {"manifest":myManifestPath}
+						raise portage_exception.UntrustedSignature, "Untrusted/Missing signature on Manifest: %(manifest)s" % {"manifest":myManifestPath}
 
 				if ("severe" in self.mysettings.features) and \
 				   (mys != portage_gpg.fileStats(myManifestPath)):
@@ -6266,8 +6265,6 @@ def do_upgrade(mykey):
 	processed=1
 	#remove stale virtual entries (mappings for packages that no longer exist)
 	
-	myvirts=grabdict("/var/cache/edb/virtuals")
-	
 	update_files={}
 	file_contents={}
 	myxfiles = ["package.mask","package.unmask","package.keywords","package.use"]
@@ -6312,13 +6309,6 @@ def do_upgrade(mykey):
 				#update world entries, if any.
 				worldlist[x]=dep_transform(worldlist[x],mysplit[1],mysplit[2])
 		
-			#update virtuals:
-			for myvirt in myvirts.keys():
-				for mypos in range(0,len(myvirts[myvirt])):
-					if myvirts[myvirt][mypos]==mysplit[1]:
-						#update virtual to new name
-						myvirts[myvirt][mypos]=mysplit[2]
-
 			#update /etc/portage/packages.*
 			for x in file_contents:
 				for mypos in range(0,len(file_contents[x])):
@@ -6363,7 +6353,6 @@ def do_upgrade(mykey):
 	for x in worldlist:
 		myworld.write(x+"\n")
 	myworld.close()
-	writedict(myvirts,"/var/cache/edb/virtuals")
 	print ""
 
 exit_callbacks = []

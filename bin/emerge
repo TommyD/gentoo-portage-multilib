@@ -2586,6 +2586,7 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 
 		if (os.path.exists(cachedir) and os.path.exists(cachedir+"/app-portage")):
 			# removed old style cache.
+			# XXX: Compat Code, and Potentially bad.
 			portage.spawn("rm -Rf "+cachedir+"/*",portage.settings,free=1)
 
 		# save timestamp.chk for next timestamp check.
