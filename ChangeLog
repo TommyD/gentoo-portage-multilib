@@ -1,6 +1,9 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  15 Apr 2002; Donny Davies <woodchip@gentoo.org>: make.conf: added a 
+  RESUMECOMMAND for lukemftp.
+  
   15 Apr 2002; Daniel Robbins <drobbins@gentoo.org>: portage.py: fixed up
   some "zing" logic inside the merge code (fixing variable being used before
   assignment errors)
