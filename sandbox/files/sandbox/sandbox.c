@@ -625,6 +625,10 @@ int main(int argc, char** argv)
 				strcat(sandbox_write_var, ":");
 				strcat(sandbox_write_var, "/usr/lib/conftest");
 				strcat(sandbox_write_var, ":");
+				strcat(sandbox_write_var, "/usr/tmp/cf");
+				strcat(sandbox_write_var, ":");
+				strcat(sandbox_write_var, "/usr/lib/cf");
+				strcat(sandbox_write_var, ":");
 				if (NULL == portage_tmp_dir)
 				{
 					strcat(sandbox_write_var, "/tmp");
