@@ -1465,7 +1465,7 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 		except:
 			maxretries=3 #default number of retries
 		retries=1
-		while exitcode==12 and retries<=maxretries:
+		while ((exitcode==12) or (exitcode==10)) and retries<=maxretries:
 			print ">>> Starting retry %d of %d"% (retries,maxretries)
 			retries=retries+1
 			exitcode=portage.spawn(mycommand,free=1)
