@@ -326,10 +326,11 @@ for x in cmdline:
 	elif x[-1]=="/":	
 		# this little conditional helps tab completion
 		myfiles.append(x[:-1])
-	elif (myaction) and (x in actions):
-		#catch "world system" and "world foo" issues....
-		print "emerge: please specify either \""+myaction+"\" or \""+x+"\", but not both."
-		sys.exit(1)
+	#These next 4 lines fry "emerge prune rsync," so it seems best to add duplicate actions to myfiles if myaction is already set.
+	#elif (myaction) and (x in actions):
+	#	#catch "world system" and "world foo" issues....
+	#	print "emerge: please specify either \""+myaction+"\" or \""+x+"\", but not both."
+	#	sys.exit(1)
 	else:
 		myfiles.append(x)
 

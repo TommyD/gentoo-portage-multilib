@@ -25,9 +25,15 @@ else
 fi
 for x in "$@"
 do
-	md=${x#*.}
 	suf=${x##*.}
-	mandir=man${md:0:1}
+	if [ "$suf" = "gz" ]
+	then
+		realname=${x%.*}
+	else:
+		realname=x
+	fi
+	lastcomp=${realname##*.}
+	mandir=man${lastcomp:0:1}
 	if [ -e ${x} ]
 	then
 		if [ ! -d ${D}${myloc}${myext}/man/${mandir} ]

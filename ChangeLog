@@ -1,8 +1,16 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  26 Aug 2002; Daniel Robbins <drobbins@gentoo.org> emerge: fix so that "emerge
+  prune rsync" doesn't complain that you are trying to rsync and prune at the
+  same time. This closes bug #6785.
+  
+  26 Aug 2002; Daniel Robbins <drobbins@gentoo.org> doman fixes; should work
+  for pre-gzipped man-pages and man-pages with multiple "."s in their name.
+  Closes bugs #6770, #6917
+  
   25 Aug 2002; Martin Schlemmer <azarah@gentoo.org> emerge: fixed an
-  indentation problem of the 'else:' at line 1304. Daniel PLEASE verify!!!
+  indentation problem of the 'else:' at line 1304. 
 
   20 Aug 2002; Daniel Robbins <drobbins@gentoo.org> emerge: removed stray
   "DEBUG:" output, closing bug #6732.
