@@ -650,25 +650,35 @@ for x in scanlist:
 		for mytype,mypos in [["DEPEND",len(missingvars)],["RDEPEND",len(missingvars)+1]]:
 			mykey=mytype+".bad"+suffix
 			myvalue=string.join(portage.db["/"]["porttree"].dbapi.aux_get(catdir+"/"+y,[ mytype ]))
-			mydep=portage.dep_check(myvalue,portage.db["/"]["porttree"].dbapi,repoman_settings,use="all",mode=matchmode)
-			if mydep[0]==1:
-				if mydep[1]!=[]:
-					#we have some unsolvable deps
-					#remove ! deps, which always show up as unsatisfiable
-					d=0
-					while d<len(mydep[1]):
-						if mydep[1][d][0]=="!":
-							del mydep[1][d]
-						else:
-							d += 1
-					#if we emptied out our list, continue:
-					if not mydep[1]:
-						continue
-					stats[mykey]=stats[mykey]+1
-					fails[mykey].append(x+"/"+y+".ebuild: "+repr(mydep[1]))
-			else:
-					stats[mykey]=stats[mykey]+1
-					fails[mykey].append(x+"/"+y+".ebuild: "+repr(mydep[1]))
+
+			for keyword in string.split(portage.db["/"]["porttree"].dbapi.aux_get(catdir+"/"+y,["KEYWORDS"])[0]):
+				if (keyword[0]=="-"):
+					continue
+				elif (keyword[0]=="~"):
+					portage.groups=[keyword[1:], keyword]
+				else:
+					portage.groups=[keyword]
+
+				mydep=portage.dep_check(myvalue,portage.db["/"]["porttree"].dbapi,repoman_settings,use="all",mode=matchmode)
+				if mydep[0]==1:
+					if mydep[1]!=[]:
+						#we have some unsolvable deps
+						#remove ! deps, which always show up as unsatisfiable
+						d=0
+						while d<len(mydep[1]):
+							if mydep[1][d][0]=="!":
+								del mydep[1][d]
+							else:
+								d += 1
+						#if we emptied out our list, continue:
+						if not mydep[1]:
+							continue
+						stats[mykey]=stats[mykey]+1
+						fails[mykey].append(x+"/"+y+".ebuild: "+keyword+" "+repr(mydep[1]))
+				else:
+						stats[mykey]=stats[mykey]+1
+						fails[mykey].append(x+"/"+y+".ebuild: "+keyword+" "+repr(mydep[1]))
+
 		if not os.system("egrep '\([^)]*\<die\>' "+checkdir+"/"+y+".ebuild >/dev/null 2>&1"):
 			stats["ebuild.nesteddie"]=stats["ebuild.nesteddie"]+1
 			fails["ebuild.nesteddie"].append(x+"/"+y+".ebuild")
