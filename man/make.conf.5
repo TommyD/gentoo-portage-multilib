@@ -62,9 +62,12 @@ Defaults to 5 seconds.
 .TP
 \fBAUTOCLEAN\fR = \fI["yes" | "no"]\fR
 Automatically cleans the system by removing outdated packages which will not
-remove functionalities or prevent your system from working.
+remove functionalities or prevent your system from working. On major ABI
+changes this may need to be set to off to ensure that the system can be
+rebuilt using the new libs before the old ones are removed. Downgrading with
+this option turned off may result in missing symlinks and an inoperable system.
 .br
-Defaults to no.
+Defaults to yes.
 .TP
 \fBUSE_ORDER\fR = \fI"env:conf:auto:defaults"\fR
 Determines precedence for incrementing the setting of the USE variable.

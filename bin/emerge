@@ -84,7 +84,11 @@ for x in tmpcmdline:
 	if x[0:1]=="-"and x[1:2]!="-":
 		for y in x[1:]:
 			if shortmapping.has_key(y):
-				cmdline.append(shortmapping[y])
+				if shortmapping[y] in cmdline:
+					print
+					print "*** Warning: Redundant use of",shortmapping[y]
+				else:
+					cmdline.append(shortmapping[y])
 			else:
 				print "!!! Error: -"+y+" is an invalid short action or option."
 				sys.exit(1)
@@ -782,7 +786,7 @@ class depgraph:
 							portage.portdb.findname(x[2]),
 							portage.db["/"]["vartree"].dep_bestmatch('/'.join(portage.catpkgsplit(x[2])[:2])),
 							x[2]
- 							))
+							))
 				else:
 					addl=" "+green("N")+"   "
 				if myoldbest:
@@ -790,10 +794,21 @@ class depgraph:
 					if myoldbest[-3:]=="-r0":
 						myoldbest=myoldbest[:-3]
 					myoldbest=blue("["+myoldbest+"]")
+
+				iuse=""
+				if "--verbose" in myopts:
+					for ebuild_iuse in string.split(portage.portdb.aux_get(x[2],["IUSE"])[0], " "):
+						try:
+							if (portage.usesplit.index(ebuild_iuse) >= 0) :
+								iuse=iuse+red("+"+ebuild_iuse)+" "
+						except ValueError:
+							if ebuild_iuse != "":
+								iuse=iuse+blue("-"+ebuild_iuse)+" "
+
 				if x[1]!="/":
-					print "["+x[0]+" "+addl+"]",darkgreen(x[2]),myoldbest,darkgreen("to "+x[1])
+					print "["+x[0]+" "+addl+"]",darkgreen(x[2]),myoldbest,darkgreen("to "+x[1]),iuse
 				else:
-					print "["+x[0]+" "+addl+"]",darkgreen(x[2]),myoldbest
+					print "["+x[0]+" "+addl+"]",darkgreen(x[2]),myoldbest,iuse
 
 			mysplit=portage.pkgsplit(x[2])
 			# XXX mysplit _can_ be None.... Why?
@@ -828,7 +843,10 @@ class depgraph:
  		next = '-'.join(portage.catpkgsplit(next)[1:])
  		if next.endswith('-r0'): next = next[:-3]
  		changelogpath = os.path.join(os.path.split(ebuildpath)[0],'ChangeLog')
- 		changelog = open(changelogpath).read()
+		try:
+	 		changelog = open(changelogpath).read()
+		except:
+			return []
  		divisions = self.find_changelog_tags(changelog)
  		#print 'XX from',current,'to',next
  		#for div,text in divisions: print 'XX',div
@@ -955,6 +973,8 @@ class depgraph:
 						emergelog(" >>> AUTOCLEAN: "+xsplit[0])
 						if not unmerge("clean", [xsplit[0]]):
 							emergelog(" --- AUTOCLEAN: Nothing unmerged.")
+
+					# Figure out if we need a restart.
 					mysplit=portage.pkgsplit(x[2])
 					if mysplit[0]=="sys-apps/portage":
 						myver=mysplit[1]+"-"+mysplit[2]
@@ -1282,7 +1302,7 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 			print "!!! /usr/bin/rsync does not exist, so rsync support is disabled."
 			print "!!! Type \"emerge net-misc/rsync\" to enable rsync support."
 			sys.exit(1)
-		mycommand="/usr/bin/rsync -rlptDvz --progress --stats --delete --delete-after --exclude='distfiles/*' --exclude='packages/*' "
+		mycommand="/usr/bin/rsync -rlptDvz --progress --stats --delete --delete-after --timeout=60 --exclude='distfiles/*' --exclude='packages/*' "
 		mycommand=mycommand+syncuri+"/* "+myportdir
 		print ">>> starting rsync with "+syncuri+"..."
 		#protect users that did not set a default umask
@@ -1298,6 +1318,10 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 			print ">>> Starting retry %d of %d"% (retries,maxretries)
 			retries=retries+1
 			exitcode=portage.spawn(mycommand,free=1)
+		if exitcode==30:
+			print "!!! Rsync has timed out while connecting. Please try again."
+			print
+			sys.exit(1)
 	elif syncuri[:6]=="cvs://":
 		if not os.path.exists("/usr/bin/cvs"):
 			print "!!! /usr/bin/cvs does not exist, so rsync support is disabled."

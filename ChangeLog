@@ -1,6 +1,32 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-2.0.46-r10 (14 Jan 2003): Feature/Function Cleanups
+
+  03 Feb 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Added
+  quotes to fallback checksum code to ensure it works on space-containing
+  filenames. Error message added in writedict. Worldfile-depleeting bug
+  fixed -- 'emerge -e world'+AUTOCLEAN would cause every package in world
+  to be removed from the worldfile to be removed.
+
+  03 Feb 2003; Nicholas Jones <carpaski@gentoo.org> make.conf: updated the
+  commentary about AUTOCLEAN.
+
+  03 Feb 2003; Nicholas Jones <carpaski@gentoo.org> etc-update: Added in
+  automerge functionality for trivial changes. Comments and whitespace
+  are just merged without asking when it's enabled.
+
+  03 Feb 2003; Nicholas Jones <carpaski@gentoo.org> emerge: redundant cmd
+  line flags warning. Show enabled/disabled USE flags on -vp (Masatomo
+  Nakano). Missing changelog fix for --changelog. Added an rsync timeout
+  of 60 seconds and a message on fail due to timeout.
+
+  03 Feb 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: CC/CXX fix
+  to override profile.env settings. FEATURES=distcc support to get past
+  profile.env's CC settings/lockdown. If CBUILD is defined, it is appended
+  to econf's output in a --build= statement. Added .unpacked marker to
+  the unpack code to ensure a proper unpack phase.
+
   01 Feb 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Adjusted
   the arch.list code to be a general masking setup. /etc/make.profile/
   and /etc/portage/ have use.mask files that are concatenated. On fetch,

@@ -97,7 +97,7 @@ except ImportError:
 			# Create non-prelinked temporary file to md5sum.
 			# Raw data is returned on stdout, errors on stderr.
 			# Non-prelinks are just returned.
-			os.system("cp "+filename+" "+prelink_tmpfile+" && /usr/sbin/prelink --undo "+prelink_tmpfile+" &>/dev/null")
+			os.system('cp "'+filename+'" '+prelink_tmpfile+" && /usr/sbin/prelink --undo "+prelink_tmpfile+" &>/dev/null")
 			myfilename=prelink_tmpfile
 
 		f = open(myfilename, 'rb')
@@ -536,11 +536,12 @@ def writeints(mydict,myfilename):
 	return 1
 
 def writedict(mydict,myfilename,writekey=1):
-	"""Writes out a dict to a file; writekey=0 mode doesn't write out the key and assumes all values are strings,
-	not lists."""
+	"""Writes out a dict to a file; writekey=0 mode doesn't write out
+	the key and assumes all values are strings, not lists."""
 	try:
 		myfile=open(myfilename,"w")
 	except IOError:
+		print "Failed to open file for writedict():",myfilename
 		return 0
 	if not writekey:
 		for x in mydict.values():
@@ -3445,7 +3446,7 @@ class dblink:
 						masked=len(pmpath)
 		return (protected > masked)
 
-	def unmerge(self,pkgfiles=None):
+	def unmerge(self,pkgfiles=None,trimworld=1):
 		if not pkgfiles:
 			print "No package files given... Grabbing a set."
 			pkgfiles=self.getcontents()
@@ -3623,29 +3624,30 @@ class dblink:
 		writedict(newvirts,self.myroot+"var/cache/edb/virtuals")
 	
 		#new code to remove stuff from the world file when it's unmerged.
-		worldlist=grabfile(self.myroot+"var/cache/edb/world")
-		mycpv=self.cat+"/"+self.pkg
-		mykey=cpv_getkey(mycpv)
-		newworldlist=[]
-		for x in worldlist:
-			if dep_getkey(x)==mykey:
-				matches=db[self.myroot]["vartree"].dbapi.match(x)
-				if not matches:
-					#zap our world entry
-					pass
-				elif (len(matches)==1) and (matches[0]==mycpv):
-					#zap our world entry
-					pass
+		if not trimworld:
+			worldlist=grabfile(self.myroot+"var/cache/edb/world")
+			mycpv=self.cat+"/"+self.pkg
+			mykey=cpv_getkey(mycpv)
+			newworldlist=[]
+			for x in worldlist:
+				if dep_getkey(x)==mykey:
+					matches=db[self.myroot]["vartree"].dbapi.match(x)
+					if not matches:
+						#zap our world entry
+						pass
+					elif (len(matches)==1) and (matches[0]==mycpv):
+						#zap our world entry
+						pass
+					else:
+						#others are around; keep it.
+						newworldlist.append(x)
 				else:
-					#others are around; keep it.
+					#this doesn't match the package we're unmerging; keep it.
 					newworldlist.append(x)
-			else:
-				#this doesn't match the package we're unmerging; keep it.
-				newworldlist.append(x)
-		myworld=open(self.myroot+"var/cache/edb/world","w")
-		for x in newworldlist:
-			myworld.write(x+"\n")
-		myworld.close()
+			myworld=open(self.myroot+"var/cache/edb/world","w")
+			for x in newworldlist:
+				myworld.write(x+"\n")
+			myworld.close()
 
 		#do original postrm
 		if myebuildpath and os.path.exists(myebuildpath):
@@ -3719,7 +3721,7 @@ class dblink:
 		print
 		if (oldcontents):
 			print ">>> Safely unmerging already-installed instance..."
-			self.unmerge(oldcontents)
+			self.unmerge(oldcontents,trimworld=0)
 			print ">>> original instance of package unmerged safely."	
 		# copy "info" files (like SLOT, CFLAGS, etc.) into the database
 		for x in listdir(inforoot):
@@ -4225,7 +4227,7 @@ def do_upgrade(mykey):
 	processed=1
 	#remove stale virtual entries (mappings for packages that no longer exist)
 	myvirts=grabdict("/var/cache/edb/virtuals")
-		
+	
 	worldlist=grabfile("/var/cache/edb/world")
 	myupd=grabfile(mykey)
 	for myline in myupd:

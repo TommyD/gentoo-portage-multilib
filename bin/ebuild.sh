@@ -154,7 +154,11 @@ use_enable() {
 
 #we need this next line for "die" and "assert"
 shopt -s expand_aliases
+OCC="$CC"
+OCXX="$CXX"
 source /etc/profile.env > /dev/null 2>&1
+export CC="$OCC"
+export CXX="$OCXX"
 export PATH="/sbin:/usr/sbin:/usr/lib/portage/bin:/bin:/usr/bin:${ROOTPATH}"
 if [ -e /etc/init.d/functions.sh ]
 then
@@ -268,6 +272,11 @@ then
 	addwrite ${CCACHE_DIR}
 fi
 
+if which distcc &>/dev/null && has distcc ${FEATURES}; then
+	export CC="distcc $CC"
+	export CXX="distcc $CXX"
+fi
+
 unpack() {
 	local x
 	local y
@@ -314,6 +323,9 @@ unpack() {
 
 econf() {
 	if [ -x ./configure ] ; then
+		if [ ! -z "${CBUILD}" ]; then
+			EXTRA_ECONF="--build=${CBUILD} ${EXTRA_ECONF}"
+		fi
 		./configure \
 		    --prefix=/usr \
 		    --host=${CHOST} \
@@ -472,6 +484,10 @@ dyn_unpack() {
 			echo ">>> ${EBUILD} has been updated; recreating WORKDIR..."
 			newstuff="yes"
 			rm -rf ${WORKDIR}
+		elif [ ! -f ${BUILDDIR}/.unpacked ]; then
+			echo ">>> Not marked as unpacked; recreating WORKDIR..."
+			newstuff="yes"
+			rm -rf ${WORKDIR}
 		fi
 	fi
 	if [ -e ${WORKDIR} ]
@@ -486,6 +502,7 @@ dyn_unpack() {
 	[ -d "$WORKDIR" ] && cd ${WORKDIR}
 	echo ">>> Unpacking source..."
 	src_unpack
+	touch ${BUILDDIR}/.unpacked
 	#|| abort_unpack "fail"
 	echo ">>> Source unpacked."
 	cd $BUILDDIR

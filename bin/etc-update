@@ -42,10 +42,20 @@ function scan() {
 				fi
 			done
 			[ ! -f ${file} ] && continue
+
+
 			if [[ "${ofile:10}" != "${rfile:10}" ]] || 
 			   [[ ${opath} != ${rpath} ]]; then
-				if [[ -z `diff -Nua ${rpath}/${rfile} ${rpath}/${rfile:10}|
-						  grep "^[+-][^+-]"|grep -v '# .Header:.*'` ]]; then
+				MATCHES=0
+				if [[ "${EU_AUTOMERGE}" == "yes" ]]; then
+					diff -Bbua ${rpath}/${rfile} ${rpath}/${rfile:10} | egrep '^[+-]' | egrep -v '^[+-][\t ]*#|^--- |^\+\+\+ ' | egrep -qv '^[-+][\t ]*$'
+					MATCHES=$?
+				elif [[ -z `diff -Nua ${rpath}/${rfile} ${rpath}/${rfile:10}|
+							  grep "^[+-][^+-]"|grep -v '# .Header:.*'` ]]; then
+					MATCHES=1
+				fi
+				if [[ "${MATCHES}" == "1" ]]; then
+					echo "Automerging trivial changes in: ${rfile:10}"
 					mv ${rpath}/${rfile} ${rpath}/${rfile:10}
 					continue
 				else
@@ -57,6 +67,7 @@ function scan() {
 					continue
 				fi
 			fi
+
 			if [[ -z `diff -Nua ${rpath}/${rfile} ${rpath}/${ofile}|
 					  grep "^[+-][^+-]"|grep -v '# .Header:.*'` ]]; then
 				mv ${rpath}/${rfile} ${rpath}/${ofile}
@@ -289,6 +300,7 @@ CONFIG_PROTECT="$(python -c 'import portage;print portage.settings["CONFIG_PROTE
 CONFIG_PROTECT_MASK="$(python -c 'import portage;print portage.settings["CONFIG_PROTECT_MASK"]')"
 
 # load etc-config's configuration
+EU_AUTOMERGE=`get_config eu_automerge`
 rm_opts=`get_config rm_opts`
 mv_opts=`get_config mv_opts`
 cp_opts=`get_config cp_opts`
