@@ -1018,23 +1018,23 @@ class depgraph:
 
 			mysplit=portage.pkgsplit(x[2])
 			# XXX mysplit _can_ be None.... Why?
-			if mysplit and (len(mysplit)==3) and ("--emptytree" not in myopts):
-				if mysplit[0]=="sys-apps/portage":
-					if mysplit[1]+"-"+mysplit[2]!=portage.VERSION:
-						if mylist.index(x)<len(mylist)-1:
-							print red("*** Portage will stop merging at this point and reload itself,")
-							print red("    recalculate dependancies, and complete the merge.")
-							if "--update" not in myopts:
-								print darkgreen("    You may avoid the remerging of packages by updating portage on its own.")
+			if mysplit and (len(mysplit)==3):
+				if "--emptytree" not in myopts:
+					if mysplit[0]=="sys-apps/portage":
+						if mysplit[1]+"-"+mysplit[2]!=portage.VERSION:
+							if mylist.index(x)<len(mylist)-1:
+								print red("*** Portage will stop merging at this point and reload itself,")
+								print red("    recalculate dependancies, and complete the merge.")
+								if "--update" not in myopts:
+									print darkgreen("    You may avoid the remerging of packages by updating portage on its own.")
+								print
+				else:
+					if mysplit[0]=="sys-apps/portage" and ("--emptytree" in myopts):
+						if mysplit[1]+"-"+mysplit[2]!=portage.VERSION:
+							print red("***")+" Please update portage to the above version before proceeding."
+							print "    Failure to do so may result in failed or improper merges."
+							print "    A simple '"+green("emerge -u portage")+"' is sufficient."
 							print
-			else:
-				if mysplit[0]=="sys-apps/portage" and ("--emptytree" in myopts):
-					if mysplit[1]+"-"+mysplit[2]!=portage.VERSION:
-						print red("***")+" Please update portage to the above version before proceeding."
-						print "    Failure to do so may result in failed or improper merges."
-						print "    A simple '"+green("emerge -u portage")+"' is sufficient."
-						print
-			mysplit=0
 			del mysplit
 
  		if "--changelog" in myopts:

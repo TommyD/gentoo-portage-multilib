@@ -3,17 +3,23 @@
 
 *portage-2.0.46 (18 Dec 2002): Feature Stable Release Prelink + Bug Fixes
 
+  18 Dec 2002; Nicholas Jones <carpaski@gentoo.org> portage.py, emerge:
+  Traceback fix for blocking packages in the restart check in emerge. Added
+  missing import for commands in portage.py.
+
+*portage-2.0.46 (18 Dec 2002): Feature Stable Release Prelink + Bug Fixes
+
   18 Dec 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
-	PRELINK_MASK adds ignore paths for prelink.conf. Error message
-	adjustments for appearance/readability. auxdbkey changes.
+  PRELINK_MASK adds ignore paths for prelink.conf. Error message
+  adjustments for appearance/readability. auxdbkey changes.
 
   18 Dec 2002; Nicholas Jones <carpaski@gentoo.org> emerge:
-	--changelog displays changelogs of packages on update. gcc version
-	fix for --version. Missing indent in masked output corrected. Some
-	color additions. Prelink code removed -- Users can do it instead.
+  --changelog displays changelogs of packages on update. gcc version
+  fix for --version. Missing indent in masked output corrected. Some
+  color additions. Prelink code removed -- Users can do it instead.
 
   18 Dec 2002; Nicholas Jones <carpaski@gentoo.org> ebuild.sh:
-	use_{enable,with}() work now. Rearranged auxdbkeys again.
+  use_{enable,with}() work now. Rearranged auxdbkeys again.
 	
   17 Dec 2002; Martin Schlemmer <azarah@gentoo.org> bin/ebuild.sh:
   Regenerate /lib/cpp and /usr/bin/cc in pkg_setup if they are not

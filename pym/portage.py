@@ -2,13 +2,13 @@
 # Copyright 1998-2002 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
 
-VERSION="2.0.46_pre1"
+VERSION="2.0.46"
 
 from stat import *
 from commands import *
 from select import *
 from output import *
-import string,os,types,sys,shlex,shutil,xpak,fcntl,signal,time,missingos,cPickle,atexit,grp,traceback
+import string,os,types,sys,shlex,shutil,xpak,fcntl,signal,time,missingos,cPickle,atexit,grp,traceback,commands
 
 #Secpass will be set to 1 if the user is root or in the wheel group.
 uid=os.getuid()
