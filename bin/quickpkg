@@ -1,0 +1,32 @@
+#!/bin/bash
+# This script tries to quickly create a gentoo binary package using the
+#
+#   /var/db/pkg/class-app/app/*  files
+#
+# Resulting tbz2 file will be created in /usr/portage/packages/All/
+#
+# Run this script as ROOT
+#
+# Comments or questions to tchan@enteract.com
+# Copyright (C) 2001 - Terry Chan.  GNU GPL
+#
+if [ -z $1 ]; then
+  echo "QUICKPKG ver 1.0"
+  echo "Example Usage:  quickpkg /var/db/pkg/net-www/prozilla-1.3.6/"
+  exit 1
+fi
+PF=`cat $1/PF`
+MYDIR="/tmp/portage/${PF}"
+rm -r ${MYDIR}/temp
+mkdir -p ${MYDIR}/temp
+cp $1/* ${MYDIR}/temp
+cut -f 2 -d " " $1/CONTENTS >${MYDIR}/filelist
+tar cjvf ${MYDIR}/bin.tar.bz2 --files-from=${MYDIR}/filelist --no-recursion
+rm ${MYDIR}/temp/CONTENTS
+xpak ${MYDIR}/temp ${MYDIR}/inf.xpak
+tbz2tool join ${MYDIR}/bin.tar.bz2 ${MYDIR}/inf.xpak ${MYDIR}/${PF}.tbz2
+[ -d /usr/portage/packages/All ] ||  mkdir -p /usr/portage/packages/All
+mv ${MYDIR}/${PF}.tbz2 /usr/portage/packages/All
+rm ${MYDIR}/temp/*
+rm ${MYDIR}/bin.tar.bz2 ${MYDIR}/inf.xpak ${MYDIR}/filelist
+
