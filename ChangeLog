@@ -7,6 +7,12 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+*portage-2.0.51 (20 Oct 2004): Everyone loves finding bugs in stable!
+
+  20 Oct 2004; Nicholas Jones <carpaski@gentoo.org> emerge: Fixed the result
+	checking when ebuilds are called -- this removes the continuing-after failure
+	big discovered by AMD64 today.
+
   20 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> emerge: Fixed a bug where
   users were warned against emerging by path when a file/dir exists of the
   same name of the package to be merged. #68372  Added an warning with delay
