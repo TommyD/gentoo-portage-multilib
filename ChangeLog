@@ -7,6 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  25 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> emerge: Fixed the space/tab
+  usage through the spinner_msgs definition. Removed COMPILER from emerge info
+  output.
+
   25 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> portage.py: Converted
   config.pkeywordsdict from {atom:[keyword]} to {cp:{atom:[keyword]}} to
   prevent a lot of unnecessary calculation.
