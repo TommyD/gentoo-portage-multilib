@@ -57,7 +57,7 @@ def spawn_sandbox(mycommand,uid=None,opt_name=None,**keywords):
 		raise
 	except:
 		pass
-	return spawn(args,uid=uid,**keywords)
+	return spawn(args,uid=uid,opt_name=opt_name,**keywords)
 
 # base spawn function
 def spawn(mycommand,env={},opt_name=None,fd_pipes=None,returnpid=False,uid=None,gid=None,groups=None,umask=None,logfile=None,path_lookup=True):

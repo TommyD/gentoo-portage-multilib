@@ -8,6 +8,9 @@
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
 
+  12 Oct 2003; Brian Harring <ferringb@gentoo.org> portage_exec.py: spawn_sandbox
+  wasn't passing the opt_name down to spawn, it now does.
+
   11 Oct 2004; Jason Stubbs; <jstubbs@gentoo.org> emerge: Reverted back to
   previous command line parsing code as --search options were being mishandled.
 
