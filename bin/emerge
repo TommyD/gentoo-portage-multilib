@@ -1051,9 +1051,19 @@ class depgraph:
 			elif x[-7:]==".ebuild":
 				x = os.path.realpath(x)
 				mykey=os.path.basename(os.path.normpath(x+"/../.."))+"/"+os.path.basename(x)[:-7]
-				if os.path.realpath(portage.db["/"]["porttree"].dbapi.findname(mykey)) != x:
-					print red("\n*** You need to adjust PORTDIR or PORTDIR_OVERLAY to emerge this package.\n")
-					sys.exit(1)
+				ebuild_path = portage.db["/"]["porttree"].dbapi.findname(mykey)
+				if ebuild_path:
+				        if os.path.realpath(ebuild_path) != x:
+				                print red("\n*** You need to adjust PORTDIR or PORTDIR_OVERLAY to emerge this package.\n")
+				                sys.exit(1)
+				        if mykey not in portage.db["/"]["porttree"].dbapi.xmatch("match-visible", portage.dep_getkey(mykey)):
+				                print red("\n*** You are emerging a masked package. It is MUCH better to use")
+				                print red("*** /etc/portage/package.* to accomplish this. See portage(5) man")
+				                print red("*** page for details.")
+				                countdown(EMERGE_WARNING_DELAY, "Continuing...")
+				else:
+				        print red("\n*** "+x+" does not exist")
+				        sys.exit(1)
 				if not self.create(["ebuild",portage.root,mykey],None,"--onlydeps" not in myopts):
 					return (0,myfavorites)
 				elif not "--oneshot" in myopts:
@@ -2499,7 +2509,13 @@ def unmerge(unmerge_action, unmerge_files):
 	candidate_catpkgs=[]
 	global_unmerge=0
 	
-	syslist = getlist("system")
+	realsyslist = getlist("system")
+	syslist = []
+	for x in realsyslist:
+		mycp = portage.dep_getkey(x)
+		if mycp in portage.settings.virtuals:
+			syslist.extend(portage.settings.virtuals[mycp])
+		syslist.append(mycp)
 	
 	global myopts	
 	mysettings = portage.config(clone=portage.settings)
@@ -3193,7 +3209,7 @@ elif "info"==myaction:
 	myvars.sort()
 	
 	for x in myvars:
-		if portage.isvalidatom(x):
+		if portage.portage_dep.isvalidatom(x):
 			pkg_matches = portage.db["/"]["vartree"].dbapi.match(x)
 			pkgs = ""
 			for y in pkg_matches:

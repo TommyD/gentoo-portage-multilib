@@ -7,6 +7,12 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  06 Mar 2005; Jason Stubbs <jstubbs@gentoo.org> bin/emerge: Added a check
+  to make sure the file exists before working with it, when called with an
+  ebuild path. #84102  Fixed the invalid call to isvalidatom() #84144
+  Expanded syslist during the unmerge phase so that all packages listed in
+  system are correctly checked and warned against.  #83670
+
   02 Mar 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Fixed a
   var substitution that caused installed virtuals to not be considered.
 
