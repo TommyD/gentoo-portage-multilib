@@ -427,8 +427,8 @@ econf() {
 		fi
 		
 		# if the profile defines a location to install libs to aside from default, pass it on.
-		if [ ! -z "${ECONF_LIBDIR}" ]; then
-			EXTRA_ECONF="--libdir=/usr/${ECONF_LIBDIR} ${EXTRA_ECONF}"
+		if [ ! -z "${CONF_LIBDIR}" ]; then
+			EXTRA_ECONF="--libdir=/usr/${CONF_LIBDIR} ${EXTRA_ECONF}"
 		fi
 		
 		echo ./configure \
@@ -458,6 +458,9 @@ econf() {
 }
 
 einstall() {
+	if [ ! -z "${CONF_LIBDIR}" ]; then
+		EXTRA_EINSTALL="libdir=${D}/usr/${CONF_LIBDIR} ${EXTRA_EINSTALL}"
+	fi
 	if [ -f ./[mM]akefile -o -f ./GNUmakefile ] ; then
 		if [ ! -z "${PORTAGE_DEBUG}" ]; then
 			make -n prefix=${D}/usr \
@@ -466,6 +469,7 @@ einstall() {
 				localstatedir=${D}/var/lib \
 				mandir=${D}/usr/share/man \
 				sysconfdir=${D}/etc \
+				${EXTRA_EINSTALL} \
 				"$@" install
 		fi
 		make prefix=${D}/usr \
@@ -474,6 +478,7 @@ einstall() {
 			localstatedir=${D}/var/lib \
 			mandir=${D}/usr/share/man \
 			sysconfdir=${D}/etc \
+			${EXTRA_EINSTALL} \
 			"$@" install || die "einstall failed"
 	else
 		die "no Makefile found"
@@ -857,29 +862,36 @@ dyn_compile() {
 	touch .compiled
 	cd build-info
 
-	echo "$ASFLAGS"     > ASFLAGS
-	echo "$CBUILD"      > CBUILD
-	echo "$CC"          > CC
-	echo "$CDEPEND"     > CDEPEND
-	echo "$CFLAGS"      > CFLAGS
-	echo "$CHOST"       > CHOST
-	echo "$CXX"         > CXX
-	echo "$CXXFLAGS"    > CXXFLAGS
-	echo "$DEPEND"      > DEPEND
-	echo "$IUSE"        > IUSE
-	echo "$PKGUSE"      > PKGUSE
-	echo "$LDFLAGS"     > LDFLAGS
-	echo "$LIBCFLAGS"   > LIBCFLAGS
-	echo "$LIBCXXFLAGS" > LIBCXXFLAGS
-	echo "$LICENSE"     > LICENSE
-	echo "$CATEGORY"    > CATEGORY
-	echo "$PDEPEND"     > PDEPEND
-	echo "$PF"          > PF
-	echo "$PROVIDE"     > PROVIDE
-	echo "$RDEPEND"     > RDEPEND
-	echo "$SLOT"        > SLOT
-	echo "$USE"         > USE
-	set | bzip2 -9 -    > environment.bz2
+	echo "$ASFLAGS"        > ASFLAGS
+	echo "$CBUILD"         > CBUILD
+	echo "$CC"             > CC
+	echo "$CDEPEND"        > CDEPEND
+	echo "$CFLAGS"         > CFLAGS
+	echo "$CHOST"          > CHOST
+	echo "$CXX"            > CXX
+	echo "$CXXFLAGS"       > CXXFLAGS
+	echo "$DEPEND"         > DEPEND
+	echo "$EXTRA_ECONF"    > EXTRA_ECONF
+	echo "$EXTRA_EINSTALL" > EXTRA_EINSTALL
+	echo "$EXTRA_ECONF"    > EXTRA_EMAKE
+	echo "$IUSE"           > IUSE
+	echo "$PKGUSE"         > PKGUSE
+	echo "$LDFLAGS"        > LDFLAGS
+	echo "$LIBCFLAGS"      > LIBCFLAGS
+	echo "$LIBCXXFLAGS"    > LIBCXXFLAGS
+	echo "$LICENSE"        > LICENSE
+	echo "$CATEGORY"       > CATEGORY
+	echo "$PDEPEND"        > PDEPEND
+	echo "$PF"             > PF
+	echo "$PROVIDE"        > PROVIDE
+	echo "$RDEPEND"        > RDEPEND
+	echo "$SLOT"           > SLOT
+	echo "$USE"            > USE
+
+	set                                         >  environment
+	export -p | sed 's:declare -rx:declare -x:' >> environment
+	bzip2 -9 environment
+
 	cp "${EBUILD}" "${PF}.ebuild"
 	if hasq nostrip $FEATURES $RESTRICT; then
 		touch DEBUGBUILD

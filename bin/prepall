@@ -8,7 +8,10 @@ prepallinfo
 prepallstrip
 
 #this should help to ensure that all (most?) shared libraries are executable
-for i in "${D}"opt/*/lib "${D}"lib "${D}"usr/lib "${D}"usr/X11R6/lib ; do
+for i in "${D}"opt/*/lib{,32,64} \
+         "${D}"lib{,32,64}       \
+         "${D}"usr/lib{,32,64}   \
+         "${D}"usr/X11R6/lib{,32,64} ; do
 	[ ! -d "${i}" ] && continue
 
 	for j in "${i}"/*.so.* "${i}"/*.so ; do

@@ -3,10 +3,15 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
+if [ -z "${CONF_LIBDIR}" ]; then
+	# we need this to default to lib so that things dont break
+	CONF_LIBDIR="lib"
+fi
+
 if [ -z "$1" ] ; then
-	z="${D}usr/lib"
+	z="${D}usr/${CONF_LIBDIR}"
 else
-	z="${D}$1/lib"
+	z="${D}$1/${CONF_LIBDIR}"
 fi
 
 if [ -d "${z}" ] ; then

@@ -1,17 +1,22 @@
 #!/bin/bash
 # $Header$
 
+if [ -z "${CONF_LIBDIR}" ]; then
+	# we need this to default to lib so that things dont break
+	CONF_LIBDIR="lib"
+fi
+
 if [ ${#} -lt 1 ] ; then
 	echo "${0}: at least one argument needed"
 	exit 1
 fi
-if [ ! -d "${D}${DESTTREE}/lib" ] ; then
-	install -d "${D}${DESTTREE}/lib"
+if [ ! -d "${D}${DESTTREE}/${CONF_LIBDIR}" ] ; then
+	install -d "${D}${DESTTREE}/${CONF_LIBDIR}"
 fi
 
 for x in "$@" ; do
 	if [ -e "${x}" ] ; then
-		install ${LIBOPTIONS} "${x}" "${D}${DESTTREE}/lib"
+		install ${LIBOPTIONS} "${x}" "${D}${DESTTREE}/${CONF_LIBDIR}"
 	else
 		echo "${0}: ${x} does not exist"
 	fi

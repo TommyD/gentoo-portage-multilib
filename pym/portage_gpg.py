@@ -54,7 +54,7 @@ class FileChecker:
 			if keydir:
 				pathname = keydir + "/" + keyring
 			if not os.path.isfile(pathname):
-				raise portage_exception.FileNotFound, "keyring: %s" % pathname
+				raise portage_exception.FileNotFound, "keyring missing: %s (dev.gentoo.org/~carpaski/gpg/)" % pathname
 
 		keyringPath = keydir+"/"+keyring
 
@@ -118,10 +118,6 @@ class FileChecker:
 	
 		if signal:
 			raise SignalCaught, "Signal: %d" % (signal)
-	
-		if False and filename == "/usr/portage/sys-apps/portage/Manifest":
-			print filename, result
-			print output
 	
 		trustLevel     = UNTRUSTED
 		if result == 0:

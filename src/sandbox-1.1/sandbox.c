@@ -323,9 +323,17 @@ setenv_sandbox_write(char *home_dir, char *portage_tmp_dir, char *var_tmp_dir,
 		strcat(sandbox_write_var, ":");
 		strcat(sandbox_write_var, "/usr/lib/conftest");
 		strcat(sandbox_write_var, ":");
+		strcat(sandbox_write_var, "/usr/lib32/conftest");
+		strcat(sandbox_write_var, ":");
+		strcat(sandbox_write_var, "/usr/lib64/conftest");
+		strcat(sandbox_write_var, ":");
 		strcat(sandbox_write_var, "/usr/tmp/cf");
 		strcat(sandbox_write_var, ":");
 		strcat(sandbox_write_var, "/usr/lib/cf");
+		strcat(sandbox_write_var, ":");
+		strcat(sandbox_write_var, "/usr/lib32/cf");
+		strcat(sandbox_write_var, ":");
+		strcat(sandbox_write_var, "/usr/lib64/cf");
 		strcat(sandbox_write_var, ":");
 		if (NULL == portage_tmp_dir) {
 			strcat(sandbox_write_var, tmp_dir);
@@ -387,6 +395,12 @@ setenv_sandbox_predict(char *home_dir)
 		strcat(sandbox_predict_var, "/usr/lib/python2.2/");
 		strcat(sandbox_predict_var, ":");
 		strcat(sandbox_predict_var, "/usr/lib/python2.3/");
+		strcat(sandbox_predict_var, ":");
+		strcat(sandbox_predict_var, "/usr/lib/python2.4/");
+		strcat(sandbox_predict_var, ":");
+		strcat(sandbox_predict_var, "/usr/lib/python2.5/");
+		strcat(sandbox_predict_var, ":");
+		strcat(sandbox_predict_var, "/usr/lib/python3.0/");
 		setenv(ENV_SANDBOX_PREDICT, sandbox_predict_var, 1);
 	}
 }

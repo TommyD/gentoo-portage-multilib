@@ -43,8 +43,8 @@ CONFIG_MEMORY_FILE      = PRIVATE_PATH + "/config"
 
 INCREMENTALS=["USE","FEATURES","ACCEPT_KEYWORDS","ACCEPT_LICENSE","CONFIG_PROTECT_MASK","CONFIG_PROTECT","PRELINK_PATH","PRELINK_PATH_MASK"]
 incrementals=["USE","FEATURES","ACCEPT_KEYWORDS","ACCEPT_LICENSE","CONFIG_PROTECT_MASK","CONFIG_PROTECT","PRELINK_PATH","PRELINK_PATH_MASK"]
-STICKIES=["KEYWORDS_ACCEPT","USE","CFLAGS","CXXFLAGS","MAKEOPTS","EXTRA_ECONF","EXTRA_EMAKE"]
-stickies=["KEYWORDS_ACCEPT","USE","CFLAGS","CXXFLAGS","MAKEOPTS","EXTRA_ECONF","EXTRA_EMAKE"]
+STICKIES=["KEYWORDS_ACCEPT","USE","CFLAGS","CXXFLAGS","MAKEOPTS","EXTRA_ECONF","EXTRA_EINSTALL","EXTRA_EMAKE"]
+stickies=["KEYWORDS_ACCEPT","USE","CFLAGS","CXXFLAGS","MAKEOPTS","EXTRA_ECONF","EXTRA_EINSTALL","EXTRA_EMAKE"]
 
 
 
@@ -5187,20 +5187,21 @@ class portdbapi(dbapi):
 		else:
 			self.mysettings = config(clone=settings)
 
-		self.manifestVerifyLevel = None
-		self.manifestVerifier    = None
-		self.manifestCache       = {}    # {location: [stat, md5]}
+		self.manifestVerifyLevel  = None
+		self.manifestVerifier     = None
+		self.manifestCache        = {}    # {location: [stat, md5]}
+		self.manifestMissingCache = []
 
 		if "gpg" in self.mysettings.features:
 			self.manifestVerifyLevel   = portage_gpg.EXISTS
 			if "strict" in self.mysettings.features:
 				self.manifestVerifyLevel = portage_gpg.MARGINAL
-				self.manifestVerifier = portage_gpg.FileChecker(porttree_root+"/metadata", "gentoo.gpg", minimumTrust=self.manifestVerifyLevel)
+				self.manifestVerifier = portage_gpg.FileChecker(self.mysettings["PORTAGE_GPG_DIR"], "gentoo.gpg", minimumTrust=self.manifestVerifyLevel)
 			elif "severe" in self.mysettings.features:
 				self.manifestVerifyLevel = portage_gpg.TRUSTED
-				self.manifestVerifier = portage_gpg.FileChecker(porttree_root+"/metadata", "gentoo.gpg", requireSignedRing=True, minimumTrust=self.manifestVerifyLevel)
+				self.manifestVerifier = portage_gpg.FileChecker(self.mysettings["PORTAGE_GPG_DIR"], "gentoo.gpg", requireSignedRing=True, minimumTrust=self.manifestVerifyLevel)
 			else:
-				self.manifestVerifier = portage_gpg.FileChecker(porttree_root+"/metadata", "gentoo.gpg", minimumTrust=self.manifestVerifyLevel)
+				self.manifestVerifier = portage_gpg.FileChecker(self.mysettings["PORTAGE_GPG_DIR"], "gentoo.gpg", minimumTrust=self.manifestVerifyLevel)
 
 		#self.root=settings["PORTDIR"]
 		self.porttree_root = porttree_root
@@ -5334,7 +5335,9 @@ class portdbapi(dbapi):
 				if ("severe" in self.mysettings.features):
 					raise
 				if ("strict" in self.mysettings.features):
-					writemsg("!!! WARNING: Missing signature in: %s\n" % (myManifestPath))
+					if myManifestPath not in self.manifestMissingCache:
+						writemsg("!!! WARNING: Missing signature in: %s\n" % (myManifestPath))
+						self.manifestMissingCache.insert(0,myManifestPath)
 
 		if mylocation not in self.auxdb:
 			self.auxdb[mylocation] = {}

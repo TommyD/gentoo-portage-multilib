@@ -8,7 +8,25 @@
     3. /etc/portage/profile/virtuals is _USER_ configs only.
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
+
+*portage-2.0.51_pre18 (16 Aug 2004): Fixes and Public Readiness & GPG
   
+  16 Aug 2004; Nicholas Jones <carpaski@gentoo.org> dolib*: Added LV's
+  CONF_LIBDIR patch to help out the 32/64 bit lib migrations.
+	
+  16 Aug 2004; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: CONF_LIBDIR
+  patch updates. Added a possible fix for the export issues in environment.
+
+  16 Aug 2004; Nicholas Jones <carpaski@gentoo.org> prepall/lib: CONF_LIBDIR
+
+  16 Aug 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Adjusted the
+  manifest/gpg code to reduce the output on missing sigs. Changed the GPG
+  homedir to the PORTAGE_GPG_DIR instead of using rsync for the keyring --
+  This requires manual intervention.
+
+  16 Aug 2004; Nicholas Jones <carpaski@gentoo.org> sandbox: Added the 32/64
+  paths in for 32/64 lib migrations.
+
   16 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/cvstree.py 
   pym/portage.py: Round #2 of ignorecvs, now w/ sane regex goodness and an 
   addition to digest(gen|check) to use the same cvs filter for Manifests.
