@@ -1,6 +1,18 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-2.0.47_pre1 (21 Dec 2002): Feature: userpriv compiles
+
+  21 Dec 2002; Nicholas Jones <carpaski@gentoo.org> *:
+  ebuild.sh: portage user setup. dyn_setup is always run before calls to
+  unpack,compile,install. emerge: infodirs cleanup, traceback on invalid
+  dir fix. Proper regen on info change. portage.py: uid/gid discovery and
+  check code. PRELINK_PATH and PRELINK_PATH_MASK added and renamed. Made
+  HOME set to BUILD_PREFIX when HOME is unset. Patched in UserPriv compile
+  code and checks and complaints to ensure smooth integration. Reorganized
+  chown calls to ensure things get set right for userpriv and not. Sandbox:
+  UID check to prevent non-root errors patched in.
+
 *portage-2.0.46-r2 (18 Dec 2002): Feature Stable Release Prelink + Bug Fixes
 
   18 Dec 2002; Nicholas Jones <carpaski@gentoo.org> portage.py, emerge:

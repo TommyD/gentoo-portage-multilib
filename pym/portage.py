@@ -2,13 +2,13 @@
 # Copyright 1998-2002 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
 
-VERSION="2.0.46"
+VERSION="2.0.47_pre1"
 
 from stat import *
 from commands import *
 from select import *
 from output import *
-import string,os,types,sys,shlex,shutil,xpak,fcntl,signal,time,missingos,cPickle,atexit,grp,traceback,commands
+import string,os,types,sys,shlex,shutil,xpak,fcntl,signal,time,missingos,cPickle,atexit,grp,traceback,commands,pwd
 
 #Secpass will be set to 1 if the user is root or in the wheel group.
 uid=os.getuid()
@@ -24,7 +24,20 @@ except KeyError:
 	print "Please fix this so that Portage can operate correctly (It's normally GID 10)"
 	pass
 
-incrementals=["USE","FEATURES","ACCEPT_KEYWORDS","ACCEPT_LICENSE","CONFIG_PROTECT_MASK","CONFIG_PROTECT"]
+#Discover the uid and gid of the portage user/group
+try:
+	portage_uid=pwd.getpwnam("portage")[2]
+	portage_gid=grp.getgrnam("portage")[2]
+except KeyError:
+	portage_uid=0
+	portage_gid=0
+	print
+	print red("portage: 'portage' user or group missing. Please update baselayout")
+	print red("         and merge portage user(250) and group(250) into your passwd")
+	print red("         and group files. Non-root compilation is disabled until then.")
+	print
+
+incrementals=["USE","FEATURES","ACCEPT_KEYWORDS","ACCEPT_LICENSE","CONFIG_PROTECT_MASK","CONFIG_PROTECT","PRELINK_PATH","PRELINK_PATH_MASK"]
 stickies=["KEYWORDS_ACCEPT","USE","CFLAGS","CXXFLAGS","MAKEOPTS","EXTRA_ECONF","EXTRA_EMAKE"]
 
 def getcwd():
@@ -58,15 +71,12 @@ def listdir(path):
 		dircache[path] = mtime, list
 	return list
 
-
 prelink_capable=0
 try:
 	import fchksum
 	def perform_checksum(filename, calc_prelink=prelink_capable):
 		if calc_prelink and prelink_capable:
 			# Create non-prelinked temporary file to md5sum.
-			# Raw data is returned on stdout, errors on stderr.
-			# Non-prelinks are just returned.
 			prelink_tmpfile="/tmp/portage-prelink.tmp"
 			os.system("cp "+filename+" "+prelink_tmpfile+" && /usr/sbin/prelink --undo "+prelink_tmpfile+" &>/dev/null")
 			retval = fchksum.fmd5t(prelink_tmpfile)
@@ -127,8 +137,9 @@ def exithandler(foo,bar):
 	os.kill(0,signal.SIGKILL)
 	sys.exit(1)
 
+# dropping the signal handler to gives better tracebacks
+# enable unless we're debugging
 if not os.environ.has_key("DEBUG"):
-	#turn off signal handler to get better tracebacks
 	signal.signal(signal.SIGINT,exithandler)
 
 def tokenize(mystring):
@@ -307,7 +318,7 @@ def env_update(makelinks=1):
 			continue
 		pos=pos+1
 
-	specials={"KDEDIRS":[],"PATH":[],"CLASSPATH":[],"LDPATH":[],"MANPATH":[],"INFODIR":[],"INFOPATH":[],"ROOTPATH":[],"CONFIG_PROTECT":[],"CONFIG_PROTECT_MASK":[],"PRELINK_MASK":[]}
+	specials={"KDEDIRS":[],"PATH":[],"CLASSPATH":[],"LDPATH":[],"MANPATH":[],"INFODIR":[],"INFOPATH":[],"ROOTPATH":[],"CONFIG_PROTECT":[],"CONFIG_PROTECT_MASK":[],"PRELINK_PATH":[],"PRELINK_PATH_MASK":[]}
 	env={}
 
 	for x in fns:
@@ -322,7 +333,7 @@ def env_update(makelinks=1):
 		# process PATH, CLASSPATH, LDPATH
 		for myspec in specials.keys():
 			if myconfig.has_key(myspec):
- 				if myspec in ["LDPATH","PATH","PRELINK_MASK"]:
+ 				if myspec in ["LDPATH","PATH","PRELINK_PATH","PRELINK_PATH_MASK"]:
 					specials[myspec].extend(string.split(varexpand(myconfig[myspec]),":"))
 				else:
 					specials[myspec].append(varexpand(myconfig[myspec]))
@@ -363,9 +374,11 @@ def env_update(makelinks=1):
 	
 		for x in ["/bin","/sbin","/usr/bin","/usr/sbin","/lib","/usr/lib"]:
 			newprelink.write("-l "+x+"\n");
-		for x in specials["LDPATH"]+specials["PATH"]:
+		for x in specials["LDPATH"]+specials["PATH"]+specials["PRELINK_PATH"]:
+			if not x:
+				continue
 			plmasked=0
-			for y in specials["PRELINK_MASK"]:
+			for y in specials["PRELINK_PATH_MASK"]:
 				if y[-1]!='/':
 					y=y+"/"
 				if y==x[0:len(y)]:
@@ -877,12 +890,12 @@ class config:
 		mydict={}
 		for x in self.keys(): 
 			mydict[x]=self[x]
-		if not mydict.has_key("HOME") and mydict.has_key("PORTAGE_TMPDIR"):
-			print "*** HOME not set. Setting to",mydict["PORTAGE_TMPDIR"]
-			mydict["HOME"]=mydict["PORTAGE_TMPDIR"]
+		if not mydict.has_key("HOME") and mydict.has_key("BUILD_PREFIX"):
+			print "*** HOME not set. Setting to",mydict["BUILD_PREFIX"]
+			mydict["HOME"]=mydict["BUILD_PREFIX"]
 		return mydict
 	
-def spawn(mystring,debug=0,free=0):
+def spawn(mystring,debug=0,free=0,droppriv=0):
 	"""spawn a subprocess with optional sandbox protection, 
 	depending on whether sandbox is enabled.  The "free" argument,
 	when set to 1, will disable sandboxing.  This allows us to 
@@ -897,19 +910,34 @@ def spawn(mystring,debug=0,free=0):
 	mypid=os.fork()
 	if mypid==0:
 		myargs=[]
+		if droppriv and portage_gid and portage_uid:
+			#drop root privileges, become the 'portage' user
+			os.setgid(portage_gid)
+			os.setuid(portage_uid)
+			settings["HOME"]=settings["BUILD_PREFIX"]
+			settings["BASH_ENV"]=settings["HOME"]+"/.bashrc"
+		else:
+			if droppriv:
+				print "portage: Unable to drop root for",mystring
+				if free and ("sandbox" in features):
+					print "portage: Enabling sandbox."
+					free=0
+			settings["HOME"]="/root"
+			settings["BASH_ENV"]=settings["HOME"]+"/.bashrc"
+
 		if ("sandbox" in features) and (not free):
 			mycommand="/usr/lib/portage/bin/sandbox"
 			myargs=["["+settings["PF"]+"] sandbox",mystring]
 		else:
 			mycommand="/bin/bash"
 			if debug:
-				myargs=["bash","-x","-c",mystring]
+				myargs=["["+settings["PF"]+"] bash","-x","-c",mystring]
 			else:
-				myargs=["bash","-c",mystring]
+				myargs=["["+settings["PF"]+"] bash","-c",mystring]
+
 		os.execve(mycommand,myargs,settings.environ())
 		# If the execve fails, we need to report it, and exit
-		# *carefully*
-		# report error here
+		# *carefully* --- report error here
 		os._exit(1)
 		sys.exit(1)
 		return # should never get reached
@@ -1128,6 +1156,21 @@ def digestcheck(myarchives):
 			print ">>> md5 ;-)",x
 	return 1
 
+# parse actionmap to spawn ebuild with the appropriate args
+def spawnebuild(mydo,actionmap,debug,alwaysdep=0):
+	if alwaysdep or ("noauto" not in features):
+		# process dependency first
+		if "dep" in actionmap[mydo].keys():
+			retval=spawnebuild(actionmap[mydo]["dep"],actionmap,debug,alwaysdep)
+			if retval:
+				return retval
+	# spawn ebuild.sh
+	mycommand="/usr/sbin/ebuild.sh "
+	return spawn(mycommand + mydo,debug,
+				actionmap[mydo]["args"][0],
+				actionmap[mydo]["args"][1]
+	)
+
 # "checkdeps" support has been deprecated.  Relying on emerge to handle it.
 def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 	global settings
@@ -1176,12 +1219,18 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 	settings["BUILDDIR"]=settings["BUILD_PREFIX"]+"/"+settings["PF"]
 
 	try:
-		if not os.path.exists(settings["BUILDDIR"]) and mydo!="depend":
-			os.makedirs(settings["BUILDDIR"])
-		# Should be ok again to set $T, as sandbox do not depend on it
-		settings["T"]=settings["BUILDDIR"]+"/temp"
-		if not os.path.exists(settings["T"]) and mydo!="depend":
-			os.makedirs(settings["T"])
+		if mydo!="depend":
+			if not os.path.exists(settings["BUILD_PREFIX"]):
+				os.makedirs(settings["BUILD_PREFIX"])
+			if not os.path.exists(settings["BUILDDIR"]):
+				os.makedirs(settings["BUILDDIR"])
+			# Should be ok again to set $T, as sandbox do not depend on it
+			settings["T"]=settings["BUILDDIR"]+"/temp"
+			if not os.path.exists(settings["T"]) and mydo!="depend":
+				os.makedirs(settings["T"])
+			os.chown(settings["BUILD_PREFIX"],portage_uid,portage_gid)
+			os.chown(settings["BUILDDIR"],portage_uid,portage_gid)
+			os.chown(settings["T"],portage_uid,portage_gid)
 	except OSError, e:
 		print "!!! File system problem. (ReadOnly?)"
 		print "!!!"+str(e)
@@ -1263,22 +1312,21 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 		return 1
 	
 	#initial dep checks complete; time to process main commands
-	
-	actionmap={	"unpack":"setup unpack", 
-				"compile":"setup unpack compile",
-				"install":"setup unpack compile install",
-				"rpm":"setup unpack compile install rpm"
-				}
+
+	actionmap={	  
+			  "setup": {                 "args":(1,0)},  # no sandbox, as root
+			 "unpack": {"dep":"setup",   "args":(0,1)},  # w/ sandbox, as portage
+			"compile": {"dep":"unpack",  "args":(1,1)},  # no sandbox, as portage
+			"install": {"dep":"compile", "args":(0,0)},  # w/ sandbox, as root
+			    "rpm": {"dep":"install", "args":(0,0)},  # w/ sandbox, as root
+	}
 	if mydo in actionmap.keys():	
-		if "noauto" in features:
-			return spawn("/usr/sbin/ebuild.sh "+mydo,debug)
-		else:
-			return spawn("/usr/sbin/ebuild.sh "+actionmap[mydo],debug)
+		return spawnebuild(mydo,actionmap,debug)
 	elif mydo=="qmerge": 
 		#qmerge is specifically not supposed to do a runtime dep check
 		return merge(settings["CATEGORY"],settings["PF"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot)
 	elif mydo=="merge":
-		retval=spawn("/usr/sbin/ebuild.sh setup unpack compile install")
+		retval=spawnebuild("install",actionmap,debug,1)
 		if retval: return retval
 		return merge(settings["CATEGORY"],settings["PF"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot,myebuild=settings["EBUILD"])
 	elif mydo=="package":

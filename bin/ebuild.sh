@@ -104,6 +104,11 @@ use_enable() {
 	fi
 }
 
+if [ `id -nu` == "portage" ] ; then
+	export CCACHE_DIR=${HOME}/.ccache
+	export USER=portage
+fi
+
 #we need this next line for "die" and "assert"
 shopt -s expand_aliases
 source /etc/profile.env > /dev/null 2>&1
@@ -819,6 +824,8 @@ debug-print() {
 		
 		# default target
 		[ -n "$T" ] && echo $1 >> ${T}/eclass-debug.log
+		# let the portage user own/write to this file
+		[ -n "$T" ] && chown portage.portage ${T}/eclass-debug.log
 		
 		shift
 	done
@@ -954,10 +961,12 @@ do
 		fi
 		if [ "$PORTAGE_DEBUG" = "0" ]
 		then
+			dyn_setup
 			dyn_${myarg}
 			#Allow non-zero return codes since they can be caused by &&
 		else
 			set -x
+			dyn_setup
 			dyn_${myarg}
 			#Allow non-zero return codes since they can be caused by &&
 			set +x

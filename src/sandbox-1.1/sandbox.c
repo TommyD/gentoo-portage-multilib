@@ -546,11 +546,16 @@ int main(int argc, char** argv)
       exit(1);
     }
 
-    /* Our r+ also will create the file if it doesn't exist */
-    preload_file=file_open("/etc/ld.so.preload", "r+", 1, 0644);
-    if (-1 == preload_file) {
-      preload_adaptable = 0;
-/*      exit(1);*/
+    if (getuid() == 0) {
+            /* Our r+ also will create the file if it doesn't exist */
+            preload_file=file_open("/etc/ld.so.preload", "r+", 1, 0644);
+            if (-1 == preload_file) {
+              preload_adaptable = 0;
+              /*      exit(1);*/
+            }
+    } else {
+            /* avoid permissions warnings if we're not root */
+            preload_adaptable = 0;
     }
 
 #ifdef USE_LD_SO_PRELOAD

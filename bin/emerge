@@ -1384,24 +1384,32 @@ def post_emerge(retval=0):
 	emergelog(" *** exiting successfully.")
 	root=portage.root
 
+	infodirs=[]
+	infodirs.extend(string.split(portage.settings["INFOPATH"], ":"))
+	infodirs.extend(string.split(portage.settings["INFODIR"], ":"))
+
 	if os.path.exists("/usr/bin/install-info"):
-		for z in string.split(portage.settings["INFOPATH"]+":"+portage.settings["INFODIR"], ":"):
+		regen=0
+		for z in infodirs:
+			if z=='':
+				continue
 			inforoot=root+z
 			if os.path.isdir(inforoot):
 				try:
 					infomtime=os.stat(inforoot)[ST_MTIME]
 				except:
 					infomtime=0
-				regen=1
 
-			if not portage.mtimedb.has_key("info"):
-				portage.mtimedb["info"]={}
-			if portage.mtimedb["info"].has_key(inforoot):
-				if portage.mtimedb["info"][inforoot]==infomtime:
-					regen=0
+				if not portage.mtimedb.has_key("info"):
+					portage.mtimedb["info"]={}
+				if portage.mtimedb["info"].has_key(inforoot):
+					if portage.mtimedb["info"][inforoot]==infomtime:
+						pass
+					else:
+						portage.mtimedb["info"][inforoot]=0
+						regen+=1
 				else:
-					portage.mtimedb["info"][inforoot]=0
-
+					regen+=1
 
 		if not regen:
 			print " "+green("*")+" GNU info directory index is up-to-date."
@@ -1410,7 +1418,9 @@ def post_emerge(retval=0):
 
 			icount=0
 			badcount=0
-			for z in string.split(portage.settings["INFOPATH"]+":"+portage.settings["INFODIR"], ":"):
+			for z in infodirs:
+				if z=='':
+					continue
 				inforoot=root+z
 				if portage.mtimedb["info"].has_key(inforoot):
 					if portage.mtimedb["info"][inforoot]!=0:
