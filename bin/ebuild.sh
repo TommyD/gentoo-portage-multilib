@@ -480,6 +480,13 @@ dyn_compile() {
 	#our custom version of libtool uses $S and $D to fix
 	#invalid paths in .la files
 	export S D
+	#some packages uses an alternative to $S to build in, cause
+	#our libtool to create problematic .la files
+	export PWORKDIR="$WORKDIR"
+	#some users have $TMPDIR to a custom dir in thier home ...            
+	#this will cause sandbox errors with some ./configure            
+	#scripts, so set it to $T.
+	export TMPDIR="${T}"
     src_compile 
 	cd ${BUILDDIR}
     touch .compiled
@@ -541,6 +548,9 @@ dyn_install() {
 	#our custom version of libtool uses $S and $D to fix
 	#invalid paths in .la files
 	export S D
+	#some packages uses an alternative to $S to build in, cause
+	#our libtool to create problematic .la files
+	export PWORKDIR="$WORKDIR"
 	#some users have $TMPDIR to a custom dir in thier home ...            
 	#this will cause sandbox errors with some ./configure            
 	#scripts, so set it to $T.
