@@ -60,20 +60,28 @@ CFLAGS="-O2 -mcpu=i686 -pipe"
 # C++ Compiler flags
 CXXFLAGS=${CFLAGS}
 
-#Debug build -- if defined, binaries won't be stripped
+# Debug build -- if defined, binaries won't be stripped
 #DEBUG=true
 
-#Default locations for KDE 2/3; do not change unless you know what you're doing
-#and have read the docs
+# Default locations for KDE 2/3; do not change unless you know what you're doing
+# and have read the docs
 KDE2DIR="/usr/kde/2"
 KDE3DIR="/usr/kde/3"
 
-#Default maintainer options
+# Default maintainer options
 MAINTAINER_DEFAULT="digest sandbox noclean noauto"
 
-#By default output colored text where possible, set to "true" to output only
+# By default output colored text where possible, set to "true" to output only
 #black&white text
 NOCOLOR="false"
 
-#By default wait 5 secs before unmerging a package
-UNMERGE_DELAY="5"
+# By default wait 5 secs before cleaning a package
+CLEAN_DELAY="5"
+
+# This specifies which package cleaning mode will be ran automatically after
+# the merging of new packages, the possible options are
+# false       : don't remove anything automatically
+# oldrevs     : remove old revisions of each package
+# oldversions : remove old versions of each package
+# oldslots    : remove old binary compatibility slots of each package
+AUTO_CLEAN="oldrevs"

@@ -22,26 +22,34 @@ actions=["--clean",
 	"--search",
 	"--update"]
 options=["--autoclean",
+	"--all",
 	"--buildpkg",
 	"--debug",
+	"--emptytree",
 	"--fetchonly",
 	"--noreplace",
 	"--onlydeps",
 	"--pretend",
+	"--slots",
 	"--usepkg",
-	"--verbose"]
+	"--verbose",
+	"--versions"]
 shortmapping={"a":"--autoclean",
 	"b":"--buildpkg",
 	"c":"--clean",
 	"d":"--debug",
+	"e":"--emptytree",
 	"f":"--fetchonly",
 	"h":"--help",
+	"i":"--versions",
 	"k":"--usepkg",
+	"l":"--all",
 	"n":"--noreplace",
 	"o":"--onlydeps",
 	"p":"--pretend",
 	"r":"--rebuild",
 	"s":"--search",
+	"t":"--slots",
 	"u":"--update",
 	"v":"--verbose"}
 modes=["rsync","config","system","world"]
@@ -302,6 +310,11 @@ class depgraph:
 		#the following is so we have an empty vartree (used in emerge update calculations)
 		self.emptytree=portage.vartree("/",virts,self.db["/"]["vartree"])
 		self.emptytree.tree={}
+		if "--emptytree" in myopts:
+			print "Running in empty tree mode"
+			self.db["/"]["vartree"].tree=self.emptytree.tree
+			self.db["/"]["vartree"].populated=1
+			self.db["/"]["vartree"].inject("virtual/glibc-1.0")
 		self.outdatedpackages=[]
 	def create(self,mybigkey,myparent=None,addme=1):
 		"""creates the actual digraph of packages to merge.  return 1 on success, 0 on failure
@@ -645,9 +658,26 @@ elif "--help"==myaction:
 		print
 		print turquoise("Actions:")
 		print "       "+green("--clean")+" "+green("-c")
-		print "              removes an installed package. the arguments can be in two"
-		print "              different formats : /var/db/pkg/category/package-version"
-		print "              or category/package."
+		print "              removes an installed package. the arguments can be in several"
+		print "              different formats : /var/db/pkg/category/package-version,"
+		print "              category/package, system or world"
+ 		print "              A few examples of the second format:"
+		print "              "+bold("binutils")+" matches"
+		print "                  binutils-2.11.90.0.7 and binutils-2.11.92.0.12.3-r1"
+		print "              "+bold(">binutils-2.11.90.0.7")+" matches"
+		print "                  binutils-2.11.92.0.12.3-r1"
+		print "              "+bold("sys-devel/binutils")+" matches"
+		print "                  binutils-2.11.90.0.7 and binutils-2.11.92.0.12.3-r1"
+		print "              "+bold("sys-devel/binutils-2.11.90.0.7")+" matches"
+		print "                  binutils-2.11.90.0.7"
+		print "              "+bold(">sys-devel/binutils-2.11.90.0.7")+" matches"
+		print "                  binutils-2.11.92.0.12.3-r1"
+		print "              "+bold(">=sys-devel/binutils-2.11.90.0.7")+" matches"
+		print "                  binutils-2.11.90.0.7 and binutils-2.11.92.0.12.3-r1"
+		print "              "+bold("<sys-devel/binutils-2.11.92.0.12.3-r1")+" matches"
+		print "                  binutils-2.11.90.0.7"
+		print "              "+bold("<=sys-devel/binutils-2.11.92.0.12.3-r1")+" matches"
+		print "                  binutils-2.11.90.0.7 and binutils-2.11.92.0.12.3-r1"
 		print
 		print "       "+green("--help")+" "+green("-h")
 		print "              displays this help, an additional mode specifier provides"
@@ -674,6 +704,12 @@ elif "--help"==myaction:
 		print "                  list all available packages "
 		print
 		print turquoise("Options:")
+		print "       "+green("--all")+" "+green("-l")
+ 		print "              complements the --clean action to make sure that all"
+		print "              installed versions of an application will be unmerged."
+		print "              Beware, this will remove every instance of the package"
+		print "              from your disc."
+		print
 		print "       "+green("--autoclean")+" "+green("-a")
 		print "              emerge normally cleans out the package-specific temporary"
 		print "              build directory before it starts the building a package.  With"
@@ -694,6 +730,12 @@ elif "--help"==myaction:
 		print "              causing it to output verbose debug information print to stdout."
 		print "              --debug is great for finding bash syntax errors."
 		print
+		print "       "+green("--emptytree")+" "+green("-e")
+		print "              Virtually tweaks the tree of installed packages to only contain"
+		print "              glibc, this is great to use together with --pretend. This makes"
+		print "              it possible for developers to get a complete overview of the"
+		print "              complete dependency tree of a certain package."
+		print
 		print "       "+green("--fetchonly")+" "+green("-f")
 		print "              Instead of doing any package building, just perform fetches for"
 		print "              all packages (main package as well as all dependencies.)"
@@ -707,7 +749,7 @@ elif "--help"==myaction:
 		print "              ebuilds and tbz2s *would* have been installed if --pretend"
 		print "              weren't used.  Using --pretend is strongly recommended before"
 		print "              installing an unfamiliar package.  In the printout, N = new,"
-		print "              U = upgrading, R = replacing"
+		print "              U = upgrading, R = replacing."
 		print
 		print "       "+green("--noreplace")+" "+green("-n")
 		print "              Skip the packages specified on the command-line that have"
@@ -715,6 +757,11 @@ elif "--help"==myaction:
 		print "              ebuilds, or deps you specify on on the command-line *will* cause"
 		print "              Portage to remerge the package, even if it is already installed."
 		print "              Note that Portage will never remerge dependencies automatically."
+		print
+		print "       "+green("--slots")+" "+green("-t")
+ 		print "              complements the --clean action to remove packages that are part"
+ 		print "              part of old binary compatibility slots. This will only keep one"
+ 		print "              version of a particular package installed."
 		print
 		print "       "+green("--usepkg")+" "+green("-k")
 		print "              tell emerge to use binary packages (from $PKGDIR) if they are"
@@ -727,6 +774,11 @@ elif "--help"==myaction:
 		print "       "+green("--verbose")+" "+green("-v")
 		print "              Tell emerge to run in verbose mode.  Currently, this causes"
 		print "              emerge to print out GNU info errors, if any."
+		print
+		print "       "+green("--versions")+" "+green("-v")
+ 		print "              complements the --clean action to remove old versions of packages"
+		print "              This will only keep one version of a particular package installed"
+		print "              within each binary compatibility slot."
 		print 
 	elif "rsync" in mymode:
 		print
@@ -814,7 +866,7 @@ elif "--search"==myaction:
 
 # CLEAN action
 elif "--clean"==myaction:
-	if not myfiles:
+	if not myfiles and not "world" in mymode and not "system" in mymode:
 		print
 		print "No packages to unmerge have been provided."
 		print
@@ -826,60 +878,128 @@ elif "--clean"==myaction:
 		var_path=portage.root+"var/db/pkg"
 		# process all arguments, verify if they can be resolved to an installed
 		# ebuild file and add the absolute paths of these ebuild to a list
-		for x in myfiles:
-
-			# an absolute path has been given
-			if (x[0]=='/'):
-				path_parts=split(x, '/')
-				if len(path_parts) != 6:
-					print "When providing an absolute path it should be"
-					print "in the following format : "+var_path+"/category/package"
-					print "The path '"+x+"' doesn't respect this."
-					sys.exit(1)
-				elif not os.path.exists(x):
-					print "The path '"+x+"' doesn't exist."
-					sys.exit(1)
-				elif -1 == find(x, var_path):
-					print "The path '"+x+"' didn't commence with '"+var_path+"'."
-					sys.exit(1)
-				else:
-					# check if the SLOT file is present, and get the package version
-					# from the PF file in that case
-					package_slot_path=strip(x)+"/SLOT"
-					package_pf_path=strip(x)+"/PF"
-					if os.path.exists(package_pf_path):
-						package_pf_file=open(package_pf_path)
-						package_pf=package_pf_file.readline().strip()
-						package_pf_file.close()
-					else:
-						package_pf=path_parts[5]
-					full_path=strip(x)+"/"+package_pf+".ebuild"
-					if not os.path.exists(full_path):
-						print "The ebuild '"+full_path+"' couldn't be found."
-						print "Your portage installation tree seems to be corrupted."
-					else:
-						path_parts=split(full_path, "/")
-						full_ebuild_paths[full_path]=path_parts[4]+"/"+package_pf
-
-			# a category and package name have been given
+		if "world" in mymode or "system" in mymode:
+			if "--all" in myopts and not "--pretend" in myopts:
+				print "Thanks to the carefulnes of the Gentoo Linux developers,"
+				print "you were preserved from having erased your entire system."
+				print green("emerge --clean --all")+" can't be used with "+red("world")+" or "+red("system")+"."
+				print
 			else:
+				mymatches=[]
 				localtree=portage.vartree(portage.root)	
-				mymatches=localtree.dep_match(x)
-				# if no matches were found, try again by adding a '=' dep symbol if no
-				# dep symbols are already present
-				if not mymatches and x[0] not in ('<','>','=','~'):
-					mymatches=localtree.dep_match("="+x)
-
+				if "world" in mymode:
+					for y in localtree.getallnodes():
+						mymatches.extend(localtree.dep_match(y))
+				elif "system" in mymode:
+					for y in getsyslist():
+						mymatches.extend(localtree.dep_match(y))
+	
 				# only loops over the matches if they were found
 				if mymatches:
 					for package in mymatches:
-						myfullpaths=localtree.getebuildpaths(package)
-						for full_path in myfullpaths :
+						full_path=localtree.getebuildpath(package)
+						if os.path.exists(full_path):
+							full_package_paths[full_path]=package
+
+		else:
+			for x in myfiles:
+	
+				# an absolute path has been given
+				if (x[0]=='/'):
+					path_parts=split(x, '/')
+					if len(path_parts) != 6:
+						print "When providing an absolute path it should be"
+						print "in the following format : "+var_path+"/category/package"
+						print "The path '"+x+"' doesn't respect this."
+						sys.exit(1)
+					elif not os.path.exists(x):
+						print "The path '"+x+"' doesn't exist."
+						sys.exit(1)
+					elif -1 == find(x, var_path):
+						print "The path '"+x+"' didn't commence with '"+var_path+"'."
+						sys.exit(1)
+					else:
+						full_path=strip(x)+"/"+path_parts[5]+".ebuild"
+						if not os.path.exists(full_path):
+							print "The ebuild '"+full_path+"' couldn't be found."
+							print "Your portage installation tree seems to be corrupted."
+						else:
+							full_ebuild_paths[full_path]=path_parts[4]+"/"+path_parts[5]
+	
+				# a category and package name have been given
+				else:
+					localtree=portage.vartree(portage.root)	
+					mymatches=localtree.dep_match(x)
+					# if no matches were found, try again by adding a '=' dep symbol if no
+					# dep symbols are already present
+					if not mymatches and x[0] not in ('<','>','=','~'):
+						mymatches=localtree.dep_match("="+x)
+	
+					# only loops over the matches if they were found
+					if mymatches:
+						for package in mymatches:
+							full_path=localtree.getebuildpath(package)
 							if not os.path.exists(full_path):
 								print "The ebuild '"+full_path+"' couldn't be found."
 								print "Your portage installation tree seems to be corrupted."
 							else:
 								full_package_paths[full_path]=package
+
+		# if the --all switch was not specified, remove the latest version of each package set
+		# to make sure that the system stays running
+		if not "--all" in myopts:
+			if len(full_package_paths) > 0:
+				latest_ebuilds={}
+				# determine the latest installed packages of each cat/pkg key
+				full_paths_keys=full_package_paths.keys()
+				# sort the ebuild paths
+				full_paths_keys.sort()
+				previous_package_set=None
+				for full_path in full_paths_keys:
+					# construct the key that will be used to determine when a new package set
+					# is being processed, the package slot is taken into account for this
+					package_parts=portage.pkgsplit(full_package_paths[full_path])
+					
+					# construct the package slot, even if it was an old package without slot support
+					slot_path=dirname(full_path)+"/SLOT"
+					if os.path.exists(slot_path):
+						slot_file=open(slot_path)
+						package_slot=slot_file.readline().strip()
+						slot_file.close()
+					else:
+						package_slot=package_parts[1]
+						
+					# by default the package sets are specified to remove only old revisions
+					# but by taking slots into account
+					# when the --versions option is specified, all previous versions within the same slot are removed too
+					# when the --slots option is specified, all previous slots are removed too
+					if "--slots" in myopts:
+						package_set=package_parts[0]
+					elif "--versions" in myopts:
+						package_set=package_parts[0]+"-"+package_slot
+					else:
+						package_set=package_parts[0]+"-"+package_parts[1]+"-"+package_slot
+					
+					# create initial latest ebuild information for the current package set if it
+					# doesn't exists yet
+					if not latest_ebuilds.has_key(package_set):
+						latest_ebuilds[package_set]=["",0]
+					# get the latest modification time of this package version, which should correspond to
+					# the time when it when installed
+					contents_path=dirname(full_path)+"/CONTENTS"
+					contents_mtime=os.stat(contents_path)[8]
+					# update the latest modified package version
+					if contents_mtime > latest_ebuilds[package_set][1]:
+						latest_ebuilds[package_set]=[full_path,contents_mtime]
+					# if a new package set is being processed, remove the latest version of the previous package set
+					if previous_package_set and previous_package_set!=package_set and latest_ebuilds[previous_package_set][0]:
+						del full_package_paths[latest_ebuilds[previous_package_set][0]]
+					# update which package set has just been processed
+					previous_package_set=package_set
+					
+				# remove the latest version of the last processed package set
+				if latest_ebuilds[package_set][0]:
+					del full_package_paths[latest_ebuilds[package_set][0]]
 
 		full_paths=full_ebuild_paths.keys()
 		full_paths.extend(full_package_paths.keys())
@@ -903,11 +1023,9 @@ elif "--clean"==myaction:
 				path_parts=split(full_path, "/")
 				print "    "+path_parts[4]+"/"+path_parts[5]
 
-			if "--pretend" in myopts:
-				print
-			else:
-				if portage.settings["UNMERGE_DELAY"]:
-					secs=string.atoi(portage.settings["UNMERGE_DELAY"])
+			if not "--pretend" in myopts:
+				if portage.settings["CLEAN_DELAY"]:
+					secs=string.atoi(portage.settings["CLEAN_DELAY"])
 				else:
 					secs=5
 				if secs > 0:

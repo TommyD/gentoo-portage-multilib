@@ -1800,6 +1800,9 @@ class vartree(packagetree):
 		else:
 			self.root=root
 		packagetree.__init__(self,virtual,clone)
+	def getebuildpath(self,fullpackage):
+		cat,package=fullpackage.split("/")
+		return self.root+"var/db/pkg/"+fullpackage+"/"+package+".ebuild"
 	def populate(self):
 		"populates the local tree (/var/db/pkg)"
 		prevmask=os.umask(0)
