@@ -2240,7 +2240,11 @@ class dblink:
 				if os.listdir(obj):
 					print "--- !empty","dir", obj
 					continue
-				os.rmdir(obj)
+				try:
+					os.rmdir(obj)
+				except OSError:
+					#We couldn't remove the dir; maybe it's immutable?
+					pass
 				print "<<<       ","dir",obj
 			elif pkgfiles[obj][0]=="sym":
 				if not os.path.islink(obj):
@@ -2270,7 +2274,11 @@ class dblink:
 				if myppath:
 					print "--- cfg   ","sym",obj
 					continue
-				os.unlink(obj)
+				try:
+					os.unlink(obj)
+				except OSError:
+					#immutable?
+					pass
 				print "<<<       ","sym",obj
 			elif pkgfiles[obj][0]=="obj":
 				if not os.path.isfile(obj):
@@ -2298,7 +2306,10 @@ class dblink:
 				if myppath:
 					print "--- cfg   ","obj",obj
 				else:
-					os.unlink(obj)
+					try:
+						os.unlink(obj)
+					except OSError:
+						pass		
 					print "<<<       ","obj",obj
 			elif pkgfiles[obj][0]=="fif":
 				if not isfifo(obj):
@@ -2320,7 +2331,10 @@ class dblink:
 				if myppath:
 					print "--- cfg   ","fif",obj
 					continue
-				os.unlink(obj)
+				try:
+					os.unlink(obj)
+				except OSError:
+					pass
 				print "<<<       ","fif",obj
 			elif pkgfiles[obj][0]=="dev":
 				print "---       ","dev",obj

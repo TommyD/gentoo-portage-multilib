@@ -1,9 +1,16 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
-*portage-1.8.9_pre22 (08 Mar 2002)
+  07 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: We no longer
+  depend upon a file being unmerged.  We try to unlink during unmerge() in a
+  "try" clause, with an exception for OSError.  If the directory is immutable
+  then Portage continues gracefully.  This closes a bug reported by Verwilst --
+  unmerging an old baselayout would die when it tried to delete /dev/shm.
+  Fixed in Portage to eliminate these kinds of problems in the future.
 
-  08 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: I had
+*portage-1.8.9_pre22 (07 Mar 2002)
+
+  07 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: I had
   sys.exit() in doebuild()'s fetch section.  Converted to "return 1" and
   "return 0" to be emerge --fetchonly friendly.  Thanks to Dan Armak for the
   bug report.
