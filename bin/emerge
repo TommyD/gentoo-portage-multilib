@@ -1195,6 +1195,9 @@ elif "--update"==myaction or not myaction:
 					mytype="ebuild"
 					mykey=os.path.basename(os.path.abspath(mypkg+"/../.."))+"/"+os.path.basename(mypkg)[:-7]
 				else:
+					package_parts=portage.pkgsplit(mypkg)
+					if package_parts:
+						mypkg=package_parts[0]
 					mykey=""
 					if "--usepkg" in myopts:
 						mykey=mydepgraph.db[portage.root]["bintree"].dep_bestmatch(mypkg)

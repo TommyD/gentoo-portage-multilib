@@ -1,6 +1,14 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+  16 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge :
+  added support for 'emerge cat/pkg-version' instead of always having to
+  require 'emerge cat/pkg'
+  
+  15 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge :
+  reimplemented the display of cleaned packages to clearly show all versions
+  that are about to be removed and which versions are going to stay  
+
   13 Feb 2002; D.Robbins <drobbins@gentoo.org> emerge :
   added --emptytree option
 

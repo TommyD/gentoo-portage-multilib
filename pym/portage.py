@@ -92,7 +92,7 @@ categories=("app-i18n", "app-admin", "app-arch", "app-cdr", "app-crypt",
 "net-libs", "net-mail", "net-misc", "net-news", "net-nds", "net-print",
 "net-www", "packages", "sys-apps", "sys-devel", "sys-kernel", "sys-libs",
 "x11-base", "x11-libs", "x11-misc", "x11-terms", "x11-wm", "virtual",
-"dev-tcltk")
+"dev-tcltk", "theleaf-www", "theleaf-desktop")
 
 def tokenize(mystring):
 	"""breaks a string like 'foo? (bar) oni? (blah (blah))' into embedded lists; returns None on paren mismatch"""
