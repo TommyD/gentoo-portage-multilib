@@ -161,6 +161,12 @@ Defaults to false.
 This variable defines the directory in which per-ebuild logs are kept.
 Logs are created only when this is set and writable.
 .TP
+\fBPORTAGE_NICENESS\fR = \fI[number]\fR
+The value of this variable will be added to the current nice level that 
+emerge is running at.  In other words, this will not set the nice level, 
+it will increment it.  For more information about nice levels and what 
+are acceptable ranges, see \fBnice\fR(1).
+.TP
 \fBPORTAGE_TMPDIR\fR = \fI[path]\fR
 Defines the location of the temporary build directories.
 .br
