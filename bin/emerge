@@ -1158,7 +1158,11 @@ elif "search"==myaction:
 		searchinstance = search()
 		for mysearch in myfiles:
 			searchinstance.setKey(mysearch)
-			searchinstance.execute()
+			try:
+				searchinstance.execute()
+			except re.error, comment:
+				print "!!! Regular expression error in \"%s\": %s" % ( mysearch, comment )
+				sys.exit(1)
 			searchinstance.output()
 elif "inject"==myaction:
 	for x in myfiles:
