@@ -162,8 +162,8 @@ for x in cmdline:
 			elif x[2:] in actions:
 				if x[2:]=="rsync" or x=="rsync":
 					print
-					print red("*** 'rsync' has been deprecated.")
-					print red("*** Please use 'sync' instead.")
+					print red("*** '--rsync' has been deprecated.")
+					print red("*** Please use '--sync' instead.")
 					print
 					x="--sync"
 				if myaction:
@@ -182,7 +182,10 @@ for x in cmdline:
 		if x not in ["system", "world"]:
 			#print red("*** Deprecated use of action '"+x+"'")
 			if x=="rsync":
-				#print red("***   Please use '--sync' instead.")
+				print
+				print red("*** 'rsync' has been deprecated.")
+				print red("*** Please use '--sync' instead.")
+				print
 				x="sync"
 			#else:
 				#print red("***   Please use '--"+x+"' instead.")
