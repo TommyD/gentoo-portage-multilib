@@ -2,6 +2,38 @@
 # Copyright 2000-2004 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+*portage-2.0.51_pre4 (25 Apr 2003): Big cleanups & Ebuild QA Stuff.
+
+  25 Apr 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Creation of
+  a great number of 'constants' that were hard coded in various places and
+  now are created in a cascaded style, for the most part. Exception handling
+  for the loading of modules added along with verbose messages about the
+  exception being handled for user info. PRIVATE_PATH is a new constant that
+  points to the new directory we will be using for portage internal data --
+  It is a secure directory that only group portage may write, read, and scan.
+  PORTAGE_CACHEDIR is deprecated -- The real cache directory is FHS and is a
+  constant -- The dep cache is named specifically now as 'PORTAGE_DEPCACHEDIR'.
+  
+  **Changed the stacking functions** so they are quite a bit more sane -- They
+  still need a little help though -- stack_* functions are now used to stack
+  specific types instead of using grab_stacked "super functions" -- The naming
+  is a little rough but intelligable.
+  
+  **VIRTUALS modification** The /var/cache/edb/virtuals file is unnecessary
+  as portage now loads the provides from the vartree itself. /etc/portage
+  may have a virtuals file that stacks on top of the var and profile virtuals.
+  This also entails the removal of the virtual-file handling code (yay!).
+
+  25 Apr 2004; Nicholas Jones <carpaski@gentoo.org> emerge: Fix for the name
+  change for PORTAGE_CACHEDIR to PORTAGE_DEPCACHEDIR.
+
+  25 Apr 2004; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Added checks
+  to ensure that use flags are properly mentioned in IUSE. Adjusted the QA
+  Interceptors (function overrides for common app names) to make sure they
+  don't interfere in weird cases -- Relying on 'type -p' now. Eclasses are
+  checked for illegal inheritance modes (conditional-based). Increased the
+  cache lines for an entry -- Added 'PROVIDE' and 8 empties.
+
   22 Apr 2004; Marius Mauch <genone@gentoo.org> bin/repoman:
   added a CVS Header check to repoman
 

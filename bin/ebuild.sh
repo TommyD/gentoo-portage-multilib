@@ -102,6 +102,12 @@ useq() {
 		neg=1
 	fi
 	local x
+	
+	# Make sure we have this USE flag in IUSE
+	if ! hasq "${u}" ${IUSE} && ! hasq "${u}" ${PORTAGE_ARCHLIST}; then
+		echo "QA Notice: USE Flag '${u}' not in IUSE for ${CATEGORY}/${PF}" >&2
+	fi
+
 	for x in ${USE}; do
 		if [ "${x}" == "${u}" ]; then
 			if [ ${neg} -eq 1 ]; then
@@ -158,30 +164,52 @@ portageq() {
 	/usr/lib/portage/bin/portageq "$@"
 }
 
+
+
+
+# ----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
+
+# QA INTERCEPTORS
+
+# ----
+if [ "${EBUILD_PHASE}" == "depend" ]; then
+# ----
+
 function java-config() {
 	[ "${EBUILD_PHASE}" == "depend" ] && echo "QA Notice: java-config in global scope: ${CATEGORY}/$PF" >&2
-	`type -p which &>/dev/null && which java-config 2>/dev/null || echo "portageq"` "$@"
+	`type -p java-config || echo "missing: java-config` "$@"
 }
 
 function python-config() {
 	[ "${EBUILD_PHASE}" == "depend" ] && echo "QA Notice: java-config in global scope: ${CATEGORY}/$PF" >&2
-	`type -p which &>/dev/null && which python-config 2>/dev/null || echo "portageq"` "$@"
+	`type -p python-config || echo "missing: python-config` "$@"
 }
 
 function gcc() {
 	[ "${EBUILD_PHASE}" == "depend" ] && echo "QA Notice: gcc in global scope: ${CATEGORY}/$PF" >&2
-	`type -p which &>/dev/null && which gcc 2>/dev/null || echo "gcc"` "$@"
+	`type -p gcc || echo "missing: gcc` "$@"
 }
 
 function perl() {
 	[ "${EBUILD_PHASE}" == "depend" ] && echo "QA Notice: perl in global scope: ${CATEGORY}/$PF" >&2
-	`type -p which &>/dev/null && which perl 2>/dev/null || echo "perl"` "$@"
+	`type -p perl || echo "missing: perl` "$@"
 }
 
 function grep() {
 	[ "${EBUILD_PHASE}" == "depend" ] && echo "QA Notice: grep in global scope: ${CATEGORY}/$PF" >&2
-	`type -p which &>/dev/null && which grep 2>/dev/null || echo "missing grep"` "$@"
+	`type -p grep || echo "missing: grep` "$@"
 }
+
+# ----
+fi # EBUILD_PHASE == "depend"
+# ----
+
+# ----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
+
 
 best_version() {
 	[ "${EBUILD_PHASE}" == "depend" ] && echo "QA Notice: best_version() in global scope: ${CATEGORY}/$PF" >&2
@@ -757,25 +785,30 @@ dyn_compile() {
 	cd "${BUILDDIR}"
 	touch .compiled
 	cd build-info
-	echo "$CBUILD"   > CBUILD
-	echo "$CC"       > CC
-	echo "$CDEPEND"  > CDEPEND
-	echo "$CFLAGS"   > CFLAGS
-	echo "$CHOST"    > CHOST
-	echo "$CXX"      > CXX
-	echo "$CXXFLAGS" > CXXFLAGS
-	echo "$DEPEND"   > DEPEND
-	echo "$IUSE"     > IUSE
-	echo "$PKGUSE"   > PKGUSE
-	echo "$LICENSE"  > LICENSE
-	echo "$CATEGORY" > CATEGORY
-	echo "$PDEPEND"  > PDEPEND
-	echo "$PF"       > PF
-	echo "$PROVIDE"  > PROVIDE
-	echo "$RDEPEND"  > RDEPEND
-	echo "$SLOT"     > SLOT
-	echo "$USE"      > USE
-	set | bzip2 -9 - > environment.bz2
+
+	echo "$ASFLAGS"     > ASFLAGS
+	echo "$CBUILD"      > CBUILD
+	echo "$CC"          > CC
+	echo "$CDEPEND"     > CDEPEND
+	echo "$CFLAGS"      > CFLAGS
+	echo "$CHOST"       > CHOST
+	echo "$CXX"         > CXX
+	echo "$CXXFLAGS"    > CXXFLAGS
+	echo "$DEPEND"      > DEPEND
+	echo "$IUSE"        > IUSE
+	echo "$PKGUSE"      > PKGUSE
+	echo "$LDFLAGS"     > LDFLAGS
+	echo "$LIBCFLAGS"   > LIBCFLAGS
+	echo "$LIBCXXFLAGS" > LIBCXXFLAGS
+	echo "$LICENSE"     > LICENSE
+	echo "$CATEGORY"    > CATEGORY
+	echo "$PDEPEND"     > PDEPEND
+	echo "$PF"          > PF
+	echo "$PROVIDE"     > PROVIDE
+	echo "$RDEPEND"     > RDEPEND
+	echo "$SLOT"        > SLOT
+	echo "$USE"         > USE
+	set | bzip2 -9 -    > environment.bz2
 	cp "${EBUILD}" "${PF}.ebuild"
 	if hasq nostrip $FEATURES $RESTRICT; then
 		touch DEBUGBUILD
@@ -1104,6 +1137,15 @@ inherit() {
 		# PECLASS is used to restore the ECLASS var after recursion.
 		PECLASS="$ECLASS"
 		export ECLASS="$1"
+
+		if [ "$EBUILD_PHASE" != "depend" ]; then
+			if ! hasq $ECLASS $INHERITIED; then
+				echo
+				echo "QA Notice: ECLASS '$ECLASS' inherited illegally in $CATEGORY/$PF" >&2
+				echo
+				sleep 5
+			fi
+		fi
 
 		# any future resolution code goes here
 		if [ -n "$PORTDIR_OVERLAY" ]; then
@@ -1481,6 +1523,15 @@ for myarg in $*; do
 		echo `echo "$IUSE"`        >> $dbkey
 		echo `echo "$CDEPEND"`     >> $dbkey
 		echo `echo "$PDEPEND"`     >> $dbkey
+		echo `echo "$PROVIDE"`     >> $dbkey
+		echo `echo "$UNUSED_01"`   >> $dbkey
+		echo `echo "$UNUSED_02"`   >> $dbkey
+		echo `echo "$UNUSED_03"`   >> $dbkey
+		echo `echo "$UNUSED_04"`   >> $dbkey
+		echo `echo "$UNUSED_05"`   >> $dbkey
+		echo `echo "$UNUSED_06"`   >> $dbkey
+		echo `echo "$UNUSED_07"`   >> $dbkey
+		echo `echo "$UNUSED_08"`   >> $dbkey
 		set +f
 		#make sure it is writable by our group:
 		exit 0

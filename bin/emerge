@@ -2294,7 +2294,7 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 	if os.path.exists(myportdir+"/metadata/cache") and updatecache_flg:
 		print "\n>>> Updating Portage cache...  ",
 		os.umask(0002)
-		cachedir = os.path.normpath(portage.settings["PORTAGE_CACHEDIR"])
+		cachedir = os.path.normpath(portage.settings.depcachedir)
 		if cachedir in ["/",    "/bin", "/dev",  "/etc",  "/home",
 		                "/lib", "/opt", "/proc", "/root", "/sbin",
 		                "/sys", "/tmp", "/usr",  "/var"]:
