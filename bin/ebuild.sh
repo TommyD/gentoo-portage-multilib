@@ -935,7 +935,9 @@ dyn_package() {
 
 dyn_test() {
 	trap "abort_test" SIGINT SIGQUIT
-	cd "${S}"
+	if [ -d "${S}" ]; then
+		cd "${S}"
+	fi
 
 	if hasq maketest $RESTRICT; then
 		ewarn "Skipping make test/check due to ebuild restriction."
