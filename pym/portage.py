@@ -2974,13 +2974,12 @@ class dblink:
 									# we need to install.  Set mydest to this new value.
 									mydest=os.path.normpath(mydestdir+"/._cfg"+string.zfill(pnum,4)+"_"+pmatch)
 				# whether config protection or not, we merge the new file the same way.  Unless moveme=0 (blocking directory)
+				zing="!!!"
 				if moveme:
 					mymtime=movefile(mysrc,mydest,thismtime,mystat)
 					if mymtime!=None:
 						zing=">>>"
 						outfile.write("obj "+myrealdest+" "+mymd5+" "+`mymtime`+"\n")
-					else:
-						zing="!!!"
 				print zing,mydest
 			else:
 				# we are merging a fifo or device node
@@ -2992,8 +2991,6 @@ class dblink:
 						if S_ISFIF(mymode):
 							#we don't record device nodes in CONTENTS, although we do merge them.
 							outfile.write("fif "+myrealdest+"\n")
-					else:
-						zing="!!!"
 				print zing+" "+mydest
 	
 	def merge(self,mergeroot,inforoot,myroot,myebuild=None):
