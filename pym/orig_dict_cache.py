@@ -15,7 +15,7 @@ cacheHit = 0
 cacheMiss = 0
 cacheStale = 0
 
-def cacheddir(my_original_path, EmptyOnError):
+def cacheddir(my_original_path):
 	"""return results from cache, updating cache if its stale/incomplete"""
 	global cacheHit, cacheMiss, cacheStale, dircache
 	mypath=portage_file.normpath(my_original_path)
@@ -25,18 +25,11 @@ def cacheddir(my_original_path, EmptyOnError):
 	else:
 		cacheMiss += 1
 		cached_mtime, list, ftype = -1, [], []
-	try:
-		pathstat = os.stat(mypath)
-		if stat.S_ISDIR(pathstat[stat.ST_MODE]):
-			mtime = pathstat[stat.ST_MTIME]
-		else:
-			raise Exception
-	except SystemExit, e:
-		raise
-	except Exception:
-		if EmptyOnError:
-			return [], []
-		return None, None
+	pathstat = os.stat(mypath)
+	if stat.S_ISDIR(pathstat[stat.ST_MODE]):
+		mtime = pathstat[stat.ST_MTIME]
+	else:
+		raise Exception
 	if mtime != cached_mtime:
 		if dircache.has_key(mypath):
 			cacheStale += 1

@@ -196,10 +196,19 @@ def prefix_array(array,prefix,doblanks=1):
 			newarray.append(x)
 	return newarray
 
-def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelist=[], EmptyOnError=False, 
-	followSymlinks=True):
+def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelist=[], 
+	followSymlinks=True, cacheObject=None):
 
-	list, ftype = cacheddir(mypath, EmptyOnError)
+	if cacheObject:
+		cfunc = cacheObject.cacheddir
+	else:
+		cfunc = cacheddir
+	try:
+		list, ftype = cfunc(mypath)
+	except SystemExit:
+		raise
+	except Exception:
+		return []
 
 	if list is None:
 		list=[]
@@ -227,7 +236,7 @@ def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelis
 			# if it was cvs, it was filtered already.
 			if ftype[x] == 1 or (followSymlinks and ftype[x] == 3):
 
-				l,f = cacheddir(mypath+"/"+list[x],EmptyOnError)
+				l,f = cfunc(mypath+"/"+list[x])
 
 				y=0
 				while y < len(l):
@@ -402,7 +411,7 @@ def env_update(root,makelinks=1):
 		prevmask=os.umask(0)
 		os.makedirs(root+"etc/env.d",0755)
 		os.umask(prevmask)
-	fns=listdir(root+"etc/env.d",EmptyOnError=1)
+	fns=listdir(root+"etc/env.d")
 	fns.sort()
 	pos=0
 	while (pos<len(fns)):
@@ -1166,7 +1175,7 @@ class config:
 #				traceback.print_stack()
 #				sys.exit(15)
 			myre = re.compile('^[A-Z]+$')
-			for filename in listdir(infodir,filesonly=1,EmptyOnError=1):
+			for filename in listdir(infodir,filesonly=1):
 				if myre.match(filename):
 					try:
 						mydata = string.strip(open(infodir+"/"+filename).read())
@@ -1938,7 +1947,7 @@ def digestgen(myarchives,mysettings,overwrite=1,manifestonly=0,verbosity=0):
 			print e
 
 	print green(">>> Generating manifest file...")
-	mypfiles=listdir(pbasedir,recursive=1,filesonly=1,ignorecvs=1,EmptyOnError=1)
+	mypfiles=listdir(pbasedir,recursive=1,filesonly=1,ignorecvs=1)
 	mypfiles=cvstree.apply_cvsignore_filter(mypfiles)
 	if "Manifest" in mypfiles:
 		del mypfiles[mypfiles.index("Manifest")]
@@ -2099,7 +2108,7 @@ def digestcheck(myfiles, mysettings, strict=0,verbosity=0):
 				return 0
 	else:
 		# Check the portage-related files here.
-		mymfiles=listdir(pbasedir,recursive=1,filesonly=1,ignorecvs=1,EmptyOnError=1)
+		mymfiles=listdir(pbasedir,recursive=1,filesonly=1,ignorecvs=1)
 		manifest_files = mymdigests.keys()
 		for x in range(len(mymfiles)-1,-1,-1):
 			if mymfiles[x]=='Manifest': # We don't want the manifest in out list.
@@ -3590,7 +3599,7 @@ class vardbapi(dbapi):
 			cpc=self.cpcache[mycp]
 			if cpc[0]==mystat:
 				return cpc[1]
-		list=listdir(self.root+VDB_PATH+"/"+mysplit[0],EmptyOnError=1)
+		list=listdir(self.root+VDB_PATH+"/"+mysplit[0])
 
 		if (list==None):
 			return []
@@ -3622,7 +3631,7 @@ class vardbapi(dbapi):
 			mycats = settings.categories
 		
 		for x in mycats:
-			for y in listdir(basepath+x,EmptyOnError=1):
+			for y in listdir(basepath+x):
 				subpath = x+"/"+y
 				# -MERGING- should never be a cpv, nor should files.
 				if os.path.isdir(basepath+subpath) and (portage_dep.pkgsplit(y) is not None):
@@ -3782,7 +3791,7 @@ class vartree(packagetree):
 		a=portage_dep.catpkgsplit(cpv)
 		if not a:
 			return 0
-		mylist=listdir(self.root+VDB_PATH+"/"+a[0],EmptyOnError=1)
+		mylist=listdir(self.root+VDB_PATH+"/"+a[0])
 		for x in mylist:
 			b=portage_dep.pkgsplit(x)
 			if not b:
@@ -3801,7 +3810,7 @@ class vartree(packagetree):
 		if not mykey:
 			return []
 		mysplit=mykey.split("/")
-		mydirlist=listdir(self.root+VDB_PATH+"/"+mysplit[0],EmptyOnError=1)
+		mydirlist=listdir(self.root+VDB_PATH+"/"+mysplit[0])
 		returnme=[]
 		for x in mydirlist:
 			mypsplit=portage_dep.pkgsplit(x)
@@ -3829,7 +3838,7 @@ class vartree(packagetree):
 		"""Does the particular node (cat/pkg key) exist?"""
 		mykey=key_expand(mykey,mydb=self.dbapi,use_cache=use_cache)
 		mysplit=mykey.split("/")
-		mydirlist=listdir(self.root+VDB_PATH+"/"+mysplit[0],EmptyOnError=1)
+		mydirlist=listdir(self.root+VDB_PATH+"/"+mysplit[0])
 		for x in mydirlist:
 			mypsplit=portage_dep.pkgsplit(x)
 			if not mypsplit:
@@ -4491,7 +4500,7 @@ class portdbapi(dbapi):
 		biglist=[]
 		for x in self.mysettings.categories:
 			for oroot in self.porttrees:
-				for y in listdir(oroot+"/"+x,EmptyOnError=1,ignorecvs=1):
+				for y in listdir(oroot+"/"+x,ignorecvs=1):
 					mykey=x+"/"+y
 					if not mykey in biglist:
 						biglist.append(mykey)
@@ -4500,7 +4509,7 @@ class portdbapi(dbapi):
 	def p_list(self,mycp):
 		returnme=[]
 		for oroot in self.porttrees:
-			for x in listdir(oroot+"/"+mycp,EmptyOnError=1,ignorecvs=1):
+			for x in listdir(oroot+"/"+mycp,ignorecvs=1):
 				if x[-7:]==".ebuild":
 					mye=x[:-7]
 					if not mye in returnme:
@@ -4511,7 +4520,7 @@ class portdbapi(dbapi):
 		mysplit=mycp.split("/")
 		returnme=[]
 		for oroot in self.porttrees:
-			for x in listdir(oroot+"/"+mycp,EmptyOnError=1,ignorecvs=1):
+			for x in listdir(oroot+"/"+mycp,ignorecvs=1):
 				if x[-7:]==".ebuild":
 					cp=mysplit[0]+"/"+x[:-7]
 					if not cp in returnme:
@@ -5144,7 +5153,7 @@ class dblink:
 			portage_exec.spawn("bzip2 -d "+self.dbdir+"/environment.bz2")
 		
 		if not myebuildpath:
-			mystuff=listdir(self.dbdir,EmptyOnError=1)
+			mystuff=listdir(self.dbdir)
 			for x in mystuff:
 				if x[-7:]==".ebuild":
 					myebuildpath=self.dbdir+"/"+x
@@ -5382,16 +5391,19 @@ class dblink:
 		self.lockdb()
 
 		stopmerge=False
+		import dcache
+		dc=dcache.dcache()
 		do_prelink = ("prelink" in features and portage_checksum.prelink_capable)
 		if "collision-protect" in features or "verify-rdepend" in features or do_prelink:
-			myfilelist = listdir(srcroot, recursive=1, filesonly=1,followSymlinks=False)
+			myfilelist = listdir(srcroot, recursive=1, filesonly=1,followSymlinks=False,cacheObject=dc)
 			# the linkcheck only works if we are in srcroot
 			try:
 				mycwd = os.getcwd()
 			except OSerror:
 				mycwd="/"
 			os.chdir(srcroot)
-			mysymlinks = filter(os.path.islink, listdir(srcroot, recursive=1, filesonly=0,followSymlinks=False))
+			mysymlinks = filter(os.path.islink, listdir(srcroot, recursive=1, 
+				filesonly=0,followSymlinks=False, cacheObject=dc))
 			os.chdir(mycwd)
 			
 		# check for package collisions
@@ -6556,7 +6568,7 @@ if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
 		if not mtimedb.has_key("updates"):
 			mtimedb["updates"]={}
 		try:
-			mylist=listdir(updpath,EmptyOnError=1)
+			mylist=listdir(updpath)
 			# resort the list
 			mylist=[myfile[3:]+"-"+myfile[:2] for myfile in mylist]
 			mylist.sort()
@@ -6578,7 +6590,7 @@ if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
 			#make sure our internal databases are consistent; recreate our virts and vartree
 			do_vartree(settings)
 			if do_upgrade_packagesmessage and \
-				 listdir(settings["PKGDIR"]+"/All/",EmptyOnError=1):
+				 listdir(settings["PKGDIR"]+"/All/"):
 				writemsg("\n\n\n ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the")
 				writemsg("\n    tbz2's in the packages directory. "+bold("Note: This can take a very long time."))
 				writemsg("\n")
