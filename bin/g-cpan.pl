@@ -5,6 +5,16 @@
 
 # History: 
 
+# 01/29/05: andrew-g@oxhut.co.uk: 
+#
+#           Improved filename/version matching to close bugs 64403 74149 69464 23951.  
+#           Improved default help message.  Added -v verbose flag.
+#
+# 11/16/04: pete@peteleonard.com:
+#
+#           Fixed handling of CPAN modules that end in '.pm' (e.g. CGI.pm)
+#           Closes bug 64403.
+#
 # 10/29/04: rac@gentoo.org:
 #
 #           attempt to recognize lowercased packages in dev-perl in portage_dir
@@ -69,14 +79,20 @@
 use strict;
 use File::Spec;
 use File::Path;
+use List::Util qw(first);
 use CPAN;
 eval 'use Digest::MD5;';
 my $have_digestmd5 = $@ ? 0 : 1;
 
 # output error if no arguments
 unless (@ARGV) {
-    print "Feed me perl modules\n";
+    print "Usage: g-cpan.pl [-v] MODULENAME ...\n";
     exit;
+}
+my $VERBOSE = 0;
+if ($ARGV[0] eq '-v') {
+	shift @ARGV;
+	$VERBOSE = 1;
 }
 # Set our temporary overlay directory for the scope of this run. By setting an overlay directory,
 # we bypass the predefined portage directory and allow portage to build a package outside of its
@@ -85,7 +101,7 @@ my $tmp_overlay_dir = "/tmp/perl-modules_$$";
 my @ebuild_list;
 
 # Set up global paths
-my $TMP_DEV_PERL_DIR = '/var/tmp/db/dev-perl';
+my $TMP_DEV_PERL_DIR = '/var/db/pkg/dev-perl';
 my $MAKECONF         = '/etc/make.conf';
 my ( $OVERLAY_DIR, $PORTAGE_DIR, $PORTAGE_DEV_PERL, $PORTAGE_DISTDIR ) = get_globals();
 
@@ -127,18 +143,27 @@ sub printbig {
 sub ebuild_exists {
     my ($dir) = @_;
 
-    # check the main portage tree
-    return 1
-      if ( ( -d File::Spec->catfile( $PORTAGE_DEV_PERL, $dir ) )
-        || ( -d File::Spec->catfile( $perldev_overlay,  $dir ) )
-        || ( -d File::Spec->catfile( $TMP_DEV_PERL_DIR, $dir ) ) );
+    # need to try harder here - see &portage_dir comments.
+    # should return an ebuild name from this, as case matters.
 
-    # check for ebuilds that have be created by g-cpan.pl
-    for my $ebuild ( @ebuild_list ) {
-        return 1 if ( $ebuild eq $dir );
+    # see if an ebuild for $dir exists already. If so, return its name.
+    my $found = '';
+
+    foreach my $sdir (grep {-d $_} ($PORTAGE_DEV_PERL, $perldev_overlay, $TMP_DEV_PERL_DIR)) {
+        opendir PDIR,$sdir;
+        my @dirs = readdir(PDIR);
+        closedir PDIR;
+        $found ||= first {lc($_) eq lc($dir)} (@dirs);
+	if (($found)&&($VERBOSE)) {
+        print "$0: Looking for ebuilds in $sdir, found $found so far.\n"; }
     }
 
-    return 0;
+    # check for ebuilds that have been created by g-cpan.pl
+    for my $ebuild ( @ebuild_list ) {
+        $found = $ebuild if ( $ebuild eq $dir );
+    }
+
+    return $found;
 }
 
 sub module_check {
@@ -154,21 +179,21 @@ sub portage_dir {
     my $obj  = shift;
     my $file = $obj->cpan_file;
 
-    # remove underscores
-    $file =~ tr/_/-/;
+    # need to try harder here than before (bugs 64403 74149 69464 23951 +more?)
+
+    # remove ebuild-incompatible characters
+    $file =~ tr/a-zA-Z0-9\.\//-/c;
+
+    $file =~ s/\.pm//;  # e.g. CGI.pm
 
     # turn this into a directory name suitable for portage tree
-    return undef unless ( $file =~ m|.*/(.*)-[^-]+\.| );
-
-    my $rv = $1;
-
-    # not sure if calling ebuild_exists here is acceptable or not, but
-    # we want to see if the ebuild exists, and if not, maybe
-    # lowercasing it would be better.
-
-    $rv = lc( $rv ) if !ebuild_exists( $rv ) && ebuild_exists( lc( $rv ) );
-
-    return $rv;
+    # at least one module omits the hyphen between name and version.
+    # these two regexps are 'better' matches than previously.
+    if ( $file =~ m|.*/(.*)-[0-9]+\.| ) { return $1; }
+    if ( $file =~ m|.*/([a-zA-Z-]*)[0-9]+\.| ) { return $1; }
+    if ( $file =~ m|.*/([^.]*)\.| ) { return $1; }
+    warn "$0: Unable to coerce $file into a portage dir name";
+    return;
 }
 
 sub create_ebuild {
@@ -180,22 +205,30 @@ sub create_ebuild {
     mkdir $fulldir,  0755 or die "Couldn't create '$fulldir': $!";
     mkdir $filesdir, 0755 or die "Couldn't create '$filesdir': $!";
 
+    unless ( -d $fulldir ) { die "$fulldir not created!!\n" }
+    unless ( -d $filesdir ) { die "$fulldir not created!!\n" }
     # What to call this ebuild?
-    unless ( $file =~ m/(.*)\/(.*?)\.(?:tar|tgz|zip|bz2|gz)/ ) {
+    # CGI::Builder's '1.26+' version breaks portage
+    unless ( $file =~ m/(.*)\/(.*?)(-?)([0-9\.]+).*\.(?:tar|tgz|zip|bz2|gz)/ ) {
         warn("Couldn't turn '$file' into an ebuild name\n");
         return;
     }
 
-    my ( $modpath, $filename ) = ( $1, $2 );
+    my ( $modpath, $filename, $filenamever ) = ( $1, $2, $4 );
 
     # remove underscores
-    $filename =~ tr/_/-/;
+    $filename =~ tr/A-Za-z0-9\./-/c;
+    $filename =~ s/\.pm//;  # e.g. CGI.pm
 
-    my $ebuild = File::Spec->catdir( $fulldir,  "$filename.ebuild" );
-    my $digest = File::Spec->catdir( $filesdir, "digest-$filename" );
+    # Remove double .'s - happens on occasion with odd packages
+    $filenamever =~ s/\.$//;
+
+    my $ebuild = File::Spec->catdir( $fulldir,  "$filename-$filenamever.ebuild" );
+    my $digest = File::Spec->catdir( $filesdir, "digest-$filename-$filenamever" );
 
     my $desc = $module->description || 'No description available.';
 
+    print "Writing to $ebuild\n" if ($VERBOSE);
     open EBUILD, ">$ebuild" or die "Could not write to '$ebuild': $!";
     print EBUILD <<"HERE";
 
@@ -207,11 +240,13 @@ inherit perl-module
 
 S=\${WORKDIR}/$build_dir
 DESCRIPTION="$desc"
-SRC_URI="http://www.cpan.org/modules/by-authors/id/$file"
+SRC_URI="mirror://cpan/authors/id/$file"
 HOMEPAGE="http://www.cpan.org/modules/by-authors/id/$modpath/\${P}.readme"
 
+IUSE=""
+
 SLOT="0"
-LICENSE="Artistic | GPL-2"
+LICENSE="|| ( Artistic GPL-2 )"
 KEYWORDS="$arches"
 
 HERE
@@ -229,6 +264,8 @@ HERE
             next if $dir eq "perl";
             if ( ( !$dup_check{$dir} ) && ( !module_check($dir) ) ) {
                 $dup_check{$dir} = 1;
+		# remove trailing .pm to fix emerge breakage.
+		$dir =~ s/.pm$//;
                 print EBUILD "\n\t" unless $first;
                 print EBUILD "dev-perl/$dir";
             }
@@ -249,20 +286,21 @@ sub install_module {
     my ($module_name, $recursive) = @_;
 
     my $obj = CPAN::Shell->expandany($module_name);
-    unless ( ref $obj eq "CPAN::Module" ) {
+    unless (( ref $obj eq "CPAN::Module" ) || ( ref $obj eq "CPAN::Bundle" )) {
         warn("Don't know what '$module_name' is\n");
         return;
     }
 
     my $file = $obj->cpan_file;
     my $dir  = portage_dir($obj);
+    print "$0: portage_dir returned $dir\n" if ($VERBOSE);
     unless ($dir) {
         warn("Couldn't turn '$file' into a directory name\n");
         return;
     }
 
     if ( ebuild_exists($dir) ) {
-        printbig "Ebuild already exists for '$module_name': $dir\n";
+        printbig "Ebuild already exists for '$module_name': ".&ebuild_exists($dir)."\n";
         return;
 
     }
@@ -335,9 +373,9 @@ sub clean_up {
 sub emerge_module {
     foreach my $ebuild_name (@ebuild_list) {
         $ebuild_name =~ m/.*\/(.*)-[^-]+\./;
-        print "emerging $ebuild_name\n";
+        print "$0: emerging $ebuild_name\n";
 #       system("emerge $ebuild_name");
-	system( "emerge", "--digest", $ebuild_name );
+	system( "emerge", "--oneshot", "--digest", $ebuild_name );
 
     }
 }
