@@ -49,12 +49,11 @@ declare -rx EBUILD_PHASE="$*"
 # Make sure it's before everything so we don't mess aliases that follow.
 unalias -a
 
-if [ "$USERLAND" == "BSD" ]; then
-	alias make=gmake
-	alias tar=gtar
-	alias patch=gpatch
-	alias sed=gsed
-fi
+for dir in ${PROFILE_PATHS}; do
+	if [ -f "${dir}/profile.bashrc" ]; then
+		source "${dir}/profile.bashrc"
+	fi
+done
 
 # Unset some variables that break things.
 unset GZIP BZIP BZIP2 CDPATH GREP_OPTIONS GREP_COLOR GLOBIGNORE

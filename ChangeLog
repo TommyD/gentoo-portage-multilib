@@ -9,6 +9,11 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  02 Aug 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild.sh, pym/portage.py:
+  Added support for src'ing a profile bashrc.  Fex, if 
+  /etc/make.profile/profile.bashrc exists, it is sourced prior to ebuild.sh 
+  defining any of it's functions.  (#58415).
+
   02 Aug 2004; Brian Harring <ferringb@gentoo.org> bin/emerge-webrsync: General
   cleanup; uses the make.conf defined FETCHCOMMAND for fetching (fixing #57887),
   runs emerge metadata after a successful sync also.
