@@ -269,6 +269,8 @@ def help(myaction,myopts,havecolor=1):
 		print "              Updates packages, but excludes updates that would result in a"
 		print "              lower version of the package being installed. SLOTs are"
 		print "              considered at a basic level."
+		print "              WARNING: This option is deprecated and shouldn't be used anymore."
+		print "              Please use the /etc/portage/package.* files from now on."
 		print
 		print "       "+green("--usepkg")+" ("+green("-k")+" short option)"
 		print "              Tell emerge to use binary packages (from $PKGDIR) if they are"

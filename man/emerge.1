@@ -209,13 +209,13 @@ and it enables complete trees to be rebuilt using the latest libraries.
 .BR "\-\-fetchonly " (\fB\-f\fR)
 Instead of doing any package building, just perform fetches for all
 packages (the main package as well as all dependencies.)
-.TP
+.TP 
 .BR "\-\-getbinpkg " (\fB\-g\fR)
 Using the server and location defined in \fIPORTAGE_BINHOST\fR (see 
 \fBmake.conf\fR(5)), portage will download the information from each binary 
 package found and it will use that information to help build the dependency 
-list.  This option implies \fB\-k\fR.  (Use \fB\-gK\fR for binary-only merging.)
-.TP
+list.  This option implies \fB\-k\fR.  (Use \fB\-gK\fR for binary\-only merging.)
+.TP 
 .BR "\-\-getbinpkgonly " (\fB\-G\fR)
 This option is identical to \fB\-g\fR, as above, except it will not use ANY 
 information from the local machine.  All binaries will be downloaded from the 
@@ -306,6 +306,9 @@ the world or system target.
 Updates packages, but excludes updates that would result in a
 lower version of the package being installed.  \fBSLOT\fRs are
 considered at a basic level.
+.br 
+This option is deprecated and shouldn't be used anymore. Please use the
+/etc/portage/package.* files from now on.
 .TP 
 .BR "\-\-usepkg " (\fB\-k\fR) 
 Tells emerge to use binary packages (from $PKGDIR) if they are available, thus possibly avoiding some 
