@@ -108,7 +108,7 @@ qahelp={
 	"variable.readonly":"Assigning a readonly variable",
 	"IUSE.invalid":"This build has a variable in IUSE that is not in the use.desc or use.local.desc file",
 	"LICENSE.invalid":"This ebuild is listing a license that doesnt exist in portages license/ dir.",
-	"KEYWORDS.invalid":"This ebuild contains KEYWORDS that are not listed in profiles/arch.list",
+	"KEYWORDS.invalid":"This ebuild contains KEYWORDS that are not listed in profiles/arch.list or for which no valid profile was found",
 	"ebuild.nostable":"There are no ebuilds that are marked as stable for your ARCH",
 	"ebuild.allmasked":"All ebuilds are masked for this package",
 	"ebuild.majorsyn":"This ebuild has a major syntax error that may cause the ebuild to fail partially or fully",
@@ -522,6 +522,7 @@ elif repolevel==3:
 	scanlist.append(catdir+"/"+reposplit[-1])
 
 profiles={}
+badarchs=[]
 descfile=portdir+"/profiles/profiles.desc"
 if os.path.exists(descfile):
 	for x in portage.grabfile(descfile):
@@ -531,6 +532,15 @@ if os.path.exists(descfile):
 		if len(arch)!=3:
 			print "wrong format: \""+red(x)+"\" in "+descfile
 			continue
+		if not os.path.isdir(portdir+"/profiles/"+arch[1]):
+			print "Invalid "+arch[2]+" profile ("+arch[1]+") for arch "+arch[0]
+			if arch[0] not in badarchs:
+				badarchs.append(arch[0])
+			continue
+		if profiles.has_key(arch[0]) and profiles[arch[0]][1] == "stable":
+			continue
+		if arch[0] in badarchs:
+			print "Switching to "+arch[2]+" profile ("+arch[1]+") for arch "+arch[0]
 		profiles[arch[0]]=[arch[1],arch[2]]
 
 	for x in portage.archlist:
@@ -544,6 +554,11 @@ else:
 	print yellow("profiles.desc does not exist: "+descfile)
 	print yellow("You need to do \"cvs update\" in profiles dir.")
 	print
+
+for arch in badarchs:
+	if not profiles.has_key(arch):
+		print "No valid profile found for arch "+arch+"."
+		print
 
 stats={}
 fails={}
@@ -889,11 +904,13 @@ for x in scanlist:
 				if (profiles.has_key(arch)):
 					profdir=portdir+"/profiles/"+profiles[arch][0]
 				else:
-					profdir=portdir+"/profiles/default-"+arch+"-1.4"
+					profdir=portdir+"/profiles/default-"+arch+"-2004.0"
 				portage.profiledir=profdir
 				os.environ["ACCEPT_KEYWORDS"]="-~"+arch
 				if (not os.path.exists(profdir)):
-					raise IOError, "Profile dir does not exist: "+profdir
+					stats["KEYWORDS.invalid"] += 1
+					fails["KEYWORDS.invalid"].append(catpkg+".ebuild: Profile missing for "+arch)
+					continue
 
 				if arch_caches.has_key(arch):
 					dep_settings, portage.portdb = arch_caches[arch]

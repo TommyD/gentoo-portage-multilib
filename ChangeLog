@@ -7,6 +7,12 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  23 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> repoman: Changed repoman to
+  use the first stable profile found for each arch listed in profiles.desc
+  rather than the last profile listed. Added notification on any invalid
+  profile in profiles.desc. Made exception into a repoman error where a
+  ebuild is using a keyword for which no profile can be found.
+
   23 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> repoman: Fixed traceback in
   repoman on invalid LICENSE syntax.
 
