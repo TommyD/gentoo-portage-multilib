@@ -49,7 +49,7 @@
   regens on smp systems.  Aside from making all of the previous refactorings active
   (sync refactoring in emerge, transports refactoring in portage.py and repoman), this 
   adds the following-
-  portage.exit_callbacks- append a function to this list, and it'll be exited at shutdown
+  portage.exit_callbacks- append a function to this list, and it'll be called at shutdown
   FEATURES="verify-rdepend"- don't trust the packages stated rdepends, ldd the crap out of 
   the package to verify it.  When severe is on, bail, if unstated rdepends are encountered.
   FEATURES="prelink"- do prelinking of binaries after merging.  Initial patch submitted by
