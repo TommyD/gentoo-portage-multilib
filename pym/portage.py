@@ -383,7 +383,7 @@ class config:
 		self.origenv=os.environ.copy()
 		self.populated=0
 	def populate(self):
-		if os.path.exists(profiledir+"/make.defaults"):
+		if profiledir and os.path.exists(profiledir+"/make.defaults"):
 			self.configlist=[self.origenv.copy(),getconfig("/etc/make.conf"),getconfig(profiledir+"/make.defaults"),getconfig("/etc/make.globals")]
 		else:
 			self.configlist=[self.origenv.copy(),getconfig("/etc/make.conf"),getconfig("/etc/make.globals")]
