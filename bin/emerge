@@ -37,6 +37,7 @@ options=["--autoclean",
 	"--onlydeps",
 	"--pretend",
 	"--usepkg",
+	"--searchdesc",
 	"--verbose",
 	"--update",
 	"--help",
@@ -57,6 +58,7 @@ shortmapping={"a":"--autoclean",
 	"p":"--pretend",
 	"P":"prune",
 	"s":"search",
+	"S":"--searchdesc",
 	"u":"--update",
 	"v":"--verbose",
 	"V":"--version",
@@ -98,6 +100,10 @@ for x in cmdline:
 			myfiles.append(x[:-1])
 		else:
 			myfiles.append(x)
+
+# Also allow -S to invoke search action (-sS)
+if ("--searchdesc" in myopts) and (not myaction):
+		myaction = "search"
 
 # check if root user is the current user for the actions where emerge needs this
 secpass=0
@@ -146,14 +152,36 @@ class search:
 	
 	def execute(self):
 		"""Performs the saerch for the supplied search key"""
+		global spinner, spinpos, myopts
+		print "Searching...   ",
 		if self.searchkey:
 			self.initResults()
 			for package in self.treecache.getallnodes():
+				sys.stdout.write("\b"+spinner[spinpos])
+				spinpos=(spinpos+1)%8
+				sys.stdout.flush()
 				package_parts=package.split("/")
 				if package_parts:
 					if self.searchkey != "*":
 						if re.search(self.searchkey.lower(), package_parts[1].lower()):
 							self.packagematches.append(package)
+						elif "--searchdesc" in myopts: # DESCRIPTION searching
+							try: # Just in Case a random exception arises. (Debug at except)
+								full_package = string.strip(self.treecache.dep_bestmatch(package))
+							except Exception, e:
+								continue # Exceptions here aren't nice.
+
+							if full_package == "":
+								continue # No reason to cause an exception below.
+
+							try: # Actual filename may be a carryover from last
+								full_desc = self.getDescription(self.getFullPath(package, full_package), self.getVersion(full_package, search.VERSION_SHORT))
+								if re.search(self.searchkey.lower(), full_desc.lower()):
+									self.packagematches.append(package)
+							except Exception, e:
+								continue # Missing Ebuild / Empty Directory
+
+							full_package = ""
 					else:
 						self.packagematches.append(package)
 			self.packagematches.sort()
@@ -1197,6 +1225,14 @@ elif "--help" in myopts:
 		print "              installing an unfamiliar package.  In the printout, N = new,"
 		print "              U = upgrading, R = replacing, B = blocked by an already installed"
 		print "              package."
+		print
+		print "       "+green("--searchdesc")+" ("+green("-S")+" short option)"
+		print "              Matches the search string against the description field as well"
+		print "              the package's name. Take caution as the descriptions are also"
+		print "              matched as regular expressions."
+		print "                emerge -S html"
+		print "                emerge -S applet"
+		print "                emerge -S 'perl.*module'"
 		print
 		print "       "+green("--update")+" ("+green("-u")+" short option)"
 		print "              Updates packages to the most recent version available."

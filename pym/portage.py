@@ -2,7 +2,7 @@
 # Copyright 1998-2002 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
 
-VERSION="2.0.12"
+VERSION="2.0.16pre"
 
 from stat import *
 from commands import *
@@ -2547,14 +2547,45 @@ class portdbapi(dbapi):
 	def __init__(self):
 		self.root=settings["PORTDIR"]
 		self.auxcache={}
+
 		if os.path.exists("/var/cache/edb/xcache.p"):
 			try:
 				myxfile=open("/var/cache/edb/xcache.p","r")
 				self.xcache=cPickle.load(myxfile)
 				myxfile.close()
-			except:
-				#corrupt?
+			except Exception, e:
+				print "Exception in xcache: "+str(e)
 				self.xcache={0:{},1:{},2:{}}
+
+			# Check the mtimes to make sure that the cache is correct
+			self.mtime_pkgmask = os.stat(self.root+"/profiles/package.mask")[8]
+			self.mtime_pkg     = os.stat("/etc/make.profile/packages")[8]
+
+			self.cacheOK = 0
+			if self.xcache.has_key("mtimes"):
+				if self.xcache["mtimes"].has_key("packages") and \
+				   self.xcache["mtimes"].has_key("package.mask"):
+					if (self.xcache["mtimes"]["package.mask"] == self.mtime_pkgmask) and \
+					   (self.xcache["mtimes"]["packages"] == self.mtime_pkg):
+						self.cacheOK = 1
+			
+			if not self.cacheOK:
+				print "Rebuilding visible cache..."
+
+				if not self.xcache.has_key("mtimes"):
+					self.xcache["mtimes"]={}
+
+				self.xcache["mtimes"]["package.mask"] = self.mtime_pkgmask
+				self.xcache["mtimes"]["packages"]     = self.mtime_pkg
+
+				for key in self.xcache.keys():
+					if self.xcache[key].has_key("bestmatch-visible"):
+						del self.xcache[key]["bestmatch-visible"]
+					if self.xcache[key].has_key("match-visible"):
+						del self.xcache[key]["match-visible"]
+					if self.xcache[key].has_key("list-visible"):
+						del self.xcache[key]["list-visible"]
+			
 		else:
 			self.xcache={0:{},1:{},2:{}}
 	
@@ -3711,9 +3742,13 @@ settings=config()
 #the new standardized db names:
 portdb=portdbapi()
 def store():
-	myxfile=open("/var/cache/edb/xcache.p","w")
-	cPickle.dump(portdb.xcache,myxfile)
-	myxfile.close()
+	try:
+		myxfile=open("/var/cache/edb/xcache.p","w")
+		cPickle.dump(portdb.xcache,myxfile)
+		myxfile.close()
+	except Exception, e:
+		print " * Unable to update xcache:"
+		print "     "+str(e)
 #	myxfile=open("/var/cache/edb/pkgcache.p","w")
 #	cPickle.dump(pkgcache,myxfile)
 #	myxfile.close()
