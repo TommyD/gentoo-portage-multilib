@@ -2666,7 +2666,11 @@ class portdbapi(dbapi):
 					try:
 						exttime=os.stat(extkey)[ST_MTIME]
 					except:
-						print "portage: aux_get(): eclass",extkey,"not found."
+						print "portage: aux_get():"
+						print " eclass \""+extkey+"\" from",mydbkey,"not found."
+						#we set doregen2 to regenerate this entry just in case it was fixed in the ebuild/eclass since
+						#the cache entry was created.
+						doregen2=1
 						exttime=0
 					mtimedb["cur"][extkey]=exttime
 					if (not mtimedb["old"].has_key(extkey)) or (exttime!=mtimedb["old"][extkey]):
