@@ -520,6 +520,8 @@ objsadded=[]
 for x in qacats:
 	stats[x]=0
 	fails[x]=[]
+
+arch_caches={}
 for x in scanlist:
 	#ebuilds and digests added to cvs respectively.
 	if "--verbose" in myoptions:
@@ -622,7 +624,6 @@ for x in scanlist:
 					stats["metadata.bad"]+=1
 					fails["metadata.bad"].append(x+"/metadata.xml")
 
-	arch_caches={}
 	for y in ebuildlist:
 		if y not in eadded:
 			#ebuild not added to cvs
@@ -728,9 +729,7 @@ for x in scanlist:
 					dep_settings["ARCH"]=arch
 					portage.do_vartree(dep_settings)
 					dep_settings.regenerate()
-					# The next line results in a huge memory usage and doesn't seem
-					# to be used anywhere. Levaing it just in case it has a use.
-					#portage.portdb=portage.portdbapi(portdir, dep_settings)
+					portage.portdb=portage.portdbapi(portdir, dep_settings)
 					arch_caches[arch]=[dep_settings, portage.portdb]
 
 				portage.db["/"]["porttree"]=portage.portagetree("/",dep_settings.getvirtuals("/"))
