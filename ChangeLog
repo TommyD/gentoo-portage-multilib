@@ -1,6 +1,10 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  09 Oct 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
+	Fixed a bug where files less than 2 characters in /etc/env.d
+	weren't checked correctly, and tracebacked env_update()
+
   07 Oct 2002; Martin Schlemmer <azarah@gentoo.org> ebuild.sh:
   Also set $TMP, as MDK among distros sets this, and it causes
   breakage during bootstrap.  This should close bug #8101.

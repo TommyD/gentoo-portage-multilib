@@ -34,11 +34,11 @@ def getcwd():
 		return "/"
 getcwd()
 
-#List directory contents, using cache. (from dircache module; streamlined by drobbins)
-#Exceptions will be propogated to the caller.
 
 dircache={}
 def listdir(path):
+	"""List directory contents, using cache. (from dircache module; streamlined by drobbins)
+	Exceptions will be propogated to the caller."""
 	try:
 		cached_mtime, list = dircache[path]
 	except KeyError:
@@ -77,8 +77,9 @@ starttime=int(time.time())
 
 features=[]
 
-#handle ^C interrupts correctly:
+
 def exithandler(foo,bar):
+	"""Handles ^C interupts in a sane manner"""
 	global features,secpass
 	#remove temp sandbox files
 	if (secpass==2) and ("sandbox" in features):
@@ -256,10 +257,10 @@ def env_update():
 	fns.sort()
 	pos=0
 	while (pos<len(fns)):
-		if fns[pos]<=2:
+		if len(fns[pos])<=2:
 			del fns[pos]
 			continue
-		if (fns[pos][0] not in string.digits) or (fns[pos][1] not in string.digits):
+		if not ((fns[pos][0] in string.digits) and (fns[pos][1] in string.digits)):
 			del fns[pos]
 			continue
 		pos=pos+1
