@@ -2,6 +2,36 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+*portage-2.0.49-r17/18 (10 Nov 2003): Fixes
+
+  10 Nov 2003; Nicholas Jones <carpaski@gentoo.org> *: Changed portage to
+  be the first path in sys.path for all python scripts. Also enabled
+  optimizations from the scripts to ensure everything imported is built
+  for speed. ebuild: applied fix for the '//' root breaking the db[].
+  prepstrip: etdyn quickfix
+  
+  10 Nov 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: fix for
+  RESTRICT=nouserpriv. GENTOO_MIRRORS can have paths set to take files
+  from. Fixes for mishandled cache data regarding *pkgsplit(). Fixes for
+  '*' being returned as part of a package split. An 'invalidentry()' fix
+  for a traceback. Nakano's fixes for virtual removals not working properly,
+  sandbox violations during pkg_nofetch, || depend selection. Genone's
+  fixpackages speedup.
+
+  10 Nov 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: PORTAGE_TMPDIR
+  fix for distcc. Variable passing bug patch for export_functions. Exit 1
+  added for nofetch to stop sandbox violation. Nakano's --tree patch added.
+  Improved the unmerge messages to denote what kind of unmerge fails. Info
+  pages regex pattern adjusted to allow most any name for a page.
+
+  10 Nov 2003; Nicholas Jones <carpaski@gentoo.org> repoman: genone's xml
+  linting additions.
+
+  01 Nov 2003; Robin H. Johnson <robbat2@gentoo.org> pym/cvstree.py:
+  fix bug #32071, by properly escaping a string to not be a regex. Checked
+  thru entire *.py tree and found this is the only mis-use of strings that
+  need to be escaped.
+
   31 Oct 2003; Daniel Robbins <drobbins@gentoo.org> portage.py: /lib/modules
   now gets "unmerge protection." This is half of the config protection
   functionality. It means that anything in /lib/modules will not be deleted

@@ -4,7 +4,7 @@
 # $Header$
 
 import sys,os,string
-sys.path += ["/usr/lib/portage/pym"]
+sys.path = ["/usr/lib/portage/pym"]+sys.path
 
 import portage,xpak
 

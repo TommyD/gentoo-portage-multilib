@@ -3,7 +3,7 @@
 # Distributed under the GNU Public License v2
 # $Header$
 
-VERSION="2.0.49-r13-2"
+VERSION="2.0.49-r15"
 
 import sys
 
@@ -57,10 +57,10 @@ def lockfile(mypath,wantnewlockfile=0):
 	if not os.path.exists(lockfilename):
 		# The file was deleted on us... Keep trying to make one...
 		os.close(myfd)
-		writemsg("lockfile recurse",1)
+		writemsg("lockfile recurse\n",1)
 		lockfilename,myfd,unlinkfile = lockfile(mypath,wantnewlockfile)
 
-	writemsg(str((lockfilename,myfd,unlinkfile)),1)
+	writemsg(str((lockfilename,myfd,unlinkfile))+"\n",1)
 	return (lockfilename,myfd,unlinkfile)
 
 def unlockfile(mytuple):
@@ -481,7 +481,14 @@ class digraph:
 		for x in self.okeys:
 			if self.dict[x][0]==0:
 				return x
-		return None 
+		return None
+
+	def depth(self, mykey):
+		depth=0
+		while (self.dict[mykey][1]):
+			depth=depth+1
+			mykey=self.dict[mykey][1][0]
+		return depth
 
 	def allzeros(self):
 		"returns all nodes with zero references, or NULL if no such node exists"
@@ -1165,7 +1172,10 @@ def spawn(mystring,debug=0,free=0,droppriv=0):
 
 	# useful if an ebuild or so needs to get the pid of our python process
 	settings["PORTAGE_MASTER_PID"]=str(os.getpid())
-	droppriv=(droppriv and ("userpriv" in features))
+
+	droppriv=(droppriv and ("userpriv" in features) and \
+	         ("nouserpriv" not in string.split(settings["RESTRICT"])))
+	
 	settings["BASH_ENV"]="/etc/portage/bashrc"
 
 	myargs=[]
@@ -1236,6 +1246,28 @@ def fetch(myuris, listonly=0, fetchonly=0):
 				mydigests[myline[2]]={"md5":myline[1],"size":string.atol(myline[3])}
 			except ValueError:
 				print "!!! The digest",digestfn,"appears to be corrupt.  Aborting."
+
+	fsmirrors = []
+	for x in range(len(mymirrors)-1,-1,-1):
+		if mymirrors[x] and mymirrors[x][0]=='/':
+			fsmirrors += [mymirrors[x]]
+			del mymirrors[x]
+
+	for myuri in myuris:
+		myfile=os.path.basename(myuri)
+		try:
+			destdir = settings["DISTDIR"]+"/"
+			if not os.path.exists(destdir+myfile):
+				for mydir in fsmirrors:
+					if os.path.exists(mydir+"/"+myfile):
+						writemsg("Local mirror has file: %s\n" % myfile)
+						shutil.copyfile(mydir+"/"+myfile,destdir+"/"+myfile)
+						break
+		except (OSError,IOError),e:
+			# file does not exist
+			print "!!!",myfile,"not found in",settings["DISTDIR"]+"."
+			gotit=0
+
 	if "fetch" in settings["RESTRICT"].split():
 		# fetch is restricted.	Ensure all files have already been downloaded; otherwise,
 		# print message and exit.
@@ -1716,6 +1748,13 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0,fetchonly=0):
 			print myso[1]
 		return myso[0]
 
+	# Should be ok again to set $T, as sandbox does not depend on it
+	settings["T"]=settings["BUILDDIR"]+"/temp"
+	if not os.path.exists(settings["T"]):
+		os.makedirs(settings["T"])
+	os.chown(settings["T"],portage_uid,portage_gid)
+	os.chmod(settings["T"],06770)
+
 	# Build directory creation isn't required for any of these.
 	if mydo not in ["fetch","digest","manifest"]:
 		try:
@@ -1742,13 +1781,6 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0,fetchonly=0):
 			if not os.path.exists(settings["BUILDDIR"]):
 				os.makedirs(settings["BUILDDIR"])
 			os.chown(settings["BUILDDIR"],portage_uid,portage_gid)
-
-			# Should be ok again to set $T, as sandbox do not depend on it
-			settings["T"]=settings["BUILDDIR"]+"/temp"
-			if not os.path.exists(settings["T"]):
-				os.makedirs(settings["T"])
-			os.chown(settings["T"],portage_uid,portage_gid)
-			os.chmod(settings["T"],06770)
 		except OSError, e:
 			print "!!! File system problem. (ReadOnly? Out of space?)"
 			print "!!! Perhaps: rm -Rf",settings["BUILD_PREFIX"]
@@ -2517,7 +2549,25 @@ def dep_zapdeps(unreduced,reduced):
 			#deps satisfied, return None
 			return None
 		else:
-			#try to satisfy first dep
+			#try to find an installed dep
+			mydbapi=db[root]["vartree"].dbapi
+			x=1
+			while x<len(reduced):
+				if (type(reduced[x])==types.ListType):
+					myresult=dep_zapdeps(unreduced[x], reduced[x])
+					if myresult:
+						chk=1
+						for y in flatten(myresult):
+							if (not mydbapi.match(y)):
+								chk=0
+						if chk==1:
+							return myresult
+				else:
+					if (mydbapi.match(unreduced[x])):
+						return unreduced[x]
+				x+=1
+			
+			#none of the deps installed, use the first one
 			return unreduced[1]
 	else:
 		if dep_eval(reduced):
@@ -2813,6 +2863,23 @@ def dep_wordreduce(mydeplist,mydbapi,mode):
 				return None
 		mypos=mypos+1
 	return deplist
+
+def fixdbentries(old_value, new_value, dbdir):
+	"""python replacement for the fixdbentries script, replaces old_value 
+	with new_value for package names in files in dbdir."""
+	for myfile in [f for f in os.listdir(dbdir) if not f == "CONTENTS"]:
+		f = open(dbdir+"/"+myfile, "r")
+		mycontent = f.read()
+		f.close()
+		if not mycontent.count(old_value):
+			continue
+		mycontent = re.sub(old_value+"$", new_value, mycontent)
+		mycontent = re.sub(old_value+"(\s)", new_value+"\1", mycontent)
+		mycontent = re.sub(old_value+"(-[^a-zA-Z])", new_value+"\1", mycontent)
+		mycontent = re.sub(old_value+"([^a-zA-Z0-9-])", new_value+"\1", mycontent)
+		f = open(dbdir+"/"+myfile, "w")
+		f.write(mycontent)
+		f.close()
 
 class packagetree:
 	def __init__(self,virtual,clone=None):
@@ -3122,7 +3189,7 @@ class dbapi:
 			writemsg(red("INCOMPLETE MERGE:")+match[0]+"\n")
 		else:
 			if re.search("portage_lockfile$",mypath):
-				writemsg("Lockfile removed: %s" % mypath)
+				writemsg("Lockfile removed: %s\n" % mypath)
 				unlockfile((mypath,None,None))
 			else:
 				writemsg("!!! Invalid db entry: %s" % mypath)
@@ -3289,14 +3356,24 @@ class vardbapi(dbapi):
 			catfile.write(mynewcat+"\n")
 			catfile.close()
 
-		mycmd='/usr/lib/portage/bin/fixdbentries'
-		mycmd=mycmd+' "'+origcp+'" '
-		mycmd=mycmd+' "'+newcp+'" '
-		mycmd=mycmd+' "'+self.root+"var/db/pkg/"+'" '
-		spawn(mycmd,free=1)
+		dbdir = self.root+"var/db/pkg"
+		for catdir in listdir(dbdir):
+			catdir = dbdir+"/"+catdir
+			if os.path.isdir(catdir):
+				for pkgdir in listdir(catdir):
+					pkgdir = catdir+"/"+pkgdir
+					if os.path.isdir(pkgdir):
+						fixdbentries(origcp, newcp, pkgdir)
+		#mycmd='/usr/lib/portage/bin/fixdbentries'
+		#mycmd=mycmd+' "'+origcp+'" '
+		#mycmd=mycmd+' "'+newcp+'" '
+		#mycmd=mycmd+' "'+self.root+"var/db/pkg/"+'" '
+		#spawn(mycmd,free=1)
 	
 	def cp_list(self,mycp):
 		mysplit=mycp.split("/")
+		if mysplit[0] == '*':
+			mysplit[0] = mysplit[0][1:]
 		try:
 			mystat=os.stat(self.root+"var/db/pkg/"+mysplit[0])[ST_MTIME]
 		except OSError:
@@ -3305,7 +3382,7 @@ class vardbapi(dbapi):
 			cpc=self.cpcache[mycp]
 			if cpc[0]==mystat:
 				return cpc[1]
-		list=listdir(self.root+"var/db/pkg/"+mysplit[0])
+		list=listdir(self.root+"var/db/pkg/"+mysplit[0],EmptyOnError=1)
 
 		if (list==None):
 			return []
@@ -3335,6 +3412,8 @@ class vardbapi(dbapi):
 		returnme=[]
 		mylist = self.cpv_all()
 		for y in mylist:
+			if y[0] == '*':
+				y = y[1:]
 			mysplit=catpkgsplit(y)
 			if not mysplit:
 				self.invalidentry(self.root+"var/db/pkg/"+x)
@@ -3469,7 +3548,7 @@ class vartree(packagetree):
 		for x in mylist:
 			b=pkgsplit(x)
 			if not b:
-				self.invalidentry(self.root+"var/db/pkg/"+a[0]+"/"+x)
+				self.dbapi.invalidentry(self.root+"var/db/pkg/"+a[0]+"/"+x)
 				continue
 			if a[1]==b[0]:
 				return 1
@@ -4205,11 +4284,12 @@ class binarytree(packagetree):
 			mytbz2=xpak.tbz2(tbz2path)
 			mytbz2.decompose(mytmpdir, cleanup=1)
 			
-			mycmd='/usr/lib/portage/bin/fixdbentries'
-			mycmd=mycmd+' "'+origcp+'" '
-			mycmd=mycmd+' "'+newcp+'" '
-			mycmd=mycmd+' "'+mytmpdir+'" '
-			spawn(mycmd,free=1)
+			fixdbentries(origcp, newcp, mytmpdir)
+			#mycmd='/usr/lib/portage/bin/fixdbentries'
+			#mycmd=mycmd+' "'+origcp+'" '
+			#mycmd=mycmd+' "'+newcp+'" '
+			#mycmd=mycmd+' "'+mytmpdir+'" '
+			#spawn(mycmd,free=1)
 
 			catfile=open(mytmpdir+"/CATEGORY", "w")
 			catfile.write(mynewcat+"\n")
@@ -4244,11 +4324,12 @@ class binarytree(packagetree):
 				mylist=string.split(mylist)
 				if mylist[0] != "move":
 					continue
-				mycmd='/usr/lib/portage/bin/fixdbentries'
-				mycmd=mycmd+' "'+mylist[1]+'" '
-				mycmd=mycmd+' "'+mylist[2]+'" '
-				mycmd=mycmd+' "'+mytmpdir+'" '
-				spawn(mycmd,free=1)
+				fixdbentries(mylist[1], mylist[2], mytmpdir)
+				#mycmd='/usr/lib/portage/bin/fixdbentries'
+				#mycmd=mycmd+' "'+mylist[1]+'" '
+				#mycmd=mycmd+' "'+mylist[2]+'" '
+				#mycmd=mycmd+' "'+mytmpdir+'" '
+				#spawn(mycmd,free=1)
 			mytbz2.recompose(mytmpdir,cleanup=1)
 		return 1
 
@@ -4506,15 +4587,11 @@ class dblink:
 	def unmerge(self,pkgfiles=None,trimworld=1):
 		global dircache
 		dircache={}
-	
 		mydbdir_lock = lockdir(self.dbdir)
 
 		if not pkgfiles:
 			print "No package files given... Grabbing a set."
 			pkgfiles=self.getcontents()
-			if not pkgfiles:
-				unlockdir(mydbdir_lock)
-				return
 		# Now, don't assume that the name of the ebuild is the same as the
 		# name of the dir; the package may have been moved.
 		myebuildpath=None
@@ -4527,152 +4604,155 @@ class dblink:
 		if myebuildpath and os.path.exists(myebuildpath):
 			a=doebuild(myebuildpath,"prerm",self.myroot)
 
-		mykeys=pkgfiles.keys()
-		mykeys.sort()
-		mykeys.reverse()
 
-		self.updateprotect()
+		if pkgfiles:
+			mykeys=pkgfiles.keys()
+			mykeys.sort()
+			mykeys.reverse()
 
-		#process symlinks second-to-last, directories last.
-		mydirs=[]
-		mysyms=[]
-		modprotect="/lib/modules/"
-		for obj in mykeys:
-			obj=os.path.normpath(obj)
-			if obj[:2]=="//":
-				obj=obj[1:]
-			if not os.path.exists(obj):
-				if not os.path.islink(obj):
-					#we skip this if we're dealing with a symlink
-					#because os.path.exists() will operate on the
-					#link target rather than the link itself.
-					print "--- !found "+str(pkgfiles[obj][0]), obj
+			self.updateprotect()
+
+			#process symlinks second-to-last, directories last.
+			mydirs=[]
+			mysyms=[]
+			modprotect="/lib/modules/"
+			for obj in mykeys:
+				obj=os.path.normpath(obj)
+				if obj[:2]=="//":
+					obj=obj[1:]
+				if not os.path.exists(obj):
+					if not os.path.islink(obj):
+						#we skip this if we're dealing with a symlink
+						#because os.path.exists() will operate on the
+						#link target rather than the link itself.
+						print "--- !found "+str(pkgfiles[obj][0]), obj
+						continue
+				# next line includes a tweak to protect modules from being unmerged,
+				# but we don't protect modules from being overwritten if they are
+				# upgraded. We effectively only want one half of the config protection
+				# functionality for /lib/modules. For portage-ng both capabilities
+				# should be able to be independently specified.
+				if self.isprotected(obj) or ((len(obj) > len(modprotect)) and (obj[0:len(modprotect)]==modprotect)):
+					print "--- cfgpro "+str(pkgfiles[obj][0]), obj
 					continue
-			#next line includes a tweak to protect modules from being unmerged, but we don't protect modules
-			#from being overwritten if they are upgraded. We effectively only want one half of the config
-			#protection functionality for /lib/modules/. For portage-ng, both capabilities should be able
-			#to be independently specified.
-			if self.isprotected(obj) or ((len(obj) > len(modprotect)) and (obj[0:len(modprotect)]==modprotect)):
-				print "--- cfgpro "+str(pkgfiles[obj][0]), obj
-				continue
 
-			lstatobj=os.lstat(obj)
-			lmtime=str(lstatobj[ST_MTIME])
-			if (pkgfiles[obj][0] not in ("dir","fif","dev","sym")) and (lmtime != pkgfiles[obj][1]):
-				print "--- !mtime", pkgfiles[obj][0], obj
-				continue
-
-			if pkgfiles[obj][0]=="dir":
-				if not os.path.isdir(obj):
-					print "--- !dir  ","dir", obj
+				lstatobj=os.lstat(obj)
+				lmtime=str(lstatobj[ST_MTIME])
+				if (pkgfiles[obj][0] not in ("dir","fif","dev","sym")) and (lmtime != pkgfiles[obj][1]):
+					print "--- !mtime", pkgfiles[obj][0], obj
 					continue
-				mydirs.append(obj)
-			elif pkgfiles[obj][0]=="sym":
-				if not os.path.islink(obj):
-					print "--- !sym  ","sym", obj
-					continue
-				mysyms.append(obj)
-			elif pkgfiles[obj][0]=="obj":
-				if not os.path.isfile(obj):
-					print "--- !obj  ","obj", obj
-					continue
-				mymd5=perform_md5(obj, calc_prelink=1)
-				# string.lower is needed because db entries used to be in upper-case.  The
-				# string.lower allows for backwards compatibility.
-				if mymd5 != string.lower(pkgfiles[obj][2]):
-					print "--- !md5  ","obj", obj
-					continue
-				try:
-					os.unlink(obj)
-				except (OSError,IOError),e:
-					pass		
-				print "<<<       ","obj",obj
-			elif pkgfiles[obj][0]=="fif":
-				if not S_ISFIFO(lstatobj[ST_MODE]):
-					print "--- !fif  ","fif", obj
-					continue
-				try:
-					os.unlink(obj)
-				except (OSError,IOError),e:
-					pass
-				print "<<<       ","fif",obj
-			elif pkgfiles[obj][0]=="dev":
-				print "---       ","dev",obj
 
-		#Now, we need to remove symlinks and directories.  We'll repeatedly
-		#remove dead symlinks, then directories until we stop making progress.
-		#This is how we'll clean up directories containing symlinks pointing to
-		#directories that are now empty.  These cases will require several
-		#iterations through our two-stage symlink/directory cleaning loop.
-
-		#main symlink and directory removal loop:
-
-		#progress -- are we making progress?  Initialized to 1 so loop will start
-		progress=1
-		while progress:
-			#let's see if we're able to make progress this iteration...
-			progress=0
-
-			#step 1: remove all the dead symlinks we can...
-
-			pos = 0
-			while pos<len(mysyms):
-				obj=mysyms[pos]
-				if os.path.exists(obj):
-					pos += 1
-				else:
-					#we have a dead symlink; remove it from our list, then from existence
-					del mysyms[pos]
-					#we've made progress!	
-					progress = 1
+				if pkgfiles[obj][0]=="dir":
+					if not os.path.isdir(obj):
+						print "--- !dir  ","dir", obj
+						continue
+					mydirs.append(obj)
+				elif pkgfiles[obj][0]=="sym":
+					if not os.path.islink(obj):
+						print "--- !sym  ","sym", obj
+						continue
+					mysyms.append(obj)
+				elif pkgfiles[obj][0]=="obj":
+					if not os.path.isfile(obj):
+						print "--- !obj  ","obj", obj
+						continue
+					mymd5=perform_md5(obj, calc_prelink=1)
+					# string.lower is needed because db entries used to be in upper-case.  The
+					# string.lower allows for backwards compatibility.
+					if mymd5 != string.lower(pkgfiles[obj][2]):
+						print "--- !md5  ","obj", obj
+						continue
 					try:
 						os.unlink(obj)
-						print "<<<       ","sym",obj
 					except (OSError,IOError),e:
-						print "!!!       ","sym",obj
-						#immutable?
-						pass
-	
-			#step 2: remove all the empty directories we can...
-	
-			pos = 0
-			while pos<len(mydirs):
-				obj=mydirs[pos]
-				objld=listdir(obj)
-				if objld == None:
-					print "mydirs["+str(pos)+"]",mydirs[pos]
-					print "obj",obj
-					print "objld",objld
-				if len(objld)>0:
-					#we won't remove this directory (yet), continue
-					pos += 1
-					continue
-				elif (objld != None):
-					#zappo time
-					del mydirs[pos]
-					#we've made progress!
-					progress = 1
+						pass		
+					print "<<<       ","obj",obj
+				elif pkgfiles[obj][0]=="fif":
+					if not S_ISFIFO(lstatobj[ST_MODE]):
+						print "--- !fif  ","fif", obj
+						continue
 					try:
-						os.rmdir(obj)
-						print "<<<       ","dir",obj
+						os.unlink(obj)
 					except (OSError,IOError),e:
-						#immutable?
 						pass
-				#else:
-				#	print "--- !empty","dir", obj
-				#	continue
+					print "<<<       ","fif",obj
+				elif pkgfiles[obj][0]=="dev":
+					print "---       ","dev",obj
+
+			#Now, we need to remove symlinks and directories.  We'll repeatedly
+			#remove dead symlinks, then directories until we stop making progress.
+			#This is how we'll clean up directories containing symlinks pointing to
+			#directories that are now empty.  These cases will require several
+			#iterations through our two-stage symlink/directory cleaning loop.
+	
+			#main symlink and directory removal loop:
+	
+			#progress -- are we making progress?  Initialized to 1 so loop will start
+			progress=1
+			while progress:
+				#let's see if we're able to make progress this iteration...
+				progress=0
+	
+				#step 1: remove all the dead symlinks we can...
+	
+				pos = 0
+				while pos<len(mysyms):
+					obj=mysyms[pos]
+					if os.path.exists(obj):
+						pos += 1
+					else:
+						#we have a dead symlink; remove it from our list, then from existence
+						del mysyms[pos]
+						#we've made progress!	
+						progress = 1
+						try:
+							os.unlink(obj)
+							print "<<<       ","sym",obj
+						except (OSError,IOError),e:
+							print "!!!       ","sym",obj
+							#immutable?
+							pass
 		
-			#step 3: if we've made progress, we'll give this another go...
-
-		#step 4: otherwise, we'll print out the remaining stuff that we didn't unmerge (and rightly so!)
-
-		#directories that aren't empty:
-		for x in mydirs:
-			print "--- !empty dir", x
+				#step 2: remove all the empty directories we can...
+		
+				pos = 0
+				while pos<len(mydirs):
+					obj=mydirs[pos]
+					objld=listdir(obj)
+					if objld == None:
+						print "mydirs["+str(pos)+"]",mydirs[pos]
+						print "obj",obj
+						print "objld",objld
+					if len(objld)>0:
+						#we won't remove this directory (yet), continue
+						pos += 1
+						continue
+					elif (objld != None):
+						#zappo time
+						del mydirs[pos]
+						#we've made progress!
+						progress = 1
+						try:
+							os.rmdir(obj)
+							print "<<<       ","dir",obj
+						except (OSError,IOError),e:
+							#immutable?
+							pass
+					#else:
+					#	print "--- !empty","dir", obj
+					#	continue
 			
-		#symlinks whose target still exists:
-		for x in mysyms:
-			print "--- !targe sym", x
+				#step 3: if we've made progress, we'll give this another go...
+	
+			#step 4: otherwise, we'll print out the remaining stuff that we didn't unmerge (and rightly so!)
+	
+			#directories that aren't empty:
+			for x in mydirs:
+				print "--- !empty dir", x
+				
+			#symlinks whose target still exists:
+			for x in mysyms:
+				print "--- !targe sym", x
 
 		#step 5: well, removal of package objects is complete, now for package *meta*-objects....
 
@@ -4712,13 +4792,15 @@ class dblink:
 			for myvirt in myvirts.keys():
 				newvirts[myvirt]=[]
 				for mykey in myvirts[myvirt]:
-					if mykey == self.cat+"/"+pkgsplit(self.pkg)[0]:
-						if myprovides.has_key(myvirt) and \
-						   (self.cat+"/"+self.pkg in myprovides[myvirt]) and \
-							 (len(myprovides[myvirt]) > 1):
-							if mykey not in newvirts[myvirt]:
-								newvirts[myvirt].append(mykey)
-							writemsg("--- Leaving virtual '"+mykey+"' from '"+myvirt+"'\n")
+					if mykey == self.cat+"/"+pkgsplit(self.pkg)[0] and myprovides[myvirt].count(self.cat+"/"+self.pkg)>0:
+						# remove myself first
+						myprovides[myvirt].remove(self.cat+"/"+self.pkg)
+						for x in myprovides[myvirt]:
+							if pkgsplit(x)[0]==mykey:
+								if mykey not in newvirts[myvirt]:
+									newvirts[myvirt].append(mykey)
+								writemsg("--- Leaving virtual '"+mykey+"' from '"+myvirt+"'\n")
+								break
 						else:
 							writemsg("<<< Removing virtual '"+mykey+"' from '"+myvirt+"'\n")
 					else:
@@ -4726,6 +4808,8 @@ class dblink:
 							newvirts[myvirt].append(mykey)
 				if newvirts[myvirt]==[]:
 					del newvirts[myvirt]
+					writemsg("<<< Removing virtual '"+myvirt+"'\n")
+
 			writedict(newvirts,self.myroot+"var/cache/edb/virtuals")
 	
 		#do original postrm

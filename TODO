@@ -10,17 +10,19 @@ Legend:
  '*' Just do it.        '#' Tricky
  '!' Difficult          '@' Restricted in some way
 
+* Clean should only produce output for 'emerge clean'
+
 # Stop using mtimes for packages. Have portage look up all files in the
-# vardb to ensure that a file isn't duplicated and unmerge it if not.
-# Potentially slow... Need some way to speed it up... hash of filenames?
+  vardb to ensure that a file isn't duplicated and unmerge it if not.
+  Potentially slow... Need some way to speed it up... hash of filenames?
 
 # Virtuals. /var/cache/edb/virtuals -- Effectively remove it.
-# /etc/portage/virtuals is a user-modifiable version that acts like an
-# incremental applied on top of an ON-DEMAND virtual calculation system.
-# Virtuals should be calculated from /var/db/pkg EVERY time it is requested.
+  /etc/portage/virtuals is a user-modifiable version that acts like an
+  incremental applied on top of an ON-DEMAND virtual calculation system.
+  Virtuals should be calculated from /var/db/pkg EVERY time it is requested.
 
 # Repoman needs to ignore all user-set info in /etc/portage
-# It's not relevant to deployed users and will probably be a general gotcha.
+  It's not relevant to deployed users and will probably be a general gotcha.
 
 # Multiple rsync repos.
   bug 28796 -- Enable metadata caches for them. 

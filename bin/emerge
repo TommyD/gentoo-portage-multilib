@@ -1,11 +1,11 @@
-#!/usr/bin/python
+#!/usr/bin/python -O
 # Copyright 1999-2003 Gentoo Technologies, Inc.
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
 import os,sys
 os.environ["PORTAGE_CALLER"]="emerge"
-sys.path += ["/usr/lib/portage/pym"]
+sys.path = ["/usr/lib/portage/pym"]+sys.path
 
 import emergehelp,xpak,string,re,commands,time,shutil,traceback,atexit,signal
 from stat import *
@@ -53,6 +53,7 @@ options=[
 "--quiet",        "--resume",
 "--searchdesc",   "--selective",
 "--skipfirst",
+"--tree",
 "--update",       "--upgradeonly",
 "--usepkg",       "--usepkgonly",
 "--verbose",      "--version"
@@ -74,6 +75,7 @@ shortmapping={
 "p":"--pretend",   "P":"--prune",
 "q":"--quiet",
 "s":"--search",    "S":"--searchdesc",
+'t':"--tree",
 "u":"--update",    "U":"--upgradeonly",
 "v":"--verbose",   "V":"--version"
 }
@@ -151,6 +153,10 @@ for x in cmdline:
 
 if (myaction in ["world", "system"]) and myfiles:
 	print "emerge: please specify a package class (\"world\" or \"system\") or individual packages, but not both."
+	sys.exit(1)
+
+if ("--tree" in myopts) and ("--columns" in myopts):
+	print "emerge: can't specify both of \"--tree\" and \"--columns\"."
 	sys.exit(1)
 
 # Always create packages if FEATURES=buildpkg
@@ -1071,6 +1077,9 @@ class depgraph:
 	
 	def display(self,mylist):
 		changelogs=[]
+		p=[]
+		intree=False
+		
 		for x in mylist:
 			fetch=" "
 			
@@ -1090,7 +1099,11 @@ class depgraph:
 						print
 			else:
 				if x[-1]=="nomerge":
-					continue
+					if ("--tree" in myopts):
+						if (not intree):
+							continue
+					else:
+						continue
 
 				if (x[0]!="binary") and ("fetch" in string.split(portage.portdb.aux_get(x[2],["RESTRICT"])[0])):
 					fetch = red("F")
@@ -1154,9 +1167,19 @@ class depgraph:
 				oldlp=mywidth-30
 				newlp=oldlp-30
 				
+				mygraph = self.digraph.copy()
+				indent=""
+				if ("--tree" in myopts):
+					indent=" "*mygraph.depth(string.join(x))
+					if indent=="":
+						intree=False
+					else:
+						intree=True
+						
+
 				if x[1]!="/":
 					if "--columns" in myopts:
-						myprint="["+x[0]+" "+addl+"] "+darkgreen(xs[0])
+						myprint="["+x[0]+" "+addl+"] "+indent+darkgreen(xs[0])
 						if (newlp-len(myprint)) > 0:
 							myprint=myprint+(" "*(newlp-len(myprint)))
 						myprint=myprint+"["+darkblue(xs[1]+xs[2])+"] "
@@ -1168,7 +1191,7 @@ class depgraph:
 						myprint="["+x[0]+" "+addl+"] "+darkgreen(x[2])+" "+myoldbest+" "+darkgreen("to "+x[1])+" "+iuse
 				else:
 					if "--columns" in myopts:
-						myprint="["+x[0]+" "+addl+"] "+darkgreen(xs[0])
+						myprint="["+x[0]+" "+addl+"] "+indent+darkgreen(xs[0])
 						if (newlp-len(myprint)) > 0:
 							myprint=myprint+(" "*(newlp-len(myprint)))
 						myprint=myprint+green(" ["+xs[1]+xs[2]+"] ")
@@ -1176,29 +1199,40 @@ class depgraph:
 							myprint=myprint+(" "*(oldlp-len(myprint)))
 						myprint=myprint+myoldbest+"  "+iuse
 					else:
-						myprint="["+x[0]+" "+addl+"] "+darkgreen(x[2])+" "+myoldbest+" "+iuse
-				print myprint
+						if x[3]=="nomerge":
+							myprint=darkblue("[nomerge      ] "+indent+x[2]+" "+myoldbest+" ")+iuse
+						else:
+							myprint="["+x[0]+" "+addl+"] "+indent+darkgreen(x[2])+" "+myoldbest+" "+iuse
+				p.append(myprint)
 
-			mysplit=portage.pkgsplit(x[2])
-			# XXX mysplit _can_ be None.... Why?
-			if mysplit and (len(mysplit)==3):
-				if "--emptytree" not in myopts:
-					if mysplit[0]=="sys-apps/portage":
-						if mysplit[1]+mysplit[2]!=portage.VERSION:
-							if mylist.index(x)<len(mylist)-1:
-								print red("*** Portage will stop merging at this point and reload itself,")
-								print red("    recalculate dependencies, and complete the merge.")
-								if "--update" not in myopts:
-									print darkgreen("    You may avoid the remerging of packages by updating portage on its own.")
-								print
-				else:
-					if mysplit[0]=="sys-apps/portage" and ("--emptytree" in myopts):
-						if mysplit[1]+mysplit[2]!=portage.VERSION:
-							print red("***")+" Please update portage to the above version before proceeding."
-							print "    Failure to do so may result in failed or improper merges."
-							print "    A simple '"+green("emerge -u portage")+"' is sufficient."
-							print
-			del mysplit
+			if ("--tree" not in myopts):
+				mysplit=portage.pkgsplit(x[2])
+	
+				# XXX mysplit _can_ be None.... Why?
+				if mysplit and (len(mysplit)==3):
+					if "--emptytree" not in myopts:
+						if mysplit[0]=="sys-apps/portage":
+							if mysplit[1]+mysplit[2]!=portage.VERSION:
+								if mylist.index(x)<len(mylist)-1:
+									p.append(red("*** Portage will stop merging at this point and reload itself,"))
+									p.append(red("    recalculate dependencies, and complete the merge."))
+									if "--update" not in myopts:
+										p.append(darkgreen("    You may avoid the remerging of packages by updating portage on its own."))
+									print
+					else:
+						if mysplit[0]=="sys-apps/portage" and ("--emptytree" in myopts):
+							if mysplit[1]+mysplit[2]!=portage.VERSION:
+								p.append(red("***")+" Please update portage to the above version before proceeding.")
+								p.append("    Failure to do so may result in failed or improper merges.")
+								p.append("    A simple '"+green("emerge -u portage")+"' is sufficient.")
+								p.append("")
+				del mysplit
+
+		if ("--tree" in myopts):
+			p.reverse()
+
+		for x in p:
+			print x
 
 		if "--changelog" in myopts:
 			print
@@ -1233,7 +1267,7 @@ class depgraph:
 		    # couldnt find the current revision in the list. display nothing
 			return []
 		return divisions
- 
+
 	def find_changelog_tags(self,changelog):
 		divs = []
 		release = None
@@ -1507,7 +1541,7 @@ def unmerge(unmerge_action, unmerge_files):
 			#add a "=" if missing
 			mymatch=localtree.dep_match("="+x)
 		if not mymatch:
-			print "\n!!! Couldn't find match for",white(x)
+			print "\n--- Couldn't find " + white(x) + " to "+unmerge_action+"."
 			continue
 		mykey=portage.key_expand(portage.dep_getkey(mymatch[0]),portage.db["/"]["vartree"].dbapi)
 		if not pkgmap.has_key(mykey):
@@ -1550,15 +1584,12 @@ def unmerge(unmerge_action, unmerge_files):
 		print "\n>>>",unmerge_action+": No packages selected for removal.\n"
 		return 0
 
-	if mymatch:
-		for x in candidate_catpkgs:
-			for y in localtree.dep_nomatch(mymatch[0]):
-				if y not in pkgmap[mykey]["omitted"] and \
-				   y not in pkgmap[mykey]["selected"] and \
-				   y not in pkgmap[mykey]["protected"]:
-					pkgmap[mykey]["omitted"].append(y)
-
 	for x in pkgmap.keys():
+		for y in localtree.dep_match(x):
+			if y not in pkgmap[x]["omitted"] and \
+			   y not in pkgmap[x]["selected"] and \
+			   y not in pkgmap[x]["protected"]:
+				pkgmap[x]["omitted"].append(y)
 		if global_unmerge and not pkgmap[x]["selected"]:
 			#avoid cluttering the preview printout with stuff that isn't getting unmerged
 			continue
@@ -1614,7 +1645,7 @@ def unmerge(unmerge_action, unmerge_files):
 
 
 def post_emerge(retval=0):
-	auxpat=re.compile('^([^-]*)(-\d+)?\.info(-\d+)?(\.gz)?')	
+	auxpat=re.compile('\.info(-\d+)?(\.gz|\.bz2)?$')	
 	os.chdir("/")
 	global myopts
 	print

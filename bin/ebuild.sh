@@ -670,7 +670,7 @@ dyn_compile() {
 	[ "${LDFLAGS-unset}"     != "unset" ] && export LDFLAGS
 	[ "${ASFLAGS-unset}"     != "unset" ] && export ASFLAGS
 
-	[ "${DISTCC_DIR-unset}"  == "unset" ] && export DISTCC_DIR="${PORT_TMPDIR}/.distcc"
+	[ "${DISTCC_DIR-unset}"  == "unset" ] && export DISTCC_DIR="${PORTAGE_TMPDIR}/.distcc"
 	[ ! -z "${DISTCC_DIR}" ] && addwrite "${DISTCC_DIR}"
 
 	if has noauto $FEATURES &>/dev/null && [ ! -f ${BUILDDIR}/.unpacked ]; then
@@ -1063,7 +1063,7 @@ EXPORT_FUNCTIONS() {
 	fi
 	while [ "$1" ]; do
 		debug-print "EXPORT_FUNCTIONS: ${1} -> ${ECLASS}_${1}" 
-		eval "$1() { ${ECLASS}_$1 ; }" > /dev/null
+		eval "$1() { ${ECLASS}_$1 "\$@" ; }" > /dev/null
 		shift
 	done
 }
@@ -1231,6 +1231,7 @@ for myarg in $*; do
 	case $myarg in
 	nofetch)
 		pkg_nofetch
+		exit 1
 		;;
 	prerm|postrm|preinst|postinst|config)
 		export SANDBOX_ON="0"

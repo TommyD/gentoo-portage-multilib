@@ -32,7 +32,7 @@ for x in "$@"; do # "$@" quotes each element... Plays nice with spaces.
 
 			# etdyn binaries are shared objects, but not really. Non-relocatable.
 			if [ -x /usr/bin/isetdyn ]; then
-				if [ "`/usr/bin/isetdyn '${x}'`" == "${x}" ]; then
+				if /usr/bin/isetdyn "${x}" >/dev/null; then
 					${STRIP} "${x}"
 				fi
 			fi

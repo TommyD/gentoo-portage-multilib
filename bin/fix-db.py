@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 import os,sys,re
-sys.path += ["/usr/lib/portage/pym"]
+sys.path = ["/usr/lib/portage/pym"]+sys.path
 
 from stat import *
 from output import *

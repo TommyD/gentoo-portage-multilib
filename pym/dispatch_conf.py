@@ -7,6 +7,8 @@
 
 from stat import *
 import os, sys, commands, shutil
+
+sys.path = ["/usr/lib/portage/pym"]+sys.path
 import portage
 
 RCS_BRANCH = '1.1.1'

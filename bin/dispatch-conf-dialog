@@ -1,7 +1,8 @@
 #!/usr/bin/python -O
 
 #
-# dispatch-conf -- Integrate modified configs, post-emerge
+# dispatch-conf-dialog -- Integrate modified configs, post-emerge
+# using a simple dialog interface...
 #
 #  Copyright 2003 Gentoo Technologies, Inc.
 #  Distributed under the terms of the GNU Public License v2
@@ -12,12 +13,15 @@
 # TODO
 #  dialog menus
 #
-
-from stat import *
 import os, sys, string, re, commands
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 
+from stat import *
 import portage, dispatch_conf
+
+from dcdialog import *
+
+from commands import *
 
 FIND_EXTANT_CONFIGS  = "find %s -iname '._cfg????_*'"
 DIFF_CONTENTS        = 'diff -Nau %s %s'
@@ -28,6 +32,10 @@ MERGE                = 'sdiff --suppress-common-lines --output=%s %s %s'
 LOG_CHANGES_TO = '/tmp/dispatch-conf.changes'
 
 MANDATORY_OPTS  = [ 'archive-dir', 'diff', 'pager', 'replace-cvs', 'replace-wscomments' ]
+
+ITEMS = ['u','z','n','e', 'm','l','t','q']
+LONG_ITEMS = [ 'update current config with new config and continue', 'zap (delete) new config and continue',  'skip to next config, leave all intact','edit new config','interactively merge current and new configs','look at diff between pre-merged and merged configs','toggle new config between merged and pre-merged state','quit']
+
 
 class dispatch:
     options = {}
@@ -110,6 +118,8 @@ class dispatch:
         #
         # Interactively process remaining
         #
+        dialog = Dialog()
+        dialog.setBackgroundTitle('dispatch-conf Dialog Interface')
 
         for conf in confs:
             count = count + 1
@@ -122,22 +132,28 @@ class dispatch:
 
             while 1:
                 if show_new_diff:
-                    os.system((self.options['diff'] + '| %s') % (conf['new'], mrgconf, self.options['pager']))
+##                     os.system((self.options['diff'] + '| %s') % (conf['new'], mrgconf, self.options['pager']))
+                    (xx,yy) = getstatusoutput((self.options['diff']) % (conf['new'], mrgconf))
+                    dialog.scrollbox(yy,24,70)
                     show_new_diff = 0
                 else:
-                    os.system((self.options['diff'] + '| %s') % (conf['current'], newconf, self.options['pager']))
+##                     os.system((self.options['diff'] + '| %s') % (conf['current'], newconf, self.options['pager']))
+                    (xx,yy) = getstatusoutput((self.options['diff']) % (conf['current'], newconf))
+                    dialog.scrollbox(yy,24,70)
 
-                print
-                print '>> (%i of %i) -- %s' % (count, len(confs), conf ['current'])
-                print '>> q quit, h help, n next, e edit-new, z zap-new, u use-new\n   m merge, t toggle-merge, l look-merge: ',
-
-                c = getch ()
-
-                if c == 'q':
+                    
+                    
+##                 print
+##                 print '>> (%i of %i) -- %s' % (count, len(confs), conf ['current'])
+##                 print '>> q quit, h help, n next, e edit-new, z zap-new, u use-new\n   m merge, t toggle-merge, l look-merge: ',
+                c = dialog.menu_ext('(%i of %i) -- %s' % (count, len(confs), conf ['current']),18,70,LONG_ITEMS,ITEMS)
+                #c = getch ()
+                
+                if c == 'q' or c==None:
                     sys.exit (0)
-                if c == 'h':
-                    self.do_help ()
-                    continue
+##                 if c == 'h':
+##                     self.do_help ()
+##                     continue
                 elif c == 't':
                     if newconf == mrgconf:
                         newconf = conf['new']
@@ -148,7 +164,7 @@ class dispatch:
                     break
                 elif c == 'm':
                     merged = '/tmp/dispatch-conf.merged.%i' % (os.getpid (),)
-                    print
+##                     print
                     os.system (MERGE % (merged, conf ['current'], newconf))
                     os.rename (merged, mrgconf)
                     mystat = os.lstat(conf['new'])
@@ -229,37 +245,37 @@ class dispatch:
         return configs
 
 
-    def do_help (self):
-        print; print
+##     def do_help (self):
+##         print; print
 
-        print '  u -- update current config with new config and continue'
-        print '  z -- zap (delete) new config and continue'
-        print '  n -- skip to next config, leave all intact'
-        print '  e -- edit new config'
-        print '  m -- interactively merge current and new configs'
-        print '  l -- look at diff between pre-merged and merged configs'
-        print '  t -- toggle new config between merged and pre-merged state'
-        print '  h -- this screen'
-        print '  q -- quit'
+##         print '  u -- update current config with new config and continue'
+##         print '  z -- zap (delete) new config and continue'
+##         print '  n -- skip to next config, leave all intact'
+##         print '  e -- edit new config'
+##         print '  m -- interactively merge current and new configs'
+##         print '  l -- look at diff between pre-merged and merged configs'
+##         print '  t -- toggle new config between merged and pre-merged state'
+##         print '  h -- this screen'
+##         print '  q -- quit'
 
-        print; print 'press any key to return to diff...',
+##         print; print 'press any key to return to diff...',
 
-        getch ()
+##         getch ()
 
 
-def getch ():
-    # from ASPN - Danny Yoo
-    #
-    import sys, tty, termios
+## def getch ():
+##     # from ASPN - Danny Yoo
+##     #
+##     import sys, tty, termios
 
-    fd = sys.stdin.fileno()
-    old_settings = termios.tcgetattr(fd)
-    try:
-        tty.setraw(sys.stdin.fileno())
-        ch = sys.stdin.read(1)
-    finally:
-        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-    return ch
+##     fd = sys.stdin.fileno()
+##     old_settings = termios.tcgetattr(fd)
+##     try:
+##         tty.setraw(sys.stdin.fileno())
+##         ch = sys.stdin.read(1)
+##     finally:
+##         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+##     return ch
 
 
 # run

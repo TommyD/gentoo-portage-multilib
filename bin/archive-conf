@@ -11,7 +11,7 @@
 #
 
 import os, sys, string
-sys.path += ["/usr/lib/portage/pym"]
+sys.path = ["/usr/lib/portage/pym"]+sys.path
 
 import portage, dispatch_conf
 

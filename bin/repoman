@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python -O
 # Copyright 1999-2003 Gentoo Technologies, Inc.
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
@@ -10,7 +10,7 @@
 import os,sys
 exename=os.path.basename(sys.argv[0])	
 os.environ["PORTAGE_CALLER"]="repoman"
-sys.path += ["/usr/lib/portage/pym"]
+sys.path = ["/usr/lib/portage/pym"]+sys.path
 version="1.2"	
 
 import string,signal,readline,portage,re,cvstree,pickle
@@ -51,14 +51,15 @@ modeshelp={
 "last"	:"Remember report from last run",
 "lfull"	:"Remember report from last run (full listing)"
 }
-options=["--pretend","--help","--commitmsg","--commitmsgfile","--verbose"]
-shortoptions={"-m":"--commitmsg","-M":"--commitmsgfile","-p":"--pretend","-v":"--verbose"}
+options=["--pretend","--help","--commitmsg","--commitmsgfile","--verbose","--xmlparse"]
+shortoptions={"-m":"--commitmsg","-M":"--commitmsgfile","-p":"--pretend","-v":"--verbose","-x":"--xmlparse"}
 optionshelp={
 "--pretend":"Don't actually perform commit or fix steps; just show what would be done (always enabled when not started in a CVS tree).",
 "--help"   :"Show this screen",
 "--commitmsg"    :"Adds a commit message via the command line.",
 "--commitmsgfile":"Adds a commit message from a file given on the command line.",
-"--verbose":"Displays every package name while checking"
+"--verbose":"Displays every package name while checking",
+"--xmlparse":"Forces the metadata.xml parse check tobe carried out"
 }
 qacats=[
 "digest.stray","digest.missing",
@@ -74,7 +75,8 @@ qacats=[
 "IUSE.invalid","KEYWORDS.invalid",
 "ebuild.nostable","ebuild.allmasked",
 "ebuild.majorsyn", "ebuild.minorsyn",
-"ebuild.badheader", "metadata.missing"
+"ebuild.badheader", "metadata.missing",
+"metadata.bad"
 ]
 qawarnings=[
 "changelog.missing",
@@ -91,7 +93,8 @@ qawarnings=[
 "IUSE.invalid",
 "ebuild.minorsyn",
 "ebuild.badheader",
-"metadata.missing"
+"metadata.missing",
+"metadata.bad"
 ]
 missingvars=["KEYWORDS","LICENSE","DESCRIPTION","SLOT"]
 allvars=portage.auxdbkeys
@@ -131,13 +134,13 @@ qahelp={
 	"ebuild.majorsyn":"This ebuild has a major syntax error that may cause the ebuild to fail partially or fully",
 	"ebuild.minorsyn":"This ebuild has a minor syntax error that contravenes gentoo coding style",
 	"ebuild.badheader":"This ebuild has a malformed header",
-	"metadata.missing":"Missing metadata.xml files"
+	"metadata.missing":"Missing metadata.xml files",
+	"metadata.bad":"Bad metadata.xml files"
 }
 
 def err(txt):
 	print exename+": "+txt
 	sys.exit(1)
-
 
 ven_cat = r'[\w0-9-]+'                                 # Category
 ven_nam = r'([+a-z0-9-]+(?:[+_a-z0-9-]*[+a-z0-9-]+)*)' # Name
@@ -576,6 +579,16 @@ for x in scanlist:
 	if "metadata.xml" not in checkdirlist:
 		stats["metadata.missing"]+=1
 		fails["metadata.missing"].append(x+"/metadata.xml")
+	#metadata.xml parse check
+	else:
+		#Only carry out if in package directory or check forced
+		if "--xmlparse" in myoptions or repolevel==3:
+			if getstatusoutput('which xmllint')[0] != 0:
+				print red("!!! xmllint not found. Can't check metadata.xml.\n")
+			else:
+				if getstatusoutput('xmllint --valid '+checkdir+"/metadata.xml")[0]!= 0:
+					stats["metadata.bad"]+=1
+					fails["metadata.bad"].append(x+"/metadata.xml")
 
 	for y in ebuildlist:
 		if y not in eadded:

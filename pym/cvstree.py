@@ -48,7 +48,7 @@ def isadded(entries, path):
 	mylines=myfile.readlines()
 	myfile.close()
 
-	rep=re.compile("^\/"+filename+"\/");
+	rep=re.compile("^\/"+re.escape(filename)+"\/");
 	for x in mylines:
 		if rep.search(x):
 			return 1
