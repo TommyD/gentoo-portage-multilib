@@ -104,14 +104,16 @@ try:
 	from output import *
 	from portage_data import *
 	import portage_util
-	from portage_util import *
+	from portage_util import grab_multiple, grabdict, grabdict_package, grabfile, grabints, map_dictlist_vals, \
+		pickle_read, pickle_write, stack_dictlist, stack_dicts, stack_lists, unique_array, varexpand, \
+		writedict, writeints, writemsg, getconfig
 	import portage_exception
 	import portage_gpg
 	import portage_locks
 	import portage_exec
-	from portage_locks import *
+	from portage_locks import unlockfile,unlockdir,lockfile,lockdir
 	import portage_checksum
-	from portage_checksum import *
+	from portage_checksum import perform_md5,perform_checksum,prelink_capable
 except Exception, e:
 	sys.stderr.write("\n\n")
 	sys.stderr.write("!!! Failed to complete portage imports. There are internal modules for\n")
