@@ -4,7 +4,7 @@
 if [ -z "$1" ]; then
 	echo
 	echo "You need to have the version specified."
-	echo "e.g.: $0 2.0.39"
+	echo "e.g.: $0 2.0.39-r37"
 	echo
 	exit 0
 fi
@@ -13,7 +13,7 @@ export PKG="portage"
 export TMP="/tmp"
 export V="$1"
 export DEST="${TMP}/${PKG}-${V}"
-export PREVEB="2.0.47-r7"
+export PREVEB="2.0.47-r9"
 rm -rf ${DEST}
 install -d -m0755 ${DEST}
 #get any binaries out of the way
