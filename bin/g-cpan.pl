@@ -84,6 +84,8 @@ my $TMP_DEV_PERL_DIR = '/var/tmp/db/dev-perl';
 my $MAKECONF         = '/etc/make.conf';
 my ( $OVERLAY_DIR, $PORTAGE_DIR, $PORTAGE_DEV_PERL, $PORTAGE_DISTDIR ) = get_globals();
 
+my $arches = join( ' ', map { chomp; $_ } `cat $PORTAGE_DIR/profiles/arch.list` );
+
 #this should never find the dir, but just to be safe
 unless ( -d $tmp_overlay_dir ) {
     mkpath( [$tmp_overlay_dir], 1, 0755 )
@@ -189,7 +191,7 @@ HOMEPAGE="http://www.cpan.org/modules/by-authors/id/$modpath/\${P}.readme"
 
 SLOT="0"
 LICENSE="Artistic | GPL-2"
-KEYWORDS="alpha arm hppa mips ppc sparc x86"
+KEYWORDS="$arches"
 
 HERE
 

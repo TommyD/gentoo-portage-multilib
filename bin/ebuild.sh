@@ -238,9 +238,14 @@ keepdir()
 {
 	dodir "$@"
 	local x
-	for x in "$@"; do
-		touch ${D}/${x}/.keep || die "Failed to create .keep in ${D}/${x}"
-	done
+	if [ "$1" == "-R" ] || [ "$1" == "-r" ]; then
+		shift
+		find "$@" -type d -printf "${D}/%p/.keep\n" | tr "\n" "\0" | $XARGS -0 -n100 touch || die "Failed to recursive create .keep files"
+	else
+		for x in "$@"; do
+			touch ${D}/${x}/.keep || die "Failed to create .keep in ${D}/${x}"
+		done
+	fi
 }
 
 # the sandbox is disabled by default except when overridden in the relevant stages
@@ -1217,6 +1222,12 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ]; then
 		[ -z "${CCACHE_SIZE}" ] && export CCACHE_SIZE="2G"
 		ccache -M ${CCACHE_SIZE} &> /dev/null
 	fi
+
+	# XXX: Load up the helper functions.
+#	for X in /usr/lib/portage/bin/functions/*.sh; do
+#		source ${X} || die "Failed to source ${X}"
+#	done
+	
 else
 
 killparent() {

@@ -469,12 +469,12 @@ def dir_get_metadata(baseurl,conn=None, chunk_size=3000, verbose=1, usingcache=1
 				sys.stderr.write("!!! "+str(e)+"\n")
 			break
 	# We may have metadata... now we run through the tbz2 list and check.
-	sys.stderr.write(red("cache miss: 'x'")+" --- "+green("cache hit: 'o'")+"\n")
+	sys.stderr.write(yellow("cache miss: 'x'")+" --- "+green("cache hit: 'o'")+"\n")
 	for x in tbz2list:
 		x = os.path.basename(x)
 		if ((not metadata[baseurl]["data"].has_key(x)) or \
 		    (x not in metadata[baseurl]["data"].keys())):
-			sys.stderr.write(red("x"))
+			sys.stderr.write(yellow("x"))
 			metadata[baseurl]["modified"] = 1
 			myid = file_get_metadata(baseurl+"/"+x, conn, chunk_size)
 		

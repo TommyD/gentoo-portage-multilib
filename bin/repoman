@@ -1030,13 +1030,20 @@ else:
 			print "!!! Exiting on cvs (shell) error code:",retval
 			sys.exit(retval)
 
+	# Setup the GPG commands
+	gpgcmd = "gpg -ab --yes --homedir "+repoman_settings["PORTAGE_GPG_DIR"]+" "
+	gpgcmd+= "--default-key "+repoman_settings["PORTAGE_GPG_KEY"]+" "
+
 	mychanges=[]
-	if myheaders or myremoved or mynew:
-		myfiles=myheaders+myremoved+mynew
+	if myheaders or myupdates or myremoved or mynew:
+		myfiles=myheaders+myupdates+myremoved+mynew
 		mydone=[]
 		if repolevel==3:   # In a package dir
 			repoman_settings["O"]="./"
 			portage.digestgen([],repoman_settings,manifestonly=1)
+			if "sign" in portage.features:
+				os.system(gpgcmd+repoman_settings["O"]+"/Manifest")
+				mysigs+=[sigfile]
 		elif repolevel==2: # In a category dir
 			for x in myfiles:
 				xs=string.split(x,"/")
@@ -1046,7 +1053,12 @@ else:
 					continue
 				mydone.append(xs[0])
 				repoman_settings["O"]="./"+xs[0]
-				portage.digestgen([],manifestonly=1)
+				portage.digestgen([],repomansettings,manifestonly=1)
+				if "sign" in portage.features:
+					while(os.system(gpgcmd+repoman_settings["O"]+"/Manifest")):
+						portage.writemsg("!!! YOU MUST sign the Manifest.\n")
+						portage.writemsg("!!! You can also disable this for the time being by removing FEATURES='sign'")
+					mysigs+=[sigfile]
 		elif repolevel==1: # repo-cvsroot
 			print green("RepoMan sez:"), "\"You're rather crazy... doing the entire repository.\"\n"
 			for x in myfiles:
@@ -1057,27 +1069,14 @@ else:
 					continue
 				mydone.append(string.join(xs[:2],"/"))
 				repoman_settings["O"]="./"+string.join(xs[:2],"/")
-				portage.digestgen([],manifestonly=1)
+				portage.digestgen([],repomansettings,manifestonly=1)
+				if "sign" in portage.features:
+					os.system(gpgcmd+repoman_settings["O"]+"/Manifest")
+					mysigs+=[sigfile]
 		else:
 			print red("I'm confused... I don't know where I am!")
 			sys.exit(1)
 
-	mysigs=[]
-	for x in mychanges:
-		if "--pretend" in myoptions:
-			print "(/usr/sbin/ebuild "+x+".ebuild digest)"
-		else:
-			os.system("/usr/sbin/ebuild "+x+".ebuild digest")
-		y = string.split(x,"/")
-		if "sign" in portage.features:
-			gpgcmd="gpg -ab --yes "+repoman_settings["GPG_OPTIONS"]+" "
-			sigfile=y[:-1]+"/files/digest-"+y[-1]
-			if "--pretend" in myoptions:
-				print "("+gpgcmd+sigfile+")"
-			else:
-				os.system(gpgcmd+sigfile)
-				mysigs+=[sigfile]
-	
 	if "--pretend" in myoptions:
 		print "(/usr/bin/cvs -q commit -F "+commitmessagefile+")"
 	else:

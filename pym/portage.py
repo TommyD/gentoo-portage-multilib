@@ -1110,6 +1110,13 @@ class config:
 		self.regenerate()
 
 	def load_infodir(self,infodir):
+		if self.configdict.has_key("pkg"):
+			for x in self.configdict["pkg"].keys():
+				del self.configdict["pkg"][x]
+		else:
+			writemsg("No pkg setup for settings instance?\n")
+			sys.exit(17)
+			
 		if os.path.exists(infodir):
 			myre = re.compile('^[A-Z]+$')
 			for filename in listdir(infodir,filesonly=1,EmptyOnError=1):
@@ -1315,7 +1322,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0):
 	
 	check_config_instance(mysettings)
 	
+	custommirrors=grabdict("/etc/portage/mirrors")
+
 	mymirrors=[]
+	
+	# local mirrors are always added
+	if custommirrors.has_key("local"):
+		mymirrors += custommirrors["local"]
+
 	if ("nomirror" in mysettings["RESTRICT"].split()):
 		# We don't add any mirrors.
 		pass
@@ -1402,6 +1416,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0):
 			eidx = myuri.find("/", 9)
 			if eidx != -1:
 				mirrorname = myuri[9:eidx]
+				# Try user-defined mirrors first
+				if custommirrors.has_key(mirrorname):
+					for cmirr in custommirrors[mirrorname]:
+						filedict[myfile].append(cmirr+"/"+myuri[eidx+1:])
+						# remove the mirrors we tried from the list of official mirrors
+						if cmirr.strip() in thirdpartymirrors[mirrorname]:
+							thirdpartymirrors[mirrorname].remove(cmirr)
+				# now try the official mirrors
 				if thirdpartymirrors.has_key(mirrorname):
 					try:
 						shuffle(thirdpartymirrors[mirrorname])
@@ -1667,7 +1689,7 @@ def digestCheckFiles(myfiles, mydigests, basedir, note="", strict=0):
 		if not mydigests.has_key(x):
 			print
 			print red("!!! No message digest entry found for file \""+x+".\"")
-			print "!!! Most likely a temporary problem. Try 'emerge rsync' again later."
+			print "!!! Most likely a temporary problem. Try 'emerge sync' again later."
 			print "!!! If you are certain of the authenticity of the file then you may type"
 			print "!!! the following to generate a new digest:"
 			print "!!!   ebuild /usr/portage/category/package/package-version.ebuild digest"
@@ -1745,7 +1767,7 @@ def digestcheck(myfiles, mysettings, strict=0):
 				if strict:
 					return 0
 	
-		if not digestCheckFiles(mymfiles, mymdigests, pbasedir, "files  "):
+		if not digestCheckFiles(mymfiles, mymdigests, pbasedir, "files  ", strict):
 			if strict:
 				print ">>> Please ensure you have sync'd properly. Please try '"+bold("emerge sync")+"' and"
 				print ">>> optionally examine the file(s) for corruption. "+bold("A sync will fix most cases.")
@@ -1756,7 +1778,7 @@ def digestcheck(myfiles, mysettings, strict=0):
 				print
 	
 	# Just return the status, as it's the last check.
-	return digestCheckFiles(myfiles, mydigests, basedir, "src_uri")
+	return digestCheckFiles(myfiles, mydigests, basedir, "src_uri", strict)
 
 # parse actionmap to spawn ebuild with the appropriate args
 def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0):
@@ -3583,7 +3605,7 @@ class vardbapi(dbapi):
 				continue
 			ps=pkgsplit(x)
 			if not ps:
-				self.invalidentry(self.root+"var/db/pkg/"+mysplit[0]+"/"+x)
+				self.dbapi.invalidentry(self.root+"var/db/pkg/"+mysplit[0]+"/"+x)
 				continue
 			if len(mysplit) > 1:
 				if ps[0]==mysplit[1]:
@@ -3606,7 +3628,7 @@ class vardbapi(dbapi):
 				y = y[1:]
 			mysplit=catpkgsplit(y)
 			if not mysplit:
-				self.invalidentry(self.root+"var/db/pkg/"+x)
+				self.dbapi.invalidentry(self.root+"var/db/pkg/"+x)
 				continue
 			mykey=mysplit[0]+"/"+mysplit[1]
 			if not mykey in returnme:
@@ -4427,10 +4449,12 @@ class portdbapi(dbapi):
 			pgroups=groups[:]
 			match=0
 			for mykey in pkgdict:
-				if db["/"]["porttree"].dbapi.xmatch("bestmatch-list", mykey, None, None, [mycpv]):
+				if db["/"]["porttree"].dbapi.xmatch("bestmatch-list", mykey, None, None, [mycpv]) \
+				   and (catpkgsplit(dep_getcpv(mykey))[:2] == catpkgsplit(mycpv)[:2]):
 					pgroups.extend(pkgdict[mykey])
 			for gp in mygroups:
 				if gp=="*":
+					writemsg("--- WARNING: Package '%s' uses '*' keyword.\n" % mycpv)
 					match=1
 					break
 				elif "-"+gp in pgroups:
@@ -5638,6 +5662,13 @@ os.umask(022)
 profiledir=None
 if os.path.exists("/etc/make.profile/make.defaults"):
 	profiledir="/etc/make.profile"
+	if os.access("/etc/make.profile/deprecated", os.R_OK):
+		deprecatedfile = open("/etc/make.profile/deprecated", "r")
+		newprofile=deprecatedfile.read()
+		deprecatedfile.close()
+		writemsg(red("!!! Your current profile is deprecated and not supported anymore.\n"))
+		writemsg(red("!!! Please upgrade to the following profile if possible:\n"))
+		writemsg(8*" "+green(newprofile)+"\n")
 
 db={}
 
@@ -5980,10 +6011,13 @@ archlist=[]
 for myarch in grabfile(settings["PORTDIR"]+"/profiles/arch.list"):
 	archlist += [myarch,"~"+myarch]
 for group in groups:
-	if (group not in archlist) and group[0]!='-':
+	if not archlist:
+		writemsg("--- 'profiles/arch.list' is empty or not available. Empty portage tree?\n")
+		break
+	elif (group not in archlist) and group[0]!='-':
 		writemsg("\n"+red("!!! INVALID ACCEPT_KEYWORDS: ")+str(group)+"\n")
 
-# Clear the cache that we probably won't need anymore.
+# Clear the cache
 dircache={}
 
 if not os.path.islink("/etc/make.profile"):

@@ -226,6 +226,8 @@ def emergelog(mystr):
 		mylogfile.write(str(time.time())[:10]+": "+mystr+"\n")
 		mylogfile.flush()
 		mylogfile.close()
+		os.chmod("/var/log/emerge.log", S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP)
+		os.chown("/var/log/emerge.log", portage.portage_uid, portage.portage_gid)
 	except Exception, e:
 		if edebug:
 			print "emergelog():",e
@@ -819,13 +821,16 @@ class depgraph:
 			else:
 				mykey=portage.dep_expand(x,portage.portdb)
 				# select needs to return 0 on dep_check failure
-				self.mysd=self.select_dep(portage.root,mykey,arg=x)
-				try:
-					self.select_dep(portage.root,mykey,arg=x)
-				except Exception, e:
-					print "\n!!! Problem in",mykey,"dependencies."
-					print "!!!",e
-					sys.exit(1)
+
+				if "--debug" in myopts:
+					self.mysd = self.select_dep(portage.root,mykey,arg=x)
+				else:
+					try:
+						self.mysd = self.select_dep(portage.root,mykey,arg=x)
+					except Exception, e:
+						print "\n!!! Problem in",mykey,"dependencies."
+						print "!!!",e
+						sys.exit(1)
 
 				if not self.mysd:
 					return (0,myfavorites)
