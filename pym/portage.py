@@ -182,10 +182,13 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 	if type(mypath) == types.StringType:
 		if not os.path.exists(os.path.dirname(mypath)):
 			raise IOError, "Base path does not exist '%s'" % os.path.dirname(mypath)
-		old_umask=os.umask(0002)
-		myfd = os.open(lockfilename, os.O_CREAT|os.O_WRONLY,0660)
-		os.chown(lockfilename,os.getuid(),portage_gid)
-		os.umask(old_umask)
+		if not os.path.exists(lockfilename):
+			old_umask=os.umask(0002)
+			myfd = os.open(lockfilename, os.O_CREAT|os.O_WRONLY,0660)
+			os.chown(lockfilename,os.getuid(),portage_gid)
+			os.umask(old_umask)
+		else:
+			myfd = os.open(lockfilename, os.O_CREAT|os.O_WRONLY,0660)
 
 	elif type(mypath) == types.IntType:
 		myfd = mypath
@@ -2227,7 +2230,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 
 			# check if we can actually write to the directory/existing file.
-			if fetched!=2 and not (os.access(mysettings["DISTDIR"],os.W_OK) and (os.path.exists(mysettings["DISTDIR"]+"/"+myfile) == os.access(mysettings["DISTDIR"]+"/"+myfile, os.W_OK))):
+			if fetched!=2 and not (os.access(mysettings["DISTDIR"],os.W_OK) and 
+				(os.path.exists(mysettings["DISTDIR"]+"/"+myfile) == os.access(mysettings["DISTDIR"]+"/"+myfile, os.W_OK))):
 				writemsg(red("***")+" Lack write access to %s, failing fetch\n" % str(mysettings["DISTDIR"]+"/"+myfile))
 				fetched=0
 				break
@@ -2244,22 +2248,26 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				writemsg(">>> Downloading "+str(loc)+"\n")
 				myfetch=string.replace(locfetch,"${URI}",loc)
 				myfetch=string.replace(myfetch,"${FILE}",myfile)
-				if selinux_enabled:
-					con=selinux.getcontext()
-					con=string.replace(con,mysettings["PORTAGE_T"],mysettings["PORTAGE_FETCH_T"])
-					selinux.setexec(con)
-					myret=spawn(myfetch,mysettings,free=1)
-					selinux.setexec(None)
-				else:
-					myret=spawn(myfetch,mysettings,free=1)
-				
+				try:
+					if selinux_enabled:
+						con=selinux.getcontext()
+						con=string.replace(con,mysettings["PORTAGE_T"],mysettings["PORTAGE_FETCH_T"])
+						selinux.setexec(con)
+						myret=spawn(myfetch,mysettings,free=1)
+						selinux.setexec(None)
+					else:
+						myret=spawn(myfetch,mysettings,free=1)
+				finally:
+					#if root, -always- set the perms.
+					if os.path.exists(mysettings["DISTDIR"]+"/"+myfile) and (fetched != 1 or os.getuid() == 0):
+						os.chmod(mysettings["DISTDIR"]+"/"+myfile,0664)
+						os.chown(mysettings["DISTDIR"]+"/"+myfile,os.getuid(),portage_gid)
+
 				if mydigests!=None and mydigests.has_key(myfile):
 					try:
 						mystat=os.stat(mysettings["DISTDIR"]+"/"+myfile)
 						# no exception?  file exists. let digestcheck() report
 						# an appropriately for size or md5 errors
-						os.chown(mysettings["DISTDIR"]+"/"+myfile,os.getuid(),portage_gid)
-						os.chmod(mysettings["DISTDIR"]+"/"+myfile,0664)
 						if (mystat[ST_SIZE]<mydigests[myfile]["size"]):
 							# Fetch failed... Try the next one... Kill 404 files though.
 							if (mystat[ST_SIZE]<100000) and (len(myfile)>4) and not ((myfile[-5:]==".html") or (myfile[-4:]==".htm")):

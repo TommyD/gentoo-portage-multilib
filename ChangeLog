@@ -9,6 +9,9 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  08 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py:
+  Killed a couple of corner cases for non-root fetch and lockfile calls.
+
   08 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py
   bin/ebuild.sh: Add check to ensure that install phase has been 
   ran prior to qmerge phase being attempted.  This can happen 
