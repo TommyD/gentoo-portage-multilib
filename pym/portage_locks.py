@@ -85,30 +85,33 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 	try:
 		fcntl.lockf(myfd,fcntl.LOCK_EX|fcntl.LOCK_NB)
 	except IOError, e:
-		# resource temp unavailable; eg, someone beat us to the lock.
-		if "errno" in dir(e):
-			if e.errno == errno.EAGAIN:
-				if type(mypath) == types.IntType:
-					print "waiting for lock on fd %i" % myfd
-				else:
-					print "waiting for lock on %s" % lockfilename
-				# try for the exclusive lock now.
-				fcntl.lockf(myfd,fcntl.LOCK_EX)
-			elif e.errno == errno.ENOLCK:
-				# We're not allowed to lock on this FS.
-				os.close(myfd)
-				link_success = False
-				if lockfilename == str(lockfilename):
-					if wantnewlockfile:
-						link_success = hardlink_lockfile(lockfilename)
-				if not link_success:
-					raise
-				myfd = HARDLINK_FD
+		if "errno" not in dir(e):
+			raise e
+		if e.errno == errno.EAGAIN:
+			# resource temp unavailable; eg, someone beat us to the lock.
+			if type(mypath) == types.IntType:
+				print "waiting for lock on fd %i" % myfd
 			else:
-				raise ie
+				print "waiting for lock on %s" % lockfilename
+			# try for the exclusive lock now.
+			fcntl.lockf(myfd,fcntl.LOCK_EX)
+		elif e.errno == errno.ENOLCK:
+			# We're not allowed to lock on this FS.
+			os.close(myfd)
+			link_success = False
+			if lockfilename == str(lockfilename):
+				if wantnewlockfile:
+					try:
+						if os.stat(lockfilename)[stat.ST_NLINK] == 1:
+							os.unlink(lockfilename)
+					except Exception, e:
+						pass
+					link_success = hardlink_lockfile(lockfilename)
+			if not link_success:
+				raise
+			myfd = HARDLINK_FD
 		else:
-			raise ie
-
+			raise e
 
 	if type(lockfilename) == types.StringType and not os.path.exists(lockfilename):
 		# The file was deleted on us... Keep trying to make one...
@@ -213,8 +216,6 @@ def hardlink_lockfile(lockfilename, max_wait=14400):
 	myhardlock = hardlock_name(lockfilename)
 	reported_waiting = False
 	
-	print "Hardlink lockfile:",myhardlock
-	
 	while(time.time() < (start_time + max_wait)):
 		# We only need it to exist.
 		myfd = os.open(myhardlock, os.O_CREAT|os.O_RDWR,0660)
@@ -225,7 +226,9 @@ def hardlink_lockfile(lockfilename, max_wait=14400):
 
 		try:
 			res = os.link(myhardlock, lockfilename)
-		except:
+		except Exception, e:
+			#print "lockfile(): Hardlink: Link failed."
+			#print "Exception: ",e
 			pass
 
 		if hardlink_is_mine(myhardlock, lockfilename):
@@ -240,7 +243,9 @@ def hardlink_lockfile(lockfilename, max_wait=14400):
 			reported_waiting = True
 			print
 			print "Waiting on (hardlink) lockfile: (one '.' per 3 seconds)"
-			print "   " + lockfilename
+			print "This is a feature to prevent distfiles corruption."
+			print "/usr/lib/portage/bin/clean_locks can fix stuck locks."
+			print "Lockfile: " + lockfilename
 		time.sleep(3)
 	
 	os.unlink(myhardlock)
@@ -301,7 +306,6 @@ def hardlock_cleanup(path, remove_all_locks=False):
 							os.unlink(filename)
 							results.append(_("Unlinked: ") + filename)
 						except Exception,e:
-							print "Exception",e
 							pass
 				try:
 					os.unlink(path+"/"+x)

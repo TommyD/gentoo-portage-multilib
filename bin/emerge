@@ -35,8 +35,42 @@ spinner_msgs = ["Gentoo Rocks ("+os.uname()[0]+")",
 								"Sometimes insanity is the only alternative.",
 								"Inaccuracy saves a world of explanation.",
                ]
-spinner = spinner_msgs[int(time.time()*100)%len(spinner_msgs)]
+
+
+def update_basic_spinner():
+	global spinner, spinpos
+	spinpos = (spinpos+1) % 500
+	if (spinpos % 100) == 0:
+		if spinpos == 0:
+			sys.stdout.write(". ")
+		else:
+			sys.stdout.write(".")
+	sys.stdout.flush()
+
+def update_scroll_spinner():
+	global spinner, spinpos
+	if(spinpos >= len(spinner)):
+		sys.stdout.write(darkgreen(" \b\b\b"+spinner[len(spinner)-1-(spinpos%len(spinner))]))
+	else:
+		sys.stdout.write(green("\b "+spinner[spinpos]))
+	sys.stdout.flush()
+	spinpos = (spinpos+1) % (2*len(spinner))
+
+def update_twirl_spinner():
+	global spinner, spinpos
+	spinpos = (spinpos+1) % len(spinner)
+	sys.stdout.write("\b\b "+spinner[spinpos])
+	sys.stdout.flush()
+
 spinpos = 0
+spinner = "/-\\|/-\\|/-\\|/-\\|\\-/|\\-/|\\-/|\\-/|"
+update_spinner = update_twirl_spinner
+if "candy" in portage.settings.features:
+	spinner = spinner_msgs[int(time.time()*100)%len(spinner_msgs)]
+	update_spinner = update_scroll_spinner
+if not sys.stdout.isatty() or ("--nospinner" in sys.argv):
+	update_spinner = update_basic_spinner
+
 
 if (not sys.stdout.isatty()) or (portage.settings["NOCOLOR"] in ["yes","true"]):
 	nocolor()
@@ -578,19 +612,6 @@ for x in add:
 for x in sub:
 	if x in myparams:
 		myparams.remove(x)
-
-def update_spinner(start_pos=None):
-	global spinner, spinpos
-	if(start_pos != None):
-		spinpos = start_pos
-	if sys.stdout.isatty() and not ("--nospinner" in myopts):
-		if(spinpos >= len(spinner)):
-			sys.stdout.write(darkgreen(" \b\b\b"+spinner[len(spinner)-1-(spinpos%len(spinner))]))
-		else:
-			sys.stdout.write(green("\b "+spinner[spinpos]))
-
-		sys.stdout.flush()
-		spinpos = (spinpos+1) % (2*len(spinner))
 
 # search functionality
 class search:
@@ -2772,6 +2793,7 @@ else:
 		mydepgraph=depgraph(myaction,myopts)
 		if myaction in ["system","world"]:
 			print "Calculating",myaction,"dependencies  ",
+			sys.stdout.flush()
 			if not mydepgraph.xcreate(myaction):
 				print "!!! Depgraph creation failed."
 				sys.exit(1)
@@ -2783,6 +2805,7 @@ else:
 				sys.exit(1)
 				#we don't have any files to process; skip this step and exit
 			print "Calculating dependencies  ",
+			sys.stdout.flush()
 			retval,favorites=mydepgraph.select_files(myfiles)
 			if not retval:
 				sys.exit(1)
