@@ -223,12 +223,6 @@ else
 	guiconf=""
 .br
 fi
-.TP
-\fBdopython\fR \fI[commands]\fR
-Performs [commands] with python and returns the result.
-.TP
-\fBdosed\fR \fI "s:orig:change:g" [filename] \fR
-Performs sed (including cp/mv filename) on [filename].
 .SH "HELPER FUNCTIONS: UNPACK"
 .TP
 \fBunpack\fR \fI[list of sources] \fB
@@ -283,6 +277,15 @@ make prefix=${D}/usr \\
             localstatedir=${D}/var/lib \\
 .br
             \fI[make options]\fR install
+.TP
+\fBdopython\fR \fI[commands]\fR
+Performs [commands] with python and returns the result.
+.TP
+\fBdosed\fR \fI "s:orig:change:g" [filename] \fR
+Performs sed (including cp/mv filename) on [filename].
+.br
+\fB\'dosed "s:/usr/local:/usr:g" /usr/bin/some-script'\fR
+runs sed on ${D}/usr/bin/some-script
 .TP
 \fBdodir\fR \fI[path]\fR
 Creates a directory inside of ${D}.
