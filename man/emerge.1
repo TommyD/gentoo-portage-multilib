@@ -91,6 +91,46 @@ tell emerge to use binary packages (from $DISTDIR) if they are available, thus p
 \fB--buildpkg\fR
 tell emerge to build binary packages for all ebuilds processed (in addition to actually merging the packages.  Useful for maintainers or if you administrate multiple Gentoo Linux systems (build once, emerge tbz2s everywhere).  The package will be created in the \fI${PKGDIR}\fR/ALL directory.
 .TP
+\fB--unmerge\fR
+removes an installed package. the arguments can be in two different formats : /var/db/pkg/category/package-version or category/package-version. A few examples of the second format:"
+.br
+	binutils matches
+.br
+		binutils-2.11.90.0.7 and
+.br
+		binutils-2.11.92.0.12.3-r1
+.br
+	sys-devel/binutils matches
+.br
+		binutils-2.11.90.0.7 and
+.br
+		binutils-2.11.92.0.12.3-r1
+.br
+	sys-devel/binutils-2.11.90.0.7 matches
+.br
+		binutils-2.11.90.0.7
+.br
+	>sys-devel/binutils-2.11.90.0.7 matches
+.br
+		binutils-2.11.92.0.12.3-r1
+.br
+	>=sys-devel/binutils-2.11.90.0.7 matches
+.br
+		binutils-2.11.90.0.7
+.br
+		binutils-2.11.92.0.12.3-r1
+.br
+	<sys-devel/binutils-2.11.92.0.12.3-r1 matches
+.br
+		binutils-2.11.90.0.7
+.br
+	<=sys-devel/binutils-2.11.92.0.12.3-r1 matches
+.br
+		binutils-2.11.90.0.7
+.br
+		binutils-2.11.92.0.12.3-r1
+.br
+.TP
 .SH AUTHOR
 Achim Gottinger <achim@gentoo.org>
 .SH "SEE ALSO"
