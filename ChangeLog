@@ -1,6 +1,14 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+*portage 1.8.9_pre4 (6 Feb 2002)
+
+  6 Feb 2002; G.Bevin <gbevin@gentoo.org> portage.py :
+  fixed some bugs in the handling of PROVIDES and virtual packages together
+  with slots, they used code that wasn't upudated to the new dblink constructor
+  virtuals now use "" as slot, resulting in normally to same behaviour as what
+  has been done before.
+  
   5 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge :
   sorted the packages to unmerge since this makes package names with revision
   endings appear before plain version numbers. This makes the unmerge code

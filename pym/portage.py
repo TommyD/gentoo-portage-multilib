@@ -2216,7 +2216,7 @@ class dblink:
 		for mycatpkg in self.getelements("PROVIDE"):
 			mycat,mypkg=string.split(mycatpkg,"/")
 			tcatpkg=self.cat+"/"+self.pkg
-			mylink=dblink(mycat,mypkg,self.myroot)
+			mylink=dblink(mycat,mypkg,"",self.myroot)
 			if not mylink.exists():
 				continue
 			myvirts=mylink.getelements("VIRTUAL")
@@ -2464,7 +2464,7 @@ class dblink:
 			#create virtual links
 			for mycatpkg in self.getelements("PROVIDE"):
 				mycat,mypkg=string.split(mycatpkg,"/")
-				mylink=dblink(mycat,mypkg,self.myroot)
+				mylink=dblink(mycat,mypkg,"",self.myroot)
 				#this will create the link if it doesn't exist
 				mylink.create()
 				myvirts=mylink.getelements("VIRTUAL")
