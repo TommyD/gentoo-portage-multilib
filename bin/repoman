@@ -51,8 +51,8 @@ modeshelp={
 "last"	:"Remember report from last run",
 "lfull"	:"Remember report from last run (full listing)"
 }
-options=["--pretend","--help","--commitmsg","--commitmsgfile","--verbose","--xmlparse"]
-shortoptions={"-m":"--commitmsg","-M":"--commitmsgfile","-p":"--pretend","-v":"--verbose","-x":"--xmlparse"}
+options=["--pretend","--help","--commitmsg","--commitmsgfile","--verbose","--xmlparse","--ignore-other-arches"]
+shortoptions={"-m":"--commitmsg","-M":"--commitmsgfile","-p":"--pretend","-v":"--verbose","-x":"--xmlparse","-I":"--ignore-other-arches"}
 optionshelp={
 "--pretend":"Don't actually perform commit or fix steps; just show what would be done (always enabled when not started in a CVS tree).",
 "--help"   :"Show this screen",
@@ -679,18 +679,24 @@ for x in scanlist:
 				stats[myqakey]=stats[myqakey]+1
 				fails[myqakey].append(x+"/"+y+".ebuild")
 
-		for mytype,mypos in [["DEPEND",len(missingvars)],["RDEPEND",len(missingvars)+1],["PDEPEND",len(missingvars)+2]]:
+		if "--ignore-other-arches" in myoptions:
+			arches=[[repoman_settings["ARCH"], repoman_settings["ARCH"], portage.groups]]
+		else:
+			arches=[]
 			for keyword in string.split(portage.db["/"]["porttree"].dbapi.aux_get(catdir+"/"+y,["KEYWORDS"])[0]):
 				if (keyword[0]=="-"):
 					continue
 				elif (keyword[0]=="~"):
-					portage.groups=[keyword[1:], keyword]
-					arch=keyword[1:]
+					arches.append([keyword, keyword[1:], [keyword[1:], keyword]])
 				else:
-					portage.groups=[keyword]
-					arch=keyword
+					arches.append([keyword, keyword, [keyword]])
 
+		for mytype,mypos in [["DEPEND",len(missingvars)],["RDEPEND",len(missingvars)+1],["PDEPEND",len(missingvars)+2]]:
+
+			for keyword,arch,groups in arches:
 				repoman_settings["ARCH"]=arch
+				portage.groups=groups
+
 				if (profiles.has_key(arch)):
 					portage.profiledir=repoman_settings["PORTDIR"]+"/profiles/"+profiles[arch][0]
 				else:
