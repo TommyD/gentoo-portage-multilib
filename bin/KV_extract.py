@@ -41,7 +41,7 @@ def ExtractKernelVersion(filename):
   # OK, check
   error = 0
   for (key,value) in item_dict.items():
-    if value == []:
+    if value == [] and key != 'EXTRAVERSION':
       print 'E:Unable to locate %s' % (key)
       error = error + 1
       continue
