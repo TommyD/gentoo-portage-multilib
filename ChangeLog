@@ -33,7 +33,8 @@
   portage.exit_callbacks- append a function to this list, and it'll be exited at shutdown
   FEATURES="verify-rdepend"- don't trust the packages stated rdepends, ldd the crap out of 
   the package to verify it.  When severe is on, bail, if unstated rdepends are encountered.
-  FEATURES="prelink"- do prelinking of binaries after merging.
+  FEATURES="prelink"- do prelinking of binaries after merging.  Initial patch submitted by
+  Urilith.
   FEATURES="userpriv_fakeroot"- run the install phase in userpriv'd fakeroot instance, removing
   the root requirement for all building phases but setup
   FEATURES="confcache"- a implementation of stuart's confcache alg, minus the sandbox
