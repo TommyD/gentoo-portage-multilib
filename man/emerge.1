@@ -48,18 +48,18 @@ This must be a valid portage package directory name, such as sys-apps/portage or
 \fB--help\fR, \fB-h\fR \fB[mode]\fR
 display help information for emerge.  Specify "rsync" or "system" for additional info.
 .TP
-\fB--search\fR, \fB-s\fR \fB [package] [package]\fR
+\fBsearch\fR, \fB-s\fR \fB [package] [package]\fR
 searches for matches of the supplied string in the current local portage tree.  The search string is a regular expression.  Some examples:
 .br
-	emerge --search "^kde"
+	emerge search "^kde"
 .br
 		lists all packages starting with kde
 .br
-	emerge --search "gcc$"
+	emerge search "gcc$"
 .br
 		list all packages ending with gcc
 .br
-	emerge --search "*" or emerge --search ""
+	emerge search ".*"
 .br
 		list all available packages
 .br
@@ -67,7 +67,7 @@ searches for matches of the supplied string in the current local portage tree.  
 \fB--pretend\fR, \fB-p\fR
 instead of actually performing the merge, simply display what ebuilds and tbz2s *would* have been installed if --pretend weren't used.  Using --pretend is strongly recommended before installing an unfamiliar package.  In the printout, N = new, U = upgrading, R = replacing
 .TP
-\fB--unmerge\fR, \fB-u\fR \fB[package] [package]\fR
+\fBunmerge\fR, \fB-u\fR \fB[package] [package]\fR
 removes an installed package. the arguments can be in two different formats : /var/db/pkg/category/package-version or category/package-version. A few examples of the second format:"
 .br
 	binutils matches
@@ -111,9 +111,6 @@ removes an installed package. the arguments can be in two different formats : /v
 		binutils-2.11.92.0.12.3-r1
 .br
 .TP
-\fB--all\fR, \fB-a\fR
-complements the --unmerge option to make sure that all installed versions of an application will be unmerged, the default behaviour is to not remove the last installed version.
-.TP
 \fB--verbose\fR, \fB-v\fR
 Tell emerge to run in verbose mode.  Currently this flag causes emerge to print out GNU info errors, if any.
 .TP
@@ -138,7 +135,9 @@ tell emerge to use binary packages (from $DISTDIR) if they are available, thus p
 \fB--buildpkg\fR, \fB-b\fR
 tell emerge to build binary packages for all ebuilds processed (in addition to actually merging the packages.  Useful for maintainers or if you administrate multiple Gentoo Linux systems (build once, emerge tbz2s everywhere).  The package will be created in the \fI${PKGDIR}\fR/ALL directory.
 .TP
-.SH AUTHOR
+.SH AUTHORS
+Daniel Robbins <drobbins@gentoo.org>
+Geert Bevin <gbevin@gentoo.org>
 Achim Gottinger <achim@gentoo.org>
 .SH "SEE ALSO"
 ebuild(1) ebuild(5) make.defaults(5) make.conf(5)
