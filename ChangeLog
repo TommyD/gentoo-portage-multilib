@@ -1,8 +1,12 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
-  29 Jun 2002; Martin Schlemmer <azarah@gentoo.org> portage.py: merge in
-  some of the missing ld.so.preload fixes again.
+  29 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: tweaked the
+  aux_get() code to automatically regenerate cache files if they have the
+  incorrect number of entries.
+  
+  29 Jun 2002; Martin Schlemmer <azarah@gentoo.org> portage.py: merge in some
+  of the missing ld.so.preload fixes again.
 
   29 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: new version
   with highly-optimized dependency calculation caching, particularly for

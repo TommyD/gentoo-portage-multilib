@@ -2505,6 +2505,7 @@ class vartree(packagetree):
 
 	
 auxdbkeys=['DEPEND','RDEPEND','SLOT','SRC_URI','RESTRICT','HOMEPAGE','LICENSE','DESCRIPTION','KEYWORDS']
+auxdbkeylen=len(auxdbkeys)
 class portdbapi(dbapi):
 	"this tree will scan a portage directory located at root (passed to init)"
 	def __init__(self):
@@ -2517,7 +2518,7 @@ class portdbapi(dbapi):
 		"stub code for returning auxilliary db information, such as SLOT, DEPEND, etc."
 		'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
 		'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or [] if mycpv not found'
-		global auxdbkeys
+		global auxdbkeys,auxdbkeylen
 		dmtime=0
 		regen=0
 		mydbkey="/var/cache/edb/dep/"+mycpv
@@ -2543,6 +2544,15 @@ class portdbapi(dbapi):
 				print "(likely caused by syntax error or corruption in the",mycpv,"ebuild.)"
 				sys.exit(1)
 			mylines=mycent.readlines()
+			if len(mylines)!=auxdbkeylen:
+				#old cache entry, needs updating:
+				doebuild(myebuild,"depend","/")
+				try:
+					mycent=open(mydbkey,"r")
+				except IOError,OSError:
+					print "portage: aux_get(): couldn't open cache entry for",mycpv
+					print "(likely caused by syntax error or corruption in the",mycpv,"ebuild.)"
+					sys.exit(1)
 			self.auxcache[mycpv]={"mtime":dmtime}
 			for x in range(0,len(auxdbkeys)):
 				self.auxcache[mycpv][auxdbkeys[x]]=mylines[x][:-1]
