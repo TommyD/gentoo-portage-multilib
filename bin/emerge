@@ -681,7 +681,7 @@ class depgraph:
 			myroot=x[1]
 			#the last argument in the portage.doebuild() tells doebuild to *not* do dep checking
 			#(emerge is already handling that)
-			y=portage.db[myroot]["porttree"].getname(x[2])
+			y=portage.portdb.findname(x[2])
 			if ("--update" in self.myopts) and (portage.db[x[1]]["vartree"].exists_specific(x[2])):
 				#already merged, continue
 				continue

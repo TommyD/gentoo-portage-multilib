@@ -1,6 +1,19 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-2.0.21 (28 Jul 2002)
+
+  28 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, emerge: Added
+  beta "Portage tree overlay" support.  By setting PORTDIR_OVERLAY to point to
+  a local directory tree, you can cause Portage to look for ebuilds in
+  PORTDIR_OVERLAY first before consulting the regular PORTDIR.  Using this
+  feature, it's possible to have your PORTDIR set up to rsync but still be able
+  to have locally-created ebuilds in your PORTDIR_OVERLAY tree.  For example,
+  you would place your ebuild in PORTDIR_OVERLAY/sys-apps/foo/.
+  
+  27 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: another
+  dep_opconvert() USE-handling bug-fix.  Working OK for Azarah now.
+  
   27 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: small logic
   error fix in dep_opconvert() to fix up USE handling.
 

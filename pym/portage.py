@@ -1770,15 +1770,18 @@ def dep_opconvert(mysplit,myuse):
 				#enable it even if it's ! (for repoman)
 				enabled=1
 			else:
-				#if use var is present, enable it, otherwise disable
-				if (mysplit[mypos][:-1]) in myuse:
-					enabled=1
-				else:
-					enabled=0
-				#if prefixed by a "!", flip the enabled value
 				if mysplit[mypos][0]=="!":
-					#a "not" USE
-					enabled=not enabled
+					myusevar=mysplit[mypos][1:-1]
+					if myusevar in myuse:
+						enabled=0
+					else:
+						enabled=1
+				else:
+					myusevar=mysplit[mypos][:-1]
+					if myusevar in myuse:
+						enabled=1
+					else:
+						enabled=0
 			if (mypos+2<len(mysplit)) and (mysplit[mypos+2]==":"):
 				#colon mode
 				if enabled:
@@ -2182,7 +2185,7 @@ class portagetree:
 		return self.dbapi.cp_all()
 
 	def getname(self,pkgname):
-		"returns file location for this particular package"
+		"returns file location for this particular package (DEPRECATED)"
 		if not pkgname:
 			return ""
 		mysplit=string.split(pkgname,"/")
@@ -2632,6 +2635,23 @@ class portdbapi(dbapi):
 		#if the portdbapi is "frozen", then we assume that we can cache everything (that no updates to it are happening)
 		self.xcache={}
 		self.frozen=0
+		#oroot="overlay root"
+		self.oroot=None
+
+	def getname(self,pkgname):
+		"returns file location for this particular package"
+		if not pkgname:
+			return ""
+		mysplit=string.split(pkgname,"/")
+		psplit=pkgsplit(mysplit[1])
+		if self.oroot:
+			myloc=self.oroot+"/"+mysplit[0]+"/"+psplit[0]+"/"+mysplit[1]+".ebuild"
+			try:
+				os.stat(myloc)
+				return myloc
+			except (OSError,IOError):
+				pass
+		return self.root+"/"+mysplit[0]+"/"+psplit[0]+"/"+mysplit[1]+".ebuild"
 
 	def aux_get(self,mycpv,mylist,strict=0):
 		"stub code for returning auxilliary db information, such as SLOT, DEPEND, etc."
@@ -2646,7 +2666,6 @@ class portdbapi(dbapi):
 		mydbkey=dbcachedir+mycpv
 		mycsplit=catpkgsplit(mycpv)
 		mysplit=mycpv.split("/")
-		myebuild=self.root+"/"+mycsplit[0]+"/"+mycsplit[1]+"/"+mysplit[1]+".ebuild"
 		
 		#first, we take a look at the mtime of the ebuild and the cache entry to see if we need
 		#to regenerate our cache entry.
@@ -2655,7 +2674,16 @@ class portdbapi(dbapi):
 		except OSError:
 			doregen=1
 		if not doregen:
-			emtime=os.stat(myebuild)[ST_MTIME]
+			if self.oroot:
+				myebuild=self.oroot+"/"+mycsplit[0]+"/"+mycsplit[1]+"/"+mysplit[1]+".ebuild"
+				try:
+					emtime=os.stat(myebuild)[ST_MTIME]
+				except OSError:
+					myebuild=self.root+"/"+mycsplit[0]+"/"+mycsplit[1]+"/"+mysplit[1]+".ebuild"
+					emtime=os.stat(myebuild)[ST_MTIME]
+			else:	
+				myebuild=self.root+"/"+mycsplit[0]+"/"+mycsplit[1]+"/"+mysplit[1]+".ebuild"
+				emtime=os.stat(myebuild)[ST_MTIME]
 			if dmtime<emtime:
 				doregen=1
 		if doregen:
@@ -2694,16 +2722,32 @@ class portdbapi(dbapi):
 				#myexts = my externally-sourced files that need mtime checks:
 				myexts=mylines[9].split()	
 				for x in myexts:
-					extkey=self.root+"/eclass/"+x+".eclass"
-					try:
-						exttime=os.stat(extkey)[ST_MTIME]
-					except:
-						print "portage: aux_get():"
-						print " eclass \""+extkey+"\" from",mydbkey,"not found."
-						#we set doregen2 to regenerate this entry just in case it was fixed in the ebuild/eclass since
-						#the cache entry was created.
-						doregen2=1
-						exttime=0
+					if self.oroot:
+						extkey=self.oroot+"/eclass/"+x+".eclass"
+						try:
+							exttime=os.stat(extkey)[ST_MTIME]
+						except:
+							extkey=self.root+"/eclass/"+x+".eclass"
+							try:
+								exttime=os.stat(extkey)[ST_MTIME]
+							except:
+								print "portage: aux_get():"
+								print " eclass \""+extkey+"\" from",mydbkey,"not found."
+								#we set doregen2 to regenerate this entry just in case it was fixed in the ebuild/eclass since
+								#the cache entry was created.
+								doregen2=1
+								exttime=0
+					else:
+						extkey=self.root+"/eclass/"+x+".eclass"
+						try:
+							exttime=os.stat(extkey)[ST_MTIME]
+						except:
+							print "portage: aux_get():"
+							print " eclass \""+extkey+"\" from",mydbkey,"not found."
+							#we set doregen2 to regenerate this entry just in case it was fixed in the ebuild/eclass since
+							#the cache entry was created.
+							doregen2=1
+							exttime=0
 					mtimedb["cur"][extkey]=exttime
 					if (not mtimedb["old"].has_key(extkey)) or (exttime!=mtimedb["old"][extkey]):
 						#update our mtime entry, turn the regenerate flag on and break out of the loop
@@ -2747,7 +2791,12 @@ class portdbapi(dbapi):
 		"Tells us whether an actual ebuild exists on disk (no masking)"
 		cps2=mykey.split("/")
 		cps=catpkgsplit(mykey,0)
-		return os.path.exists(self.root+"/"+cps[0]+"/"+cps[1]+"/"+cps2[1]+".ebuild")
+		if self.oroot:
+			if os.path.exists(self.oroot+"/"+cps[0]+"/"+cps[1]+"/"+cps2[1]+".ebuild") or os.path.exists(self.oroot+"/"+cps[0]+"/"+cps[1]+"/"+cps2[1]+".ebuild"):
+				return 1
+		elif os.path.exists(self.root+"/"+cps[0]+"/"+cps[1]+"/"+cps2[1]+".ebuild"):
+			return 1
+		return 0
 
 	def cp_all(self):
 		"returns a list of all keys in our tree"
@@ -2759,6 +2808,14 @@ class portdbapi(dbapi):
 			except:
 				#category directory doesn't exist
 				pass
+			if self.oroot:
+				try:
+					for y in listdir(self.oroot+"/"+x):
+						mykey=x+"/"+y
+						if not mykey in biglist:
+							biglist.append(mykey)
+				except:
+					pass
 		return biglist
 	
 	def p_list(self,mycp):
@@ -2768,18 +2825,36 @@ class portdbapi(dbapi):
 				if x[-7:]==".ebuild":
 					returnme.append(x[:-7])	
 		except (OSError,IOError),e:
-			return []
+			pass
+		if self.oroot:
+			try:
+				for x in listdir(self.oroot+"/"+mycp):
+					if x[-7:]==".ebuild":
+						mye=x[:-7]
+						if not mye in returnme:
+							returnme.append(mye)
+			except (OSError,IOError),e:
+				pass
 		return returnme
 
 	def cp_list(self,mycp):
 		mysplit=mycp.split("/")
 		returnme=[]
-		try: 
+		try:
 			for x in listdir(self.root+"/"+mycp):
 				if x[-7:]==".ebuild":
 					returnme.append(mysplit[0]+"/"+x[:-7])	
 		except (OSError,IOError),e:
-			return []
+			pass
+		if self.oroot:
+			try:
+				for x in listdir(self.oroot+"/"+mycp):
+					if x[-7:]==".ebuild":
+						mycp=mysplit[0]+"/"+x[:-7]
+						if not mycp in returnme:
+							returnme.append(mycp)
+			except (OSError,IOError),e:
+				pass
 		return returnme
 
 	def freeze(self):
@@ -3804,7 +3879,14 @@ mtimedb={"cur":{}}
 mtimedb["old"]=grabints("/var/cache/edb/mtimes")
 #the new standardized db names:
 portdb=portdbapi()
-
+if settings["PORTDIR_OVERLAY"]:
+	if os.path.isdir(settings["PORTDIR_OVERLAY"]):
+		portdb.oroot=settings["PORTDIR_OVERLAY"]
+	else:
+		print "portage: init: PORTDIR_OVERLAY points to",settings["PORTDIR_OVERLAY"],"which isn't a directory."
+		print "exiting."
+		sys.exit(1)
+		
 def store():
 	global uid,wheelgid
 	if secpass:
