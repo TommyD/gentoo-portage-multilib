@@ -285,7 +285,7 @@ def hardlink_lockfile(lockfilename, max_wait=14400):
 			print "This is a feature to prevent distfiles corruption."
 			print "/usr/lib/portage/bin/clean_locks can fix stuck locks."
 			print "Lockfile: " + lockfilename
-		time.sleep(0.00001)
+		time.sleep(0.1)
 	
 	os.unlink(myhardlock)
 	return False

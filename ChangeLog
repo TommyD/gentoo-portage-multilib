@@ -13,7 +13,7 @@
   reason for reverting to trying flock then lockf then hardlink is simple-
   hardlink is slow, and requires creation of extra files on disk.  It
   also won't behave with fd's passed in (which should be used often, 
-  rather then this 'lets create a file every 0.0001s' strategy.  This makes 
+  rather then this lets default to creating lots of files strategy.  This makes 
   a huge difference in runtime in certain cases.  Case that exposed this- 
   9m relying on lockf -> hardlink reduced to 1.5m for flock -> lockf -> 
   hardlink.  The difference?  lockf didn't work on that fs, so it was using
