@@ -208,6 +208,7 @@ static void canonicalize(const char *path, char *resolved_path)
     getcwd(resolved_path, MAXPATHLEN - 2);
     strcat(resolved_path, "/");
     strncat(resolved_path, path, MAXPATHLEN - 1);
+	erealpath(resolved_path, resolved_path);
   }
 #else
   /* temp solution until I can figure out what

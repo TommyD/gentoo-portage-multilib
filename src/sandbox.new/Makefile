@@ -22,7 +22,7 @@ TARGETS = libsandbox.so sandbox
 all:	$(TARGETS)
 
 sandbox: sandbox.o sandbox_futils.o
-	$(CC) -o sandbox $? -ldl -lc
+	$(CC) -o sandbox $^ -ldl -lc
 
 sandbox.o: sandbox.c sandbox.h
 	$(CC) $(CFLAGS) -Wall -c sandbox.c
@@ -31,7 +31,7 @@ sandbox_futils.o: sandbox_futils.c sandbox.h
 	$(CC) $(CFLAGS) -Wall -c sandbox_futils.c
 
 libsandbox.so: libsandbox.o sandbox_futils.o canonicalize.o
-	$(LD) -shared -o libsandbox.so $? -ldl -lc
+	$(LD) -shared -o libsandbox.so $^ -ldl -lc
 
 libsandbox.o: libsandbox.c localdecls.h
 	$(CC) $(CFLAGS) -Wall -c -D_GNU_SOURCE -DPIC -fPIC -D_REENTRANT libsandbox.c
