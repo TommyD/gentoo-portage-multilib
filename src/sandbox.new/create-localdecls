@@ -7,6 +7,8 @@
 # libc5, but it's off_t with libc6 (glibc2).
 #
 # Uhm... time to learn GNU autoconf :-)
+#
+# $Header$
 
 OUTFILE='localdecls.h'
 
