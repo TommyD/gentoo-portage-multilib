@@ -9,10 +9,24 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
-  02 June 2004; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Reverted
+*portage-2.0.51_pre10 (02 Jun 2003): Fixes
+
+  02 Jun 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Added MANPATH
+  to the colon_seperated list -- parsing code NEEDS TO BE FIXED. * and ~*
+  matches allowed for package.use for arch-development -- ~* implies *.
+
+  02 Jun 2004; Nicholas Jones <carpaski@gentoo.org> emerge: Fix for a new
+  typo in the logger function that prevented emerge.log from being written.
+
+  02 Jun 2004; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: make test
+  only occurs when enabled in FEATURES and not in RESTRICT -- defaults OFF.
+  Added ferringb's local B_* fix for eclasses. Made db vars readonly via bash
+  for non-depend phases after the global scope.
+  
+  02 Jun 2004; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Reverted
   adjusted made to config.setcpv on 18 May 2004 due to bug #52720.
 
-  01 June 2004; Marius Mauch <genone@gentoo.org> bin/repoman,bin/regenworld:
+  01 Jun 2004; Marius Mauch <genone@gentoo.org> bin/repoman,bin/regenworld:
   only messages about broken log entries in regenworld when called with
   --debug. Fix signing stuff in repoman.
 

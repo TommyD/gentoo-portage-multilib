@@ -479,6 +479,11 @@ src_test()
 { 
 	if hasq maketest $RESTRICT; then
 		ewarn "Skipping make test/check due to ebuild restriction."
+		echo ">>> Test phase [explicitly disabled]: ${CATEGORY}/${PF}"
+		return
+	fi
+	if ! hasq maketest $FEATURES; then
+		echo ">>> Test phase [not enabled]: ${CATEGORY}/${PF}"
 		return
 	fi
 
@@ -1178,6 +1183,11 @@ inherit() {
 	local location
 	local PECLASS
 
+	local B_IUSE
+	local B_DEPEND
+	local B_RDEPEND
+	local B_CDEPEND
+	local B_PDEPEND
 	while [ "$1" ]; do
 		location="${ECLASSDIR}/${1}.eclass"
 
@@ -1447,6 +1457,7 @@ declare -rx EBUILD_PHASE="$*"
 declare -r T P PN PV PVR PR A AA D EBUILD EMERGE_FROM O PPID FILESDIR
 declare -r PORTAGE_TMPDIR
 
+
 source ${EBUILD} || die "error sourcing ebuild"
 [ -z "${ERRORMSG}" ] || die "${ERRORMSG}"
 
@@ -1480,6 +1491,14 @@ DEPEND="$DEPEND $E_DEPEND"
 RDEPEND="$RDEPEND $E_RDEPEND"
 CDEPEND="$CDEPEND $E_CDEPEND"
 PDEPEND="$PDEPEND $E_PDEPEND"
+
+unset E_IUSE E_DEPEND E_RDEPEND E_CDEPEND E_PDEPEND
+
+if [ "${EBUILD_PHASE}" != "depend" ]; then
+	# Lock the dbkey variables after the global phase
+	declare -r DEPEND RDEPEND SLOT SRC_URI RESTRICT HOMEPAGE LICENSE DESCRIPTION
+	declare -r KEYWORDS INHERITED IUSE CDEPEND PDEPEND PROVIDE
+fi
 
 set +f
 

@@ -307,7 +307,7 @@ def emergelog(mystr):
 	if "notitles" not in portage.features:
 		xtermTitle(mystr)
 	try:
-		if not os.path.exist("/var/log/emerge.log"):
+		if not os.path.exists("/var/log/emerge.log"):
 			mylogfile=open("/var/log/emerge.log", "w")
 			os.chmod("/var/log/emerge.log", S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP)
 			os.chown("/var/log/emerge.log", portage.portage_uid, portage.portage_gid)
@@ -2356,8 +2356,8 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 				update_spinner()
 				try:
 					ignored=portage.portdb.aux_get(y,[],metacachedir=myportdir+"/metadata/cache",debug=("cachedebug" in portage.features))
-				except:
-					print "\nFailed cache update:",y
+				except Exception, e:
+					print "\nFailed cache update:",y,e
 		portage.portdb.porttrees=backup_porttrees
 		sys.stdout.write("\b\b  ...done!\n\n")
 		sys.stdout.flush()
