@@ -800,7 +800,7 @@ class ebuild_handler:
 				if ("userpriv" in mysettings.features) and (portage_uid and portage_gid):
 					if (secpass==2):
 						if os.path.exists(mysettings["HOME"]):
-+							# XXX: Potentially bad, but held down by HOME replacement above.
+							# XXX: Potentially bad, but held down by HOME replacement above.
 							portage_exec.spawn("rm -Rf "+mysettings["HOME"])
 						if not os.path.exists(mysettings["HOME"]):
 							os.makedirs(mysettings["HOME"])

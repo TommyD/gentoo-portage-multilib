@@ -1639,7 +1639,7 @@ class depgraph:
 					if "--emptytree" not in myopts:
 						if mysplit[0]=="sys-apps/portage":
 							if (mysplit[1]+mysplit[2]!=portage.VERSION and
-								"livecvsportage" not in portage.settings.features:
+								"livecvsportage" not in portage.settings.features):
 								if mylist.index(x)<len(mylist)-1:
 									p.append(red("*** Portage will stop merging at this point and reload itself,"))
 									p.append(red("    recalculate dependencies, and complete the merge."))

@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  27 Feb 2005; Jason Stubbs <jstubbs@gentoo.org> bin/emerge pym/ebuild.py:
+  Fixed a couple of syntax errors.
+
   26 Feb 2005; Jason Stubbs <jstubbs@gentoo.org> src/chflags/*: Added
   spb's bsd chflags support.
 
