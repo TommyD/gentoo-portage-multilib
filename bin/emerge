@@ -1013,10 +1013,22 @@ class depgraph:
 					myfavdict[myfavkey]=myfavkey
 					print ">>> Recording",myfavkey,"in \"world\" favorites file..."
 					portage.writedict(myfavdict,myroot+"var/cache/edb/world",writekey=0)
+
+			# Clean the old package that we have merged over top of it we autoclean.
+			if portage.settings["AUTOCLEAN"] and (portage.settings["AUTOCLEAN"]=="yes"):
+				xsplit=portage.pkgsplit(x[2])
+				emergelog(" >>> AUTOCLEAN: "+xsplit[0])
+				if not unmerge("clean", [xsplit[0]]):
+					emergelog(" --- AUTOCLEAN: Nothing unmerged.")
+
 			if "--autoclean" in myopts:
 				retval=portage.doebuild(y,"clean",myroot,edebug)
 				if retval:
 					sys.exit(1)
+			
+			if not "--pretend" in myopts:
+				emergelog(" ::: completed emerge ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[2]+" to "+x[1])
+
 		#my doing an exit this way, --fetchonly can continue to try to
 		#fetch everything even if a particular download fails.
 		if "--fetchonly" in myopts:
@@ -1184,7 +1196,7 @@ def unmerge(unmerge_action, unmerge_files):
 			else:
 				emergelog(" <<< unmerge success: "+y)
 	#run ldconfig, etc...
-	portage.env_update(("clean" == unmerge_action))
+	portage.env_update()
 	if not numselected:
 		return 0
 	else:

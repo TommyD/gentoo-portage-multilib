@@ -82,9 +82,7 @@ except ImportError:
 		return (md5_to_hex(sum.digest()),size)
 
 starttime=int(time.time())
-
 features=[]
-
 
 def exithandler(foo,bar):
 	"""Handles ^C interupts in a sane manner"""
@@ -270,7 +268,7 @@ endversion_keys = ["pre", "p", "alpha", "beta", "rc"]
 
 #parse /etc/env.d and generate /etc/profile.env
 
-def env_update(makelinks=0):
+def env_update(makelinks=1):
 	global root
 	if not os.path.exists(root+"etc/env.d"):
 		prevmask=os.umask(0)
@@ -705,7 +703,7 @@ class config:
 
 		self.mygcfg=getconfig("/etc/make.conf")
 		if self.mygcfg==None:
-			print "!!! Parse error in /etc/make.globals."
+			print "!!! Parse error in /etc/make.conf."
 			print "!!! Incorrect multiline literals can cause this. Do not use them."
 			sys.exit(1)
 		self.configlist.append(self.mygcfg)
@@ -970,9 +968,8 @@ def fetch(myuris, listonly=0):
 				if mydigests!=None and mydigests.has_key(myfile):
 					try:
 						mystat=os.stat(settings["DISTDIR"]+"/"+myfile)
-						# no exception?  file exists.  if it doesn't match the size
-						# in the digest, don't act like the download failed here,
-						# let digestcheck report an appropriate error
+						# no exception?  file exists. let digestcheck() report
+						# an appropriately for size or md5 errors
 						fetched=2
 						break
 					except (OSError,IOError),e:
@@ -1070,7 +1067,7 @@ def digestcheck(myarchives):
 			print ">>> md5 ;-)",x
 	return 1
 
-# "checkdeps" support has been depreciated.  Relying on emerge to handle it.
+# "checkdeps" support has been deprecated.  Relying on emerge to handle it.
 def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 	global settings
 	if not os.path.exists(myebuild):
@@ -3614,8 +3611,8 @@ class dblink:
 		else:
 			a=doebuild(inforoot+"/"+self.pkg+".ebuild","postinst",root)
 	
-		#update environment settings, library paths
-		env_update()	
+		#update environment settings, library paths. DO NOT change symlinks.
+		env_update(makelinks=0)
 		print ">>>",self.cat+"/"+self.pkg,"merged."
 		
 	def mergeme(self,srcroot,destroot,outfile,secondhand,stufftomerge,cfgfiledict,thismtime):

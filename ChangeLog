@@ -1,12 +1,26 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
-*portage-2.0.42 (24 Oct 2002): Bug fix release
+*portage-2.0.43 (27 Oct 2002): Bug fix release
+
+  27 Oct 2002; Nicholas Jones <carpaski@gentoo.org> emerge:
+  AUTOCLEAN="yes" on by default. Added in a clean phase after the merge
+  phase so clashing library versions do not remain installed when ldconfig
+  is run. This should close up the symlinks-being-removed bugs.
+	
+  27 Oct 2002; Nicholas Jones <carpaski@gentoo.org> cnf/*:
+  Miscelaneous typo fixes. Added PORTDIR_OVERLAY description in make.conf.
 
   26 Oct 2002; J Robert Ray <jrray@gentoo.org> portage.py:
   Don't act like the download failed if after successfully downloading
   a file its size doesn't match the file size in the digest.  Treat
   this as a mismatched digest condition instead.
+
+  26 Oct 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
+  Reversed the defaults on env_update() so it does a full ldconfig instead
+  of a non-symlink ldconfig. Fixed the typo in the 'invalid conf' notices.
+
+*portage-2.0.42 (24 Oct 2002): Bug fix release
 
   24 Oct 2002; Nicholas Jones <carpaski@gentoo.org> make.defaults.5:
   Removed this file. It is horribly out of date and completely
@@ -16,7 +30,7 @@
   24 Oct 2002; Nicholas Jones <carpaski@gentoo.org> emerge:
   Added missing return statements to select_dep() that caused unmet packages
   to be ignored. Touchups to 'emerge info' and 'emerge --version' output.
-	Added --delete to --delete-after so that it actually deletes in rsync.
+  Added --delete to --delete-after so that it actually deletes in rsync.
 
   24 Oct 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
   Warning touchups. Replaced constants (9) to index("INHERITED").
@@ -670,7 +684,7 @@
   and even understandable.
   
   24 Jul 2002; Daniel Robbins <drobbins@gentoo.org> emerge: the "rsync --clean"
-  option has been depreciated.  Cleaning is now on by default, closing bug
+  option has been deprecated.  Cleaning is now on by default, closing bug
   #5527.
 
   24 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, make.globals:
@@ -845,7 +859,7 @@
   creating a bunch of problems.  Closes bugs #4256, #2379, #4625, #2931, #4829.
 
   10 Jul 2002; Daniel Robbins <drobbins@gentoo.org> megadigest, megadownload,
-  megatouch, pkgsearch: removed from the bin/ directory; depreciated.
+  megatouch, pkgsearch: removed from the bin/ directory; deprecated.
 
   10 Jul 2002; Daniel Robbins <drobbins@gentoo.org> emerge, quickpkg: remove
   hard-coded references to "/usr/portage" in "emerge search", quickpkg.  Now

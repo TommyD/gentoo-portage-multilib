@@ -39,7 +39,7 @@ CXXFLAGS=${CFLAGS}
 
 # Default maintainer options
 #FEATURES="digest sandbox noclean noauto buildpkg"
-#	WARNING: sanbox is broken on ppc - don't use!
+#	WARNING: sandbox is broken on ppc - don't use!
 # Default user options
 FEATURES="ccache"
 
@@ -50,7 +50,9 @@ NOCOLOR="false"
 # By default wait 5 secs before cleaning a package
 CLEAN_DELAY="5"
 # Set to yes automatically run "emerge clean" after each merge
-AUTOCLEAN="no"
+# Important, as without this you may experience missing symlinks when
+# downgrading libraries during a batch (world/system) update.
+AUTOCLEAN="yes"
 
 # The CLEANMODE var has been deprecated
 
