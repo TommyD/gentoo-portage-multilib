@@ -576,6 +576,117 @@ diefunc() {
 alias die='diefunc "$FUNCNAME" "$LINENO" "$?"'
 alias assert='_retval=$?; [ $_retval = 0 ] || diefunc "$FUNCNAME" "$LINENO" "$_retval"'
 
+# --- Former eclass code ---
+
+# debug-print() gets called from many places with verbose status information useful
+# for tracking down problems. The output is in $T/eclass-debug.log.
+# You can set ECLASS_DEBUG_OUTPUT to redirect the output somewhere else as well.
+# The special "on" setting echoes the information, mixing it with the rest of the
+# emerge output.
+# You can override the setting by exporting a new one from the console, or you can
+# set a new default in make.*. Here the default is "" or unset.
+
+# in the future might use e* from /etc/init.d/functions.sh if i feel like it
+debug-print() {
+
+	while [ "$1" ]; do
+	
+		# extra user-configurable targets
+		if [ "$ECLASS_DEBUG_OUTPUT" == "on" ]; then
+			echo "debug: $1"
+		elif [ -n "$ECLASS_DEBUG_OUTPUT" ]; then
+	    	        echo "debug: $1" >> $ECLASS_DEBUG_OUTPUT
+		fi
+		
+		# default target
+		[ -d "$BUILD_PREFIX/$P/temp" ] && echo $1 >> ${T}/eclass-debug.log
+		
+		shift
+	done
+
+}
+
+# The following 2 functions are debug-print() wrappers
+
+debug-print-function() {
+	
+	str="$1: entering function" 
+	shift
+	debug-print "$str, parameters: $*"
+
+}
+
+debug-print-section() {
+	
+	debug-print "now in section $*"
+
+}
+
+# Used by inherit() to locate eclasses
+ECLASSDIR=/usr/portage/eclass
+
+# Sources all eclasses in parameters
+inherit() {
+    
+    while [ "$1" ]; do
+    
+	# any future resolution code goes here
+	local location
+	location="${ECLASSDIR}/${1}.eclass"
+	
+	# for now, disable by deafult because it creates a lot extra sourcing. (get debug levels there already!)
+	#. ${ECLASSDIR}/debug.eclass
+	#debug-print "inherit: $1 -> $location"
+	
+	source "$location" || die "died sourcing $location in inherit()"
+	
+	shift
+	
+    done
+
+}
+
+# Exports stub functions that call the eclass's functions, thereby making them default.
+# For example, if ECLASS="base" and you call "EXPORT_FUNCTIONS src_unpack", the following
+# code will be eval'd:
+# src_unpack() { base_src_unpack; }
+EXPORT_FUNCTIONS() {
+
+	while [ "$1" ]; do
+	    debug-print "EXPORT_FUNCTIONS: ${1} -> ${ECLASS}_${1}" 
+	    eval "$1() { ${ECLASS}_$1 ; }" > /dev/null
+	shift
+	done
+
+}
+
+# adds all parameters to DEPEND and RDEPEND
+newdepend() {
+
+	debug-print-function newdepend $*
+	debug-print "newdepend: DEPEND=$DEPEND RDEPEND=$RDEPEND"
+
+	while [ -n "$1" ]; do
+		case $1 in
+		    "/autotools")
+			    DEPEND="${DEPEND} sys-devel/autoconf sys-devel/automake sys-devel/make"
+			    ;;
+		    "/c")
+			    DEPEND="${DEPEND} sys-devel/gcc virtual/glibc sys-devel/ld.so"
+			    RDEPEND="${RDEPEND} virtual/glibc sys-devel/ld.so"
+			    ;;
+		    *)
+			    DEPEND="$DEPEND $1"
+			    RDEPEND="$RDEPEND $1"
+			    ;;
+		esac
+		shift
+	done
+
+}
+
+# --- functions end, main part begins ---
+
 #grab currently-installed kernel symlink version and set KV
 KV="`readlink ${ROOT}usr/src/linux 2>/dev/null`"
 if [ $? -ne 0 ]
@@ -669,3 +780,4 @@ do
 	fi
 	count=$(( $count + 1))
 done
+

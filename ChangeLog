@@ -3,6 +3,9 @@
 
 *portage-1.8.9_pre31 (21 Mar 2002)
 
+  21 Mar 2002; Daniel Robbins <drobbins@gentoo.org> ebuild.sh: Added Dan
+  Armak's patch to enable eclasses. :)
+  
   21 Mar 2002; Grant Goodyear <g2boojum@gentoo.org> portage.py: 
   Added a drobbins patch to at line 469.  Should fix emerge rsync
   problem when /etc/make.profile doesn't exist.
