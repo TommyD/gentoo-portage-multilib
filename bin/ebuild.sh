@@ -1060,7 +1060,7 @@ do
 		;;
 	prerm|postrm|preinst|postinst|config)
 		export SANDBOX_ON="0"
-		if [ "$PORTAGE_DEBUG" = "0" ]
+		if [ "$PORTAGE_DEBUG" != "1" ]
 		then
 			pkg_${myarg}
 			#Allow non-zero return codes since they can be caused by &&
@@ -1078,7 +1078,7 @@ do
 		else
 			export SANDBOX_ON="0"
 		fi
-		if [ "$PORTAGE_DEBUG" = "0" ]
+		if [ "$PORTAGE_DEBUG" != "1" ]
 		then
 			dyn_${myarg}
 			#Allow non-zero return codes since they can be caused by &&
@@ -1095,7 +1095,7 @@ do
 		#for example, awking and piping a file in /tmp requires a temp file to be created
 		#in /etc.  If pkg_setup is in the sandbox, both our lilo and apache ebuilds break.
 		export SANDBOX_ON="0"
-		if [ "$PORTAGE_DEBUG" = "0" ]; then
+		if [ "$PORTAGE_DEBUG" != "1" ]; then
 			dyn_${myarg}
 		else
 			set -x
@@ -1105,7 +1105,7 @@ do
 		;;
 	package|rpm)
 		export SANDBOX_ON="0"
-		if [ "$PORTAGE_DEBUG" = "0" ]
+		if [ "$PORTAGE_DEBUG" != "1" ]
 		then
 			dyn_${myarg}
 		else
