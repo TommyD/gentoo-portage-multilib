@@ -25,7 +25,7 @@ elif ostype=="Darwin":
 	lchown=os.chown
 	os.environ["XARGS"]="xargs"	
 else:
-	print "Operating system \""+ostype+"\" currently unsupported. Exiting." 
+	sys.stderr.write(red("Operating system")+" \""+ostype+"\" "+red("currently unsupported. Exiting.")+"\n")
 	sys.exit(1)
 	
 os.environ["USERLAND"]=userland
@@ -174,8 +174,8 @@ try:
 			try:
 				shutil.copy2(filename,prelink_tmpfile)
 			except Exception,e:
-				print "!!! Unable to copy file '",filename,"'."
-				print "!!!",e
+				sys.stderr.write("!!! Unable to copy file '"+str(filename)+"'.\n")
+				sys.stderr.write("!!! "+str(e)+"\n")
 				sys.exit(1)
 			spawn("/usr/sbin/prelink --undo "+prelink_tmpfile+" &>/dev/null", free=1)
 			retval = fchksum.fmd5t(prelink_tmpfile)
@@ -195,8 +195,8 @@ except ImportError:
 			try:
 				shutil.copy2(filename,prelink_tmpfile)
 			except Exception,e:
-				print "!!! Unable to copy file '",filename,"'."
-				print "!!!",e
+				sys.stderr.write("!!! Unable to copy file '"+str(filename)+"'.\n")
+				sys.stderr.write("!!! "+str(e)+"\n")
 				sys.exit(1)
 			spawn("/usr/sbin/prelink --undo "+prelink_tmpfile+" &>/dev/null", free=1)
 			myfilename=prelink_tmpfile
@@ -268,7 +268,7 @@ def tokenize(mystring):
 				curlist.append(accum)
 				accum=""
 			if level==0:
-				print "!!! tokenizer: Unmatched left parenthesis in:\n'"+mystring+"'"
+				sys.stderr.write("!!! tokenizer: Unmatched left parenthesis in:\n'"+str(mystring)+"'\n")
 				return None
 			newlist=curlist
 			curlist=prevlists.pop()
@@ -283,7 +283,7 @@ def tokenize(mystring):
 	if accum:
 		curlist.append(accum)
 	if (level!=0):
-		print "!!! tokenizer: Exiting with unterminated parenthesis in:\n'"+mystring+"'"
+		sys.stderr.write("!!! tokenizer: Exiting with unterminated parenthesis in:\n'"+str(mystring)+"'\n")
 		return None
 	return newtokens
 
@@ -442,7 +442,7 @@ def env_update(makelinks=1):
 			continue
 		myconfig=getconfig(root+"etc/env.d/"+x)
 		if myconfig==None:
-			print "!!! Parsing error in",root+"etc/env.d/"+x
+			sys.stderr.write("!!! Parsing error in "+str(root)+"etc/env.d/"+str(x)+"\n")
 			#parse error
 			continue
 		# process PATH, CLASSPATH, LDPATH
@@ -507,7 +507,7 @@ def env_update(makelinks=1):
 	# an older package installed ON TOP of a newer version will cause ldconfig
 	# to overwrite the symlinks we just made. -X means no links. After 'clean'
 	# we can safely create links.
-	print ">>> Regenerating "+root+"etc/ld.so.cache..."
+	sys.stderr.write(">>> Regenerating "+str(root)+"etc/ld.so.cache...\n")
 	if makelinks:
 		getstatusoutput("cd / ; /sbin/ldconfig -r "+root)
 	else:
@@ -642,7 +642,7 @@ def writedict(mydict,myfilename,writekey=1):
 	try:
 		myfile=open(myfilename,"w")
 	except IOError:
-		print "Failed to open file for writedict():",myfilename
+		sys.stderr.write("Failed to open file for writedict(): "+str(myfilename)+"\n")
 		return 0
 	if not writekey:
 		for x in mydict.values():
@@ -661,7 +661,7 @@ def getconfig(mycfg,tolerant=0):
 	try:
 		f=open(mycfg,'r')
 	except IOError:
-		print "Could not open \""+mycfg+"\"; exiting."
+		sys.stderr.write("Could not open \""+mycfg+"\"; exiting.\n")
 		sys.exit(1)
 	lex=shlex.shlex(f)
 	lex.wordchars=string.digits+string.letters+"~!@#$%*_\:;?,./-+{}"     
@@ -676,7 +676,7 @@ def getconfig(mycfg,tolerant=0):
 			#unexpected end of file
 			#lex.error_leader(self.filename,lex.lineno)
 			if not tolerant:
-				print "!!! Unexpected end of config file: variable",key
+				sys.stderr.write("!!! Unexpected end of config file: variable "+str(key)+"\n")
 				return None
 			else:
 				return mykeys
@@ -684,7 +684,7 @@ def getconfig(mycfg,tolerant=0):
 			#invalid token
 			#lex.error_leader(self.filename,lex.lineno)
 			if not tolerant:
-				print "!!! Invalid token (not \"=\")",equ
+				sys.stderr.write("!!! Invalid token (not \"=\") "+str(equ)+"\n")
 				return None
 			else:
 				return mykeys
@@ -693,7 +693,7 @@ def getconfig(mycfg,tolerant=0):
 			#unexpected end of file
 			#lex.error_leader(self.filename,lex.lineno)
 			if not tolerant:
-				print "!!! Unexpected end of config file: variable",key
+				sys.stderr.write("!!! Unexpected end of config file: variable "+str(key)+"\n")
 				return None
 			else:
 				return mykeys
@@ -892,8 +892,8 @@ class config:
 
 		self.mygcfg=getconfig("/etc/make.conf")
 		if self.mygcfg==None:
-			print "!!! Parse error in /etc/make.conf."
-			print "!!! Incorrect multiline literals can cause this. Do not use them."
+			sys.stderr.write("!!! Parse error in /etc/make.conf.\n")
+			sys.stderr.write("!!! Incorrect multiline literals can cause this. Do not use them.\n")
 			sys.exit(1)
 		self.configlist.append(self.mygcfg)
 		self.configdict["conf"]=self.configlist[-1]
@@ -1052,44 +1052,43 @@ def spawn(mystring,debug=0,free=0,droppriv=0):
 	# useful if an ebuild or so needs to get the pid of our python process
 	settings["PORTAGE_MASTER_PID"]=str(os.getpid())
 	droppriv=(droppriv and ("userpriv" in features))
+	settings["BASH_ENV"]="/etc/portage/bashrc"
 
-	mypid=os.fork()
-	if mypid==0:
-		myargs=[]
-		if droppriv and portage_gid and portage_uid:
+	myargs=[]
+	if droppriv:
+		if portage_gid and portage_uid:
 			#drop root privileges, become the 'portage' user
 			os.setgid(portage_gid)
 			os.setgroups([portage_gid])
 			os.setuid(portage_uid)
 			os.umask(002)
 		else:
-			if droppriv:
-				print "portage: Unable to drop root for",mystring
-		settings["BASH_ENV"]="/etc/portage/bashrc"
+			sys.stderr.write("portage: Unable to drop root for "+str(mystring)+"\n")
 
-		if ("sandbox" in features) and (not free):
-			mycommand="/usr/lib/portage/bin/sandbox"
-			myargs=["["+settings["PF"]+"] sandbox",mystring]
+	if ("sandbox" in features) and (not free):
+		mycommand="/usr/lib/portage/bin/sandbox"
+		myargs=["["+settings["PF"]+"] sandbox",mystring]
+	else:
+		mycommand="/bin/bash"
+		if debug:
+			myargs=["["+settings["PF"]+"] bash","-x","-c",mystring]
 		else:
-			mycommand="/bin/bash"
-			if debug:
-				myargs=["["+settings["PF"]+"] bash","-x","-c",mystring]
-			else:
-				myargs=["["+settings["PF"]+"] bash","-c",mystring]
+			myargs=["["+settings["PF"]+"] bash","-c",mystring]
 
+	mypid=os.fork()
+	if mypid==0:
 		os.execve(mycommand,myargs,settings.environ())
 		# If the execve fails, we need to report it, and exit
 		# *carefully* --- report error here
 		os._exit(1)
 		sys.exit(1)
 		return # should never get reached
+
 	retval=os.waitpid(mypid,0)[1]
 	if (retval & 0xff)==0:
-		#return exit code
-		return (retval >> 8)
+		return (retval >> 8) # return exit code
 	else:
-		#interrupted by signal
-		return 16
+		return 16            # interrupted by signal
 
 def fetch(myuris, listonly=0, fetchonly=0):
 	"fetch files.  Will use digest file if available."
@@ -1159,10 +1158,10 @@ def fetch(myuris, listonly=0, fetchonly=0):
 	for myfile in filedict.keys():
 		if listonly:
 			fetched=0
-			print ""
+			sys.stderr.write("\n")
 		for loc in filedict[myfile]:
 			if listonly:
-				print loc+" ",
+				sys.stderr.write(loc+" ")
 				continue
 			try:
 				mystat=os.stat(settings["DISTDIR"]+"/"+myfile)
@@ -1179,11 +1178,11 @@ def fetch(myuris, listonly=0, fetchonly=0):
 							# Check md5sum's at each fetch for fetchonly.
 							mymd5=perform_md5(settings["DISTDIR"]+"/"+myfile)
 							if mymd5 != mydigests[myfile]["md5"]:
-								print "!!! Previously fetched file:",myfile,"MD5 FAILED! Refetching..."
+								sys.stderr.write("!!! Previously fetched file: "+str(myfile)+" MD5 FAILED! Refetching...\n")
 								os.unlink(settings["DISTDIR"]+"/"+myfile)
 								fetched=0
 							else:
-								print ">>> Previously fetched file:",myfile,"MD5 ;-)"
+								sys.stderr.write(">>> Previously fetched file: "+str(myfile)+" MD5 ;-)\n")
 								fetched=2
 								break #No need to keep looking for this file, we have it!
 				else:
@@ -1196,12 +1195,12 @@ def fetch(myuris, listonly=0, fetchonly=0):
 				#you can't use "continue" when you're inside a "try" block
 				if fetched==1:
 					#resume mode:
-					print ">>> Resuming download..."
+					sys.stderr.write(">>> Resuming download...\n")
 					locfetch=resumecommand
 				else:
 					#normal mode:
 					locfetch=fetchcommand
-				print ">>> Downloading",loc
+				sys.stderr.write(">>> Downloading "+str(loc)+"\n")
 				myfetch=string.replace(locfetch,"${URI}",loc)
 				myfetch=string.replace(myfetch,"${FILE}",myfile)
 				myret=spawn(myfetch,free=1)
@@ -1218,7 +1217,7 @@ def fetch(myuris, listonly=0, fetchonly=0):
 									if html404.search(open(settings["DISTDIR"]+"/"+myfile).read()):
 										try:
 											os.unlink(settings["DISTDIR"]+"/"+myfile)
-											print ">>> Deleting invalid distfile. (Improper 404 redirect from server.)"
+											sys.stderr.write(">>> Deleting invalid distfile. (Improper 404 redirect from server.)\n")
 										except:
 											pass
 								except:
@@ -1234,11 +1233,11 @@ def fetch(myuris, listonly=0, fetchonly=0):
 							# from another mirror...
 							mymd5=perform_md5(settings["DISTDIR"]+"/"+myfile)
 							if mymd5 != mydigests[myfile]["md5"]:
-								print "!!! Fetched file:",myfile,"MD5 FAILED! Removing corrupt distfile..."
+								sys.stderr.write("!!! Fetched file: "+str(myfile)+" MD5 FAILED! Removing corrupt distfile...\n")
 								os.unlink(settings["DISTDIR"]+"/"+myfile)
 								fetched=0
 							else:
-								print ">>>",myfile,"MD5 ;-)"
+								sys.stderr.write(">>> "+str(myfile)+" MD5 ;-)\n")
 								fetched=2
 								break
 					except (OSError,IOError),e:
@@ -1248,7 +1247,7 @@ def fetch(myuris, listonly=0, fetchonly=0):
 						fetched=2
 						break
 		if (fetched!=2) and not listonly:
-			print '!!! Couldn\'t download',myfile+". Aborting."
+			sys.stderr.write("!!! Couldn't download "+str(myfile)+". Aborting.\n")
 			return 0
 	return 1
 
@@ -3811,6 +3810,7 @@ class binarytree(packagetree):
 			self.populated=clone.populated
 			self.tree=clone.tree
 			self.remotepkgs=clone.remotepkgs
+			self.invalids=clone.invalids
 		else:
 			self.root=root
 			self.pkgdir=settings["PKGDIR"]
@@ -3818,6 +3818,7 @@ class binarytree(packagetree):
 			self.populated=0
 			self.tree={}
 			self.remotepkgs={}
+			self.invalids=[]
 
 	def move_ent(self,mylist):
 		if not self.populated:
@@ -3903,7 +3904,7 @@ class binarytree(packagetree):
 		if (not os.path.isdir(self.pkgdir+"/All") and not getbinpkgs):
 			return 0
 
-		if not getbinpkgsonly and os.path.exists(self.pkgdir+"/All"):
+		if (not getbinpkgsonly) and os.path.exists(self.pkgdir+"/All"):
 			for mypkg in listdir(self.pkgdir+"/All"):
 				if mypkg[-5:]!=".tbz2":
 					continue
@@ -3912,6 +3913,7 @@ class binarytree(packagetree):
 				if not mycat:
 					#old-style or corrupt package
 					sys.stderr.write("!!! Invalid binary package: "+mypkg+"\n")
+					self.invalids.append(mypkg)
 					continue
 				mycat=string.strip(mycat)
 				fullpkg=mycat+"/"+mypkg[:-5]
@@ -3990,17 +3992,21 @@ class binarytree(packagetree):
 	def gettbz2(self,pkgname):
 		"fetches the package from a remote site, if necessary."
 		print "Fetching '"+str(pkgname)+"'"
-		mysplit=string.split(pkgname,"/")
+		mysplit  = string.split(pkgname,"/")
+		tbz2name = mysplit[1]+".tbz2"
 		if not self.isremote(pkgname):
-			return
-		mysplit=string.split(pkgname,"/")
+			if (tbz2name not in self.invalids):
+				return
+			else:
+				sys.stderr.write("Resuming download of this tbz2, but it is possible that it is corrupt.\n")
 		try:
 			os.makedirs(settings["PKGDIR"]+"/All/", 0775)
 		except:
 			pass
-		myf = open(settings["PKGDIR"]+"/All/"+mysplit[1]+".tbz2", "w+")
-		getbinpkg.file_get(settings["PORTAGE_BINHOST"]+"/"+mysplit[1]+".tbz2", myf)
-		myf.close()
+		mydest = settings["PKGDIR"]+"/All/"
+		#myf = open(myfn, "w+")
+		getbinpkg.file_get(settings["PORTAGE_BINHOST"]+"/"+tbz2name, mydest, fcmd=settings["RESUMECOMMAND"])
+		#myf.close()
 		return
 
 class dblink:
@@ -4521,7 +4527,28 @@ class dblink:
 			# myrealdest is mydest without the $ROOT prefix (makes a difference if ROOT!="/")
 			myrealdest="/"+offset+x
 			# stat file once, test using S_* macros many times (faster that way)
-			mystat=os.lstat(mysrc)
+			try:
+				mystat=os.lstat(mysrc)
+			except OSError, e:
+				sys.stderr.write("\n")
+				sys.stderr.write(red("!!! ERROR: There appears to be ")+bold("FILE SYSTEM CORRUPTION.")+red(" A file that is listed\n"))
+				sys.stderr.write(red("!!!        as existing is not capable of being stat'd. If you are using an\n"))
+				sys.stderr.write(red("!!!        experimental kernel, please boot into a stable one, force an fsck,\n"))
+				sys.stderr.write(red("!!!        and ensure your filesystem is in a sane state. ")+bold("'shutdown -Fr now'\n"))
+				sys.stderr.write(red("!!!        File:  ")+str(mysrc)+"\n")
+				sys.stderr.write(red("!!!        Error: ")+str(e)+"\n")
+				sys.exit(1)
+			except Exception, e:
+				sys.stderr.write("\n")
+				sys.stderr.write(red("!!! ERROR: An unknown error has occurred during the merge process.\n"))
+				sys.stderr.write(red("!!!        A stat call returned the following error for the following file:"))
+				sys.stderr.write(    "!!!        Please ensure that your filesystem is intact, otherwise report\n")
+				sys.stderr.write(    "!!!        this as a portage bug at bugs.gentoo.org. Append 'emerge info'.\n")
+				sys.stderr.write(    "!!!        File:  "+str(mysrc)+"\n")
+				sys.stderr.write(    "!!!        Error: "+str(e)+"\n")
+				sys.exit(1)
+				
+				
 			mymode=mystat[ST_MODE]
 			# handy variables; mydest is the target object on the live filesystems;
 			# mysrc is the source object in the temporary install dir 
@@ -4590,7 +4617,8 @@ class dblink:
 						print "---",mydest+"/"
 					else:
 						# a non-directory and non-symlink-to-directory.  Won't work for us.  Move out of the way.
-						movefile(mydest,mydest+".backup")
+						if movefile(mydest,mydest+".backup") == None:
+							sys.exit(1)
 						print "bak",mydest,mydest+".backup"
 						#now create our directory
 						os.mkdir(mydest)
@@ -4669,6 +4697,8 @@ class dblink:
 				# same way.  Unless moveme=0 (blocking directory)
 				if moveme:
 					mymtime=movefile(mysrc,mydest,thismtime,mystat)
+					if mymtime == None:
+						sys.exit(1)
 					zing=">>>"
 				else:
 					mymtime=thismtime
@@ -4691,6 +4721,8 @@ class dblink:
 							# we don't record device nodes in CONTENTS,
 							# although we do merge them.
 							outfile.write("fif "+myrealdest+"\n")
+					else:
+						sys.exit(1)
 				print zing+" "+mydest
 	
 	def merge(self,mergeroot,inforoot,myroot,myebuild=None):
@@ -4784,7 +4816,7 @@ def pkgmerge(mytbz2,myroot):
 	origdir=getcwd()
 	os.chdir(pkgloc)
 	print ">>> extracting",mypkg
-	notok=spawn("cat "+mytbz2+"| bzip2 -dq | tar xpf -",free=1)
+	notok=spawn("bzip2 -dc "+mytbz2+" | tar xpf -",free=1)
 	if notok:
 		print "!!! Error extracting",mytbz2
 		cleanup_pkgmerge(mypkg,origdir)

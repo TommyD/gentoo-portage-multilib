@@ -31,7 +31,10 @@ sed '/^VERSION=/s/^.*$/VERSION="'${V}'"/' < ${DEST}/pym/portage.py.orig > ${DEST
 cp ${DEST}/man/emerge.1 ${DEST}/man/emerge.1.orig
 sed "s/##VERSION##/${V}/g" < ${DEST}/man/emerge.1.orig > ${DEST}/man/emerge.1
 rm ${DEST}/pym/portage.py.orig ${DEST}/man/emerge.1.orig
+
+sed -i -e "s:\t:  :g" ChangeLog
 cp ChangeLog ${DEST}
+
 cd ${DEST}
 find -name CVS -exec rm -rf {} \;
 find -name '*~' -exec rm -rf {} \;

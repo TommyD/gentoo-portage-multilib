@@ -2,7 +2,36 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
-*portage-2.0.49_pre13/48-r7 (24 Jul 2003): Fixes and getbinpkg caching
+*portage-2.0.49_pre17 (30 Jul 2003): Resuming/wget GRP, Sandbox updates
+
+  30 Jul 2003; Nicholas Jones <carpaski@gentoo.org> *: GRP updates to
+  use RESUMECOMMAND to determine how to download GRP binaries. Adjustments
+  to the portage.spawn() code to try and speed it up by eliminating the
+  copy phase (copy-on-write forking). Massive messages for corrupt FS issues.
+  Movefile() checks to ensure we actually complete the moves. Killed the
+  broken pipe message for tbz2 extraction.
+
+*portage-2.0.49_pre16 (29 Jul 2003): Touchups
+
+  29 Jul 2003; Nicholas Jones <carpaski@gentoo.org> *: Clean up the debug
+  output and quickfix downloading tbz2s.
+
+*portage-2.0.49_pre15 (29 Jul 2003): Fixes
+
+  29 Jul 2003; Nicholas Jones <carpaski@gentoo.org> repoman: imported time.
+  
+  29 Jul 2003; Nicholas Jones <carpaski@gentoo.org> emerge: Corrected the
+  logic used to determine whether a package or an ebuild is used when given
+  the option.
+  
+  29 Jul 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Changed a
+  lot of calls using 'print' into sys.stderr.write() calls. Added try/except
+  around the source lstat to catch funky errors where the file doesn't really
+  exist -- Presents descriptions to users about what to do. Added more catches
+  for movefile() calls to ensure it dies on failures. Changed the tbz2
+  extraction call to stop the 'cat: broken pipe' message.
+  
+*portage-2.0.49_pre14/48-r7 (24 Jul 2003): Fixes and getbinpkg caching
 
   22 Jul 2003; Nicholas Jones <carpaski@gentoo.org> *: Typo fixes for
   the ECLASS_DEPTH comparisons in ebuild.sh. Traceback fixes for blocking

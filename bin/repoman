@@ -15,6 +15,7 @@ version="1.2"
 import string,signal,readline,portage,re,cvstree
 from output import *
 from commands import getstatusoutput
+from time import *
 
 if "cvs" not in portage.features:
 	print

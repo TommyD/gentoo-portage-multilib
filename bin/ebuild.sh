@@ -1179,7 +1179,6 @@ PDEPEND="$PDEPEND $E_PDEPEND"
 set +f
 
 for myarg in $*; do
-	echo "myarg: $myarg"
 	case $myarg in
 	nofetch)
 		pkg_nofetch

@@ -649,9 +649,10 @@ class depgraph:
 				edepend["CDEPEND"]=string.join(string.split(edepend["CDEPEND"])," ")
 				edepend["SLOT"]   =string.strip(edepend["SLOT"])
 			else:
-				if portage.db[portage.root]["bintree"].isremote(mykey):
+				if portage.db[portage.root]["bintree"].isremote(mykey) or \
+				   tbz2name in portage.db[portage.root]["bintree"].invalids:
 					# Get the tbz2
-					if not portage.db[portage.root]["bintree"].remotepkgs.has_key(mykey):
+					if not portage.db[portage.root]["bintree"].remotepkgs.has_key(tbz2name):
 						sys.stderr.write("\nThere are no packages available to satisfy "+str(mykey)+"\n\n")
 						sys.exit(1)
 					portage.db[portage.root]["bintree"].gettbz2(mykey)
@@ -788,11 +789,15 @@ class depgraph:
 				myk=["blocks",myroot,x[1:]]
 			else:
 				#We are not processing a blocker but a normal dependency
-				if "--usepkgonly" in myopts:
-					myeb=portage.db[portage.root]["bintree"].dep_bestmatch(x)
-				else:
+				myeb_pkg=None
+				if ("--usepkg" in myopts):
+					myeb_pkg=portage.db[portage.root]["bintree"].dep_bestmatch(x)
+				
+				myeb=None
+				if ("--usepkgonly" not in myopts):
 					myeb=portage.portdb.xmatch("bestmatch-visible",x)
-				if not myeb:
+				
+				if (not myeb) and (not myeb_pkg):
 					if not arg:
 						xinfo='"'+x+'"'
 					else:
@@ -814,23 +819,43 @@ class depgraph:
 
 				if "--debug" in myopts:
 					print "ebuild:",myeb
+					print "binpkg:",myeb_pkg
+
+				if myeb and myeb_pkg:
+					myeb_s     = portage.catpkgsplit(myeb)
+					myeb_s     = [myeb_s[0]+"/"+myeb_s[1], myeb_s[2], myeb_s[3]]
+					myeb_pkg_s = portage.catpkgsplit(myeb_pkg)
+					myeb_pkg_s = [myeb_pkg_s[0]+"/"+myeb_pkg_s[1], myeb_pkg_s[2], myeb_pkg_s[3]]
+					
+					if portage.pkgcmp(myeb_s, myeb_pkg_s) > 0: # eb is newer than pkg
+						myeb_pkg = None
+					else:
+						myeb = None
 
  				if "--upgradeonly" in myopts:
  					# Check that there isn't a newer version of this package already installed
  					cand=self.is_newer_ver_installed(myroot,x,myeb)
  					if cand:
  						myeb=cand
-
-				if "--usepkg" in myopts:
-					#If we want to use packages, see if we have a pre-built one...
-					mypk=portage.db["/"]["bintree"].dbapi.match(x)
-					if myeb in mypk:
-						#Use it only if it's exactly the version we want.
-						myk=["binary",myroot,myeb]
-					else:
-						myk=["ebuild",myroot,myeb]
-				else:
+				
+				if myeb:
 					myk=["ebuild",myroot,myeb]
+				elif myeb_pkg:
+					myk=["binary",myroot,myeb_pkg]
+				else:
+					sys.stderr.write("!!! Confused... Don't know what I'm using for dependency info. :(\n")
+					sys.exit(1)
+
+				#if "--usepkg" in myopts:
+				#	#If we want to use packages, see if we have a pre-built one...
+				#	mypk=portage.db["/"]["bintree"].dbapi.match(x)
+				#	if myeb in mypk:
+				#		#Use it only if it's exactly the version we want.
+				#		myk=["binary",myroot,myeb]
+				#	else:
+				#		myk=["ebuild",myroot,myeb]
+				#else:
+				#	myk=["ebuild",myroot,myeb]
 			if myparent:
 				#we are a dependency, so we want to be unconditionally added
 				if not self.create(myk,myparent):
