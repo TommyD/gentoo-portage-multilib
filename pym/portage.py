@@ -5273,7 +5273,7 @@ class dblink:
 			# the linkcheck only works if we are in srcroot
 			try:
 				mycwd = os.getcwd()
-			except OSerror:
+			except os.OSerror:
 				mycwd="/"
 			os.chdir(srcroot)
 			mysymlinks = filter(os.path.islink, listdir(srcroot, recursive=1, 
