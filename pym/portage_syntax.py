@@ -109,10 +109,10 @@ class CPV(object):
 		if self.cpvstr == other.cpvstr:
 			return 0
 		
-		if self.category != other.category:
+		if self.category and other.category and self.category != other.category:
 			return cmp(self.category, other.category)
 		
-		if self.package != other.package:
+		if self.package and other.package and self.package != other.package:
 			return cmp(self.package, other.package)
 		
 		if self.version != other.version:
@@ -280,28 +280,27 @@ class Atom(object):
 	
 	def match(self, cpv):
 		
-		if self.category and self.category != cpv.category:
+		if self.cpv.category and cpv.category and self.cpv.category != cpv.category:
 			return False
 		
-		if self.cpv != cpv.package:
+		if self.cpv.package and cpv.package and self.cpv.package != cpv.package:
 			return False
 		
 		if not self.operator:
 			return True
 		
-		if self.glob_match and cpv.version.startswith(self.version):
-			return True
-		
 		if self.operator == "=":
-			if self.version != cpv.version:
+			if self.glob_match and cpv.version.startswith(self.cpv.version):
+				return True
+			if self.cpv.version != cpv.version:
 				return False
-			if self.revision != cpv.revision:
+			if self.cpv.revision != cpv.revision:
 				return False
 		
-		if self.operator == "~" and self.version == cpv.version:
+		if self.operator == "~" and self.cpv.version == cpv.version:
 			return True
 		
-		diff = cmp(self._cpv, cpv)
+		diff = cmp(self.cpv, cpv)
 		
 		if not diff:
 			if self.operator == "<=" or self.operator == ">=":
