@@ -185,7 +185,8 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 		if not os.path.exists(lockfilename):
 			old_mask=os.umask(000)
 			myfd = os.open(lockfilename, os.O_CREAT|os.O_RDWR,0660)
-			os.chown(lockfilename,os.getuid(),portage_gid)
+			if os.stat(lockfilename).st_gid != portage_gid:
+				os.chown(lockfilename,os.getuid(),portage_gid)
 			os.umask(old_mask)
 		else:
 			myfd = os.open(lockfilename, os.O_CREAT|os.O_WRONLY,0660)
@@ -2167,7 +2168,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		else:
 			old_umask=os.umask(0002)
 			os.mkdir(mysettings["DISTDIR"]+"/"+locks_in_subdir,0775)
-			os.chown(mysettings["DISTDIR"]+"/"+locks_in_subdir,os.getuid(),portage_gid)
+			if os.stat(mysettings["DISTDIR"]+"/"+locks_in_subdir).st_gid != portage_gid:
+				os.chown(mysettings["DISTDIR"]+"/"+locks_in_subdir,-1,portage_gid)
 			os.umask(old_umask)
 
 	for myfile in filedict.keys():
@@ -2260,8 +2262,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				finally:
 					#if root, -always- set the perms.
 					if os.path.exists(mysettings["DISTDIR"]+"/"+myfile) and (fetched != 1 or os.getuid() == 0):
+						if os.stat(mysettings["DISTDIR"]+"/"+myfile).st_gid != portage_gid:
+							os.chown(mysettings["DISTDIR"]+"/"+myfile,-1,portage_gid)
 						os.chmod(mysettings["DISTDIR"]+"/"+myfile,0664)
-						os.chown(mysettings["DISTDIR"]+"/"+myfile,os.getuid(),portage_gid)
 
 				if mydigests!=None and mydigests.has_key(myfile):
 					try:

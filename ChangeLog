@@ -9,6 +9,10 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  08 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py: 
+  Added check to lockfile and fetch, if file already is owned by 
+  portage group, don't try and chown it.  This will close #60079.
+
   08 Aug 2004; Brian Harring <ferringb@gentoo.org> bin/emerge: Fixed a 
   traceback issue, an ebuild is no longer in the tree, but is installed 
   and needs to be used in the depgraph- the problem was, emerge 
