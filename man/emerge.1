@@ -203,6 +203,8 @@ version, which should support any necessary new features.
 \fBMASKED Packages\fR
 \fIWARNING: Please use caution when using development packages. Problems and bugs resulting from misusing masked packages drains Gentoo developers time. Please be sure you are capable of handling problems that may ensue.\fR
 Masks in portage provide 3 functions: allow a testing interval where the packages can be used in live machines, prevent the use of a package when it will fail, or mask existing packages that have been discovered broken or are a security risk. Masking can be done in two relevant ways: package.mask and KEYWORDS. Package.mask's primary purpose is to block packages that cause problems or can cause problems. It sits in PORTDIR (/usr/portage/) in the profiles directory. Packages may be unmasked in the file by added a comment character ("#") to the beginning of the line defining the mask. KEYWORDS is another method used for packages in testing. KEYWORDS defines architectures that have been shown to properly build the package, but have not been proven of 'stable' quality yet. This masking method works by examining ACCEPT_KEYWORDS for matches. Users may ONLY set "~arch" ("~x86", "~ppc", "~sparc", "~alpha") for the architecture they are on. DO NOT SET ANYTHING ELSE IN THIS VARIABLE. 'ACCEPT_KEYWORDS="~x86" emerge xfree' would allow all testing versions of xfree to be candidate for merging.
+.SH "REPORTING BUGS"
+Please report bugs via http://bugs.gentoo.org/
 .SH "SEE ALSO"
 .BR ebuild (1),
 .BR ebuild (5),
