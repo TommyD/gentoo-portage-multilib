@@ -249,6 +249,8 @@ configure \\
 	--localstatedir=/var/lib \\
 .br
 	\fI[configure options]\fR
+
+\fB*Note:\fR There is no need to use '|| \fBdie\fR' because \fBeconf\fR checks for you
 .TP
 \fBemake\fR
 This is used as a replacement for make.  Performs 'make ${MAKEOPTS}'
@@ -256,9 +258,11 @@ This is used as a replacement for make.  Performs 'make ${MAKEOPTS}'
 .br
 \fB***warning***\fR
 .br
-if you are going to use emake, make sure your build is happy with paralell makes
-(make \-j2). It should be tested thoroughly as paralell makes are notorious
-for failing _sometimes_ but not alway
+if you are going to use \fBemake\fR, make sure your build is happy with paralell makes
+(make \-j2).  It should be tested thoroughly as paralell makes are notorious
+for failing _sometimes_ but not always.
+
+\fB*Note:\fR Be sure to use '|| \fBdie\fR' constructs to ensure \fBemake\fR success
 .SH "HELPER FUNCTIONS: INSTALL"
 .TP
 \fBeinstall\fR \fI[make options]\fR
@@ -277,6 +281,8 @@ make prefix=${D}/usr \\
             localstatedir=${D}/var/lib \\
 .br
             \fI[make options]\fR install
+
+\fB*Note:\fR There is no need to use '|| \fBdie\fR' because \fBeinstall\fR checks for you
 .TP
 \fBdopython\fR \fI[commands]\fR
 Performs [commands] with python and returns the result.
