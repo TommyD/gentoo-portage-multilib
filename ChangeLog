@@ -12,7 +12,8 @@
 	fixup for new ROOTs. ARCH missing in profile fix. Fix for packages/All
 	missing dir traceback. INFOPATH/INFODIR fix. Added INFOPATH to specials.
 	portage.py: Touchups to the mtimedb-touching code. Fixes for the broken
-	os.path.normpath() leading '//' bug.
+	os.path.normpath() leading '//' bug. Added a modified chuck of Phoen][x's
+	dist size patch.
 
   09 Nov 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
 	Fixups for KV.
