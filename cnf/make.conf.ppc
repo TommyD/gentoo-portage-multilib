@@ -182,8 +182,8 @@ CXXFLAGS="${CFLAGS}"
 #     these settings are for developer use, but some are available to non-
 #     developers as well. 'buildpkg' is an always-on setting for the emerge
 #     flag of the same name. It causes binary packages to be created of all
-#     packages that are merged.
-#FEATURES="ccache buildpkg"
+#     packages that are merged. 'distcc' enables distcc support for via CC.
+#FEATURES="ccache buildpkg distcc"
 #
 # RSYNC_RETRIES sets the number of times portage will attempt to retrieve
 #     a current portage tree before it exits with an error. This allows
