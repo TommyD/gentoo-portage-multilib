@@ -122,6 +122,8 @@ def userquery(prompt, responses=None, colours=None):
 if portage.settings.has_key("PORTAGE_NICENESS"):
 	try:
 		os.nice(int(portage.settings["PORTAGE_NICENESS"]))
+	except SystemExit, e:
+		raise # Needed else can't exit
 	except Exception,e:
 		print "!!! Failed to change nice value to '"+str(portage.settings["PORTAGE_NICENESS"])+"'"
 		print "!!!",e
@@ -384,6 +386,8 @@ def emergelog(mystr,short_msg=None):
 		mylogfile.flush()
 		portage_locks.unlockfile(l)
 		mylogfile.close()
+	except SystemExit, e:
+		raise # Needed else can't exit
 	except Exception, e:
 		if edebug:
 			print "emergelog():",e
@@ -501,6 +505,8 @@ def getportageversion():
 		else:
 			profilever = "!"+profilever
 		del basepath
+	except SystemExit, e:
+		raise # Needed else can't exit
 	except:
 		profilever="unavailable"
 	libcver=[]
@@ -732,6 +738,8 @@ class search:
 							mycount-=3
 							mystr=mystr[:mycount]+","+mystr[mycount:]
 						mysum[0]=mystr+" kB"
+					except SystemExit, e:
+						raise # Needed else can't exit
 					except Exception, e:
 						if edebug:
 							print "!!! Exception:",e
@@ -1029,6 +1037,8 @@ class depgraph:
 					portage.writemsg("!!! THIS IS A POSSIBLE INDICATION OF A TAMPERED FILES -- CHECK CAREFULLY.\n")
 					portage.writemsg("!!! Affected file: %s\n" % (e))
 					sys.exit(1)
+				except SystemExit, e:
+					raise # Needed else can't exit
 				except Exception, e:
 					if "--debug" in myopts:
 						raise
@@ -1179,6 +1189,8 @@ class depgraph:
 							cand=self.is_newer_ver_installed(myroot,x,myeb)
 						elif myeb_pkg:
 							cand=self.is_newer_ver_installed(myroot,x,myeb_pkg)
+					except SystemExit, e:
+						raise # Needed else can't exit
 					except Exception, e:
 						print "Warning: "+str(e)
 					if cand:
@@ -1445,6 +1457,8 @@ class depgraph:
 							iuse_split = string.split(portage.portdb.aux_get(x[2],["IUSE"])[0])
 						else:
 							iuse_split = []
+					except SystemExit, e:
+						raise # Needed else can't exit
 					except:
 						portage.writemsg("!!! Error getting IUSE (report this to bugs.gentoo.org)\n")
 						portage.writemsg("!!! %s\n" % x)
@@ -1458,6 +1472,8 @@ class depgraph:
 					if portage.db["/"]["vartree"].dbapi.cpv_exists(pkg):
 						try:
 							old_use=string.split(portage.db["/"]["vartree"].dbapi.aux_get(pkg, ["USE"])[0])
+						except SystemExit, e:
+							raise # Needed else can't exit
 						except:
 							pass
 					iuse=""
@@ -1603,6 +1619,8 @@ class depgraph:
 		changelogpath = os.path.join(os.path.split(ebuildpath)[0],'ChangeLog')
 		try:
 			changelog = open(changelogpath).read()
+		except SystemExit, e:
+			raise # Needed else can't exit
 		except:
 			return []
 		divisions = self.find_changelog_tags(changelog)
@@ -2134,6 +2152,8 @@ def post_emerge(retval=0):
 			if os.path.isdir(inforoot):
 				try:
 					infomtime=os.stat(inforoot)[ST_MTIME]
+				except SystemExit, e:
+					raise # Needed else can't exit
 				except:
 					infomtime=0
 
@@ -2160,6 +2180,8 @@ def post_emerge(retval=0):
 					continue
 				try:
 					os.rename(inforoot+"/dir",inforoot+"/dir.old")
+				except SystemExit, e:
+					raise # Needed else can't exit
 				except:
 					pass
 				
@@ -2227,6 +2249,8 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 
 	try:
 		os.close(sys.stdin.fileno())
+	except SystemExit, e:
+		raise # Needed else can't exit
 	except:
 		pass
 
@@ -2252,6 +2276,8 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 		if portage.settings.has_key("RSYNC_TIMEOUT"):
 			try:
 				mytimeout=int(portage.settings["RSYNC_TIMEOUT"])
+			except SystemExit, e:
+				raise # Needed else can't exit
 			except:
 				pass
 		
@@ -2323,6 +2349,8 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 		#exitcode=0
 		try:
 			maxretries=int(portage.settings["RSYNC_RETRIES"])
+		except SystemExit, e:
+			raise # Needed else can't exit
 		except:
 			maxretries=3 #default number of retries
 
@@ -2339,6 +2367,8 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 			if ips==[]:
 				try:
 					ips=socket.gethostbyname_ex(hostname)[2]
+				except SystemExit, e:
+					raise # Needed else can't exit
 				except Exception, e:
 					print "Notice:",str(e)
 					dosyncuri=syncuri
@@ -2346,6 +2376,8 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 			if ips:
 				try:
 					dosyncuri=string.replace(syncuri, "//"+hostname+port+"/", "//"+ips[0]+port+"/", 1)
+				except SystemExit, e:
+					raise # Needed else can't exit
 				except Exception, e:
 					print "Notice:",str(e)
 					dosyncuri=syncuri
@@ -2369,6 +2401,8 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 			if (exitcode==0):
 				try:
 					servertimestamp = time.mktime(time.strptime(portage.grabfile(tmpservertimestampfile)[0], "%a, %d %b %Y %H:%M:%S +0000"))
+				except SystemExit, e:
+					raise # Needed else can't exit
 				except:
 					servertimestamp = 0
 				
@@ -2487,6 +2521,8 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 		try:
 			if tmpservertimestampfile != None:
 				portage.movefile(tmpservertimestampfile, servertimestampfile)
+		except SystemExit, e:
+			raise # Needed else can't exit
 		except Exception, e:
 			print "!!! Failed to save current timestamp."
 			print "!!!",e
@@ -2497,6 +2533,8 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 			os.umask(002)
 			os.chown(cachedir, os.getuid(), portage.portage_gid)
 			os.chmod(cachedir, 02775)
+		except SystemExit, e:
+			raise # Needed else can't exit
 		except:
 			pass
 		# we don't make overlay trees cache here.
@@ -2512,6 +2550,8 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 				update_spinner()
 				try:
 					ignored=portage.portdb.aux_get(y,[],metacachedir=myportdir+"/metadata/cache",debug=("cachedebug" in portage.features))
+				except SystemExit, e:
+					raise # Needed else can't exit
 				except Exception, e:
 					print "\nFailed cache update:",y,e
 		portage.portdb.porttrees=backup_porttrees
@@ -2537,6 +2577,8 @@ elif myaction=="regen":
 	print "Regenerating cache entries... "
 	try:
 		os.close(sys.stdin.fileno())
+	except SystemExit, e:
+		raise # Needed else can't exit
 	except:
 		pass
 	sys.stdout.flush()

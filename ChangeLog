@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  11 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> bin/*: Added catching and
+  propogating of SystemExit exception to all blanket exception handlers.
+
   11 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> repoman: Fixed repoman LICENSE
   check to accept || () conditions.
 

@@ -34,6 +34,8 @@ times = {}
 
 try:
 	real_counter = long(open("/var/cache/edb/counter").read())
+except SystemExit, e:
+	raise  # This needs to be propogated
 except:
 	writemsg("ERROR: Real counter is invalid.\n")
 	real_counter = 0
@@ -74,6 +76,8 @@ for cat in os.listdir(vardbdir):
 				if mysplit[0] == "obj":
 					try:
 						times[catpkg] = long(mysplit[-1])
+					except SystemExit, e:
+						raise  # This needs to be propogated
 					except:
 						times[catpkg] = -1
 						bad[catpkg] += ["CONTENTS is corrupt"]
@@ -93,6 +97,8 @@ for cat in os.listdir(vardbdir):
 				if counters[catpkg] > real_counter:
 					writemsg("ERROR: Global counter is lower than the '%s' COUNTER." % catpkg)
 					real_counter = fix_global_counter(counters[catpkg])
+			except SystemExit, e:
+				raise  # This needs to be propogated
 			except:
 				bad[catpkg] += ["COUNTER is corrupt"]
 				counters[catpkg] = -1

@@ -42,6 +42,8 @@ def fix_entries(path):
 		return False
 	try:
 		envfile = open(path+"environment")
+	except SystemExit, e:
+		raise  # this needs to be propogated
 	except:
 		print "environment.bz2 corrupt!"
 		print "There is no way to fix this ebuild automatically."

@@ -204,6 +204,8 @@ def last():
 		savedf=open('/var/cache/edb/repo.fails','r')
 		fails = pickle.load(savedf)
 		savedf.close()
+	except SystemExit, e:
+		raise  # Need to propogate this
 	except:
 		err("Error retrieving last repoman run data; exiting.")
 
@@ -329,6 +331,8 @@ else:
 			myreporoot = myreporoot[len(myreporootpath):]
 			while myreporoot and myreporoot[0] == '/':
 				myreporoot = myreporoot[1:]
+	except SystemExit, e:
+		raise  # Need to propogate this
 	except:
 		err("Error grabbing repository information; exiting.")
 
@@ -389,6 +393,8 @@ try: # Determine if we're in PORTDIR... If not tell portage to accomodate.
 				mydir=os.path.normpath(mydir+"/..")
 		if mydir=="/":
 			print darkred("unable to determine a PORTDIR.")
+except SystemExit, e:
+	raise  # Need to propogate this
 except Exception, e:
 	print "!!! Error when determining valid(ity of) PORTDIR:"
 	print "!!!",e
@@ -445,6 +451,8 @@ try:
 			if not luselist.has_key(myuse[0]):
 				luselist[myuse[0]] = []
 			luselist[myuse[0]].append(myuse[1])
+except SystemExit, e:
+	raise  # Need to propogate this
 except:
 	err("Couldn't read from use.local.desc")
 
@@ -454,6 +462,8 @@ try:
 	uselist=portage.grabfile(portdir+"/profiles/use.desc")
 	for l in range(0,len(uselist)):
 		uselist[l]=string.split(uselist[l])[0]
+except SystemExit, e:
+	raise  # Need to propogate this
 except:
 	err("Couldn't read USE flags from use.desc")
 
@@ -465,6 +475,8 @@ if not liclist:
 # retrieve list of offical keywords
 try:
 	kwlist=portage.grabfile(portdir+"/profiles/arch.list")
+except SystemExit, e:
+	raise  # Need to propogate this
 except:
 	err("Couldn't read KEYWORDS from arch.list")
 if not kwlist:
@@ -570,6 +582,8 @@ else:
 				os.chmod(portage.CACHE_PATH+'/metadata.dtd',0664)
 
 
+		except SystemExit, e:
+			raise  # Need to propogate this
 		except Exception,e:
 			print
 			print red("!!!")+" attempting to fetch 'http://www.gentoo.org/dtd/metadata.dtd', caught"
@@ -609,6 +623,8 @@ for x in scanlist:
 			mystat=os.stat(checkdir+"/files")[0]
 			if len(ebuildlist) and not S_ISDIR(mystat):
 				raise Exception
+		except SystemExit, e:
+			raise  # Need to propogate this
 		except:
 			stats["filedir.missing"] += 1
 			fails["filedir.missing"].append(checkdir)
@@ -1261,6 +1277,8 @@ else:
 			mymsg=open(commitmessagefile,"r")
 			commitmessage=mymsg.read()
 			mymsg.close()
+		except SystemExit, e:
+			raise  # Need to propogate this
 		except Exception,e:
 			print "!!! Failed to open commit message file."
 			print "!!!",e

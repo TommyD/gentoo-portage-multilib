@@ -25,6 +25,8 @@ for myvirt in myprovides.keys():
 		try:
 			if (newvirts[myvirt].index(pkg)):
 				pass
+		except SystemExit, e:
+			raise  # This needs to be propogated
 		except:
 			newvirts[myvirt].append(pkg)
 

@@ -21,6 +21,8 @@ for x in sys.argv[1:]:
 	x=myparts[1]+"/"+myparts[2]
 	try:
 		myfile=open(x+"/VIRTUAL","r")
+	except SystemExit, e:
+		raise # Needed else the app won't quit
 	except:
 		continue
 	myline=myfile.readline()
