@@ -489,6 +489,19 @@ elif repolevel==3:
 		caterror(catdir)
 	scanlist.append(catdir+"/"+reposplit[-1])
 
+profiles={}
+descfile=repoman_settings["PORTDIR"]+"/profiles/profiles.desc"
+if not os.path.exists(descfile):
+	raise IOError, "profile.desc does not exist: "+descfile
+for x in portage.grabfile(descfile):
+	if x[0]=="#":
+		continue
+	arch=string.split(x)
+	if len(arch)!=2:
+		print red("wrong format: \""+x+"\" in "+descfile)
+		continue
+	profiles[arch[0]]=arch[1]
+
 stats={}
 fails={}
 #objsadded records all object being added to cvs
@@ -640,26 +653,40 @@ for x in scanlist:
 				myqakey=missingvars[pos]+".missing"
 				stats[myqakey]=stats[myqakey]+1
 				fails[myqakey].append(x+"/"+y+".ebuild")
-		if not catdir+"/"+y in portage.db["/"]["porttree"].dbapi.xmatch("list-visible",x):
-			#we are testing deps for a masked package; give it some lee-way
-			suffix="masked"
-			matchmode="match-all"
-		else:
-			suffix=""
-			matchmode="match-visible"
-		for mytype,mypos in [["DEPEND",len(missingvars)],["RDEPEND",len(missingvars)+1]]:
-			mykey=mytype+".bad"+suffix
-			myvalue=string.join(portage.db["/"]["porttree"].dbapi.aux_get(catdir+"/"+y,[ mytype ]))
 
+		for mytype,mypos in [["DEPEND",len(missingvars)],["RDEPEND",len(missingvars)+1]]:
 			for keyword in string.split(portage.db["/"]["porttree"].dbapi.aux_get(catdir+"/"+y,["KEYWORDS"])[0]):
 				if (keyword[0]=="-"):
 					continue
 				elif (keyword[0]=="~"):
 					portage.groups=[keyword[1:], keyword]
-					repoman_settings["ARCH"]=keyword[1:]
+					arch=keyword[1:]
 				else:
 					portage.groups=[keyword]
-					repoman_settings["ARCH"]=keyword
+					arch=keyword
+
+				repoman_settings["ARCH"]=arch
+				portage.profiledir=repoman_settings["PORTDIR"]+"/profiles/"+profiles[arch]
+				if (not os.path.exists(portage.profiledir)):
+					raise IOError, "Profile dir does not exist: "+portage.profiledir
+				
+				if (os.path.exists(portage.profiledir+"/use.mask")):
+					repoman_settings.usemask=portage.grabfile(portage.profiledir+"/use.mask")
+					repoman_settings.regenerate()
+
+				portage.do_vartree()
+				portage.db["/"]["porttree"]=portage.portagetree("/",portage.virts)
+
+				if not catdir+"/"+y in portage.db["/"]["porttree"].dbapi.xmatch("list-visible",x):
+					#we are testing deps for a masked package; give it some lee-way
+					suffix="masked"
+					matchmode="match-all"
+				else:
+					suffix=""
+					matchmode="match-visible"
+
+				mykey=mytype+".bad"+suffix
+				myvalue=string.join(portage.db["/"]["porttree"].dbapi.aux_get(catdir+"/"+y,[ mytype ]))
 
 				mydep=portage.dep_check(myvalue,portage.db["/"]["porttree"].dbapi,repoman_settings,use="all",mode=matchmode)
 				if mydep[0]==1:
