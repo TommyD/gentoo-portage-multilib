@@ -3391,9 +3391,10 @@ class portdbapi(dbapi):
 			sys.exit(1)
 		
 		psplit=pkgsplit(mysplit[1])
-		for myloc in suffix_array(self.overlays, "/"+mysplit[0]+"/"+psplit[0]+"/"+mysplit[1]+".ebuild"):
-			if os.access(myloc, os.R_OK):
-				return myloc,1
+		if psplit:
+			for myloc in suffix_array(self.overlays, "/"+mysplit[0]+"/"+psplit[0]+"/"+mysplit[1]+".ebuild"):
+				if os.access(myloc, os.R_OK):
+					return myloc,1
 
 		# XXX Why are there errors here? XXX
 		try:
@@ -3997,7 +3998,9 @@ class binarytree(packagetree):
 			os.makedirs(settings["PKGDIR"]+"/All/", 0775)
 		except:
 			pass
-		getbinpkg.file_get(settings["PORTAGE_BINHOST"]+"/"+mysplit[1]+".tbz2", settings["PKGDIR"]+"/All/"+mysplit[1]+".tbz2")
+		myf = open(settings["PKGDIR"]+"/All/"+mysplit[1]+".tbz2", "w+")
+		getbinpkg.file_get(settings["PORTAGE_BINHOST"]+"/"+mysplit[1]+".tbz2", myf)
+		myf.close()
 		return
 
 class dblink:

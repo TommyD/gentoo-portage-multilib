@@ -55,6 +55,6 @@ for mypkg in sys.argv[1:]:
 		if pretend:
 			print mytbz2
 		else:
-			portage.pkgmerge(mytbz2)
+			portage.pkgmerge(mytbz2,portage.settings["ROOT"])
 		digraph.delnode(mykey)
 		

@@ -415,19 +415,19 @@ for x in scanlist:
 					if y[7:] in eadded:
 						stats["digest.disjointed"]=stats["digest.disjointed"]+1
 						fails["digest.disjointed"].append(x+"/files/"+y)
-				else:
-					mydigests=portage.digestParseFile(checkdir+"/files/"+y)
-					mykey = catdir + "/" + y[7:]
-					myuris = portage.db["/"]["porttree"].dbapi.aux_get(mykey,["SRC_URI"])[0]
-					alluris=portage.flatten(portage.evaluate(portage.tokenize(myuris),[],1))
-					allfiles=[]
-					for tmp in alluris:
-						allfiles.append(os.path.basename(tmp))
-
-					for tmpfile in allfiles:
-						if not mydigests.has_key(tmpfile):
-							stats["digest.unmatch"]=stats["digest.unmatch"]+1
-							fails["digest.unmatch"].append(x+"/files/"+y)
+				#else:
+				#	mydigests=portage.digestParseFile(checkdir+"/files/"+y)
+				#	mykey = catdir + "/" + y[7:]
+				#	myuris = portage.db["/"]["porttree"].dbapi.aux_get(mykey,["SRC_URI"])[0]
+				#	alluris=portage.flatten(portage.evaluate(portage.tokenize(myuris),[],1))
+				#	allfiles=[]
+				#	for tmp in alluris:
+				#		allfiles.append(os.path.basename(tmp))
+				#
+				#	for tmpfile in allfiles:
+				#		if not mydigests.has_key(tmpfile):
+				#			stats["digest.unmatch"]=stats["digest.unmatch"]+1
+				#			fails["digest.unmatch"].append(x+"/files/"+y)
 				if y[7:] not in ebuildlist:
 					#stray digest
 					if mymode=="fix":

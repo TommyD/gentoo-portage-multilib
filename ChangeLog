@@ -2,6 +2,14 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+*portage-2.0.49_pre13/48-r7 (24 Jul 2003): Fixes and getbinpkg caching
+
+  22 Jul 2003; Nicholas Jones <carpaski@gentoo.org> *: Typo fixes for
+  the ECLASS_DEPTH comparisons in ebuild.sh. Traceback fixes for blocking
+  packages in depclean and in pretend. Caching added to getbinpkg code --
+  generation of cache supported, but cachefile is staticly located. Langs
+  patch from Nakano in bug #9988 included.
+  
 *portage-2.0.49_pre13 (22 Jul 2003): Fixes
   
   22 Jul 2003; Nicholas Jones <carpaski@gentoo.org> doman: Doesn't gzip

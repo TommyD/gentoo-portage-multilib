@@ -922,7 +922,7 @@ debug-print-section() {
 declare -ix ECLASS_DEPTH=0
 inherit() {
 	ECLASS_DEPTH=$(($ECLASS_DEPTH + 1))
-	if [ $ECLASS_DEPTH > 1 ]; then
+	if [[ $ECLASS_DEPTH > 1 ]]; then
 		debug-print "*** Multiple Inheritence (Level: ${ECLASS_DEPTH})"
 	fi
 
@@ -1072,8 +1072,8 @@ do_newdepend() {
 	[ -z "$1" ] && die "do_newdepend without arguments"
 
 	# Grab what we're affecting... Figure out if we're affecting eclasses.
-	[ ${ECLASS_DEPTH} > 0 ] && TARGET="E_$1"
-	[ ${ECLASS_DEPTH} > 0 ] || TARGET="$1"
+	[[ ${ECLASS_DEPTH} > 0 ]] && TARGET="E_$1"
+	[[ ${ECLASS_DEPTH} > 0 ]] || TARGET="$1"
 	shift # $1 was a variable name.
 
 	while [ -n "$1" ]; do
@@ -1179,6 +1179,7 @@ PDEPEND="$PDEPEND $E_PDEPEND"
 set +f
 
 for myarg in $*; do
+	echo "myarg: $myarg"
 	case $myarg in
 	nofetch)
 		pkg_nofetch

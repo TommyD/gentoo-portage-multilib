@@ -561,7 +561,7 @@ class depgraph:
 		if "--usepkg" in myopts:
 			try:
 				portage.db["/"]["bintree"].populate(("--getbinpkg" in myopts), ("--getbinpkgonly" in myopts))
-			except Exception, e:
+			except ValueError, e:
 				sys.stderr.write(red("!!! Failed to get all metadata: "+str(e)+"\n"))
 				sys.exit(1)
 
@@ -973,8 +973,6 @@ class depgraph:
 		for x in mylist:
 			#print x
 			fetch=" "
-			if ("fetch" in string.split(portage.portdb.aux_get(x[2],["RESTRICT"])[0])):
-				fetch = red("F")
 			
 			if x[0]=="blocks":
 				addl=""+red("B")+"  "+fetch+"  "
@@ -993,6 +991,9 @@ class depgraph:
 			else:
 				if x[3]=="nomerge":
 					continue
+
+				if ("fetch" in string.split(portage.portdb.aux_get(x[2],["RESTRICT"])[0])):
+					fetch = red("F")
 
 				#we need to use "--emptrytree" testing here rather than "empty" param testing because "empty"
 				#param is used for -u, where you still *do* want to see when something is being upgraded.
@@ -1892,6 +1893,16 @@ elif "depclean"==myaction:
 	reallist=[]
 	for x in alldeps:
 		myparts=portage.catpkgsplit(string.split(x)[2])
+		if not myparts:
+			sys.stderr.write(
+			  red("!!! There appears to be a problem with the following package:\n")+
+				red("!!! "+str(string.split(x)[2])+"\n\n")+
+				    "!!! Please ensure that blocking/conflicting packages are not merged."+
+						"!!! 'emerge -p "+str(string.split(x)[2])+"\n\n")
+			if "--pretend" not in myopts:
+				countdown(15, "*** Continuing")
+			continue
+			
 		catpack=myparts[0]+"/"+myparts[1]
 		if catpack not in reallist:
 			reallist.append(catpack)
