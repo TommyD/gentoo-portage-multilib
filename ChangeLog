@@ -1,6 +1,10 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+  26 Feb 2002; Geert Bevin <gbevin@gentoo.org> bin/dohtml :
+  Added support for installing .gif files too since quite some docs still ship
+  with those instead of .jpg or .png.
+
 *portage-1.8.9_pre16 (25 Feb 2002)
 
   25 Feb 2002; Daniel Robbins <drobbins@gentoo.org> emerge : emerge syntax

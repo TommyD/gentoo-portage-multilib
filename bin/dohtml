@@ -65,7 +65,7 @@ skip = 0
 files = []
 D=os.environ["D"]
 PF=os.environ["PF"]
-allowed_exts = [ 'png', 'html', 'htm', 'jpg', 'css' ]
+allowed_exts = [ 'png', 'gif', 'html', 'htm', 'jpg', 'css' ]
 disallowed_dirs = [ 'CVS' ]
 recurse = 0
 
