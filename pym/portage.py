@@ -2696,10 +2696,10 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	# Build directory creation isn't required for any of these.
 	if mydo not in ["fetch","digest","manifest"]:
 
-		if not os.path.exists(mysettings["PORTAGE_TMPDIR"]):
-			os.makedirs(mysettings["PORTAGE_TMPDIR"])
-		os.chown(mysettings["PORTAGE_TMPDIR"],portage_uid,portage_gid)
-		os.chmod(mysettings["PORTAGE_TMPDIR"],00775)
+		if not os.path.exists(mysettings["BUILD_PREFIX"]):
+			os.makedirs(mysettings["BUILD_PREFIX"])
+		os.chown(mysettings["BUILD_PREFIX"],portage_uid,portage_gid)
+		os.chmod(mysettings["BUILD_PREFIX"],00775)
 
 		# Should be ok again to set $T, as sandbox does not depend on it
 		mysettings["T"]=mysettings["BUILDDIR"]+"/temp"
