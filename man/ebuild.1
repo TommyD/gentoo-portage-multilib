@@ -10,8 +10,11 @@ The ebuild program is the heart of the current implementation of the Portage sys
 This must be a valid ebuild script.  For further information read \fBebuild\fR(5).
 .SH "COMMANDS"
 .TP
-.BR check
-Checks to see if all build dependencies are satisfied.
+.BR help
+Show a condesned form of the man page along with a lot of package specific information.
+.TP
+.BR setup
+Run all package specific setup actions and exotic system checks.
 .TP
 .BR clean
 Cleans the temporary build directory that Portage has created for this particular
@@ -64,11 +67,19 @@ specified in the ebuild file.  When src_compile() starts, the current working
 directory will be set to ${S}.  When src_compile() completes, the sources should be
 fully compiled.
 .TP
+.BR preinst
+Run package specific actions that need to be done before the package is installed
+into the temporary root.
+.TP
 .BR install
 Installs the package to the temporary \fIinstall directory\fR by running the
 \fIsrc_install()\fR function.  When completed, the \fIinstall directory\fR
 (${BUILD_PREFIX}/[package]\-[version\-rev]/image) will contain all the files that
 should either be merged to the local file system or included in a binary package.
+.TP
+.BR postinst
+Run package specific actions that need to be done after the package is installed
+into the temporary root.  Usually helpful messages are shown here.
 .TP
 .BR qmerge
 This function installs all the files in the \fIinstall directory\fR to the live
