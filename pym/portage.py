@@ -2602,18 +2602,30 @@ def dep_expand(mydep,mydb=None):
 		mydep=mydep[1:]
 	return prefix+cpv_expand(mydep,mydb)+postfix
 
-def dep_check(depstring,mydbapi,use="yes",mode=None):
+def dep_check(depstring,mydbapi,use="yes",mode=None,myuse=None):
 	"""Takes a depend string and parses the condition."""
 	global usesplit
+
 	if use=="all":
 		#enable everything (for repoman)
 		myusesplit=["*"]
 	elif use=="yes":
-		#default behavior
-		myusesplit=usesplit
+		if myuse==None:
+			#default behavior
+			myusesplit=usesplit
+		else:
+			myusesplit = string.split(myuse)
+			# We've been given useflags to use.
+			#print "USE FLAGS PASSED IN."
+			#print myuse
+			#if "bindist" in myusesplit:
+			#	print "BINDIST is set!"
+			#else:
+			#	print "BINDIST NOT set."
 	else:
 		#we are being run by autouse(), don't consult USE vars yet.
 		myusesplit=[]
+		
 	mysplit=string.split(depstring)
 	#convert parenthesis to sublists
 	mysplit=dep_parenreduce(mysplit)
@@ -2692,8 +2704,8 @@ class packagetree:
 				nolist.remove(x)
 		return nolist
 
-	def depcheck(self,mycheck,use="yes"):
-		return dep_check(mycheck,self.dbapi,use=use)
+	def depcheck(self,mycheck,use="yes",myusesplit=None):
+		return dep_check(mycheck,self.dbapi,use=use,myusesplit=myusesplit)
 
 	def populate(self):
 		"populates the tree with values"
@@ -2769,8 +2781,8 @@ class portagetree:
 			mykey=mykey+"-"+cps[3]
 		return mykey
 
-	def depcheck(self,mycheck,use="yes"):
-		return dep_check(mycheck,self.dbapi,use=use)
+	def depcheck(self,mycheck,use="yes",myusesplit=None):
+		return dep_check(mycheck,self.dbapi,use=use,myusesplit=myusesplit)
 
 
 class dbapi:
@@ -4030,6 +4042,14 @@ class binarytree(packagetree):
 		mysplit=string.split(pkgname,"/")
 		remote = (not os.path.exists(self.getname(pkgname))) and self.remotepkgs.has_key(mysplit[1]+".tbz2")
 		return remote
+	
+	def get_use(self,pkgname):
+		mysplit=string.split(pkgname,"/")
+		if self.isremote(pkgname):
+			return string.split(self.remotepkgs[mysplit[1]+".tbz2"]["USE"][:])
+		tbz2=xpak.tbz2(self.getname(pkgname))
+		return tbz2.getfile("USE")
+			
 	
 	def gettbz2(self,pkgname):
 		"fetches the package from a remote site, if necessary."

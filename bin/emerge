@@ -586,8 +586,13 @@ class depgraph:
 			return 1
 
 		update_spinner()
+
+		myuse=portage.settings["USE"]
+		if len(mybigkey) == 3:
+			mytype,myroot,mykey=mybigkey
+		else:
+			mytype,myroot,mykey,myuse=mybigkey
 		
-		mytype,myroot,mykey=mybigkey
 	
 		# select the correct /var database that we'll be checking against
 		vardbapi=portage.db[myroot]["vartree"].dbapi
@@ -603,7 +608,11 @@ class depgraph:
 				if myparent and (self.mydbapi[myroot].match(mykey) or vardbapi.match(mykey)):
 					# otherwise, encode parent information where we would normally
 					# write "(no)merge" and continue:
-					parenttype,parentroot,parentkey,mergeme=string.split(myparent)
+					mypsplit=string.split(myparent)
+					parenttype=mypsplit[0]
+					parentroot=mypsplit[1]
+					parentkey=mypsplit[2]
+					mergeme=mypsplit[-1]
 					mykexp=portage.dep_expand(mykey,self.mydbapi[myroot])
 					pakexp=portage.dep_expand(parentkey,self.mydbapi[myroot])
 					myrealkey=portage.dep_getkey(mykexp)
@@ -681,20 +690,20 @@ class depgraph:
 
 		if myroot=="/":
 			mydep["/"]=edepend["DEPEND"]+" "+edepend["RDEPEND"]
-			if not self.select_dep("/",mydep["/"],myparent=mp):
+			if not self.select_dep("/",mydep["/"],myparent=mp,myuse=myuse):
 				return 0
 		else:
 			mydep["/"]=edepend["DEPEND"]
 			mydep[myroot]=edepend["RDEPEND"]
-			if not self.select_dep("/",mydep["/"],myparent=mp):
+			if not self.select_dep("/",mydep["/"],myparent=mp,myuse=myuse):
 				return 0
-			elif not self.select_dep(myroot,mydep[myroot],myparent=mp):
+			elif not self.select_dep(myroot,mydep[myroot],myparent=mp,myuse=myuse):
 				return 0
 
 		if edepend.has_key("PDEPEND") and edepend["PDEPEND"]:
 			# Post Depend -- Add to the list without a parent, as it depends
 			# on a package being present AND must be built after that package.
-			if not self.select_dep(myroot,edepend["PDEPEND"]):
+			if not self.select_dep(myroot,edepend["PDEPEND"],myuse=myuse):
 				return 0
 			
 		return 1
@@ -771,7 +780,7 @@ class depgraph:
 				break
 			alleb.remove(cand)
 
-	def select_dep(self,myroot,depstring,myparent=None,arg=None):
+	def select_dep(self,myroot,depstring,myparent=None,arg=None,myuse=None):
 		"given a dependency string, create the appropriate depgraph and return 1 on success and 0 on failure"
 		if "--debug" in myopts:
 			print
@@ -779,7 +788,7 @@ class depgraph:
 			print "Depstring:",depstring
 		if not arg:
 			#processing dependencies
-			mycheck=portage.dep_check(depstring,self.mydbapi[myroot])
+			mycheck=portage.dep_check(depstring,self.mydbapi[myroot],myuse=myuse)
 			if not mycheck[0]:
 				return 0
 			mymerge=mycheck[1]
@@ -846,7 +855,8 @@ class depgraph:
 				if myeb:
 					myk=["ebuild",myroot,myeb]
 				elif myeb_pkg:
-					myk=["binary",myroot,myeb_pkg]
+					pkguseflags=portage.db[portage.root]["bintree"].get_use(myeb_pkg)
+					myk=["binary",myroot,myeb_pkg,pkguseflags]
 				else:
 					sys.stderr.write("!!! Confused... Don't know what I'm using for dependency info. :(\n")
 					sys.exit(1)
