@@ -36,3 +36,12 @@ chown -R root.root ${DEST}
 cd $TMP
 rm -f ${PKG}-${V}/bin/emerge.py
 tar cjvf ${TMP}/${PKG}-${V}.tar.bz2 ${PKG}-${V}
+
+if [ -L ${TMP}/portage-copy ]; then
+	cp ${TMP}/${PKG}-${V}.tar.bz2 ${TMP}/portage-copy/
+	cp /usr/portage/sys-apps/portage/portage-2.0.45-r5.ebuild ${TMP}/portage-copy/portage-${V}.ebuild
+fi
+if [ -L ${TMP}/portage-web ]; then
+	cp ${TMP}/${PKG}-${V}.tar.bz2 ${TMP}/portage-web/
+	cp /usr/portage/sys-apps/portage/portage-2.0.45-r5.ebuild ${TMP}/portage-copy/portage-${V}.ebuild
+fi

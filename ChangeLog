@@ -1,21 +1,27 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
-	13 Dec 2002; Nicholas Jones <carpaski@gentoo.org> emerge/portage.py:
-	Added disabled prelink code. Needs a little more work. Gave portage the
-	ability to restart on upgrades to the portage version. Ebuilds for prior
-	versions will intentionally die on upgrade. USE=build disables it so
-	bootstrap isn't affected.
+  15 Dec 2002; Nicholas Jones <carpaski@gentoo.org> portage.py: Counter
+	fixups. More prelink code -- Prelink may have to ignore mtimes...
+
+	15 Dec 2002; Nicholas Jones <carpaski@gentoo.org> bin/f*: Made them
+	loop over multiple files instead of just doing one.
+
+  13 Dec 2002; Nicholas Jones <carpaski@gentoo.org> emerge/portage.py:
+  Added disabled prelink code. Needs a little more work. Gave portage the
+  ability to restart on upgrades to the portage version. Ebuilds for prior
+  versions will intentionally die on upgrade. USE=build disables it so
+  bootstrap isn't affected.
 
 *portage-2.0.45-r4 (11 Dec 2002): Feature addition: PDEPEND
 
   11 Dec 2002; Nicholas Jones <carpaski@gentoo.org> ebuild.sh/portage.py:
-	Added [CDEPEND, PDEPEND, REBUILD] to auxdbkeys and updated ebuild.sh.
-	Prevented autoclean on fetchonly.
+  Added [CDEPEND, PDEPEND, REBUILD] to auxdbkeys and updated ebuild.sh.
+  Prevented autoclean on fetchonly.
 	
-	11 Dec 2002; Nicholas Jones <carpaski@gentoo.org> emerge:
-	Added support for PDEPEND. Rewrote some dep handling variables for
-	readability and ease of use.
+  11 Dec 2002; Nicholas Jones <carpaski@gentoo.org> emerge:
+  Added support for PDEPEND. Rewrote some dep handling variables for
+  readability and ease of use.
 
 *portage-2.0.45-r3 (09 Dec 2002): Touchups.
 

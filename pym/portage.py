@@ -67,7 +67,7 @@ try:
 			# Raw data is returned on stdout, errors on stderr.
 			# Non-prelinks are just returned.
 			prelink_tmpfile="/tmp/portage-prelink.tmp"
-			os.system("/usr/sbin/prelink --output-to "+prelink_tmpfile+" -u "+filename+" > "+prelink_tmpfile+" 2> /dev/null")
+			os.system("cp "+filename+" "+prelink_tmpfile+" && /usr/sbin/prelink --undo "+prelink_tmpfile+" &>/dev/null")
 			retval = fchksum.fmd5t(prelink_tmpfile)
 			os.unlink(prelink_tmpfile)
 			return retval
@@ -80,7 +80,7 @@ except ImportError:
 			# Create non-prelinked temporary file to md5sum.
 			# Raw data is returned on stdout, errors on stderr.
 			# Non-prelinks are just returned.
-			os.system("/usr/sbin/prelink --output-to "+prelink_tmpfile+" -u "+filename+" > "+prelink_tmpfile+" 2> /dev/null")
+			os.system("cp "+filename+" "+prelink_tmpfile+" && /usr/sbin/prelink --undo "+prelink_tmpfile+" &>/dev/null")
 			myfilename=prelink_tmpfile
 
 		f = open(myfilename, 'rb')
@@ -2522,12 +2522,23 @@ def counter_tick_core(myroot):
 			cfile=open(cpath, "r")
 			try:
 				counter=long(cfile.readline())
-			except ValueError:
-				counter=long(time.time())
-				print "portage: COUNTER was corrupted; resetting to value of",counter
+			except (ValueError,OverflowError):
+				try:
+					counter=long(commands.getoutput("for FILE in $(find /var/db/pkg -type f -name COUNTER); do cat ${FILE}; echo; done | sort -n | tail -n1 | tr -d '\n'"))
+					print "portage: COUNTER was corrupted; resetting to value of",counter
+				except (ValueError,OverflowError):
+					print red("portage:")+" COUNTER data is corrupt in pkg db. The values need to be"
+					print red("portage:")+" corrected/normalized so that portage can operate properly."
+					print red("portage:")+" A simple solution is not yet available so try #gentoo on IRC."
+					sys.exit(2)
 			cfile.close()
 		else:
-			counter=long(0)
+			try:
+				counter=long(commands.getoutput("for FILE in $(find /var/db/pkg -type f -name COUNTER); do cat ${FILE}; echo; done | sort -n | tail -n1 | tr -d '\n'"))
+				print red("portage:")+" Global counter missing. Regenerated from counter files to:",counter
+			except:
+				print red("portage:")+" Initializing global counter."
+				counter=long(0)
 		#increment counter
 		counter += 1
 		# update new global counter file
@@ -3483,13 +3494,11 @@ class dblink:
 
 			lstatobj=os.lstat(obj)
 			lmtime=str(lstatobj[ST_MTIME])
-			#next line: we dont rely on mtimes for symlinks anymore.
-			#try:
 			if (pkgfiles[obj][0] not in ("dir","fif","dev","sym")) and (lmtime != pkgfiles[obj][1]):
-				print "--- !mtime", pkgfiles[obj][0], obj
-				continue
-			#except KeyError:
-			#		print "--- !error",pkgfiles[obj][0],obj
+				if not prelink_capable:
+					print "--- !mtime", pkgfiles[obj][0], obj
+					continue
+
 			if pkgfiles[obj][0]=="dir":
 				if not os.path.isdir(obj):
 					print "--- !dir  ","dir", obj

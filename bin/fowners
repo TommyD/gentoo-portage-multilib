@@ -3,9 +3,13 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-if [ ${#} -ne 2 ] ; then
-	echo "${0}: two arguments needed"
+if [ ${#} -lt 2 ] ; then
+	echo "${0}: at least two arguments needed"
 	exit 1
 fi
 
-chown "${1}" "${D}${2}"
+OWNER="${1}"
+shift
+for FILE in $*; do
+	chown "${OWNER}" "${D}${FILE}"
+done
