@@ -85,7 +85,11 @@ use() {
 	local x
 	for x in ${USE}; do
 		if [ "${x}" == "${1}" ]; then
-			tty --quiet < /dev/stdout || echo "${x}"
+			if [ -r /dev/fd/1 ]; then
+				tty --quiet < /dev/stdout || echo "${x}"
+			else
+			  echo "${x}"
+			fi
 			return 0
 		fi
 	done
@@ -772,8 +776,25 @@ dyn_install() {
 	done
 	
 	if [[ $UNSAFE > 0 ]]; then
-		die "There are unsafe files. Portage will not install them."
+		die "There are ${UNSAFE} unsafe files. Portage will not install them."
 	fi
+
+	# Smart FileSystem Permissions
+ OIFS="${IFS}"
+ export IFS="$(echo)"
+	if has sfperms $FEATURES; then
+		for i in $(find ${D}/ -type f -perm -4000); do
+			ebegin ">>> SetUID: [chmod go-r] $i "
+			chmod go-r $i
+			eend $?
+		done
+		for i in $(find ${D}/ -type f -perm -2000); do
+			ebegin ">>> SetGID: [chmod o-r] $i "
+			chmod o-r $i
+			eend $?
+		done
+	fi
+ IFS="${OIFS}"
 	
 	find ${D}/ -user  portage -print0 | $XARGS -0 -n100 chown root
 	if [ "$USERLAND" == "BSD" ]; then
@@ -781,6 +802,15 @@ dyn_install() {
 	else	
 		find ${D}/ -group portage -print0 | $XARGS -0 -n100 chgrp root 
 	fi
+
+	if use selinux; then
+		if [ -x /usr3/sbin/setfiles ]; then
+			if [ -e ${POLICYDIR}/file_contexts/file_contexts ]; then
+				setfiles -r ${D} ${POLICYDIR}/file_contexts/file_contexts ${D}
+			fi
+		fi
+	fi
+
 	echo ">>> Completed installing into ${D}"
 	echo
 	cd ${BUILDDIR}

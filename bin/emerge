@@ -18,7 +18,7 @@ if portage.settings.has_key("PORTAGE_NICENESS"):
 	try:
 		os.nice(int(portage.settings["PORTAGE_NICENESS"]))
 	except Exception,e:
-		print "!!! Failed to change nice value to '"+str(portage.settings["NICE"])+"'"
+		print "!!! Failed to change nice value to '"+str(portage.settings["PORTAGE_NICENESS"])+"'"
 		print "!!!",e
 
 #Freeze the portdbapi for enhanced performance:
@@ -211,7 +211,7 @@ def emergelog(mystr):
 def emergeexit():
 	"""This gets out final log message in before we quit. As it overrides
 	any other atexit's we have setup, we need to call them ourself."""
-	portage.portageexit()
+	#portage.portageexit()
 	emergelog(" *** terminating.")
 	if "notitles" not in portage.features:
 		xtermTitleReset()
@@ -1434,14 +1434,11 @@ def unmerge(unmerge_action, unmerge_files):
 		mymatch=localtree.dep_match(x)
 		if not mymatch and x[0] not in "<>=~":
 			#add a "=" if missing
-			mydep="="+x
-			mymatch=localtree.dep_match(mydep)
-		else:
-			mydep=x
-		mykey=portage.key_expand(portage.dep_getkey(mydep),portage.db["/"]["vartree"].dbapi)
+			mymatch=localtree.dep_match("="+x)
 		if not mymatch:
 			print "\n!!! Couldn't find match for",white(x)
 			continue
+		mykey=portage.key_expand(portage.dep_getkey(mymatch[0]),portage.db["/"]["vartree"].dbapi)
 		if not pkgmap.has_key(mykey):
 			pkgmap[mykey]={"protected":[], "selected":[], "omitted":[] }
 		if unmerge_action=="unmerge":
@@ -1474,23 +1471,21 @@ def unmerge(unmerge_action, unmerge_files):
 					pkgmap[mykey]["selected"].append(slotmap[myslot][ckey])
 					numselected=numselected+1
 				#ok, now the last-merged package is protected, and the rest are selected
+	if global_unmerge and not numselected:
+		print "\n>>> No outdated packages were found on your system.\n"
+		return 0
+
+	if not numselected:
+		print "\n>>>",unmerge_action+": No packages selected for removal.\n"
+		return 0
+
 	for x in candidate_catpkgs:
-		if not mymatch and x[0] not in "<>=~":
-			#add a "=" if missing
-			mydep="="+x
-			mymatch=localtree.dep_match(mydep)
-		else:
-			mydep=x
-		for y in localtree.dep_nomatch(mydep):
+		for y in localtree.dep_nomatch(mymatch[0]):
 			if y not in pkgmap[mykey]["omitted"] and \
 			   y not in pkgmap[mykey]["selected"] and \
 				 y not in pkgmap[mykey]["protected"]:
 				pkgmap[mykey]["omitted"].append(y)
-		
-	if global_unmerge and not numselected:
-		print "\n>>> No outdated packages were found on your system.\n"
-		return 0
-	
+
 	for x in pkgmap.keys():
 		if global_unmerge and not pkgmap[x]["selected"]:
 			#avoid cluttering the preview printout with stuff that isn't getting unmerged
@@ -1513,10 +1508,6 @@ def unmerge(unmerge_action, unmerge_files):
 					print "none",
 			print
 	
-	if not numselected:
-		print "\n>>>",unmerge_action+": No packages selected for removal.\n"
-		return 0
-
 	print "\n>>> Packages in",red("red"),"are slated for removal."
 	print ">>> Packages in",green("green"),"will not be removed.\n"
 	
@@ -1819,6 +1810,23 @@ elif "info"==myaction:
 	print getportageversion()
 	print "================================================================="
 	print "System uname: "+unameout
+
+	output=commands.getstatusoutput("`which distcc` --version")
+	if not output[0]:
+		print str(string.split(output[1],"\n",1)[0]),
+		if "distcc" in portage.features:
+			print "[enabled]"
+		else:
+			print "[disabled]"
+
+	output=commands.getstatusoutput("`which ccache` -V")
+	if not output[0]:
+		print str(string.split(output[1],"\n",1)[0]),
+		if "ccache" in portage.features:
+			print "[enabled]"
+		else:
+			print "[disabled]"
+
 	if "--verbose" in myopts:
 		myvars=portage.settings.keys()
 	else:
@@ -1826,6 +1834,7 @@ elif "info"==myaction:
 				'PORTDIR', 'DISTDIR', 'PKGDIR', 'PORTAGE_TMPDIR', 'PORTDIR_OVERLAY',
 				'USE', 'COMPILER', 'CHOST', 'CFLAGS', 'CXXFLAGS','ACCEPT_KEYWORDS', 
 				'MAKEOPTS', 'AUTOCLEAN', 'SYNC', 'FEATURES']
+	myvars.sort()
 	for x in myvars:
 		print x+'="'+portage.settings[x]+'"'
 	#print portage.settings.keys()
@@ -1835,7 +1844,6 @@ elif "search"==myaction:
 	if not myfiles:
 		print "emerge: no search terms provided."
 	else:
-		
 		searchinstance = search()
 		for mysearch in myfiles:
 			try:

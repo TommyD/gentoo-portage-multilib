@@ -32,6 +32,7 @@ else:
 os.environ["USERLAND"]=userland
 
 import re,types,sys,shlex,shutil,xpak,fcntl,signal,time,cPickle,atexit,grp,traceback,commands,pwd,cvstree
+signal.signal(signal.SIGCHLD, signal.SIG_DFL)
 
 #Secpass will be set to 1 if the user is root or in the portage group.
 uid=os.getuid()
@@ -1211,11 +1212,14 @@ def fetch(myuris, listonly=0, fetchonly=0):
 				myfetch=string.replace(locfetch,"${URI}",loc)
 				myfetch=string.replace(myfetch,"${FILE}",myfile)
 				myret=spawn(myfetch,free=1)
+				
 				if mydigests!=None and mydigests.has_key(myfile):
 					try:
 						mystat=os.stat(settings["DISTDIR"]+"/"+myfile)
 						# no exception?  file exists. let digestcheck() report
 						# an appropriately for size or md5 errors
+						os.chown(settings["DISTDIR"]+"/"+myfile,os.getuid(),portage_gid)
+						os.chmod(settings["DISTDIR"]+"/"+myfile,0664)
 						if (mystat[ST_SIZE]<mydigests[myfile]["size"]):
 							# Fetch failed... Try the next one... Kill 404 files though.
 							if (mystat[ST_SIZE]<100000) and (len(myfile)>4) and not ((myfile[-5:]==".html") or (myfile[-4:]==".htm")):
@@ -1819,7 +1823,11 @@ def movefile(src,dest,newmtime=None,sstat=None):
 			target=os.readlink(src)
 			if destexists and not S_ISDIR(dstat[ST_MODE]):
 				os.unlink(dest)
-			os.symlink(target,dest)
+			if selinux_enabled:
+				sid = selinux.get_lsid(src)
+				selinux.secure_symlink(target,dest,sid)
+			else:
+				os.symlink(target,dest)
 			lchown(dest,sstat[ST_UID],sstat[ST_GID])
 			return os.lstat(dest)
 		except Exception, e:
@@ -1829,9 +1837,12 @@ def movefile(src,dest,newmtime=None,sstat=None):
 			return None
 
 	renamefailed=1
-	if sstat[ST_DEV]==dstat[ST_DEV]:
+	if sstat[ST_DEV]==dstat[ST_DEV] or selinux_enabled:
 		try:
-			ret=os.rename(src,dest)
+			if selinux_enabled:
+				ret=selinux.secure_rename(src,dest)
+			else:
+				ret=os.rename(src,dest)
 			renamefailed=0
 		except Exception, e:
 			import errno
@@ -1841,13 +1852,16 @@ def movefile(src,dest,newmtime=None,sstat=None):
 				print "!!!",e
 				return None
 			# Invalid cross-device-link 'bind' mounted or actually Cross-Device
-
 	if renamefailed:
 		didcopy=0
 		if S_ISREG(sstat[ST_MODE]):
 			try: # For safety copy then move it over.
-				shutil.copyfile(src,dest+"#new")
-				os.rename(dest+"#new",dest)
+				if selinux_enabled:
+					selinux.secure_copy(src,dest+"#new")
+					selinux.secure_rename(dest+"#new",dest)
+				else:
+					shutil.copyfile(src,dest+"#new")
+					os.rename(dest+"#new",dest)
 				didcopy=1
 			except Exception, e:
 				print '!!! copy',src,'->',dest,'failed.'
@@ -1855,12 +1869,15 @@ def movefile(src,dest,newmtime=None,sstat=None):
 				return None
 		else:
 			#we don't yet handle special, so we need to fall back to /bin/mv
-			a=getstatusoutput("/bin/mv -f "+"'"+src+"' '"+dest+"'")
-			if a[0]!=0:
-				print "!!! Failed to move special file:"
-				print "!!! '"+src+"' to '"+dest+"'"
-				print "!!!",a
-				return None # failure
+			if selinux_enabled:
+				a=getstatusoutput("/bin/mv -c -f "+"'"+src+"' '"+dest+"'")
+			else:
+				a=getstatusoutput("/bin/mv -f "+"'"+src+"' '"+dest+"'")
+				if a[0]!=0:
+					print "!!! Failed to move special file:"
+					print "!!! '"+src+"' to '"+dest+"'"
+					print "!!!",a
+					return None # failure
 		try:
 			if didcopy:
 				lchown(dest,sstat[ST_UID],sstat[ST_GID])
@@ -3090,8 +3107,9 @@ class vardbapi(dbapi):
 			if not ps:
 				print "!!! Invalid db entry:",self.root+"var/db/pkg/"+mysplit[0]+"/"+x
 				continue
-			if ps[0]==mysplit[1]:
-				returnme.append(mysplit[0]+"/"+x)	
+			if len(mysplit) > 1:
+				if ps[0]==mysplit[1]:
+					returnme.append(mysplit[0]+"/"+x)
 		self.cpcache[mycp]=[mystat,returnme]
 		return returnme
 
@@ -3369,13 +3387,30 @@ class portdbapi(dbapi):
 	"this tree will scan a portage directory located at root (passed to init)"
 	def __init__(self):
 		self.root=settings["PORTDIR"]
-		self.auxcache={}
+		try:
+			self.auxcache=cPickle.load(file("/var/cache/edb/auxcache.pickle"))[self.root]
+		except:
+			self.auxcache={}
 		#if the portdbapi is "frozen", then we assume that we can cache everything (that no updates to it are happening)
 		self.xcache={}
 		self.frozen=0
 		#overlays="overlay roots"
 		self.overlays=[]
-
+		
+	def saveauxcache(self):
+		try:
+			self.auxpickle=cPickle.load(file("/var/cache/edb/auxcache.pickle"))
+		except:
+			self.auxpickle={}
+		self.auxpickle[self.root] = self.auxcache
+		try:
+			cPickle.dump(self.auxpickle, file("/var/cache/edb/auxcache.pickle", "w"), 1)
+			os.chown("/var/cache/edb/auxcache.pickle",uid,portage_gid)
+			os.chmod("/var/cache/edb/auxcache.pickle",0664)
+		except Exception, e:
+			print "!!! Failed to save auxcache"
+			print "!!! "+str(e)
+		
 	def finddigest(self,mycpv):
 		try:
 			mydig   = self.findname2(mycpv)[0]
@@ -4924,6 +4959,16 @@ else:
 	usedefaults=[]
 settings=config()
 
+if 'selinux' in settings["USE"].split(" "):
+	try:
+		import selinux
+		selinux_enabled=1
+	except ImportError:
+		selinux_enabled=0
+		pass
+else:
+	selinux_enabled=0
+
 cachedirs=["/var/cache/edb"]
 if root!="/":
 	cachedirs.append(root+"var/cache/edb")
@@ -5054,22 +5099,22 @@ def do_upgrade(mykey):
 
 def portageexit():
 	global uid,portage_gid
-	if secpass:
-   	# Store mtimedb
-		mymfn=mtimedbfile
-		try:
-			if mtimedb and not os.environ.has_key("SANDBOX_ACTIVE"):
+	if secpass and not os.environ.has_key("SANDBOX_ACTIVE"):
+		portdb.saveauxcache()
+
+		if mtimedb:
+  	 	# Store mtimedb
+			mymfn=mtimedbfile
+			try:
 				mtimedb["version"]=VERSION
 				cPickle.dump(mtimedb,open(mymfn,"w"))
 				#print "*** Wrote out mtimedb data successfully."
 				os.chown(mymfn,uid,portage_gid)
 				os.chmod(mymfn,0664)
-		except Exception, e:
-			pass
+			except Exception, e:
+				pass
 
 atexit.register(portageexit)
-
-
 
 if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
 	if settings["PORTAGE_CALLER"] in ["emerge","fixpackages"]:

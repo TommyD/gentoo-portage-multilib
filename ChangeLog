@@ -2,6 +2,20 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+*portage-2.0.49_pre19 (20 Aug 2003): Fixes + security enhancements
+
+  20 Aug 2003; Nicholas Jones <carpaski@gentoo.org> *: Updates to Wayne's
+  modifications on dispatch-conf.
+  
+  20 Aug 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: sfperms
+  added to strip permissions if set in features. selinux context support.
+  Nakano's cleanups for unmerge output. Added distcc and ccache versions
+  into emerge info's output. 'autoaddcvs' FEATURE is documented in make.conf.
+  
+  20 Aug 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Selinux code
+  added. No longer traceback on cp_list for categories. Added in a patch to
+  use a pickle for auxcache storing. Should help slow IO boxes.
+
 *portage-2.0.49_pre18 (15 Aug 2003): Fixes.
 
   15 Aug 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Nakano's

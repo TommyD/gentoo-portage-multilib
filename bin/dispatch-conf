@@ -1,26 +1,29 @@
 #!/usr/bin/python
-# $Header$
+
 #
 # dispatch-conf -- Integrate modified configs, post-emerge
 #
-#  Copyright 2002 Gentoo Technologies, Inc.
+#  Copyright 2003 Gentoo Technologies, Inc.
 #  Distributed under the terms of the GNU Public License v2
 #
 #  Jeremy Wohl (http://igmus.org)
-#  Id: dispatch-conf,v 1.13 2003/02/05 09:39:31 jeremyw Exp
+#  $Id$
 #
 # TODO
 #  dialog menus
 #
 
-import os, sys, string, re, commands, shutil
-import portage
+from stat import *
+import os, sys, string, re, commands
+import portage, dispatch_conf
 
 FIND_EXTANT_CONFIGS  = "find %s -iname '._cfg????_*'"
 DIFF_CONTENTS        = 'diff -Nau %s %s'
 DIFF_CVS_INTERP      = 'diff -Nau %s %s | grep "^[+-][^+-]" | grep -v "# .Header:.*"'
 DIFF_WSCOMMENTS      = 'diff -Nau %s %s | grep "^[+-][^+-]" | grep -v "^[-+]#" | grep -v "^[-+][:space:]*$"'
 MERGE                = 'sdiff --suppress-common-lines --output=%s %s %s'
+
+LOG_CHANGES_TO = '/tmp/dispatch-conf.changes'
 
 MANDATORY_OPTS  = [ 'archive-dir', 'diff', 'pager', 'replace-cvs', 'replace-wscomments' ]
 
@@ -31,16 +34,19 @@ class dispatch:
         confs = []
         count = 0
 
-        self.read_my_config ()
+        if os.path.exists(LOG_CHANGES_TO):
+            os.rename(LOG_CHANGES_TO, LOG_CHANGES_TO + '.old')
+
+        self.options = dispatch_conf.read_config(MANDATORY_OPTS)
 
         #
         # Build list of extant configs
         #
-    
+
         for path in config_paths.split ():
             if not os.path.exists (path):
                 continue
-        
+
             confs += self.massage (os.popen (FIND_EXTANT_CONFIGS % (path,)).readlines ())
 
         #
@@ -50,21 +56,49 @@ class dispatch:
         #                  or  b) whose differences are simply ws or comments,
         #                  or  c) in paths now unprotected by CONFIG_PROTECT_MASK,
         #
-    
+
         def f (conf):
-            same_file = len(commands.getoutput (DIFF_CONTENTS   % (conf ['current'], conf ['new']))) == 0
-            same_cvs  = len(commands.getoutput (DIFF_CVS_INTERP % (conf ['current'], conf ['new']))) == 0
-            same_wsc  = len(commands.getoutput (DIFF_WSCOMMENTS % (conf ['current'], conf ['new']))) == 0
+            mrgconf = re.sub(r'\._cfg', '._mrg', conf['new'])
+            archive = os.path.join(self.options['archive-dir'], conf['current'].lstrip('/'))
+            if self.options['use-rcs'] == 'yes':
+                dispatch_conf.rcs_archive(archive, conf['current'], conf['new'], mrgconf)
+            else:
+                dispatch_conf.file_archive(archive, conf['current'], conf['new'], mrgconf)
+            if os.path.exists(archive + '.dist'):
+                unmodified = len(commands.getoutput(DIFF_CONTENTS % (conf['current'], archive + '.dist'))) == 0
+            else:
+                unmodified = 0
+            if os.path.exists(mrgconf):
+                if len(commands.getoutput(DIFF_CONTENTS % (conf['new'], mrgconf))) == 0:
+                    os.unlink(mrgconf)
+                    newconf = conf['new']
+                else:
+                    newconf = mrgconf
+            else:
+                newconf = conf['new']
+
+            same_file = len(commands.getoutput (DIFF_CONTENTS   % (conf ['current'], newconf))) == 0
+            same_cvs  = len(commands.getoutput (DIFF_CVS_INTERP % (conf ['current'], newconf))) == 0
+            same_wsc  = len(commands.getoutput (DIFF_WSCOMMENTS % (conf ['current'], newconf))) == 0
 
             # Do options permit?
-            same_cvs  = same_cvs and self.options ['replace-cvs'] == 'yes'
-            same_wsc  = same_wsc and self.options ['replace-wscomments'] == 'yes'
+            same_cvs = same_cvs and self.options['replace-cvs'] == 'yes'
+            same_wsc = same_wsc and self.options['replace-wscomments'] == 'yes'
+            unmodified = unmodified and self.options['replace-unmodified'] == 'yes'
 
             if same_file:
                 os.unlink (conf ['new'])
+                self.post_process(conf['current'])
+                if os.path.exists(mrgconf):
+                    os.unlink(mrgconf)
                 return False
-            elif same_cvs or same_wsc or conf ['dir'] in portage.settings ['CONFIG_PROTECT_MASK'].split ():
-                self.replace (conf ['new'], conf ['current'])
+            elif unmodified or same_cvs or same_wsc or conf ['dir'] in portage.settings ['CONFIG_PROTECT_MASK'].split ():
+                self.replace(newconf, conf['current'])
+                self.post_process(conf['current'])
+                if newconf == mrgconf:
+                    os.unlink(conf['new'])
+                elif os.path.exists(mrgconf):
+                    os.unlink(mrgconf)
                 return False
             else:
                 return True
@@ -74,73 +108,92 @@ class dispatch:
         #
         # Interactively process remaining
         #
-    
+
         for conf in confs:
             count = count + 1
 
+            newconf = conf['new']
+            mrgconf = re.sub(r'\._cfg', '._mrg', newconf)
+            if os.path.exists(mrgconf):
+                newconf = mrgconf
+            show_new_diff = 0
+
             while 1:
-                os.system ((self.options ['diff'] + '| %s') % (conf ['current'], conf ['new'], self.options ['pager']))
+                if show_new_diff:
+                    os.system((self.options['diff'] + '| %s') % (conf['new'], mrgconf, self.options['pager']))
+                    show_new_diff = 0
+                else:
+                    os.system((self.options['diff'] + '| %s') % (conf['current'], newconf, self.options['pager']))
 
                 print
                 print '>> (%i of %i) -- %s' % (count, len(confs), conf ['current'])
-                print '>> q quit, h help, n skip, f fuse/merge, k kill new, s supercede w/new',
+                print '>> q quit, h help, n next, e edit-new, z zap-new, u use-new\n   m merge, t toggle-merge, l look-merge: ',
 
                 c = getch ()
-                
+
                 if c == 'q':
                     sys.exit (0)
                 if c == 'h':
                     self.do_help ()
                     continue
+                elif c == 't':
+                    if newconf == mrgconf:
+                        newconf = conf['new']
+                    elif os.path.exists(mrgconf):
+                        newconf = mrgconf
+                    continue
                 elif c == 'n':
                     break
-                elif c == 'f':
+                elif c == 'm':
                     merged = '/tmp/dispatch-conf.merged.%i' % (os.getpid (),)
                     print
-                    os.system (MERGE % (merged, conf ['current'], conf ['new']))
-                    os.rename (merged, conf ['new'])
+                    os.system (MERGE % (merged, conf ['current'], newconf))
+                    os.rename (merged, mrgconf)
+                    mystat = os.lstat(conf['new'])
+                    os.chmod(mrgconf, mystat[ST_MODE])
+                    os.chown(mrgconf, mystat[ST_UID], mystat[ST_GID])
+                    newconf = mrgconf
                     continue
-                elif c == 'k':
-                    os.remove (conf ['new'])
+                elif c == 'l':
+                    show_new_diff = 1
+                    continue
+                elif c == 'e':
+                    os.system(os.environ['EDITOR'] + ' ' + newconf)
+                    continue
+                elif c == 'z':
+                    os.unlink(conf['new'])
+                    if os.path.exists(mrgconf):
+                        os.unlink(mrgconf)
                     break
-                elif c == 's':
-                    self.replace (conf ['new'], conf ['current'])
+                elif c == 'u':
+                    self.replace(newconf, conf ['current'])
+                    self.post_process(conf['current'])
+                    if newconf == mrgconf:
+                        os.unlink(conf['new'])
+                    elif os.path.exists(mrgconf):
+                        os.unlink(mrgconf)
                     break
                 else:
                     continue
 
 
     def replace (self, newconf, curconf):
-        """Archive existing config, then replace current with new"""
-        full = os.path.join (self.options ['archive-dir'], curconf.lstrip ('/'))
-
+        """Replace current config with the new/merged version.  Also logs
+        the diff of what changed into the LOG_CHANGES_TO file."""
+        os.system((DIFF_CONTENTS % (curconf, newconf)) + '>>' + LOG_CHANGES_TO)
         try:
-            os.makedirs (os.path.dirname (full))
-        except:
-            pass
+            os.rename (newconf, curconf)
+        except (IOError, os.error), why:
+            print >> sys.stderr, 'dispatch-conf: Error renaming %s to %s: %s; fatal' % \
+                  (newconf, curconf, str(why))
 
-        count = 1
-        while count < 1000:
-            archive = full + '.' + str(count)
 
-            if os.path.exists (archive):
-                count = count + 1
-                continue
-            else:
-                try:
-                    shutil.copy2 (curconf, archive)
-                except (IOError, os.error), why:
-                    print >> sys.stderr, 'dispatch-conf: Error copying %s to %s: %s; fatal' % \
-                          (curconf, archive, str(why))
-                try:
-                    os.rename (newconf, curconf)
-                except (IOError, os.error), why:
-                    print >> sys.stderr, 'dispatch-conf: Error renaming %s to %s: %s; fatal' % \
-                          (newconf, curconf, str(why))
-                break
+    def post_process(self, curconf):
+        archive = os.path.join(self.options['archive-dir'], curconf.lstrip('/'))
+        if self.options['use-rcs'] == 'yes':
+            dispatch_conf.rcs_archive_post_process(archive)
         else:
-            print >> sys.stderr, 'dispatch-conf: Error archiving files -- exhausted slots???; fatal'
-            sys.exit (1)
+            dispatch_conf.file_archive_post_process(archive)
 
 
     def massage (self, newconfigs):
@@ -161,8 +214,11 @@ class dispatch:
             dir   = re.match (r'^(.+)/', nconf).group (1)
 
             if h.has_key (conf):
-                os.remove (h [conf] ['new'])
-            
+                mrgconf = re.sub(r'\._cfg', '._mrg', h[conf]['new'])
+                if os.path.exists(mrgconf):
+                    os.unlink(mrgconf)
+                os.unlink(h[conf]['new'])
+
             h [conf] = { 'current' : conf, 'dir' : dir, 'new' : nconf }
 
         configs = h.values ()
@@ -174,44 +230,26 @@ class dispatch:
     def do_help (self):
         print; print
 
-        print '  q -- quit'
+        print '  u -- update current config with new config and continue'
+        print '  z -- zap (delete) new config and continue'
+        print '  n -- skip to next config, leave all intact'
+        print '  e -- edit new config'
+        print '  m -- interactively merge current and new configs'
+        print '  l -- look at diff between pre-merged and merged configs'
+        print '  t -- toggle new config between merged and pre-merged state'
         print '  h -- this screen'
-        print '  n -- next/skip to next config, leave all intact'
-        print '  f -- interactively fuse/merge current and new configs'
-        print '  k -- kill/remove new config and continue'
-        print '  s -- supercede current config with new and continue'
+        print '  q -- quit'
 
         print; print 'press any key to return to diff...',
-    
+
         getch ()
-    
 
-    def read_my_config (self):
-        try:
-            opts = portage.getconfig ('/etc/dispatch-conf.conf')
-        except:
-            opts = None
-
-        if not opts:
-            print >> sys.stderr, 'dispatch-conf: Error reading /etc/dispatch-conf.conf; fatal'
-            sys.exit (1)
-
-        for key in MANDATORY_OPTS:
-            if not opts.has_key (key):
-                print >> sys.stderr, 'dispatch-conf: Missing option "%s" in /etc/dispatch-conf.conf; fatal' % (key,)
-
-        if not (os.path.exists (opts ['archive-dir']) and os.path.isdir (opts ['archive-dir'])):
-            print >> sys.stderr, 'dispatch-conf: Config archive dir [%s] must exist; fatal' % (opts ['archive-dir'],)
-            sys.exit (1)
-
-        self.options = opts
-    
 
 def getch ():
     # from ASPN - Danny Yoo
     #
     import sys, tty, termios
-    
+
     fd = sys.stdin.fileno()
     old_settings = termios.tcgetattr(fd)
     try:
@@ -221,7 +259,7 @@ def getch ():
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
     return ch
 
-        
+
 # run
 d = dispatch ()
 
