@@ -3,6 +3,7 @@
 
   08 Apr 2002; Geert Bevin <gbevin@gentoo.org>: emerge:
   Better unmerge and clean reporting.
+  Added homepage output to emerge --search
 
 *portage-1.8.18 (07 Apr 2002)
 

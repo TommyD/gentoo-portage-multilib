@@ -128,6 +128,7 @@ class search:
 		self.installcache = portage.vartree()
 		self.re_portagedir = re.compile('/usr/portage/')
 		self.re_description = re.compile('DESCRIPTION="')
+		self.re_homepage = re.compile('HOMEPAGE="(.*)"')
 		self.initResults()
 		
 	def setKey(self,searchkey):
@@ -159,6 +160,7 @@ class search:
 				print green("*")+"  "+white(match)
 				print "     ", "Latest version Available:",self.getVersion(full_package, search.VERSION_RELEASE)
 				print "     ", self.getInstallationStatus(match)
+				print "     ", "Homepage:",self.getHomepage(self.getFullPath(match, full_package))
 				print "     ", "Description:",self.getDescription(self.getFullPath(match, full_package),self.getVersion(full_package, search.VERSION_SHORT))
 				print " "
 			else:
@@ -180,6 +182,21 @@ class search:
 		else:
 			result = "Latest version Installed: [ Not Installed ]"
 		return result
+
+	def getHomepage(self,ebuildPath):
+		file = open(ebuildPath)
+		result = "";
+		indescription=0
+		homepage="";
+		while 1:
+			data = file.readline()
+			if data:
+				homepage_match=self.re_homepage.match(data)
+				if homepage_match:
+					homepage=homepage_match.group(1)
+					break;
+		file.close()
+		return homepage
 
 	def getDescription(self,ebuildPath,packageVersion): ## Gets description from latest ebuild ##
 		file = open(ebuildPath)
@@ -204,6 +221,7 @@ class search:
 						result = result+" "+data.strip()
 			else:
 				break;
+		file.close()
 		result = replace(result, "${PV}", packageVersion)
 		result = replace(result, "${pv}", packageVersion)
 		result = replace(result, "${description}", "KDE "  + packageVersion + " ")
@@ -752,6 +770,8 @@ def unmerge(unmerge_action, unmerge_files):
 						package_parts=portage.pkgsplit(candidate_ebuild_paths[latest_ebuilds[package_set][0]])
 						current_package=package_parts[0]
 						current_version=package_parts[1]
+						if "r0"!=package_parts[2]:
+							current_version=current_version+"-"+package_parts[2]
 						if not removed_versions_mapping.has_key(current_package):
 							removed_versions_mapping[current_package]=[]
 						removed_versions_mapping[current_package].append(current_version)
@@ -768,6 +788,8 @@ def unmerge(unmerge_action, unmerge_files):
 					package_parts=portage.pkgsplit(candidate_ebuild_paths[latest_ebuild_path])
 					current_package=package_parts[0]
 					current_version=package_parts[1]
+					if "r0"!=package_parts[2]:
+						current_version=current_version+"-"+package_parts[2]
 					if not kept_versions_mapping.has_key(current_package):
 						kept_versions_mapping[current_package]=[]
 					kept_versions_mapping[current_package].append(current_version)
