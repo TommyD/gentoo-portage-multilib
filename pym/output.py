@@ -46,5 +46,5 @@ def white(text):
 def yellow(text):
 	return startYellow()+text+resetColor()
 
-def read(text):
+def red(text):
 	return startRed()+text+resetColor()

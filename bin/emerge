@@ -244,7 +244,7 @@ class depgraph:
 				sys.exit(1)
 			mytbz2=xpak.tbz2(self.db[portage.root]["bintree"].getname(mykey))
 			edepend=["",string.join(mytbz2.getelements("RDEPEND")," ")]
-		else:
+		elif mytype=="ebuild":
 			if not self.db[myroot]["porttree"].exists_specific(mykey):
 				print "\n\n!!!",mytype,mykey,"not found (possibly blocked by package.mask)\n"
 				sys.exit(1)
@@ -254,32 +254,38 @@ class depgraph:
 			if edepend==1:
 				print "!!! emerge aborting."
 				sys.exit(1)
-		mydep={}	
-		if myroot=="/":
-			mydep["/"]=edepend[0]+" "+edepend[1]
-		else:
-			mydep["/"],mydep[myroot]=edepend
-		if addme:
+		elif mytype=="blocks":
+			edepend=None
 			self.digraph.addnode(mybigkey,myparent)
-		for dep in mydep.keys():
-			if "update" in mymode:
-				mycheck=self.emptytree.depcheck(mydep[dep])
+
+		if edepend:
+			mydep={}	
+			if myroot=="/":
+				mydep["/"]=edepend[0]+" "+edepend[1]
 			else:
-				mycheck=self.db[dep]["vartree"].depcheck(mydep[dep])
-			if mycheck[0]==0:
-				print "!!! depgraph.create() error: string format:",mydep
-				return 0
-			for x in mycheck[1]:
-				mynew=self.match(x,dep,mykey)
-				if not self.digraph.hasnode(mynew):
-					if addme:
-						if not self.create(mynew,mybigkey):
-							return 0
-					else:
-						if not self.create(mynew,None):
-							return 0
+				mydep["/"],mydep[myroot]=edepend
+			if addme:
+				self.digraph.addnode(mybigkey,myparent)
+			for dep in mydep.keys():
+				if "update" in mymode:
+					mycheck=self.emptytree.depcheck(mydep[dep])
 				else:
-					self.digraph.addnode(mynew,mybigkey)
+					mycheck=self.db[dep]["vartree"].depcheck(mydep[dep])
+				if mycheck[0]==0:
+					print "!!! depgraph.create() error: string format:",mydep
+					return 0
+				for x in mycheck[1]:
+					mynew=self.match(x,dep,mykey)
+					if not self.digraph.hasnode(mynew):
+						if addme:
+							if not self.create(mynew,mybigkey):
+								return 0
+						else:
+							if not self.create(mynew,None):
+								return 0
+					else:
+						self.digraph.addnode(mynew,mybigkey)
+
 		return 1
 	
 	def altlist(self):
@@ -335,35 +341,55 @@ class depgraph:
 				self.create(self.match(myline,mykey="update (likely old /var/db/pkg entry)"))
 	
 	def match(self,mydep,myroot=portage.root,mykey=None):
-		myeb=self.db[portage.root]["porttree"].dep_bestmatch(mydep)
+		# support mutual exclusive deps
+		mydep2=mydep
+		if mydep2[0]=="!":
+			mydep2=mydep[1:]
+
+		myeb=self.db[portage.root]["porttree"].dep_bestmatch(mydep2)
 		if not myeb:
 			if not mykey:
 				print "\n!!! Warning: couldn't find match for",mydep
 			else:
 				print "\n!!! Warning: couldn't find match for",mydep,"in",mykey
 			return None
-		if "--usepkg" in self.myopts:
-			mypk=self.db[portage.root]["bintree"].dep_bestmatch(mydep)
-			if myeb==mypk:
-				myk="binary "+portage.root+" "+mypk
+
+		if mydep[0]=="!":
+			myk="blocks "+myroot+" "+myeb
+		else:
+			if "--usepkg" in self.myopts:
+				mypk=self.db[portage.root]["bintree"].dep_bestmatch(mydep)
+				if myeb==mypk:
+					myk="binary "+portage.root+" "+mypk
+				else:
+					myk="ebuild "+myroot+" "+myeb
 			else:
 				myk="ebuild "+myroot+" "+myeb
-		else:
-			myk="ebuild "+myroot+" "+myeb
+
 		return myk	
 	
 	def display(self,mylist):
 		for x in mylist:
-			if self.db[x[1]]["vartree"].exists_specific(x[2]):
-				addl=" "+yellow("R")+" "
-			elif self.db[x[1]]["vartree"].exists_specific_cat(x[2]):
-				addl="  "+turquoise("U")
+			if x[0]=="blocks":
+				addl=""+red("B")+"   "
+				print "["+x[0]+" "+addl+"]",x[2]
 			else:
-				addl=""+green("N")+"  "
-			print "["+x[0]+" "+addl+"]",x[2],"to",x[1]
+				if self.db[x[1]]["vartree"].exists_specific(x[2]):
+					addl="  "+yellow("R")+" "
+				elif self.db[x[1]]["vartree"].exists_specific_cat(x[2]):
+					addl="   "+turquoise("U")
+				else:
+					addl=" "+green("N")+"  "
+				print "["+x[0]+" "+addl+"]",x[2],"to",x[1]
 				
 	def merge(self,mylist):
 		returnme=0
+		#check for blocking dependencies
+		for x in mylist:
+			if x[0]=="blocks":
+				print "\n!!! Error: the "+x[2]+" package conflicts with this package and both can't be installed on the same system together."
+				sys.exit(1)
+
 		#above line used by --fetchonly
 		for x in mylist:
 			myroot=x[1]
@@ -406,7 +432,7 @@ class depgraph:
 						print "!!! emerge aborting on ",y,"."
 						sys.exit(1)
 					#dynamically update our database	
-			else:
+			elif x[0]=="binary":
 				#merge the tbz2
 				mytbz2=self.db[portage.root]["bintree"].getname(x[2])
 				retval=portage.pkgmerge(mytbz2,x[1])

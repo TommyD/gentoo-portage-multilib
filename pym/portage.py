@@ -1171,7 +1171,7 @@ def dep_eval(deplist):
 			if type(x)==types.ListType:
 				if dep_eval(x)==0:
 					return 0
-			elif x==0:
+			elif x==0 or x==2:
 				return 0
 		return 1
 
@@ -1197,7 +1197,7 @@ def dep_zapdeps(unreduced,reduced):
 					if myresult:
 						returnme.append(myresult)
 				else:
-					if reduced[x]==0:
+					if reduced[x]==0 or reduced[x]==2:
 						returnme.append(unreduced[x])
 				x=x+1
 			return returnme
@@ -1382,6 +1382,7 @@ class packagetree:
 		"""evaluates a dependency string and returns a 2-node result list
 		[1, None] = ok, no dependencies
 		[1, ["x11-base/foobar","sys-apps/oni"] = dependencies must be satisfied
+		[2, *] = mutual exclusive ! dep match found
 		[0, * ] = parse error
 		"""
 		if not self.populated:
@@ -1438,8 +1439,8 @@ class packagetree:
 	def dep_depreduce(self,mypkgdep):
 		if mypkgdep[0]=="!":
 			# !cat/pkg-v
-			if self.exists_specific(mypkgdep[1:]):
-				return 0
+			if self.dep_bestmatch(mypkgdep[1:]):
+				return 2
 			else:
 				return 1
 		elif mypkgdep[0]=="=":
@@ -1638,9 +1639,11 @@ class packagetree:
 		"""dep_nomatch() has a very specific purpose.  You pass it a dep, like =sys-apps/foo-1.0.
 		Then, it scans the sys-apps/foo category and returns a list of sys-apps/foo packages that
 		*don't* match.  This method is used to clean the portagetree using entries in the 
-		make.profile/packages file.  It is only intended to process specific deps, but should
-		be robust enough to pass any type of string to it and have it not die.
-		"""
+		make.profile/packages and profiles/package.mask files.
+		It is only intended to process specific deps, but should be robust enough to pass any type
+		of string to it and have it not die."""
+		mypkgdep=self.dep_pkgcat(mypkgdep)
+
 		returnme=[]
 		if (mypkgdep[0]=="="):
 			if mypkgdep[-1]=="*":

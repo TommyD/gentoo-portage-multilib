@@ -1,6 +1,13 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+  4 Feb 2002; G.Bevin <gbevin@gentoo.org> output.py :
+  bugfix, write read() function instead of red(), doh !
+  
+  4 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge, portage.py :
+  implemented the ! dependency which prevents incompatible packages to be
+  installed on the same system at the same time
+
   4 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge :
   most emerge invocation options now have alternative short flags
   
