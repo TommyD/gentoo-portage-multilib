@@ -1,6 +1,8 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-2.0.3 (20 Jun 2002)
+
   20 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: fixed two typos
   pointed out by stroke and g2boojum.  These fix unmerge and some aspect of
   virtuals handling, which was previously causing a traceback.
