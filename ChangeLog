@@ -1,6 +1,11 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  29 Aug 2002; Phil Bordelon <sunflare@gentoo.org> emerge.1: Added a small
+  blurb regarding what to do when emerge --update [world|system] fails because
+  of new features such as || and ?.  Hopefully this will assuage the fairly
+  common questions regarding this.
+
 *portage-2.0.31 (29 Aug 2002)
 
   28 Aug 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: fixed a config
