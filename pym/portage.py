@@ -970,9 +970,11 @@ def fetch(myuris, listonly=0):
 				if mydigests!=None and mydigests.has_key(myfile):
 					try:
 						mystat=os.stat(settings["DISTDIR"]+"/"+myfile)
-						if mystat[ST_SIZE]==mydigests[myfile]["size"]:
-							fetched=2
-							break
+						# no exception?  file exists.  if it doesn't match the size
+						# in the digest, don't act like the download failed here,
+						# let digestcheck report an appropriate error
+						fetched=2
+						break
 					except (OSError,IOError),e:
 						fetched=0
 				else:
