@@ -23,9 +23,8 @@
 # Host Setting
 # ============
 #
-# If you are using a Pentium Pro or greater processor, leave this line as-is;
-# otherwise, change to i586, i486 or i386 as appropriate. All modern systems
-# (even Athlons) should use "i686-pc-linux-gnu"
+# The generic HOST setting on hppa is hppa-unknown-linux-gnu.  
+# But you might want to use hppa1.1-unknown-linux-gnu something else acordingly to your cpu.
 #
 #CHOST="hppa1.1-unknown-linux-gnu"
 
@@ -35,14 +34,14 @@
 #
 # For optimal performance, enable a CFLAGS setting appropriate for your CPU
 #
-# -mcpu=<cpu-type> means optimize code for the particular type of CPU. In 
-#                  difference to x86 for example -mcpu does break compatibility
-#                  to older cpu types in case of ev6 or higher.
-#                  On Alpha there is no -march= option in gcc-3.
+# -mcpu=<cpu-type> means optimize code for the particular type of CPU.
+#                  On hppa there is no -march= option in gcc-3.
 #
-# CPU types supported in gcc-3.2 or higher: ev4, ev45, ev5, ev56, ev6, ev67
+# CPU types supported in gcc-3.2 or higher: 1.0 1.1 and 2.0
 #
-# Decent examples: (THE ABOVE INFO IS WRONG FOR HPPA)
+# WARNING : -O3 seems to be broken and make gcc segfault. Use it a at your own risc.
+#
+# Decent examples:
 #
 #CFLAGS="-march=1.1 -O2 -pipe -mschedule=7100LC "
 # If you set a CFLAGS above, then this line will set your default C++ flags to
@@ -59,7 +58,7 @@ CXXFLAGS="${CFLAGS}"
 # been approved for the stable set. '~arch' is a superset of 'arch' which
 # includes the unstable, in testing, packages. Users of the 'x86' architecture
 # would add '~x86' to ACCEPT_KEYWORDS to enable unstable/testing packages.
-# '~ppc', '~sparc', '~sparc64' are the unstable KEYWORDS for their respective
+# '~ppc', '~sparc', '~sparc64', '~hppa' are the unstable KEYWORDS for their respective
 # platforms. DO NOT PUT ANYTHING BUT YOUR SPECIFIC ~ARCHITECTURE IN THE LIST.
 # IF YOU ARE UNSURE OF YOUR ARCH, OR THE IMPLICATIONS, DO NOT MODIFY THIS.
 #
