@@ -44,7 +44,8 @@ main(int argc, char *const *argv)
     FILE *file_in = NULL;
     FILE *file_out = NULL;
     char **funcs = NULL;	char **vars = NULL;
-    char *file_buff=NULL, *end = NULL;
+    char *file_buff=NULL;
+    const char *end = NULL;
     int funcs_count = 0;	int vars_count = 0;
     int funcs_alloced = 0;	int vars_alloced = 0;
     int c;
