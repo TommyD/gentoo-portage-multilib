@@ -109,8 +109,8 @@ try:
 	import portage_gpg
 	import portage_locks
 	from portage_locks import *
-	import portage_md5
-	from portage_md5 import *
+	import portage_checksum
+	from portage_checksum import *
 except Exception, e:
 	sys.stderr.write("\n\n")
 	sys.stderr.write("!!! Failed to complete portage imports. There are internal modules for\n")
@@ -798,7 +798,7 @@ def new_protect_filename(mydest, newmd5=None):
 	new_pfile = os.path.normpath(real_dirname+"/._cfg"+string.zfill(prot_num,4)+"_"+real_filename)
 	old_pfile = os.path.normpath(real_dirname+"/"+last_pfile)
 	if last_pfile and newmd5:
-		if portage_md5.perform_md5(real_dirname+"/"+last_pfile) == newmd5:
+		if portage_checksum.perform_md5(real_dirname+"/"+last_pfile) == newmd5:
 			return old_pfile
 		else:
 			return new_pfile
@@ -2016,7 +2016,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							fetched=2
 						else:
 							# Check md5sum's at each fetch for fetchonly.
-							mymd5=portage_md5.perform_md5(mysettings["DISTDIR"]+"/"+myfile)
+							mymd5=portage_checksum.perform_md5(mysettings["DISTDIR"]+"/"+myfile)
 							if mymd5 != mydigests[myfile]["md5"]:
 								writemsg("!!! Previously fetched file: "+str(myfile)+" MD5 FAILED! Refetching...\n")
 								os.unlink(mysettings["DISTDIR"]+"/"+myfile)
@@ -2104,7 +2104,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							# file NOW, for those users who don't have a stable/continuous
 							# net connection. This way we have a chance to try to download
 							# from another mirror...
-							mymd5=portage_md5.perform_md5(mysettings["DISTDIR"]+"/"+myfile)
+							mymd5=portage_checksum.perform_md5(mysettings["DISTDIR"]+"/"+myfile)
 							if mymd5 != mydigests[myfile]["md5"]:
 								writemsg("!!! Fetched file: "+str(myfile)+" MD5 FAILED! Removing corrupt distfile...\n")
 								os.unlink(mysettings["DISTDIR"]+"/"+myfile)
@@ -2145,7 +2145,7 @@ def digestCreate(myfiles,basedir):
 			print "!!! Given file does not appear to be readable. Does it exist?"
 			print "!!! File:",myfile
 			return None
-		mymd5=portage_md5.perform_md5(myfile)
+		mymd5=portage_checksum.perform_md5(myfile)
 		mysize=os.stat(myfile)[ST_SIZE]
 		mydigests[x]=[mymd5,mysize]
 	return mydigests
@@ -2295,7 +2295,7 @@ def digestCheckFiles(myfiles, mydigests, basedir, note="", strict=0):
 				print "!!! File does not exist:",myfile
 				return 0
 			continue
-		mymd5=portage_md5.perform_md5(myfile)
+		mymd5=portage_checksum.perform_md5(myfile)
 		if mymd5 != mydigests[x][0]:
 			print
 			print red("!!! File is corrupt or incomplete. (Digests do not match)")
@@ -6052,7 +6052,7 @@ class dblink:
 					if not os.path.isfile(obj):
 						print "--- !obj  ","obj", obj
 						continue
-					mymd5=portage_md5.perform_md5(obj, calc_prelink=1)
+					mymd5=portage_checksum.perform_md5(obj, calc_prelink=1)
 
 					# string.lower is needed because db entries used to be in upper-case.  The
 					# string.lower allows for backwards compatibility.
@@ -6514,9 +6514,9 @@ class dblink:
 						if self.isprotected(mydest):
 							# Use md5 of the target in ${D} if it exists...
 							if os.path.exists(os.path.normpath(srcroot+myabsto)):
-								mydest = new_protect_filename(myrealdest, portage_md5.perform_md5(srcroot+myabsto))
+								mydest = new_protect_filename(myrealdest, portage_checksum.perform_md5(srcroot+myabsto))
 							else:
-								mydest = new_protect_filename(myrealdest, portage_md5.perform_md5(myabsto))
+								mydest = new_protect_filename(myrealdest, portage_checksum.perform_md5(myabsto))
 								
 				# if secondhand==None it means we're operating in "force" mode and should not create a second hand.
 				if (secondhand!=None) and (not os.path.exists(myrealto)):
@@ -6572,7 +6572,7 @@ class dblink:
 					return 1
 			elif S_ISREG(mymode):
 				# we are merging a regular file
-				mymd5=portage_md5.perform_md5(mysrc)
+				mymd5=portage_checksum.perform_md5(mysrc)
 				# calculate config file protection stuff
 				mydestdir=os.path.dirname(mydest)	
 				moveme=1
@@ -6590,7 +6590,7 @@ class dblink:
 						# we only need to tweak mydest if cfg file management is in play.
 						if myppath:
 							# we have a protection path; enable config file management.
-							destmd5=portage_md5.perform_md5(mydest)
+							destmd5=portage_checksum.perform_md5(mydest)
 							cycled=0
 							if cfgfiledict.has_key(myrealdest):
 								if destmd5 in cfgfiledict[myrealdest]:
@@ -6679,7 +6679,7 @@ class dblink:
 							
 						# and now we're at the end. yay.
 						myf.close()
-						mymd5=portage_md5.perform_md5(myrealdest)
+						mymd5=portage_checksum.perform_md5(myrealdest)
 					os.utime(myrealdest,(thismtime,thismtime))
 
 				if mymtime!=None:

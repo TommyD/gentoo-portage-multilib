@@ -9,6 +9,10 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  25 Aug 2004; <genone@gentoo.org> pym/portage.py, +pym/portage_checksum.py, 
+  pym/portage_gpg.py, -pym/portage_md5.py:
+  renamed portage_md5 to portage_checksum which includes support for sha1.
+
   24 Aug 2004; Brian Harring <ferringb@gentoo.ogr> bin/ebuild.sh: Tweak to
   dyn_test to check if $S exists prior to cd'ing to it.
 

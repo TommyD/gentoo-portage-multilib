@@ -8,7 +8,7 @@ import copy
 import types
 import commands
 import portage_exception
-import portage_md5
+import portage_checksum
 
 GPG_BINARY       = "/usr/bin/gpg"
 GPG_OPTIONS      = " --lock-never --no-random-seed-file --no-greeting --no-sig-cache "
@@ -25,7 +25,7 @@ def fileStats(filepath):
 	mya = []
 	for x in os.stat(filepath):
 		mya.append(x)
-	mya.append(portage_md5.perform_checksum(filepath))
+	mya.append(portage_checksum.perform_checksum(filepath))
 	return mya
 
 
