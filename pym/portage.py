@@ -805,18 +805,11 @@ def spawn(mystring,debug=0,free=0):
 		myargs=[]
 		if ("sandbox" in features) and (not free):
 			#only run sandbox for the following phases
-			if buildphase in sandboxactive:
-				mycommand="/usr/lib/portage/bin/sandbox"
-				if debug:
-					myargs=["sandbox",mystring]
-				else:
-					myargs=["sandbox",mystring]
+			mycommand="/usr/lib/portage/bin/sandbox"
+			if debug:
+				myargs=["sandbox",mystring]
 			else:
-				mycommand="/bin/bash"
-				if debug:
-					myargs=["bash","-x","-c",mystring]
-				else:
-					myargs=["bash","-c",mystring]
+				myargs=["sandbox",mystring]
 		else:
 			mycommand="/bin/bash"
 			if debug:
@@ -898,50 +891,50 @@ def fetch(myuris):
 		else:
 				filedict[myfile].append(myuri)
 	for myfile in filedict.keys():
-		locfetch=fetchcommand
-		docontinue=0
-		try:
-			mystat=os.stat(settings["DISTDIR"]+"/"+myfile)
-			if mydigests!=None and mydigests.has_key(myfile):
-				#if we have the digest file, we know the final size and can resume the download.
-				if mystat[ST_SIZE]<mydigests[myfile]["size"]:
+		for loc in filedict[myfile]:
+			try:
+				mystat=os.stat(settings["DISTDIR"]+"/"+myfile)
+				if mydigests!=None and mydigests.has_key(myfile):
+					#if we have the digest file, we know the final size and can resume the download.
+					if mystat[ST_SIZE]<mydigests[myfile]["size"]:
+						fetched=1
+					else:
+						#we already have it downloaded, skip.
+						#if our file is bigger than the recorded size, digestcheck should catch it.
+						fetched=2
+				else:
+					#we don't have the digest file, but the file exists.  Assume it is fully downloaded.
+					fetched=2
+			except (OSError,IOError),e:
+				fetched=0
+			if fetched!=2:
+				#we either need to resume or start the download
+				#you can't use "continue" when you're inside a "try" block
+				if fetched==1:
+					#resume mode:
 					print ">>> Resuming download..."
 					locfetch=resumecommand
 				else:
-					#we already have it downloaded, skip.
-					#if our file is bigger than the recorded size, digestcheck should catch it.
-					docontinue=1
-					pass
-			else:
-				#we don't have the digest file, but the file exists.  Assume it is fully downloaded.
-				docontinue=1
-				pass
-		except (OSError,IOError),e:
-			pass
-		if docontinue:
-			#you can't use "continue" when you're inside a "try" block
-			continue
-		gotit=0
-		for loc in filedict[myfile]:
-			print
-			print ">>> Downloading",loc
-			myfetch=string.replace(locfetch,"${URI}",loc)
-			myfetch=string.replace(myfetch,"${FILE}",myfile)
-			myret=spawn(myfetch,free=1)
-			if mydigests!=None and mydigests.has_key(myfile):
-				try:
-					mystat=os.stat(settings["DISTDIR"]+"/"+myfile)
-					if mystat[ST_SIZE]==mydigests[myfile]["size"]:
-						gotit=1
+					#normal mode:
+					locfetch=fetchcommand
+				print ">>> Downloading",loc
+				myfetch=string.replace(locfetch,"${URI}",loc)
+				myfetch=string.replace(myfetch,"${FILE}",myfile)
+				myret=spawn(myfetch,free=1)
+				if mydigests!=None and mydigests.has_key(myfile):
+					try:
+						mystat=os.stat(settings["DISTDIR"]+"/"+myfile)
+						if mystat[ST_SIZE]==mydigests[myfile]["size"]:
+							fetched=2
+							break
+					except (OSError,IOError),e:
+						fetched=0
+				else:
+					if not myret:
+						fetched=2
 						break
-				except (OSError,IOError),e:
-					pass
-			else:
-				if not myret:
-					gotit=1
-					break
-		if not gotit:
-			print '!!! Couldn\'t download',myfile+".  Aborting."
+		if fetched!=2:
+			print '!!! Couldn\'t download',myfile+". Aborting."
 			return 0
 	return 1
 

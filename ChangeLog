@@ -1,6 +1,25 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-2.0.22 (29 Jul 2002)
+
+  29 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: fetch() didn't
+  handle resuming downloads properly when the first attempt aborted
+  prematurely.  The fall back to the alternate location would not resume the
+  download.  This should now be fixed.  Closes bug #5655.
+  
+  29 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, ebuild.sh: I
+  had some code in spawn() from one of Azarah's patches that I forgot to
+  remove; it caused the sandbox to be disabled all the time.  I removed this
+  code, and then I tweaked ebuild.sh so that the sandbox runs in a "deny by
+  default" configuration.  Before, you could add lines to the main ebuild
+  (outside of a function) and it would bypass the sandbox; no more.  Closes
+  bugs #5740, #5744.
+  
+  29 Jul 2002; Daniel Robbins <drobbins@gentoo.org> emerge: --help and
+  --version now work for non-root users as they should.  --clean has been
+  deprecated.  This closes bug #5658.
+
 *portage-2.0.21 (28 Jul 2002)
 
   28 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, emerge: Added

@@ -778,7 +778,7 @@ newdepend() {
 }
 
 # --- functions end, main part begins ---
-
+export SANDBOX_ON="1"
 source ${EBUILD} 
 if [ $? -ne 0 ]
 then
@@ -811,6 +811,7 @@ for myarg in $ARGS
 do
 	case $myarg in
 	prerm|postrm|preinst|postinst|config)
+		export SANDBOX_ON="0"
 		if [ "$PORTAGE_DEBUG" = "0" ]
 		then
 		  pkg_${myarg}
@@ -820,14 +821,8 @@ do
 		  set +x
 		fi
 	    ;;
-	# Only enable the SandBox for these functions
 	unpack|compile|clean|install)
-		if [ ${SANDBOX_DISABLED="0"} = "0" ]
-		then
-			export SANDBOX_ON="1"
-		else
-			export SANDBOX_ON="0"
-		fi
+		export SANDBOX_ON="1"
 		if [ "$PORTAGE_DEBUG" = "0" ]
 		then
 			dyn_${myarg}
@@ -838,7 +833,9 @@ do
 		fi
 		export SANDBOX_ON="0"
 		;;
-	help|touch|setup|pkginfo|pkgloc|unmerge|package|rpm)
+	help|setup)
+		#sandbox is still enabled; no fs access needed
+		export SANDBOX_ON="1"
 	    if [ "$PORTAGE_DEBUG" = "0" ]
 	    then
 	      dyn_${myarg}
@@ -848,7 +845,19 @@ do
 	      set +x
 	    fi
 	    ;;
+	touch|package|rpm)
+		export SANDBOX_ON="0"
+		if [ "$PORTAGE_DEBUG" = "0" ]
+	    then
+	      dyn_${myarg}
+	    else
+	      set -x
+	      dyn_${myarg}
+	      set +x
+	    fi
+	    ;;
 	depend)
+		export SANDBOX_ON="0"
 		set -f
 		#the extra `echo` commands remove newlines
 		dbkey=${PORTAGE_CACHEDIR}/${CATEGORY}/${PF}
@@ -872,6 +881,7 @@ do
 		exit 0
 		;;
 	*)
+		export SANDBOX_ON="1"
 	    echo "Please specify a valid command."
 		echo
 		dyn_help
