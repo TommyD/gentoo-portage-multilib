@@ -1,6 +1,8 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-2.0.15 (16 Jul 2002)
+
   15 Jul 2002; Daniel Robbins <drobbins@gentoo.org> emake: no longer falls back
   to plain old "make" if parallel make fails.  I believe it's best to fix the
   problem (turn parallel make off in the ebuild) rather than tweak emake to
