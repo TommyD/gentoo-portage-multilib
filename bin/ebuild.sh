@@ -740,7 +740,9 @@ inherit() {
 
 	# Do not source the eclasses if we restore the saved environment,
 	# as this will cause them to effect the current env multiple times.
-	if [ "${PORTAGE_RESTORE_ENV}" != "1" ]; then
+	# ---
+	# is broken; please reconsider --danarmak
+	#if [ "${PORTAGE_RESTORE_ENV}" != "1" ]; then
     
 	    while [ "$1" ]; do
     
@@ -756,7 +758,7 @@ inherit() {
 	
 	    done
 
-	fi
+	#fi
 
 }
 
