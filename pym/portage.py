@@ -36,6 +36,7 @@ MAKE_DEFAULTS_FILE      = PROFILE_PATH + "/make.defaults"
 DEPRECATED_PROFILE_FILE = PROFILE_PATH+"/deprecated"
 USER_VIRTUALS_FILE      = USER_CONFIG_PATH+"/virtuals"
 EBUILD_SH_ENV_FILE      = USER_CONFIG_PATH+"/bashrc"
+INVALID_ENV_FILE        = "/etc/spork/is/not/valid/profile.env"
 CUSTOM_MIRRORS_FILE     = USER_CONFIG_PATH+"/mirrors"
 SANDBOX_PIDS_FILE       = "/tmp/sandboxpids.tmp"
 CONFIG_MEMORY_FILE      = PRIVATE_PATH + "/config"
@@ -353,12 +354,25 @@ def prefix_array(array,prefix,doblanks=1):
 			newarray.append(x)
 	return newarray
 
-dircache={}
-def cacheddir (mypath, ignorecvs, ignorelist, EmptyOnError):
+def normalize_path(mypath):
+	newpath = os.path.normpath(mypath)
+	if len(newpath) > 1:
+		if newpath[:2] == "//":
+			newpath = newpath[1:]
+	return newpath
 
+dircache = {}
+cacheHit=0 
+cacheMiss=0
+cacheStale=0
+def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError):
+	global cacheHit,cacheMiss,cacheStale
+	mypath = normalize_path(my_original_path)
 	if dircache.has_key(mypath):
+		cacheHit += 1
 		cached_mtime, list, ftype = dircache[mypath]
 	else:
+		cacheMiss += 1
 		cached_mtime, list, ftype = -1, [], []
 	if os.path.isdir(mypath):
 		mtime = os.stat(mypath)[ST_MTIME]
@@ -367,6 +381,8 @@ def cacheddir (mypath, ignorecvs, ignorelist, EmptyOnError):
 			return [], []
 		return None, None
 	if mtime != cached_mtime:
+		if dircache.has_key(mypath):
+			cacheStale += 1
 		list = os.listdir(mypath)
 		ftype = []
 		for x in list:
@@ -381,12 +397,14 @@ def cacheddir (mypath, ignorecvs, ignorelist, EmptyOnError):
 	ret_list = []
 	ret_ftype = []
 	for x in range(0, len(list)):
-		if not ((list[x] in ignorelist) or \
-			(ignorecvs and (len(list[x]) > 2) and 
-			(list[x][:2]==".#"))):
-				ret_list.append(list[x])
-				ret_ftype.append(ftype[x])
+		if(ignorecvs and (len(list[x]) > 2) and (list[x][:2]!=".#")):
+			ret_list.append(list[x])
+			ret_ftype.append(ftype[x])
+		elif (list[x] not in ignorelist):
+			ret_list.append(list[x])
+			ret_ftype.append(ftype[x])
 
+	writemsg("cacheddirStats: H:%d/M:%d/S:%d\n" % (cacheHit, cacheMiss, cacheStale),10)
 	return ret_list, ret_ftype
 		
 
@@ -610,7 +628,8 @@ class digraph:
 		"returns all nodes with zero references, or NULL if no such node exists"
 		zerolist = []
 		for x in self.dict.keys():
-			if self.dict[x][0]==0:
+			mys = string.split(x)
+			if mys[0] != "blocks" and self.dict[x][0]==0:
 				zerolist.append(x)
 		return zerolist
 
@@ -872,8 +891,9 @@ def map_dictlist_vals(func,myDict):
 def stack_dictlist(original_dicts, incremental=0, incrementals=[], ignore_none=0):
 	"""Stacks an array of dict-types into one array. Optionally merging or
 	overwriting matching key/value pairs for the dict[key]->list.
-	Returns a single dict. Higher index in lists is preferenced."""
+	Returns a single dict."""
 	final_dict = None
+	kill_list = {}
 	for mydict in original_dicts:
 		if mydict == None:
 			continue
@@ -882,11 +902,16 @@ def stack_dictlist(original_dicts, incremental=0, incrementals=[], ignore_none=0
 		for y in mydict.keys():
 			if not final_dict.has_key(y):
 				final_dict[y] = []
+			if not kill_list.has_key(y):
+				kill_list[y] = []
+
 			for thing in mydict[y]:
-				if thing:
+				if thing and (thing not in kill_list[y]):
 					if (incremental or (y in incrementals)) and thing[0] == '-':
-						while(thing[1:] in final_dict[y]):
-							del final_dict[y][final_dict[y].index(thing[1:])]
+						if thing[1:] not in kill_list[y]:
+							kill_list[y] += [thing[1:]]
+						#while(thing[1:] in final_dict[y]):
+						#	del final_dict[y][final_dict[y].index(thing[1:])]
 					else:
 						if thing not in final_dict[y]:
 							final_dict[y].insert(0,thing[:])
@@ -984,7 +1009,7 @@ def grabints(myfilename):
 		myline=string.split(x)
 		if len(myline)!=2:
 			continue
-		newdict[myline[0]]=string.atoi(myline[1])
+		newdict[myline[0]]=int(myline[1])
 	return newdict
 
 def writeints(mydict,myfilename):
@@ -1784,6 +1809,8 @@ class config:
 
 	def __setitem__(self,mykey,myvalue):
 		"set a value; will be thrown away at reset() time"
+		if type(myvalue) != types.StringType:
+			raise ValueError("Invalid type being used as a value: '%s': '%s'" % (str(mykey),str(myvalue)))
 		self.modifying()
 		self.modifiedkeys += [mykey]
 		self.configdict["env"][mykey]=myvalue
@@ -2046,7 +2073,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0):
 				writemsg(">>> Downloading "+str(loc)+"\n")
 				myfetch=string.replace(locfetch,"${URI}",loc)
 				myfetch=string.replace(myfetch,"${FILE}",myfile)
-				myret=spawn(myfetch,mysettings,free=1)
+				if selinux_enabled:
+					con=selinux.getcontext()
+					con=string.replace(con,mysettings["PORTAGE_T"],mysettings["PORTAGE_FETCH_T"])
+					selinux.setexec(con)
+					myret=spawn(myfetch,mysettings,free=1)
+					selinux.setexec(None)
+				else:
+					myret=spawn(myfetch,mysettings,free=1)
 				
 				if mydigests!=None and mydigests.has_key(myfile):
 					try:
@@ -2381,12 +2415,20 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		mysettings.reset(use_cache=use_cache)
 		
 	mysettings.setcpv(mycpv,use_cache=use_cache)
-	
-	if mydo not in ["help","clean","prerm","postrm","preinst","postinst",
+
+	validcommands = ["help","clean","prerm","postrm","preinst","postinst",
 	                "config","setup","depend","fetch","digest",
-	                "unpack","compile","install","rpm","qmerge","merge",
-	                "package","unmerge", "manifest"]:
-		writemsg("!!! doebuild: Please specify a valid command.\n");
+	                "unpack","compile","test","install","rpm","qmerge","merge",
+	                "package","unmerge", "manifest"]
+
+	if mydo not in validcommands:
+		validcommands.sort()
+		writemsg("!!! doebuild: '%s' is not one of the following valid commands:" % mydo)
+		for vcount in range(len(validcommands)):
+			if vcount%6 == 0:
+				writemsg("\n!!! ")
+			writemsg(string.ljust(validcommands[vcount], 11))
+		writemsg("\n")
 		return 1
 
 	if not os.path.exists(myebuild):
@@ -2432,6 +2474,8 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	mysettings["BUILD_PREFIX"] = mysettings["PORTAGE_TMPDIR"]+"/portage"
 	mysettings["PKG_TMPDIR"]   = mysettings["PORTAGE_TMPDIR"]+"/portage-pkg"
 	mysettings["BUILDDIR"]     = mysettings["BUILD_PREFIX"]+"/"+mysettings["PF"]
+
+	mysettings["PORTAGE_BASHRC"] = EBUILD_SH_ENV_FILE
 
 	#set up KV variable -- DEP SPEEDUP :: Don't waste time. Keep var persistent.
 	if (mydo!="depend") or not mysettings.has_key("KV"):
@@ -2652,7 +2696,8 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 			  "setup":  {                 "args":(1,0)},         # without  / root
 			 "unpack":  {"dep":"setup",   "args":(0,1)},         # sandbox  / portage
 			"compile":  {"dep":"unpack",  "args":(nosandbox,1)}, # optional / portage
-			"install":  {"dep":"compile", "args":(0,0)},         # sandbox  / root
+			   "test":  {"dep":"compile", "args":(nosandbox,1)}, # optional / portage
+			"install":  {"dep":"test",    "args":(0,0)},         # sandbox  / root
 			    "rpm":  {"dep":"install", "args":(0,0)},         # sandbox  / root
     	"package":  {"dep":"install", "args":(0,0)},         # sandbox  / root
 	}
@@ -2862,7 +2907,7 @@ def ververify(myorigval,silent=1):
 			vercache[myorigval]=0
 			return 0
 		try:
-			foo=string.atoi(x)
+			foo=int(x)
 		except:
 			if not silent:
 				print "!!! Name error in",myorigval+": \""+x+"\" is not a valid version component."
@@ -2874,7 +2919,7 @@ def ververify(myorigval,silent=1):
 			vercache[myorigval]=0
 			return 0
 	try:
-		foo=string.atoi(myval[-1])
+		foo=int(myval[-1])
 		vercache[myorigval]=1
 		return 1
 	except:
@@ -2882,7 +2927,7 @@ def ververify(myorigval,silent=1):
 	#ok, our last component is not a plain number or blank, let's continue
 	if myval[-1][-1] in string.lowercase:
 		try:
-			foo=string.atoi(myval[-1][:-1])
+			foo=int(myval[-1][:-1])
 			return 1
 			vercache[myorigval]=1
 			# 1a, 2.0b, etc.
@@ -2897,14 +2942,14 @@ def ververify(myorigval,silent=1):
 		vercache[myorigval]=0
 		return 0
 	try:
-		foo=string.atoi(ep[0][-1])
+		foo=int(ep[0][-1])
 		chk=ep[0]
 	except:
 		# because it's ok last char is not numeric. example: foo-1.0.0a_pre1
 		chk=ep[0][:-1]
 
 	try:
-		foo=string.atoi(chk)
+		foo=int(chk)
 	except:
 		#this needs to be numeric or numeric+single letter,
 		#i.e. the "1" in "1_alpha" or "1a_alpha"
@@ -2920,7 +2965,7 @@ def ververify(myorigval,silent=1):
 				return 1
 			else:
 				try:
-					foo=string.atoi(ep[1][len(mye):])
+					foo=int(ep[1][len(mye):])
 					vercache[myorigval]=1
 					return 1
 				except:
@@ -3004,7 +3049,7 @@ def pkgsplit(mypkg,silent=1):
 	myrev=myparts[-1]
 	if len(myrev) and myrev[0]=="r":
 		try:
-			string.atoi(myrev[1:])
+			int(myrev[1:])
 			revok=1
 		except: 
 			pass
@@ -3157,8 +3202,8 @@ def pkgcmp(pkg1,pkg2):
 		return 1
 	if mycmp<0:
 		return -1
-	r1=string.atoi(pkg1[2][1:])
-	r2=string.atoi(pkg2[2][1:])
+	r1=int(pkg1[2][1:])
+	r2=int(pkg2[2][1:])
 	if r1>r2:
 		return 1
 	if r2>r1:
@@ -4073,10 +4118,11 @@ def match_from_list_original(mydep,mylist):
 			if cp_key[2]!=cp_x[2]:
 				#if version doesn't match, skip it
 				continue
-			if string.atoi(cp_x[3][1:])>myrev:
-				myrev=string.atoi(cp_x[3][1:])
-				mymatch=x
-		if myrev==-1:
+			myint = int(cp_x[3][1:])
+			if myint > myrev:
+				myrev   = myint
+				mymatch = x
+		if myrev == -1:
 			return []
 		else:
 			return [mymatch]
@@ -4162,6 +4208,9 @@ class dbapi:
 	def __init__(self):
 		pass
 	
+	def close_caches(self):
+		pass
+
 	def cp_list(self,cp,use_cache=1):
 		return
 
@@ -4757,6 +4806,14 @@ class eclass_cache:
 		self.porttrees=self.settings["PORTDIR_OVERLAY"].split()+[self.porttree_root]
 		self.update_eclasses()
 
+	def close_caches(self):
+		for x in self.packages.keys():
+			for y in self.packages[x].keys():
+				self.packages[x][y].sync()
+				self.packages[x][y].close()
+				del self.packages[x][y]
+			del self.packages[x]
+
 	def flush_cache(self):
 		self.packages = {}
 		self.eclasses = {}
@@ -4851,9 +4908,15 @@ auxdbkeys=[
 	]
 auxdbkeylen=len(auxdbkeys)
 
+def close_portdbapi_caches():
+	for i in portdbapi.portdbapi_instances:
+		i.close_caches()
 class portdbapi(dbapi):
-	"this tree will scan a portage directory located at root (passed to init)"
+	"""this tree will scan a portage directory located at root (passed to init)"""
+	portdbapi_instances = []
+
 	def __init__(self,porttree_root,mysettings=None):
+		portdbapi.portdbapi_instances.append(self)
 		self.lock_held = 0;
 
 		if mysettings:
@@ -4883,6 +4946,15 @@ class portdbapi(dbapi):
 		self.frozen=0
 
 		self.porttrees=[self.porttree_root]+self.mysettings["PORTDIR_OVERLAY"].split()
+
+	def close_caches(self):
+		for x in self.auxdb.keys():
+			for y in self.auxdb[x].keys():
+				self.auxdb[x][y].sync()
+				self.auxdb[x][y].close()
+				del self.auxdb[x][y]
+			del self.auxdb[x]
+		self.eclassdb.close_caches()
 
 	def flush_cache(self):
 		self.metadb = {}
@@ -4961,7 +5033,7 @@ class portdbapi(dbapi):
 			self.auxdb[mylocation] = {}
 
 		if not self.auxdb[mylocation].has_key(cat):
-			self.auxdb[mylocation][cat]=self.auxdbmodule(self.depcachedir+"/"+mylocation,cat,auxdbkeys,uid,portage_gid)
+			self.auxdb[mylocation][cat] = self.auxdbmodule(self.depcachedir+"/"+mylocation,cat,auxdbkeys,uid,portage_gid)
 
 		if os.access(myebuild, os.R_OK):
 			emtime=os.stat(myebuild)[ST_MTIME]
@@ -4975,7 +5047,8 @@ class portdbapi(dbapi):
 		if mylocation==self.mysettings["PORTDIR"] and metacachedir and self.metadb[cat].has_key(pkg):
 			metadata=self.metadb[cat][pkg]
 			self.eclassdb.update_package(mylocation,cat,pkg,metadata["INHERITED"].split())
-			self.auxdb[mylocation][cat][pkg]=metadata
+			self.auxdb[mylocation][cat][pkg] = metadata
+			self.auxdb[mylocation][cat].sync()
 		else:
 
 			try:
@@ -4987,6 +5060,7 @@ class portdbapi(dbapi):
 				writemsg("auxdb exception: (%s): %s\n" % (mylocation+"::"+cat+"/"+pkg,str(e)))
 				if self.auxdb[mylocation][cat].has_key(pkg):
 					self.auxdb[mylocation][cat].del_key(pkg)
+					self.auxdb[mylocation][cat].sync()
 
 			writemsg("auxdb is valid: "+str(auxdb_is_valid)+" "+str(pkg)+"\n", 2)
 			if auxdb_is_valid:
@@ -5041,24 +5115,26 @@ class portdbapi(dbapi):
 				mydata["_mtime_"] = emtime
 
 				self.auxdb[mylocation][cat][pkg] = mydata
+				self.auxdb[mylocation][cat].sync()
 				if not self.eclassdb.update_package(mylocation, cat, pkg, mylines[auxdbkeys.index("INHERITED")].split()):
 					sys.exit(1)
 
 		#finally, we look at our internal cache entry and return the requested data.
-		returnme=[]
+		mydata   = self.auxdb[mylocation][cat][pkg]
+		returnme = []
 		for x in mylist:
-			if self.auxdb[mylocation][cat][pkg].has_key(x):
-				returnme.append(self.auxdb[mylocation][cat][pkg][x])
+			if mydata.has_key(x):
+				returnme.append(mydata[x])
 			else:
 				returnme.append("")
 
-		self.auxdb[mylocation][cat].sync()
 		return returnme
 
 	def getfetchlist(self,mypkg,useflags=None,mysettings=None,all=0):
 		if mysettings == None:
 			mysettings = self.mysettings
-		try: myuris = self.aux_get(mypkg,["SRC_URI"])[0]
+		try:
+			myuris = self.aux_get(mypkg,["SRC_URI"])[0]
 		except (IOError,KeyError):
 			print red("getfetchlist():")+" aux_get() error; aborting."
 			sys.exit(1)
@@ -5695,13 +5771,13 @@ class dblink:
 		#do some config file management prep
 		self.protect=[]
 		for x in string.split(self.settings["CONFIG_PROTECT"]):
-			ppath=os.path.normpath(self.myroot+"///"+x)+"/"
+			ppath=normalize_path(self.myroot+x)+"/"
 			if os.path.isdir(ppath):
 				self.protect.append(ppath)
 			
 		self.protectmask=[]
 		for x in string.split(self.settings["CONFIG_PROTECT_MASK"]):
-			ppath=os.path.normpath(self.myroot+"///"+x)+"/"
+			ppath=normalize_path(self.myroot+x)+"/"
 			if os.path.isdir(ppath):
 				self.protectmask.append(ppath)
 			#if it doesn't exist, silently skip it
@@ -6129,7 +6205,7 @@ class dblink:
 			if pfile[10:] != real_filename:
 				continue
 			try:
-				new_prot_num = string.atoi(pfile[5:9])
+				new_prot_num = int(pfile[5:9])
 				if new_prot_num > prot_num:
 					prot_num = new_prot_num
 					last_pfile = pfile
@@ -6547,7 +6623,8 @@ settings=config(config_profile_path=PROFILE_PATH,config_incrementals=incremental
 # useful info
 settings["PORTAGE_MASTER_PID"]=str(os.getpid())
 settings.backup_changes("PORTAGE_MASTER_PID")
-settings["BASH_ENV"] = EBUILD_SH_ENV_FILE
+# We are disabling user-specific bashrc files.
+settings["BASH_ENV"] = INVALID_ENV_FILE
 settings.backup_changes("BASH_ENV")
 
 # gets virtual package settings
@@ -6744,7 +6821,7 @@ def do_upgrade(mykey):
 	print ""
 
 def portageexit():
-	global uid,portage_gid,portdb
+	global uid,portage_gid,portdb,db
 	if secpass and not os.environ.has_key("SANDBOX_ACTIVE"):
 		# wait child process death
 		try:
@@ -6753,6 +6830,9 @@ def portageexit():
 		except OSError:
 			#writemsg(">>> All child process are now dead.")
 			pass
+
+		close_portdbapi_caches()
+
 		if mtimedb:
 		# Store mtimedb
 			mymfn=mtimedbfile

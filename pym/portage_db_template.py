@@ -1,11 +1,13 @@
 # $Header$
 
-import os.path
+import os.path,string
 from portage_util import getconfig, ReadOnlyConfig
 from portage_exception import CorruptionError
 
 class database:
 	def __init__(self,path,category,dbkeys,uid,gid,config_path="/etc/portage/module_configs/"):
+		self.__cacheArray = [None, None, None]
+		self.__cacheKeyArray = [None, None, None]
 		self.__template_init_called = True
 		self.path     = path
 		self.category = category
@@ -33,23 +35,51 @@ class database:
 			raise NotImplementedError("db_template.__init__ was overridden")
 
 	def check_key(self,key):
-		if not key:
+		if (not key) or not isinstance(key, str):
 			raise KeyError, "No key provided. key: %s" % (key)
 	
 	def clear(self):
 		for x in self.keys():
 			self.del_key(x)
-	
+
+	def __addCache(self,key,val):
+		del self.__cacheArray[2]
+		self.__cacheArray.insert(0,val)
+		del self.__cacheKeyArray[2]
+		self.__cacheKeyArray.insert(0,key)
+
+	def __delCache(self,key):
+		i = self.__cacheKeyArray.index(key)
+		self.__cacheArray[i] = None
+		self.__cacheKeyArray[i] = None
+
+	def flushCache(self):
+		self.__cacheArray = [None, None, None]
+		self.__cacheKeyArray = [None, None, None]
+
 	def __getitem__(self,key):
+		if key in self.__cacheKeyArray:
+			i = self.__cacheKeyArray.index(key)
+			return self.__cacheArray[i]
+
+		self.check_key(key)
 		if self.has_key(key):
 			try:
-				return self.get_values(key)
+				values = self.get_values(key)
+				self.__addCache(key,values)
+				return values
 			except Exception, e:
 				raise CorruptionError("Corruption detected when reading key '%s'" % (key))
 		raise KeyError("Key not in db: '%s'" % (key))
 	
 	def __setitem__(self,key,values):
+		self.check_key(key)
+		self.__addCache(key,values)
 		return self.set_values(key,values)
+
+	def __delitem__(self,key):
+		self.__delCache(key)
+		return self.del_key(key)
 
 	def has_key(self,key):
 		raise NotImplementedError("Method not defined")

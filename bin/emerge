@@ -1325,7 +1325,12 @@ class depgraph:
 				if "--verbose" in myopts:
 					# iuse verbose
 					try:
-						iuse_split = string.split(portage.portdb.aux_get(x[2],["IUSE"])[0])
+						if x[0] == "binary":
+							iuse_split = string.split(portage.db["/"]["bintree"].dbapi.aux_get(x[2],["IUSE"])[0])
+						elif x[0] == "ebuild":
+							iuse_split = string.split(portage.portdb.aux_get(x[2],["IUSE"])[0])
+						else:
+							iuse_split = []
 					except:
 						portage.writemsg("!!! Error getting IUSE (report this to bugs.gentoo.org)\n")
 						portage.writemsg("!!! %s\n" % x)
@@ -1553,8 +1558,11 @@ class depgraph:
 					# Add to the mergelist
 					mymergelist.append(mylist[x])
 				else:
-					# Add to the world file. Since we won't be able to later.
 					myfavkey=portage.cpv_getkey(mylist[x][2])
+					if "--update" in myopts and portage.db[portage.root]["vartree"].dbapi.match(myfavkey):
+						# It's already merged, so we don't add it if updating.
+						continue
+					# Add to the world file. Since we won't be able to later.
 					if (not "--fetchonly" in myopts) and (myfavkey in favorites):
 						#don't record if already in system profile or already recorded
 						if (not mysysdict.has_key(myfavkey)) and (not myfavdict.has_key(myfavkey)):
@@ -2413,8 +2421,11 @@ elif "info"==myaction:
 
 	ac_vers = string.join(portage.db["/"]["vartree"].dbapi.match("sys-devel/autoconf"), ",")
 	am_vers = string.join(portage.db["/"]["vartree"].dbapi.match("sys-devel/automake"), ",")
+	binutils_vers = string.join(portage.db["/"]["vartree"].dbapi.match("sys-devel/binutils"), ",")
+
 	print "Autoconf: " + ac_vers
 	print "Automake: " + am_vers
+	print "Binutils: " + binutils_vers
 	
 	if "--verbose" in myopts:
 		myvars=portage.settings.keys()

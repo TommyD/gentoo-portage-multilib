@@ -109,7 +109,6 @@ def grabdict(myfilename,juststrings=0,empty=0):
 	mylines=myfile.readlines()
 	myfile.close()
 	for x in mylines:
-		print "FOO"
 		#the split/join thing removes leading and trailing whitespace, and converts any whitespace in the line
 		#into single spaces.
 		if x[0] == "#":

@@ -17,9 +17,9 @@ class database(portage_db_template.database):
 		self.filename = self.path + "/" + self.category + ".cpickle"
 		
 		if access(self.filename, R_OK):
-			mypickle=cPickle.Unpickler(open(self.filename,"r"))
-			mypickle.find_global=None
 			try:
+				mypickle=cPickle.Unpickler(open(self.filename,"r"))
+				mypickle.find_global=None
 				self.db = mypickle.load()
 			except:
 				self.db = {}

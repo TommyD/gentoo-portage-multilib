@@ -177,10 +177,12 @@ def make_http_request(conn, address, params={}, headers={}, dest=None):
 	the data from address, performing Location forwarding and using the
 	optional params and headers."""
 
-	rc = 301
+	rc = 0
 	response = None
-	while ((rc == 301) or (rc == 302)):
+	while (rc == 0) or (rc == 301) or (rc == 302):
 		try:
+			if (rc != 0):
+				conn,ignore,ignore,ignore,ignore = create_conn(address)
 			conn.request("GET", address, params, headers)
 		except Exception, e:
 			return None,None,"Server request failed:",e[1]

@@ -9,11 +9,50 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+*portage-2.0.51_pre9 (22 May 2003): Speedups and bug fixes
+
+  22 May 2004; Nicholas Jones <carpaski@gentoo.org> portage_db_template.py:
+  Added in last-three caching for db modules. Ensuring that keys are strings.
+
+  22 May 2004; Nicholas Jones <carpaski@gentoo.org> portage_db_cpickle.py: Fix
+  that ensures the Unpickler works properly.
+
+  22 May 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Updates for
+  environment files ordering in ebuild.sh. Added in normalize_path to handle
+  the really annoying "'//' is a legal prefix" issue with os.path.normpath.
+  Applied normalize_path to cacheddir() so that the keys match and we have
+  more cache hits and better performance. Added statistics to to cacheddir
+  available with noise=2. Do not return a blocker when doing a zerolist.
+  Fixed the stacking functions to properly order the incrementals and apply
+  the removals forward. Changed all string.atoi() to int(). Added in the
+  selinux changes for spawning the fetch command. Added a patch that allows
+  ebuild.sh to display 'validcommands'. close_caches() added to allow atexit
+  to close all the DB connections. close_portdbapi_cache() handles the global
+  that has all db instances -- This avoids problems with the API nulling the
+  internal links. Adjusted the db handling for sync() calls and removed some
+  object duplication db calls.
+
+  22 May 2004; Nicholas Jones <carpaski@gentoo.org> getbinpkg.py: Fix for HTTP
+  redirects (301 and 302) so that the redirect opens a new connection to the
+  move-location server -- This allows us to redirect to a different machine.
+
+  22 May 2004; Nicholas Jones <carpaski@gentoo.org> emerge: For iuse output we
+  now ensure that the correct db is referenced. The worldfile additions do not
+  occur when a packages is new and updates are not being performed. Patch to
+  add binutils to the emerge info.
+
+  22 May 2004; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Rearranged the
+  sourcing of the profiles and the special environment files. Added src_test
+  as an optional test method -- Some packages are extremely dumb and need to
+  be prevented from using this via RESTRICT.
+
   18 May 2004; Jason Stubbs <jstubbs@gentoo.org> portage.py: Minor speed
   improvement in config.setcpv preventing a useless regenerate
 
   18 May 2004; Jason Stubbs <jstubbs@gentoo.org> portage.py: Reversed the
   order of config.getvirtuals' stack_dictlist call for correct ordering.
+
+*portage-2.0.51_pre8 (16 May 2003): Big cleanups & Ebuild QA Stuff.
 
   16 May 2004; Nicholas Jones <carpaski@gentoo.org> portage_exception.py: New
   file containing portage exceptions. Added 'CorruptionError' for the db code.

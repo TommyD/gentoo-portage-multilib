@@ -61,6 +61,9 @@ OCXX="$CXX"
 if [ "$USERLAND" == "GNU" ]; then
 	source /etc/profile.env &>/dev/null
 fi
+if [ -f "${PORTAGE_BASHRC}" ]; then
+	source "${PORTAGE_BASHRC}"
+fi
 [ ! -z "$OCC" ] && export CC="$OCC"
 [ ! -z "$OCXX" ] && export CXX="$OCXX"
 
@@ -472,6 +475,32 @@ src_compile() {
 	fi
 }
 
+src_test() 
+{ 
+	if hasq maketest $RESTRICT; then
+		ewarn "Skipping make test/check due to ebuild restriction."
+		return
+	fi
+
+	addpredict /
+	if make check -n &> /dev/null; then
+		echo ">>> Test phase [check]: ${CATEGORY}/${PF}"
+		if ! make check; then
+			hasq maketest $FEATURES && die "Make check failed. See above for details."
+			hasq maketest $FEATURES || eerror "Make check failed. See above for details."
+		fi
+	elif make test -n &> /dev/null; then
+		echo ">>> Test phase [test]: ${CATEGORY}/${PF}"
+		if ! make test; then
+			hasq maketest $FEATURES && die "Make test failed. See above for details."
+			hasq maketest $FEATURES || eerror "Make test failed. See above for details."
+		fi
+  else
+		echo ">>> Test phase [none]: ${CATEGORY}/${PF}"
+	fi
+	SANDBOX_PREDICT="${SANDBOX_PREDICT%:/}"
+}
+
 src_install() 
 { 
 	return 
@@ -722,6 +751,12 @@ abort_package() {
 	exit 1
 }
 
+abort_test() {
+	abort_handler "dyn_test" $1
+	rm -f "${BUILDDIR}/.tested"
+	exit 1
+}
+
 abort_install() {
 	abort_handler "src_install" $1
 	rm -rf "${BUILDDIR}/image"
@@ -834,6 +869,18 @@ dyn_package() {
 	touch .packaged || die "Failed to 'touch .packaged' in ${BUILDDIR}"
 	trap SIGINT SIGQUIT
 }
+
+
+dyn_test() {
+	trap "abort_test" SIGINT SIGQUIT
+	cd "${S}"
+	src_test
+	cd "${BUILDDIR}"
+	touch .tested || die "Failed to 'touch .tested' in ${BUILDDIR}"
+	trap SIGINT SIGQUIT
+}
+	
+
 
 dyn_install() {
 	trap "abort_install" SIGINT SIGQUIT
@@ -1454,7 +1501,7 @@ for myarg in $*; do
 			set +x
 		fi
 		;;
-	unpack|compile|clean|install)
+	unpack|compile|test|clean|install)
 		if [ "${SANDBOX_DISABLED="0"}" == "0" ]; then
 			export SANDBOX_ON="1"
 		else
