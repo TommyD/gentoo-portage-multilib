@@ -630,7 +630,7 @@ int main(int argc, char** argv)
 			{
 				/* these should go into make.globals later on */
 				strcpy(sandbox_write_var, "");
-				strcat(sandbox_write_var, "/dev/null:/dev/pts/:/dev/vc/:/dev/tty:/tmp/");
+                                strcat(sandbox_write_var, "/dev/zero:/dev/fd/:/dev/null:/dev/pts/:/dev/vc/:/dev/tty:/tmp/");
 				strcat(sandbox_write_var, ":");
 				strcat(sandbox_write_var, "/var/log/scrollkeeper.log");
 				strcat(sandbox_write_var, ":");
