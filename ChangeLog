@@ -9,6 +9,10 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  03 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py: And...
+  repoman's arch check got hosed again.  The code in dep_check for 
+  building a masklist was incorrect, 3 line fix. (#59574)
+
   03 Aug 2004; Nicholas Jones <carpaski@gentoo.org> portage_dep.py: Again
 	fixed the || exceptions to understand nested legal || statements.
 

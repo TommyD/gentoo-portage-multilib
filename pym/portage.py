@@ -3867,7 +3867,11 @@ def dep_check(depstring,mydbapi,mysettings,use="yes",mode=None,myuse=None,use_ca
 	mysplit = portage_dep.paren_reduce(depstring)
 
 	if mysettings:
-		mymasks = mysettings.usemask+archlist
+#		mymasks = mysettings.usemask+archlist
+		if use=="all":
+			mymasks=archlist
+		else:
+			mymasks=mysettings.usemask+archlist
 		while mysettings["ARCH"] in mymasks:
 			del mymasks[mymasks.index(mysettings["ARCH"])]
 		mysplit = portage_dep.use_reduce(mysplit,myusesplit,masklist=mymasks)
