@@ -1,12 +1,18 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+*portage 1.8.9_pre5 (6 Feb 2002)
+
+  6 Feb 2002; G.Bevin <gbevin@gentoo.org> portage.py :
+  fixed bugs where the old instance wasn't unmerged correctly if slots are
+  identical, but ebuild version numbers not
+
   6 Feb 2002; Grant Goodyear <g2boojum@gentoo.org> cnf/make.conf :
   Copied proxy lines from make.globals (bug 431).
 
   6 Feb 2002; Vitaly Kushneriuk <vitaly@gentoo.org> portage.py :
   added missing SLOT param to merge(...).
-
+  
 *portage 1.8.9_pre4 (6 Feb 2002)
 
   6 Feb 2002; G.Bevin <gbevin@gentoo.org> portage.py :

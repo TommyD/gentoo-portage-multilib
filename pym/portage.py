@@ -826,7 +826,7 @@ def merge(mycat,mypkg,myslot,pkgloc,infloc,myroot):
 	
 def unmerge(cat,pkg,slot,myroot):
 	mylink=dblink(cat,pkg,slot,myroot)
-	mylink.makeCompat()
+	mylink.makeDbdirCompat()
 	if mylink.exists():
 		mylink.unmerge()
 	mylink.delete()
@@ -2006,10 +2006,20 @@ class dblink:
 
 	# backwards compatibility code to be able to unmerge packages that have been
 	# merged with a previous version of portage
-	def makeCompat(self):
+	def makeDbdirCompat(self):
 		mydbdir=self.myroot+"/var/db/pkg/"+self.cat+"/"+self.pkg
 		if os.path.exists(mydbdir) and not os.path.exists(mydbdir+"/SLOT"):
 				self.dbdir=mydbdir
+
+	# get the ebuild file path of this package
+	def getEbuildCurrent(self):
+		return self.dbdir+"/"+self.pkg+".ebuild"
+
+	# get the ebuild file path of the package that is currently installed
+	def getEbuildInstalled(self):
+		installedversion=self.getfile("PF").strip()
+		installedebuild=self.dbdir+"/"+installedversion+".ebuild"
+		return installedebuild
 
 	def getpath(self):
 		"return path to location of db information (for >>> informational display)"
@@ -2082,17 +2092,20 @@ class dblink:
 			if not pkgfiles:
 				return
 		
+		# get the ebuild file path
+		myebuildfilepath=self.getEbuildInstalled()
+
 		#do prerm script
-		a=doebuild(self.dbdir+"/"+self.pkg+".ebuild","prerm",self.myroot)
+		a=doebuild(myebuildfilepath,"prerm",self.myroot)
 		if a:
 			print "!!! pkg_prerm() script failed; exiting."
 			sys.exit(a)
 
 		#we do this so we don't unmerge the ebuild file by mistake
-		myebuildfile=os.path.normpath(self.dbdir+"/"+self.pkg+".ebuild")
-		if os.path.exists(myebuildfile):
-			if pkgfiles.has_key(myebuildfile):
-				del pkgfiles[myebuildfile]
+		myebuildfilenorm=os.path.normpath(myebuildfilepath)
+		if os.path.exists(myebuildfilenorm):
+			if pkgfiles.has_key(myebuildfilenorm):
+				del pkgfiles[myebuildfilenorm]
 				
 		mykeys=pkgfiles.keys()
 		mykeys.sort()
@@ -2237,7 +2250,7 @@ class dblink:
 				mylink.setelements(myvirts,"VIRTUAL")
 		
 		#do original postrm
-		a=doebuild(self.dbdir+"/"+self.pkg+".ebuild","postrm",self.myroot)
+		a=doebuild(myebuildfilepath,"postrm",self.myroot)
 		if a:
 			print "!!! pkg_postrm() script failed; exiting."
 			sys.exit(a)
@@ -2458,6 +2471,9 @@ class dblink:
 			if (oldcontents):
 				print ">>> Safely unmerging already-installed instance..."
 				self.unmerge(oldcontents)
+				# remove an ebuild file that has the same slot number, but a different version
+				if self.getEbuildCurrent() != self.getEbuildInstalled():
+					os.unlink(self.getEbuildInstalled())
 				print ">>> original instance of package unmerged safely."	
 
 			os.chdir(inforoot)
