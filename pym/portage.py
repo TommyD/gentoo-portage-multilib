@@ -768,6 +768,9 @@ def digestgen(myarchives,overwrite=1):
 	
 def digestcheck(myarchives):
 	"Checks md5sums.  Assumes all files have been downloaded."
+	if settings["SRC_URI"]=="":
+		#No SRC_URI files specified; don't expect a digest
+		return 1
 	digestfn=settings["FILESDIR"]+"/digest-"+settings["PF"]
 	if not os.path.exists(digestfn):
 		if "digest" in features:
@@ -2928,8 +2931,8 @@ settings=config()
 db["/"]["porttree"]=portagetree("/",virts)
 db["/"]["bintree"]=binarytree("/",virts)
 if root!="/":
-	db["/"]["porttree"]=portagetree(root,virts)
-	db["/"]["bintree"]=binarytree(root,virts)
+	db[root]["porttree"]=portagetree(root,virts)
+	db[root]["bintree"]=binarytree(root,virts)
 
 #,"porttree":portagetree(root,virts),"bintree":binarytree(root,virts)}
 features=settings["FEATURES"].split()
