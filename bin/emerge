@@ -2225,6 +2225,11 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 		print "emerge: \"sync\" actions do not support \"--pretend.\""
 		sys.exit(1)
 
+	try:
+		os.close(sys.stdin.fileno())
+	except:
+		pass
+
 	emergelog(" === "+str(myaction))
 	myportdir=portage.settings["PORTDIR"]
 	if myportdir[-1]=="/":
@@ -2530,6 +2535,10 @@ elif myaction=="regen":
 	emergelog(" === regen")
 	#regenerate cache entries
 	print "Regenerating cache entries... "
+	try:
+		os.close(sys.stdin.fileno())
+	except:
+		pass
 	sys.stdout.flush()
 	mynodes=portage.portdb.cp_all()
 	for x in mynodes:
@@ -2539,8 +2548,11 @@ elif myaction=="regen":
 		for y in mymatches:
 			try:
 				foo=portage.portdb.aux_get(y,["DEPEND"],debug=1)
-			except:
-				print "\nerror processing",y+", continuing..."
+			except SystemExit, e:
+				# sys.exit is an exception... And consequently, we can't catch it.
+				raise
+			except Exception, e:
+				print "\n  error processing %(cpv)s, continuing... (%(e)s)" % {"cpv":y,"e":str(e)}
 	print "done!"
 # HELP action
 elif "config"==myaction:

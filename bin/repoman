@@ -915,7 +915,7 @@ for x in scanlist:
 		myuse=portage_dep.use_reduce(portage_dep.paren_reduce(myuse), matchall=1)
 		myuse=portage.flatten(myuse)
 		for mypos in range(0,len(myuse)):
-			if not myuse[mypos] in liclist:
+			if myuse[mypos] not in liclist:
 				stats["LICENSE.invalid"]=stats["LICENSE.invalid"]+1
 				fails["LICENSE.invalid"].append(x+"/"+y+".ebuild: %s" % myuse[mypos])
 		#keyword checks
