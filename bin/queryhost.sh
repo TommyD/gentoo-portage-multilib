@@ -32,11 +32,11 @@ pingall() {
 
     for i in $*
     do
-	# Do this as a single printf so it happens as a single
+	# Do this as a single echo so it happens as a single
 	# "write".  This is so that the writes coming from the
 	# multiple processes aren't mixed within a line.  It should
 	# usually work.  :-)
-	( pinghost $i; echo $? $i ) &
+	( pinghost $i; echo "$? $i" ) &
     done
     wait
 }
