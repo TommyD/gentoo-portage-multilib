@@ -13,8 +13,8 @@
 #
 export PKGDIR="$(/usr/lib/portage/bin/portageq pkgdir)"
 
-if [ -z $1 ]; then
-  echo "QUICKPKG ver 1.1"
+if [ -z "$1" ] || [ "$1" == "--help" ]; then
+  echo "QUICKPKG ver 1.1.2"
   echo "Example Usage:  quickpkg /var/db/pkg/net-www/prozilla-1.3.6/"
   exit 1
 fi

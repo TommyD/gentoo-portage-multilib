@@ -388,14 +388,21 @@ enewuser() {
 	fi
 	einfo "Adding user '${euser}' to your system ..."
 
-	# setup a file for testing usernames/groups
-	local tmpfile="`mktemp -p ${T}`"
-	touch ${tmpfile}
-	chown ${euser} ${tmpfile} >& /dev/null
-	local realuser="`ls -l ${tmpfile} | awk '{print $3}'`"
+	if which mktemp &>/dev/null; then
+		# setup a file for testing usernames/groups
+		local tmpfile="`mktemp -p ${T}`"
+		touch ${tmpfile}
+		chown ${euser} ${tmpfile} >& /dev/null
+		local realuser="`ls -l ${tmpfile} | awk '{print $3}'`"
+	fi
 
 	# see if user already exists
-	if [ "${euser}" == "${realuser}" ] ; then
+	if [ ! -z "${realuser}"]; then
+		if [ "${euser}" == "${realuser}" ]; then
+			einfo "${euser} already exists on your system :)"
+			return 0
+		fi
+	elif id "${euser}"; then
 		einfo "${euser} already exists on your system :)"
 		return 0
 	fi
@@ -445,9 +452,14 @@ enewuser() {
 		local oldifs="${IFS}"
 		export IFS=","
 		for g in ${egroups} ; do
-			chgrp ${g} ${tmpfile} >& /dev/null
-			realgroup="`ls -l ${tmpfile} | awk '{print $4}'`"
-			if [ "${g}" != "${realgroup}" ] ; then
+			if which mktemp &>/dev/null; then
+				chgrp ${g} ${tmpfile} >& /dev/null
+				realgroup="`ls -l ${tmpfile} | awk '{print $4}'`"
+				if [ "${g}" != "${realgroup}" ] ; then
+					eerror "You must add ${g} to the system first"
+					die "${g} is not a valid GID"
+				fi
+			elif ! egrep -q "^${g}:" ; then
 				eerror "You must add ${g} to the system first"
 				die "${g} is not a valid GID"
 			fi
@@ -499,16 +511,23 @@ enewgroup() {
 	fi
 	einfo "Adding group '${egroup}' to your system ..."
 
-	# setup a file for testing groupname
-	local tmpfile="`mktemp -p ${T}`"
-	touch ${tmpfile}
-	chgrp ${egroup} ${tmpfile} >& /dev/null
-	local realgroup="`ls -l ${tmpfile} | awk '{print $4}'`"
+	if which mktemp &>/dev/null; then
+		# setup a file for testing groupname
+		local tmpfile="`mktemp -p ${T}`"
+		touch ${tmpfile}
+		chgrp ${egroup} ${tmpfile} >& /dev/null
+		local realgroup="`ls -l ${tmpfile} | awk '{print $4}'`"
 
-	# see if group already exists
-	if [ "${egroup}" == "${realgroup}" ] ; then
-		einfo "${egroup} already exists on your system :)"
-		return 0
+		if [ "${egroup}" == "${realgroup}" ] ; then
+			einfo "${egroup} already exists on your system :)"
+			return 0
+		fi
+	else
+		# see if group already exists
+		if egrep -q "^${egroup}:"; then
+			einfo "${egroup} already exists on your system :)"
+			return 0
+		fi
 	fi
 
 	# options to pass to useradd

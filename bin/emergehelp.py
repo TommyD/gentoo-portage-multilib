@@ -16,6 +16,7 @@ def shorthelp():
 	print "   "+turquoise("emerge")+" "+turquoise("--resume")+" ["+green("--pretend")+" | "+green("--skipfirst")+"]"
 	print "   "+turquoise("emerge")+" "+turquoise("help")+" [ "+green("system")+" | "+green("config")+" | "+green("sync")+" ] "
 	print bold("Options:")+" "+green("-")+"["+green("bcCdDefhikKlnoOpPsSuUvV")+"] ["+green("--oneshot")+"] ["+green("--noconfmem")+"]"
+	print      "                                    ["+green("--columns")+"] ["+green("--nospinner")+"]"
 	print bold("Actions:")+" [ "+green("clean")+" | "+green("depclean")+" | "+green("inject")+" | "+green("prune")+" | "+green("regen")+" | "+green("search")+" | "+green("unmerge")+" ]"
 	print
 
@@ -137,6 +138,10 @@ def help(myaction,myopts,havecolor=1):
 		print "              When pretending, also display the ChangeLog entries for packages"
 		print "              that will be upgraded."
 		print
+		print "       "+green("--columns")
+		print "              Display the pretend output in a tabular form. Versions are"
+		print "              aligned vertically."
+		print
 		print "       "+green("--debug")+" ("+green("-d")+" short option)"
 		print "              Tell emerge to run the ebuild command in --debug mode. In this"
 		print "              mode, the bash build environment will run with the -x option,"
@@ -181,6 +186,9 @@ def help(myaction,myopts,havecolor=1):
 		print "              ebuilds, or deps you specify on the command-line *will* cause"
 		print "              Portage to remerge the package, even if it is already installed."
 		print "              Note that Portage won't remerge dependencies by default."
+		print 
+		print "       "+green("--nospinner")
+		print "              Disables the spinner irregardless of terminal type."
 		print
 		print "       "+green("--oneshot")
 		print "              Emerge as normal, but don't add packages to the world profile for"
@@ -200,6 +208,10 @@ def help(myaction,myopts,havecolor=1):
 		print "              package, D = possible downgrading. --verbose causes affecting"
 		print "              use flags to be printed out accompanied by a '+' for enabled"
 		print "              and a '-' for disabled flags."
+		print
+		print "       "+green("--quiet")+" ("+green("-q")+" short option)"
+		print "              Effects vary, but the general outcome is a reduced or condensed"
+		print "              output from portage's displays."
 		print
 		print "       "+green("--resume")
 		print "              Resumes the last merge operation. Can be treated just like a"
@@ -246,7 +258,14 @@ def help(myaction,myopts,havecolor=1):
 		print "              available at the time of dependency calculation."
 		print
 		print "       "+green("--verbose")+" ("+green("-v")+" short option)"
-		print "              Tell emerge to run in verbose mode."
+		print "              Effects vary, but the general outcome is an increased or expanded"
+		print "              display of content in portage's displays."
+		print
+		print "       "+green("--version")+" ("+green("-V")+" short option)"
+		print "              Displays the currently installed version of portage along with"
+		print "              other information useful for quick reference on a system. See"
+		print "              "+bold("emerge info")+" for more advanced information."
+		print
 	elif myaction in ["rsync","sync"]:
 		print
 		print bold("Usage: ")+turquoise("emerge")+" "+turquoise("sync")

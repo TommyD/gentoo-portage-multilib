@@ -216,7 +216,10 @@ def countdown(secs=5, doing="Starting"):
 
 def getportageversion():
 	try:
-		profilever=string.split(os.readlink("/etc/make.profile"), "/")[-1]
+		profilestr=os.readlink("/etc/make.profile")
+		if profilestr[-1]=="/":
+			profilestr=profilestr[:-1]
+		profilever=string.split(profilestr, "/")[-1]
 	except:
 		profilever="unavailable"
 	glibcver=[]
@@ -423,7 +426,7 @@ class search:
 					mycat = match.split("/")[0]
 					mypkg = match.split("/")[1] + "-" + myversion
 
-					mydigest = portage.settings["PORTDIR"] + "/"  + match + "/files/digest-" + mypkg
+					mydigest = portage.db["/"]["porttree"].dbapi.finddigest(mycat+"/"+mypkg)
 					
 					try:
 						myfile = open(mydigest,"r")
@@ -1163,7 +1166,7 @@ class depgraph:
 				emergelog(" >>> emerge ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" to "+x[1])
 			if x[0] in ["ebuild","blocks"]:
 				if ("--fetchonly" in myopts) or (x[0]=="blocks"):
-					retval=portage.doebuild(y,"fetch",myroot,edebug,("--pretend" in myopts))
+					retval=portage.doebuild(y,"fetch",myroot,edebug,("--pretend" in myopts),fetchonly=1)
 					if retval:
 						print
 						print "!!! Fetch for",y,"failed, continuing..."

@@ -353,7 +353,7 @@ using_editor=`get_config using_editor`
 merge_command=`get_config merge_command`
 declare -i mode=`get_config mode`
 [ -z ${mode} ] && mode=0
-[ -z ${pager} ] && pager="cat"
+[ -z "${pager}" ] && pager="cat"
 
 #echo "rm_opts: $rm_opts, mv_opts: $mv_opts, cp_opts: $cp_opts"
 #echo "pager: $pager, diff_command: $diff_command, merge_command: $merge_command" 
@@ -376,7 +376,7 @@ scan
 
 until (( ${input} == -1 )); do
 	if (( ${count} == 0 )); then
-		die "No files to work on!" 0
+		die "Nothing left to do; exiting. :)" 0
 	fi
 	sel_file
 	if (( ${input} != -1 )); then

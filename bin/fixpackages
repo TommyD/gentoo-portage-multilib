@@ -3,8 +3,10 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
+import os
+os.environ["PORTAGE_CALLER"]="fixpackages"
 import portage
 
-portage.flushmtimedb("updates")
-portage.portageexit()
-reload(portage)
+print
+print "Done."
+print

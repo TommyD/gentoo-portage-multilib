@@ -1039,7 +1039,7 @@ def spawn(mystring,debug=0,free=0,droppriv=0):
 		#interrupted by signal
 		return 16
 
-def fetch(myuris, listonly=0):
+def fetch(myuris, listonly=0, fetchonly=0):
 	"fetch files.  Will use digest file if available."
 	if ("mirror" in features) and ("nomirror" in settings["RESTRICT"].split()):
 		print ">>> \"mirror\" mode and \"nomirror\" restriction enabled; skipping fetch."
@@ -1121,7 +1121,19 @@ def fetch(myuris, listonly=0):
 					else:
 						#we already have it downloaded, skip.
 						#if our file is bigger than the recorded size, digestcheck should catch it.
-						fetched=2
+						if not fetchonly:
+							fetched=2
+						else:
+							# Check md5sum's at each fetch for fetchonly.
+							mymd5=perform_md5(settings["DISTDIR"]+"/"+myfile)
+							if mymd5 != mydigests[myfile]["md5"]:
+								print "!!! Previously fetched file:",myfile,"MD5 FAILED! Refetching..."
+								os.unlink(settings["DISTDIR"]+"/"+myfile)
+								fetched=0
+							else:
+								print ">>> Previously fetched file:",myfile,"MD5 ;-)"
+								fetched=2
+								break #No need to keep looking for this file, we have it!
 				else:
 					#we don't have the digest file, but the file exists.  Assume it is fully downloaded.
 					fetched=2
@@ -1160,8 +1172,23 @@ def fetch(myuris, listonly=0):
 								except:
 									pass
 							continue
-						fetched=2
-						break
+						if not fetchonly:
+							fetched=2
+							break
+						else:
+							# File is the correct size--check the MD5 sum for the fetched
+							# file NOW, for those users who don't have a stable/continuous
+							# net connection. This way we have a chance to try to download
+							# from another mirror...
+							mymd5=perform_md5(settings["DISTDIR"]+"/"+myfile)
+							if mymd5 != mydigests[myfile]["md5"]:
+								print "!!! Fetched file:",myfile,"MD5 FAILED! Removing corrupt distfile..."
+								os.unlink(settings["DISTDIR"]+"/"+myfile)
+								fetched=0
+							else:
+								print ">>>",myfile,"MD5 ;-)"
+								fetched=2
+								break
 					except (OSError,IOError),e:
 						fetched=0
 				else:
@@ -1420,7 +1447,7 @@ def spawnebuild(mydo,actionmap,debug,alwaysdep=0):
 				actionmap[mydo]["args"][0],
 				actionmap[mydo]["args"][1])
 
-def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
+def doebuild(myebuild,mydo,myroot,debug=0,listonly=0,fetchonly=0):
 	global settings
 
 	if mydo not in ["help","clean","prerm","postrm","preinst","postinst",
@@ -1638,7 +1665,7 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 		fetchme=newuris
 		checkme=alist
 
-	if not fetch(fetchme, listonly):
+	if not fetch(fetchme, listonly, fetchonly):
 		return 1
 
 	if mydo=="fetch":
@@ -3236,6 +3263,17 @@ class portdbapi(dbapi):
 		#oroot="overlay root"
 		self.oroot=None
 
+	def finddigest(self,mycpv):
+		try:
+			mydig   = self.findname2(mycpv)[0]
+			mydigs  = string.split(mydig, "/")[:-1]
+			mydig   = string.join(mydigs, "/")
+
+			mysplit = mycpv.split("/")
+		except:
+			return ""
+		return mydig+"/files/digest-"+mysplit[-1]
+
 	def findname(self,mycpv):
 		return self.findname2(mycpv)[0]
 
@@ -4738,10 +4776,18 @@ for x in mtimedb.keys():
 		sys.stderr.write("Deleting invalid mtimedb key: "+str(x)+"\n")
 		del mtimedb[x]
 
+
+#,"porttree":portagetree(root,virts),"bintree":binarytree(root,virts)}
+features=settings["FEATURES"].split()
+
+
+do_upgrade_packagesmessage=0
 def do_upgrade(mykey):
+	global do_upgrade_packagesmessage
+	sys.stderr.write("\n\n")
 	sys.stderr.write(green("Performing Global Updates: ")+bold(mykey)+"\n")
 	sys.stderr.write("(Could take a couple minutes if you have a lot of binary packages.)\n")
-	sys.stderr.write("  "+bold(".")+"='update pass'  "+bold("*")+"='binary update'  "+bold("@")+"='/var/db update'\n")
+	sys.stderr.write("  "+bold(".")+"='update pass'  "+bold("*")+"='binary update'  "+bold("@")+"='/var/db move'\n")
 	processed=1
 	#remove stale virtual entries (mappings for packages that no longer exist)
 	myvirts=grabdict("/var/cache/edb/virtuals")
@@ -4765,7 +4811,6 @@ def do_upgrade(mykey):
 		sys.stdout.flush()
 		db["/"]["vartree"].dbapi.move_ent(mysplit)
 		db["/"]["bintree"].move_ent(mysplit)
-		
 		#update world entries:
 		for x in range(0,len(worldlist)):
 			#update world entries, if any.
@@ -4779,7 +4824,11 @@ def do_upgrade(mykey):
 					myvirts[myvirt][mypos]=mysplit[2]
 	
 	# We gotta do the brute force updates for these now.
-	db["/"]["bintree"].update_ents(myupd)
+	if (settings["PORTAGE_CALLER"] in ["fixpackages"]) or \
+	   ("fixpackages" in features):
+		db["/"]["bintree"].update_ents(myupd)
+	else:
+		do_upgrade_packagesmessage = 1
 	
 	if processed:
 		#update our internal mtime since we processed all our directives.
@@ -4790,38 +4839,6 @@ def do_upgrade(mykey):
 	myworld.close()
 	writedict(myvirts,"/var/cache/edb/virtuals")
 
-if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
-	if settings["PORTAGE_CALLER"] in ["emerge"]:
-		#only do this if we're root and not running repoman/ebuild digest
-		updpath=os.path.normpath(settings["PORTDIR"]+"/profiles/updates")
-		didupdate=0
-		if not mtimedb.has_key("updates"):
-			mtimedb["updates"]={}
-		try:
-			for myfile in listdir(updpath,EmptyOnError=1):
-				mykey=updpath+"/"+myfile
-				if not os.path.isfile(mykey):
-					continue
-				if (not mtimedb["updates"].has_key(mykey)) or \
-					 (mtimedb["updates"][mykey] != os.stat(mykey)[ST_MTIME]):
-					didupdate=1
-					do_upgrade(mykey)
-		except OSError:
-			#directory doesn't exist
-			pass
-		if didupdate:
-			#make sure our internal databases are consistent; recreate our virts and vartree
-			do_vartree()
-
-#the new standardized db names:
-portdb=portdbapi()
-if settings["PORTDIR_OVERLAY"]:
-	if os.path.isdir(settings["PORTDIR_OVERLAY"]):
-		portdb.oroot=settings["PORTDIR_OVERLAY"]
-	else:
-		sys.stderr.write("!!! PORTDIR_OVERLAY points to "+settings["PORTDIR_OVERLAY"]+"\n")
-		sys.stderr.write("!!! which isn't a directory... Exiting.\n")
-		sys.exit(1)
 
 def portageexit():
 	global uid,portage_gid
@@ -4839,6 +4856,50 @@ def portageexit():
 			pass
 
 atexit.register(portageexit)
+
+
+
+if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
+	if settings["PORTAGE_CALLER"] in ["emerge","fixpackages"]:
+		#only do this if we're root and not running repoman/ebuild digest
+		updpath=os.path.normpath(settings["PORTDIR"]+"/profiles/updates")
+		didupdate=0
+		if not mtimedb.has_key("updates"):
+			mtimedb["updates"]={}
+		try:
+			for myfile in listdir(updpath,EmptyOnError=1):
+				mykey=updpath+"/"+myfile
+				if not os.path.isfile(mykey):
+					continue
+				if (not mtimedb["updates"].has_key(mykey)) or \
+					 (mtimedb["updates"][mykey] != os.stat(mykey)[ST_MTIME]) or \
+					 (settings["PORTAGE_CALLER"] == "fixpackages"):
+					didupdate=1
+					do_upgrade(mykey)
+					portageexit() # This lets us save state for C-c.
+		except OSError:
+			#directory doesn't exist
+			pass
+		if didupdate:
+			#make sure our internal databases are consistent; recreate our virts and vartree
+			do_vartree()
+			if do_upgrade_packagesmessage:
+				sys.stderr.write("\n\n\n ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the")
+				sys.stderr.write("\n    tbz2's in the packages directory. "+bold("Note: This can take a very long time."))
+				sys.stderr.write("\n"); sys.stderr.flush()
+		
+
+
+#the new standardized db names:
+portdb=portdbapi()
+if settings["PORTDIR_OVERLAY"]:
+	if os.path.isdir(settings["PORTDIR_OVERLAY"]):
+		portdb.oroot=settings["PORTDIR_OVERLAY"]
+	else:
+		sys.stderr.write("!!! PORTDIR_OVERLAY points to "+settings["PORTDIR_OVERLAY"]+"\n")
+		sys.stderr.write("!!! which isn't a directory... Exiting.\n")
+		sys.exit(1)
+
 #continue setting up other trees
 db["/"]["porttree"]=portagetree("/",virts)
 db["/"]["bintree"]=binarytree("/",virts)
@@ -4846,9 +4907,6 @@ if root!="/":
 	db[root]["porttree"]=portagetree(root,virts)
 	db[root]["bintree"]=binarytree(root,virts)
 thirdpartymirrors=grabdict(settings["PORTDIR"]+"/profiles/thirdpartymirrors")
-
-#,"porttree":portagetree(root,virts),"bintree":binarytree(root,virts)}
-features=settings["FEATURES"].split()
 
 # Defaults set at the top of perform_checksum.
 if spawn("/usr/sbin/prelink --version > /dev/null 2>&1",free=1) == 0:
@@ -4914,3 +4972,5 @@ for x in pkglines:
 del pkglines
 groups=settings["ACCEPT_KEYWORDS"].split()
 
+# Clear the cache that we probably won't need anymore.
+dircache={}

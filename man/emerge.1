@@ -45,7 +45,7 @@ The \fIebuild\fR may also be an actual filename, such as
 \fBtbz2file\fR
 A \fItbz2file\fR must be a valid .tbz2 created with \fBebuild
 <package>\-<version>.ebuild package\fR or \fBemerge
-\-\-buildpkg <package>\fR.
+\-\-buildpkg [category/]<package>\fR or \fBquickpkg /var/db/pkg/<category>/<package>\fR.
 .TP
 \fBclass\fR
 Package classes are a convenient shorthand for large groups of
@@ -166,7 +166,9 @@ Tells emerge to build binary packages for all ebuilds processed in
 addition to actually merging the packages.  Useful for maintainers
 or if you administrate multiple Gentoo Linux systems (build once,
 emerge tbz2s everywhere).  The package will be created in the
-\fI${PKGDIR}\fR/All directory.
+\fI${PKGDIR}\fR/All directory. An alternative for already-merged
+packages is to use \fBquickpkg\fR which creates a tbz2 from the
+live filesystem.
 .TP
 \fB\-\-columns\fR
 Used along side \fI--pretend\fR to causes the package, new version,
