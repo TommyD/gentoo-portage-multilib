@@ -2698,6 +2698,26 @@ def dep_opconvert(mysplit,myuse,mysettings):
 			mypos += 1
 	return newsplit
 
+def dep_virtual(mysplit):
+	"Does virtual dependency conversion"
+
+	newsplit=[]
+	for x in mysplit:
+		if type(x)==types.ListType:
+			newsplit.append(dep_virtual(x))
+		else:
+			if virts.has_key(x):
+				if len(virts[x])==1:
+					a=virts[x][0]
+				else:
+					a=['||']
+					for y in virts[x]:
+						a.append(y)
+				newsplit.append(a)
+			else:
+				newsplit.append(x)
+	return newsplit
+
 def dep_eval(deplist):
 	if len(deplist)==0:
 		return 1
@@ -2731,24 +2751,48 @@ def dep_zapdeps(unreduced,reduced):
 		else:
 			#try to find an installed dep
 			mydbapi=db[root]["vartree"].dbapi
+			if db["/"].has_key("porttree"):
+				myportapi=db["/"]["porttree"].dbapi
+			else:
+				myportapi=None
 			x=1
+			candidate=[]
 			while x<len(reduced):
 				if (type(reduced[x])==types.ListType):
-					myresult=dep_zapdeps(unreduced[x], reduced[x])
-					if myresult:
-						chk=1
-						for y in flatten(myresult):
-							if (not mydbapi.match(y)):
-								chk=0
-						if chk==1:
-							return myresult
+					candidate.append(dep_zapdeps(unreduced[x], reduced[x]))
 				else:
-					if (mydbapi.match(unreduced[x])):
-						return unreduced[x]
+					candidate.append(unreduced[x])
 				x+=1
-			
-			#none of the deps installed, use the first one
-			return unreduced[1]
+
+			#use already installed and not masked pkg
+			for x in candidate:
+				if (type(x)==types.ListType):
+					match=1
+					for y in x:
+						if not mydbapi.match(y):
+							match=0
+						if myportapi and not myportapi.match(y):
+							match=0
+					if match:
+						return x
+				elif mydbapi.match(x) and myportapi and myportapi.match(x):
+					return x
+
+			#use not masked pkg
+			if portdbapi:
+				for x in candidate:
+					if (type(x)==types.ListType):
+						match=1
+						for y in x:
+							if not myportapi.match(y):
+								match=0
+						if match:
+							return x
+					elif myportapi.match(x):
+						return x
+
+			#none of the not masked pkg, use the first one
+			return candidate[0]
 	else:
 		if dep_eval(reduced):
 			#deps satisfied, return None
@@ -2765,7 +2809,11 @@ def dep_zapdeps(unreduced,reduced):
 					if reduced[x]==0:
 						returnme.append(unreduced[x])
 				x += 1
-			return returnme
+			if len(returnme)==1 and type(returnme[0])==types.ListType:
+				# case [[cat/pkg]]
+				return returnme[0]
+			else:
+				return returnme
 
 def dep_listcleanup(deplist):
 	"remove unnecessary clutter from deplists.  Remove multiple list levels, empty lists"
@@ -2817,7 +2865,7 @@ def getvirtuals(myroot):
 			if len(mysplit)<2:
 				#invalid line
 				continue
-			myvirts[mysplit[0]]=mysplit[1]
+			myvirts[mysplit[0]]=mysplit[1:]
 	return myvirts
 
 def dep_getjiggy(mydep):
@@ -2888,12 +2936,12 @@ def key_expand(mykey,mydb=None):
 				if mydb.cp_list(x+"/"+mykey):
 					return x+"/"+mykey
 			if virts_p.has_key(mykey):
-				return(virts_p[mykey])
+				return(virts_p[mykey][0])
 		return "null/"+mykey
 	elif mydb:
 		if type(mydb)==types.InstanceType:
 			if (not mydb.cp_list(mykey)) and virts and virts.has_key(mykey):
-				return virts[mykey]
+				return virts[mykey][0]
 		return mykey
 
 def cpv_expand(mycpv,mydb=None):
@@ -2907,7 +2955,7 @@ def cpv_expand(mycpv,mydb=None):
 		if mydb:
 			if type(mydb)==types.InstanceType:
 				if (not mydb.cp_list(mykey)) and virts and virts.has_key(mykey):
-					mykey=virts[mykey]
+					mykey=virts[mykey][0]
 			#we only perform virtual expansion if we are passed a dbapi
 	else:
 		#specific cpv, no category, ie. "foo-1.0"
@@ -2929,7 +2977,7 @@ def cpv_expand(mycpv,mydb=None):
 
 		if not mykey and type(mydb)!=types.ListType:
 			if virts_p.has_key(myp):
-				mykey=virts_p[myp]
+				mykey=virts_p[myp][0]
 			#again, we only perform virtual expansion if we have a dbapi (not a list)				
 		if not mykey:
 			mykey="null/"+myp
@@ -3012,6 +3060,8 @@ def dep_check(depstring,mydbapi,mysettings,use="yes",mode=None,myuse=None):
 	mysplit=dep_parenreduce(mysplit)
 	#mysplit can't be None here, so we don't need to check
 	mysplit=dep_opconvert(mysplit,myusesplit,mysettings)
+	#convert virtual dependencies to normal packages.
+	mysplit=dep_virtual(mysplit)
 	#if mysplit==None, then we have a parse error (paren mismatch or misplaced ||)
 	#up until here, we haven't needed to look at the database tree
 	
@@ -4403,7 +4453,7 @@ class portdbapi(dbapi):
 		mymd5s=digestParseFile(mydigest)
 		if not mymd5s:
 			if debug:
-				print "!!! Exception:",e
+				print "[empty/missing/bad digest]: "+mypkg
 			return "[empty/missing/bad digest]"
 		for myfile in mymd5s.keys():
 			distfile=settings["DISTDIR"]+"/"+myfile

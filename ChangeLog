@@ -2,6 +2,12 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  02 Jan 2004; Masatomo Nakano <nakano@gentoo.org> portage.py: Fixed 
+  issue with getsize() when --debug.
+
+  02 Jan 2004; Masatomo Nakano <nakano@gentoo.org> portage.py: Fixed 
+  issue with virtual. This closes bug #9050, #22225, #29499.
+
   01 Jan 2004; Masatomo Nakano <nakano@gentoo.org> ebuild, emerge, portage.py:
   Fixed issue with not cleaning up temp directory. This closes bug #34967.
 
