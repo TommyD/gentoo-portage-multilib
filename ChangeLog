@@ -10,38 +10,38 @@
        It is for convenience. Do not mistake this for the actual file.
 
   15 Aug 2004; Nicholas Jones <carpaski@gentoo.org> emerge: A couple changes
-	to the select_dep exception handling for the signing code.
+  to the select_dep exception handling for the signing code.
 
   15 Aug 2004; Nicholas Jones <carpaski@gentoo.org> env-update.sh: Added
-	Spanky's env-update	shell script version.
-	
+  Spanky's env-update  shell script version.
+  
   15 Aug 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Moved more
-	code into seperate modules. Added support for Manifest verification and
-	usage of 'gpg' 'strict' 'severe' to enable various condition responses.
-	
+  code into seperate modules. Added support for Manifest verification and
+  usage of 'gpg' 'strict' 'severe' to enable various condition responses.
+  
   15 Aug 2004; Nicholas Jones <carpaski@gentoo.org> portage_const.py: Moved
-	all constants to this module. (All uppercase defines)
+  all constants to this module. (All uppercase defines)
 
   15 Aug 2004; Nicholas Jones <carpaski@gentoo.org> portage_data.py: Contains
-	all calculated information. uid/gid info. system-specific values. All probed
-	information should go here.
-	
+  all calculated information. uid/gid info. system-specific values. All probed
+  information should go here.
+  
   15 Aug 2004; Nicholas Jones <carpaski@gentoo.org> portage_exception.py:
-	Added many exceptions for the GPG verification code. Added many general
-	exceptions to help differentiate from explicit portage exceptions and
-	those issued by python.
-	
+  Added many exceptions for the GPG verification code. Added many general
+  exceptions to help differentiate from explicit portage exceptions and
+  those issued by python.
+  
   15 Aug 2004; Nicholas Jones <carpaski@gentoo.org> portage_gpg.py: Handling
-	of gpg verification code and keyring management/trust.
-	
+  of gpg verification code and keyring management/trust.
+  
   15 Aug 2004; Nicholas Jones <carpaski@gentoo.org> portage_locks.py: Moved
-	the lock code out of portage.py.
+  the lock code out of portage.py.
 
   15 Aug 2004; Nicholas Jones <carpaski@gentoo.org> portage_md5.py: Moved the
-	MD5 calculation code out of portage.py.
+  MD5 calculation code out of portage.py.
 
   15 Aug 2004; Nicholas Jones <carpaski@gentoo.org> portage_util.py: Moved
-	writemsg and unique_array into portage_util.
+  writemsg and unique_array into portage_util.
 
   13 Aug 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild.sh: Added 
   support for ECONF_LIBDIR; if it isn't defined, then --libdir isn't 
