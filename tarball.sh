@@ -1,7 +1,7 @@
 #!/bin/bash
 export PKG="portage"
 export TMP="/tmp"
-export V="2.0.29"
+export V="2.0.30_alpha"
 export DEST="${TMP}/${PKG}-${V}"
 rm -rf ${DEST}
 install -d -m0755 ${DEST}
@@ -13,6 +13,8 @@ for x in bin cnf man pym src
 do
 	cp -ax $x ${DEST}
 done
+# Clean invalid sandbox sources
+#rm -rf ${DEST}/src/{sandbox,sandbox-dev}
 cp ${DEST}/pym/portage.py ${DEST}/pym/portage.py.orig
 sed '/^VERSION=/s/^.*$/VERSION="'${V}'"/' < ${DEST}/pym/portage.py.orig > ${DEST}/pym/portage.py
 cp ${DEST}/man/emerge.1 ${DEST}/man/emerge.1.orig

@@ -1299,11 +1299,11 @@ elif "inject"==myaction:
 			print "!!!",x,"is not a specific cat/pkg-version, skipping..."
 			continue
 		else:
-		if portage.db["/"]["vartree"].exists_specific(x):
-			print "!!! Not injecting",x+"; Package already exists."
-		else:
-			portage.db["/"]["vartree"].dbapi.cpv_inject(x)
-			print ">>> Injected",x+"."
+			if portage.db["/"]["vartree"].exists_specific(x):
+				print "!!! Not injecting",x+"; Package already exists."
+			else:
+				portage.db["/"]["vartree"].dbapi.cpv_inject(x)
+				print ">>> Injected",x+"."
 elif "unmerge"==myaction or "prune"==myaction or "clean"==myaction:
 	if 1==unmerge(myaction, myfiles):
 		post_emerge()

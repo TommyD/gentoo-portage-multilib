@@ -1,6 +1,9 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  25 Aug 2002; Martin Schlemmer <azarah@gentoo.org> emerge: fixed an
+  indentation problem of the 'else:' at line 1304. Daniel PLEASE verify!!!
+
   20 Aug 2002; Daniel Robbins <drobbins@gentoo.org> emerge: removed stray
   "DEBUG:" output, closing bug #6732.
 
