@@ -4,8 +4,8 @@
 # $Header$
 
 if [ "$*" != "depend" ] && [ "$*" != "clean" ]; then
-	if [ -f ${T}/successful ]; then
-		rm -f ${T}/successful
+	if [ -f "${T}/successful" ]; then
+		rm -f "${T}/successful"
 	fi
 
 	# Hurray for per-ebuild logging.
@@ -13,19 +13,19 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ]; then
 		if [ -z "${PORT_LOGGING}" ]; then
 			export PORT_LOGGING=1
 			export SANDBOX_WRITE="$SANDBOX_WRITE:${PORT_LOGDIR}"
-			install -d ${PORT_LOGDIR} &>/dev/null
-			chown root:portage ${PORT_LOGDIR} &>/dev/null
-			chmod g+rwxs ${PORT_LOGDIR} &> /dev/null
+			install -d "${PORT_LOGDIR}" &>/dev/null
+			chown root:portage "${PORT_LOGDIR}" &>/dev/null
+			chmod g+rwxs "${PORT_LOGDIR}" &> /dev/null
 			touch "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log" &> /dev/null
 			chmod g+w "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log" &> /dev/null
 			echo "$*" >> "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log"
 			$0 $* 2>&1 | tee -a "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log"
 			if [ "$?" != "0" ]; then
-				rm -f ${T}/successful
+				rm -f "${T}/successful"
 				exit 1
 			fi
-			if [ -f ${T}/successful ]; then
-				rm -f ${T}/successful
+			if [ -f "${T}/successful" ]; then
+				rm -f "${T}/successful"
 				exit 0
 			else
 				exit 1
@@ -243,7 +243,7 @@ keepdir()
 		find "$@" -type d -printf "${D}/%p/.keep\n" | tr "\n" "\0" | $XARGS -0 -n100 touch || die "Failed to recursive create .keep files"
 	else
 		for x in "$@"; do
-			touch ${D}/${x}/.keep || die "Failed to create .keep in ${D}/${x}"
+			touch "${D}/${x}/.keep" || die "Failed to create .keep in ${D}/${x}"
 		done
 	fi
 }
@@ -292,29 +292,29 @@ unpack() {
 
 		case "${x##*.}" in
 			tar) 
-				tar ${tarvars} -xf ${DISTDIR}/${x} || die "$myfail"
+				tar ${tarvars} -xf "${DISTDIR}/${x}" || die "$myfail"
 				;;
 			tgz) 
-				tar ${tarvars} -xzf ${DISTDIR}/${x} || die "$myfail"
+				tar ${tarvars} -xzf "${DISTDIR}/${x}" || die "$myfail"
 				;;
 			tbz2) 
-				bzip2 -dc ${DISTDIR}/${x} | tar ${tarvars} -xf - || die "$myfail"
+				bzip2 -dc "${DISTDIR}/${x}" | tar ${tarvars} -xf - || die "$myfail"
 				;;
 			ZIP|zip) 
-				unzip -qo ${DISTDIR}/${x} || die "$myfail"
+				unzip -qo "${DISTDIR}/${x}" || die "$myfail"
 				;;
 			gz|Z|z) 
 				if [ "${y}" == "tar" ]; then
-					tar ${tarvars} -xzf ${DISTDIR}/${x} || die "$myfail"
+					tar ${tarvars} -xzf "${DISTDIR}/${x}" || die "$myfail"
 				else
-					gzip -dc ${DISTDIR}/${x} > ${x%.*} || die "$myfail"
+					gzip -dc "${DISTDIR}/${x}" > ${x%.*} || die "$myfail"
 				fi
 				;;
 			bz2) 
 				if [ "${y}" == "tar" ]; then
-					bzip2 -dc ${DISTDIR}/${x} | tar ${tarvars} -xf - || die "$myfail"
+					bzip2 -dc "${DISTDIR}/${x}" | tar ${tarvars} -xf - || die "$myfail"
 				else
-					bzip2 -dc ${DISTDIR}/${x} > ${x%.*} || die "$myfail"
+					bzip2 -dc "${DISTDIR}/${x}" > ${x%.*} || die "$myfail"
 				fi
 				;;
 			*)
@@ -470,7 +470,7 @@ dyn_unpack() {
 				break
 			fi
 		done
-		if [ ${EBUILD} -nt "${WORKDIR}" ]; then
+		if [ "${EBUILD}" -nt "${WORKDIR}" ]; then
 			echo ">>> ${EBUILD} has been updated; recreating WORKDIR..."
 			newstuff="yes"
 			rm -rf "${WORKDIR}"
@@ -491,30 +491,30 @@ dyn_unpack() {
 	[ -d "$WORKDIR" ] && cd "${WORKDIR}"
 	echo ">>> Unpacking source..."
 	src_unpack
-	touch ${BUILDDIR}/.unpacked || die "IO Failure -- Failed 'touch .unpacked' in BUILDIR"
+	touch "${BUILDDIR}/.unpacked" || die "IO Failure -- Failed 'touch .unpacked' in BUILDIR"
 	echo ">>> Source unpacked."
-	cd $BUILDDIR
+	cd "$BUILDDIR"
 	trap SIGINT SIGQUIT
 }
 
 dyn_clean() {
-	rm -rf ${BUILDDIR}/image
-	rm -rf ${BUILDDIR}/build-info
+	rm -rf "${BUILDDIR}/image"
+	rm -rf "${BUILDDIR}/build-info"
 
 	if ! has keeptemp $FEATURES; then
-		rm -rf ${T}/*
+		rm -rf "${T}"/*
 	else
-		mv ${T}/environment ${T}/environment.keeptemp
+		mv "${T}/environment" "${T}/environment.keeptemp"
 	fi
 
 	if ! has keepwork $FEATURES; then
-		rm -rf ${BUILDDIR}/.compiled
-		rm -rf ${BUILDDIR}/.unpacked
+		rm -rf "${BUILDDIR}/.compiled"
+		rm -rf "${BUILDDIR}/.unpacked"
 		rm -rf "${WORKDIR}"
 	fi
 
-	if [ -f ${BUILDDIR}/.unpacked ]; then
-		find ${BUILDDIR} -type d ! -regex "^${WORKDIR}" | sort -r | tr "\n" "\0" | $XARGS -0 rmdir &>/dev/null
+	if [ -f "${BUILDDIR}/.unpacked" ]; then
+		find "${BUILDDIR}" -type d ! -regex "^${WORKDIR}" | sort -r | tr "\n" "\0" | $XARGS -0 rmdir &>/dev/null
 	fi
 	true
 }
@@ -627,27 +627,27 @@ abort_handler() {
 
 abort_compile() {
 	abort_handler "src_compile" $1
-	rm -f ${BUILDDIR}/.compiled
+	rm -f "${BUILDDIR}/.compiled"
 	exit 1
 }
 
 abort_unpack() {
 	abort_handler "src_unpack" $1
-	rm -f ${BUILDDIR}/.unpacked
-	rm -rf ${BUILDDIR}/work
+	rm -f "${BUILDDIR}/.unpacked"
+	rm -rf "${BUILDDIR}/work"
 	exit 1
 }
 
 abort_package() {
 	abort_handler "dyn_package" $1
-	rm -f ${BUILDDIR}/.packaged
-	rm -f ${PKGDIR}/All/${PF}.t*
+	rm -f "${BUILDDIR}/.packaged"
+	rm -f "${PKGDIR}"/All/${PF}.t*
 	exit 1
 }
 
 abort_install() {
 	abort_handler "src_install" $1
-	rm -rf ${BUILDDIR}/image
+	rm -rf "${BUILDDIR}/image"
 	exit 1
 }
 
@@ -682,11 +682,11 @@ dyn_compile() {
 		sleep 3
 	fi
 
-	cd ${BUILDDIR}
+	cd "${BUILDDIR}"
 	if [ ! -e "build-info" ];	then
 		mkdir build-info
 	fi
-	cp ${EBUILD} build-info/${PF}.ebuild
+	cp "${EBUILD}" "build-info/${PF}.ebuild"
 	
 	if [ ${BUILDDIR}/.compiled -nt "${WORKDIR}" ]; then
 		echo ">>> It appears that ${PN} is already compiled; skipping."
@@ -705,7 +705,7 @@ dyn_compile() {
 	export PWORKDIR="$WORKDIR"
 	src_compile 
 	#|| abort_compile "fail" 
-	cd ${BUILDDIR}
+	cd "${BUILDDIR}"
 	touch .compiled
 	cd build-info
 	echo "$CBUILD"   > CBUILD
@@ -727,7 +727,7 @@ dyn_compile() {
 	echo "$SLOT"     > SLOT
 	echo "$USE"      > USE
 	set | bzip2 -9 - > environment.bz2
-	cp ${EBUILD} ${PF}.ebuild
+	cp "${EBUILD}" "${PF}.ebuild"
 	if has nostrip $FEATURES $RESTRICT; then
 		touch DEBUGBUILD
 	fi
@@ -736,27 +736,27 @@ dyn_compile() {
 
 dyn_package() {
 	trap "abort_package" SIGINT SIGQUIT
-	cd ${BUILDDIR}/image
+	cd "${BUILDDIR}/image"
 	tar cpvf - ./ | bzip2 -f > ../bin.tar.bz2 || die "Failed to create tarball"
 	cd ..
 	xpak build-info inf.xpak
-	tbz2tool join bin.tar.bz2 inf.xpak ${PF}.tbz2
-	mv ${PF}.tbz2 ${PKGDIR}/All || die "Failed to move tbz2 to ${PKGDIR}/All"
+	tbz2tool join bin.tar.bz2 inf.xpak "${PF}.tbz2"
+	mv "${PF}.tbz2" "${PKGDIR}/All" || die "Failed to move tbz2 to ${PKGDIR}/All"
 	rm -f inf.xpak bin.tar.bz2
-	if [ ! -d ${PKGDIR}/${CATEGORY} ]; then
-		install -d ${PKGDIR}/${CATEGORY}
+	if [ ! -d "${PKGDIR}/${CATEGORY}" ]; then
+		install -d "${PKGDIR}/${CATEGORY}"
 	fi
-	ln -sf ../All/${PF}.tbz2 ${PKGDIR}/${CATEGORY}/${PF}.tbz2 || die "Failed to create symlink in ${PKGDIR}/${CATEGORY}"
+	ln -sf "../All/${PF}.tbz2" "${PKGDIR}/${CATEGORY}/${PF}.tbz2" || die "Failed to create symlink in ${PKGDIR}/${CATEGORY}"
 	echo ">>> Done."
-	cd ${BUILDDIR}
+	cd "${BUILDDIR}"
 	touch .packaged || die "Failed to 'touch .packaged' in ${BUILDDIR}"
 	trap SIGINT SIGQUIT
 }
 
 dyn_install() {
 	trap "abort_install" SIGINT SIGQUIT
-	rm -rf ${BUILDDIR}/image
-	mkdir ${BUILDDIR}/image
+	rm -rf "${BUILDDIR}/image"
+	mkdir "${BUILDDIR}/image"
 	if [ -d "${S}" ]; then
 		cd "${S}"
 	fi
@@ -771,14 +771,14 @@ dyn_install() {
 	src_install 
 	#|| abort_install "fail"
 	prepall
-	cd ${D}
+	cd "${D}"
 
 	declare -i UNSAFE=0
-	for i in $(find ${D}/ -type f -perm -2002); do
+	for i in $(find "${D}/" -type f -perm -2002); do
 		UNSAFE=$(($UNSAFE + 1))
 		echo "UNSAFE SetGID: $i"
 	done
-	for i in $(find ${D}/ -type f -perm -4002); do
+	for i in $(find "${D}/" -type f -perm -4002); do
 		UNSAFE=$(($UNSAFE + 1))
 		echo "UNSAFE SetUID: $i"
 	done
@@ -787,11 +787,11 @@ dyn_install() {
 		die "There are ${UNSAFE} unsafe files. Portage will not install them."
 	fi
 	
-	find ${D}/ -user  portage -print0 | $XARGS -0 -n100 chown root
+	find "${D}/" -user  portage -print0 | $XARGS -0 -n100 chown root
 	if [ "$USERLAND" == "BSD" ]; then
-		find ${D}/ -group portage -print0 | $XARGS -0 -n100 chgrp wheel
+		find "${D}/" -group portage -print0 | $XARGS -0 -n100 chgrp wheel
 	else
-		find ${D}/ -group portage -print0 | $XARGS -0 -n100 chgrp root
+		find "${D}/" -group portage -print0 | $XARGS -0 -n100 chgrp root
 	fi
 
 	echo ">>> Completed installing into ${D}"
@@ -809,29 +809,29 @@ dyn_preinst() {
 
 	# remove man pages
 	if has noman $FEATURES; then
-		rm -fR ${IMAGE}/usr/share/man
+		rm -fR "${IMAGE}/usr/share/man"
 	fi
 
 	# remove info pages
 	if has noinfo $FEATURES; then
-		rm -fR ${IMAGE}/usr/share/info
+		rm -fR "${IMAGE}/usr/share/info"
 	fi
 
 	# remove docs
 	if has nodoc $FEATURES; then
-		rm -fR ${IMAGE}/usr/share/doc
+		rm -fR "${IMAGE}/usr/share/doc"
 	fi
 
 	# Smart FileSystem Permissions
 	if has sfperms $FEATURES; then
 		for i in $(find ${IMAGE}/ -type f -perm -4000); do
 			ebegin ">>> SetUID: [chmod go-r] $i "
-			chmod go-r $i
+			chmod go-r "$i"
 			eend $?
 		done
 		for i in $(find ${IMAGE}/ -type f -perm -2000); do
 			ebegin ">>> SetGID: [chmod o-r] $i "
-			chmod o-r $i
+			chmod o-r "$i"
 			eend $?
 		done
 	fi
@@ -843,13 +843,13 @@ dyn_preinst() {
 		if [ -f /selinux/context -a -x /usr/sbin/setfiles ]; then
 			echo ">>> Setting SELinux security labels"
 			if [ -f ${POLICYDIR}/file_contexts/file_contexts ]; then
-				cp -f ${POLICYDIR}/file_contexts/file_contexts ${T}
+				cp -f "${POLICYDIR}/file_contexts/file_contexts" "${T}"
 			else
-				make -C ${POLICYDIR} FC=${T}/file_contexts ${T}/file_contexts
+				make -C "${POLICYDIR}" FC=${T}/file_contexts "${T}/file_contexts"
 			fi
 
 			addwrite /selinux/context
-			/usr/sbin/setfiles -r ${IMAGE} ${T}/file_contexts ${IMAGE} \
+			/usr/sbin/setfiles -r "${IMAGE}" "${T}/file_contexts" "${IMAGE}" \
 				|| die "Failed to set SELinux security labels."
 		else
 			# nonfatal, since merging can happen outside a SE kernel
@@ -861,7 +861,7 @@ dyn_preinst() {
 }
 
 dyn_spec() {
-	tar czf /usr/src/redhat/SOURCES/${PF}.tar.gz ${O}/${PF}.ebuild ${O}/files || die "Failed to create base rpm tarball."
+	tar czf "/usr/src/redhat/SOURCES/${PF}.tar.gz" "${O}/${PF}.ebuild" "${O}/files" || die "Failed to create base rpm tarball."
 
 	cat <<__END1__ > ${PF}.spec
 Summary: ${DESCRIPTION}
@@ -894,8 +894,8 @@ __END1__
 
 dyn_rpm() {
 	dyn_spec
-	rpm -bb ${PF}.spec || die "Failed to integrate rpm spec file"
-	install -D /usr/src/redhat/RPMS/i386/${PN}-${PV}-${PR}.i386.rpm ${RPMDIR}/${CATEGORY}/${PN}-${PV}-${PR}.rpm || die "Failed to move rpm"
+	rpm -bb "${PF}.spec" || die "Failed to integrate rpm spec file"
+	install -D "/usr/src/redhat/RPMS/i386/${PN}-${PV}-${PR}.i386.rpm" "${RPMDIR}/${CATEGORY}/${PN}-${PV}-${PR}.rpm" || die "Failed to move rpm"
 }
 
 dyn_help() {
@@ -971,9 +971,9 @@ debug-print() {
 		fi
 		
 		# default target
-		echo "$1" >> ${T}/eclass-debug.log
+		echo "$1" >> "${T}/eclass-debug.log"
 		# let the portage user own/write to this file
-		chmod g+w ${T}/eclass-debug.log &>/dev/null
+		chmod g+w "${T}/eclass-debug.log" &>/dev/null
 		
 		shift
 	done
@@ -1203,8 +1203,8 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ]; then
 
 		[ -z "${CCACHE_DIR}" ] && export CCACHE_DIR="/root/.ccache"
 
-		addread ${CCACHE_DIR}
-		addwrite ${CCACHE_DIR}
+		addread "${CCACHE_DIR}"
+		addwrite "${CCACHE_DIR}"
 
 		[ -z "${CCACHE_SIZE}" ] && export CCACHE_SIZE="2G"
 		ccache -M ${CCACHE_SIZE} &> /dev/null
@@ -1329,7 +1329,7 @@ for myarg in $*; do
 		#the extra `echo` commands remove newlines
 		dbkey=${PORTAGE_CACHEDIR}/${CATEGORY}/${PF}
 		if [ ! -d ${PORTAGE_CACHEDIR}/${CATEGORY} ]; then
-			install -d -g ${PORTAGE_GID} -m4775 ${PORTAGE_CACHEDIR}/${CATEGORY}
+			install -d -g ${PORTAGE_GID} -m4775 "${PORTAGE_CACHEDIR}/${CATEGORY}"
 		fi
 		# Make it group writable. 666&~002==664
 		umask 002
@@ -1366,12 +1366,12 @@ done
 if [ "$myarg" != "clean" ]; then
 	# Save current environment and touch a success file. (echo for success)
 	umask 002
-	set | egrep -v "^SANDBOX_" > ${T}/environment 2>/dev/null
-	chown portage:portage ${T}/environment &>/dev/null
-	chmod g+w ${T}/environment &>/dev/null
+	set | egrep -v "^SANDBOX_" > "${T}/environment" 2>/dev/null
+	chown portage:portage "${T}/environment" &>/dev/null
+	chmod g+w "${T}/environment" &>/dev/null
 fi
-touch ${T}/successful  &>/dev/null
-chown portage:portage ${T}/successful &>/dev/null
-chmod g+w ${T}/successful &>/dev/null
+touch "${T}/successful"  &>/dev/null
+chown portage:portage "${T}/successful" &>/dev/null
+chmod g+w "${T}/successful" &>/dev/null
 
 exit 0
