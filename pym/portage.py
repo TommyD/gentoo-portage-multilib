@@ -5051,7 +5051,7 @@ class portdbapi(dbapi):
 			elif myfile in mymd5s.keys():
 				distfile=settings["DISTDIR"]+"/"+myfile
 				if not os.access(distfile, os.R_OK):
-					filesdict[myfile]=int(mymd5s[myfile][1])
+					filesdict[myfile]=int(mymd5s[myfile]["size"])
 		return filesdict
 
 	def getsize(self,mypkg,useflags=None,debug=0):
