@@ -776,11 +776,13 @@ class config:
 						mysetting.append(add)
 			#store setting in last element of configlist, the original environment:
 			self.configlist[-1][mykey]=string.join(mysetting," ")
+			print mykey,":",self.configlist[-1][mykey]
 		#cache split-up USE var in a global
 		usesplit=string.split(self.configlist[-1]["USE"])
 		# Pre-Pend ARCH variable to USE settings so '-*' in env doesn't kill arch.
 		if (profiledir) and (self.configdict["defaults"]["ARCH"] not in usesplit):
 			usesplit.insert(0,self.configdict["defaults"]["ARCH"])
+			self.configlist[-1]["USE"]=string.join(usesplit," ")
 	
 	def __getitem__(self,mykey):
 		if mykey=="CONFIG_PROTECT_MASK":
@@ -2748,89 +2750,78 @@ class vartree(packagetree):
 		self.populated=1
 
 # ----------------------------------------------------------------------------
-def eclass_save(filename):
-	try:
-		if mtimedb.has_key("eclass"):
-			cPickle.dump(mtimedb["eclass"],open(filename,"w"))
-	except Exception, e:
-		print "Failed to save mtimedb:",e
-
 def eclass(myeclass=None,mycpv=None,mymtime=None):
 	"""Caches and retrieves information about ebuilds that use eclasses"""
-	#print "def eclass("+str(myeclass)+","+str(mycpv)+","+str(mymtime)+")"
-	if not mtimedb.has_key("eclass"):
-		#print "mtimedb doesn't exist."
-		try:
-			mtimedb["eclass"]=cPickle.load(open(eclassdbfile))
-			#print "Loaded file!"
-		except:
-			#print "Load failed."
+	global mtimedb
+	if not mtimedb or not mtimedb.has_key("eclass"):
+		if not mtimedb:
+			mtimedb={}
+		if not mtimedb.has_key("eclass"):
 			mtimedb["eclass"]={}
+			mtimedb["packages"]=[]
+		if not mtimedb.has_key("packages"):
+			mtimedb["packages"]=[]
+	
+	if not mtimedb.has_key("starttime") or (mtimedb["starttime"]!=starttime):
+		mtimedb["starttime"]=starttime
 		# Update the cache
 		for x in [settings["PORTDIR"]+"/eclass", settings["PORTDIR_OVERLAY"]+"/eclass"]:
 			if x and os.path.exists(x):
 				dirlist = listdir(x)
 				for y in dirlist:
-					#print "y:",y
 					if y[-len(".eclass"):]==".eclass":
 						try:
 							ys=y[:-len(".eclass")]
-							#print "ys:",ys
 							ymtime=os.stat(x+"/"+y)[ST_MTIME]
 							if mtimedb["eclass"].has_key(ys):
 								if ymtime!=mtimedb["eclass"][ys][0]:
-									print "mtimes don't match:",ys
-									print mtimedb["eclass"][ys],ymtime,x+"/"+y
+									# The mtime changed on the eclass
 									mtimedb["eclass"][ys]=[ymtime,x+"/"+y,mtimedb["eclass"][ys][2]]
 								else:
-									#print "mtimes match:",ys
+									# nothing changed
 									pass
 							else:
-								#print "new mtime:",ys
+								# New eclass
 								mtimedb["eclass"][ys]=[ymtime,x+"/"+y, {}]
 						except Exception, e:
-							print "stat exception:",e
+							print "!!! stat exception:",e
 							continue
 	if myeclass != None:
 		if not mtimedb["eclass"].has_key(myeclass):
 			# Eclass doesn't exist.
 			return None
 		else:
-			#print mtimedb["eclass"][myeclass],"\n\n"
 			if mycpv and mymtime:
+				if mycpv not in mtimedb["packages"]:
+					mtimedb["packages"].append(mycpv)
 				if mtimedb["eclass"][myeclass][2].has_key(mycpv):
 					# Check if the ebuild mtime changed OR if the mtime for the eclass
 					# has changed since it was last updated.
 					if (mymtime!=mtimedb["eclass"][myeclass][2][mycpv][1]) or (mtimedb["eclass"][myeclass][0]!=mtimedb["eclass"][myeclass][2][mycpv][0]):
-						# Expire the cache. mtimes don't match.
-						print "expired:",mycpv
-						#print mymtime,mtimedb["eclass"][myeclass][0],mtimedb["eclass"][myeclass][2][mycpv]
-						#del mtimedb["eclass"][myeclass][2][mycpv]
+						# Store the new mtime before we expire the cache so we don't
+						# repeatedly regen this entry.
 						mtimedb["eclass"][myeclass][2][mycpv]=[mtimedb["eclass"][myeclass][0],mymtime]
-						#print mymtime,mtimedb["eclass"][myeclass][0],mtimedb["eclass"][myeclass][2][mycpv]
+						# Expire the cache. mtimes don't match.
 						return 0
 					else:
-						#print "matches:",mycpv
+						# Matches
 						return 1
 				else:
 					# Don't have an entry... Must be new.
-					#print "new:",mycpv
 					mtimedb["eclass"][myeclass][2][mycpv]=[mtimedb["eclass"][myeclass][0],mymtime]
 					return 1
 			else:
+				# We're missing some vital parts.
 				raise KeyError
 	else:
-		#print mycpv
-		for myeclass in mtimedb["eclass"].keys():
-			#print ".",
-			if mtimedb["eclass"][myeclass][2].has_key(mycpv):
-				#print "m",
-				if (mymtime!=mtimedb["eclass"][myeclass][2][mycpv][1]) or (mtimedb["eclass"][myeclass][0]!=mtimedb["eclass"][myeclass][2][mycpv][0]):
-					#print "|||",mycpv
-					return 0
-		# We are just caching eclass times.
+		# Recurse without explicit eclass. (Recurse all)
+		if mycpv in mtimedb["packages"]:
+			for myeclass in mtimedb["eclass"].keys():
+				if mtimedb["eclass"][myeclass][2].has_key(mycpv):
+					if (mymtime!=mtimedb["eclass"][myeclass][2][mycpv][1]) or (mtimedb["eclass"][myeclass][0]!=mtimedb["eclass"][myeclass][2][mycpv][0]):
+						#mtimes do not match
+						return 0
 		return 1
-		#raise KeyError
 # ----------------------------------------------------------------------------
 
 auxdbkeys=['DEPEND','RDEPEND','SLOT','SRC_URI','RESTRICT','HOMEPAGE','LICENSE','DESCRIPTION','KEYWORDS','INHERITED','IUSE']
@@ -2891,10 +2882,8 @@ class portdbapi(dbapi):
 		if dmtime<emtime:
 			doregen=1
 
-		#print "))) 001"
 		if doregen or not eclass(None, mycpv, dmtime):
 			stale=1
-			#print "((( 001",doregen
 			if doebuild(myebuild,"depend","/"):
 				#depend returned non-zero exit code...
 				if strict:
@@ -4124,9 +4113,15 @@ if profiledir:
 else:
 	usedefaults=[]
 settings=config()
-#grab mtimes
-mtimedb={"cur":{}}
-mtimedb["old"]=grabints(root+"var/cache/edb/mtimes")
+
+#grab mtimes for eclasses and upgrades
+mtimedb={}
+mtimedbfile=root+"var/cache/edb/mtimedb"
+try:
+	mtimedb=cPickle.load(open(mtimedbfile))
+except Exception, e:
+	print "!!!",e
+	mtimedb={"old":{},"cur":{},"eclass":{},"packages":[]}
 	
 def do_upgrade(mykey):
 	#now, let's process this file...
@@ -4199,21 +4194,19 @@ if settings["PORTDIR_OVERLAY"]:
 		print "portage: init: PORTDIR_OVERLAY points to",settings["PORTDIR_OVERLAY"],"which isn't a directory."
 		print "exiting."
 		sys.exit(1)
-		
+
 def store():
 	global uid,wheelgid
 	if secpass:
-		mymfn=eclassdbfile
+		mymfn=mtimedbfile
 		try:
-			eclass_save(mymfn)	
-			os.chown(mymfn,uid,wheelgid)
-			try:
+			if mtimedb:
+				cPickle.dump(mtimedb,open(mymfn,"w"))
+				os.chown(mymfn,uid,wheelgid)
 				os.chmod(mymfn,0664)
-			except OSError:
-				pass
 		except OSError:
 			pass
-			
+
 atexit.register(store)
 #continue setting up other trees
 db["/"]["porttree"]=portagetree("/",virts)
@@ -4268,4 +4261,3 @@ for x in pkglines:
 		revmaskdict[mycatpkg].append(x)
 del pkglines
 groups=settings["ACCEPT_KEYWORDS"].split()
-eclassdbfile=root+"var/cache/edb/mtimes.eclass"
