@@ -58,7 +58,7 @@ int 	before_syscall(const char*, const char*);
 int 	before_syscall_open_int(const char*, const char*, int);
 int 	before_syscall_open_char(const char*, const char*, const char*);
 void 	clean_env_entries(char***, int*);
-void 	init_env_entries(char***, int*, char*);
+void 	init_env_entries(char***, int*, char*, int);
 int		is_sandbox_pid();
 void*	get_dl_symbol(char*);
 
@@ -350,19 +350,23 @@ int execvp(const char* file, char* const* argv)
 	int		num_path_entries = 0;
 	char	constructed_path[255];
 
-	init_env_entries(&path_entries, &num_path_entries, "PATH");
-	for (i = 0; i < num_path_entries; i++)
+	if (NULL != getenv("SANDBOX_ON") &&
+		0 == strcmp(getenv("SANDBOX_ON"), "1"))
 	{
-		strcpy(constructed_path, path_entries[i]);
-		strcat(constructed_path, "/");
-		strcat(constructed_path, file);
-		if (0 == before_syscall("execvp", constructed_path))
+		init_env_entries(&path_entries, &num_path_entries, "PATH", 0);
+		for (i = 0; i < num_path_entries; i++)
 		{
-			allowed = 0;
-			break;
+			strcpy(constructed_path, path_entries[i]);
+			strcat(constructed_path, "/");
+			strcat(constructed_path, file);
+			if (0 == before_syscall("execvp", constructed_path))
+			{
+				allowed = 0;
+				break;
+			}
 		}
+		clean_env_entries(&path_entries, &num_path_entries);
 	}
-	clean_env_entries(&path_entries, &num_path_entries);
 	
 	if (1 == allowed)
 	{
@@ -461,7 +465,7 @@ void clean_env_entries(char*** prefixes_array, int* prefixes_num)
 	}
 }
 
-void init_env_entries(char*** prefixes_array, int* prefixes_num, char* env)
+void init_env_entries(char*** prefixes_array, int* prefixes_num, char* env, int warn)
 {
 	char* prefixes_env = getenv(env);
 
@@ -728,10 +732,10 @@ int before_syscall(const char* func, const char* file)
 	if (NULL != getenv("SANDBOX_ON") &&
 		0 == strcmp(getenv("SANDBOX_ON"), "1"))
 	{
-		init_env_entries(&(sbcontext.deny_prefixes), &(sbcontext.num_deny_prefixes), "SANDBOX_DENY");
-		init_env_entries(&(sbcontext.read_prefixes), &(sbcontext.num_read_prefixes), "SANDBOX_READ");
-		init_env_entries(&(sbcontext.write_prefixes), &(sbcontext.num_write_prefixes), "SANDBOX_WRITE");
-		init_env_entries(&(sbcontext.predict_prefixes), &(sbcontext.num_predict_prefixes), "SANDBOX_PREDICT");
+		init_env_entries(&(sbcontext.deny_prefixes), &(sbcontext.num_deny_prefixes), "SANDBOX_DENY", 1);
+		init_env_entries(&(sbcontext.read_prefixes), &(sbcontext.num_read_prefixes), "SANDBOX_READ", 1);
+		init_env_entries(&(sbcontext.write_prefixes), &(sbcontext.num_write_prefixes), "SANDBOX_WRITE", 1);
+		init_env_entries(&(sbcontext.predict_prefixes), &(sbcontext.num_predict_prefixes), "SANDBOX_PREDICT", 1);
 
 		result = check_syscall(&sbcontext, func, file);
 
