@@ -2,7 +2,7 @@
 # Copyright 1998-2002 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
 
-VERSION="2.0.44_pre3"
+VERSION="2.0.44_pre4"
 
 from stat import *
 from commands import *
@@ -1148,19 +1148,20 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 		# Regular source tree
 		settings["KV"]=mykv
 	else:
-		print "!!! Error extracting kernel version:"
-		print "!!!",err
 		mykv,err=ExtractKernelVersion(root+"usr")
 		if mykv:
 			# Header files installed but not source tree
 			settings["KV"]=mykv
 		else:
-			print "!!! Error extracting kernel version (attempt 2):"
-			print "!!!",err
 			if settings["CATEGORY"] != "sys-kernel":
 				# No Headers at all and not installing any.
+				print
+				print "!!! Error extracting kernel version (attempt 2):"
+				print "!!!",err
+				print "!!! You must either install kernel sources or kernel headers."
+				print "!!! Portage will not merge anything until one of those is merged."
+				print
 				sys.exit(1)
-			print "!!! Ignoring. Installing kernel sources/headers."
 
 	# if any of these are being called, handle them -- running them out of the sandbox -- and stop now.
 	if mydo in ["help","clean","setup","prerm","postrm","preinst","postinst","config"]:
@@ -3603,7 +3604,7 @@ class dblink:
 		"this is going to be the new merge code"
 		if not os.path.exists(self.dbdir):
 			self.create()
-		# print ">>> Updating mtimes..."
+		
 		# before merging, it's *very important* to touch all the files
 		# this ensures that their mtime is current and unmerging works correctly
 		# spawn("(cd "+srcroot+"; for x in `find`; do  touch -c $x 2>/dev/null; done)",free=1)
