@@ -121,9 +121,11 @@ and \fBGAMES_GROUP\fR respectively.
 .B gamesperms \fI<files/directories>\fR
 \fBgamesperms\fR will change the permissions with a mask of u+rw,g+r-w,o-rwx.
 .TP
-.B games_make_wrapper \fI<bin name>\fR \fI<chdir>\fR
+.B games_make_wrapper \fI<wrapper>\fR \fI<bin>\fR \fI<chdir>\fR
 Create a small wrapper script.  Useful when dealing with packages that need to 
-change directory to the base of their data tree before running.
+change directory to the base of their data tree before running.  This will create 
+a wrapper script called \fIwrapper\fR that will chdir to \fIchdir\fR before 
+executing \fIbin\fR.  The \fIwrapper\fR will be placed in \fBGAMES_BINDIR\fR.
 .SH "REPORTING BUGS"
 Please report bugs via http://bugs.gentoo.org/
 .SH "SEE ALSO"
