@@ -210,7 +210,8 @@ This is the host from which portage will grab prebuilt-binary packages.
 The list is a single entry specifying the full address of the directory 
 serving the tbz2's for your system.  This is only used when running with 
 the get binary pkg options are given to \fBemerge\fR.  Review \fBemerge\fR(1) 
-for more information.
+for more information.  Note that it should point to the 'All' directory on 
+the host that creates the binary packages and not to the root of the \fBPKGDIR\fR.
 .TP
 \fBPORTAGE_NICENESS\fR = \fI[number]\fR
 The value of this variable will be added to the current nice level that 
