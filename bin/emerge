@@ -1011,7 +1011,7 @@ class depgraph:
 						sys.exit(1)
 				mytbz2=xpak.tbz2(x)
 				mykey=mytbz2.getelements("CATEGORY")[0]+"/"+os.path.basename(x)[:-5]
-				if portage.db["/"]["bintree"].getname(mykey) != os.path.abspath(x):
+				if os.path.realpath(portage.db["/"]["bintree"].getname(mykey)) != os.path.realpath(x):
 					print red("\n*** You need to adjust PKGDIR to emerge this package.\n")
 					sys.exit(1)
 				if not self.create(["binary",portage.root,mykey],None,"--onlydeps" not in myopts):
@@ -1019,8 +1019,9 @@ class depgraph:
 				elif not "--oneshot" in myopts:
 					myfavorites.append(mykey)
 			elif x[-7:]==".ebuild":
-				mykey=os.path.basename(os.path.abspath(x+"/../.."))+"/"+os.path.basename(x)[:-7]
-				if portage.db["/"]["porttree"].dbapi.findname(mykey) != os.path.abspath(x):
+				x = os.path.realpath(x)
+				mykey=os.path.basename(os.path.normpath(x+"/../.."))+"/"+os.path.basename(x)[:-7]
+				if os.path.realpath(portage.db["/"]["porttree"].dbapi.findname(mykey)) != x:
 					print red("\n*** You need to adjust PORTDIR or PORTDIR_OVERLAY to emerge this package.\n")
 					sys.exit(1)
 				if mykey not in portage.db["/"]["porttree"].dbapi.xmatch("match-visible", portage.dep_getkey(mykey)):
@@ -1728,8 +1729,7 @@ class depgraph:
 					mymergelist.append(mylist[x])
 				else:
 					myfavkey=portage.cpv_getkey(mylist[x][2])
-					if "--update" in myopts and portage.db[portage.root]["vartree"].dbapi.match(myfavkey):
-						# It's already merged, so we don't add it if updating.
+					if "--onlydeps" in myopts:
 						continue
 					# Add to the world file. Since we won't be able to later.
 					if (not "--fetchonly" in myopts) and (myfavkey in favorites):
@@ -1865,7 +1865,8 @@ class depgraph:
 					myfavdict=genericdict(myfavs)
 					mysysdict=genericdict(syslist)
 					#don't record if already in system profile or already recorded
-					if (not mysysdict.has_key(myfavkey)) and (not myfavdict.has_key(myfavkey)):
+					if ("--update" not in myopts or not portage.db[portage.root]["vartree"].dbapi.match(myfavkey)) and \
+					    (not mysysdict.has_key(myfavkey)) and (not myfavdict.has_key(myfavkey)):
 						#we don't have a favorites entry for this package yet; add one
 						myfavdict[myfavkey]=myfavkey
 						print ">>> Recording",myfavkey,"in \"world\" favorites file..."

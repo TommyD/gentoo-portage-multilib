@@ -116,9 +116,9 @@ def create_conn(baseurl,conn=None):
 		elif protocol == "http":
 			conn = httplib.HTTPConnection(host)
 		elif protocol == "ftp":
-			passive = 0
+			passive = 1
 			if(host[-1] == "*"):
-				passive = 1
+				passive = 0
 				host = host[:-1]
 			conn = ftplib.FTP(host)
 			if password:

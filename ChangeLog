@@ -7,6 +7,18 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  29 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> emerge: Fixed issue where
+  emerge adds package to world when --onlydeps is specified. #69260
+  Fixed issue where emerge was adding packages to world when --uprade is
+  specified even if the package is already installed. #69287 Fixed logic
+  in path/to/ebuild check so that symlinks do not cause false positives.
+
+  29 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> dispatch-conf: Added usata's
+  fix for mac-os compatibility. #69304
+
+  29 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> getbinpkg.py: Reversed the
+  logic of ftp passive-mode selection. #69371
+
   28 Oct 2004; Brian Harring <ferringb@gentoo.org> portage.py: Closed out 
   an issue with config.reset() gradually nuking items out of backupenv- 
   identified by Ludovic Aubry, solved w/ his provided fix. (#69388)
