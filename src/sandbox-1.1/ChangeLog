@@ -2,6 +2,9 @@
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+  09 Jan 2003; J Robert Ray <jrray@gentoo.org> sandbox.c : Don't segfault if
+  $HOME isn't set, set $HOME to "/" instead.
+
   16 Dec 2002; Martin Schlemmer <azarah@gentoo.org> create-localdecls :
 
   Fix memory leak for mips, bug #12236.  Thanks to Torgeir Hansen <torgeir@trenger.ro>
