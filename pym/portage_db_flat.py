@@ -45,7 +45,7 @@ class database(portage_db_template.database):
 			raise KeyError, "key is not set to a valid value"
 
 		if self.has_key(key):
-			mylock = portage_locks.lockfile(self.fullpath+key, wantnewfile=1)
+			mylock = portage_locks.lockfile(self.fullpath+key, wantnewlockfile=1)
 			mtime = os.stat(self.fullpath+key)[stat.ST_MTIME]
 			myf = open(self.fullpath+key)
 			myl = myf.readlines()
@@ -78,7 +78,7 @@ class database(portage_db_template.database):
 		if os.path.exists(self.fullpath+key):
 			os.unlink(self.fullpath+key)
 
-		mylock = portage_locks.lockfile(self.fullpath+key, wantnewfile=1)
+		mylock = portage_locks.lockfile(self.fullpath+key, wantnewlockfile=1)
 		myf = open(self.fullpath+key,"w")
 		myf.write(data)
 		myf.flush()
@@ -92,7 +92,7 @@ class database(portage_db_template.database):
 	
 	def del_key(self,key):
 		if self.has_key(key):
-			mylock = portage_locks.lockfile(self.fullpath+key, wantnewfile=1)
+			mylock = portage_locks.lockfile(self.fullpath+key, wantnewlockfile=1)
 			os.unlink(self.fullpath+key)
 			portage_locks.unlockfile(mylock)
 			self.lastkey = None
