@@ -2,6 +2,9 @@
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+  27 Jul 2003; Martin Schlemmer <azarah@gentoo.org> libsandbox.c :
+  Fix canonicalize() to return NULL if path = "".
+
   27 Jul 2003; Martin Schlemmer <azarah@gentoo.org> getcwd.c, libsandbox.c,
   sandbox_futils.c, canonicalize.c :
   Once again coreutils fails, as my systems had 2.5 kernel, the getcwd system

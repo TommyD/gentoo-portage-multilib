@@ -30,8 +30,6 @@
 #include <errno.h>
 #include <stddef.h>
 
-//#include <shlib-compat.h>
-
 #ifndef __set_errno
 # define __set_errno(val) errno = (val)
 #endif
