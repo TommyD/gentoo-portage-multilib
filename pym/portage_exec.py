@@ -43,16 +43,30 @@ def spawn_sandbox(mycommand,uid=None,opt_name=None,**keywords):
 	return spawn(args,uid=uid,**keywords)
 
 # base spawn function
-def spawn(mycommand,env={},opt_name=None,fd_pipes=None,returnpid=False,uid=None,gid=None,groups=None,umask=None,logfile=None):
+def spawn(mycommand,env={},opt_name=None,fd_pipes=None,returnpid=False,uid=None,gid=None,groups=None,umask=None,logfile=None,path_lookup=True):
 	if type(mycommand)==types.StringType:
 		mycommand=mycommand.split()
-	if not os.path.exists(mycommand[0]):
+	myc = mycommand[0]
+	if not os.path.exists(myc):
+		if not path_lookup:
+			return None
 		# this sucks. badly.
-		return None
+		p=os.getenv("PATH")
+		if p == None:
+			return None
+		found=False
+		for x in p.split(":"):
+			if os.path.exists("%s/%s" % (x,myc)):
+				myc="%s/%s" % (x,myc)
+				found=True
+				break
+		if not found:
+			return None
+
 	mypid=[]
 	if logfile:
 		pr,pw=os.pipe()
-		mypid.extend(spawn_bash("PATH=/bin:/usr/bin tee -i -a '%s'" % logfile,returnpid=True,fd_pipes={0:pr,1:1,2:2}))
+		mypid.extend(spawn(('tee','-i','-a',logfile),returnpid=True,fd_pipes={0:pr,1:1,2:2}))
 		retval=os.waitpid(mypid[-1],os.WNOHANG)[1]
 		if retval != 0:
 			# he's dead jim.
@@ -113,7 +127,8 @@ def spawn(mycommand,env={},opt_name=None,fd_pipes=None,returnpid=False,uid=None,
 		if umask:
 			os.umask(umask)
 		try:
-			os.execve(mycommand[0],myargs,env)
+#			print "execing", myc, myargs
+			os.execve(myc,myargs,env)
 		except Exception, e:
 			raise str(e)+":\n   "+mycommand+" "+string.join(myargs)
 		# If the execve fails, we need to report it, and exit

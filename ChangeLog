@@ -7,6 +7,11 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  08 Oct 2004; Brian Harring <ferringb@gentoo.org> portage_exec.py: Removed 
+  the portage_exec.spawn_bash call for tee logging- instead, transferred in 
+  some code that does path lookups (closer to the older portage.spawn call).
+  Path lookup by default is on, but can be disabled via path_lookup=False.
+
   08 Oct 2004; Brian Harring <ferringb@gentoo.org> portage_locks.py: Reverted 
   to using flock by default- if it fails (unavailable), -then- use lockf, then
   hardlink.
