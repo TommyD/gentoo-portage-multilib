@@ -70,12 +70,17 @@ use_with() {
 	if [ -z "$1" ]; then
 		die "use_with() called without parameter."
 	fi
+
+	local UWORD="$2"
+	if [ -z "${UWORD}" ]; then
+		UWORD="$1"
+	fi
 	
 	if use $1; then
-		echo "--with-$2"
+		echo "--with-${UWORD}"
 		return 0
 	else
-		echo "--without-$2"
+		echo "--without-${UWORD}"
 		return 1
 	fi
 }
@@ -84,12 +89,17 @@ use_enable() {
 	if [ -z "$1" ]; then
 		die "use_with() called without parameter."
 	fi
+
+	local UWORD="$2"
+	if [ -z "${UWORD}" ]; then
+		UWORD="$1"
+	fi
 	
 	if use $1; then
-		echo "--enable-$2"
+		echo "--enable-${UWORD}"
 		return 0
 	else
-		echo "--disable-$2"
+		echo "--disable-${UWORD}"
 		return 1
 	fi
 }
@@ -213,6 +223,7 @@ unpack() {
 	local x
 	local y
 	local myfail
+	
 	for x in $@
 	do
 		myfail="failure unpacking ${x}"
@@ -957,6 +968,9 @@ do
 		fi
 		echo `echo "$DEPEND"` > $dbkey
 		echo `echo "$RDEPEND"` >> $dbkey
+		echo `echo "$CDEPEND"` >> $dbkey
+		echo `echo "$PDEPEND"` >> $dbkey
+		echo `echo "$REBUILD"` >> $dbkey
 		echo `echo "$SLOT"` >> $dbkey
 		echo `echo "$SRC_URI"` >> $dbkey
 		echo `echo "$RESTRICT"` >> $dbkey

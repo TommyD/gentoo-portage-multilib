@@ -716,40 +716,47 @@ class depgraph:
 		elif not "recurse" in myparams:
 			return 1
 
+		edepend={}
 		if mytype=="binary":
-			#if not portage.db[portage.root]["bintree"].exists_specific(mykey):
-			#	print "\n\n!!!",mytype,mykey,"not found (possibly blocked by package.mask)\n"
-			#	sys.exit(1)
 			mypkgparts=portage.catpkgsplit(mykey)
 			mytbz2=xpak.tbz2(portage.db[portage.root]["bintree"].getname(mykey))
-			edepend=["",string.join(mytbz2.getelements("RDEPEND")," "),mytbz2.getfile("SLOT",mypkgparts[2])]
+			#edepend=["",string.join(mytbz2.getelements("RDEPEND")," "),mytbz2.getfile("SLOT",mypkgparts[2])]
+			# We're doing this like this for clairity.
+			edepend["DEPEND"] =""
+			edepend["RDEPEND"]=string.join(mytbz2.getelements("RDEPEND")," ")
+			edepend["PDEPEND"]=string.join(mytbz2.getelements("PDEPEND")," ")
+			edepend["REBUILD"]=string.join(mytbz2.getelements("REBUILD")," ")
+			edepend["SLOT"]   =mytbz2.getfile("SLOT",mypkgparts[2])
 		elif mytype=="ebuild":
-			#Since we comment out these lines, we assume that anything fed to us is a valid selection from PORTDIR
-			#if not portage.db[myroot]["porttree"].exists_specific(mykey):
-			#	print "\n\n!!!",mytype,mykey,"not found (possibly blocked by package.mask)\n"
-			#	sys.exit(1)
-			#myebuild=portage.db[myroot]["porttree"].getname(mykey)
 			try:
-				edepend=portage.portdb.aux_get(mykey,["DEPEND","RDEPEND"])
+				#edepend=portage.portdb.aux_get(mykey,["DEPEND","RDEPEND"])
+				for x in ["DEPEND","RDEPEND","PDEPEND","REBUILD"]:
+					edepend[x]=string.join(portage.portdb.aux_get(mykey,[x]), " ")
 			except (KeyError,IOError):
 				print "emerge: create(): aux_get() error on",mykey+"; aborting..."
 				sys.exit(1)
 		mydep={}	
 		mp=string.join(mybigkey)
 		if myroot=="/":
-			mydep["/"]=edepend[0]+" "+edepend[1]
-			if self.select_dep("/",edepend[0]+" "+edepend[1],myparent=mp):
-				return 1
+			mydep["/"]=edepend["DEPEND"]+" "+edepend["RDEPEND"]
+			if not self.select_dep("/",mydep["/"],myparent=mp):
+				return 0
 		else:
-			# We can no longer do this: mydep["/"],mydep[myroot]=edepend
-			# edepend now has more than 2 elements.
-			mydep["/"]=edepend[0]
-			mydep[myroot]=edepend[1]
-			if self.select_dep("/",mydep["/"],myparent=mp):
-				if self.select_dep(myroot,mydep[myroot],myparent=mp):
-					return 1
-		
-		return 0
+			mydep["/"]=edepend["DEPEND"]
+			mydep[myroot]=edepend["RDEPEND"]
+			if not self.select_dep("/",mydep["/"],myparent=mp):
+				return 0
+			elif not self.select_dep(myroot,mydep[myroot],myparent=mp):
+				return 0
+
+		if edepend.has_key("PDEPEND") and edepend["PDEPEND"]:
+			# Post Depend -- Add to the list without a parent, as it depends
+			# on a package being present AND must be built after that package.
+			print "PDEPEND="+edepend["PDEPEND"]
+			if not self.select_dep(myroot,edepend["PDEPEND"]):
+				return 0
+			
+		return 1
 			
 	def select_files(self,myfiles):
 		"given a list of .tbz2s, .ebuilds and deps, create the appropriate depgraph and return a favorite list"
@@ -980,16 +987,23 @@ class depgraph:
 					continue
 				#we need to use "--emptrytree" testing here rather than "empty" param testing because "empty"
 				#param is used for -u, where you still *do* want to see when something is being upgraded.
+				myoldbest=""
 				if (not "--emptytree" in myopts) and portage.db[x[1]]["vartree"].exists_specific(x[2]):
 					addl="  "+yellow("R")+"  "
 				elif (not "--emptytree" in myopts) and portage.db[x[1]]["vartree"].exists_specific_cat(x[2]):
-					addl="   "+turquoise("U")+" "
+					myoldbest=portage.best(portage.db[x[1]]["vartree"].dbapi.match(portage.pkgsplit(x[2])[0]))
+					if portage.pkgcmp(portage.pkgsplit(x[2]), portage.pkgsplit(myoldbest)) < 0:
+						addl="   "+turquoise("U")+blue("D")
+					else:
+						addl="   "+turquoise("U")+" "
 				else:
 					addl=" "+green("N")+"   "
+				if myoldbest:
+					myoldbest=blue("["+portage.pkgsplit(myoldbest)[1]+"-"+portage.pkgsplit(myoldbest)[2]+"]")
 				if x[1]!="/":
-					print "["+x[0]+" "+addl+"]",x[2],"to",x[1]
+					print "["+x[0]+" "+addl+"]",x[2],myoldbest,darkgreen("to "+x[1])
 				else:
-					print "["+x[0]+" "+addl+"]",x[2]
+					print "["+x[0]+" "+addl+"]",x[2],myoldbest
 
 	def outdated(self):
 		return self.outdatedpackages
@@ -1072,7 +1086,7 @@ class depgraph:
 				if retval:
 					sys.exit(1)
 			
-			if not "--pretend" in myopts:
+			if ("--pretend" not in myopts) and ("--fetchonly" not in myopts):
 				# Clean the old package that we have merged over top of it.
 				if portage.settings["AUTOCLEAN"] and (portage.settings["AUTOCLEAN"]=="yes"):
 					xsplit=portage.pkgsplit(x[2])
@@ -1646,6 +1660,7 @@ else:
 		print "Calculating dependencies  ",
 		retval,favorites=mydepgraph.select_files(myfiles)
 		if not retval:
+			print "\n!!! Error calculating dependancies. Please correct."
 			sys.exit(1)
 		print "\b\b ...done!"
 	if ("--pretend" in myopts) and not ("--fetchonly" in myopts):
@@ -1656,4 +1671,3 @@ else:
 			print ">>> Auto-cleaning packages ..."
 			unmerge("clean", ["world"])
 	post_emerge()
-

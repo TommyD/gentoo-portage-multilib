@@ -1,11 +1,36 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-2.0.45-r4 (11 Dec 2002): Feature addition: PDEPEND
+
+  11 Dec 2002; Nicholas Jones <carpaski@gentoo.org> ebuild.sh/portage.py:
+	Added [CDEPEND, PDEPEND, REBUILD] to auxdbkeys and updated ebuild.sh.
+	Prevented autoclean on fetchonly.
+	
+	11 Dec 2002; Nicholas Jones <carpaski@gentoo.org> emerge:
+	Added support for PDEPEND. Rewrote some dep handling variables for
+	readability and ease of use.
+
+*portage-2.0.45-r3 (09 Dec 2002): Touchups.
+
+  09 Dec 2002; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Fixed
+  use_enable() and use_with() so that they actually work -- also don't
+  have to specify 2nd parameter, 1st is assumed. 
+	
+  09 Dec 2002; Nicholas Jones <carpaski@gentoo.org> emerge: Added previous
+  version/downgrade messages to --pretend. Extra message to notify of dep
+  calculation failure as bad deps can exit portage without error.
+
+  09 Dec 2002; Nicholas Jones <carpaski@gentoo.org> portage.py: Attempt
+  at fixing the sandbox-crashes-missing-HOME bug. Added a try/catch around
+  the virts/'del x' code to prevent tracebacks on boxes without a virtuals
+  file.
+
   06 Dec 2002; Nicholas Jones <carpaski@gentoo.org> emerge: Fixed 'xfrom'
-	variable-used-before-assignment message on masked ebuilds.
+  variable-used-before-assignment message on masked ebuilds.
 
   06 Dec 2002; Nicholas Jones <carpaski@gentoo.org> portage.py: Disabled
-	writes to DBs when sandbox is enabled.
+  writes to DBs when sandbox is enabled.
 
   03 Dec 2002; Nicholas Jones <carpaski@gentoo.org> portage.py: Fixed a
   nice bug where python was writing 'L' at the end of long() types for
