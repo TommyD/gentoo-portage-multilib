@@ -2060,7 +2060,7 @@ class graph_display:
 		portage.settings.unlock()
 		portage.settings.setcpv(mydep[2])
 		myflags = portage.settings["USE"].split()
-		portage.settings.setcpv(None)
+		portage.settings.reset()
 		portage.settings.lock()
 		return myflags
 	

@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  26 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge: Fixed a bug in
+  graph_display.use_flags().
+
   24 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge: Fixed a bug in
   the relevant package calculation for dep display.
 
