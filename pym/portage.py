@@ -3,7 +3,7 @@
 # Distributed under the GNU Public License v2
 # $Header$
 
-VERSION="2.0.47-r3"
+VERSION="2.0.47-r4"
 
 from stat import *
 from commands import *
@@ -1098,7 +1098,7 @@ def fetch(myuris, listonly=0):
 						mystat=os.stat(settings["DISTDIR"]+"/"+myfile)
 						# no exception?  file exists. let digestcheck() report
 						# an appropriately for size or md5 errors
-						if myret and (mystat[ST_SIZE]<mydigests[myfile]["size"]):
+						if (mystat[ST_SIZE]<mydigests[myfile]["size"]):
 							# Fetch failed... Try the next one... Kill 404 files though.
 							if (mystat[ST_SIZE]<100000) and (len(myfile)>4) and not ((myfile[-5:]==".html") or (myfile[-4:]==".htm")):
 								html404=re.compile("<title>.*(not found|404).*</title>",re.I|re.M)

@@ -2,6 +2,8 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+*portage-2.0.47-r4 (17 Feb 2003): Wicked Fast, BugFree v3, UserPriv
+
   25 Feb 2003; Nicholas Jones <carpaski@gentoo.org> *: Update docs and help
 	to match the deprecation of actions without '--' preceding them.
 
@@ -11,6 +13,7 @@
 	in PORTAGE_TMPDIR if we have perms to do it... see secpass note. Moved the
 	cachedir creation after settings in created so that we can use spawn instead
 	of system for the calls to 'chown/chmod -R'. Fix the note on make.defaults.
+	Fix for the 404 catcher in the fetch code.
 
   25 Feb 2003; Nicholas Jones <carpaski@gentoo.org> emerge: Move all actions
 	into '--action' form -- Notify of deprecated usages. Moved the functions
