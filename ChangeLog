@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  07 Nov 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild-default-functions.sh: 
+  addition of INSTALL_MASK support to dyn_preinst.   #67190
+
   07 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage_db_flat.py: added a
   mtime cache to revert the the # of stats to 1 for aux_get calls (which calls 
   get_timestamp).

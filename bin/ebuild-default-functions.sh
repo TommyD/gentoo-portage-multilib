@@ -478,6 +478,23 @@ dyn_preinst() {
 		rm -fR "${IMAGE}/usr/share/doc"
 	fi
 
+	# hopefully this will someday allow us to get rid of the no* feature flags
+	# we don't want globbing for initial expansion, but afterwards, we do
+	#rewrite this to use a while loop instead.
+	local shopts=$-
+	set -o noglob
+	for no_inst in `echo "${INSTALL_MASK}"` ; do
+		set +o noglob
+		einfo "Removing ${no_inst}"
+		# normal stuff
+		rm -Rf ${IMAGE}/${no_inst} >&/dev/null
+		# we also need to handle globs (*.a, *.h, etc)
+		find "${IMAGE}" -name ${no_inst} -exec rm -fR {} \; >&/dev/null
+	done
+	# set everything back the way we found it
+	set +o noglob
+	set -${shopts}
+
 	# remove share dir if unnessesary
 	if hasq nodoc $FEATURES -o hasq noman $FEATURES -o hasq noinfo $FEATURES; then
 		rmdir "${IMAGE}/usr/share" &> /dev/null
