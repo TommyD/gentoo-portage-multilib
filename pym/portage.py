@@ -36,7 +36,7 @@
 #on the foo master package (i.e. foo-1.0.tbz2) for backwards compatibility.  However,
 #it will now also be possible to depend on "sys-apps/foo:dev" or "sys-apps/foo:run",
 #and the dep system needs to be upgraded so that it knows how to satisfy these 
-#dependencies.  This should allow the new subpackages system to be integrated 
+#dependencies.	This should allow the new subpackages system to be integrated 
 #seamlessly into our existing dependency hierarchy.
 #
 #Note: It may also be a good idea to allow a make.conf option so that "sys-apps/foo:run"
@@ -46,7 +46,7 @@
 #whole enchilada. (generally, I prefer this approach, though for runtime-only systems
 #subpackages make a lot of sense).
 
-VERSION="@portage_version@"
+VERSION="1.8.9.1"
 
 import string,os
 from stat import *
@@ -492,7 +492,7 @@ def expand(mystring,dictlist=[]):
 				pos=pos+1
 				if len(myvarname)==0:
 					return ""
-				newstring=newstring+settings[myvarname]	
+				newstring=newstring+settings[myvarname] 
 			else:
 				newstring=newstring+mystring[pos]
 				pos=pos+1
@@ -596,7 +596,7 @@ class config:
 				returnme=returnme+expand(x[mykey],self.configlist)
 				#without this break, it concats all settings together -- interesting!
 				break
-		return returnme		
+		return returnme 	
 	
 	def has_key(self,mykey):
 		if not self.populated:
@@ -701,7 +701,7 @@ def fetch(myuris):
 				continue
 			mydigests[myline[2]]={"md5":myline[1],"size":string.atol(myline[3])}
 	if "fetch" in settings["RESTRICT"].split():
-		# fetch is restricted.  Ensure all files have already been downloaded; otherwise,
+		# fetch is restricted.	Ensure all files have already been downloaded; otherwise,
 		# print message and exit.
 		gotit=1
 		for myuri in myuris:
@@ -782,7 +782,7 @@ def fetch(myuris):
 	return 1
 
 def digestgen(myarchives,overwrite=1):
-	"""generates digest file if missing.  Assumes all files are available.  If
+	"""generates digest file if missing.  Assumes all files are available.	If
 	overwrite=1, the digest will only be created if it doesn't exist."""
 	if not os.path.isdir(settings["FILESDIR"]):
 		os.makedirs(settings["FILESDIR"])
@@ -1039,7 +1039,7 @@ expandcache={}
 def expandpath(realroot,mypath):
 	"""The purpose of this function is to resolve the 'real' path on disk, with all
 	symlinks resolved except for the basename, since we may be installing a symlink
-	and definitely don't want it expanded.  In fact, the file that we want to install
+	and definitely don't want it expanded.	In fact, the file that we want to install
 	doesn't need to exist; just the dirname."""
 	global expandcache
 	split=string.split(mypath,"/")
@@ -1063,6 +1063,46 @@ def movefile(src,dest):
 		dstat=os.lstat(os.path.dirname(dest))
 		destexists=0
 	sstat=os.lstat(src)
+	# symlinks have to be handled special
+	if S_ISLNK(sstat[ST_MODE]):
+		# if destexists, toss it, then call os.symlink, shutil.copystat(src,dest)
+		# *real* src
+		if destexists:
+			try:
+				os.unlink(dest)
+			except:
+				print "!!! couldn't unlink",dest
+				# uh oh. oh well
+				return 0
+
+		try:
+			real_src = os.readlink(src)
+		except:
+			print "!!! couldn't readlink",src
+			return 0
+		try:
+			os.symlink(real_src,dest)
+		except:
+			print "!!! couldn't symlink",real_src,"->",dest
+			return 0
+		# update the good stuff
+		if 0:
+			# don't try this - it might just change
+			# the file the symlink points to - we don't want that.
+			try:
+				# taken from shutil.copystat
+				os.utime(dest, (sstat[ST_ATIME], sstat[ST_MTIME]))
+			except:
+				print "!!! couldn't utime",dest
+				return 0
+			try:
+				os.chmod(dest, S_IMODE(sstat[ST_MODE]))
+			except:
+				raise
+				print "!!! couldn't chmod",dest
+				return 0
+		return 1
+
 	if not destexists:
 		if sstat[ST_DEV]==dstat[ST_DEV]:
 			try:
@@ -1080,30 +1120,63 @@ def movefile(src,dest):
 				#copy failure
 				return 0
 	try:
+		# make a hard link
 		os.link(dest,dest+"#orig#")
 	except:
 		#backup failure
+		print "!!! link fail 1 on",dest,"->",dest+"#orig#"
 		return 0
+
 	if sstat[ST_DEV]==dstat[ST_DEV]:
 		try:
 			os.rename(src,dest+"#new#")
 		except:
+			# gotta remove the dest+#orig# code
+			print "!!! rename fail 1 on",src,"->",dest+"#new#"
+			os.unlink(dest+"#orig")
 			return 0
 	else:
 		#not on same fs
 		try:
 			shutil.copy2(src,dest+"#new#")
-			os.unlink(src)
+		except OSError, details:
+			print '!!! copy',src,'->',dest+'#new#','failed -',details
+			return 0
 		except:
 			#copy failure
+			print "!!! copy fail 1 on",src,"->",dest+"#new#"
+			# gotta remove dest+#orig# *and dest+#new#
+			os.unlink(dest+"#orig#")
 			return 0
+		try:
+			os.unlink(src)
+		except:
+			print "!!! unlink fail 1 on",src
+			# gotta remove dest+#orig# *and dest+#new#
+			os.unlink(dest+"#new#")
+			os.unlink(dest+"#orig#")
+			return 0
+	try:
+		os.unlink(dest) # scary!
+	except:
+		# gotta remove dest+#orig# *and dest+#new#
+		print "!!! unlink fail 1 on",dest
+		os.unlink(dest+"#orig#")
+		os.unlink(dest+"#new#")
+		return 0
+
 	try:
 		os.rename(dest+"#new#",dest)
 	except:
+		# uh oh. gotta at least attempt to put dest back
+		print "!!! rename fail 2 on",dest+"#new#","->",dest
+		os.rename(dest+"#orig#",dest) # if this fails, we are in big trouble
+		os.unlink(dest+"#new#")
 		return 0
 	try:
 		os.unlink(dest+"#orig#")
 	except:
+		print "!!! unlink fail 1 on",dest+"#orig#"
 		pass
 	return 1
 
@@ -1278,7 +1351,7 @@ def isspecific(mypkg):
 
 # This function can be used as a package verification function, i.e.
 # "pkgsplit("foo-1.2-1") will return None if foo-1.2-1 isn't a valid
-# package (with version) name.  If it is a valid name, pkgsplit will
+# package (with version) name.	If it is a valid name, pkgsplit will
 # return a list containing: [ pkgname, pkgversion(norev), pkgrev ].
 # For foo-1.2-1, this list would be [ "foo", "1.2", "1" ].  For 
 # Mesa-3.0, this list would be [ "Mesa", "3.0", "0" ].
@@ -1852,7 +1925,7 @@ class packagetree:
 		returns best match for mypkgdep in the tree.  Accepts
 		a single depstring, such as ">foo/bar-1.0" and finds
 		the most recent version of foo/bar that satisfies the
-		dependency and returns it, i.e: "foo/bar-1.3".  Works
+		dependency and returns it, i.e: "foo/bar-1.3".	Works
 		for >,<,>=,<=,=,and general deps.  Don't call with a !
 		dep, since there is no good match for a ! dep.
 		"""
@@ -1950,7 +2023,7 @@ class packagetree:
 	def dep_nomatch(self,mypkgdep):
 		"""dep_nomatch() has a very specific purpose.  You pass it a dep, like =sys-apps/foo-1.0.
 		Then, it scans the sys-apps/foo category and returns a list of sys-apps/foo packages that
-		*don't* match.  This method is used to clean the portagetree using entries in the 
+		*don't* match.	This method is used to clean the portagetree using entries in the 
 		make.profile/packages and profiles/package.mask files.
 		It is only intended to process specific deps, but should be robust enough to pass any type
 		of string to it and have it not die."""
@@ -2230,7 +2303,7 @@ class portagetree(packagetree):
 		self.domask()
 		
 	def domask(self):
-		"mask out appropriate entries in our database.  We call this whenever we add to the db."
+		"mask out appropriate entries in our database.	We call this whenever we add to the db."
 		for x in self.pkgmasklines:
 			matches=self.dep_match(x)
 			if matches:
@@ -2445,7 +2518,7 @@ class dblink:
 				except OSError:
 					#We couldn't remove the dir; maybe it's immutable?
 					pass
-				print "<<<       ","dir",obj
+				print "<<<	 ","dir",obj
 			elif pkgfiles[obj][0]=="sym":
 				if not os.path.islink(obj):
 					print "--- !sym  ","sym", obj
@@ -2472,14 +2545,14 @@ class dblink:
 							myppath=ppath
 							break
 				if myppath:
-					print "--- cfg   ","sym",obj
+					print "--- cfg	 ","sym",obj
 					continue
 				try:
 					os.unlink(obj)
 				except OSError:
 					#immutable?
 					pass
-				print "<<<       ","sym",obj
+				print "<<<	 ","sym",obj
 			elif pkgfiles[obj][0]=="obj":
 				if not os.path.isfile(obj):
 					print "--- !obj  ","obj", obj
@@ -2504,13 +2577,13 @@ class dblink:
 							myppath=ppath
 							break
 				if myppath:
-					print "--- cfg   ","obj",obj
+					print "--- cfg	 ","obj",obj
 				else:
 					try:
 						os.unlink(obj)
 					except OSError:
 						pass		
-					print "<<<       ","obj",obj
+					print "<<<	 ","obj",obj
 			elif pkgfiles[obj][0]=="fif":
 				if not isfifo(obj):
 					print "--- !fif  ","fif", obj
@@ -2529,15 +2602,15 @@ class dblink:
 							myppath=ppath
 							break
 				if myppath:
-					print "--- cfg   ","fif",obj
+					print "--- cfg	 ","fif",obj
 					continue
 				try:
 					os.unlink(obj)
 				except OSError:
 					pass
-				print "<<<       ","fif",obj
+				print "<<<	 ","fif",obj
 			elif pkgfiles[obj][0]=="dev":
-				print "---       ","dev",obj
+				print "---	 ","dev",obj
 
 		#remove provides -- We don't do this anymore (drobbins, 28 Mar 2002)
 		#reasoning is that just unmerging postfix doesn't mean that you don't want virtual/mta
@@ -2594,11 +2667,11 @@ class dblink:
 		# we do a first merge; this will recurse through all files in our srcroot but also build up a
 		# "second hand" of symlinks to merge later
 		self.mergeme(srcroot,destroot,outfile,secondhand,"")
-		# now, it's time for dealing our second hand; we'll loop until we can't merge anymore.  The rest are
+		# now, it's time for dealing our second hand; we'll loop until we can't merge anymore.	The rest are
 		# broken symlinks.  We'll merge them too.
 		lastlen=0
 		while len(secondhand) and len(secondhand)!=lastlen:
-			# clear the thirdhand.  Anything from our second hand that couldn't get merged will be
+			# clear the thirdhand.	Anything from our second hand that couldn't get merged will be
 			# added to thirdhand.
 			thirdhand=[]
 			self.mergeme(srcroot,destroot,outfile,thirdhand,secondhand)
@@ -2888,7 +2961,7 @@ def cleanup_pkgmerge(mypkg,origdir):
 
 def pkgmerge(mytbz2,myroot):
 	"""will merge a .tbz2 file, returning a list of runtime dependencies that must be
-		satisfied, or None if there was a merge error.  This code assumes the package
+		satisfied, or None if there was a merge error.	This code assumes the package
 		exists."""
 	if mytbz2[-5:]!=".tbz2":
 		print "!!! Not a .tbz2 file"
@@ -2948,7 +3021,7 @@ if root != "/":
 		print
 		sys.exit(1)
 	elif not os.path.isdir(root[:-1]):
-		print "!!! Error: ROOT",root[:-1],"is not a directory.  Please correct this."
+		print "!!! Error: ROOT",root[:-1],"is not a directory.	Please correct this."
 		print "!!! Exiting."
 		print
 		sys.exit(1)
