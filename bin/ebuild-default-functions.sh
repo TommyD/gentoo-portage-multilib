@@ -432,7 +432,7 @@ dyn_install() {
 						#UNSAFE=$(($UNSAFE + 1))
 						echo -ne '\a'
 						echo "QA Notice: ${x:${#D}:${#x}} is setXid, dynamically linked and using lazy bindings."
-						echo "This combination is generally discouraged. Try: LDFLAGS='-Wl,-z,now' emerge ${PN}"
+						echo "This combination is generally discouraged. Try: CFLAGS='-Wl,-z,now' emerge ${PN}"
 						echo -ne '\a'
 						sleep 1
 					fi
