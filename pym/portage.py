@@ -729,16 +729,16 @@ def fetch(myuris):
 			print ">>> manually.  See the comments in the ebuild for more information."
 			return 0
 		return 1
+	locations=mirrors[:]
+	filedict={}
 	for myuri in myuris:
-		if myuri[:14]=="http://mirror/":
-			#generic syntax for a file mirrored directly on a gentoo mirror
-			if len(mirrors):
-				#we have a mirror specified; use it:
-				myuri=mirrors[0]+"/distfiles/"+myuri[14:]
-			else:
-				#no mirrors specified in config files, so use a default:
-				myuri="http://www.ibiblio.org/gentoo/distfiles/"+myuri[14:]
 		myfile=os.path.basename(myuri)
+		if not filedict.has_key(myfile):
+			filedict[myfile]=[]
+			for y in range(0,len(locations)):
+				filedict[myfile].append(locations[y]+"/distfiles/"+myfile)
+		filedict[myfile].append(myuri)
+	for myfile in filedict.keys():
 		locfetch=fetchcommand
 		docontinue=0
 		try:
@@ -763,12 +763,15 @@ def fetch(myuris):
 			#you can't use "continue" when you're inside a "try" block
 			continue
 		gotit=0
-		locations=mirrors[:]
-		for y in range(0,len(locations)):
-			locations[y]=locations[y]+"/distfiles/"+myfile
-		#we'll try myuri last
-		locations.append(myuri)
-		for loc in locations:
+		for loc in filedict[myfile]:
+			if loc[:14]=="http://mirror/":
+				#generic syntax for a file mirrored directly on a gentoo mirror
+				if len(mirrors):
+					#we have a mirror specified; use it:
+					loci=mirrors[0]+"/distfiles/"+myuri[14:]
+				else:
+					#no mirrors specified in config files, so use a default:
+					myuri="http://www.ibiblio.org/gentoo/distfiles/"+myuri[14:]
 			print
 			print ">>> Downloading",loc
 			myfetch=string.replace(locfetch,"${URI}",loc)
