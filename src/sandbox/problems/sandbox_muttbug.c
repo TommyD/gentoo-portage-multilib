@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 int main(int argc, char *argv[])
 {
@@ -35,5 +36,6 @@ int main(int argc, char *argv[])
 	
 	printf("fclose\n");
 	fclose(fd);
-	printf("... done\n");
+        printf("... done\n");
+        return 0;
 }
