@@ -1813,7 +1813,7 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0):
 				actionmap[mydo]["args"][0],
 				actionmap[mydo]["args"][1])
 
-def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0):
+def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,cleanup=0):
 	global db
 	
 	ebuild_path = os.path.abspath(myebuild)
@@ -1906,6 +1906,9 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0):
 	if mydo not in ["fetch","digest","manifest"]:
 		# Should be ok again to set $T, as sandbox does not depend on it
 		mysettings["T"]=mysettings["BUILDDIR"]+"/temp"
+		if cleanup or mydo=="setup":
+			if os.path.exists(mysettings["T"]):
+				shutil.rmtree(mysettings["T"])
 		if not os.path.exists(mysettings["T"]):
 			os.makedirs(mysettings["T"])
 		os.chown(mysettings["T"],portage_uid,portage_gid)
@@ -2243,7 +2246,7 @@ def merge(mycat,mypkg,pkgloc,infloc,myroot,mysettings,myebuild=None):
 def unmerge(cat,pkg,myroot,mysettings,mytrimworld=1):
 	mylink=dblink(cat,pkg,myroot,mysettings)
 	if mylink.exists():
-		mylink.unmerge(trimworld=mytrimworld)
+		mylink.unmerge(trimworld=mytrimworld,cleanup=1)
 	mylink.delete()
 
 def relparse(myver):
@@ -5009,7 +5012,7 @@ class dblink:
 						masked=len(pmpath)
 		return (protected > masked)
 
-	def unmerge(self,pkgfiles=None,trimworld=1):
+	def unmerge(self,pkgfiles=None,trimworld=1,cleanup=0):
 		global dircache
 		dircache={}
 		mydbdir_lock = lockdir(self.dbdir)
@@ -5039,7 +5042,7 @@ class dblink:
 
 		#do prerm script
 		if myebuildpath and os.path.exists(myebuildpath):
-			a=doebuild(myebuildpath,"prerm",self.myroot,self.settings)
+			a=doebuild(myebuildpath,"prerm",self.myroot,self.settings,cleanup=cleanup)
 			# XXX: Decide how to handle failures here.
 			if a >= (1<<8):
 				writemsg("!!! FAILED prerm: "+str(a)+"\n")
@@ -5264,7 +5267,7 @@ class dblink:
 
 		unlockdir(mydbdir_lock)
 
-	def treewalk(self,srcroot,destroot,inforoot,myebuild):
+	def treewalk(self,srcroot,destroot,inforoot,myebuild,cleanup=0):
 		global db
 		# srcroot  = ${D};
 		# destroot = where to merge, ie. ${ROOT},
@@ -5298,9 +5301,9 @@ class dblink:
 		if myebuild:
 			# if we are merging a new ebuild, use *its* pre/postinst rather than using the one in /var/db/pkg 
 			# (if any).
-			a=doebuild(myebuild,"preinst",root,self.settings)
+			a=doebuild(myebuild,"preinst",root,self.settings,cleanup=cleanup)
 		else:
-			a=doebuild(inforoot+"/"+self.pkg+".ebuild","preinst",root,self.settings)
+			a=doebuild(inforoot+"/"+self.pkg+".ebuild","preinst",root,self.settings,cleanup=cleanup)
 
 		# XXX: Decide how to handle failures here.
 		if a >= (1<<8):
@@ -5682,8 +5685,8 @@ class dblink:
 						sys.exit(1)
 				print zing+" "+mydest
 	
-	def merge(self,mergeroot,inforoot,myroot,myebuild=None):
-		return self.treewalk(mergeroot,myroot,inforoot,myebuild)
+	def merge(self,mergeroot,inforoot,myroot,myebuild=None,cleanup=0):
+		return self.treewalk(mergeroot,myroot,inforoot,myebuild,cleanup=cleanup)
 
 	def getstring(self,name):
 		"returns contents of a file with whitespace converted to spaces"
@@ -5777,7 +5780,7 @@ def pkgmerge(mytbz2,myroot,mysettings):
 	# auto-unmerge, virtual/provides updates, etc.
 	mysettings.load_infodir(infloc)
 	mylink=dblink(mycat,mypkg,myroot,mysettings)
-	mylink.merge(pkgloc,infloc,myroot,myebuild)
+	mylink.merge(pkgloc,infloc,myroot,myebuild,cleanup=1)
 
 	if not os.path.exists(infloc+"/RDEPEND"):
 		returnme=""

@@ -1472,7 +1472,7 @@ class depgraph:
 						#emergelog(">>> This is a system package, let's pack a rescue tarball.")
 					#create pkg, then merge pkg
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Cleaning ("+x[pkgindex]+"::"+y+")")
-					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug)
+					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug,cleanup=1)
 					if retval:
 						sys.exit(1)
 					self.pkgsettings["FEATURES"]=myorigfeat # Put back flags.
@@ -1491,7 +1491,7 @@ class depgraph:
 							sys.exit(1)
 				else:
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Cleaning ("+x[pkgindex]+"::"+y+")")
-					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug)
+					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug,cleanup=1)
 					if retval:
 						sys.exit(1)
 					self.pkgsettings["FEATURES"]=myorigfeat # Put back flags.
@@ -1529,7 +1529,7 @@ class depgraph:
 
 				if ("noclean" not in portage.features) and (x[0] != "binary"):
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Post-Build Cleaning ("+x[pkgindex]+"::"+y+")")
-					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug)
+					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug,cleanup=1)
 					if retval:
 						sys.exit(1)
 			

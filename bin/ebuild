@@ -34,7 +34,12 @@ for opt in opts:
 for x in pargs[1:]:
 	try:
 		tmpsettings = portage.config(clone=portage.settings)
-		a=portage.doebuild(pargs[0],x,getroot(),tmpsettings,debug=debug)
+
+		if x in ['clean','config']:
+			cleanup=1
+		else:
+			cleanup=0
+		a=portage.doebuild(pargs[0],x,getroot(),tmpsettings,debug=debug,cleanup=cleanup)
 	except KeyboardInterrupt:
 		print "(interrupted by user -- ctrl-C?)"
 		a=1
