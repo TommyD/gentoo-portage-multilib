@@ -2,6 +2,13 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  17 Dec 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Fixed a
+	permission issue involving $T and userpriv. Lockfile touchup.
+	
+	17  Dec 2003; Nicholas Jones <carpaski@gentoo.org> portage_db_*: Added
+	templates and db for cache interfaces. Presently have a anydbm and a
+	flat file interface working. See the test for operations.
+
   15 Dec 2003; Nicholas Jones <carpaski@gentoo.org> emerge: Added a call
 	to portageq that causes python to create optimized modules prior to it
 	ending up inside the sandbox. Added more output and logging to sync.

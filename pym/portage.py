@@ -1892,15 +1892,15 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0):
 			pass
 		return spawn("/usr/sbin/ebuild.sh depend",mysettings)
 
-	# Should be ok again to set $T, as sandbox does not depend on it
-	mysettings["T"]=mysettings["BUILDDIR"]+"/temp"
-	if not os.path.exists(mysettings["T"]):
-		os.makedirs(mysettings["T"])
-	os.chown(mysettings["T"],portage_uid,portage_gid)
-	os.chmod(mysettings["T"],06770)
-
 	# Build directory creation isn't required for any of these.
 	if mydo not in ["fetch","digest","manifest"]:
+		# Should be ok again to set $T, as sandbox does not depend on it
+		mysettings["T"]=mysettings["BUILDDIR"]+"/temp"
+		if not os.path.exists(mysettings["T"]):
+			os.makedirs(mysettings["T"])
+		os.chown(mysettings["T"],portage_uid,portage_gid)
+		os.chmod(mysettings["T"],06770)
+
 		try:
 			if ("nouserpriv" not in string.split(mysettings["RESTRICT"])):
 				if ("userpriv" in features) and (portage_uid and portage_gid):
@@ -2086,7 +2086,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0):
 
 	nosandbox=(("userpriv" in features) and ("usersandbox" not in features))
 	actionmap={
-			  "depend": {                 "args":(1,0)},         # without  / root
+			  "depend": {                 "args":(0,1)},         # sandbox  / portage
 			  "setup":  {                 "args":(1,0)},         # without  / root
 			 "unpack":  {"dep":"setup",   "args":(0,1)},         # sandbox  / portage
 			"compile":  {"dep":"unpack",  "args":(nosandbox,1)}, # optional / portage
@@ -3383,19 +3383,17 @@ class dbapi:
 		return counter
 
 	def invalidentry(self, mypath):
-		match = re.search(".*/-MERGING-(.*)",mypath)
-		if match:
-			writemsg(red("INCOMPLETE MERGE:")+mypath+"\n")
-		else:
-			if re.search("portage_lockfile$",mypath):
-				if not os.environ.has_key("PORTAGE_MASTER_PID"):
-					writemsg("Lockfile removed: %s\n" % mypath)
-					unlockfile((mypath,None,None))
-				else:
-					# Nothing we can do about it. We're probably sandboxed.
-					pass
+		if re.search("portage_lockfile$",mypath):
+			if not os.environ.has_key("PORTAGE_MASTER_PID"):
+				writemsg("Lockfile removed: %s\n" % mypath)
+				unlockfile((mypath,None,None))
 			else:
-				writemsg("!!! Invalid db entry: %s\n" % mypath)
+				# Nothing we can do about it. We're probably sandboxed.
+				pass
+		elif re.search(".*/-MERGING-(.*)",mypath):
+			writemsg(red("INCOMPLETE MERGE:")+" "+mypath+"\n")
+		else:
+			writemsg("!!! Invalid db entry: %s\n" % mypath)
 
 
 
