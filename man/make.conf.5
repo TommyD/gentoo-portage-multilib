@@ -91,49 +91,73 @@ Defines the location of your local source file repository.
 .br
 Defaults to ${PORTDIR}/distfiles.
 .TP
-\fBFEATURES\fR = \fI"buildpkg ccache cvs digest mirror noauto noclean sandbox"\fR
+\fBFEATURES\fR = \fI"sandbox buildpkg ccache distcc userpriv usersandbox"\fR
 Defines actions portage takes by default.  These options should
 not be changed by anyone but developers and/or maintainers.  'sandbox' is an important
 part of \fBFEATURES\fR and should not be disabled by default.
-.br
- 
-.br
-\fIbuildpkg\fR: binary packages will always be generated.
-.br
-\fIccache\fR: enable portage support for the ccache package.
-.br
-\fIcvs\fR: enable auto-commit files after emerging a package.
-.br
-\fIdigest\fR: autogenerate a digest for packages. Auto-commit it if
-\fIcvs\fR is enabled.
-.br
-\fIdistcc\fR: enable support for distcc.
-.br
-\fIkeeptemp\fR: Do not delete the ${T} directories when performing a clean.
-.br
-\fIkeepwork\fR: prevents the clean phase from deleting the $WORKDIR
-.br
-\fImirror\fR: cause \fBFETCHCOMMAND\fR to always be run even if
-file exists in \fBDISTDIR\fR.
-.br
-\fInoauto\fR: when utilizing \fBebuild\fR(1), only run the function requested.
-.br
-\fInoclean\fR: do not clean out the build directory after finishing
-merging the package.
-.br
-\fInostrip\fR: prevents the stripping of binaries
-.br
-\fInotitles\fR: disables xterm titlebar updates (which contain status info).
-.br
-\fIsandbox\fR: enable sandbox-ing when running \fBemerge\fR(1) and
-\fBebuild(1)\fR.
-.br
-\fIuserpriv\fR: have portage drop root privledges and compile packages as
-portage:portage without a sandbox unless \fIusersandbox\fR is enable also.
-.br
-\fIusersandbox\fR: enable sandbox in the compile phase, when running
-without root privs (\fIuserpriv\fR).
-.br
+.RS
+.TP
+.B autoaddcvs
+Causes portage to automatically try to add files to cvs that will have to be added 
+later.  Done at generation times and only works when \fIcvs\fR is also in 
+\fBFEATURES\fR.
+.B buildpkg
+Binary packages will be created for all packages that are merged.
+.TP
+.B ccache
+Enable portage support for the ccache package.
+.TP
+.B cvs
+A feature for developers that causes portage to enable all USE flags in SRC_URI
+when creating digests.
+.TP
+.B digest
+Autogenerate a digest for packages.
+.TP
+.B distcc
+Enable portage support for the distcc package.
+.TP
+.B fixpackages
+Runs the script that will fix the dependencies in all binary packages.  This is 
+run whenever packages are moved around in the portage tree.  Please note that this 
+can take a lot of time.
+.TP
+.B keeptemp
+Do not delete the ${T} directory after the merge process.
+.TP
+.B keepwork
+Do not delete the ${WORKDIR} directory after the merge process.
+.TP
+.B mirror
+This will cause \fBFETCHCOMMAND\fR to always be run even if 
+the file already exists in \fBDISTDIR\fR.
+.TP
+.B noauto
+When utilizing \fBebuild\fR(1), only run the function requested.
+.TP
+.B noclean
+Do not delete the the source and temporary files after the merge process.
+.TP
+.B nostrip
+Prevents the stripping of binaries that are merged to the live filesystem.
+.TP
+.B notitles
+Disables xterm titlebar updates (which contains status info).
+.TP
+.B sandbox
+Enable sandbox-ing when running \fBemerge\fR(1) and \fBebuild(1)\fR.
+.TP
+.B strict
+Have portage react strongly to conditions that have the potential to be 
+dangerous (like missing or incorrect Manifests).
+.TP
+.B userpriv
+Allow portage to drop root privledges and compile packages as 
+portage:portage without a sandbox (unless \fIusersandbox\fR is also used).
+.TP
+.B usersandbox
+Enable the sandbox in the compile phase, when running without root privs (\fIuserpriv\fR).
+.RE
 .TP
 \fBFETCHCOMMAND\fR
 This variable contains the command used for fetching package\-sources from
