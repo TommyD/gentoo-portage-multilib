@@ -43,11 +43,11 @@ main(int argc, char *const *argv)
     FILE *file_in = NULL;
     FILE *file_out = NULL;
     char **funcs = NULL;	char **vars = NULL;
-    char *file_buff=NULL;
+    char *file_buff=NULL, *end = NULL;
     int funcs_count = 0;	int vars_count = 0;
     int funcs_alloced = 0;	int vars_alloced = 0;
     int c;
-    size_t  file_size=0;
+    size_t  file_size=0, buff_alloced = 0;
     regex_t vre, *pvre=NULL;
     regex_t fre, *pfre=NULL;
     const char *fsr, *vsr;
@@ -140,25 +140,26 @@ main(int argc, char *const *argv)
 	    fprintf(stderr, "failed allocing needed memory for file.\n");
 	    exit(MEM_FAIL);
 	}
+	buff_alloced = 4096;
 	while(!feof(file_in)) {
 	    c=fread(file_buff+file_size, 1, 4096, file_in);
 	    file_size += c;
-	    if(c != 4096 && !feof(file_in)) {
-		fprintf(stderr,"caught end\n");
-	    }
 	    // realloc +1 for null termination.
-	    if((file_buff = (char *)realloc(file_buff, file_size + c + 1)) == NULL) {
-		fprintf(stderr, "failed allocing needed memory for file.\n");
-		exit(MEM_FAIL);
+	    if(buff_alloced < file_size + 4096) {
+ 		if((file_buff = (char *)realloc(file_buff, file_size + c + 1)) == NULL) {
+		    fprintf(stderr, "failed allocing needed memory for file.\n");
+		    exit(MEM_FAIL);
+		}
+		buff_alloced += 4096;
 	    }
 	}
-	file_size += c;
     }
     file_buff[file_size] = '\0';
     fclose(file_in);
 
     init_regexes();
-    process_scope(file_out,file_buff, file_buff + file_size,pvre, pfre, '\0');
+    end=process_scope(file_out,file_buff, file_buff + file_size,pvre, pfre, '\0');
+    d1printf("%i == %i\n", end - file_buff, file_size);
 
     fflush(file_out);
     fclose(file_out);
