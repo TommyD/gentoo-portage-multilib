@@ -2,6 +2,14 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+*portage-2.0.50_pre10 (31 Dec 2003): API change + enhancements
+
+  31 Dec 2003; Nicholas Jones <carpaski@gentoo.org> emerge: Found the line
+  that was causing the package dir to be printed... It was a spawn call.
+
+  31 Dec 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Fix for
+  the symlink corruption in the db from the movefile() bug.
+
   29 Dec 2003; Masatomo Nakano <nakano@gentoo.org> portage.py:
   Fixed bug which emerge stops when no denpendencies exist in || ( ) 
   by USE flags. This closes #36568.
