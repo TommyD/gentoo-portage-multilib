@@ -1,5 +1,5 @@
 #!/bin/bash
-if [ -z "${T}" ] && [ -z "${2}" ]; then
+if [ -z "${T}" ] || [ -z "${2}" ]; then
 	echo "Nothing defined to do."
 	exit 1
 else
