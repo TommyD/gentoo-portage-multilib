@@ -8,6 +8,9 @@
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
 
+  20 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> repoman: Added check for
+  digest entries that aren't used within the corresponding ebuild's SRC_URI.
+
   20 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> emerge: Added support for
   EMERGE_WARNING_DELAY defaulting it to 10. Changed all the hardcoded delays
   to use it. Needed for the catalyst guys as it includes a number of unmerges
