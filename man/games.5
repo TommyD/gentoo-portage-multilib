@@ -26,7 +26,11 @@ The location where games will save their configuration files.
 .TP
 .B "GAMES_STATEDIR" = \fI"/var/games"\fR
 The location where games will save their state in behind runs.  This
-includes things like highscore files.
+includes things like highscore files.  If a game creates more than
+one file, have it save all files inside \fB${GAMES_STATEDIR}/${PN}\fR.  
+Otherwise, just create the single file in \fB${GAMES_STATEDIR}/\fR.  
+Again, try to use a package specific name for the file if you are
+creating it directly in the statedir.
 .TP
 .B "GAMES_LIBDIR" = \fI"/usr/games/lib"\fR
 The location where games will store their libraries.
