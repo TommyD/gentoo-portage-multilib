@@ -4,6 +4,10 @@
 
 *portage-2.0.47-r2 (17 Feb 2003): Wicked Fast, BugFree, UserPriv
 
+  18 Feb 2003; Alain Penders <alain@gentoo.org> portage-2.0.47-r2.ebuild:
+  If $PORTAGE_TEST is set, skip the beeps/delay messages.  Needed to make
+  the regression test scripts bearable :-)
+
   17 Feb 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Fixed the
   depcache code once again -- ebuild and cache were never set to the same
   mtimes. Removed last os.system() call.
