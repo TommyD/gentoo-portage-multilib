@@ -845,7 +845,6 @@ class depgraph:
 		
 		self.missingbins=[]
 		self.myaction=myaction
-		self.digraph=portage.digraph()
 		self.mynewgraph = DependencyGraph()
 		self.orderedkeys=[]
 		self.outdatedpackages=[]
@@ -874,9 +873,9 @@ class depgraph:
 		#print "mybigkey:",mybigkey
 		
 		jbigkey=string.join(mybigkey)
-		if self.digraph.hasnode(jbigkey+" merge") or self.digraph.hasnode(jbigkey+" nomerge"):
+		if self.mynewgraph.has_node(jbigkey+" merge") or self.mynewgraph.has_node(jbigkey+" nomerge"):
 			if myparent:
-				if self.digraph.hasnode(jbigkey+" merge"):
+				if self.mynewgraph.has_node(jbigkey+" merge"):
 					child = jbigkey+" merge"
 				else:
 					child = jbigkey+" nomerge"
@@ -898,7 +897,8 @@ class depgraph:
 				# node and not add it to our digraph if it doesn't apply to us.
 				if myparent and (self.mydbapi[myroot].match(mykey) or vardbapi.match(mykey)):
 					mybigkey.append(myparent.split()[2])
-					self.digraph.addnode(string.join(mybigkey),myparent)
+					self.mynewgraph.add_node(string.join(mybigkey))
+					self.mynewgraph.add_relation(myparent, string.join(mybigkey))
 				return 1
 
 		if myuse == None:
@@ -944,7 +944,6 @@ class depgraph:
 
 		# whatever the case, we need to add the node to our digraph so
 		# that children can depend upon it.
-		self.digraph.addnode(string.join(mybigkey),myparent)
 		self.mynewgraph.add_node(string.join(mybigkey))
 		if myparent:
 			self.mynewgraph.add_relationship(myparent, string.join(mybigkey))
@@ -1091,7 +1090,7 @@ class depgraph:
 
 		missing=0
 		if "--usepkgonly" in myopts:
-			for x in self.digraph.dict.keys():
+			for x in self.mynewgraph.get_all_nodes():
 				xs=string.split(x," ")
 				if (xs[0] != "binary") and (xs[3]=="merge"):
 					if missing == 0:
@@ -1269,32 +1268,18 @@ class depgraph:
 		
 
 	def altlist(self):
-		mygraph=self.digraph.copy()
+		mygraph=self.mynewgraph.clone()
 		dolist=["/"]
 		retlist=[]
 		for x in portage.db.keys():
 			portage.db[x]["merge"]=[]
 			if x not in dolist:
 				dolist.append(x)
-		while (not mygraph.empty()):
-			mycurkey=mygraph.firstzero()
-			if not mycurkey:
-				print "!!! Error: circular dependencies:"
-				print
-				for x in mygraph.dict.keys():
-					for y in mygraph.dict[x][1]:
-						print y,"depends on",x
-				print
-				sys.exit(1)
+		while mygraph.get_all_nodes():
+			mycurkey=mygraph.get_leaf_nodes()[0]
 			splitski=string.split(mycurkey)
-			#I'm not sure of the significance of the following lines (vestigal?) so I'm commenting 'em out.
-			#These lines remove already-merged things from our alt-list
-			#if "--update" in myopts:
-			#	if not portage.db["/"]["vartree"].exists_specific(splitski[2]):
-			#		portage.db["/"]["merge"].append(splitski)
-			#else:
 			portage.db[splitski[1]]["merge"].append(splitski)	
-			mygraph.delnode(mycurkey)
+			mygraph.remove_node(mycurkey)
 		for x in dolist:
 			for y in portage.db[x]["merge"]:
 				retlist.append(y)
@@ -1402,26 +1387,12 @@ class depgraph:
 		if "--verbose" in myopts:
 			overlays = string.split(portage.settings['PORTDIR_OVERLAY'])
 		
-		if "--tree" in myopts:
-			mylist.reverse()
-			mygraph=self.digraph.copy()
-
 		i = 0
 		while i < len(mylist):
 			if mylist[i][-1]=="nomerge":
-				if not ("--tree" in myopts):
-					# we don't care about this elements
-					mylist.pop(i)
-					continue
-				if (i == (len(mylist) - 1)) \
-				   or (mygraph.depth(string.join(mylist[i])) \
-				       >= mygraph.depth(string.join(mylist[i+1]))):
-					# end of a useless branch (may be the last one)
-					# -> delete the element and test the previous one
-					mylist.pop(i)
-					if i > 0:
-						i -= 1
-					continue
+				# we don't care about this elements
+				mylist.pop(i)
+				continue
 			# the branch continues, or we've found a good element.
 			# -> let's see what's next, if anything
 			i += 1
@@ -1575,8 +1546,6 @@ class depgraph:
 				newlp=oldlp-30
 				
 				indent=""
-				if ("--tree" in myopts):
-					indent=" "*mygraph.depth(string.join(x))
 
 				if myoldbest:
 					myoldbest=portage.pkgsplit(myoldbest)[1]+"-"+portage.pkgsplit(myoldbest)[2]
@@ -2804,7 +2773,7 @@ elif "depclean"==myaction:
 		sys.stderr.write("\nThese are required by '--usepkgonly' -- Terminating.\n\n")
 		sys.exit(1)
 
-	alldeps=mydepgraph.digraph.allnodes()
+	alldeps=mydepgraph.mynewgraph.get_all_nodes()
 	myvarlist=portage.vardbapi(portage.root).cp_all()
 
 	if not syslist:
@@ -2985,7 +2954,11 @@ else:
 			mydepgraph.display(mydepgraph.altlist())
 	else:
 		if ("--buildpkgonly" in myopts):
-			if not mydepgraph.digraph.hasallzeros():
+			has_deps = False
+			for node in mydepgraph.mynewgraph.get_all_nodes():
+				if mydepgraph.mynewgraph.get_relationships(node)[0]:
+					has_deps = True
+			if has_deps:
 				print "\n!!! --buildpkgonly requires all dependencies to be merged."
 				print "!!! Cannot merge requested packages. Merge deps and try again.\n"
 				sys.exit(1)

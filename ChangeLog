@@ -7,6 +7,15 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  07 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> dispatch-conf: Moved back
+  to the version of dispatch-conf that was released (due to python-2.2
+  compatibility) and fixed a small type in that version. #70282
+
+  07 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> portage_dep.py emerge: Added
+  a few more readable optimizations to the DependencyGraph class along with
+  apprioriate comments. Changed all usage of digraph in emerge to use the new
+  DependencyGraph class.
+
   06 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> portage_dep.py emerge:
   Added full code comments to the DependencyGraph class. Did some code
   optimization where readability was not adversly affected. Removed the

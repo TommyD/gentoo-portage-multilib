@@ -181,6 +181,12 @@ class DependencyGraph:
 		# { node : ( [node], [node] ) }
 		self.graph = {}
 
+		# Strictly speaking, the graph shouldn't care about the order
+		# that packages are added to the graph, but using it ensures
+		# that system packages stay before world packages when pulling
+		# nodes one at a time.
+		self.order = []
+
 	def clone(self):
 		"""Create an exact duplicate of this graph."""
 		clone = DependencyGraph()
@@ -190,6 +196,7 @@ class DependencyGraph:
 		for node in self.graph:
 			clone.graph[node] = (self.graph[node][0][:],
 			                     self.graph[node][1][:])
+		clone.order = self.order[:]
 		return clone
 
 	def has_node(self, node):
@@ -201,6 +208,7 @@ class DependencyGraph:
 		if self.graph.has_key(node):
 			return
 		self.graph[node] = ([], [])
+		self.order.append(node)
 
 	def add_relationship(self, parent, child):
 		"""Add a relationship between two pre-existing nodes."""
@@ -231,9 +239,6 @@ class DependencyGraph:
 		# This code also needs to raise an exception if the node
 		# has not been added prior.
 
-		# This could be speeded up by killing the get_relationships
-		# call and duplicating the code here. Should only be done if
-		# absolutely necessary.
 		relationships = self.get_relationships(node)
 
 		# Ensuring that all relationships are destroyed keeps the
@@ -247,6 +252,9 @@ class DependencyGraph:
 		# Kill of the other side of the relationships in one shot.
 		del self.graph[node]
 
+		# Make sure to remove the node from the ordered list as well.
+		self.order.remove(node)
+
 		return relationships
 
 	def get_all_nodes(self):
@@ -254,7 +262,9 @@ class DependencyGraph:
 
 		@rtype: [node]
 		"""
-		return self.graph.keys()
+		# Assuming our graph is in a sane state, self.order contains
+		# the same set of nodes as self.graph.keys().
+		return self.order[:]
 
 	def get_leaf_nodes(self):
 		"""Return a list of all nodes that have no child dependencies.
@@ -273,7 +283,7 @@ class DependencyGraph:
 		# Iterate through the graph's nodes and add any that have no
 		# child dependencies. If we find such nodes, return them.
 		nodes = []
-		for node in self.graph:
+		for node in self.order:
 			if not self.graph[node][1]:
 				nodes.append(node)
 		if nodes:
@@ -328,32 +338,45 @@ class DependencyGraph:
 
 		@rtype: [node]
 		"""
-		# XXX: This is a minimalist implementation that can be highly
-		# optimized later on.
-
 		# Create a copy of our graph.
-		graph = self.clone()
+		clone = self.clone()
 
 		# Keep processing the graph until it is empty.
 		roots = []
-		while graph.get_all_nodes():
+		while clone.graph:
 
-			# Get a list of all leaf nodes in the graph.
-			nodes = graph.get_leaf_nodes()
+			# Find all nodes that have no parent nodes.
+			newroots = []
+			for node in clone.order:
+				if not clone.graph[node][0]:
+					newroots.append(node)
 
-			# Add any of the leaves that don't have a parent.
-			for node in nodes:
-				if not graph.get_parent_nodes(node):
-					roots.append(node)
+			# Remove them and all their descendents from the graph.
+			for node in newroots:
+				for child in clone.get_child_nodes(node, depth=0):
+					clone.remove_node(child)
+				clone.remove_node(node)
 
-			# Remove the nodes from the graph after checking
-			# so that we don't remove the parent of a child
-			# and falsely detect the child as having no parents.
-			for node in nodes:
-				graph.remove_node(node)
+			# And add them to our list of root nodes.
+			roots.extend(newroots)
+			
+			# If the graph is empty, stop processing.
+			if not clone.graph:
+				break
 
-		# Return the list of roots found.
-		return roots
+			# If the graph isn't empty, then we have a circular
+			# dependency. We'll just remove one leaf node and
+			# then look for parentless nodes again.
+			clone.remove_node(clone.get_leaf_nodes()[0])
+
+		# Sort the list of roots by the node addition order.
+		newroots = self.order[:]
+		for x in range(len(newroots)-1,-1,-1):
+			if newroots[x] not in roots:
+				del newroots[x]
+
+		# Return the sorted list.
+		return newroots
 
 	def get_parent_nodes(self, node, depth=1):
 		"""Return a list of nodes that depend on a node.

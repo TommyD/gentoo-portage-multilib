@@ -13,7 +13,8 @@
 #
 
 from stat import *
-import os, shutil, sys, string, re, commands, tempfile
+from random import *
+import os, shutil, sys, string, re, commands, atexit
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 
 import portage, dispatch_conf
@@ -23,6 +24,33 @@ DIFF_CONTENTS        = 'diff -Nau %s %s'
 DIFF_CVS_INTERP      = 'diff -Nau %s %s | grep "^[+-][^+-]" | grep -v "# .Header:.*"'
 DIFF_WSCOMMENTS      = 'diff -Nau %s %s | grep "^[+-][^+-]" | grep -v "^[-+]#" | grep -v "^[-+][:space:]*$"'
 MERGE                = 'sdiff --suppress-common-lines --output=%s %s %s'
+
+# We need a secure scratch dir and python does silly verbose errors on the use of tempnam
+oldmask = os.umask(0077)
+SCRATCH_DIR = None
+while SCRATCH_DIR is None:
+    try:
+        mydir = "/tmp/dispatch-conf."
+        for x in range(0,8):
+            if int(random() * 3) == 0:
+                mydir += chr(int(65+random()*26.0))
+            elif int(random() * 2) == 0:
+                mydir += chr(int(97+random()*26.0))
+            else:
+                mydir += chr(int(48+random()*10.0))
+        if os.path.exists(mydir):
+            continue
+        os.mkdir(mydir)
+        SCRATCH_DIR = mydir
+    except OSError, e:
+        if e.errno != 17:
+            raise
+os.umask(oldmask)
+
+# Ensure the scratch dir is deleted
+def cleanup(mydir=SCRATCH_DIR):
+    shutil.rmtree(SCRATCH_DIR)
+atexit.register(cleanup)
 
 MANDATORY_OPTS  = [ 'archive-dir', 'diff', 'pager', 'replace-cvs', 'replace-wscomments' ]
 
@@ -36,7 +64,10 @@ class dispatch:
 
         self.options = dispatch_conf.read_config(MANDATORY_OPTS)
 
-        if not self.options.has_key("log-file"):
+        if self.options.has_key("log-file"):
+            if os.path.exists(self.options["log-file"]):
+                shutil.move(self.options["log-file"], self.options["log-file"] + '.old')
+        else:
             self.options["log-file"] = "/dev/null"
 
         #
@@ -153,12 +184,10 @@ class dispatch:
                 elif c == 'n':
                     break
                 elif c == 'm':
-                    scratch_file = tempfile.mkstemp("", "dispatch-conf.")
-                    merged = scratch_file[1]
+                    merged = SCRATCH_DIR+"/"+os.path.basename(conf['current'])
                     print
                     os.system (MERGE % (merged, conf ['current'], newconf))
-                    shutil.move(merged, mrgconf)
-                    os.close(scratch_file[0])
+                    shutil.move (merged, mrgconf)
                     mystat = os.lstat(conf['new'])
                     os.chmod(mrgconf, mystat[ST_MODE])
                     os.chown(mrgconf, mystat[ST_UID], mystat[ST_GID])
