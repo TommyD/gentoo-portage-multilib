@@ -1,7 +1,7 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
-*portage 1.8.8 (1 Feb 2002)
+*portage 1.8.8-r1 (1 Feb 2002)
 
   1 Feb 2002; G.Bevin <gbevin@gentoo.org> portage.py, ebuild.sh, ebuild.5 :
   added support for a pkg_setup() function which is executed before anything
@@ -17,6 +17,8 @@
   1 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge :
   added --pretend support instead of interactively asking to proceed,
   also added a delay before unmerging though to be sure
+
+*portage 1.8.8 (1 Feb 2002)
 
   1 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge :
   added --safe switch to complement the --unmerge option
