@@ -11,22 +11,11 @@ elif [ -e /etc/rc.d/config/functions ]
 then
 	source /etc/rc.d/config/functions > /dev/null 2>&1
 fi
-	
-# fine grained maintainer options, convert previous 'yes' to new format
-if [ "$MAINTAINER" = "yes" ]
-then
-	MAINTAINER="$MAINTAINER_DEFAULT"
-fi
-# create seperate maintainer env vars
-MAINTAINER_ARRAY=( $MAINTAINER )
-maint_array_count=${#MAINTAINER_ARRAY[@]}
-maint_array_index=0
-while [ "$maint_array_index" -lt "$maint_array_count" ]
-do
-	export MAINTAINER_${MAINTAINER_ARRAY[$maint_array_index]}=1
-	let "maint_array_index = $maint_array_index + 1"
-done
 
+# don't need to handle the maintainer fine grained settings here
+# anymore since it's initialized by ebuild through the python
+# portage module
+	
 #if no perms are specified, dirs/files will have decent defaults
 #(not secretive, but not stupid)
 umask 022
@@ -732,7 +721,7 @@ then
 	rm ${T}/archives.orig
 	export A=`cat ${T}/archives`
 	rm ${T}/archives
-	if [ "$MAINTAINER" = "yes" ]
+	if [ "$MAINTAINER_digest" = "1" ]
 	then
 		for x in `cat ${T}/src_uri_all` 
 		do
