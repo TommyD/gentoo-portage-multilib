@@ -2638,7 +2638,7 @@ class portdbapi(dbapi):
 		#oroot="overlay root"
 		self.oroot=None
 
-	def getname(self,pkgname):
+	def findname(self,pkgname):
 		"returns file location for this particular package"
 		if not pkgname:
 			return ""
@@ -2666,7 +2666,8 @@ class portdbapi(dbapi):
 		mydbkey=dbcachedir+mycpv
 		mycsplit=catpkgsplit(mycpv)
 		mysplit=mycpv.split("/")
-		
+		myebuild=self.findname(mycpv)
+	
 		#first, we take a look at the mtime of the ebuild and the cache entry to see if we need
 		#to regenerate our cache entry.
 		try:
@@ -2674,16 +2675,7 @@ class portdbapi(dbapi):
 		except OSError:
 			doregen=1
 		if not doregen:
-			if self.oroot:
-				myebuild=self.oroot+"/"+mycsplit[0]+"/"+mycsplit[1]+"/"+mysplit[1]+".ebuild"
-				try:
-					emtime=os.stat(myebuild)[ST_MTIME]
-				except OSError:
-					myebuild=self.root+"/"+mycsplit[0]+"/"+mycsplit[1]+"/"+mysplit[1]+".ebuild"
-					emtime=os.stat(myebuild)[ST_MTIME]
-			else:	
-				myebuild=self.root+"/"+mycsplit[0]+"/"+mycsplit[1]+"/"+mysplit[1]+".ebuild"
-				emtime=os.stat(myebuild)[ST_MTIME]
+			emtime=os.stat(myebuild)[ST_MTIME]
 			if dmtime<emtime:
 				doregen=1
 		if doregen:
