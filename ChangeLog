@@ -9,6 +9,8 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  26 Jun 2004; Jason Stubbs <jstubbs@gentoo.org> repoman: Removed a stray dot.
+
   25 Jun 2004; Jason Stubbs <jstubbs@gentoo.org> repoman: Changed CVS
   header regex to "Gentoo Foundation"
 
