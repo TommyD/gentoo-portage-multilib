@@ -11,6 +11,7 @@ do
 	[ -d $i ] && continue
 	for j in $i/*.so.* $i/*.so
 	do
+		[ ! -e $j ] && continue
 		[ -L $j ] && continue
 		chmod +x $j
 	done
