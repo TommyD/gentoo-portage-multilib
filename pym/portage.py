@@ -6776,6 +6776,9 @@ def pkgmerge(mytbz2,myroot,mysettings):
 	# (before extracting binaries) if there's a problem
 	origdir=getcwd()
 	os.chdir(pkgloc)
+
+	mysettings.configdict["pkg"]["CATEGORY"] = mycat;
+	a=doebuild(myebuild,"setup",myroot,mysettings)
 	print ">>> extracting",mypkg
 	notok=spawn("bzip2 -dqc -- '"+mytbz2+"' | tar xpf -",mysettings,free=1)
 	if notok:
