@@ -4506,7 +4506,7 @@ class dblink:
 	def unmerge(self,pkgfiles=None,trimworld=1):
 		global dircache
 		dircache={}
-		
+	
 		mydbdir_lock = lockdir(self.dbdir)
 
 		if not pkgfiles:
@@ -4536,6 +4536,7 @@ class dblink:
 		#process symlinks second-to-last, directories last.
 		mydirs=[]
 		mysyms=[]
+		modprotect="/lib/modules/"
 		for obj in mykeys:
 			obj=os.path.normpath(obj)
 			if obj[:2]=="//":
@@ -4547,7 +4548,11 @@ class dblink:
 					#link target rather than the link itself.
 					print "--- !found "+str(pkgfiles[obj][0]), obj
 					continue
-			if self.isprotected(obj):
+			#next line includes a tweak to protect modules from being unmerged, but we don't protect modules
+			#from being overwritten if they are upgraded. We effectively only want one half of the config
+			#protection functionality for /lib/modules/. For portage-ng, both capabilities should be able
+			#to be independently specified.
+			if self.isprotected(obj) or ((len(obj) > len(modprotect)) and (obj[0:len(modprotect)]==modprotect)):
 				print "--- cfgpro "+str(pkgfiles[obj][0]), obj
 				continue
 

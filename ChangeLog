@@ -2,6 +2,13 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  31 Oct 2003; Daniel Robbins <drobbins@gentoo.org> portage.py: /lib/modules
+  now gets "unmerge protection." This is half of the config protection
+  functionality. It means that anything in /lib/modules will not be deleted
+  when a package is unmerged (often automatically when a user merges a
+  kernel module ebuild for a new kernel.) This solves the "my module
+  disappeared!" issue. This closes bug #1477.
+  
   31 Oct 2003; Daniel Robbins <drobbins@gentoo.org> emerge: Should no longer
   spit out wacky "!!! no match found" warnings when auto-cleaning.
   
