@@ -46,7 +46,7 @@
 #whole enchilada. (generally, I prefer this approach, though for runtime-only systems
 #subpackages make a lot of sense).
 
-VERSION="@portage_version@"
+VERSION="1.8.9_pre32"
 
 import string,os
 from stat import *
@@ -2579,12 +2579,14 @@ class dblink:
 		#create virtual links
 		myprovides=self.getelements("PROVIDE")
 		if myprovides:
+			myvkey=self.cat+"/"+pkgsplit(self.pkg)[0]
 			myvirts=grabdict(destroot+"var/cache/edb/virtuals")
 			for mycatpkg in self.getelements("PROVIDE"):
 				if myvirts.has_key(mycatpkg):
-					myvirts[mycatpkg][0:0]=[self.cat+"/"+self.pkg]
+					if myvkey not in myvirts[mycatpkg]:
+						myvirts[mycatpkg][0:0]=[myvkey]
 				else:
-					myvirts[mycatpkg]=[self.cat+"/"+self.pkg]
+					myvirts[mycatpkg]=[myvkey]
 			writedict(myvirts,destroot+"var/cache/edb/virtuals")
 			
 		#do postinst script

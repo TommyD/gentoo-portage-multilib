@@ -375,7 +375,6 @@ class depgraph:
 			mydb.close()
 		elif mytype=="blocks":
 			edepend=None
-			print "MYPARENT",myparent
 			parenttype,parentroot,parentkey=string.split(myparent)
 			mykeyparts=portage.catpkgsplit(mykey)
 			parentkeyparts=portage.catpkgsplit(parentkey)
@@ -760,6 +759,10 @@ elif "--help" in myopts:
 		print "              "+bold("<=sys-devel/binutils-2.11.92.0.12.3-r1")+" matches"
 		print "                  binutils-2.11.90.0.7 and binutils-2.11.92.0.12.3-r1"
 		print
+		print "       "+green("update")+" ("+green("-u")+" short option)"
+		print "              Updates packages that are part of the base system profile to the"
+		print "              most recent versions available."
+		print 
 		print "       "+green("search")+" ("+green("-s")+" short option)"
 		print "              searches for matches of the supplied string in the current local"
 		print "              portage tree. The search string is a regular expression."
@@ -773,17 +776,6 @@ elif "--help" in myopts:
 		print "                  list all available packages "
 		print
 		print turquoise("Options:")
-		print "       "+green("--update")+" ("+green("-u")+" short option)"
-		print "              Updates packages that are part of the base system profile to the"
-		print "              most recent versions available.  You can also do \"emerge"
-		print "              --update world\" to update things in your world profile,"
-		print "              including dependents."
-		print 
-		print "       "+green("--oneshot")
-		print "              Don't record packages specified on the command-line in the world"
-		print "              profile.  This will prevent them from being automatically updated"
-		print "              in the future via an \"emerge --update world\""
-		print 
 		print "       "+green("--autoclean")+" ("+green("-a")+" short option)"
 		print "              emerge normally cleans out the package-specific temporary"
 		print "              build directory before it starts the building a package.  With"
