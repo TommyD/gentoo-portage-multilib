@@ -331,9 +331,12 @@ def getworldlist():
 	worlddict=genericdict(worldlist)
 	#we're effectively upgrading sysdict to contain all new deps from worlddict
 	for x in worlddict.keys():
-		if portage.db[portage.root]["vartree"].hasnode(x) and portage.db[portage.root]["porttree"].hasnode(x):
-		#only add the world node if the package is actually installed, otherwise skip
-		#this prevents the remerging of already unmerged packages when we do a world --update
+		#only add the world node if the package is:
+		#actually installed -- this prevents the remerging of already unmerged packages when we do a world --update;
+		#actually available -- this prevents emerge from bombing out due to no match being found (we want a silent ignore)
+		if portage.db[portage.root]["vartree"].dep_match(x) and portage.db[portage.root]["porttree"].dep_match(x):
+			#note: when implementing the "anti-dep" world profile entry feature, we will need to test for "!" deps and
+			#*not* call dep_match() on those, as dep_match() doesn't expect ! deps (since nothing matches a !)
 			sysdict[x]=worlddict[x]
 	mylist=[]
 	for x in sysdict.keys():
