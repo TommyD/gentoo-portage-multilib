@@ -384,15 +384,15 @@ dyn_setup()
 	if [ "${DISABLE_GEN_GCC_WRAPPERS}" != "yes" ]
 	then
 		# Create /lib/cpp if missing or a symlink
-		if [ -L /lib/cpp -o ! -f /lib/cpp ]
+		if [ -L /lib/cpp -o ! -e /lib/cpp ]
 		then
-			rm -f /lib/cpp
+			[ -L /lib/cpp ] && rm -f /lib/cpp
 			gen_wrapper /lib/cpp cpp
 		fi
 		# Create /usr/bin/cc if missing for a symlink
-		if [ -L /usr/bin/cc -o ! -f /usr/bin/cc ]
+		if [ -L /usr/bin/cc -o ! -e /usr/bin/cc ]
 		then
-			rm-f /usr/bin/cc
+			[ -L /usr/bin/cc ] && rm -f /usr/bin/cc
 			gen_wrapper /usr/bin/cc gcc
 		fi
 	fi
