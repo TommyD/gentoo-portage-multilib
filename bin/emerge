@@ -1029,8 +1029,8 @@ class depgraph:
 					alleb=portage.portdb.xmatch("match-all",x)
 					if alleb:
 						if "--usepkgonly" not in myopts:
-							print "\n!!! "+red("all ebuilds that could satisfy ")+green(xinfo)+red(" have been masked.")
-							print "!!! "+red("possible candidates are:")
+							print "\n!!! "+red("All ebuilds that could satisfy ")+green(xinfo)+red(" have been masked.")
+							print "!!! One of the following masked packages is required to complete your request:"
 							oldcomment = ""
 							for p in alleb:
 								mreasons = portage.getmaskingstatus(p)
@@ -1039,6 +1039,9 @@ class depgraph:
 								if comment and comment != oldcomment:
 									print comment
 									oldcomment = comment
+							print
+							print "For more information, see MASKED PACKAGES section in the emerge man page or "
+							print "section 2.2 \"Software Availability\" in the Gentoo Handbook."
 							if myparent:
 								print     "!!!    "+red(xfrom)
 							print
