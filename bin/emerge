@@ -9,54 +9,14 @@ spinner="\|/-\|/-"
 spinpos=0
 #number of ebuilds merged
 merged=0
-actions=["clean",
-	"config",
-	"help",
-	"prune",
-	"rsync",
-	"search",
-	"sync",
-	"system",
-	"unmerge",
-	"world",
-	"inject",
-	"regen"]
-options=["--autoclean",
-	"--buildpkg",
-	"--debug",
-	"--nodeps",
-	"--emptytree",
-	"--fetchonly",
-	"--noreplace",
-	"--onlydeps",
-	"--pretend",
-	"--usepkg",
-	"--searchdesc",
-	"--verbose",
-	"--update",
-	"--help",
-	"--oneshot",
-	"--version"]
+params=["selective", "deep", "self", "recurse", "empty"]
+actions=["clean", "config", "help", "prune", "rsync", "search", "sync", "system", "unmerge", "world", "inject", "regen"]
+options=["--autoclean", "--deep", "--selective", "--buildpkg", "--debug", "--nodeps", "--emptytree", "--fetchonly", 
+"--noreplace", "--onlydeps", "--pretend", "--usepkg", "--searchdesc", "--verbose", "--update", "--help", "--oneshot", "--version"]
 
-shortmapping={"a":"--autoclean",
-	"b":"--buildpkg",
-	"c":"clean",
-	"C":"unmerge",
-	"e":"--emptytree",
-	"d":"--debug",
-	"f":"--fetchonly",
-	"h":"--help",
-	"k":"--usepkg",
-	"n":"--noreplace",
-	"o":"--onlydeps",
-	"p":"--pretend",
-	"P":"prune",
-	"s":"search",
-	"S":"--searchdesc",
-	"u":"--update",
-	"v":"--verbose",
-	"V":"--version",
-	"i":"inject"}
+shortmapping={"a":"--autoclean", "b":"--buildpkg", "c":"clean", "C":"unmerge", "e":"--emptytree", "d":"--debug", "f":"--fetchonly",
+	"h":"--help", "k":"--usepkg", "n":"--noreplace", "o":"--onlydeps", "p":"--pretend", "P":"prune", "s":"search", "S":"--searchdesc",
+	"u":"--update", "v":"--verbose", "V":"--version", "i":"inject"}
 
 def help():
 	if not myaction:
@@ -354,9 +314,42 @@ elif "--help" in myopts:
 	help()
 	sys.exit(0)
 elif portage.secpass!=2:
-	print "emerge: root access required."
-	sys.exit(1)
-	
+	if myaction in ["search", "help" ]:
+		pass
+	elif (not myaction) and (not myfiles):
+		pass
+	elif ("--pretend" in myopts) and (myaction in ["world","system","clean","prune","unmerge"]):
+		pass
+	else:
+		print "myaction",myaction
+		print "myopts",myopts
+		print "emerge: root access required."
+		sys.exit(1)
+
+#configure emerge engine parameters
+myparams=["self","recurse"]
+add=[]
+sub=[]
+if "--update" in myopts:
+	add.extend(["selective","empty"])
+if "--emptytree" in myopts:
+	add.extend(["empty"])
+	sub.extend(["selective"])
+if "--nodeps" in myopts:
+	sub.extend(["recurse"])
+if "--noreplace" in myopts:
+	add.extend(["selective"])
+if "--deep" in myopts:
+	add.extend(["deep"])
+if "--selective" in myopts:
+	add.extend(["selective"])
+for x in add:
+	if (x not in myparams) and (x not in sub):
+		myparams.append(x)
+for x in sub:
+	if x in myparams:
+		myparams.remove(x)
+
 # search functionality
 class search:
 	
@@ -376,7 +369,7 @@ class search:
 		self.installcache = portage.db["/"]["vartree"]
 		
 	def execute(self,searchkey):
-		"""Performs the saerch for the supplied search key"""
+		"""Performs the search for the supplied search key"""
 		global spinner, spinpos, myopts
 		self.searchkey=searchkey
 		self.packagematches = []
@@ -530,28 +523,20 @@ class depgraph:
 		self.orderedkeys=[]
 		#the following is so we have an empty vartree (used in emerge update calculations)
 		self.fakedbapi=portage.fakedbapi()
-		if "--emptytree" in myopts:
-			olddbapi=portage.db["/"]["vartree"].dbapi
-			portage.db["/"]["vartree"].dbapi=self.fakedbapi
-			portage.db["/"]["vartree"].dbapi.cpv_inject("sys-libs/glibc-1.0")
-			portage.db["/"]["vartree"].populated=1
-			#The root needs to be set to "None" to enable "empty" mode
-			#And this needs to be done before the inject() below, since inject causes recalc.
-			#of USE variables, which causes our tree to become partially populated
-			#portage.db["/"]["vartree"].root=None
-			#portage.db["/"]["vartree"].virtual={"virtual/glibc":"sys-libs/glibc"}
+		#self.fakedbapi.cpv_inject("sys-libs/glibc-2.3")	
 		self.outdatedpackages=[]
 		self.mydbapi={}
-		if "--update" in myopts:
+		if "empty" in myparams:
 			#for --update, we want to rebuild an entire empty tree of dependencies, and then we won't merge was is already merged.
 			self.mydbapi["/"]=self.fakedbapi
 		else:
 			self.mydbapi["/"]=portage.db["/"]["vartree"].dbapi
 		if portage.root!="/":
-			if "--update" in myopts:
+			if "empty" in myparams:
 				self.mydbapi[portage.root]=self.fakedbapi
 			else:
 				self.mydbapi[portage.root]=portage.db[portage.root]["vartree"].dbapi
+			
 		if "--usepkg" in myopts:
 			portage.db["/"]["bintree"].populate()
 
@@ -559,6 +544,10 @@ class depgraph:
 		"""creates the actual digraph of packages to merge.  return 1 on success, 0 on failure
 		mybigkey = specification of package to merge; myparent = parent package (one depending on me);
 		addme = should I be added to the tree? (for the --onlydeps mode)"""
+		#stuff to add:
+		#SLOT-aware emerge
+		#IUSE-aware emerge
+		#"no downgrade" emerge
 		jbigkey=string.join(mybigkey)
 		if self.digraph.hasnode(jbigkey+" merge") or self.digraph.hasnode(jbigkey+" nomerge"):
 			#this conditional is needed to prevent infinite recursion on already-processed deps
@@ -574,7 +563,6 @@ class depgraph:
 	
 		#select the correct /var database that we'll be checking against
 		vardbapi=portage.db[myroot]["vartree"].dbapi
-		
 
 		merging=1
 		#this is where we add the node to the list of packages to merge
@@ -585,59 +573,36 @@ class depgraph:
 				#apply to us.
 				if myparent and self.mydbapi[myroot].match(mykey):
 					#otherwise, encode parent information where we would normally write "(no)merge" and continue:
-					mybigkey.append(myparent.split()[2])
 					parenttype,parentroot,parentkey,mergeme=string.split(myparent)
 					mykexp=portage.dep_expand(mykey,self.mydbapi[myroot])
 					pakexp=portage.dep_expand(parentkey,self.mydbapi[myroot])
 					myrealkey=portage.dep_getkey(mykexp)
 					parealkey=portage.dep_getkey(pakexp)
 					if myrealkey!=parealkey:
+						mybigkey.append(myparent.split()[2])
 						self.digraph.addnode(string.join(mybigkey),myparent)
 					#since our blocks doesn't match any installed packages, it doesn't apply to us and we can ignore it.
 				return 1
-			elif "--emptytree" in myopts:
-				#if we are in "--emptytree" mode, then we want to merge the package even if it is already installed.
-				mybigkey.append("merge")
-			elif (myaction not in ["system","world"]) and (not myparent):
-				#we're doing a normal merge and processing an item specified on the command-line. 
-				#So we need to check for the --noreplace option.
-				if "--noreplace" in myopts:
-					if not vardbapi.cpv_exists(mykey):
-						#the package isn't on the system, so merge it.
-						mybigkey.append("merge")
-					else:	
-						#the package is on the system, so don't merge it.
-						mybigkey.append("nomerge")
-						merging=0
-				else:
-					#--noreplace was not specified; our default behavior is to replace
-					mybigkey.append("merge")
-			#we are merging a dependency; ignore --noreplace
-			elif not vardbapi.cpv_exists(mykey):
-				mybigkey.append("merge")
-			else:
-				mybigkey.append("nomerge")
+			if not myparent:
+				#command-line specified or part of a world list...
+				if (not "self" in myparams) or (("selective" in myparams) and vardbapi.cpv_exists(mykey)):
+					#the package is on the system, so don't merge it.
+					merging=0
+			elif ("selective" in myparams) and vardbapi.cpv_exists(mykey):
 				merging=0
 		else:
-			mybigkey.append("nomerge")
-			#special "--onlydeps" mode
+			#onlydeps mode; don't merge
 			merging=2
-
+		if merging==1:
+			mybigkey.append("merge")
+		else:
+			mybigkey.append("nomerge")
+			
 		#whatever the case, we need to add the node to our digraph so that children can depend upon it.
 		self.digraph.addnode(string.join(mybigkey),myparent)
-		
-		if "--nodeps" in myopts:
-			#if we are not processing dependencies, then, err... abort here and don't process dependencies :)
+		if (not "deep" in myparams) and (not merging):
 			return 1
-
-		if (not "--update" in myopts) and (not merging):
-			#optimization: there is no need to process dependencies if we are not in --update mode (and thus not doing an exhaustive tree
-			#build) and we are not merging the current key.  If we aren't merging the current key, there's no need to merge its deps.
-			return 1
-
-		#below, we tweak our --update functionality to not process dependencies of packages that are already up-to-date.
-		#In some ways, this sub-optimal but it's best for now since we don't have the benefit of SLOT-aware updates.
-		if ("--update" in myopts) and (not merging):
+		elif not "recurse" in myparams:
 			return 1
 
 		if mytype=="binary":
@@ -799,8 +764,8 @@ class depgraph:
 				#only add the world node if the package is:
 				#actually installed -- this prevents the remerging of already unmerged packages when we do a world --update;
 				#actually available -- this prevents emerge from bombing out due to no match being found (we want a silent ignore)
-				if "--emptytree" in myopts:
-					if olddbapi.match(x):
+				if "empty" in myparams:
+					if portage.db["/"]["vartree"].dbapi.match(x):
 						sysdict[x]=worlddict[x]
 				elif portage.db[portage.root]["vartree"].dbapi.match(x):
 					#package is installed
@@ -877,13 +842,16 @@ class depgraph:
 			else:
 				if x[3]=="nomerge":
 					continue
-				if (not "--emptytree" in myopts) and portage.db[x[1]]["vartree"].exists_specific(x[2]):
+				if (not "empty" in myparams) and portage.db[x[1]]["vartree"].exists_specific(x[2]):
 					addl="  "+yellow("R")+"  "
-				elif (not "--emptytree" in myopts) and portage.db[x[1]]["vartree"].exists_specific_cat(x[2]):
+				elif (not "empty" in myparams) and portage.db[x[1]]["vartree"].exists_specific_cat(x[2]):
 					addl="   "+turquoise("U")+" "
 				else:
 					addl=" "+green("N")+"   "
-				print "["+x[0]+" "+addl+"]",x[2],"to",x[1]
+				if x[1]!="/":
+					print "["+x[0]+" "+addl+"]",x[2],"to",x[1]
+				else:
+					print "["+x[0]+" "+addl+"]",x[2]
 
 	def outdated(self):
 		return self.outdatedpackages
@@ -904,9 +872,6 @@ class depgraph:
 			#the last argument in the portage.doebuild() tells doebuild to *not* do dep checking
 			#(emerge is already handling that)
 			y=portage.portdb.findname(x[2])
-			if ("--update" in myopts) and (portage.db[x[1]]["vartree"].exists_specific(x[2])):
-				#already merged, continue
-				continue
 			print ">>> emerge",x[2],"to",x[1]
 			if x[0]=="ebuild":
 				if "--fetchonly" in myopts:

@@ -1,10 +1,23 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
-*portage-2.0.36 (04 Sep 2002): Gentoo Linux 1.4_rc1 version 
+  09 Sep 2002; Daniel Robbins <drobbins@gentoo.org> emerge: new parameterized
+  create() engine, security pass fixes ("emerge" as non-root doesn't print
+  "root access required" but shows help instead), emerge --pretend output fixes
+  ("to /" lines are dropped and only displayed if installation root != "/".)
+  New (and currently unofficial and undocumented) "--deep" and "--selective"
+  options that correspond to their respective create() parameters. Using
+  "--deep" will enable "deep emerging" -- updating all deps even if the parent
+  doesn't need updating. The new parametrized create() is also much cleaner
+  than the previous incarnation.
+  
+  09 Sep 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: os.chdir() ->
+  chdir() fix, enhanced fetch() digest corruption handling.
 
   06 Sep 2002; Mark Guertin <gerk@gentoo.org> cnf/make.globals.ppc :
   Updated make.globals.ppc to reflect new CFLAGS for 1.4 release
+
+*portage-2.0.36 (04 Sep 2002): Gentoo Linux 1.4_rc1 version 
 
   04 Sep 2002; Daniel Robbins <drobbins@gentoo.org> emerge: "--onlydeps" was
   mostly broken since the most recent emerge code restructure. Now fixed,

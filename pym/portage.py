@@ -25,12 +25,15 @@ except KeyError:
 
 incrementals=["USE","FEATURES","ACCEPT_KEYWORDS","ACCEPT_LICENSE","CONFIG_PROTECT_MASK","CONFIG_PROTECT"]
 
-"this fixes situations where the current directory doesn't exist"
-try:
-	os.getcwd()
-except:
-	os.chdir("/")
-	
+def getcwd():
+	"this fixes situations where the current directory doesn't exist"
+	try:
+		return os.getcwd()
+	except:
+		os.chdir("/")
+		return "/"
+getcwd()
+
 #List directory contents, using cache. (from dircache module; streamlined by drobbins)
 #Exceptions will be propogated to the caller.
 
@@ -830,7 +833,10 @@ def fetch(myuris):
 				#invalid line
 				print "!!! The digest",digestfn,"appears to be corrupt.  Aborting."
 				return 0
-			mydigests[myline[2]]={"md5":myline[1],"size":string.atol(myline[3])}
+			try:
+				mydigests[myline[2]]={"md5":myline[1],"size":string.atol(myline[3])}
+			except ValueError:
+				print "!!! The digest",digestfn,"appears to be corrupt.  Aborting."
 	if "fetch" in settings["RESTRICT"].split():
 		# fetch is restricted.	Ensure all files have already been downloaded; otherwise,
 		# print message and exit.
@@ -1005,7 +1011,7 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 	settings["PORTAGE_DEBUG"]=str(debug)
 	#settings["ROOT"]=root
 	settings["ROOT"]=myroot
-	settings["STARTDIR"]=os.getcwd()
+	settings["STARTDIR"]=getcwd()
 	settings["EBUILD"]=os.path.abspath(myebuild)
 	settings["O"]=os.path.dirname(settings["EBUILD"])
 	category=settings["CATEGORY"]=os.path.basename(os.path.normpath(settings["O"]+"/.."))
@@ -3846,7 +3852,7 @@ def pkgmerge(mytbz2,myroot):
 	print ">>> extracting info"
 	xptbz2.unpackinfo(infloc)
 	#run pkg_setup early, so we can bail out early (before extracting binaries) if there's a problem
-	origdir=os.getcwd()
+	origdir=getcwd()
 	os.chdir(pkgloc)
 	print ">>> extracting",mypkg
 	notok=spawn("cat "+mytbz2+"| bzip2 -dq | tar xpf -",free=1)
