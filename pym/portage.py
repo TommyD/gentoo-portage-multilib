@@ -708,8 +708,10 @@ class config:
 						# "-*" is a special "minus" var that means "unset all settings".  so USE="-* gnome" will have *just* gnome enabled.
 						mysetting=[]
 						continue
-					add=x
-					if x[0]=="-":
+					add=[x]
+					if x[0]=="~":
+						add.append(x[1:])
+					elif x[0]=="-":
 						remove=x[1:]
 					else:
 						remove=x
@@ -723,8 +725,8 @@ class config:
 						while y in mysetting:
 							mysetting.remove(y)
 					#now append our new setting
-					if add:
-						mysetting.append(add)
+					for myadd in add:
+						mysetting.append(myadd)
 			#store setting in last element of configlist, the original environment:
 			self.configlist[-1][mykey]=string.join(mysetting," ")
 		#cache split-up USE var in a global
@@ -3140,9 +3142,13 @@ class dblink:
 		"erase this db entry completely"
 		if not os.path.exists(self.dbdir):
 			return
-		for x in listdir(self.dbdir):
-			os.unlink(self.dbdir+"/"+x)
-		os.rmdir(self.dbdir)
+		try:
+			for x in listdir(self.dbdir):
+				os.unlink(self.dbdir+"/"+x)
+			os.rmdir(self.dbdir)
+		except OSError, e:
+			print "!!! Unable to remove db entry for this package."
+			print "!!! "+str(e)
 	
 	def clearcontents(self):
 		if os.path.exists(self.dbdir+"/CONTENTS"):
