@@ -13,6 +13,11 @@ Add extra flags to the current CFLAGS/CXXFLAGS.
 Remove particular flags from CFLAGS/CXXFLAGS.  This function will
 only match complete flags.
 .TP
+.BR "filter-mfpmath " "\fI<math types>\fR"
+Remove specified math types from the fpmath specification
+If the user has -mfpmath=sse,386, running `filter-mfpmath sse`
+will leave the user with -mfpmath=386.
+.TP
 .BR "get-flag " "\fI<flag>\fR"
 Find and echo the value for the given flag.
 .TP
