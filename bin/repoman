@@ -522,9 +522,9 @@ elif repolevel==3:
 	scanlist.append(catdir+"/"+reposplit[-1])
 
 profiles={}
-badarchs=[]
 descfile=portdir+"/profiles/profiles.desc"
 if os.path.exists(descfile):
+	badarchs=[]
 	for x in portage.grabfile(descfile):
 		if x[0]=="#":
 			continue
@@ -547,18 +547,14 @@ if os.path.exists(descfile):
 		if x[0]=="~":
 			continue
 		if not profiles.has_key(x):
-			print yellow("\""+x+"\" doesn't exist in profiles.desc")
-			print yellow("You need to do \"cvs update\" in profiles dir.")
+			print yellow("\""+x+"\" doesn't have a valid profile listed in profiles.desc")
+			print yellow("You need to do \"cvs update\" in profiles dir or yell at people.")
 			print
 else:
 	print yellow("profiles.desc does not exist: "+descfile)
 	print yellow("You need to do \"cvs update\" in profiles dir.")
 	print
 
-for arch in badarchs:
-	if not profiles.has_key(arch):
-		print "No valid profile found for arch "+arch+"."
-		print
 
 stats={}
 fails={}

@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  23 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> repoman: Made the invalid
+  profile slightly more intelligable and got rid of the duplicate.
+
   23 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> portage.py: Added settings
   parameter to dep_virtual as the virtuals can now change during dep graph
   creation. #68220
