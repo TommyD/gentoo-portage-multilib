@@ -9,6 +9,14 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  30 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py, 
+  pym/portage_util.py: Removed -all- duplicate function definitions between 
+  portage_util and portage.  This is just -begging- for a bug where 
+  portage.py's definitions are fixed, but portage_util isn't.
+  If you're moving code out of portage.py (good thing) please yank the def 
+  from portage.py.  Especially if you're importing everything from new 
+  home of the module.
+
   30 Aug 2004; Jason Stubbs <jstubbs@gentoo.org> pym/emerge: Added python 2.2
   compatibility fix. (#62128) Added fix to fail nicely on missing
   /etc/gentoo-release. (#62149)

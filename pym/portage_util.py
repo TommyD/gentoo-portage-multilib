@@ -44,6 +44,7 @@ def stack_dictlist(original_dicts, incremental=0, incrementals=[], ignore_none=0
 	overwriting matching key/value pairs for the dict[key]->list.
 	Returns a single dict. Higher index in lists is preferenced."""
 	final_dict = None
+	kill_list = {}
 	for mydict in original_dicts:
 		if mydict == None:
 			continue
@@ -52,11 +53,16 @@ def stack_dictlist(original_dicts, incremental=0, incrementals=[], ignore_none=0
 		for y in mydict.keys():
 			if not final_dict.has_key(y):
 				final_dict[y] = []
+			if not kill_list.has_key(y):
+				kill_list[y] = []
+			
 			for thing in mydict[y]:
-				if thing:
+				if thing and (thing not in kill_list[y]):
 					if (incremental or (y in incrementals)) and thing[0] == '-':
-						while(thing[1:] in final_dict[y]):
-							del final_dict[y][final_dict[y].index(thing[1:])]
+						if thing[1:] not in kill_list[y]:
+							kill_list[y] += [thing[1:]]
+#						while(thing[1:] in final_dict[y]):
+#							del final_dict[y][final_dict[y].index(thing[1:])]
 					else:
 						if thing not in final_dict[y]:
 							final_dict[y].insert(0,thing[:])
