@@ -2,7 +2,7 @@
 # Copyright 1998-2002 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
 
-VERSION="2.0.11"
+VERSION="2.0.12"
 
 from stat import *
 from commands import *
@@ -3732,11 +3732,6 @@ def pkgmerge(mytbz2,myroot):
 	xptbz2.unpackinfo(infloc)
 	#run pkg_setup early, so we can bail out early (before extracting binaries) if there's a problem
 	origdir=os.getcwd()
-	a=doebuild(myebuild,"setup",myroot)
-	if a:
-		print "!!! pkg_setup() script failed; exiting."
-		cleanup_pkgmerge(mypkg,origdir)
-		return None
 	os.chdir(pkgloc)
 	print ">>> extracting",mypkg
 	notok=spawn("cat "+mytbz2+"| bzip2 -dq | tar xpf -",free=1)
