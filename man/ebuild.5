@@ -191,40 +191,45 @@ blackdown-jdk and sun-jdk provide \fIvirtual/jdk\fR.  This allows for packages t
 \fIvirtual/jdk\fR rather than on blackdown or sun specifically.
 .SH "FUNCTIONS"
 .TP
-\fBpkg_setup\fR
+.B pkg_nofetch
+If you turn on \fIfetch\fR in \fBRESTRICT\fR, then this function will be run when the
+files in \fBSRC_URI\fR cannot be found.  Useful for displaying information to the user on
+*how* to obtain said files.
+.TP
+.B pkg_setup
 This function can be used if the package needs specific setup actions or checks to be preformed before anything else.
 .br
 Initial working directory of ${PORTAGE_TMPDIR}.
 .TP
-\fBsrc_unpack\fR
+.B src_unpack
 This function is used to unpack all the sources in \fIA\fR to \fIWORKDIR\fR.  If not defined in the \fIebuild
 script\fR it calls \fIunpack ${A}\fR.  Any patches and other pre configure/compile modifications should be done here.
 .br
 Initial working directory of $WORKDIR.
 .TP
-\fBsrc_compile\fR
+.B src_compile
 All necessary steps for configuration and compilation should be done in here.
 .br
 Initial working directory of $S.
 .TP
-\fBsrc_install\fR
+.B src_install
 Should contain everything required to install the package in the temporary \fIinstall directory\fR.
 .br
 Initial working directory of $S.
 .TP
-\fBpkg_preinst pkg_postinst\fR
+.B pkg_preinst pkg_postinst
 All modifications required on the live\-filesystem before and after the
 package is merged should be placed here.  
 Also commentary for the user should be listed here as it will be displayed last.
 .br
 Initial working directory of $PWD.
 .TP
-\fBpkg_prerm pkg_postrm\fR
+.B pkg_prerm pkg_postrm
 Like the pkg_*inst functions but for unmerge.
 .br
 Initial working directory of $PWD.
 .TP
-\fBconfig\fR
+.B config
 This function should contain optional basic configuration steps.
 .br
 Initial working directory of $PWD.
