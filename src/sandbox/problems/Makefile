@@ -1,18 +1,31 @@
 # Copyright (C) 2001 Geert Bevin, Uwyn, http://www.uwyn.com
 # Distributed under the terms of the GNU General Public License, v2 or later 
 # Author : Geert Bevin <gbevin@uwyn.com>
-default: sandbox_muttbug libsandbox_muttbug.so libsandbox_emacsbug.so
+#
+# Modified 15 Apr 2002 Jon Nelson <jnelson@gentoo.org>
+#  Clean up Makefile somewhat, and use make's implicit rules
+#
+# $Header$
 
-sandbox: sandbox_muttbug.c
-	gcc -Wall -O2 -o sandbox_muttbug sandbox_muttbug.c
+.SUFFIXES:
+.SUFFIXES: .c .o .so
+.PRECIOUS: %.o
 
-libsandbox_muttbug.so: libsandbox_muttbug.c
-	gcc -Wall -O2 -ldl --shared -o libsandbox_muttbug.so libsandbox_muttbug.c
+%.so: LIBS=-ldl
+%.so: LDFLAGS=--shared
+%.so: %.o 
+	$(CC) $(CFLAGS) $(CPPFLAGS) $< -o $@ $(LIBS) $(LDFLAGS)
+        
+CC = gcc
+CFLAGS = -Wall -O2
+LIBS =
+LDFLAGS =
 
-libsandbox_emacsbug.so: libsandbox_emacsbug.c
-	gcc -Wall -O2 -ldl --shared -o libsandbox_emacsbug.so libsandbox_emacsbug.c
+TARGETS = sandbox_muttbug sandbox_dev_fd_foo \
+	libsandbox_muttbug.so libsandbox_emacsbug.so
+
+all:	$(TARGETS)
 
 clean:
-	rm sandbox_muttbug
-	rm libsandbox_muttbug.so
-	rm libsandbox_emacsbug.so
+	rm -f $(TARGETS)
+	rm -f *.o *~
