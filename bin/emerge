@@ -256,7 +256,12 @@ class depgraph:
 				sys.exit(1)
 		elif mytype=="blocks":
 			edepend=None
-			self.digraph.addnode(mybigkey,myparent)
+			parenttype,parentroot,parentkey=string.split(myparent)
+			mykeyparts=portage.catpkgsplit(mykey)
+			parentkeyparts=portage.catpkgsplit(parentkey)
+			# only add blocking deps that aren't from the same package that is installing
+			if mykeyparts[0]!=parentkeyparts[0] or mykeyparts[1]!=parentkeyparts[1]:
+				self.digraph.addnode(mybigkey,myparent)
 
 		if edepend:
 			mydep={}	

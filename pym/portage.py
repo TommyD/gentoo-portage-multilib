@@ -1197,7 +1197,7 @@ def dep_zapdeps(unreduced,reduced):
 					if myresult:
 						returnme.append(myresult)
 				else:
-					if reduced[x]==0 or reduced[x]==2:
+					if reduced[x]==0:
 						returnme.append(unreduced[x])
 				x=x+1
 			return returnme
@@ -1230,6 +1230,7 @@ def dep_listcleanup(deplist):
 	
 def dep_frontend(mytype,myebuild,depstring):
 	"""ebuild frontend for dependency system"""
+	
 	if ebuild_initialized==0:
 		ebuild_init()
 	if depstring=="":
@@ -1250,9 +1251,19 @@ def dep_frontend(mytype,myebuild,depstring):
 		print '>>> '+mytype+' dependencies OK ;)'
 		return 0
 	else:
-		print '!!! Some '+mytype+' dependencies must be satisfied first.'
-		print '!!! To view the dependency list, type "emerge --pretend',myebuild+'".'
-	return 1
+		# don't take blocking deps into account when issuing a command through ebuild
+		# blocking packages should only be warned about and prevent merging through
+		# emerge
+		for x in myparse[1]:
+			if x[0]=="!":
+				continue
+			else:
+				# there were deps that need resolving that are not of the ! dep type
+				print '!!! Some '+mytype+' dependencies must be satisfied first.'
+				print '!!! To view the dependency list, type "emerge --pretend',myebuild+'".'
+				return 1
+		print '>>> '+mytype+' dependencies OK ;)'
+		return 0
 
 # gets virtual package settings
 def getvirtuals(myroot):
@@ -1382,7 +1393,6 @@ class packagetree:
 		"""evaluates a dependency string and returns a 2-node result list
 		[1, None] = ok, no dependencies
 		[1, ["x11-base/foobar","sys-apps/oni"] = dependencies must be satisfied
-		[2, *] = mutual exclusive ! dep match found
 		[0, * ] = parse error
 		"""
 		if not self.populated:
@@ -1439,8 +1449,9 @@ class packagetree:
 	def dep_depreduce(self,mypkgdep):
 		if mypkgdep[0]=="!":
 			# !cat/pkg-v
-			if self.dep_bestmatch(mypkgdep[1:]):
-				return 2
+			mybestmatch=self.dep_bestmatch(mypkgdep[1:])
+			if mybestmatch:
+				return 0
 			else:
 				return 1
 		elif mypkgdep[0]=="=":
