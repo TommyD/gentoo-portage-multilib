@@ -651,9 +651,9 @@ def fetch(myuris):
 		for loc in locations:
 			print
 			print ">>> Downloading",loc
-			locfetch=string.replace(locfetch,"${URI}",loc)
-			locfetch=string.replace(locfetch,"${FILE}",myfile)
-			myret=spawn(locfetch,free=1)
+			myfetch=string.replace(locfetch,"${URI}",loc)
+			myfetch=string.replace(myfetch,"${FILE}",myfile)
+			myret=spawn(myfetch,free=1)
 			if not myret:
 				gotit=1
 				break
