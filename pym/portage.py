@@ -3,7 +3,7 @@
 # Distributed under the GNU Public License v2
 # $Header$
 
-VERSION="2.0.50_pre17"
+VERSION="2.0.50"
 
 VDB_PATH="var/db/pkg"
 
@@ -3517,9 +3517,9 @@ def fixdbentries(old_value, new_value, dbdir):
 			continue
 		old_value = re.escape(old_value);
 		mycontent = re.sub(old_value+"$", new_value, mycontent)
-		mycontent = re.sub(old_value+"(\s)", new_value+"\1", mycontent)
-		mycontent = re.sub(old_value+"(-[^a-zA-Z])", new_value+"\1", mycontent)
-		mycontent = re.sub(old_value+"([^a-zA-Z0-9-])", new_value+"\1", mycontent)
+		mycontent = re.sub(old_value+"(\\s)", new_value+"\\1", mycontent)
+		mycontent = re.sub(old_value+"(-[^a-zA-Z])", new_value+"\\1", mycontent)
+		mycontent = re.sub(old_value+"([^a-zA-Z0-9-])", new_value+"\\1", mycontent)
 		f = open(dbdir+"/"+myfile, "w")
 		f.write(mycontent)
 		f.close()

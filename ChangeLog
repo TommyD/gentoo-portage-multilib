@@ -2,6 +2,10 @@
 # Copyright 2000-2004 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  10 Apr 2004; Marius Mauch <genone@gentoo.org> tarball.sh, pym/portage.py:
+  Fixing broken regexp in fixdbentries() (bug 46096), changing version
+  number.
+
   10 Apr 2004; Masatomo Nakano <nakano@gentoo.org> repoman: Fixed unsafety
   temporary file name(#44455). 
 
