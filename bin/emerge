@@ -2010,7 +2010,24 @@ class depgraph:
 class graph_display:
 	
 	def __init__(self, mygraph):
-		self.graph = mygraph
+		self.graph = mygraph.clone()
+		
+		merge_nodes = self.graph.get_all_nodes()
+		for x in range(len(merge_nodes)-1,-1,-1):
+			if merge_nodes[x].split()[3] == "nomerge":
+				del merge_nodes[x]
+		
+		relevant = merge_nodes[:]
+		for x in range(len(merge_nodes)):
+			parents = self.graph.get_parent_nodes(merge_nodes[x])
+			for node in parents:
+				if node not in relevant:
+					relevant.append(node)
+		
+		for node in self.graph.get_all_nodes():
+			if node not in relevant:
+				self.graph.remove_node(node)
+		
 		self.fetchsizes = {}
 		self.overlays = []
 		self.changelogs = []
@@ -2318,6 +2335,7 @@ class graph_display:
 	
 	def display_flat(self):
 		mygraph = self.graph.clone()
+		
 		funclist = [self.format_summary, self.format_cpv, self.format_old_version]
 		postfuncs = []
 		if verbosity:
@@ -2352,6 +2370,7 @@ class graph_display:
 	
 	def display_columns(self):
 		mygraph = self.graph.clone()
+		
 		funclist = [self.format_summary, self.format_name,
 		            self.format_new_version, self.format_old_version]
 		postfuncs = []
@@ -2402,22 +2421,6 @@ class graph_display:
 	
 	def display_tree(self):
 		mygraph = self.graph.clone()
-		
-		merge_nodes = mygraph.get_all_nodes()
-		for x in range(len(merge_nodes)-1,-1,-1):
-			if merge_nodes[x].split()[3] == "nomerge":
-				del merge_nodes[x]
-		
-		relevant = merge_nodes
-		for x in range(len(merge_nodes)):
-			parents = mygraph.get_parent_nodes(merge_nodes[x])
-			for node in parents:
-				if node not in relevant:
-					relevant.append(node)
-		
-		for node in mygraph.get_all_nodes():
-			if node not in relevant:
-				mygraph.remove_node(node)
 		
 		funclist = [self.format_cpv, self.format_old_version]
 		postfuncs = []
@@ -2472,6 +2475,8 @@ class graph_display:
 			msg = func()
 			if msg:
 				print msg
+
+
 
 
 def unmerge(unmerge_action, unmerge_files):
@@ -3444,8 +3449,7 @@ else:
 			elif "--columns" in myopts:
 				graphdisp.display_columns()
 			else:
-				mydepgraph.display(mydepgraph.altlist())
-				#graphdisp.display_flat()
+				graphdisp.display_flat()
 	else:
 		if ("--buildpkgonly" in myopts):
 			has_deps = False
