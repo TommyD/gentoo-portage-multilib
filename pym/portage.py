@@ -3117,7 +3117,7 @@ class dblink:
 					#destination doesn't exist
 					if movefile(mysrc,mydest,thismtime,mystat)!=None:
 						zing=">>>"
-						if S_ISFIF(mymode):
+						if S_ISFIFO(mymode):
 							#we don't record device nodes in CONTENTS, although we do merge them.
 							outfile.write("fif "+myrealdest+"\n")
 				print zing+" "+mydest
