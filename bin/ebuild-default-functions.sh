@@ -455,21 +455,16 @@ dyn_install() {
 		[ -h "$file" ] || chmod "$s" "$file"
 	done
 
-	if [ "$USERLAND" == "BSD" ]; then
-		find "${D}/" -group portage -print | while read file; do
-			ewarn "file $file was installed with group portage!"
-			s=$(stat_perms "$file")
+	find "${D}/" -group portage -print | while read file; do
+		# Too annoying
+		#ewarn "file $file was installed with group portage!"
+		s=$(stat_perms "$file")
+		if [ "$USERLAND" == "BSD" ]; then
 			chgrp wheel "$file"
-			[ -h "$file" ] || chmod "$s" "$file"
-		done
-	else
-		find "${D}/" -group portage -print | while read file; do
-			ewarn "file $file was installed with group portage!"
-			s=$(stat_perms "$file")
+		else
 			chgrp root "$file"
-			[ -h "$file" ] || chmod "$s" "$file"
-		done
-	fi
+		[ -h "$file" ] || chmod "$s" "$file"
+	done
 
 	echo ">>> Completed installing into ${D}"
 	echo

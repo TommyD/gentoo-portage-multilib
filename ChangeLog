@@ -7,6 +7,11 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  15 Dec 2004; Marius Mauch <genone@gentoo.org>
+  bin/ebuild-default-functions.sh:
+  Disabling the warning for GID=portage as it affects most/all packages and
+  gets really annoying.
+
   14 Dec 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge pym/portage.py:
   Fixed emerge so that the "emerge by path" message is only shown when the
   "path" ends in .ebuild or .tbz2. Fixed the package.keywords bug that caused
