@@ -71,25 +71,6 @@ This will automagically generate the \fBGAMES_ENVD\fR file and display
 a little message about being in the \fBGAMES_GROUP\fR in order to play
 a game.  If you define \fBpkg_postinst\fR in your ebuild, then make
 sure to call this function at the end of the function.
-.TP
-.B games_get_cd \fI<file/dir to verify cd with>\fR
-Often times games need to get data from cds.  Use this function to setup 
-the \fBGAMES_CD\fR variable as the base path to the cd.  You pass a file 
-or directory which is used to verify that a mounted cd is the one you want.
-
-For working examples see:
-.br
-games-fps/unreal-tournament\fR (1 CD)
-.br
-games-fps/unreal-tournament-goty\fR (2 CDs)
-.br
-games-fps/ut2003\fR (3 CDs)
-.TP
-.B games_verify_cd \fI<description of cd>\fR
-After you try to get the cd, you should probably verify it.  This will cause 
-the ebuild to die if \fBGAMES_CD\fR is not setup.  It will print a nice 
-help message explaining to the user to setup their CD before trying to emerge 
-this package.
 .SH "FUNCTIONS: compile"
 .TP
 .B egamesconf
