@@ -21,11 +21,11 @@ merged=0
 actions=["help",
 	"rebuild",
 	"search",
-	"update",
 	"clean",
 	"rsync",
 	"sync",
 	"system",
+	"world",
 	"unmerge",
 	"config"]
 options=["--autoclean",
@@ -40,14 +40,16 @@ options=["--autoclean",
 	"--pretend",
 	"--usepkg",
 	"--verbose",
+	"--update",
 	"--rev",
 	"--slot",
 	"--help",
+	"--oneshot",
 	"--version"]
 
 shortmapping={"a":"--autoclean",
 	"b":"--buildpkg",
-	"u":"update",
+	"u":"--update",
 	"s":"search",
 	"e":"--emptytree",
 	"d":"--debug",
@@ -74,7 +76,6 @@ for x in cmdline:
 			if shortmapping.has_key(y):
 				cmdline.append(shortmapping[y])
 			else:
-				print y
 				print "!!! Error: -"+y+" is an invalid short action or option."
 		cmdline.remove(x)
 
@@ -243,17 +244,28 @@ class search:
 		return result
 
 #build our package digraph
-def getsyslist():
-	if portage.profiledir and os.path.exists(portage.profiledir+"/packages"):
-		pfile=portage.profiledir+"/packages"
-	else:
-		print "!!! Couldn't find",portage.profiledir+"/packages;"
-		print "\"system\" mode unavailable."
+def getlist(mode):
+	if mode=="system":
+		if portage.profiledir:
+			pfile=portage.profiledir+"/packages"
+		else:
+			print "!!! No profile directory; system mode unavailable."
+			sys.exit(1)
+		if not os.path.exists(pfile):
+			print "!!! Couldn't find",pfile+":",
+			print mode,"mode unavailable."
+			sys.exit(1)
+	elif mode=="world":
+		pfile=portage.root+"var/cache/edb/world"
+		if not os.path.exists(pfile):
+			return []
+	try:
+		myfile=open(pfile,"r")
+	except OSError:
+		print "!!! Couldn't open "+pfile+"; exiting."
 		sys.exit(1)
-	myfile=open(pfile,"r")
 	mylines=myfile.readlines()
 	myfile.close()
-	
 	mynewlines=[]
 	for x in mylines:
 		myline=string.join(string.split(x))
@@ -261,12 +273,43 @@ def getsyslist():
 			continue
 		elif myline[0]=="#":
 			continue
-		elif myline[0]!="*":
-			continue
-		myline=myline[1:]
+		elif mode=="system":
+			if myline[0]!="*":
+				continue
+			myline=myline[1:]
 		mynewlines.append(myline.strip())
-
 	return mynewlines
+
+def genericdict(mylist):
+	mynewdict={}
+	for x in mylist:
+		if x[0] in ["=","~","!"]:
+			mynew=x[1:]
+		elif x[0:2] in [">=", "<=" ]:
+			mynew=x[2:]
+		elif x[0] in [">","<"]:
+			mynew=x[1:]
+		else:
+			mynew=x
+		if portage.isspecific(mynew):
+			mysplit=portage.catpkgsplit(mynew)
+			mynewdict[mysplit[0]+"/"+mysplit[1]]=x
+		else:
+			mynewdict[mynew]=x
+	return mynewdict
+
+def getworldlist():
+	syslist=getlist("system")
+	worldlist=getlist("world")
+	sysdict=genericdict(syslist)
+	worlddict=genericdict(worldlist)
+	#we're effectively upgrading sysdict to contain all new deps from worlddict
+	for x in worlddict.keys():
+		sysdict[x]=worlddict[x]
+	mylist=[]
+	for x in sysdict.keys():
+		mylist.append(sysdict[x])
+	return mylist
 
 class depgraph:
 
@@ -330,6 +373,7 @@ class depgraph:
 			mydb.close()
 		elif mytype=="blocks":
 			edepend=None
+			print "MYPARENT",myparent
 			parenttype,parentroot,parentkey=string.split(myparent)
 			mykeyparts=portage.catpkgsplit(mykey)
 			parentkeyparts=portage.catpkgsplit(parentkey)
@@ -351,7 +395,7 @@ class depgraph:
 			if "--nodeps" in self.myopts:
 				return 1
 			for dep in mydep.keys():
-				if "update"==self.myaction:
+				if "--update" in self.myopts:
 					mycheck=self.emptytree.depcheck(mydep[dep])
 				else:
 					mycheck=portage.db[dep]["vartree"].depcheck(mydep[dep])
@@ -391,7 +435,7 @@ class depgraph:
 				print
 				sys.exit(1)
 			splitski=string.split(mycurkey)
-			if "update"==self.myaction:
+			if "--update" in self.myopts:
 				if not portage.db["/"]["vartree"].exists_specific(splitski[2]):
 					portage.db["/"]["merge"].append(splitski)
 			else:
@@ -404,7 +448,7 @@ class depgraph:
 
 	def syscreate(self,mylines=[]):
 		for myline in mylines:	
-			if "update"==self.myaction:
+			if "--update" in self.myopts:
 			#or "--rebuild"==self.myaction:
 				self.create(self.match(myline,mykey="update (likely old /var/db/pkg entry)"))
 			else:
@@ -533,6 +577,18 @@ class depgraph:
 					sys.exit(1)
 				#need to check for errors
 			portage.db[x[1]]["vartree"].inject(x[2])
+			if x[2] in favorites:
+				mysplit=portage.catpkgsplit(x[2])
+				myfavkey=mysplit[0]+"/"+mysplit[1]
+				myfavs=portage.grabfile(myroot+"var/cache/edb/world")
+				myfavdict=genericdict(myfavs)
+				if not myfavdict.has_key(myfavkey):
+					#we don't have a favorites entry for this package yet; add one
+					myfavdict[myfavkey]=myfavkey
+					print
+					print ">>> Recording",myfavkey,"in \"world\" favorites file..."
+					print
+					portage.writedict(myfavdict,myroot+"var/cache/edb/world",writekey=0)
 			if "--autoclean" in self.myopts:
 				retval=portage.doebuild(y,"clean",myroot,edebug)
 				if retval:
@@ -1016,14 +1072,17 @@ else:
 		print
 		print "These are the packages that I would merge, in order."
 		print
-
-	if myaction in ["system","update"]:
-		mydepgraph=depgraph(myaction,myopts)
+	mydepgraph=depgraph(myaction,myopts)
+	favorites=[]
+	if myaction=="system":
 		print "Calculating system dependencies  ",
-		mydepgraph.syscreate(getsyslist())
+		mydepgraph.syscreate(getlist("system"))
+		print "\b\b ...done!"
+	elif myaction=="world":
+		print "Calculating world dependencies  ",
+		mydepgraph.syscreate(getworldlist())
 		print "\b\b ...done!"
 	else:
-		mydepgraph=depgraph(myaction,myopts)
 		if not myfiles:
 			post_emerge()
 			#we don't have any files to process; skip this step and exit
@@ -1050,6 +1109,8 @@ else:
 			#	else:
 			#		print "!!! Error:",x,"is neither an ebuild nor a .tbz2 package."
 			#		sys.exit(1)
+			if not "--oneshot" in myopts:
+				favorites.append(mykey)
 			mydepgraph.create(mytype+" "+portage.root+" "+mykey,None,"--onlydeps" not in myopts)
 		print "\b\b ...done!"
 	if "--pretend" in myopts:

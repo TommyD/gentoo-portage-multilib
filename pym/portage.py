@@ -340,7 +340,44 @@ def grabfile(myfilename):
 			continue
 		newlines.append(myline)
 	return newlines
-	
+
+def grabdict(myfilename):
+	"""This function grabs the lines in a file, normalizes whitespace and returns lines in a dictionary"""
+	try:
+		myfile=open(myfilename,"r")
+	except IOError:
+		return []
+	mylines=myfile.readlines()
+	myfile.close()
+	newdict={}
+	for x in mylines:
+		#the split/join thing removes leading and trailing whitespace, and converts any whitespace in the line
+		#into single spaces.
+		myline=string.split(x)
+		if len(myline)<2:
+			continue
+		newdict[myline[0]]=myline[1:]
+	return newdict
+
+def writedict(mydict,myfilename,writekey=1):
+	"""Writes out a dict to a file; writekey=0 mode doesn't write out the key and assumes all values are strings,
+	not lists."""
+	try:
+		myfile=open(myfilename,"w")
+	except IOError:
+		return 0
+	if not writekey:
+		for x in mydict.values():
+			myfile.write(x+"\n")
+	else:
+		for x in mydict.keys():
+			myfile.write(x+" ")
+			for y in mydict[x]:
+				myfile.write(y+" ")
+			myfile.write("\n")
+	myfile.close()
+	return 1
+
 def getconfig(mycfg,tolerant=0):
 	mykeys={}
 	f=open(mycfg,'r')
@@ -930,16 +967,13 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 	if "digest" in features:
 		#generate digest if it doesn't exist.
 		digestgen(checkme,overwrite=0)
+	
 	if mydo=="fetch":
 		return 0
 		
-	# if we need to generate digests, do it here and exit.
-	if mydo=="digest":
-		digestgen(checkme)	
-		return 0
-
 	if not digestcheck(checkme):
 		return 1
+	
 	#initial dep checks complete; time to process main commands
 	
 	actionmap={	"unpack":"unpack", 
@@ -1452,17 +1486,24 @@ def dep_listcleanup(deplist):
 	return newlist
 	
 # gets virtual package settings
+
 def getvirtuals(myroot):
-	if (not profiledir) or (not os.path.exists(profiledir+"/virtuals")):
-		return {}
-	myfile=open(profiledir+"/virtuals")
-	mylines=myfile.readlines()
 	myvirts={}
-	for x in mylines:
-		mysplit=string.split(x)
-		if len(mysplit)!=2:
+	myvirtfiles=[]
+	if profiledir:
+		myvirtfiles=[profiledir+"/virtuals"]
+	myvirtfiles.append(root+"/var/cache/edb/virtuals")
+	for myvirtfn in myvirtfiles:
+		if not os.path.exists(myvirtfn):
 			continue
-		myvirts[mysplit[0]]=mysplit[1]
+		myfile=open(myvirtfn)
+		mylines=myfile.readlines()
+		for x in mylines:
+			mysplit=string.split(x)
+			if len(mysplit)<2:
+				#invalid line
+				continue
+			myvirts[mysplit[0]]=mysplit[1]
 	return myvirts
 
 class packagetree:
@@ -2009,12 +2050,9 @@ class vartree(packagetree):
 	def __init__(self,root="/",virtual=None,clone=None):
 		if clone:
 			self.root=clone.root
-			#virtdb contains info on what entries are virtual
-			self.virtdb=copy.deepcopy(clone.virtdb)
 			self.gotcat=copy.deepcopy(clone.gotcat)
 		else:
 			self.root=root
-			self.virtdb={}
 			self.gotcat={}
 		packagetree.__init__(self,virtual,clone)
 	def getebuildpath(self,fullpackage):
@@ -2053,13 +2091,6 @@ class vartree(packagetree):
 					#we've already got it, skip.
 					continue
 			self.tree[mynewkey].append([fullpkg,mysplit])
-			if os.path.exists(self.root+"/var/db/pkg"+mycat+"/"+x+"/VIRTUAL"):
-				#Setting to None *does* add an entry
-				self.virtdb[mycat+"/"+x]=None
-				#This is a virtual package; record the "fullpkg" as key
-				#If we have a "virtual/foo", add "virtual/foo-1.0" as well
-				if isjustname(x):
-					self.virtdb[fullpkg]=None
 
 	def populate(self):
 		"populates the local tree (/var/db/pkg)"
@@ -2091,18 +2122,8 @@ class vartree(packagetree):
 				if not self.tree.has_key(mykey):
 					self.tree[mykey]=[]
 				self.tree[mykey].append([fullpkg,mysplit])
-				if os.path.exists(mywd+"/"+x+"/"+y+"/VIRTUAL"):
-					#Setting to None *does* add an entry
-					self.virtdb[x+"/"+y]=None
-					#This is a virtual package; record the "fullpkg" as key
-					#If we have a "virtual/foo", add "virtual/foo-1.0" as well
-					if isjustname(y):
-						self.virtdb[fullpkg]=None
 		os.chdir(origdir)
 		self.populated=1
-	def isvirtual(self,cpv):
-		"return true if the specified 'cat/pkg-v' is a virtual package"
-		return self.virtdb.has_key(cpv)
 
 class portagetree(packagetree):
 	"this tree will scan a portage directory located at root (passed to init)"
@@ -2466,26 +2487,10 @@ class dblink:
 			elif pkgfiles[obj][0]=="dev":
 				print "---       ","dev",obj
 
-		#remove provides
-		for mycatpkg in self.getelements("PROVIDE"):
-			mycat,mypkg=string.split(mycatpkg,"/")
-			tcatpkg=self.cat+"/"+self.pkg
-			mylink=dblink(mycat,mypkg,self.myroot)
-			if not mylink.exists():
-				continue
-			myvirts=mylink.getelements("VIRTUAL")
-			while tcatpkg in myvirts:
-				myvirts.remove(tcatpkg)
-			if not myvirts:
-				#no more virtuals; cleanup time
-				if mylink.isregular():
-					#just zap the VIRTUAL file, this is also a normal package
-					os.unlink(mylink.dbdir+"/VIRTUAL")
-				else:
-					#this is a pure virtual package, remove the entire db entry
-					mylink.delete()
-			else:
-				mylink.setelements(myvirts,"VIRTUAL")
+		#remove provides -- We don't do this anymore (drobbins, 28 Mar 2002)
+		#reasoning is that just unmerging postfix doesn't mean that you don't want virtual/mta
+		#to continue to map to postfix.  if you want to change your mapping, unmerge postfix,
+		#merge your new mta.  Then you'll have a new virtual/mta mapping.
 		
 		#do original postrm
 		a=doebuild(self.dbdir+"/"+self.pkg+".ebuild","postrm",self.myroot)
@@ -2569,16 +2574,16 @@ class dblink:
 			self.copyfile(inforoot+"/"+x)
 			
 		#create virtual links
-		for mycatpkg in self.getelements("PROVIDE"):
-			mycat,mypkg=string.split(mycatpkg,"/")
-			mylink=dblink(mycat,mypkg,self.myroot)
-			#this will create the link if it doesn't exist
-			mylink.create()
-			myvirts=mylink.getelements("VIRTUAL")
-			if not mycat+"/"+mypkg in myvirts:
-				myvirts.append(self.cat+"/"+self.pkg)
-				mylink.setelements(myvirts,"VIRTUAL")
-
+		myprovides=self.getelements("PROVIDE")
+		if myprovides:
+			myvirts=grabdict(destroot+"var/cache/edb/virtuals")
+			for mycatpkg in self.getelements("PROVIDE"):
+				if myvirts.has_key(mycatpkg):
+					myvirts[mycatpkg][0:0]=[self.cat+"/"+self.pkg]
+				else:
+					myvirts[mycatpkg]=[self.cat+"/"+self.pkg]
+		writedict(myvirts,destroot+"var/cache/edb/virtuals")
+			
 		#do postinst script
 		if myebuild:
 			# if we are merging a new ebuild, use *its* pre/postinst rather than using the one in /var/db/pkg 

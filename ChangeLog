@@ -1,6 +1,33 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-1.8.9_pre33 (28 Mar 2002)
+
+  28 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: tweaked digest
+  creation in doebuild() to hopefully avoid creating digests twice.  I hope I
+  didn't break anything in the process.
+
+  28 Mar 2002: Daniel Robbins <drobbins@gentoo.org> portage.py, emerge: "emerge
+  update" is now "emerge --update"; "world" added back.  New world
+  implementation that works like this ... if you type "emerge media-gfx/gimp",
+  media-gfx/gimp will be added to the "world" favorites file in
+  /var/cache/edb/world.  This world file is added to the system profile in
+  order to create the set of "world" packages to merge.  You can manually put
+  specific deps (for pinning) in /var/cache/edb/world and they won't get
+  overwritten.  To prevent a package that you specify on the emerge
+  command-line from being added to the world profile, use the "--oneshot"
+  option, which tells emerge that it should be merged once but not updated.
+  
+  28 Mar 2002: Daniel Robbins <drobbins@gentoo.org> portage.py: New virtuals
+  implementation; new virtual info is recorded in /var/cache/edb/virtuals;
+  virtuals data is created by merging the profile virtual info with the new
+  edb/virtuals file.  Note: We no longer add virtual package entries to
+  /var/db/pkg.  This change solves the bug where virtual files get auto-updated
+  by pkg-update, and also solves the bug where doing an "emerge --update world"
+  will cause ssmtp to be merged in order to satisfy the virtual/mta dep (which
+  you already have satisfied by postfix, for example).  Now, postfix will be
+  updated if necessary, but that's it. :)
+
 *portage-1.8.9_pre32 (22 Mar 2002)
 
   22 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: fixed a bug
