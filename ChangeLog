@@ -10,7 +10,10 @@
        It is for convenience. Do not mistake this for the actual file.
 
   24 Jul 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge pym/portage.py:
-  Added USE flag based PROVIDE support.
+  Added USE flag based SLOT support.
+
+  24 Jul 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge pym/portage.py:
+  Added USE flag based PROVIDE support. (#32114)
 
   24 Jul 2004; Jason Stubbs <jstubbs@gentoo.org> src/sandbox-1.1/libsandbox.c:
   Fixed lchown sandbox bug. (#58084)

@@ -4837,15 +4837,16 @@ class vartree(packagetree):
 	
 	def getslot(self,mycatpkg):
 		"Get a slot for a catpkg; assume it exists."
+		myslot = ""
 		try:
-			myslotfile=open(self.root+VDB_PATH+"/"+mycatpkg+"/SLOT","r")
-			myslotvar=string.split(myslotfile.readline())
-			myslotfile.close()
-			if len(myslotvar):
-				return myslotvar[0]
-		except:
+			myslotvar=string.join(grabfile(self.root+VDB_PATH+"/"+mycatpkg+"/SLOT"))
+			if myslotvar:
+				myuse = grabfile(self.root+VDB_PATH+"/"+mycatpkg+"/USE")
+				myuse = string.split(string.join(myuse))
+				myslot = string.join(portage_dep.use_reduce(portage_dep.paren_reduce(myslotvar), myuse))
+		except Exception, e:
 			pass
-		return ""
+		return myslot
 	
 	def hasnode(self,mykey,use_cache):
 		"""Does the particular node (cat/pkg key) exist?"""
