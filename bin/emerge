@@ -824,6 +824,7 @@ class depgraph:
 					alleb=portage.portdb.xmatch("match-all",x)
 					if alleb:
 						print "\n\n!!! "+red("all ebuilds that could satisfy ")+green(xinfo)+red(" have been masked.")
+					if myparent:
 						print     "!!!    "+red(xfrom)
 					else:
 						print "\n\nemerge: there are no masked or unmasked ebuilds to satisfy "+xinfo+"."
