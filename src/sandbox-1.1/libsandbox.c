@@ -1171,6 +1171,7 @@ check_syscall(sbcontext_t * sbcontext, const char *func, const char *file)
 	char *debug_log_path = NULL;
 	int debug_log_file = 0;
 	char buffer[512];
+	char *dpath = NULL;
 
 	init_wrappers();
 
@@ -1207,7 +1208,7 @@ check_syscall(sbcontext_t * sbcontext, const char *func, const char *file)
 				sprintf(buffer, "%s:%*s%s\n", func, (int) (10 - strlen(func)), "",
 								absolute_path);
 				// log_path somehow gets corrupted.  figuring out why would be good.
-				char *dpath = strdup(log_path);
+				dpath = strdup(log_path);
 				if ((0 == lstat(log_path, &log_stat))
 						&& (0 == S_ISREG(log_stat.st_mode))
 						) {
@@ -1240,7 +1241,7 @@ check_syscall(sbcontext_t * sbcontext, const char *func, const char *file)
 				sprintf(buffer, "%s:%*s%s\n", func, (int) (10 - strlen(func)), "",
 								absolute_path);
 				//debug_log_path somehow gets corupted, same thing as log_path above.
-				char *dpath = strdup(debug_log_path);
+				dpath = strdup(debug_log_path);
 				if ((0 == lstat(debug_log_path, &debug_log_stat))
 						&& (0 == S_ISREG(debug_log_stat.st_mode))
 						) {

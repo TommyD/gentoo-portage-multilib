@@ -2,6 +2,10 @@
 # Copyright 1999-2004 Gentoo Foundation; Distributed under the GPL v2
 # $Header$
 
+  07 Nov 2004; Brian Harring <ferringb@gentoo.org> libsandbox.c: c99 standard, 
+  (think it was at least) allows intermixing of code and data segments.  bug #70351
+  should be fixed by this.
+
   03 Nov 2004; Brian Harring <ferringb@gentoo.org> libsandbox.c, sandbox_futils.c:
   futils fix from bug #65201 via solar, and libsandbox log path checks via #69137
 
