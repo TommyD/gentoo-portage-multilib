@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  24 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge: Fixed a bug in
+  the relevant package calculation for dep display.
+
   24 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge: Added the removal
   of fully installed dependency subtrees causing faster calculation due to less
   circular dependencies.

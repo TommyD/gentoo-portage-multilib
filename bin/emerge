@@ -881,7 +881,7 @@ class depgraph:
 			if "empty" not in myparams:
 				for pkg in portage.db[portage.root]["vartree"].getallcpv():
 					self.mydbapi[portage.root].cpv_inject(pkg)
-			
+		
 		if "--usepkg" in myopts:
 			portage.db["/"]["bintree"].populate(("--getbinpkg" in myopts), ("--getbinpkgonly" in myopts))
 
@@ -913,8 +913,6 @@ class depgraph:
 		vardbapi=portage.db[myroot]["vartree"].dbapi
 
 		if addme:
-			# if the package is already on the system, we add a "nomerge"
-			# directive, otherwise we add a "merge" directive.
 			if mytype=="blocks":
 				# we've encountered a "blocks" node.  We will totally ignore this
 				# node and not add it to our digraph if it doesn't apply to us.
@@ -952,12 +950,15 @@ class depgraph:
 		else:
 			#onlydeps mode; don't merge
 			merging=2
+
+		# if the package is already on the system, we add a "nomerge"
+		# directive, otherwise we add a "merge" directive.
 		if merging==1:
 			mybigkey.append("merge")
 			self.mydbapi[myroot].cpv_inject(mykey)
 		else:
 			mybigkey.append("nomerge")
-			
+		
 		# Adjust pkgsettings with any virtuals this package provides.
 		if merging!=0:
 			if mytype=="binary":
@@ -2019,7 +2020,7 @@ class graph_display:
 		
 		relevant = merge_nodes[:]
 		for x in range(len(merge_nodes)):
-			parents = self.graph.get_parent_nodes(merge_nodes[x])
+			parents = self.graph.get_parent_nodes(merge_nodes[x], depth=0)
 			for node in parents:
 				if node not in relevant:
 					relevant.append(node)
