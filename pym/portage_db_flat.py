@@ -45,11 +45,13 @@ class database(portage_db_template.database):
 			raise KeyError, "key is not set to a valid value"
 
 		if self.has_key(key):
+			print "BLAHLBAHL"
 			mylock = portage_locks.lockfile(self.fullpath+key, wantnewlockfile=1)
 			mtime = os.stat(self.fullpath+key)[stat.ST_MTIME]
+			print "FOFOASFDOAFD"
 			myf = open(self.fullpath+key)
 			myl = myf.readlines()
-			close(myf)
+			myf.close()
 			portage_locks.unlockfile(mylock)
 
 			dict = {"_mtime_":mtime}

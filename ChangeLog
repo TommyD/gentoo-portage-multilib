@@ -9,37 +9,40 @@
 
 *portage-2.0.51_rc2 (25 Sep 2004): And we another Release Candidate!
 
+  25 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage_db_flat.py: Fix
+	for typos.
+
   25 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage_locks.py: Changed
-	all the calls to lockf which wraps fcntl. Made the chown on the locks
-	optional -- if it fails, it'll be annoying, but there's a message. Added
-	code to perform the hardlink-shuffle which uses hardlinks as a locking
-	mechanism (NFSv2 needs this).
+  all the calls to lockf which wraps fcntl. Made the chown on the locks
+  optional -- if it fails, it'll be annoying, but there's a message. Added
+  code to perform the hardlink-shuffle which uses hardlinks as a locking
+  mechanism (NFSv2 needs this).
 
   25 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage_db_flat.py:
-	Added locking around the file creation to ensure atomicity.
-	
+  Added locking around the file creation to ensure atomicity.
+  
   25 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage_localization.py:
-	A little spot to provide the '_' function and examples and future code.
+  A little spot to provide the '_' function and examples and future code.
 
   25 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage_file.py: Added
-	the module to contain file/directory functions that are useful. Additional
-	function 'makedirs' handles creation of directories with recursive perms.
-	
+  the module to contain file/directory functions that are useful. Additional
+  function 'makedirs' handles creation of directories with recursive perms.
+  
   25 Sep 2004; Nicholas Jones <carpaski@gentoo.org> getbinpkg.py: Fixed the
-	exception handling to not traceback.
-	
+  exception handling to not traceback.
+  
   25 Sep 2004; Nicholas Jones <carpaski@gentoo.org> etc-update: Typo fix.
-	
+  
   25 Sep 2004; Nicholas Jones <carpaski@gentoo.org> emerge: Caused the
-	binary metadata downloading to be a little more verbose. Fixed the
-	sync command's arguments so that it deletes top level files.
+  binary metadata downloading to be a little more verbose. Fixed the
+  sync command's arguments so that it deletes top level files.
 
   25 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Added
-	Cretin's patch for prelink blacklists. Increased the verbosity of the
-	'mylines' output to let people know what files are affected with nulls.
-	Added a workaround for a race condition that somehow exists inside of
-	auxget when there is heavy lockfile contention -- Must be a lockfile
-	cleanup issue.
+  Cretin's patch for prelink blacklists. Increased the verbosity of the
+  'mylines' output to let people know what files are affected with nulls.
+  Added a workaround for a race condition that somehow exists inside of
+  auxget when there is heavy lockfile contention -- Must be a lockfile
+  cleanup issue.
 
   25 Sep 2004; Jason Stubbs <jstubbs@gentoo.org> emerge: Modified env_update
   to always run ldconfig if makelinks is True, in order to ensure that
@@ -55,10 +58,10 @@
 
   21 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Fixed the
   bintree ebuild locating. Removed the virts_p debug/bug statements.
-	
+  
   21 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage_checksum: Added
   a fix for checksum tracebacks that tracebacked.
-	
+  
   21 Sep 2004; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Added more
   variables to vardb.
 
