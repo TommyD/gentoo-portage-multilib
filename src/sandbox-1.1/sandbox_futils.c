@@ -102,26 +102,17 @@ char *
 get_sandbox_log()
 {
 	char path[255];
-	char pid_string[20];
 	char *sandbox_log_env = NULL;
-
-	sprintf(pid_string, "%d", getpid());
-
-	memset(path, 0 , sizeof(path));
-	strncpy(path, LOG_FILE_PREFIX, sizeof(path)-1);
 
 	/* THIS CHUNK BREAK THINGS BY DOING THIS:
 	 * SANDBOX_LOG=/tmp/sandbox-app-admin/superadduser-1.0.7-11063.log
 	 */
 
 	sandbox_log_env = getenv(ENV_SANDBOX_LOG);
-	if (sandbox_log_env) {
-		strncat(path, sandbox_log_env, sizeof(path)-1);
-		strncat(path, "-", sizeof(path)-1);
-	}
-
-	strncat(path, pid_string, sizeof(path)-1);
-	strncat(path, LOG_FILE_EXT, sizeof(path)-1);
+	snprintf(path, sizeof(path)-1, "%s%s%s%d%s", LOG_FILE_PREFIX,
+		( sandbox_log_env == NULL ? "" : sandbox_log_env ),
+		( sandbox_log_env == NULL ? "" : "-" ),
+		getpid(), LOG_FILE_EXT);
 	return (strdup(path));
 }
 

@@ -1180,10 +1180,8 @@ check_syscall(sbcontext_t * sbcontext, const char *func, const char *file)
 	} else {
 		tmp_buffer = (char *) malloc(SB_PATH_MAX * sizeof (char));
 		egetcwd(tmp_buffer, SB_PATH_MAX - 1);
-		absolute_path = (char *) malloc((strlen(tmp_buffer) + 1 + strlen(file) + 1)
-																		* sizeof (char));
+		absolute_path = (char *) malloc((strlen(tmp_buffer) + 1 + strlen(file) + 1) * sizeof (char));
 		sprintf(absolute_path, "%s/%s", tmp_buffer, file);
-
 		if (tmp_buffer)
 			free(tmp_buffer);
 		tmp_buffer = NULL;
@@ -1208,23 +1206,30 @@ check_syscall(sbcontext_t * sbcontext, const char *func, const char *file)
 			if (NULL != log_path) {
 				sprintf(buffer, "%s:%*s%s\n", func, (int) (10 - strlen(func)), "",
 								absolute_path);
-
+				// log_path somehow gets corrupted.  figuring out why would be good.
+				char *dpath = strdup(log_path);
 				if ((0 == lstat(log_path, &log_stat))
 						&& (0 == S_ISREG(log_stat.st_mode))
 						) {
 					fprintf(stderr,
-									"\e[31;01mSECURITY BREACH\033[0m  %s already exists and is not a regular file.\n",
-									log_path);
+						"\e[31;01mSECURITY BREACH\033[0m  %s already exists and is not a regular file.\n",
+						dpath);
+				} else if (0 == check_access(sbcontext, "open_wr", dpath)) {
+					unsetenv("SANDBOX_LOG");
+					fprintf(stderr,
+						"\e[31;01mSECURITY BREACH\033[0m SANDBOX_LOG %s isn't allowed via SANDBOX_WRITE\n",
+						dpath);
 				} else {
-					log_file = true_open(log_path,
-															 O_APPEND | O_WRONLY
-															 | O_CREAT,
-															 S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+					log_file = true_open(dpath,
+						 O_APPEND | O_WRONLY
+						 | O_CREAT,
+						 S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 					if (log_file >= 0) {
 						write(log_file, buffer, strlen(buffer));
 						close(log_file);
 					}
 				}
+				free(dpath);
 			}
 		}
 
@@ -1234,28 +1239,36 @@ check_syscall(sbcontext_t * sbcontext, const char *func, const char *file)
 			if (0 != strncmp(absolute_path, debug_log_path, strlen(debug_log_path))) {
 				sprintf(buffer, "%s:%*s%s\n", func, (int) (10 - strlen(func)), "",
 								absolute_path);
-
+				//debug_log_path somehow gets corupted, same thing as log_path above.
+				char *dpath = strdup(debug_log_path);
 				if ((0 == lstat(debug_log_path, &debug_log_stat))
 						&& (0 == S_ISREG(debug_log_stat.st_mode))
 						) {
 					fprintf(stderr,
-									"\e[31;01mSECURITY BREACH\033[0m  %s already exists and is not a regular file.\n",
-									log_path);
-				} else {
+						"\e[31;01mSECURITY BREACH\033[0m  %s already exists and is not a regular file.\n",
+						debug_log_path);
+				} else if (0 == check_access(sbcontext, "open_wr", dpath)) {
+					unsetenv("SANDBOX_DEBUG");
+					unsetenv("SANDBOX_DEBUG_LOG");
+					fprintf(stderr,
+						"\e[31;01mSECURITY BREACH\033[0m  SANDBOX_DEBUG_LOG %s isn't allowed by SANDBOX_WRITE.\n",
+						dpath);
+				} else {					
 					debug_log_file =
-							true_open(debug_log_path,
-												O_APPEND | O_WRONLY |
-												O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+						true_open(dpath,
+							O_APPEND | O_WRONLY |
+							O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 					if (debug_log_file >= 0) {
 						write(debug_log_file, buffer, strlen(buffer));
 						close(debug_log_file);
 					}
 				}
+				free(dpath);
 			}
 		} else {
 			fprintf(stderr,
-							"\e[32;01mACCESS ALLOWED\033[0m %s:%*s%s\n",
-							func, (int) (10 - strlen(func)), "", absolute_path);
+				"\e[32;01mACCESS ALLOWED\033[0m %s:%*s%s\n",
+				func, (int) (10 - strlen(func)), "", absolute_path);
 		}
 	}
 

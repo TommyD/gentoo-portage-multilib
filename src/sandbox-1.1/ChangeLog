@@ -2,6 +2,9 @@
 # Copyright 1999-2004 Gentoo Foundation; Distributed under the GPL v2
 # $Header$
 
+  03 Nov 2004; Brian Harring <ferringb@gentoo.org> libsandbox.c, sandbox_futils.c:
+  futils fix from bug #65201 via solar, and libsandbox log path checks via #69137
+
   02 Aug 2004; Nicholas Jones <carpaski@gentoo.org> libsandbox.c: Code from
   Seth Robertson that tracked down all adjuct flags for read operations that
   do not invoke a write operation.
