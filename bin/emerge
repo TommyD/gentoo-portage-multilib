@@ -833,7 +833,7 @@ def unmerge(unmerge_action, unmerge_files):
 	candidate_packages=candidate_packages.keys()
 	candidate_packages.sort()
 	
-	if global_unmerge and 0==len(selected_versions_mapping):
+	if global_unmerge and 0==len(candidate_ebuild_paths):
 		print
 		print "No outdated packages were found on your system."
 		print
