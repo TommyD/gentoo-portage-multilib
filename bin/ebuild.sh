@@ -646,7 +646,7 @@ do
 	    ;;
 	depend)
 		#the echo commands remove newlines
-		echo "['`echo $DEPEND`', '`echo $RDEPEND`', '`echo $SLOT`', '`echo $SRC_URI`' ]" > /var/cache/edb/dep/dep-${PF}.ebuild
+		echo "['`echo $DEPEND`', '`echo $RDEPEND`', '`echo $SLOT`', '`echo $SRC_URI`','`echo $RESTRICT`' ]" > /var/cache/edb/dep/dep-${PF}.ebuild
 		exit 0
 		;;
 	*)

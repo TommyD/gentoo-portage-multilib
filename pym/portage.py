@@ -615,6 +615,25 @@ def fetch(myuris):
 				#invalid line
 				continue
 			mydigests[myline[2]]={"md5":myline[1],"size":string.atol(myline[3])}
+	if "fetch" in settings["RESTRICT"].split():
+		# fetch is restricted.  Ensure all files have already been downloaded; otherwise,
+		# print message and exit.
+		gotit=1
+		for myuri in myuris:
+			myfile=os.path.basename(myuri)
+			try:
+				mystat=os.stat(settings["DISTDIR"]+"/"+myfile)
+			except OSError:
+				# file does not exist
+				print "!!!",myfile,"not found in",settings["DISTDIR"]+"."
+				gotit=0
+				break
+		if not gotit:
+			print ">>>",settings["EBUILD"],"has fetch restriction turned on."
+			print ">>> This probably means that this ebuild's files must be downloaded"
+			print ">>> manually.  See the comments in the ebuild for more information."
+			return 0
+		return 1
 	for myuri in myuris:
 		if myuri[:14]=="http://mirror/":
 			#generic syntax for a file mirrored directly on a gentoo mirror
@@ -654,9 +673,18 @@ def fetch(myuris):
 			myfetch=string.replace(locfetch,"${URI}",loc)
 			myfetch=string.replace(myfetch,"${FILE}",myfile)
 			myret=spawn(myfetch,free=1)
-			if not myret:
-				gotit=1
-				break
+			if (mydigests!=None):
+				try:
+					mystat=os.stat(settings["DISTDIR"]+"/"+myfile)
+					if mystat[ST_SIZE]==mydigests[myfile]["size"]:
+						gotit=1
+						break
+				except OSError:
+					pass
+			else:
+				if not myret:
+					gotit=1
+					break
 		if not gotit:
 			print '!!! Couldn\'t download',myfile+".  Aborting."
 			return 0
@@ -799,16 +827,14 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 			return 1
 	if mydo=="depend":
 		return 0
-
 	# obtain the dependency, slot and SRC_URI information from the edb cache file
 	a=open(mydbkey,"r")
 	mydeps=eval(a.readline())
 	a.close()
 
 	# get possible slot information from the deps file
-	if mydeps[2]!="":
-		settings["SLOT"]=mydeps[2]
-	
+	settings["SLOT"]=mydeps[2]
+	settings["RESTRICT"]=mydeps[4]	
 	# it's fetch time	
 	myuris=mydeps[3]
 	newuris=evaluate(tokenize(myuris),string.split(settings["USE"]))	

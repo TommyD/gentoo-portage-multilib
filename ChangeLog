@@ -1,6 +1,22 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+*portage-1.8.9_pre16 (25 Feb 2002)
+
+  25 Feb 2002; Daniel Robbins <drobbins@gentoo.org> emerge : emerge syntax
+  changed back to "classic" style; replaced dots with spinner, did a major code
+  cleanup and removed pieces that will be rewritten for 1.8.9 final.  emerge
+  documentation isn't up-to-date at all; I'm holding off on the --help rewrite
+  until after 1.8.9 features have been finalized (soon!)
+ 
+  25 Feb 2002; Daniel Robbins <drobbins@gentoo.org> : Added RESTRICT variable
+  to ebuilds.  If RESTRICT="fetch" is set in the ebuild, it means that the
+  files listed in SRC_URI are simply filenames and that the real files must be
+  downloaded manually.  This allows us to deal with realplayer, since
+  overriding dyn_fetch is no longer an option now that we have the fetch code
+  in python.  Also added a cosmetic tweak to emerge during info file
+  regeneration.
+  
   25 Feb 2002; Daniel Robbins <drobbins@gentoo.org> cnf/* : updated ${x} ->
   ${URI} in $FETCHCOMMAND.
 

@@ -14,15 +14,21 @@ import shutil
 import re
 import time
 
+spinner="\|/-\|/-"
+spinpos=0
 #number of ebuilds merged
 merged=0
-actions=["--clean",
-	"--help",
-	"--rebuild",
-	"--search",
-	"--update"]
+actions=["help",
+	"rebuild",
+	"search",
+	"update",
+	"clean",
+	"rsync",
+	"sync",
+	"system",
+	"unmerge",
+	"config"]
 options=["--autoclean",
-	"--all",
 	"--buildpkg",
 	"--debug",
 	"--emptytree",
@@ -30,32 +36,24 @@ options=["--autoclean",
 	"--noreplace",
 	"--onlydeps",
 	"--pretend",
-	"--slots",
 	"--usepkg",
 	"--verbose",
-	"--versions"]
+	"--rev",
+	"--slot",
+	"--help"]
+
 shortmapping={"a":"--autoclean",
 	"b":"--buildpkg",
-	"c":"--clean",
 	"d":"--debug",
-	"e":"--emptytree",
 	"f":"--fetchonly",
 	"h":"--help",
-	"i":"--versions",
 	"k":"--usepkg",
-	"l":"--all",
 	"n":"--noreplace",
 	"o":"--onlydeps",
 	"p":"--pretend",
-	"r":"--rebuild",
-	"s":"--search",
-	"t":"--slots",
-	"u":"--update",
-	"v":"--verbose"}
-modes=["rsync","sync","config","system","world"]
+	"v":"--verbose" }
 myaction=None
 myopts=[]
-mymode=[]
 myfiles=[]
 edebug=0
 
@@ -63,7 +61,7 @@ edebug=0
 cmdline=sys.argv[1:]
 cmdline.extend(portage.settings["EMERGE_OPTS"].split())
 for x in cmdline:
-	if x[0:1]=="-"and not x[1:2]=="-":
+	if x[0:1]=="-"and x[1:2]!="-":
 		for y in x[1:]:
 			if shortmapping.has_key(y):
 				cmdline.append(shortmapping[y])
@@ -74,56 +72,24 @@ for x in cmdline:
 
 # process the command arguments
 for x in cmdline:
-	if x=="update" or x=="--unmerge" or x=="--world":
-		print
-		if x=="update":
-			print " "+red("* WARNING:"),green("emerge update"),"has been deprecated, use",green("emerge --update"),"instead."
-		elif x=="--unmerge":
-			print " "+red("* WARNING:"),green("emerge --unmerge"),"has been deprecated, use",green("emerge --clean"),"instead."
-		elif x=="--world":
-			print " "+red("* WARNING:"),green("emerge --world"),"has been deprecated, use",green("emerge world"),"instead."
-		print " "+red("*"),"Read",green("emerge --help"),"to get a complete overview of the interface changes."
-		print
-		sys.exit(1)
-
 	if len(x)>=2:
-		if x[0:1]=="-":
-			if x[1:2]=="-":
-				if x in actions:
-					if myaction:
-						print "!!! Error: more than one action specified on command-line."
-						print "!!! Available actions:",actions
-						sys.exit(1)
-					else:
-						myaction=x
-				elif x in options:
-					myopts.append(x)
-				else:
-					print "!!! Error:",x,"is an invalid action or option."
-					sys.exit(1)
+		if x[0:2]=="--":
+			if x in options:
+				myopts.append(x)
 			else:
-				for y in x[1:]:
-					if shortmapping.has_key(y):
-						myopts.append(shortmapping[y])
-					else:
-						print y
-						print "!!! Error: -"+y+" is an invalid short action or option."
-		elif x in modes:
-			if len(mymode)>=1:
-				print "!!! Error: more than one mode specified on command-line."
-				print "!!! Available modes:",modes
+				print "!!! Error:",x,"is an invalid option."
 				sys.exit(1)
-			else:
-				mymode.append(x)
+		elif (not myaction) and (x in actions):
+			myaction=x
 		else:	
-				# this little conditional helps tab completion
-				if x[-1]=="/":
-					myfiles.append(x[:-1])
-				else:
-					myfiles.append(x)
+			# this little conditional helps tab completion
+			if x[-1]=="/":
+				myfiles.append(x[:-1])
+			else:
+				myfiles.append(x)
 
 # check if root user is the current user for the actions where emerge needs this
-if os.getuid()!=0 and "--help"!=myaction and "--search"!=myaction:
+if os.getuid()!=0 and ("--help" not in myopts) and ("search"!=myaction):
 	print "!!! to be able to perform the requested action, emerge must be run by root."
 	sys.exit(1)
 
@@ -296,8 +262,7 @@ def getsyslist():
 
 class depgraph:
 
-	def __init__(self,mymode,myaction,myopts):
-		self.mymode=mymode
+	def __init__(self,myaction,myopts):
 		self.myaction=myaction
 		self.myopts=myopts
 		virts=portage.getvirtuals("/")
@@ -324,7 +289,9 @@ class depgraph:
 		addme = should I be added to the tree? (for the --onlydeps mode)"""
 		if mybigkey==None:
 			return
-		sys.stdout.write(".")	
+		global spinner, spinpos
+		sys.stdout.write("\b"+spinner[spinpos])
+		spinpos=(spinpos+1)%8
 		sys.stdout.flush()
 		if self.digraph.hasnode(mybigkey):
 			#if we've already hit this node before, we're already recursing on the dependencies.
@@ -354,7 +321,7 @@ class depgraph:
 			mydbkey="/var/cache/edb/dep/dep-"+os.path.basename(myebuild)
 			#use the cached info if it is available and more recent than the ebuild itself (mtime)
 			if (not os.path.exists(mydbkey)) or (os.stat(mydbkey)[7]<os.stat(myebuild)[7]):
-				edepend=portage.doebuild(myebuild,"depend",myroot,edebug)
+				portage.doebuild(myebuild,"depend",myroot,edebug)
 			mydb=open(mydbkey,"r")
 			edepend=eval(mydb.readline())
 			mydb.close()
@@ -379,7 +346,7 @@ class depgraph:
 			if addme:
 				self.digraph.addnode(mybigkey,myparent)
 			for dep in mydep.keys():
-				if "--update"==self.myaction:
+				if "update"==self.myaction:
 					mycheck=self.emptytree.depcheck(mydep[dep])
 				else:
 					mycheck=self.db[dep]["vartree"].depcheck(mydep[dep])
@@ -414,7 +381,7 @@ class depgraph:
 				print "!!! Error: circular dependencies"
 				sys.exit(1)
 			splitski=string.split(mycurkey)
-			if "--update"==self.myaction:
+			if "update"==self.myaction:
 				if not self.db["/"]["vartree"].exists_specific(splitski[2]):
 					self.db["/"]["merge"].append(splitski)
 			else:
@@ -427,7 +394,8 @@ class depgraph:
 
 	def syscreate(self,mylines=[]):
 		for myline in mylines:	
-			if "--update"==self.myaction or "--rebuild"==self.myaction:
+			if "update"==self.myaction:
+			#or "--rebuild"==self.myaction:
 				self.create(self.match(myline,mykey="update (likely old /var/db/pkg entry)"))
 			else:
 				mycheck=self.db[portage.root]["vartree"].depcheck(myline)
@@ -445,23 +413,23 @@ class depgraph:
 		if mydep2[0]=="!":
 			mydep2=mydep[1:]
 
-		if self.myaction=="--rebuild":
-			myeb=self.db[portage.root]["vartree"].dep_bestmatch(mydep2)
-			if not self.db[portage.root]["porttree"].exists_specific(myeb):
-				self.outdatedpackages.append(myeb)
-				return None
-		else:
-			myeb=self.db[portage.root]["porttree"].dep_bestmatch(mydep2)
-			if not myeb:
-				if not mykey:
-					print "\n!!! Warning: couldn't find match for",mydep
-				else:
-					print "\n!!! Warning: couldn't find match for",mydep,"in",mykey
-				return None
+		#if self.myaction=="--rebuild":
+		#	myeb=self.db[portage.root]["vartree"].dep_bestmatch(mydep2)
+		#	if not self.db[portage.root]["porttree"].exists_specific(myeb):
+		#		self.outdatedpackages.append(myeb)
+		#		return None
+		#else:
+		myeb=self.db[portage.root]["porttree"].dep_bestmatch(mydep2)
+		if not myeb:
+			if not mykey:
+				print "\n!!! Warning: couldn't find match for",mydep
+			else:
+				print "\n!!! Warning: couldn't find match for",mydep,"in",mykey
+			return None
 
 		# handle filtering of virtual deps for the rebuild action
-		if self.myaction=="--rebuild" and myeb[0:len("virtual")]=="virtual":
-			return None
+		#if self.myaction=="--rebuild" and myeb[0:len("virtual")]=="virtual":
+		#	return None
 		
 		if mydep[0]=="!":
 			myk="blocks "+myroot+" "+myeb
@@ -592,7 +560,6 @@ def post_emerge(retval=0):
 			if not (auxgroups[1] or auxgroups[2]):
 				myso=commands.getstatusoutput("/usr/bin/install-info --dir-file="+root+"usr/share/info/dir "+root+"usr/share/info/"+x)[1]
 				if myso!="":
-					print auxgroups	
 					badcount=badcount+1
 					if "--verbose" in myopts:
 						print myso
@@ -624,15 +591,13 @@ def post_emerge(retval=0):
 	sys.exit(retval)
 
 # general options that should be taken into account before any action
-if not portage.settings.has_key("MAINTAINER_noclean"):
+if "noclean" not in portage.features:
 	if not "--autoclean" in myopts:
 		myopts.append("--autoclean")
 if "--debug" in myopts:
 	edebug=1
 
-# process modes that aren't in the universal emerge interface format first
-# this format is 'emerge --action --option --option [packageset]'
-if (("rsync" in mymode) or ("sync" in mymode)) and (not myaction or myaction=="--clean"):
+if myaction in ["sync","rsync"]:
 	rclean=0
 	myportdir=portage.settings["PORTDIR"]
 	if myportdir[-1]=="/":
@@ -689,8 +654,8 @@ if (("rsync" in mymode) or ("sync" in mymode)) and (not myaction or myaction=="-
 		sys.exit(1)
 	
 # HELP action
-elif "--help"==myaction:
-	if len(mymode)==0:
+elif "--help" in myopts:
+	if not myaction:
 		print
 		print bold("Usage: ")+turquoise("emerge")+" [ "+green("action")+" ] [ "+green("options")+" ] [ "+turquoise("ebuildfile")+" | "+turquoise("tbz2file")+" | "+turquoise("dependency")+" ] ..."
 		print "       "+turquoise("emerge")+" [ "+green("action")+" ] [ "+green("options")+" ] [ "+turquoise("system")+" | "+turquoise("world")+" ]"
@@ -821,7 +786,7 @@ elif "--help"==myaction:
 		print "              This will only keep one version of a particular package installed"
 		print "              within each binary compatibility slot."
 		print 
-	elif "rsync" in mymode:
+	elif myaction in ["rsync","sync"]:
 		print
 		print bold("Usage: ")+turquoise("emerge")+" [ "+green("--clean")+" "+green("-c")+" ] "+turquoise("rsync")
 		print
@@ -831,7 +796,7 @@ elif "--help"==myaction:
 		print "       so be careful.  \"emerge --clean rsync\" does the same thing as \"emerge"
 		print "       rsync\", but files that no longer exist on our server are removed."
 		print
-	elif "system" in mymode:
+	elif myaction=="system":
 		print
 		print bold("Usage: ")+turquoise("emerge")+" [ "+green("action")+" ] "+" [ "+green("options")+" ] "+turquoise("system")
 		print
@@ -847,11 +812,7 @@ elif "--help"==myaction:
 		print "       good idea to do an \"emerge --pretend system\" before an \"emerge"
 		print "       system\", just so you know what emerge is planning to do."
 		print
-	elif "world" in mymode:
-		print
-		print bold("Usage: ")+turquoise("emerge")+" [ "+green("action")+" ] "+" [ "+green("options")+" ] "+turquoise("world")
-		print
-	elif "config" in mymode:
+	elif myaction=="config":
 		outstuff=green("Config file management support (preliminary)")+"""
 
 Portage has a special feature called "config file protection".  The purpose of
@@ -891,9 +852,12 @@ CONFIG_PROTECT_MASK="/etc/wget /etc/rc.d"
 
 """
 		print outstuff
-
+elif "config"==myaction:
+	print
+	print "Currently, \'config\' is a --help option only."
+	print
 # SEARCH action
-elif "--search"==myaction:
+elif "search"==myaction:
 	if not myfiles:
 		print
 		print "No search terms provided."
@@ -905,164 +869,59 @@ elif "--search"==myaction:
 			searchinstance.execute()
 			searchinstance.output()
 
-# CLEAN action
-elif "--clean"==myaction:
-	if not myfiles and not "world" in mymode and not "system" in mymode:
+elif "unmerge"==myaction:
+	if not myfiles:
 		print
 		print "No packages to unmerge have been provided."
 		print
-	else:
-		full_paths={}
-		full_ebuild_paths={}
-		full_package_paths={}
-		current_version_mapping={}
-		
-		var_path=portage.root+"var/db/pkg"
-		# process all arguments, verify if they can be resolved to an installed
-		# ebuild file and add the absolute paths of these ebuild to a list
-		if "world" in mymode or "system" in mymode:
-			if "--all" in myopts and not "--pretend" in myopts:
-				print "Thanks to the carefulnes of the Gentoo Linux developers,"
-				print "you were preserved from having erased your entire system."
-				print green("emerge --clean --all")+" can't be used with "+red("world")+" or "+red("system")+"."
-				print
+		sys.exit(1)
+	full_paths={}
+	full_ebuild_paths={}
+	full_package_paths={}
+	current_version_mapping={}
+	#UNCOMPLETE"
+	for x in myfiles:
+	
+	# an absolute path has been given
+		if (x[0]=='/'):
+			path_parts=split(x, '/')
+			if len(path_parts) != 6:
+				print "When providing an absolute path it should be"
+				print "in the following format : "+var_path+"/category/package"
+				print "The path '"+x+"' doesn't respect this."
+				sys.exit(1)
+			elif not os.path.exists(x):
+				print "The path '"+x+"' doesn't exist."
+				sys.exit(1)
+			elif -1 == find(x, var_path):
+				print "The path '"+x+"' didn't commence with '"+var_path+"'."
+				sys.exit(1)
 			else:
-				mymatches=[]
-				localtree=portage.vartree(portage.root)	
-				if "world" in mymode:
-					for y in localtree.getallnodes():
-						mymatches.extend(localtree.dep_match(y))
-				elif "system" in mymode:
-					for y in getsyslist():
-						mymatches.extend(localtree.dep_match(y))
-	
-				# only loops over the matches if they were found
-				if mymatches:
-					for package in mymatches:
-						full_path=localtree.getebuildpath(package)
-						if os.path.exists(full_path):
-							full_package_paths[full_path]=package
-
-		else:
-			for x in myfiles:
-	
-				# an absolute path has been given
-				if (x[0]=='/'):
-					path_parts=split(x, '/')
-					if len(path_parts) != 6:
-						print "When providing an absolute path it should be"
-						print "in the following format : "+var_path+"/category/package"
-						print "The path '"+x+"' doesn't respect this."
-						sys.exit(1)
-					elif not os.path.exists(x):
-						print "The path '"+x+"' doesn't exist."
-						sys.exit(1)
-					elif -1 == find(x, var_path):
-						print "The path '"+x+"' didn't commence with '"+var_path+"'."
-						sys.exit(1)
-					else:
-						full_path=strip(x)+"/"+path_parts[5]+".ebuild"
-						if not os.path.exists(full_path):
-							print "The ebuild '"+full_path+"' couldn't be found."
-							print "Your portage installation tree seems to be corrupted."
-						else:
-							full_ebuild_paths[full_path]=path_parts[4]+"/"+path_parts[5]
-	
-				# a category and package name have been given
+				full_path=strip(x)+"/"+path_parts[5]+".ebuild"
+				if not os.path.exists(full_path):
+					print "The ebuild '"+full_path+"' couldn't be found."
+					print "Your portage installation tree seems to be corrupted."
 				else:
-					localtree=portage.vartree(portage.root)	
-					mymatches=localtree.dep_match(x)
-					# if no matches were found, try again by adding a '=' dep symbol if no
-					# dep symbols are already present
-					if not mymatches and x[0] not in ('<','>','=','~'):
-						mymatches=localtree.dep_match("="+x)
-	
-					# only loops over the matches if they were found
-					if mymatches:
-						for package in mymatches:
-							full_path=localtree.getebuildpath(package)
-							if not os.path.exists(full_path):
-								print "The ebuild '"+full_path+"' couldn't be found."
-								print "Your portage installation tree seems to be corrupted."
-							else:
-								full_package_paths[full_path]=package
+					full_ebuild_paths[full_path]=path_parts[4]+"/"+path_parts[5]
 
-		# remove packages with the null slot from slots functionality
-		if len(full_package_paths) > 0:
-			if "--slots" in myopts:
-				for full_path in full_package_paths.keys():
-					slot_path=dirname(full_path)+"/SLOT"
-					if os.path.exists(slot_path):
-						slot_file=open(slot_path)
-						package_slot=slot_file.readline().strip()
-						slot_file.close()
-						if package_slot=='':
-							del full_package_paths[full_path]
-					else:
-						del full_package_paths[full_path]
-		
-		# if the --all switch was not specified, remove the latest version of each package set
-		# to make sure that the system stays running
-		if not "--all" in myopts:
-			if len(full_package_paths) > 0:
-				latest_ebuilds={}
-				old_ebuilds={}
-				# determine the latest installed packages of each cat/pkg key
-				full_paths_keys=full_package_paths.keys()
-				# sort the ebuild paths
-				full_paths_keys.sort()
-				previous_package_set=None
-				for full_path in full_paths_keys:
-					# construct the key that will be used to determine when a new package set
-					# is being processed, the package slot is taken into account for this
-					package_parts=portage.pkgsplit(full_package_paths[full_path])
-					
-					# construct the package slot, even if it was an old package without slot support
-					slot_path=dirname(full_path)+"/SLOT"
-					if os.path.exists(slot_path):
-						slot_file=open(slot_path)
-						package_slot=slot_file.readline().strip()
-						slot_file.close()
-					else:
-						package_slot=""
-						
-					# by default the package sets are specified to remove only old revisions
-					# but by taking slots into account
-					# when the --versions option is specified, all previous versions within the same slot are removed too
-					# when the --slots option is specified, all previous slots are removed too
-					if "--slots" in myopts:
-						package_set=package_parts[0]+"-"+package_slot
-					elif "--versions" in myopts:
-						package_set=package_parts[0]+"-"+package_slot
-					else:
-						package_set=package_parts[0]+"-"+package_parts[1]+"-"+package_slot
-						
-					# create initial latest ebuild information for the current package set if it
-					# doesn't exists yet
-					if not latest_ebuilds.has_key(package_set):
-						latest_ebuilds[package_set]=["",0]
-					# get the latest modification time of this package version, which should correspond to
-					# the time when it when installed
-					contents_path=dirname(full_path)+"/CONTENTS"
-					contents_mtime=os.stat(contents_path)[8]
-					# update the latest modified package version
-					if not old_ebuilds.has_key(package_set):
-						old_ebuilds[package_set]=[]
-					if contents_mtime > latest_ebuilds[package_set][1]:
-						if latest_ebuilds[package_set][0]:
-							old_ebuilds[package_set].append(latest_ebuilds[package_set][0])
-						latest_ebuilds[package_set]=[full_path,contents_mtime]
-					else:
-						old_ebuilds[package_set].append(full_path)
-					# update which package set has just been processed
-					previous_package_set=package_set
+		# a category and package name have been given
+		else:
+			localtree=portage.vartree(portage.root)	
+			mymatches=localtree.dep_match(x)
+			# if no matches were found, try again by adding a '=' dep symbol if no
+			# dep symbols are already present
+			if not mymatches and x[0] not in ('<','>','=','~'):
+				mymatches=localtree.dep_match("="+x)
 
-				# go over the package sets and remove the latest ebuild
-				for package_set in latest_ebuilds.keys():
-					if latest_ebuilds[package_set][0]:
-						del full_package_paths[latest_ebuilds[package_set][0]]
-						for old_ebuild in old_ebuilds[package_set]:
-							current_version_mapping[old_ebuild]=latest_ebuilds[package_set][0]
+			# only loops over the matches if they were found
+			if mymatches:
+				for package in mymatches:
+					full_path=localtree.getebuildpath(package)
+					if not os.path.exists(full_path):
+						print "The ebuild '"+full_path+"' couldn't be found."
+						print "Your portage installation tree seems to be corrupted."
+					else:
+						full_package_paths[full_path]=package
 
 		full_paths=full_ebuild_paths.keys()
 		full_paths.extend(full_package_paths.keys())
@@ -1147,110 +1006,51 @@ elif "--clean"==myaction:
 					print "Unmerging "+os.path.basename(full_path)+" ..."
 					retval=portage.doebuild(full_path,"unmerge",portage.root,edebug)
 	post_emerge()
+# "update", "system", or just process files:
+else:
+	if "--pretend" in myopts:
+		print
+		print "These are the packages that I would merge, in order."
+		print
 
-# REBUILD action
-elif "--rebuild"==myaction:
-	if not "system" in mymode and not "world" in mymode:
-		print
-		print " "+red("* WARNING:"),green("emerge --rebuild"),"shouldn't be used for regular packages"
-		print " "+red("*"),"it's only intended to be used with",green("system")+", "+green("world")+", and",green("noroot")
-		print
+	if myaction in ["system","update"]:
+		mydepgraph=depgraph(myaction,myopts)
+		print "Calculating system dependencies  ",
+		mydepgraph.syscreate(getsyslist())
+		print "\b\b ...done!"
 	else:
-		if "--pretend" in myopts:
-				print
-				print "These are the packages that I would rebuild, in order."
-				print
-	
-		if "system" in mymode:
-			mydepgraph=depgraph(mymode,myaction,myopts)
-			print "Calculating system dependencies",
-			mydepgraph.syscreate(getsyslist())
-			print " done!"
-		elif "world" in mymode:
-			mydepgraph=depgraph(mymode,myaction,myopts)
-			print "Calculating world dependencies",
-			mydepgraph.syscreate(mydepgraph.db["/"]["vartree"].getallnodes())
-			print " done!"
-
-		if "--pretend" in myopts:
-			mydepgraph.display(mydepgraph.altlist())
-			
-			myoutdated=mydepgraph.outdated()
-			if len(myoutdated):
-				if "--verbose" not in myopts:
-					print
-					print " "+yellow("* IMPORTANT:"),len(myoutdated),"packages aren't available anymore; use "+green("--verbose")+" for details."
-				else:
-					print
-					print " "+yellow("* IMPORTANT:"),len(myoutdated),"packages aren't available anymore"
-					print " "+yellow("*")+" Your portage tree doesn't contain the ebuilds anymore that correspond to the"
-					print " "+yellow("*")+" following packages. This means that portage is unable to rebuild them."
-					print " "+yellow("*")+" Instead you should upgrade to the latest versions or install possible"
-					print " "+yellow("*")+" alternative packages that provide the same functionalities."
-					myoutdated.sort()
-					for mypackage in myoutdated:
-						print "    "+mypackage
-		else:
-			mydepgraph.merge(mydepgraph.altlist())
-		post_emerge()
-
-# INSTALL and UPDATE action
-elif "--update"==myaction or not myaction:
-	if not myaction and "world" in mymode:
-		print
-		print " "+red("* WARNING:"),green("emerge world"),"can't be used without an action"
-		print " "+red("*"),green("world"),"is only intended to be used with",green("emerge --update")
-		print
-	else:
-		if "--pretend" in myopts:
-				print
-				print "These are the packages that I would merge, in order."
-				print
-
-		if "system" in mymode:
-			mydepgraph=depgraph(mymode,myaction,myopts)
-			print "Calculating system dependencies",
-			mydepgraph.syscreate(getsyslist())
-			print " done!"
-		elif "world" in mymode:
-			mydepgraph=depgraph(mymode,myaction,myopts)
-			print "Calculating world dependencies",
-			mydepgraph.syscreate(mydepgraph.db["/"]["vartree"].getallnodes())
-			print " done!"
-		else:
-			mydepgraph=depgraph(mymode,myaction,myopts)
-			if not myfiles:
-				post_emerge()
-				#we don't have any files to process; skip this step and exit
-			print "Calculating dependencies",
-			for mypkg in myfiles:
-				if mypkg[-5:]==".tbz2":
+		mydepgraph=depgraph(myaction,myopts)
+		if not myfiles:
+			post_emerge()
+			#we don't have any files to process; skip this step and exit
+		print "Calculating dependencies  ",
+		for mypkg in myfiles:
+			if mypkg[-5:]==".tbz2":
+				mytype="binary"
+				mytbz2=xpak.tbz2(mypkg)
+				mykey=mytbz2.getelements("CATEGORY")[0]+"/"+os.path.basename(mypkg)[:-5]
+			elif mypkg[-7:]==".ebuild":
+				mytype="ebuild"
+				mykey=os.path.basename(os.path.abspath(mypkg+"/../.."))+"/"+os.path.basename(mypkg)[:-7]
+			else:
+				mykey=""
+				if "--usepkg" in myopts:
+					mykey=mydepgraph.db[portage.root]["bintree"].dep_bestmatch(mypkg)
 					mytype="binary"
-					mytbz2=xpak.tbz2(mypkg)
-					mykey=mytbz2.getelements("CATEGORY")[0]+"/"+os.path.basename(mypkg)[:-5]
-				elif mypkg[-7:]==".ebuild":
+				if not mykey:
+					mykey=mydepgraph.db[portage.root]["porttree"].dep_bestmatch(mypkg)
 					mytype="ebuild"
-					mykey=os.path.basename(os.path.abspath(mypkg+"/../.."))+"/"+os.path.basename(mypkg)[:-7]
-				else:
-					mykey=""
-					if "--usepkg" in myopts:
-						mykey=mydepgraph.db[portage.root]["bintree"].dep_bestmatch(mypkg)
-						mytype="binary"
 					if not mykey:
-						mykey=mydepgraph.db[portage.root]["porttree"].dep_bestmatch(mypkg)
-						mytype="ebuild"
-						if not mykey:
-							print "!!! Couldn't find match for",mypkg+"; aborting."
-							sys.exit(1)
+						print "!!! Couldn't find match for",mypkg+"; aborting."
+						sys.exit(1)
 			#	else:
 			#		print "!!! Error:",x,"is neither an ebuild nor a .tbz2 package."
 			#		sys.exit(1)
-				mydepgraph.create(mytype+" "+portage.root+" "+mykey,None,"--onlydeps" not in myopts)
-			print " done!"
-
-		if "--pretend" in myopts:
-			mydepgraph.display(mydepgraph.altlist())
-		else:
-			mydepgraph.merge(mydepgraph.altlist())
-		post_emerge()
+			mydepgraph.create(mytype+" "+portage.root+" "+mykey,None,"--onlydeps" not in myopts)
+		print "\b\b ...done!"
+	if "--pretend" in myopts:
+		mydepgraph.display(mydepgraph.altlist())
+	else:
+		mydepgraph.merge(mydepgraph.altlist())
+	post_emerge()
 
