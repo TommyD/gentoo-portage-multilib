@@ -2,6 +2,12 @@
 # Copyright 2000-2004 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  31 Jan 2004; Masatomo Nakano <nakano@gentoo.org> emerge: Fixed --skipfirst
+  bug. This closes #36880.
+
+  29 Jan 2004; Masatomo Nakano <nakano@gentoo.org> emerge: TGL's patch
+  for imporving overlay verbose. This closes #39765.
+
   27 Jan 2004; Masatomo Nakano <nakano@gentoo.org> portage.py: Fixed
   autouse bug. autouse were ignored.
 
