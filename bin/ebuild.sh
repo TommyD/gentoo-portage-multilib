@@ -63,6 +63,16 @@ killparent() {
 	kill ${PORTAGE_MASTER_PID}
 }
 
+convert_filter() {
+	while [ -n "$1" ]; do
+		echo -n "$1"
+		shift
+		if [ -n "$1" ]; then
+			echo -n ','
+		fi
+	done
+}
+
 hasq() {
         local x
 
@@ -146,52 +156,20 @@ get_vars() {
 dump_environ() {
 	local f x;
 	debug-print "dumping env"
-	declare | {
-		while read -r f && [ "${f#[^= ]* *\(\)}" == "$f" ]; do
-			echo "$f"
-		done;
-#		echo "stopped on $f" >&2
-	} | egrep -v "^$(gen_filter ${DONT_EXPORT_VARS} f x y old_IFS)=";
+	declare | filter-env -f $(convert_filter ${DONT_EXPORT_FUNCS}) -v $(convert_filter ${DONT_EXPORT_VARS} f x)
 
-	save_IFS
-
-	#can't just use which --read-functions, see bug #55522
-#	echo "func_filter=$(gen_filter ${DONT_EXPORT_FUNCS} )" >&2
-	declare -F | egrep -v " $(gen_filter ${DONT_EXPORT_FUNCS} )\$" | { 
-		while read f; do
-			IFS=''
-#			echo "type '${f##* }'" >&2
-			type "${f##* }" | {
-				#nuke the first line, which is "blah is a function"
-				read -r l
-				while read -r l; do
-					echo "$l"
-				done
-			}
-			unset IFS
-		done;
-	}
-
-	restore_IFS
-	
 	if ! hasq "--no-attributes" "$@"; then
 		echo "reinstate_loaded_env_attributes ()"
 		echo "{"
 
-#		x=`export | egrep -o '^declare +-[airtx]+ +[^=]+' | cut -s -d ' ' -f 3 | egrep -v "^$(gen_filter ${DONT_EXPORT_VARS} f x y)$"`
-#		x=`export | cut -s -d '=' -f 1 | cut -s -d ' ' -f 3 | egrep -v "^$(gen_filter ${DONT_EXPORT_VARS} f x y)$"`
 		x=$(export | get_vars | egrep -v "$(gen_filter ${DONT_EXPORT_VARS} f x y)$")
 		[ ! -z "$x" ] && echo "    export `echo $x`"
 		
 
-#		x=`readonly | egrep -o '^declare +-[airtx]+ +[^=]+'| cut -s -d ' ' -f 3 | egrep -v "^$(gen_filter ${DONT_EXPORT_VARS} f x y)$"`
-#		x=`readonly | cut -s -d '=' -f 1 | cut -s -d ' ' -f 3 | egrep -v "^$(gen_filter ${DONT_EXPORT_VARS} f x y)$"`
 		x=$(readonly | get_vars | egrep -v "$(gen_filter ${DONT_EXPORT_VARS} f x y)")
 		[ ! -z "$x" ] && echo "    readonly `echo $x`"
 		
 
-#		x=`declare -i | egrep -o '^declare +-[airtx]+ +[^=]+' | cut -s -d ' ' -f 3 | egrep -v "$(gen_filter ${DONT_EXPORT_VARS} f x y)$"`
-#		x=`declare -i | cut -s -d '=' -f 1 | cut -s -d ' ' -f 3 | egrep -v "$(gen_filter ${DONT_EXPORT_VARS} f x y)$"`
 		x=$(declare -i | get_vars | egrep -v "$(gen_filter ${DONT_EXPORT_VARS} f x y)")
 		[ ! -z "$x" ] && echo "    declare -i `echo $x`"
 
@@ -285,7 +263,9 @@ load_environ() {
 	}
 	if [ -f "$src" ]; then
 		eval "$({ [ "${src%.bz2}" != "${src}" ] && bzcat "$src" || cat "${src}"
-			} | egrep -v "^$(gen_filter $DONT_EXPORT_VARS)=")"
+			} | filter-env -v $(convert_filter ${DONT_EXPORT_VARS}) \
+			-f $(convert_filter ${DONT_EXPORT_FUNCS}) )"
+#			} | egrep -v "^$(gen_filter $DONT_EXPORT_VARS)=")"
 	else
 		echo "ebuild=${EBUILD}, phase $EBUILD_PHASE" >&2
 		return 1

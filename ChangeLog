@@ -7,6 +7,13 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  20 Nov 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild.sh:
+  filter-env is now in use.  In other words, you *will* have to do 
+  the configure/install to get the binary, since it *is* required for
+  correct env processing.  I tried a host of other solutions, so far 
+  I can't break this one (aside from dumb typos in the code).  Processing 
+  the envs from kdelibs/arts is now possible again.
+
   20 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage_const.py:
   Added compatibility hack due to sandbox being moved.  Will remove it once 
   people have shifted over to using the split out sandbox's new location.
