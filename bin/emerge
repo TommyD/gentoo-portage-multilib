@@ -2927,7 +2927,7 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 		if not os.path.exists(servertimestampdir):
 			os.mkdir(servertimestampdir)
 			os.chown(servertimestampdir, os.getuid(), portage.portage_gid)
-			os.chmod(servertimestampdir, 02775)
+			os.chmod(servertimestampdir, 0775)
 
 		#exitcode=0
 		try:

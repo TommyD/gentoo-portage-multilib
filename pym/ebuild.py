@@ -848,7 +848,7 @@ class ebuild_handler:
 				if not os.path.exists(mysettings["CCACHE_DIR"]):
 					os.makedirs(mysettings["CCACHE_DIR"])
 				os.chown(mysettings["CCACHE_DIR"],portage_uid,portage_gid)
-				os.chmod(mysettings["CCACHE_DIR"],02775)
+				os.chmod(mysettings["CCACHE_DIR"],0775)
 		except OSError, e:
 			print "!!! File system problem. (ReadOnly? Out of space?)"
 			print "!!! Perhaps: rm -Rf",mysettings["BUILD_PREFIX"]
