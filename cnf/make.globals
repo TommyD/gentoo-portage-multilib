@@ -1,4 +1,4 @@
-# Copyright 2000 Daniel Robbins, Gentoo Technologies, Inc.
+# Copyright 2002 Daniel Robbins, Gentoo Technologies, Inc.
 # System-wide defaults for the Portage system
 
 #proxy settings PROXY(both), or HTTP_PROXY/FTP_PROXY
@@ -63,9 +63,14 @@ CXXFLAGS=${CFLAGS}
 #Debug build -- if defined, binaries won't be stripped
 #DEBUG=true
 
-#Default locations for KDE 2/3; do not change unless you know what you're doing and have read the docs
+#Default locations for KDE 2/3; do not change unless you know what you're doing
+#and have read the docs
 KDE2DIR="/usr/kde/2"
 KDE3DIR="/usr/kde/3"
 
 #Default maintainer options
 MAINTAINER_DEFAULT="digest sandbox noclean noauto"
+
+#By default output colored text where possible, set to "true" to output only
+#black&white text
+NOCOLOR="false"

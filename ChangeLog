@@ -1,6 +1,14 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+  3 Feb 2002; G.Bevin <gbevin@gentoo.org> output.py, emerge,make.globals :
+  all output can now be turned to black and white by using the functions in 
+  output.py, this determines the mode by checking to NOCOLOR variable in
+  make.conf or make.globals
+
+  3 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge :
+  made it possible to run emerge --help and --search as non root
+
 *portage 1.8.8-r1 (1 Feb 2002)
 
   1 Feb 2002; G.Bevin <gbevin@gentoo.org> portage.py, ebuild.sh, ebuild.5 :
