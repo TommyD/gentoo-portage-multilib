@@ -9,7 +9,10 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
-  13 Aug 2004; Brian Harrign <ferringb@gentoo.org> bin/ebuild.sh: Shifted 
+  13 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/cvstree.py: 
+  Added robbat2's patch to ignore files that cvs ignores. (#46070). 
+
+  13 Aug 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild.sh: Shifted 
   the add* sandbox function definitions to before profile.bashrc srcing.
   As bug #60147 demonstrated, profiles occasionally need to adjust 
   SANDBOX_WRITE (current case being for /usr/lib64/{conftest,cf}).
@@ -67,7 +70,7 @@
   cause's a tb if you just haphazardly rely on cachedir's return.
 
   09 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py: 
-  Leave /var/tmp w/out it's own permissions, chowning/chmoding just 
+  Leave /var/tmp with it's own permissions, chowning/chmoding just 
   /var/tmp/portage (#37521).
 
   09 Aug 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild.sh 

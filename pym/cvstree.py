@@ -117,8 +117,10 @@ def findunadded(entries,recursive=0,basedir=""):
 	if basedir and basedir[-1]!="/":
 		basedir=basedir+"/"
 	mylist=[]
+	#ignore what cvs ignores.
+	rep = re.compile("RCS|SCCS|CVS|CVS.adm|RCSLOG|cvslog.*|tags|TAGS|.make.state|.nse_depinfo|*~|#*|.#*|,*|_$*|*$|*.old|*.bak|*.BAK|*.orig|*.rej|.del-*|*.a|*.olb|*.o|*.obj|*.so|*.exe|*.Z|*.elc|*.ln|core")
 	for myfile in entries["files"].keys():
-		if "cvs" not in entries["files"][myfile]["status"]:
+		if "cvs" not in entries["files"][myfile]["status"] and not rep.search(myfile):
 			mylist.append(basedir+myfile)
 	if recursive:
 		for mydir in entries["dirs"].keys():
