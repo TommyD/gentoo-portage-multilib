@@ -2,6 +2,10 @@
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+  23 Feb 2003; Martin Schlemmer <azarah@gentoo.org> create-localdecls :
+
+  Add glibc-2.3 support.
+
   22 Feb 2003; Martin Schlemmer <azarah@gentoo.org> sandbox.c :
 
   Some /etc/ld.so.preload fixes.  Just changed the #if defines to cover all
