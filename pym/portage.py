@@ -4619,7 +4619,8 @@ class vardbapi(dbapi):
 		returnme=[]
 		for x in settings.categories:
 			for y in listdir(self.root+VDB_PATH+"/"+x,EmptyOnError=1):
-				returnme += [x+"/"+y]
+				if pkgsplit(y) is not None:
+					returnme += [x+"/"+y]
 		return returnme
 
 	def cp_all(self,use_cache=1):
