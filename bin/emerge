@@ -60,18 +60,20 @@ myfiles=[]
 edebug=0
 
 # process short actions and options
-for x in sys.argv[1:]:
+cmdline=sys.argv[1:]
+cmdline.extend(portage.settings["EMERGE_OPTS"].split())
+for x in cmdline:
 	if x[0:1]=="-"and not x[1:2]=="-":
 		for y in x[1:]:
 			if shortmapping.has_key(y):
-				sys.argv.append(shortmapping[y])
+				cmdline.append(shortmapping[y])
 			else:
 				print y
 				print "!!! Error: -"+y+" is an invalid short action or option."
-		sys.argv.remove(x)
+		cmdline.remove(x)
 
 # process the command arguments
-for x in sys.argv[1:]:
+for x in cmdline:
 	if x=="update" or x=="--unmerge" or x=="--world":
 		print
 		if x=="update":

@@ -1,6 +1,10 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+  21 Feb 2002; Daniel Robbins <drobbins@gentoo.org> emerge: now supports the
+  EMERGE_OPTS make.conf variable for enabling emerge options by default. 
+  Closes bug #605.
+  
   21 Feb 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: dep_match() now
   works with * deps (again?  Looks like the code got ripped out somehow); this
   closes bug #490.
