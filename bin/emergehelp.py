@@ -14,9 +14,9 @@ def shorthelp():
 	print "   "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] < "+turquoise("--system")+" | "+turquoise("--world")+" >"
 	print "   "+turquoise("emerge")+" < "+turquoise("--sync")+" | "+turquoise("--info")+" >"
 	print "   "+turquoise("emerge")+" "+turquoise("--resume")+" ["+green("--pretend")+"]"
-	print "   "+turquoise("emerge")+" "+turquoise("--help")+" [ "+green("--system")+" | "+green("--config")+" | "+green("--rsync")+" ] "
+	print "   "+turquoise("emerge")+" "+turquoise("--help")+" [ "+green("--system")+" | "+green("--config")+" | "+green("--sync")+" ] "
 	print bold("Options:")+" "+green("-")+"["+green("bcCdDefhikKlnoOpPsSuUvV")+"] ["+green("--oneshot")+"] ["+green("--noconfmem")+"]"
-	print bold("Actions:")+" [ clean | depclean | inject | prune | regen | search | unmerge ]"
+	print bold("Actions:")+" "+green("--")+"[ "+green("clean")+" | "+green("depclean")+" | "+green("inject")+" | "+green("prune")+" | "+green("regen")+" | "+green("search")+" | "+green("unmerge")+" ]"
 	print
 
 def help(myaction,myopts,havecolor=1):
@@ -36,7 +36,7 @@ def help(myaction,myopts,havecolor=1):
 		print "              emerge to display detailed help."
 		print
 		print turquoise("Actions:")
-		print "       "+green("clean")+" ("+green("-c")+" short option)"
+		print "       "+green("--clean")+" ("+green("-c")+" short option)"
 		print "              Cleans the system by removing outdated packages which will not"
 		print "              remove functionalities or prevent your system from working."
 		print "              The arguments can be in several different formats :"
@@ -62,7 +62,7 @@ def help(myaction,myopts,havecolor=1):
 		print "              "+bold("<=sys-devel/binutils-2.11.92.0.12.3-r1")+" matches"
 		print "                  binutils-2.11.90.0.7 and binutils-2.11.92.0.12.3-r1"
 		print
-		print "       "+green("depclean")
+		print "       "+green("--depclean")
 		print "              Cleans the system by removing packages that are not associated"
 		print "              with explicitly merged packages. Depclean works by creating the"
 		print "              full dependancy tree from the system list and the world file,"
@@ -73,21 +73,21 @@ def help(myaction,myopts,havecolor=1):
 		print "              "+turquoise("changes in USE flags may no longer be part of the dep tree. Use")
 		print "              "+turquoise("caution when employing this feature.")
 		print
-		print "       "+green("info")
+		print "       "+green("--info")
 		print "              Displays important portage variables that will be exported to"
 		print "              ebuild.sh when performing merges. This information is useful"
 		print "              for bug reports and verification of settings. All settings in"
 		print "              make.{conf,globals,defaults} and the environment show up if"
 		print "              run with the '--verbose' flag."
 		print
-		print "       "+green("inject")+" ("+green("-i")+" short option)"
+		print "       "+green("--inject")+" ("+green("-i")+" short option)"
 		print "              Add a stub entry for a package so that Portage thinks that it's"
 		print "              installed when it really isn't.  Handy if you roll your own"
 		print "              packages.  Example: "
 		#NOTE: this next line *needs* the "sys-kernel/"; *please* don't remove it!
-		print "              "+bold("emerge inject sys-kernel/gentoo-sources-2.4.19")
+		print "              "+bold("emerge --inject sys-kernel/gentoo-sources-2.4.19")
 		print
-		print "       "+green("prune")+" ("+green("-P")+" short option)"
+		print "       "+green("--prune")+" ("+green("-P")+" short option)"
 		print "              "+turquoise("WARNING: This action can remove important packages!")
 		print "              Removes all older versions of a package from your system."
 		print "              This action doesn't always verify the possible binary"
@@ -95,31 +95,30 @@ def help(myaction,myopts,havecolor=1):
 		print "              dependencies from your system."
 		print "              The argument format is the same as for the "+bold("clean")+" action."
 		print
-		print "       "+green("regen")
+		print "       "+green("--regen")
 		print "              Causes portage to check and update the dependancy cache of all"
 		print "              ebuilds in the portage tree. This is not recommended for rsync"
-		print "              users as it will result in a cache penalty during rsync updates."
-		print "              Rsync users should simply 'rm -Rf /var/cache/edb/dep' and then"
-		print "              'emerge rsync' to regenerate their caches."
+		print "              users as rsync updates the cache using server-side caches."
+		print "              Rsync users should simply 'emerge --sync' to regenerate."
 		print
-		print "       "+green("search")+" ("+green("-s")+" short option)"
+		print "       "+green("--search")+" ("+green("-s")+" short option)"
 		print "              searches for matches of the supplied string in the current local"
 		print "              portage tree. The search string is a regular expression."
 		print "              A few examples: "
-		print "              "+bold("emerge search '^kde'")
+		print "              "+bold("emerge --search '^kde'")
 		print "                  list all packages starting with kde"
-		print "              "+bold("emerge search 'gcc$'")
+		print "              "+bold("emerge --search 'gcc$'")
 		print "                  list all packages ending with gcc"
-		print "              "+bold("emerge search ''")+" or"
-		print "              "+bold("emerge search '.*'")
+		print "              "+bold("emerge --search ''")+" or"
+		print "              "+bold("emerge --search '.*'")
 		print "                  list all available packages "
 		print
-		print "       "+green("unmerge")+" ("+green("-C")+" short option)"
+		print "       "+green("--unmerge")+" ("+green("-C")+" short option)"
 		print "              "+turquoise("WARNING: This action can remove important packages!")
 		print "              Removes all matching packages without checking for outdated"
 		print "              versions, effectively removing a package "+bold("completely")+" from"
 		print "              your system. Specify arguments using the dependency specification"
-		print "              format described in the "+bold("clean")+" action above."
+		print "              format described in the "+bold("--clean")+" action above."
 		print
 		print turquoise("Options:")
 		print "       "+green("--buildpkg")+" ("+green("-b")+" short option)"
@@ -240,13 +239,13 @@ def help(myaction,myopts,havecolor=1):
 		print
 		print "       "+green("--verbose")+" ("+green("-v")+" short option)"
 		print "              Tell emerge to run in verbose mode."
-	elif myaction in ["rsync","sync"]:
+	elif myaction in ["--rsync","--sync"]:
 		print
-		print bold("Usage: ")+turquoise("emerge")+" "+turquoise("sync")
+		print bold("Usage: ")+turquoise("emerge")+" "+turquoise("--sync")
 		print
-		print "       'emerge sync' tells emerge to update the Portage tree as specified in"
+		print "       'emerge --sync' tells emerge to update the Portage tree as specified in"
 		print "       The SYNC variable found in /etc/make.conf.  By default, SYNC instructs"
-		print "       emerge to perform an rsync-style update with cvs.gentoo.org."
+		print "       emerge to perform an rsync-style update with rsync.gentoo.org."
 		#              Available"
 		#print "       sync methods are rsync and anoncvs.  To use anoncvs rather than rsync,"
 		#print "       put 'SYNC=\"cvs://:pserver:cvs.gentoo.org:/home/cvsroot\" in your"
@@ -255,7 +254,7 @@ def help(myaction,myopts,havecolor=1):
 		print
 		print "       'emerge-webrsync' exists as a helper app to emerge sync, providing a"
 		print "       method to receive the entire portage tree as a tarball that can be"
-		print "       extracted and used. First time rsyncs would benefit greatly from this."
+		print "       extracted and used. First time syncs would benefit greatly from this."
 		print
 		print "       "+turquoise("WARNING:")
 		print "       If using our rsync server, emerge will clean out all files that do not"
@@ -263,19 +262,19 @@ def help(myaction,myopts,havecolor=1):
 		print
 	elif myaction=="system":
 		print
-		print bold("Usage: ")+turquoise("emerge")+" [ "+green("options")+" ] "+turquoise("system")
+		print bold("Usage: ")+turquoise("emerge")+" [ "+green("options")+" ] "+turquoise("--system")
 		print
-		print "       \"emerge system\" is the Portage system update command.  When run, it"
+		print "       \"emerge --system\" is the Portage system update command.  When run, it"
 		print "       will scan the etc/make.profile/packages file and determine what"
 		print "       packages need to be installed so that your system meets the minimum"
 		print "       requirements of your current system profile.  Note that this doesn't"
 		print "       necessarily bring your system up-to-date at all; instead, it just"
 		print "       ensures that you have no missing parts.  For example, if your system"
 		print "       profile specifies that you should have sys-apps/iptables installed"
-		print "       and you don't, then \"emerge system\" will install it (the most"
+		print "       and you don't, then \"emerge --system\" will install it (the most"
 		print "       recent version that matches the profile spec) for you.  It's always a"
-		print "       good idea to do an \"emerge --pretend system\" before an \"emerge"
-		print "       system\", just so you know what emerge is planning to do."
+		print "       good idea to do an \"emerge --pretend --system\" before an \"emerge"
+		print "       --system\", just so you know what emerge is planning to do."
 		print
 	elif myaction=="config":
 		outstuff=green("Config file management support (preliminary)")+"""
