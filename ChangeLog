@@ -13,7 +13,7 @@
   match_* locations from last check in.
   Threw out match_from_list_original func- it's dead code.
 
-  06 Mar 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py: Harring's law 
+  08 Mar 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py: Harring's law 
   in effect- stupid one line bugs do not rear their head till the delta hits the 
   repository... :/
   Fix for the INHERITED auto-determination in portdbapi.aux_get
