@@ -1,6 +1,10 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  17 Dec 2002; Martin Schlemmer <azarah@gentoo.org> bin/ebuild.sh:
+  Regenerate /lib/cpp and /usr/bin/cc in pkg_setup if they are not
+  files to ease the broken pkg_postrm() some gcc have.
+
 *portage-2.0.46_pre2 (15 Dec 2002): Feature Prerelease: prelink
 
   15 Dec 2002; Nicholas Jones <carpaski@gentoo.org> emerge/portage.py:

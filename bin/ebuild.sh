@@ -363,8 +363,40 @@ try() {
 	fi
 }
 
+# Used to generate the /lib/cpp and /usr/bin/cc wrappers
+gen_wrapper() {
+	cat > $1 << END
+#!/bin/sh
+
+$2 "\$@"
+END
+
+	chmod 0755 $1
+}
+
 dyn_setup()
 {
+	# The next bit is to easy the broken pkg_postrm()'s
+	# some of the gcc ebuilds have that nuke the new
+	# /lib/cpp and /usr/bin/cc wrappers ...
+	
+	# Make sure we can have it disabled somehow ....
+	if [ "${DISABLE_GEN_GCC_WRAPPERS}" != "yes" ]
+	then
+		# Create /lib/cpp if missing or a symlink
+		if [ -L /lib/cpp -o ! -f /lib/cpp ]
+		then
+			rm -f /lib/cpp
+			gen_wrapper /lib/cpp cpp
+		fi
+		# Create /usr/bin/cc if missing for a symlink
+		if [ -L /usr/bin/cc -o ! -f /usr/bin/cc ]
+		then
+			rm-f /usr/bin/cc
+			gen_wrapper /usr/bin/cc gcc
+		fi
+	fi
+
 	pkg_setup || die "pkg_setup function failed; exiting."
 }
 
