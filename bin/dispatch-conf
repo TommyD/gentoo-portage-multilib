@@ -20,9 +20,9 @@ sys.path = ["/usr/lib/portage/pym"]+sys.path
 import portage, dispatch_conf
 
 FIND_EXTANT_CONFIGS  = "find %s/ -iname '._cfg????_*' | sed -e 's://:/:g'"
-DIFF_CONTENTS        = 'diff -Nau %s %s'
-DIFF_CVS_INTERP      = 'diff -Nau %s %s | grep "^[+-][^+-]" | grep -v "# .Header:.*"'
-DIFF_WSCOMMENTS      = 'diff -Nau %s %s | grep "^[+-][^+-]" | grep -v "^[-+]#" | grep -v "^[-+][:space:]*$"'
+DIFF_CONTENTS        = 'diff -Nu %s %s'
+DIFF_CVS_INTERP      = 'diff -Nu %s %s | grep "^[+-][^+-]" | grep -v "# .Header:.*"'
+DIFF_WSCOMMENTS      = 'diff -Nu %s %s | grep "^[+-][^+-]" | grep -v "^[-+]#" | grep -v "^[-+][:space:]*$"'
 MERGE                = 'sdiff --suppress-common-lines --output=%s %s %s'
 
 # We need a secure scratch dir and python does silly verbose errors on the use of tempnam
