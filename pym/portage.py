@@ -1218,15 +1218,13 @@ class config:
 		for x in self.configlist[-1].keys():
 			if x not in self.backupenv.keys():
 				del self.configlist[-1][x]
-		for x in self.backupenv.keys():
-			self.configdict["env"][x] = self.backupenv[x]
-		else:
-			del self.configdict["env"][x]
+
+		self.configdict["env"].update(self.backupenv)
+
 		self.modifiedkeys = []
 		if not keeping_pkg:
 			self.puse = ""
-			for x in self.configdict["pkg"].keys():
-				del self.configdict["pkg"][x]
+			self.configdict["pkg"].clear()
 		self.regenerate(use_cache=use_cache)
 
 	def load_infodir(self,infodir):

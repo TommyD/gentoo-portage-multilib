@@ -7,6 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  28 Oct 2004; Brian Harring <ferringb@gentoo.org> portage.py: Closed out 
+  an issue with config.reset() gradually nuking items out of backupenv- 
+  identified by Ludovic Aubry, solved w/ his provided fix. (#69388)
+
   28 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> emergehelp.py: Fixed up
   some incorrect descriptions. Added documentation for new and changed
   functionality. Removed documentation for deprecated options.
