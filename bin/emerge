@@ -739,8 +739,9 @@ class depgraph:
 				#select needs to return 0 on dep_check failure
 				try:
 					self.mysd=self.select_dep(portage.root,mykey,arg=x)
-				except:
+				except Exception, e:
 					print "\n!!! Problem in",mykey,"dependancies."
+					print "!!!",e
 					sys.exit(1)
 
 				if not self.mysd:
@@ -1209,7 +1210,7 @@ def unmerge(unmerge_action, unmerge_files):
 			if retval:
 				emergelog(" !!! unmerge FAILURE: "+y)
 			else:
-				emergelog(" <<< unmerge success: "+y)
+				emergelog(" >>> unmerge success: "+y)
 	#run ldconfig, etc...
 	portage.env_update()
 	if not numselected:

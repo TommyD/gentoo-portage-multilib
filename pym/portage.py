@@ -2,7 +2,7 @@
 # Copyright 1998-2002 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
 
-VERSION="2.0.42"
+VERSION="2.0.44_pre1"
 
 from stat import *
 from commands import *
@@ -1051,7 +1051,10 @@ def digestcheck(myarchives):
 				return 1
 			else:
 				print ">>> No message digest entry found for archive\""+x+".\""
-				print "!!! Type \"ebuild foo.ebuild digest\" to generate a new digest."
+				print "!!! Most likely a temporary problem. Try 'emerge rsync' again later."
+				print "!!! If you are certain of the authenticity of the file then you may type"
+				print "!!! the following to generate a new digest:"
+				print "!!!   ebuild /usr/portage/category/package/package-version.ebuild digest" 
 				return 0
 		mymd5=perform_md5(settings["DISTDIR"]+"/"+x)
 		if mymd5 != mydigests[x][0]:
@@ -1142,6 +1145,9 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 	mykv,err=ExtractKernelVersion(root+"usr/src/linux")
 	if mykv:
 		settings["KV"]=mykv
+	else:
+		print err
+		sys.exit(1)
 
 	# if any of these are being called, handle them -- running them out of the sandbox -- and stop now.
 	if mydo in ["help","clean","setup","prerm","postrm","preinst","postinst","config"]:
@@ -2741,7 +2747,66 @@ class vartree(packagetree):
 	def populate(self):
 		self.populated=1
 
-	
+# ----------------------------------------------------------------------------
+def eclass_save(filename):
+	try:
+		if mtimedb.has_key("eclass"):
+			cPickle.dump(mtimedb["eclass"],open(filename,"w"))
+	except Exception, e:
+		print "Failed to save mtimedb:",e
+
+def eclass(myeclass=None,mycpv=None, mymtime=None):
+	"""Caches and retrieves information about ebuilds that use eclasses"""
+	if not mtimedb.has_key("eclass"):
+		try:
+			mtimedb["eclass"]=cPickle.load(open(eclassdbfile))
+			print "Loaded file!"
+		except:
+			print "Load failed."
+			mtimedb["eclass"]={}
+		# Update the cache
+		for x in [settings["PORTDIR"]+"/eclass", settings["PORTDIR_OVERLAY"]+"/eclass"]:
+			if x and os.path.exists(x):
+				dirlist = listdir(x)
+				for y in dirlist:
+					#print "y:",y
+					if y[-len(".eclass"):]==".eclass":
+						try:
+							ys=y[:-len(".eclass")]
+							#print "ys:",ys
+							ymtime=os.stat(x+"/"+y)[ST_MTIME]
+							mtimedb["eclass"][ys]=[ymtime,x+"/"+y, {}]
+						except:
+							continue
+	if myeclass != None:
+		if not mtimedb["eclass"].has_key(myeclass):
+			print "!!! Eclass '"+myeclass+"' does not exist."
+			return None
+		else:
+			#print mtimedb["eclass"][myeclass],"\n\n"
+			if mycpv and mymtime:
+				if mtimedb["eclass"][myeclass][2].has_key(mycpv):
+					if mymtime>=mtimedb["eclass"][myeclass][2][mycpv]:
+						# It is more current than the stored one.
+						mtimedb["eclass"][myeclass][2][mycpv]=mymtime
+						return 1
+					else:
+						# Expire the cache. It's old.
+						del mtimedb["eclass"][myeclass][2][mycpv]
+						return 0
+				else:
+					# Don't have an entry... Must be new.
+					mtimedb["eclass"][myeclass][2][mycpv]=mymtime
+					return 1
+			else:
+				# We actually have such an eclass, and nothing else
+				# was requested, so return 1 (eclass exists)
+				return 1
+	else:
+		# We are just caching eclass times.
+		return None
+# ----------------------------------------------------------------------------
+
 auxdbkeys=['DEPEND','RDEPEND','SLOT','SRC_URI','RESTRICT','HOMEPAGE','LICENSE','DESCRIPTION','KEYWORDS','INHERITED','IUSE']
 auxdbkeylen=len(auxdbkeys)
 class portdbapi(dbapi):
@@ -2755,11 +2820,11 @@ class portdbapi(dbapi):
 		#oroot="overlay root"
 		self.oroot=None
 
-	def findname(self,pkgname):
+	def findname(self,mycpv):
 		"returns file location for this particular package"
-		if not pkgname:
+		if not mycpv:
 			return ""
-		mysplit=string.split(pkgname,"/")
+		mysplit=mycpv.split("/")
 		psplit=pkgsplit(mysplit[1])
 		if self.oroot:
 			myloc=self.oroot+"/"+mysplit[0]+"/"+psplit[0]+"/"+mysplit[1]+".ebuild"
@@ -2774,19 +2839,13 @@ class portdbapi(dbapi):
 		"stub code for returning auxilliary db information, such as SLOT, DEPEND, etc."
 		'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
 		'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or raise KeyError if error'
-		global auxdbkeys,auxdbkeylen,dbcachedir,mtimedb
+		global auxdbkeys,auxdbkeylen,dbcachedir
 		dmtime=0
 		doregen=0
 		doregen2=0
 		mylines=[]
 		stale=0
 		mydbkey=dbcachedir+mycpv
-		mycsplit=catpkgsplit(mycpv)
-		if not mycsplit:
-			#invalid cpv specified
-			print "portage: aux_get():",mycpv,"is not a valid cat/pkg-v string."
-			raise KeyError
-		mysplit=mycpv.split("/")
 		myebuild=self.findname(mycpv)
 	
 		# first, we take a look at the size of the ebuild/cache entry to ensure we
@@ -2804,6 +2863,7 @@ class portdbapi(dbapi):
 			emtime=os.stat(myebuild)[ST_MTIME]
 			if dmtime<emtime:
 				doregen=1
+
 		if doregen:
 			if doebuild(myebuild,"depend","/"):
 				#depend returned non-zero exit code...
@@ -2817,7 +2877,7 @@ class portdbapi(dbapi):
 		
 		if doregen or (not self.auxcache.has_key(mycpv)) or (self.auxcache[mycpv]["mtime"]!=dmtime):
 			stale=1
-			try: 
+			try:
 				mycent=open(mydbkey,"r")
 			except (IOError, OSError):
 				print "portage: aux_get(): (1) couldn't open cache entry for",mycpv
@@ -2827,7 +2887,8 @@ class portdbapi(dbapi):
 			mycent.close()
 			
 			#We now have the db
-			
+		
+		myeclasses=[]
 		if not doregen:
 			#if we regenerated our cache entry earlier, there's no point in checking all this as we know
 			#we are up-to-date.  Otherwise....
@@ -2836,43 +2897,18 @@ class portdbapi(dbapi):
 			elif len(mylines)<auxdbkeylen:
 				doregen2=1
 			elif mylines[auxdbkeys.index("INHERITED")]!="\n":
-				#INHERITED is non-zero; we now need to verify the mtimes of the eclass files listed herein.
-				#myexts = my externally-sourced files that need mtime checks:
-				myexts=mylines[auxdbkeys.index("INHERITED")].split()	
-				for x in myexts:
-					if self.oroot:
-						extkey=self.oroot+"/eclass/"+x+".eclass"
-						try:
-							exttime=os.stat(extkey)[ST_MTIME]
-						except:
-							extkey=self.root+"/eclass/"+x+".eclass"
-							try:
-								exttime=os.stat(extkey)[ST_MTIME]
-							except:
-								print "portage: aux_get():"
-								print " eclass \""+extkey+"\" from",mydbkey,"not found."
-								#we set doregen2 to regenerate this entry just in case it was fixed in the ebuild/eclass since
-								#the cache entry was created.
-								doregen2=1
-								exttime=0
-					else:
-						extkey=self.root+"/eclass/"+x+".eclass"
-						try:
-							exttime=os.stat(extkey)[ST_MTIME]
-						except:
-							print "portage: aux_get():"
-							print " eclass \""+extkey+"\" from",mydbkey,"not found."
-							#we set doregen2 to regenerate this entry just in case it was fixed in the ebuild/eclass since
-							#the cache entry was created.
-							doregen2=1
-							exttime=0
-					mtimedb["cur"][extkey]=exttime
-					if (not mtimedb["old"].has_key(extkey)) or (exttime!=mtimedb["old"][extkey]):
-						#update our mtime entry, turn the regenerate flag on and break out of the loop
-						mtimedb["old"][extkey]=exttime
+				#Verify if this ebuild is current against the eclasses it uses.
+				#eclass() -> Loads, checks, and returns 1 if it's current.
+				myeclasses=mylines[auxdbkeys.index("INHERITED")].split()
+				for myeclass in myeclasses:
+					if not eclass(myeclass,mycpv,emtime):
+						print "portage: aux_get():"
+						print ' eclass "'+x+'" from',mydbkey,"not found."
+						#we set doregen2 to regenerate this entry in case it was fixed
+						#in the ebuild/eclass since the cache entry was created.
 						doregen2=1
-						#we don't break out of the loop here because we want to update all our mtimedb
-						#entries for any updated eclasses. 
+						break
+
 		if doregen2:	
 			stale=1
 			#old cache entry, needs updating (this could raise IOError)
@@ -2891,11 +2927,16 @@ class portdbapi(dbapi):
 			mycent.close()
 			
 		if stale:
-			#due to a stale or regenerated cache entry, we need to update our internal dictionary....
+			# due to a stale or regenerated cache entry,
+			# we need to update our internal dictionary....
 			try:
-				self.auxcache[mycpv]={"mtime":os.stat(mydbkey)[ST_MTIME]}
-			except:
+				mymtime=os.stat(mydbkey)[ST_MTIME]
+				self.auxcache[mycpv]={"mtime": mymtime}
+				for myeclass in myeclasses:
+					eclass(myeclass,mycpv,mymtime)
+			except Exception, e:
 				print "portage: aux_get(): stale entry was not regenerated for",mycpv+"; exiting."
+				print "!!!",e
 				sys.exit(1)
 			try:
 				for x in range(0,len(auxdbkeys)):
@@ -4114,8 +4155,8 @@ if settings["PORTDIR_OVERLAY"]:
 def store():
 	global uid,wheelgid
 	if secpass:
-		mymfn=root+"var/cache/edb/mtimes"
-		writeints(mtimedb["old"],mymfn)	
+		mymfn=eclassdbfile
+		eclass_save(mymfn)	
 		try:
 			os.chown(mymfn,uid,wheelgid)
 			try:
@@ -4179,3 +4220,4 @@ for x in pkglines:
 		revmaskdict[mycatpkg].append(x)
 del pkglines
 groups=settings["ACCEPT_KEYWORDS"].split()
+eclassdbfile=root+"var/cache/edb/mtimes.eclass"
