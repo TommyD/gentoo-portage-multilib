@@ -774,7 +774,6 @@ class config:
 		# configlist will contain: [ globals, (optional) profile, make.conf, backupenv (incrementals), origenv ]
 
 		#get the masked use flags
-		self.usemask=[]
 		if os.path.exists("/etc/make.profile/use.mask"):
 			self.usemask=grabfile("/etc/make.profile/use.mask")
 		if os.path.exists("/etc/portage/use.mask"):
