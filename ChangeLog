@@ -2,12 +2,15 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
-  30 Oct 2003; Daniel Robbins <drobbins@gentoo.org> portage.py: Only
-  run depscan.sh if it exists on disk. This allows Portage to run 
-  inside a stage1 where /sbin/depscan.sh doesn't exist.
+  31 Oct 2003; Daniel Robbins <drobbins@gentoo.org> emerge: Should no longer
+  spit out wacky "!!! no match found" warnings when auto-cleaning.
   
-  30 Oct 2003; Daniel Robbins <drobbins@gentoo.org> portage.py: Applied
-  fix to allow multi-level "use? (   )" in SRC_URI, closing bug #16159.
+  30 Oct 2003; Daniel Robbins <drobbins@gentoo.org> portage.py: Only run
+  depscan.sh if it exists on disk. This allows Portage to run inside a stage1
+  where /sbin/depscan.sh doesn't exist.
+  
+  30 Oct 2003; Daniel Robbins <drobbins@gentoo.org> portage.py: Applied fix to
+  allow multi-level "use? (   )" in SRC_URI, closing bug #16159.
 
 *portage-2.0.49-r15/16 (21 Oct 2003): Fixes
 
