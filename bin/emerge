@@ -1299,7 +1299,6 @@ elif "inject"==myaction:
 			print "!!!",x,"is not a specific cat/pkg-version, skipping..."
 			continue
 		else:
-			print "DEBUG:",portage.catpkgsplit(x)
 		if portage.db["/"]["vartree"].exists_specific(x):
 			print "!!! Not injecting",x+"; Package already exists."
 		else:

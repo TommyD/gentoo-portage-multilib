@@ -330,7 +330,8 @@ dyn_unpack() {
 	install -m0700 -d ${WORKDIR}
 	cd ${WORKDIR}
 	echo ">>> Unpacking source..."
-    src_unpack || abort_unpack "fail"
+    src_unpack
+	#|| abort_unpack "fail"
 	echo ">>> Source unpacked."
 	cd ..
     trap SIGINT SIGQUIT
@@ -515,7 +516,8 @@ dyn_compile() {
 	#this will cause sandbox errors with some ./configure            
 	#scripts, so set it to $T.
 	export TMPDIR="${T}"
-    src_compile || abort_compile "fail" 
+    src_compile 
+	#|| abort_compile "fail" 
 	cd ${BUILDDIR}
     touch .compiled
 	if [ ! -e "build-info" ]
@@ -583,7 +585,8 @@ dyn_install() {
 	#this will cause sandbox errors with some ./configure            
 	#scripts, so set it to $T.
 	export TMPDIR="${T}"
-	src_install || abort_install "fail"
+	src_install 
+	#|| abort_install "fail"
 	prepall
 	cd ${D}
 	echo ">>> Completed installing into ${D}"
