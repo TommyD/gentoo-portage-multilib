@@ -60,6 +60,8 @@ import re
 import copy
 import signal
 import time
+import missingos
+
 #handle ^C interrupts correctly:
 def exithandler(signum,frame):
 	print "!!! Portage interrupted by SIGINT; exiting."
@@ -1092,7 +1094,7 @@ def movefile(src,dest,newmtime=None,sstat=None):
 			print "!!! couldn't symlink",real_src,"->",dest
 			return None 
 		try:
-			os.chown(dest,sstat[ST_UID],sstat[ST_GID])
+			missingos.lchown(dest,sstat[ST_UID],sstat[ST_GID])
 		except:
 			print "!!! couldn't set uid/gid on",dest
 		#the mtime of a symbolic link can only be set at create time.
@@ -1130,7 +1132,7 @@ def movefile(src,dest,newmtime=None,sstat=None):
 			try:
 				shutil.copyfile(src,dest)
 				try:
-					os.chown(dest, sstat[ST_UID], sstat[ST_GID])
+					missingos.lchown(dest, sstat[ST_UID], sstat[ST_GID])
 				except:
 					print "!!! couldn't set uid/gid on",dest
 				# do chmod after chown otherwise the sticky bits are reset
@@ -1192,7 +1194,7 @@ def movefile(src,dest,newmtime=None,sstat=None):
 	#destination exists, destnew file is in place on the same filesystem
 	#update ownership on destnew
 	try:
-		os.chown(destnew, sstat[ST_UID], sstat[ST_GID])
+		missingos.lchown(destnew, sstat[ST_UID], sstat[ST_GID])
 	except:
 		print "!!! couldn't set uid/gid on",dest
 	#update perms on destnew
