@@ -3,7 +3,7 @@
 # Distributed under the GNU Public License v2
 # $Header$
 
-VERSION="2.0.50_pre8"
+VERSION="2.0.50_pre10"
 
 import sys,string,os,re,types,shlex,shutil,xpak,fcntl,signal
 import time,cPickle,atexit,grp,traceback,commands,pwd,cvstree,copy
@@ -726,6 +726,8 @@ def grabdict(myfilename,juststrings=0):
 	for x in mylines:
 		#the split/join thing removes leading and trailing whitespace, and converts any whitespace in the line
 		#into single spaces.
+		if x[0] == "#":
+			continue
 		myline=string.split(x)
 		if len(myline)<2:
 			continue
@@ -3227,7 +3229,12 @@ def get_operator(mydep):
 			operator = mydep[0:2]
 		else:
 			operator = mydep[0]
+	else:
+		writemsg("!!! Invalid atom: %s\n" % mydep)
+		operator = None
+
 	return operator
+
 
 def match_from_list(mydep,candidate_list):
 	if mydep[0] == "!":
@@ -3247,6 +3254,8 @@ def match_from_list(mydep,candidate_list):
 
 	if ver and rev:
 		operator = get_operator(mydep)
+		if not operator:
+			return []
 	else:
 		operator = None
 
@@ -4658,7 +4667,7 @@ class portdbapi(dbapi):
 			match=0
 			for mykey in pkgdict:
 				dkey = catpkgsplit(dep_getcpv(mykey))
-				if not dkey:
+				if not (dkey or isjustname(mykey)):
 					writemsg("--- Invalid depend atom in package.keywords: %s\n" % mykey)
 					continue
 				if db["/"]["porttree"].dbapi.xmatch("bestmatch-list", mykey, None, None, [mycpv]):
@@ -5101,7 +5110,7 @@ class dblink:
 		if myebuildpath and os.path.exists(myebuildpath):
 			a=doebuild(myebuildpath,"prerm",self.myroot,self.settings,cleanup=cleanup)
 			# XXX: Decide how to handle failures here.
-			if a >= (1<<8):
+			if a != 0:
 				writemsg("!!! FAILED prerm: "+str(a)+"\n")
 				sys.exit(123)
 
@@ -5292,7 +5301,7 @@ class dblink:
 			for myvirt in myvirts.keys():
 				newvirts[myvirt]=[]
 				for mykey in myvirts[myvirt]:
-					if mykey == self.cat+"/"+pkgsplit(self.pkg)[0] and myprovides[myvirt].count(self.cat+"/"+self.pkg)>0:
+					if mykey == self.cat+"/"+pkgsplit(self.pkg)[0] and myprovides.has_key(myvirt) and myprovides[myvirt].count(self.cat+"/"+self.pkg)>0:
 						# remove myself first
 						myprovides[myvirt].remove(self.cat+"/"+self.pkg)
 						for x in myprovides[myvirt]:
@@ -5318,7 +5327,7 @@ class dblink:
 			# XXX: Use vardbapi to load up env vars.
 			a=doebuild(myebuildpath,"postrm",self.myroot,self.settings)
 			# XXX: Decide how to handle failures here.
-			if a >= (1<<8):
+			if a != 0:
 				writemsg("!!! FAILED postrm: "+str(a)+"\n")
 				sys.exit(123)
 
@@ -5363,7 +5372,7 @@ class dblink:
 			a=doebuild(inforoot+"/"+self.pkg+".ebuild","preinst",root,self.settings,cleanup=cleanup)
 
 		# XXX: Decide how to handle failures here.
-		if a >= (1<<8):
+		if a != 0:
 			writemsg("!!! FAILED preinst: "+str(a)+"\n")
 			sys.exit(123)
 
@@ -5465,7 +5474,7 @@ class dblink:
 			a=doebuild(inforoot+"/"+self.pkg+".ebuild","postinst",root,self.settings)
 
 		# XXX: Decide how to handle failures here.
-		if a >= (1<<8):
+		if a != 0:
 			writemsg("!!! FAILED postinst: "+str(a)+"\n")
 			sys.exit(123)
 	
@@ -5827,7 +5836,7 @@ def pkgmerge(mytbz2,myroot,mysettings):
 	origdir=getcwd()
 	os.chdir(pkgloc)
 	print ">>> extracting",mypkg
-	notok=spawn("bzip2 -dqc "+mytbz2+" | tar xpf -",mysettings,free=1)
+	notok=spawn("bzip2 -dqc -- '"+mytbz2+"' | tar xpf -",mysettings,free=1)
 	if notok:
 		print "!!! Error extracting",mytbz2
 		cleanup_pkgmerge(mypkg,origdir)

@@ -825,11 +825,11 @@ dyn_install() {
 }
 
 dyn_preinst() {
-	pkg_preinst
-
 	# set IMAGE depending if this is a binary or compile merge
 	[ "${EMERGE_FROM}" == "binary" ] && IMAGE=${PKG_TMPDIR}/${PF}/bin \
 					|| IMAGE=${D}
+
+	pkg_preinst
 
 	# remove man pages
 	if has noman $FEATURES; then
@@ -857,6 +857,38 @@ dyn_preinst() {
 			ebegin ">>> SetGID: [chmod o-r] $i "
 			chmod o-r "$i"
 			eend $?
+		done
+	fi
+
+	# total suid control.
+	if has suidctl $FEATURES > /dev/null ; then
+		sfconf=/etc/portage/suidctl.conf
+		echo ">>> Preforming suid scan in ${IMAGE}"
+		for i in $(find ${IMAGE}/ -type f \( -perm -4000 -o -perm -2000 \) ); do
+			if [ -s "${sfconf}" ]; then
+				suid="`grep ^${i/${IMAGE}/}$ ${sfconf}`"
+				if [ "${suid}" = "${i/${IMAGE}/}" ]; then
+					echo "- ${i/${IMAGE}/} is an approved suid file"
+				else
+					for x in 5 4 3 2 1 0; do echo -ne "\a"; sleep 0.25 ; done
+					echo ">>> Removing sbit on non registered ${i/${IMAGE}/}"
+					echo -ne "\a"
+					chmod ugo-s "${i}"
+					grep ^#${i/${IMAGE}/}$ ${sfconf} > /dev/null || {
+						# sandbox prevents us from writing directly
+						# to files outside of the sandbox, but this
+						# can easly be bypassed using the addwrite() function
+						addwrite "${sfconf}"
+						echo ">>> Appending commented out entry to ${sfconf} for ${PF}"
+						ls -ldh "${i}" | awk '{print "## "$0}' | sed s:"${IMAGE}"::g >> ${sfconf}
+						echo "#${i/${IMAGE}/}" >> ${sfconf}
+						# no delwrite() eh?
+						# delwrite ${sconf}
+					}
+				fi
+			else
+				echo "suidctl feature set but you are lacking a ${sfconf}"
+			fi
 		done
 	fi
 
@@ -1382,9 +1414,10 @@ for myarg in $*; do
 		exit 1
 		;;
 	esac
-	if [ $? -ne 0 ]; then
-		exit 1
-	fi
+
+	#if [ $? -ne 0 ]; then
+	#	exit 1
+	#fi
 done
 
 if [ "$myarg" != "clean" ]; then

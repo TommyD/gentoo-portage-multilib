@@ -220,7 +220,7 @@ if ("--debug" in myopts):
 # Python will try to compile the python modules, so we should do
 # it outside of a sandbox first.
 tmpsettings = portage.config(clone=portage.settings)
-portage.spawn("/usr/lib/portage/bin/portageq pkgdir", tmpsettings, free=1)
+portage.spawn("/usr/lib/portage/bin/portageq pkgdir &> /dev/null", tmpsettings, free=1)
 
 
 def emergelog(mystr):
@@ -752,37 +752,27 @@ class depgraph:
 		if mytype=="binary":
 			mypkgparts=portage.catpkgsplit(mykey)
 			tbz2name = string.split(mykey, "/")[1]+".tbz2"
-			if portage.db[portage.root]["bintree"].isremote(mykey) and ("--pretend" in myopts):
-				# It's remote, and we have the info already. In pretend,
-				# we don't want to be downloading the tbz2's.
-				#if not portage.db[portage.root]["bintree"].remotepkgs.has_key(mypkgparts[1]):
-				#	sys.stderr.write("\nThere are no packages available to satisfy "+str(mykey)+"\n\n")
-				#	sys.exit(1)
+			if tbz2name in portage.db[portage.root]["bintree"].invalids:
+				sys.stderr.write("\nINVALID PACKAGE (is required to continue): "+str(mykey)+"\n")
+				sys.exit(1)
+			if portage.db[portage.root]["bintree"].isremote(mykey):
 				edepend = portage.db[portage.root]["bintree"].remotepkgs[tbz2name]
 				edepend["DEPEND"] =""
 				edepend["RDEPEND"]=string.join(string.split(edepend["RDEPEND"])," ")
 				edepend["PDEPEND"]=string.join(string.split(edepend["PDEPEND"])," ")
 				edepend["CDEPEND"]=string.join(string.split(edepend["CDEPEND"])," ")
 				edepend["SLOT"]   =string.strip(edepend["SLOT"])
-			else:
-				if portage.db[portage.root]["bintree"].isremote(mykey) or \
-				   tbz2name in portage.db[portage.root]["bintree"].invalids:
-					# Get the tbz2
-					if not portage.db[portage.root]["bintree"].remotepkgs.has_key(tbz2name):
-						sys.stderr.write("\nThere are no packages available to satisfy "+str(mykey)+"\n\n")
-						sys.exit(1)
-					portage.db[portage.root]["bintree"].gettbz2(mykey)
+				#portage.db[portage.root]["bintree"].gettbz2(mykey)
+			else: # It's local.
 				mytbz2=xpak.tbz2(portage.db[portage.root]["bintree"].getname(mykey))
 				edepend["DEPEND"] =""
 				edepend["RDEPEND"]=string.join(mytbz2.getelements("RDEPEND")," ")
 				edepend["PDEPEND"]=string.join(mytbz2.getelements("PDEPEND")," ")
 				edepend["CDEPEND"]=string.join(mytbz2.getelements("CDEPEND")," ")
-				edepend["REBUILD"]=string.join(mytbz2.getelements("REBUILD")," ")
 				edepend["SLOT"]   =mytbz2.getfile("SLOT",mypkgparts[2])
 		elif mytype=="ebuild":
 			try:
-				#edepend=portage.portdb.aux_get(mykey,["DEPEND","RDEPEND"])
-				for x in ["DEPEND","RDEPEND","PDEPEND","REBUILD"]:
+				for x in ["DEPEND","RDEPEND","PDEPEND","CDEPEND"]:
 					edepend[x]=string.join(portage.portdb.aux_get(mykey,[x]), " ")
 			except (KeyError,IOError):
 				print "emerge: create(): aux_get() error on",mykey+"; aborting..."
@@ -1065,7 +1055,7 @@ class depgraph:
 			for x in sysdict.keys():
 				mylist.append(sysdict[x])
 
-		for mydep in mylist:	
+		for mydep in mylist:
 			myeb=portage.portdb.xmatch("bestmatch-visible",mydep)
 			if not myeb:
 				#this is an unavailable world entry; just continue
@@ -1083,10 +1073,11 @@ class depgraph:
 				if myeb==mypk:
 					myk=["binary",portage.root,mypk]
 				elif "--usepkgonly" in myopts:
-					self.missingbins += [myeb]
-					myk=["binary",portage.root,myeb]
-					#print "mypk:",mypk
-					#print "myeb:",myeb
+					if not mypk:
+						self.missingbins += [myeb]
+						myk=["binary",portage.root,myeb]
+					else:
+						myk=["binary",portage.root,mypk]
 				else:
 					myk=["ebuild",portage.root,myeb]
 			else:
@@ -1136,7 +1127,8 @@ class depgraph:
 		totalsize=0
 
 		if "--verbose" in myopts:
-			overlays=string.split(portage.settings['PORTDIR_OVERLAY'])
+			overlays = string.split(portage.settings['PORTDIR_OVERLAY'])
+			overlays = map(os.path.normpath, overlays)
 		
 		for x in mylist:
 			fetch=" "
@@ -1236,7 +1228,7 @@ class depgraph:
 					file_name=portage.portdb.findname(x[2])
 					dir_name=os.path.abspath(os.path.dirname(file_name)+"/../..")
 					if (overlays.count(dir_name)>0):
-						verboseadd+="*"+str(overlays.index(dir_name)+1)+" "
+						verboseadd+="*"+str(overlays.index(os.path.normpath(dir_name))+1)+" "
 
 				xs=portage.pkgsplit(x[2])
 				if xs[2]=="r0":
@@ -1449,7 +1441,10 @@ class depgraph:
 			if not "--pretend" in myopts:
 				print ">>> emerge ("+str(mergecount)+" of "+str(len(mymergelist))+")",x[pkgindex],"to",x[1]
 				emergelog(" >>> emerge ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" to "+x[1])
+
 			self.pkgsettings["EMERGE_FROM"] = x[0][:]
+			self.pkgsettings.backup_changes("EMERGE_FROM")
+
 			#buildsyspkg: Check if we need to _force_ binary package creation
 			issyspkg = ("buildsyspkg" in myfeat) \
 					and mysysdict.has_key(portage.cpv_getkey(x[2])) \
@@ -1475,7 +1470,6 @@ class depgraph:
 					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug,cleanup=1)
 					if retval:
 						sys.exit(1)
-					self.pkgsettings["FEATURES"]=myorigfeat # Put back flags.
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Compiling/Packaging ("+x[pkgindex]+"::"+y+")")
 					retval=portage.doebuild(y,"package",myroot,self.pkgsettings,edebug)
 					if retval:
@@ -1485,7 +1479,10 @@ class depgraph:
 						portage.db[portage.root]["bintree"].inject(x[2])
 						mytbz2=portage.db[portage.root]["bintree"].getname(x[2])
 						emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Merging ("+x[pkgindex]+"::"+y+")")
+
 						self.pkgsettings["EMERGE_FROM"] = "binary"
+						self.pkgsettings.backup_changes("EMERGE_FROM")
+						
 						retval=portage.pkgmerge(mytbz2,myroot,self.pkgsettings)
 						if retval==None:
 							sys.exit(1)
@@ -1494,18 +1491,20 @@ class depgraph:
 					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug,cleanup=1)
 					if retval:
 						sys.exit(1)
-					self.pkgsettings["FEATURES"]=myorigfeat # Put back flags.
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Compiling/Merging ("+x[pkgindex]+"::"+y+")")
 					retval=portage.doebuild(y,"merge",myroot,self.pkgsettings,edebug)
 					if retval:
 						sys.exit(1)
 					#dynamically update our database	
 			elif x[0]=="binary":
+				#merge the tbz2
+				if portage.db[portage.root]["bintree"].isremote(x[2]):
+					emergelog(" --- ("+str(mergecount)+" of "+str(len(mymergelist))+") Fetching Binary ("+x[pkgindex]+"::"+y+")")
+					portage.db[portage.root]["bintree"].gettbz2(x[2])
+
 				if ("--fetchonly" in myopts):
-					# Fetch binaries
 					continue
 				
-				#merge the tbz2
 				mytbz2=portage.db[portage.root]["bintree"].getname(x[2])
 				emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Merging Binary ("+x[pkgindex]+"::"+y+")")
 				retval=portage.pkgmerge(mytbz2,x[1],self.pkgsettings)
@@ -1538,7 +1537,8 @@ class depgraph:
 					if self.pkgsettings["AUTOCLEAN"]=="yes":
 						xsplit=portage.pkgsplit(x[2])
 						emergelog(" >>> AUTOCLEAN: "+xsplit[0])
-						if not unmerge("clean", [xsplit[0]]):
+						retval=unmerge("clean", [xsplit[0]])
+						if not retval:
 							emergelog(" --- AUTOCLEAN: Nothing unmerged.")
 
 					# Figure out if we need a restart.
@@ -1578,7 +1578,8 @@ class depgraph:
 		if ("--pretend" not in myopts):
 			if ("--fetchonly" not in myopts):
 				if (mergecount>0):
-					portage.env_update()
+					if retval:
+						portage.env_update()
 
 		#by doing an exit this way, --fetchonly can continue to try to
 		#fetch everything even if a particular download fails.
@@ -2030,7 +2031,7 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 			if os.path.exists(cvsdir+"/gentoo-x86"):
 				print "!!! existing",cvsdir+"/gentoo-x86 directory; exiting."
 				sys.exit(1)
-			if not portage.spawn("cd "+cvsdir+"; cvs -z0 -d "+cvsroot+" co gentoo-x86",portage.settings,free=1):
+			if not portage.spawn("cd "+cvsdir+"; cvs -z0 -d "+cvsroot+" co gentoo-x86 -P",portage.settings,free=1):
 				print "!!! cvs checkout error; exiting."
 				sys.exit(1)
 			if cvsdir!=myportdir:
@@ -2050,7 +2051,7 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 		os.umask(0002)
 		portage.db["/"]["porttree"].dbapi.flush_auxcache()
 		if os.path.exists(portage.dbcachedir):
-			portage.spawn("rm -Rf "+portage.dbcachedir,portage.settings,free=1)
+			portage.spawn("rm -Rf "+portage.dbcachedir+"/*",portage.settings,free=1)
 		try:
 			os.mkdir(portage.dbcachedir)
 			os.chown(portage.dbcachedir, os.getuid(), portage.portage_gid)

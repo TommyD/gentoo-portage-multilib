@@ -57,7 +57,7 @@ do_pkg() {
 		cp ${SRCDIR}/* ${MYDIR}/temp/
 
 		# create filelist and a basic tbz2
-		cut -f 2 -d " " ${SRCDIR}/CONTENTS >${MYDIR}/filelist
+		grep -v "^dir" ${SRCDIR}/CONTENTS | cut -f 2 -d " " - >${MYDIR}/filelist
 		tar -vjcf ${MYDIR}/bin.tar.bz2 --files-from=${MYDIR}/filelist --no-recursion
 
 		# join together the basic tbz2 and the pkg info files
