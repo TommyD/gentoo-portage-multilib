@@ -4410,23 +4410,24 @@ class portdbapi(dbapi):
 				except:
 					pass
 			
-				if debug:
-					writemsg("Generating cache entry(2) for: "+str(myebuild)+"\n")
-				myret=doebuild(myebuild,"depend","/",self.mysettings)
-				if myret:
-					#depend returned non-zero exit code...
-					writemsg(str(red("\naux_get():")+" (2) Error in "+mycpv+" ebuild. ("+str(myret)+")\n"
-					  "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
-					raise KeyError
-				try:
-					os.utime(mydbkey,(emtime,emtime))
-					mycent=open(mydbkey,"r")
-				except (IOError, OSError):
-					writemsg(str(red("\naux_get():")+" (3) Error in "+mycpv+" ebuild.\n"
-					  "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
-					raise KeyError
-				mylines=mycent.readlines()
-				mycent.close()
+				if usingmdcache:
+					if debug:
+						writemsg("Generating cache entry(2) for: "+str(myebuild)+"\n")
+					myret=doebuild(myebuild,"depend","/",self.mysettings)
+					if myret:
+						#depend returned non-zero exit code...
+						writemsg(str(red("\naux_get():")+" (2) Error in "+mycpv+" ebuild. ("+str(myret)+")\n"
+						  "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
+						raise KeyError
+					try:
+						os.utime(mydbkey,(emtime,emtime))
+						mycent=open(mydbkey,"r")
+					except (IOError, OSError):
+						writemsg(str(red("\naux_get():")+" (3) Error in "+mycpv+" ebuild.\n"
+						  "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
+						raise KeyError
+					mylines=mycent.readlines()
+					mycent.close()
 
 			#print "stale: pre"
 			if stale:

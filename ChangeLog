@@ -2,12 +2,18 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
-*portage-2.0.50_pre15 (11 Jan 2004): Quick Fixes -- ~arch version
+*portage-2.0.50_pre16 (13 Jan 2004): Quick Fixes -- ~arch version
+
+  13 Jan 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Removed an
+  unnecessary depend call that double eclass-using ebuild's cache regen
+  time.
+
+*portage-2.0.50_pre15 (12 Jan 2004): Quick Fixes -- ~arch version
 
   12 Jan 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Unmerge
   traceback fix.
 
-*portage-2.0.50_pre14 (11 Jan 2004): Quick Fixes -- ~arch version
+*portage-2.0.50_pre14 (12 Jan 2004): Quick Fixes -- ~arch version
 
   12 Jan 2004; Nicholas Jones <carpaski@gentoo.org> emerge: Fix for
   traceback on '-S'.
