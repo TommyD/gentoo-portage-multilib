@@ -180,38 +180,38 @@ unpack() {
 }
 
 econf() {
-    if [ -x ./configure ] ; then
-	./configure \
-	    --prefix=/usr \
-	    --host=${CHOST} \
-	    --mandir=/usr/share/man \
-	    --infodir=/usr/share/info \
-	    --datadir=/usr/share \
-	    --sysconfdir=/etc \
-	    --localstatedir=/var/lib \
-	    "$@" || die "econf failed" 
-    else
-    	die "no configure script found"
+	if [ -x ./configure ] ; then
+		./configure \
+		    --prefix=/usr \
+		    --host=${CHOST} \
+		    --mandir=/usr/share/man \
+		    --infodir=/usr/share/info \
+		    --datadir=/usr/share \
+		    --sysconfdir=/etc \
+		    --localstatedir=/var/lib \
+		    "$@" || die "econf failed" 
+	else
+		die "no configure script found"
 	fi
 }
 
 einstall() {
-    if [ -f ./[mM]akefile -o -f ./GNUmakefile ] ; then
-	make prefix=${D}/usr \
-	    mandir=${D}/usr/share/man \
-	    infodir=${D}/usr/share/info \
-	    datadir=${D}/usr/share \
-	    sysconfdir=${D}/etc \
-	    localstatedir=${D}/var/lib \
-	    "$@" install || die "einstall failed" 
-    else
+	if [ -f ./[mM]akefile -o -f ./GNUmakefile ] ; then
+		make prefix=${D}/usr \
+		    mandir=${D}/usr/share/man \
+		    infodir=${D}/usr/share/info \
+		    datadir=${D}/usr/share \
+		    sysconfdir=${D}/etc \
+		    localstatedir=${D}/var/lib \
+		    "$@" install || die "einstall failed" 
+	else
 		die "no Makefile found"
 	fi
 }
 
 pkg_setup()
 {
-    return 
+	return 
 }
 
 src_unpack() { 
@@ -269,7 +269,7 @@ try() {
 
 dyn_setup()
 {
-    pkg_setup || die "pkg_setup function failed; exiting."
+	pkg_setup || die "pkg_setup function failed; exiting."
 }
 
 dyn_unpack() {
@@ -308,11 +308,11 @@ dyn_unpack() {
 	install -m0700 -d ${WORKDIR}
 	[ -d "$WORKDIR" ] && cd ${WORKDIR}
 	echo ">>> Unpacking source..."
-    src_unpack
+	src_unpack
 	#|| abort_unpack "fail"
 	echo ">>> Source unpacked."
 	cd $BUILDDIR
-    trap SIGINT SIGQUIT
+	trap SIGINT SIGQUIT
 }
 
 dyn_clean() {
@@ -336,57 +336,57 @@ into() {
 }
 
 insinto() {
-    if [ $1 = "/" ]
-    then
-	export INSDESTTREE=""
-    else
-	export INSDESTTREE=$1
-	if [ ! -d ${D}${INSDESTTREE} ]
+	if [ $1 = "/" ]
 	then
-	    install -d ${D}${INSDESTTREE}
+		export INSDESTTREE=""
+	else
+		export INSDESTTREE=$1
+		if [ ! -d ${D}${INSDESTTREE} ]
+		then
+			install -d ${D}${INSDESTTREE}
+		fi
 	fi
-    fi
 }
 
 exeinto() {
-    if [ $1 = "/" ]
-    then
-	export EXEDESTTREE=""
-    else
-	export EXEDESTTREE=$1
-	if [ ! -d ${D}${EXEDESTTREE} ]
+	if [ $1 = "/" ]
 	then
-	    install -d ${D}${EXEDESTTREE}
+		export EXEDESTTREE=""
+	else
+		export EXEDESTTREE=$1
+		if [ ! -d ${D}${EXEDESTTREE} ]
+		then
+			install -d ${D}${EXEDESTTREE}
+		fi
 	fi
-    fi
 }
 
 docinto() {
-    if [ $1 = "/" ]
-    then
-	export DOCDESTTREE=""
-    else
-	export DOCDESTTREE=$1
-	if [ ! -d ${D}usr/share/doc/${PF}/${DOCDESTTREE} ]
+	if [ $1 = "/" ]
 	then
-	    install -d ${D}usr/share/doc/${PF}/${DOCDESTTREE} 
+		export DOCDESTTREE=""
+	else
+		export DOCDESTTREE=$1
+		if [ ! -d ${D}usr/share/doc/${PF}/${DOCDESTTREE} ]
+		then
+			install -d ${D}usr/share/doc/${PF}/${DOCDESTTREE} 
+		fi
 	fi
-    fi
 }
 
 insopts() {
-    INSOPTIONS=""
-    for x in $*
-    do
-	#if we have a debug build, let's not strip anything
-	if [ -n "$DEBUGBUILD" ] &&  [ "$x" = "-s" ]
-	then
-	    continue
-        else
-             INSOPTIONS="$INSOPTIONS $x"
-        fi
-    done
-    export INSOPTIONS
+	INSOPTIONS=""
+	for x in $*
+	do
+		#if we have a debug build, let's not strip anything
+		if [ -n "$DEBUGBUILD" ] &&  [ "$x" = "-s" ]
+		then
+			continue
+ 		else
+			INSOPTIONS="$INSOPTIONS $x"
+	fi
+	done
+	export INSOPTIONS
 }
 
 diropts() {
@@ -399,37 +399,37 @@ diropts() {
 }
 
 exeopts() {
-    EXEOPTIONS=""
-    for x in $*
-    do
-	#if we have a debug build, let's not strip anything
-	if [ -n "$DEBUGBUILD" ] &&  [ "$x" = "-s" ]
-	then
-	    continue
-        else
-             EXEOPTIONS="$EXEOPTIONS $x"
-        fi
-    done
-    export EXEOPTIONS
+	EXEOPTIONS=""
+	for x in $*
+	do
+		#if we have a debug build, let's not strip anything
+		if [ -n "$DEBUGBUILD" ] &&  [ "$x" = "-s" ]
+		then
+			continue
+		else
+			EXEOPTIONS="$EXEOPTIONS $x"
+		fi
+	done
+	export EXEOPTIONS
 }
 
 libopts() {
-    LIBOPTIONS=""
-    for x in $*
-    do
-	#if we have a debug build, let's not strip anything
-	if [ -n "$DEBUGBUILD" ] &&  [ "$x" = "-s" ]
-	then
-	    continue
-        else
-             LIBOPTIONS="$LIBOPTIONS $x"
-        fi
-    done
-    export LIBOPTIONS
+	LIBOPTIONS=""
+	for x in $*
+	do
+		#if we have a debug build, let's not strip anything
+		if [ -n "$DEBUGBUILD" ] &&  [ "$x" = "-s" ]
+		then
+			continue
+        	else
+			LIBOPTIONS="$LIBOPTIONS $x"
+		fi
+	done
+	export LIBOPTIONS
 }
 
 abort_handler() {
-    local msg
+	local msg
 	if [ "$2" != "fail" ]
 	then
 		msg="${EBUILD}: ${1} aborted; exiting."
@@ -439,7 +439,7 @@ abort_handler() {
 	echo 
 	echo "$msg" 
 	echo
-    eval ${3}
+	eval ${3}
 	#unset signal handler
 	trap SIGINT SIGQUIT
 }
@@ -452,38 +452,38 @@ abort_compile() {
 
 abort_unpack() {
 	abort_handler "src_unpack" $1
-    rm -f ${BUILDDIR}/.unpacked
-    rm -rf ${BUILDDIR}/work
+	rm -f ${BUILDDIR}/.unpacked
+	rm -rf ${BUILDDIR}/work
 	exit 1
 }
 
 abort_package() {
 	abort_handler "dyn_package" $1
-    rm -f ${BUILDDIR}/.packaged
-    rm -f ${PKGDIR}/All/${PF}.t*
-    exit 1
+	rm -f ${BUILDDIR}/.packaged
+	rm -f ${PKGDIR}/All/${PF}.t*
+	exit 1
 }
 
 abort_install() {
 	abort_handler "src_install" $1
-    rm -rf ${BUILDDIR}/image
-    exit 1
+	rm -rf ${BUILDDIR}/image
+	exit 1
 }
 
 dyn_compile() {
-    trap "abort_compile" SIGINT SIGQUIT
-    export CFLAGS CXXFLAGS LIBCFLAGS LIBCXXFLAGS
-    if [ ${BUILDDIR}/.compiled -nt ${WORKDIR} ]
-    then
+	trap "abort_compile" SIGINT SIGQUIT
+	export CFLAGS CXXFLAGS LIBCFLAGS LIBCXXFLAGS
+	if [ ${BUILDDIR}/.compiled -nt ${WORKDIR} ]
+	then
 		echo ">>> It appears that ${PN} is already compiled; skipping."
 		echo ">>> (clean to force compilation)"
 		trap SIGINT SIGQUIT
 		return
-    fi
-    if [ -d ${S} ]
+	fi
+	if [ -d ${S} ]
 		then
 		cd ${S}
-    fi
+	fi
 	#our custom version of libtool uses $S and $D to fix
 	#invalid paths in .la files
 	export S D
@@ -495,10 +495,10 @@ dyn_compile() {
 	#scripts, so set it to $T.
 	export TMP="${T}"
 	export TMPDIR="${T}"
-    src_compile 
+	src_compile 
 	#|| abort_compile "fail" 
 	cd ${BUILDDIR}
-    touch .compiled
+	touch .compiled
 	if [ ! -e "build-info" ]
 	then
 		mkdir build-info
@@ -523,8 +523,8 @@ dyn_compile() {
 }
 
 dyn_package() {
-    trap "abort_package" SIGINT SIGQUIT
-    cd ${BUILDDIR}/image
+	trap "abort_package" SIGINT SIGQUIT
+	cd ${BUILDDIR}/image
 	tar cvf ../bin.tar *
 	cd ..
 	bzip2 -f bin.tar
@@ -532,28 +532,28 @@ dyn_package() {
 	tbz2tool join bin.tar.bz2 inf.xpak ${PF}.tbz2
 	mv ${PF}.tbz2 ${PKGDIR}/All
 	rm -f inf.xpak bin.tar.bz2
-    if [ ! -d ${PKGDIR}/${CATEGORY} ]
+	if [ ! -d ${PKGDIR}/${CATEGORY} ]
 	then
 		install -d ${PKGDIR}/${CATEGORY}
 	fi
 	ln -sf ../All/${PF}.tbz2 ${PKGDIR}/${CATEGORY}/${PF}.tbz2
-    echo ">>> Done."
-    cd ${BUILDDIR}
-    touch .packaged
-    trap SIGINT SIGQUIT
+	echo ">>> Done."
+	cd ${BUILDDIR}
+	touch .packaged
+	trap SIGINT SIGQUIT
 }
 
 dyn_install() {
-    local ROOT
-    trap "abort_install" SIGINT SIGQUIT
-    rm -rf ${BUILDDIR}/image
-    mkdir ${BUILDDIR}/image
-    if [ -d ${S} ]
-    then
-    	cd ${S}
-    fi
-    echo
-    echo ">>> Install ${PF} into ${D} category ${CATEGORY}"
+	local ROOT
+	trap "abort_install" SIGINT SIGQUIT
+	rm -rf ${BUILDDIR}/image
+	mkdir ${BUILDDIR}/image
+	if [ -d ${S} ]
+	then
+		cd ${S}
+	fi
+	echo
+	echo ">>> Install ${PF} into ${D} category ${CATEGORY}"
 	#our custom version of libtool uses $S and $D to fix
 	#invalid paths in .la files
 	export S D
@@ -570,15 +570,15 @@ dyn_install() {
 	prepall
 	cd ${D}
 	echo ">>> Completed installing into ${D}"
-    echo
-    cd ${BUILDDIR}
-    trap SIGINT SIGQUIT
+	echo
+	cd ${BUILDDIR}
+	trap SIGINT SIGQUIT
 }
 
 dyn_spec() {
-    tar czf /usr/src/redhat/SOURCES/${PF}.tar.gz ${O}/${PF}.ebuild ${O}/files
+	tar czf /usr/src/redhat/SOURCES/${PF}.tar.gz ${O}/${PF}.ebuild ${O}/files
 
-    cat <<__END1__ > ${PF}.spec
+	cat <<__END1__ > ${PF}.spec
 Summary: ${DESCRIPTION}
 Name: ${PN}
 Version: ${PV}
@@ -607,10 +607,10 @@ __END1__
 
 }
 
-dyn_rpm () {
-    dyn_spec
-    rpm -bb ${PF}.spec
-    install -D /usr/src/redhat/RPMS/i386/${PN}-${PV}-${PR}.i386.rpm ${RPMDIR}/${CATEGORY}/${PN}-${PV}-${PR}.rpm
+dyn_rpm() {
+	dyn_spec
+	rpm -bb ${PF}.spec
+	install -D /usr/src/redhat/RPMS/i386/${PN}-${PV}-${PR}.i386.rpm ${RPMDIR}/${CATEGORY}/${PN}-${PV}-${PR}.rpm
 }
 
 dyn_help() {
@@ -676,7 +676,6 @@ dyn_help() {
 
 # in the future might use e* from /etc/init.d/functions.sh if i feel like it
 debug-print() {
-
 	# if $T isn't defined, we're in dep calculation mode and 
 	# shouldn't do anything
 	[ -z "$T" ] && return 0
@@ -695,30 +694,25 @@ debug-print() {
 		
 		shift
 	done
-
 }
 
 # The following 2 functions are debug-print() wrappers
 
 debug-print-function() {
-	
 	str="$1: entering function" 
 	shift
 	debug-print "$str, parameters: $*"
-
 }
 
 debug-print-section() {
-	
 	debug-print "now in section $*"
-
 }
 
 # Sources all eclasses in parameters
 inherit() {
 	unset INHERITED
 	local location
-    while [ "$1" ]
+	while [ "$1" ]
 	do
 		export INHERITED="$INHERITED $1"
 
@@ -741,8 +735,7 @@ inherit() {
 		source "$location" || die "died sourcing $location in inherit()"
 
 		shift
-    done
-
+	done
 }
 
 # Exports stub functions that call the eclass's functions, thereby making them default.
@@ -750,18 +743,15 @@ inherit() {
 # code will be eval'd:
 # src_unpack() { base_src_unpack; }
 EXPORT_FUNCTIONS() {
-
 	while [ "$1" ]; do
 	    debug-print "EXPORT_FUNCTIONS: ${1} -> ${ECLASS}_${1}" 
 	    eval "$1() { ${ECLASS}_$1 ; }" > /dev/null
 	shift
 	done
-
 }
 
 # adds all parameters to DEPEND and RDEPEND
 newdepend() {
-
 	debug-print-function newdepend $*
 	debug-print "newdepend: DEPEND=$DEPEND RDEPEND=$RDEPEND"
 
@@ -781,7 +771,6 @@ newdepend() {
 		esac
 		shift
 	done
-
 }
 
 # --- functions end, main part begins ---
@@ -824,7 +813,7 @@ do
 		  #Allow non-zero return codes since they can be caused by &&
 		  set +x
 		fi
-	    ;;
+		;;
 	unpack|compile|clean|install)
 		if [ ${SANDBOX_DISABLED="0"} = "0" ]
 		then
@@ -857,18 +846,18 @@ do
 		  dyn_${myarg}
 		  set +x
 		fi
-	    ;;
+		;;
 	package|rpm)
 		export SANDBOX_ON="0"
 		if [ "$PORTAGE_DEBUG" = "0" ]
-	    then
-	      dyn_${myarg}
-	    else
-	      set -x
-	      dyn_${myarg}
-	      set +x
-	    fi
-	    ;;
+		then
+			dyn_${myarg}
+		else
+			set -x
+			dyn_${myarg}
+			set +x
+		fi
+		;;
 	depend)
 		export SANDBOX_ON="0"
 		set -f
@@ -896,7 +885,7 @@ do
 		;;
 	*)
 		export SANDBOX_ON="1"
-	    echo "Please specify a valid command."
+		echo "Please specify a valid command."
 		echo
 		dyn_help
 		exit 1
@@ -907,4 +896,3 @@ do
 		exit 1
 	fi
 done
-
