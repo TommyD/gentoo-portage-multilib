@@ -1,4 +1,4 @@
-.TH "emerge" "1" "July 21, 2002" "portage 2.0.13" ""
+.TH "emerge" "1" "July 21, 2002" "portage 2.0.17" ""
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -34,7 +34,8 @@ a \fItbz2file\fR, a \fIclass\fR, or a \fIdependency\fR.
 .TP 
 \fIebuild\fR
 An \fIebuild\fR must be, at a minimum, a valid Portage
-package directory name, such as \fBportage\fR or \fBpython\fR.
+package directory name without a version or catetory, such as
+\fBportage\fR or \fBpython\fR.
 Both categories and version numbers may be used in addition, such
 as \fBsys\-apps/portage\fR or \fBpython\-2.2.1\-r2\fR. \fBemerge\fR
 ignores a trailing slash so that filename completion can be used.
@@ -62,9 +63,9 @@ commands are generally used in conjunction with \fB\-\-update\fR.
 \fIdependency\fR
 A \fIdependency\fR describes bounds on a package that you wish
 to install.  For example, \fB>=dev\-lang/python\-2.2.1\-r2\fR
-matches any available version of Python greater than or equal
+matches the latest available version of Python greater than or equal
 to 2.2.1\-r2.  Similarly, \fB<dev\-lang/python\-2.0\fR matches
-any available version of Python before 2.0.  Note that in many
+the latest available version of Python before 2.0.  Note that in many
 shells you will need to escape characters such as '<' and '=';
 use single\- or double\-quotes around the \fIdependency\fR
 to avoid this.
@@ -81,7 +82,7 @@ considered for later updating.
 Cleans the system by removing packages that will not effect the functionality of the system.  The
 arguments can be \fIebuilds\fR, \fIclasses\fR, or \fIdependencies\fR.  For example, \fBemerge
 clean binutils\fR cleans out old versions of binutils; \fBemerge clean net\-www/mozilla\-0.9.9\-r2\fR
-cleans out that specific version of Mozilla.
+cleans out that specific version of Mozilla.  This is generally safe to use.
 .TP 
 \fBhelp\fR (\fB\-h\fR)
 Displays help information for emerge.  Adding one of the additional arguments listed above will
@@ -92,11 +93,11 @@ problems that this man page does not help resolve.
 \fBinject\fR (\fB\-i\fR)
 Injecting a package inserts a 'stub' for that package so that Portage thinks that it is installed.
 It is handy if you need, say, a binary version of XFree86 for esoteric hardware, or you just like
-to roll your own packages.  You should specify a particular version of a package for injecting.  For
-example, \fBemerge inject gentoo\-sources\-2.4.19\fR.
+to roll your own packages.  You \fBmust\fR specify a category and particular version of a package for injecting.  For
+example, \fBemerge inject sys\-kernel/gentoo\-sources\-2.4.19\fR.
 .TP 
 \fBprune\fR (\fB\-P\fR)
-\fBWARNING: This action can remove important packages!\fR Removes all old versions of matching packages.
+\fBWARNING: This action can remove important packages!\fR Removes all but the latest versions of matching packages.  If there are multiple SLOTs for a package, it leaves the latest version in each SLOT.
 This does no checking of dependencies, so it may remove packages necessary for the proper operation of your
 system.  \fBUse\fR clean \fBinstead unless you really know what you're doing\fR.  Its arguments can be
 \fIebuilds\fR, \fIclasses\fR, or \fIdependencies\fR\-\-see \fBclean\fR above for examples.
@@ -105,10 +106,9 @@ system.  \fBUse\fR clean \fBinstead unless you really know what you're doing\fR.
 See \fBsync\fR below.
 .TP 
 \fBsearch\fR (\fB\-s\fR)
-Searches for matches of the supplied string in the portage tree, both in the title of packages and in their
-description.  The search string is a regular expression.  For example, \fBemerge search "^kde"\fR searches
+Searches for matches of the supplied string in the portage tree.  The search string is a regular expression.  For example, \fBemerge search "^kde"\fR searches
 for any package that starts with "kde"; \fBemerge search "gcc$"\fR searches for any package that ends with
-"gcc"; \fBemerge search "office"\fR searches for any package or description that contains the word "office".
+"gcc"; \fBemerge search "office"\fR searches for any package that contains the word "office".  If you want to search the package descriptions as well, use the \fB\-\-searchdesc\fR option.
 .TP 
 \fBsync\fR
 Initiates a portage tree update with one of the rsync.gentoo.org mirrors.  \fBNote that any changes
@@ -156,8 +156,11 @@ Only merge (or pretend to merge) the dependencies of the packages specified, not
 \fB\-\-pretend\fR (\fB\-p\fR)
 Instead of actually performing the merge, simply display what *would* have been installed if \-\-pretend weren't used.  Using \-\-pretend is strongly recommended before installing an unfamiliar package.  In the printout, N = new, U = upgrading, R = replacing, B = blocked by an already installed package.
 .TP 
+\fB\-\-searchdesc\fR (\fB\-S\fR)
+Matches the search string against the description field as well as the package name.  \fBTake caution\fR as the descriptions are also matched as regular expressions.
+.TP 
 \fB\-\-update\fR (\fB\-u\fR)
-Updates packages to the most recent version available.
+Updates packages to the most recent version available.  \fBNote that\fR \-\-update \fBdoes not have full functionality yet\fR.  It will not automatically update dependencies of packages in the \fBworld\fR file, unless they too are in the \fBworld\fR file.
 .TP 
 \fB\-\-usepkg\fR (\fB\-k\fR) 
 Tells emerge to use binary packages (from $PKGDIR) if they are available, thus possibly avoiding some time\-consuming compiles. This option is useful for CD installs; you can export PKGDIR=/mnt/cdrom/packages and then use this option to have emerge "pull" binary packages from the CD in order to satisfy dependencies.
