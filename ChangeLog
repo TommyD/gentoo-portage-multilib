@@ -9,6 +9,9 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  12 Jul 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge:
+  Adjusted masked binary checking code to exclude --usepkgonly.
+
 *portage-2.0.51_pre13 (09 Jul 2003): Fixes and Public Readiness
 
   10 Jul 2004; Jason Stubbs <jstubbs@gentoo.org> man/portage.5:

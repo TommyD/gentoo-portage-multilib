@@ -1009,12 +1009,13 @@ class depgraph:
 				
 				myeb_pkg=None
 				if ("--usepkg" in myopts):
-					# Remove any binary package entries that are masked in the portage tree (#55871)
 					# The next line assumes the binarytree has been populated.
 					myeb_pkg_matches=portage.db[portage.root]["bintree"].dbapi.match(x)
-					for idx in range(len(myeb_pkg_matches)-1,-1,-1):
-						if myeb_pkg_matches[idx] not in myeb_matches:
-							del myeb_pkg_matches[idx]
+					if ("--usepkgonly" not in myopts):
+						# Remove any binary package entries that are masked in the portage tree (#55871)
+						for idx in range(len(myeb_pkg_matches)-1,-1,-1):
+							if myeb_pkg_matches[idx] not in myeb_matches:
+								del myeb_pkg_matches[idx]
 					myeb_pkg = portage.best(myeb_pkg_matches)
 					if myeb_pkg == '':
 						myeb_pkg = None
@@ -1063,10 +1064,10 @@ class depgraph:
 					myeb_pkg_s = portage.catpkgsplit(myeb_pkg)
 					myeb_pkg_s = [myeb_pkg_s[0]+"/"+myeb_pkg_s[1], myeb_pkg_s[2], myeb_pkg_s[3]]
 					
-					if portage.pkgcmp(myeb_s, myeb_pkg_s) > 0: # eb is newer than pkg
-						myeb_pkg = None
-					else:
+					if portage.pkgcmp(myeb_s, myeb_pkg_s) == 0: # pkg is same version as ebuild
 						myeb = None
+					else:
+						myeb_pkg = None
 
 				if "--upgradeonly" in myopts:
 					# Check that there isn't a newer version of this package already installed
