@@ -54,7 +54,7 @@ def userquery(prompt, responses=None, colours=None):
 				if response.upper()==key[:len(response)].upper():
 					return key
 			print "Sorry, response '%s' not understood." % response,
-	except KeyboardInterrupt:
+	except (EOFError, KeyboardInterrupt):
 		print "Interrupted."
 		sys.exit(1)
 
@@ -242,8 +242,8 @@ if ("--upgradeonly" in myopts) and not ("--update" in myopts):
 	print ">>> --upgradeonly implies --update... adding --update to options."
 	myopts.append("--update")
 
-# Also allow -l to apply --pretend/-p
-if ("--changelog" in myopts) and not ("--pretend" in myopts):
+# Also allow -l to apply --pretend/-p, but if already in --ask mode
+if ("--changelog" in myopts) and not (("--pretend" in myopts) or ("--ask" in myopts)):
 	print ">>> --changelog implies --pretend... adding --pretend to options."
 	myopts.append("--pretend")
 

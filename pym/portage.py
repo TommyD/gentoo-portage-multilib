@@ -2210,9 +2210,8 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 				print "*** Adjusting ccache permissions for portage user..."
 				os.chown(mysettings["CCACHE_DIR"],portage_uid,portage_gid)
 				os.chmod(mysettings["CCACHE_DIR"],02770)
-				if mystat[ST_GID]!=portage_gid:
-					spawn("chown -R "+str(portage_uid)+":"+str(portage_gid)+" "+mysettings["CCACHE_DIR"],mysettings, free=1)
-					spawn("chmod -R g+rw "+mysettings["CCACHE_DIR"],mysettings, free=1)
+				spawn("chown -R "+str(portage_uid)+":"+str(portage_gid)+" "+mysettings["CCACHE_DIR"],mysettings, free=1)
+				spawn("chmod -R g+rw "+mysettings["CCACHE_DIR"],mysettings, free=1)
 		except:
 			pass
 			
