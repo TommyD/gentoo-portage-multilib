@@ -1,11 +1,19 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
-  04 Feb 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Removed an
-	unnecessary call to os.unlink() in movefile that resulted in it failing
-	when moving files across devices.
+*portage-2.0.46-r11 (04 Feb 2003): Fixups
 
-*portage-2.0.46-r10 (14 Jan 2003): Feature/Function Cleanups
+  04 Feb 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: distcc
+  fixups along with ccache fixups from the bug 13897 effort. Added more
+  varaibles to the build data output.
+
+  04 Feb 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Removed an
+  unnecessary call to os.unlink() in movefile that resulted in it failing
+  when moving files across devices. HTML 404 catcher -- if the distfile is
+  a reasonable size, and it's got <title>.*(not found|404).*</title> in it
+  it will be deleted and the next mirror persued.
+
+*portage-2.0.46-r10 (03 Feb 2003): Feature/Function Cleanups
 
   03 Feb 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Added
   quotes to fallback checksum code to ensure it works on space-containing
