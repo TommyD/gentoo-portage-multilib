@@ -1113,10 +1113,27 @@ def movefile(src,dest,newmtime=None,sstat=None):
 			except:
 				return None 
 		else:
-			#not on same fs
+			if S_ISCHR(sstat[ST_MODE]) or S_ISBLK(sstat[ST_MODE]) or S_ISFIFO(sstat[ST_MODE]):
+				#we don't yet handle special files across filesystems, so we need to fall back to /bin/mv
+				a=getstatusoutput("/bin/mv -f "+"'"+src+"' '"+dest+"'")
+				if a[0]!=0:
+					return None
+					#failure
+				if newmtime:
+					os.utime(dest, (newmtime,newmtime))
+					return newmtime
+				else:
+					#get actual mtime from copied file, since we can't specify an mtime using mv
+					finalstat=os.lstat(dest)
+					return finalstat[ST_MTIME]
+			#not on same fs and a regular file
 			try:
 				shutil.copyfile(src,dest)
 				os.chmod(dest, S_IMODE(sstat[ST_MODE]))
+				try:
+					os.chown(dest, sstat[ST_UID], sstat[ST_GID])
+				except:
+					print "!!! couldn't set uid/gid on",dest
 				if not newmtime:
 					os.utime(dest, (sstat[ST_ATIME], sstat[ST_MTIME]))
 					returnme=sstat[ST_MTIME]
@@ -1129,74 +1146,93 @@ def movefile(src,dest,newmtime=None,sstat=None):
 				#copy failure
 				return None
 	# destination exists, do our "backup plan"
+	destnew=dest+"#new#"
 	try:
-		# make a hard link
+		# make a hard link backup
 		os.link(dest,dest+"#orig#")
+		destorig=dest+"#orig#"
 	except:
 		#backup failure
 		print "!!! link fail 1 on",dest,"->",dest+"#orig#"
-		return None
-
+		destorig=None
+	#copy destnew file into place
 	if sstat[ST_DEV]==dstat[ST_DEV]:
 		#on the same fs
 		try:
-			os.rename(src,dest+"#new#")
+			os.rename(src,destnew)
 		except:
-			# gotta remove the dest+#orig# code
-			print "!!! rename fail 1 on",src,"->",dest+"#new#"
-			os.unlink(dest+"#orig")
+			print "!!! rename fail 1 on",src,"->",destnew
+			if destorig:
+				os.unlink(destorig)
 			return None 
 	else:
 		#not on same fs
 		try:
-			shutil.copyfile(src,dest+"#new#")
+			shutil.copyfile(src,destnew)
 		except OSError, details:
-			print '!!! copy',src,'->',dest+'#new#','failed -',details
+			print '!!! copy',src,'->',destnew,'failed -',details
 			return None 
 		except:
 			#copy failure
-			print "!!! copy fail 1 on",src,"->",dest+"#new#"
-			# gotta remove dest+#orig# *and dest+#new#
-			os.unlink(dest+"#orig#")
+			print "!!! copy fail 1 on",src,"->",destnew
+			# gotta remove destorig *and* destnew
+			if destorig:
+				os.unlink(destorig)
 			return None
 		try:
 			os.unlink(src)
 		except:
 			print "!!! unlink fail 1 on",src
-			# gotta remove dest+#orig# *and dest+#new#
-			os.unlink(dest+"#new#")
-			os.unlink(dest+"#orig#")
+			# gotta remove dest+#orig# *and destnew
+			os.unlink(destnew)
+			if destorig:
+				os.unlink(destorig)
 			return None 
-	#destination exists final
+	#destination exists, destnew file is in place on the same filesystem
+	#update perms on destnew
+	try:
+		os.chmod(destnew, S_IMODE(sstat[ST_MODE]))
+	except:
+		print "!!! chmod fail on",dest
+	#update times on destnew
+	if not newmtime:
+		try:
+			os.utime(destnew, (sstat[ST_ATIME], sstat[ST_MTIME]))
+		except:
+			print "!!! couldn't set times on",destnew
+		returnme=sstat[ST_MTIME]
+	else:
+		try:
+			os.utime(destnew, (newmtime,newmtime))
+		except:
+			print "!!! couldn't set times on",destnew
+		returnme=newmtime
+	#update ownership on destnew
+	try:
+		os.chown(destnew, sstat[ST_UID], sstat[ST_GID])
+	except:
+		print "!!! couldn't set uid/gid on",dest
 	try:
 		os.unlink(dest) # scary!
 	except:
-		# gotta remove dest+#orig# *and dest+#new#
+		# gotta remove destorig *and destnew
 		print "!!! unlink fail 1 on",dest
-		os.unlink(dest+"#orig#")
-		os.unlink(dest+"#new#")
-		return None 
-
-	try:
-		os.rename(dest+"#new#",dest)
-		os.chmod(dest, S_IMODE(sstat[ST_MODE]))
-		if not newmtime:
-			os.utime(dest, (sstat[ST_ATIME], sstat[ST_MTIME]))
-			returnme=sstat[ST_MTIME]
-		else:
-			os.utime(dest, (newmtime,newmtime))
-			returnme=newmtime
-	except:
-		# uh oh. gotta at least attempt to put dest back
-		print "!!! rename fail 2 on",dest+"#new#","->",dest
-		os.rename(dest+"#orig#",dest) # if this fails, we are in big trouble
-		os.unlink(dest+"#new#")
+		if destorig:
+			os.unlink(destorig)
+		os.unlink(destnew)
 		return None 
 	try:
-		os.unlink(dest+"#orig#")
+		os.rename(destnew,dest)
 	except:
-		print "!!! unlink fail 1 on",dest+"#orig#"
-		pass
+		#os.rename guarantees to leave dest in place if the rename fails.
+		print "!!! rename fail 2 on",destnew,"->",dest
+		os.unlink(destnew)
+		return None 
+	try:
+		if destorig:
+			os.unlink(destorig)
+	except:
+		print "!!! unlink fail 1 on",destorig
 	return returnme 
 
 def getmtime(x):
