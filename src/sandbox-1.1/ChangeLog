@@ -2,17 +2,29 @@
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
-  22 Feb 2003; Nicholas Jones <carpaski@gentoo.org> Makefile: Changed the LD
-	to CC for hppa.
+  22 Feb 2003; Martin Schlemmer <azarah@gentoo.org> sandbox.c :
 
-  22 Feb 2003; Nicholas Jones <carpaski@gentoo.org> create-localdecls: killed
-	the previous changes I made.
+  Some /etc/ld.so.preload fixes.  Just changed the #if defines to cover all
+  operations releated to preload, as well as only try to modify ld.so.preload
+  if we can.  Also modify to write the pid to /tmp/sandboxpids.tmp even when
+  not using ld.so.preload.  Fix to not write this instance of sandbox's pid
+  to /tmp/sandboxpids.tmp on exit if this is not the last sandbox running.
 
-  17 Feb 2003; Nicholas Jones <carpaski@gentoo.org> create-localdecls: Added
-	parisc to BROKEN_RTLD_ARCHLIST to see if it we can fix the relocation probs.
+  22 Feb 2003; Nicholas Jones <carpaski@gentoo.org> Makefile :
+  
+  Changed the LD to CC for hppa.
 
-  09 Jan 2003; J Robert Ray <jrray@gentoo.org> sandbox.c : Don't segfault if
-  $HOME isn't set, set $HOME to "/" instead.  Fixes bug 10868.
+  22 Feb 2003; Nicholas Jones <carpaski@gentoo.org> create-localdecls :
+  
+  Killed the previous changes I made.
+
+  17 Feb 2003; Nicholas Jones <carpaski@gentoo.org> create-localdecls :
+  
+  Added parisc to BROKEN_RTLD_ARCHLIST to see if it we can fix the relocation probs.
+
+  09 Jan 2003; J Robert Ray <jrray@gentoo.org> sandbox.c :
+  
+  Don't segfault if $HOME isn't set, set $HOME to "/" instead.  Fixes bug 10868.
 
   16 Dec 2002; Martin Schlemmer <azarah@gentoo.org> create-localdecls :
 
