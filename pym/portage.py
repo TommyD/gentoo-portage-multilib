@@ -2,7 +2,7 @@
 # Copyright 1998-2002 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
 
-VERSION="2.0.39-pre1"
+VERSION="2.0.40-pre"
 
 from stat import *
 from commands import *
@@ -105,7 +105,8 @@ if not os.environ.has_key("DEBUG"):
 	signal.signal(signal.SIGINT,exithandler)
 
 def tokenize(mystring):
-	"""breaks a string like 'foo? (bar) oni? (blah (blah))' into embedded lists; returns None on paren mismatch"""
+	"""breaks a string like 'foo? (bar) oni? (blah (blah))'
+	into embedded lists; returns None on paren mismatch"""
 	newtokens=[]
 	curlist=newtokens
 	prevlist=None
@@ -142,7 +143,8 @@ def tokenize(mystring):
 	return newtokens
 
 def evaluate(mytokens,mydefines,allon=0):
-	"""removes tokens based on whether conditional definitions exist or not.  Recognizes !"""
+	"""removes tokens based on whether conditional definitions exist or not.
+	Recognizes !"""
 	pos=0
 	if mytokens==None:
 		return None
@@ -170,7 +172,8 @@ def evaluate(mytokens,mydefines,allon=0):
 	return mytokens
 
 def flatten(mytokens):
-	"""this function now turns a [1,[2,3]] list into a [1,2,3] list and returns it."""
+	"""this function now turns a [1,[2,3]] list into
+	a [1,2,3] list and returns it."""
 	newlist=[]
 	for x in mytokens:
 		if type(x)==types.ListType:
@@ -212,12 +215,24 @@ class digraph:
 			except ValueError:
 				break
 	
+	def allnodes(self):
+		"returns all nodes in the dictionary"
+		return self.dict.keys()
+	
 	def firstzero(self):
 		"returns first node with zero references, or NULL if no such node exists"
 		for x in self.okeys:
 			if self.dict[x][0]==0:
 				return x
 		return None 
+
+	def allzeros(self):
+		"returns all nodes with zero references, or NULL if no such node exists"
+		zerolist = []
+		for x in self.dict.keys():
+			if self.dict[x][0]==0:
+				zerolist.append(x)
+		return zerolist
 
 	def empty(self):
 		if len(self.dict)==0:

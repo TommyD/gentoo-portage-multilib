@@ -10,7 +10,7 @@ spinpos=0
 #number of ebuilds merged
 merged=0
 params=["selective", "deep", "self", "recurse", "empty"]
-actions=["clean", "config", "help", "prune", "rsync", "search", "sync", "system", "unmerge", "world", "inject", "regen"]
+actions=["clean", "config", "help", "prune", "rsync", "search", "sync", "system", "unmerge", "world", "inject", "regen", "depclean"]
 options=["--autoclean", "--deep", "--selective", "--buildpkg", "--debug", "--nodeps", "--emptytree", "--fetchonly", 
 "--noreplace", "--onlydeps", "--pretend", "--usepkg", "--searchdesc", "--verbose", "--update", "--help", "--oneshot", "--version"]
 
@@ -772,6 +772,8 @@ class depgraph:
 				elif portage.db[portage.root]["vartree"].dbapi.match(x):
 					#package is installed
 					sysdict[x]=worlddict[x]
+				else:
+					print "\n*** Package in world file is not installed: "+x
 			mylist=[]
 			for x in sysdict.keys():
 				mylist.append(sysdict[x])
@@ -779,6 +781,7 @@ class depgraph:
 		for mydep in mylist:	
 			myeb=portage.portdb.xmatch("bestmatch-visible",mydep)
 			if not myeb:
+				print "\n*** Package in world file is not available: "+x
 				#this is an unavailable world entry; just continue
 				continue
 			#THIS NEXT BUNCH OF CODE NEEDS TO BE REPLACED TO SUPPORT WORLD ANTI-DEPS
@@ -1323,6 +1326,78 @@ elif "inject"==myaction:
 elif "unmerge"==myaction or "prune"==myaction or "clean"==myaction:
 	if 1==unmerge(myaction, myfiles):
 		post_emerge()
+	
+elif "depclean"==myaction:
+	mydepgraph=depgraph(myaction,myopts)
+	syslist=getlist("system")
+	worldlist=getlist("world")
+	print "Calculating",myaction,"dependencies  ",
+	if not mydepgraph.xcreate("world"):
+		print "\n!!! Failed to create deptree."
+		sys.exit(1)
+	print "\b\b ... done!"
+
+	#for x in mydepgraph.digraph.dict.keys():
+	#	print x+" :: "+str(mydepgraph.digraph.dict[x][0])+" :: "+str(len(mydepgraph.digraph.dict[x][1]))
+	#sys.exit(1)
+
+	alldeps=mydepgraph.digraph.allnodes()
+	myvarlist=portage.vardbapi(portage.root).cp_all()
+
+	if not syslist:
+		print "!!! You have no system list. Cannot determine system from world."
+
+	if not worldlist:
+		print "!!! You have no world file. Cannot determine explicit merges."
+
+	if not myvarlist:
+		print "!!! You have no /var/db tree. This is a problem."
+
+	if not alldeps:
+		print "!!! You have no packages without dependancies. Impossible. Bug."
+
+	if not (syslist and worldlist and myvarlist and alldeps):
+		print
+		sys.exit(1)
+
+	reallist=[]
+	for x in range(len(alldeps)-1):
+		myparts=portage.catpkgsplit(string.split(alldeps[x])[2])
+		catpack=myparts[0]+"/"+myparts[1]
+		if catpack not in reallist:
+			reallist.append(myparts[0]+"/"+myparts[1])
+
+	cleanlist=[]
+	for x in myvarlist:
+		if x not in reallist:
+			if x not in cleanlist:
+				cleanlist.append(x)
+
+	for x in syslist+worldlist:
+		myparts = portage.catpkgsplit(x)
+		if myparts:
+			if myparts[0][0] in ('<','>','='):
+				myparts[0] = myparts[0][1:]
+			if myparts[0][0] in ('<','>','='):
+				myparts[0] = myparts[0][1:]
+			catpack=myparts[0]+"/"+myparts[1]
+		else:
+			catpack=x
+		if catpack in cleanlist:
+			cleanlist.remove(catpack)
+
+	print "\n\n\nCleaning: "
+	for x in cleanlist:
+		print x
+	print
+
+	print "varlist:   "+str(len(myvarlist))
+	print "worldlist: "+str(len(worldlist))
+	print "syslist:   "+str(len(syslist))
+	print "alldeps:   "+str(len(alldeps))
+	print "reallist:  "+str(len(reallist))
+	print "dc count:  "+str(len(cleanlist))
+	sys.exit(0)
 	
 # "update", "system", or just process files:
 else:
