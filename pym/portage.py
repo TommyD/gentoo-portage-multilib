@@ -2013,6 +2013,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 	mymirrors=[]
 	
+	if listonly:
+		use_locks = 0
+
 	# local mirrors are always added
 	if custommirrors.has_key("local"):
 		mymirrors += custommirrors["local"]
