@@ -68,7 +68,7 @@ CHOST="powerpc-unknown-linux-gnu"
 # be safe for all processors and build generic code that will run on all PPC's,
 # if you use BootX to boot you should probably select this option
 #
-#CFLAGS="-02 -pipe -fsigned-char"
+#CFLAGS="-O2 -pipe -fsigned-char"
 
 # Recommended settings for GCC 2.95.3 only (Gentoo 1.2 or older):
 #
