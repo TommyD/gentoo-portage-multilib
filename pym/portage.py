@@ -82,7 +82,13 @@ try:
 		if calc_prelink and prelink_capable:
 			# Create non-prelinked temporary file to md5sum.
 			prelink_tmpfile="/tmp/portage-prelink.tmp"
-			os.system('cp "'+filename+'" '+prelink_tmpfile+" && /usr/sbin/prelink --undo "+prelink_tmpfile+" &>/dev/null")
+			try:
+				shutil.copy2(filename,prelink_tmpfile)
+			except Exception,e:
+				print "!!! Unable to copy file '",filename,"'."
+				print "!!!",e
+				sys.exit(1)
+			os.system("/usr/sbin/prelink --undo "+prelink_tmpfile+" &>/dev/null")
 			retval = fchksum.fmd5t(prelink_tmpfile)
 			os.unlink(prelink_tmpfile)
 			return retval
@@ -97,7 +103,13 @@ except ImportError:
 			# Create non-prelinked temporary file to md5sum.
 			# Raw data is returned on stdout, errors on stderr.
 			# Non-prelinks are just returned.
-			os.system('cp "'+filename+'" '+prelink_tmpfile+" && /usr/sbin/prelink --undo "+prelink_tmpfile+" &>/dev/null")
+			try:
+				shutil.copy2(filename,prelink_tmpfile)
+			except Exception,e:
+				print "!!! Unable to copy file '",filename,"'."
+				print "!!!",e
+				sys.exit(1)
+			os.system("/usr/sbin/prelink --undo "+prelink_tmpfile+" &>/dev/null")
 			myfilename=prelink_tmpfile
 
 		f = open(myfilename, 'rb')
@@ -1278,7 +1290,7 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 		return 1
 
 	#set up KV variable -- DEP SPEEDUP :: Don't waste time. Keep var persistant.
-	if not settings.has_key("KV"):
+	if (mydo!="depend") or not settings.has_key("KV"):
 		mykv,err1=ExtractKernelVersion(root+"usr/src/linux")
 		if mykv:
 			# Regular source tree
@@ -1286,7 +1298,7 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 		else:
 			settings["KV"]=""
 
-	if not settings.has_key("KVERS"):
+	if (mydo!="depend") or not settings.has_key("KVERS"):
 		myso=getstatusoutput("uname -r")
 		settings["KVERS"]=myso[1]
 
