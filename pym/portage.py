@@ -690,20 +690,32 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 	a.close()
 	
 	if mydo=="unpack": 
-		return spawn("/usr/sbin/ebuild.sh fetch unpack")
+		if settings["MAINTAINER_noauto"]=="1":
+			return spawn("/usr/sbin/ebuild.sh unpack")
+		else:
+			return spawn("/usr/sbin/ebuild.sh setup fetch unpack")
 	elif mydo=="compile":
-		return spawn("/usr/sbin/ebuild.sh fetch unpack compile")
+		if settings["MAINTAINER_noauto"]=="1":
+			return spawn("/usr/sbin/ebuild.sh compile")
+		else:
+			return spawn("/usr/sbin/ebuild.sh setup fetch unpack compile")
 	elif mydo=="install":
 		if settings["MAINTAINER_noauto"]=="1":
 			return spawn("/usr/sbin/ebuild.sh install")
-		return spawn("/usr/sbin/ebuild.sh fetch unpack compile install")
-	elif mydo in ["prerm","postrm","preinst","postinst","config","touch","clean","fetch","digest","batchdigest"]:
+		else:
+			return spawn("/usr/sbin/ebuild.sh setup fetch unpack compile install")
+	elif mydo=="rpm": 
+		if settings["MAINTAINER_noauto"]=="1":
+			return spawn("/usr/sbin/ebuild.sh rpm")
+		else:
+			return spawn("/usr/sbin/ebuild.sh setup fetch unpack compile install rpm")
+	elif mydo in ["prerm","postrm","preinst","postinst","config","touch","clean","setup","fetch","digest","batchdigest"]:
 		return spawn("/usr/sbin/ebuild.sh "+mydo)
 	elif mydo=="qmerge": 
 		#qmerge is specifically not supposed to do a runtime dep check
 		return merge(settings["CATEGORY"],settings["PF"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot)
 	elif mydo=="merge":
-		retval=spawn("/usr/sbin/ebuild.sh fetch unpack compile install")
+		retval=spawn("/usr/sbin/ebuild.sh setup fetch unpack compile install")
 		if retval: return retval
 		if checkdeps:
 			retval=dep_frontend("runtime",myebuild,mydeps[1])
@@ -711,10 +723,8 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 		return merge(settings["CATEGORY"],settings["PF"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot)
 	elif mydo=="unmerge": 
 		return unmerge(settings["CATEGORY"],settings["PF"],myroot)
-	elif mydo=="rpm": 
-		return spawn("/usr/sbin/ebuild.sh fetch unpack compile install rpm")
 	elif mydo=="package":
-		retval=spawn("/usr/sbin/ebuild.sh fetch")
+		retval=spawn("/usr/sbin/ebuild.sh setup fetch")
 		if retval:
 			return retval
 		for x in ["","/"+settings["CATEGORY"],"/All"]:

@@ -1,6 +1,16 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+*portage 1.8.8 (1 Feb 2002)
+
+  1 Feb 2002; G.Bevin <gbevin@gentoo.org> portage.py, ebuild.sh, ebuild.5 :
+  added support for a pkg_setup() function which is executed before anything
+  else and can be typically used for package configuration actions or required
+  system checks
+
+  1 Feb 2002; G.Bevin <gbevin@gentoo.org> portage.py :
+  implemented the noauto MAINTAINER flags for all relevant ebuild commands
+
   1 Feb 2002; G.Bevin <gbevin@gentoo.org> portage.py :
   make env-update disregard backup files
   

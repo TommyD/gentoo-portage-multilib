@@ -1,4 +1,4 @@
-.TH ebuild "18" "February 2001" "portage 1.5"
+.TH ebuild "18" "February 2002" "portage 1.8.8"
 .SH NAME
 ebuild \- the internal format, variables and functions in an ebuild script
 .SH DESCRIPTION
@@ -15,7 +15,7 @@ pre/post install/remove commands, as required.
 Here's a simple example ebuild script, :
 
 .DS
-# Copyright 1999-2000 Gentoo Technologies, Inc.
+# Copyright 1999-2002 Gentoo Technologies, Inc.
 .br
 # Distributed under the terms of the GNU General Public License, v2 or later
 .br
@@ -107,6 +107,10 @@ Should contain a list of URL's for the sources main sites and other further
 package dependend information.
 .PP
 .SH FUNCTIONS
+.TP
+\fBpkg_setup\fR
+This function can be used if the package needs specific setup actions or checks
+to be preformed before anything else.
 .TP
 \fBsrc_unpack\fR
 This function is used to unpack all the sources in \fIA\fR to \fIWORKDIR\fR.

@@ -113,6 +113,11 @@ einstall() {
     return
 }
 
+pkg_setup()
+{
+    return 
+}
+
 src_unpack() { 
 	unpack ${A} 
 }
@@ -172,6 +177,11 @@ dyn_touch() {
 			touch ${DISTDIR}/${x}
 		fi
 	done
+}
+
+dyn_setup()
+{
+    pkg_setup 
 }
 
 dyn_digest() {
@@ -519,14 +529,14 @@ dyn_compile() {
     export CFLAGS CXXFLAGS LIBCFLAGS LIBCXXFLAGS
     if [ ${BUILDDIR}/.compiled -nt ${WORKDIR} ]
     then
-	echo ">>> It appears that ${PN} is already compiled.  skipping."
-	echo ">>> (clean to force compilation)"
-	trap SIGINT SIGQUIT
-	return
+		echo ">>> It appears that ${PN} is already compiled.  skipping."
+		echo ">>> (clean to force compilation)"
+		trap SIGINT SIGQUIT
+		return
     fi
     if [ -d ${S} ]
-    then
-    cd ${S}
+		then
+		cd ${S}
     fi
     src_compile 
 	cd ${BUILDDIR}
@@ -645,6 +655,7 @@ dyn_help() {
 	echo "than one option is specified, each will be executed in order."
 	echo
 	echo "  check       : test if all dependencies get resolved"
+	echo "  setup       : execute package specific setup actions"
 	echo "  fetch       : download source archive(s) and patches"
 	echo "  unpack      : unpack/patch sources (auto-fetch if needed)"
 	echo "  compile     : compile sources (auto-fetch/unpack if needed)"
@@ -777,7 +788,7 @@ do
 		fi
 		export SANDBOX_ON="0"
 		;;
-	help|touch|fetch|digest|pkginfo|pkgloc|unmerge|merge|package|rpm)
+	help|touch|setup|fetch|digest|pkginfo|pkgloc|unmerge|merge|package|rpm)
 	    if [ "$PORTAGE_DEBUG" = "0" ]
 	    then
 	      dyn_${myarg}
