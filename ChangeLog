@@ -1,6 +1,9 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+  6 Feb 2002; Grant Goodyear <g2boojum@gentoo.org> cnf/make.conf :
+  Copied proxy lines from make.globals (bug 431).
+
   6 Feb 2002; Vitaly Kushneriuk <vitaly@gentoo.org> portage.py :
   added missing SLOT param to merge(...).
 
