@@ -9,6 +9,8 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  03 Aug 2004; Brian Harring <ferringb@gentoo.org> bin/repoman: Corrected 
+  typo, trying to remove .backup_metadata.dtd rather then metadata.dtd.
 
   03 Aug 2004; Nicholas Jones <carpaski@gentoo.org> portage_dep.py: Changing
   from dep_opconvert to use_reduce introduced a bug due to how OR'd lists are
