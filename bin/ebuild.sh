@@ -851,6 +851,7 @@ dyn_compile() {
 	cd build-info
 
 	echo "$ASFLAGS"        > ASFLAGS
+	echo "$CATEGORY"       > CATEGORY
 	echo "$CBUILD"         > CBUILD
 	echo "$CC"             > CC
 	echo "$CDEPEND"        > CDEPEND
@@ -862,17 +863,19 @@ dyn_compile() {
 	echo "$EXTRA_ECONF"    > EXTRA_ECONF
 	echo "$EXTRA_EINSTALL" > EXTRA_EINSTALL
 	echo "$EXTRA_ECONF"    > EXTRA_EMAKE
+	echo "$FEATURES"       > FEATURES
+	echo "$INHERITED"      > INHERITED
 	echo "$IUSE"           > IUSE
 	echo "$PKGUSE"         > PKGUSE
 	echo "$LDFLAGS"        > LDFLAGS
 	echo "$LIBCFLAGS"      > LIBCFLAGS
 	echo "$LIBCXXFLAGS"    > LIBCXXFLAGS
 	echo "$LICENSE"        > LICENSE
-	echo "$CATEGORY"       > CATEGORY
 	echo "$PDEPEND"        > PDEPEND
 	echo "$PF"             > PF
 	echo "$PROVIDE"        > PROVIDE
 	echo "$RDEPEND"        > RDEPEND
+	echo "$RESTRICT"       > RESTRICT
 	echo "$SLOT"           > SLOT
 	echo "$USE"            > USE
 

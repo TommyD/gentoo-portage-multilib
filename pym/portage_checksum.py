@@ -75,8 +75,8 @@ def perform_checksum(filename, hash_function=md5hash, calc_prelink=0):
 		try:
 			shutil.copy2(filename,prelink_tmpfile)
 		except Exception,e:
-			writemsg("!!! Unable to copy file '"+str(filename)+"'.\n")
-			writemsg("!!! "+str(e)+"\n")
+			portage_util.writemsg("!!! Unable to copy file '"+str(filename)+"'.\n")
+			portage_util.writemsg("!!! "+str(e)+"\n")
 			sys.exit(1)
 		portage_exec.spawn(PRELINK_BINARY+" --undo "+prelink_tmpfile,fd_pipes={})
 		myfilename=prelink_tmpfile

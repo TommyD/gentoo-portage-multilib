@@ -3232,7 +3232,6 @@ def key_expand(mykey,mydb=None,use_cache=1):
 				if mydb.cp_list(x+"/"+mykey,use_cache=use_cache):
 					return x+"/"+mykey
 			if virts_p.has_key(mykey):
-				print "VIRTS_P (Report to #gentoo-portage or bugs.g.o):",mykey
 				return(virts_p[mykey][0])
 		return "null/"+mykey
 	elif mydb:
@@ -3292,7 +3291,6 @@ def cpv_expand(mycpv,mydb=None,use_cache=1):
 
 		if not mykey and type(mydb)!=types.ListType:
 			if virts_p.has_key(myp):
-				print "VIRTS_P,ce (Report to #gentoo-portage or bugs.g.o):",myp
 				mykey=virts_p[myp][0]
 			#again, we only perform virtual expansion if we have a dbapi (not a list)
 		if not mykey:
@@ -5800,6 +5798,7 @@ class dblink:
 				while pos<len(mydirs):
 					obj=mydirs[pos]
 					objld=listdir(obj)
+
 					if objld == None:
 						print "mydirs["+str(pos)+"]",mydirs[pos]
 						print "obj",obj
@@ -5807,6 +5806,7 @@ class dblink:
 						# the directory doesn't exist yet, continue
 						pos += 1
 						continue
+
 					if len(objld)>0:
 						#we won't remove this directory (yet), continue
 						pos += 1
@@ -6473,7 +6473,7 @@ def pkgmerge(mytbz2,myroot,mysettings):
 	os.chdir(pkgloc)
 
 	mysettings.configdict["pkg"]["CATEGORY"] = mycat;
-	a=doebuild(myebuild,"setup",myroot,mysettings)
+	a=doebuild(myebuild,"setup",myroot,mysettings,tree="bintree")
 	print ">>> extracting",mypkg
 	notok=spawn("bzip2 -dqc -- '"+mytbz2+"' | tar xpf -",mysettings,free=1)
 	if notok:

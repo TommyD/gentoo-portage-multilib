@@ -9,6 +9,15 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  21 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Fixed the
+  bintree ebuild locating. Removed the virts_p debug/bug statements.
+	
+  21 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage_checksum: Added
+  a fix for checksum tracebacks that tracebacked.
+	
+  21 Sep 2004; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Added more
+  variables to vardb.
+
   21 Sep 2004; Jason Stubbs <jstubbs@gentoo.org> emerge: Added (slightly
   modified) patch from bug 64682.
 

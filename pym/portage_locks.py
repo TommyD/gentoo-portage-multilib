@@ -56,7 +56,8 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 	else:
 		raise ValueError, "Unknown type passed in '%s': '%s'" % (type(mypath),mypath)
 
-	#try for a non-blocking lock, if it's held, throw a message we're waiting on lockfile and use a blocking attempt.
+	# try for a non-blocking lock, if it's held, throw a message
+	# we're waiting on lockfile and use a blocking attempt.
 	try:
 		fcntl.flock(myfd,fcntl.LOCK_EX|fcntl.LOCK_NB)
 
