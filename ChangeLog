@@ -1,9 +1,11 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
-  10 Sep 2002; Mark Guertin <gerk@gentoo.org> cnf/make.conf.ppc :
-  Backed down CFLAGS from -O3 to -O2 on ppc as -O3 has proven to be
-  unreliable on all PowerPC based machines
+*portage-2.0.37 (19 Sep 2002): Gentoo Linux 1.4_rc1 version 
+
+  10 Sep 2002; Mark Guertin <gerk@gentoo.org> cnf/make.conf.ppc : Backed down
+  CFLAGS from -O3 to -O2 on ppc as -O3 has proven to be unreliable on all
+  PowerPC-based machines
 
   09 Sep 2002; Daniel Robbins <drobbins@gentoo.org> emerge: new parameterized
   create() engine, security pass fixes ("emerge" as non-root doesn't print
