@@ -1,6 +1,10 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  30 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: specific
+  provides (dev-lang/python-2.2) will be converted to their generic form
+  (dev-lang/python) before being recorded.
+
 *portage-1.8.9_pre36 (30 Mar 2002)
 
   30 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, emerge: new

@@ -2582,6 +2582,10 @@ class dblink:
 			myvkey=self.cat+"/"+pkgsplit(self.pkg)[0]
 			myvirts=grabdict(destroot+"var/cache/edb/virtuals")
 			for mycatpkg in self.getelements("PROVIDE"):
+				if isspecific(mycatpkg):
+					#convert a specific virtual like dev-lang/python-2.2 to dev-lang/python
+					mysplit=catpkgsplit(mycatpkg)
+					mycatpkg=mysplit[0]+"/"+mysplit[1]
 				if myvirts.has_key(mycatpkg):
 					if myvkey not in myvirts[mycatpkg]:
 						myvirts[mycatpkg][0:0]=[myvkey]
