@@ -9,6 +9,9 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  18 May 2004; Jason Stubbs <jstubbs@gentoo.org> portage.py: Reversed the
+  order of config.getvirtuals' stack_dictlist call for correct ordering.
+  
   16 May 2004; Nicholas Jones <carpaski@gentoo.org> portage_exception.py: New
   file containing portage exceptions. Added 'CorruptionError' for the db code.
 
