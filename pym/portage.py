@@ -982,7 +982,7 @@ class config:
 			archlist = grabfile(self["PORTDIR"]+"/profiles/arch.list")
 			self.configdict["conf"]["PORTAGE_ARCHLIST"] = string.join(archlist)
 
-			if os.environ.has_key("PORTAGE_CALLER") and os.environ["PORTAGE_CALLER"] == "repoman":
+			if os.environ.get("PORTAGE_CALLER","") == "repoman":
 				# repoman shouldn't use local settings.
 				locations = [self["PORTDIR"] + "/profiles"]
 				self.pusedict = {}
@@ -1315,15 +1315,13 @@ class config:
 
 		# Repoman should ignore these.
 		user_profile_dir = None
-		if os.environ.has_key("PORTAGE_CALLER") or \
-		   os.environ["PORTAGE_CALLER"] != "repoman":
+		if os.environ.get("PORTAGE_CALLER","") != "repoman":
 		  user_profile_dir = myroot+USER_CONFIG_PATH
 
 		if os.path.exists("/etc/portage/virtuals"):
 			writemsg("\n\n*** /etc/portage/virtuals should be moved to /etc/portage/profile/virtuals\n")
 			writemsg("*** Please correct this by merging or moving the file. (Deprecation notice)\n\n")
 			time.sleep(1)
-
 			
 		self.dirVirtuals = grab_multiple("virtuals", myvirtdirs, grabdict)
 		self.dirVirtuals.reverse()
@@ -1335,14 +1333,12 @@ class config:
 		profile_virtuals = stack_dictlist([self.userVirtuals]+self.dirVirtuals,incremental=1)
 
 		# repoman doesn't need local virtuals.
-		if os.environ.has_key("PORTAGE_CALLER") and os.environ["PORTAGE_CALLER"] == "repoman":
-			pass
-		else:
+		if os.environ.get("PORTAGE_CALLER","") != "repoman":
 			temp_vartree = vartree(myroot,profile_virtuals,categories=self.categories)
-			myTreeVirtuals = map_dictlist_vals(getCPFromCPV,temp_vartree.get_all_provides())
-			for x in myTreeVirtuals.keys():
-				myTreeVirtuals[x] = portage_util.unique_array(myTreeVirtuals[x])
-
+			self.treeVirtuals = map_dictlist_vals(getCPFromCPV,temp_vartree.get_all_provides())
+			for x in self.treeVirtuals.keys():
+				self.treeVirtuals[x] = portage_util.unique_array(self.treeVirtuals[x])
+		
 		# User settings and profile settings take precedence over tree.
 		val = stack_dictlist([self.userVirtuals]+[self.treeVirtuals]+self.dirVirtuals,incremental=1)
 		

@@ -9,6 +9,13 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+*portage-2.0.51_pre23 (11 Sep 2004): Fixes and stuff.
+
+  11 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Another fix
+	to the virtuals/use code -- It wasn't using treeVirtuals.
+
+*portage-2.0.51_pre22 (11 Sep 2004): Fixes and stuff.
+
   11 Sep 2004; Jason Stubbs <jstubbs@gentoo.org> portage.py: Fixed breakage
   in cacheddir changes upon stat'ing a broken symlink.
 
@@ -16,10 +23,10 @@
   check in autouse function. Fixed out-of-bounds exception on catpkgsplit
   tuple access in vardbapi.move_ent. Changed to manual stat calls in cacheddir.
 
-*portage-2.0.51_pre21 (09 Sep 2004): Fixes and stuff.
-
   10 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Removed the
-	circular deps of vardbapi and config.
+  circular deps of vardbapi and config.
+
+*portage-2.0.51_pre21 (09 Sep 2004): Fixes and stuff.
 
   09 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Possible fix
   for autouse() that will prevent recursion and locks.
