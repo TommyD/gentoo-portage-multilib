@@ -17,7 +17,8 @@
 # "a? ( b? ( z ) ) -- Valid
 #
 
-import os,string,types,sys
+import os,string,types,sys,copy
+import portage_exception
 
 def strip_empty(myarr):
 	for x in range(len(myarr)-1, -1, -1):
@@ -58,6 +59,14 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0):
 	"""Takes a paren_reduce'd array and reduces the use? conditionals out
 	leaving an array with subarrays
 	"""
+	
+	for x in range(1,len(deparray[1:])+1):
+		if deparray[x] in ["||","&&"]:
+			if len(deparray) == x:
+				raise portage_exception.InvalidDependString("INVALID "+deparray[x]+" DEPEND STRING: "+str(deparray))
+			if type(deparray[x+1]) != types.ListType:
+				raise portage_exception.InvalidDependString("INVALID "+deparray[x]+" DEPEND STRING: "+str(deparray))
+	
 	if ("*" in uselist):
 		matchall=1
 	mydeparray = deparray[:]
@@ -68,9 +77,21 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0):
 		# Hack in management of the weird || for dep_wordreduce, etc.
 		# dep_opconvert: [stuff, ["||", list, of, things]]
 		# At this point: [stuff, "||", [list, of, things]]
-		if head == "||" and (type(mydeparray[0]) == types.ListType):
-			mydeparray[0].insert(0,"||")
-			head = mydeparray.pop(0)
+		try:
+			if (head == "||") and (type(mydeparray[0]) == types.ListType):
+					mydeparray[0].insert(0,"||")
+					head = mydeparray.pop(0)
+			elif (head == "&&") and (type(mydeparray[0]) == types.ListType):
+				mydeparray[0].insert(0,"&&")
+				head = mydeparray.pop(0)
+			elif (type(head) == types.ListType):
+				# If it's a list, and we have ||/&& somewhere inside it and not
+				# in front then it is not a valid dep string.
+				for x in head[1:]:
+					if (x == "||") or (x == "&&"):
+						raise portage_exception.InvalidDependString("Stray "+str(x)+" in depend string. Use --debug for more info.")
+		except:
+			raise portage_exception.InvalidDependString("Run with --debug for more information")
 
 		if type(head) == types.ListType:
 			rlist = rlist + [use_reduce(head, uselist, masklist, matchall)]
