@@ -829,8 +829,8 @@ newdepend() {
 			    DEPEND="${DEPEND} sys-devel/autoconf sys-devel/automake sys-devel/make"
 			    ;;
 		    "/c")
-			    DEPEND="${DEPEND} sys-devel/gcc virtual/glibc sys-devel/ld.so"
-			    RDEPEND="${RDEPEND} virtual/glibc sys-devel/ld.so"
+			    DEPEND="${DEPEND} sys-devel/gcc virtual/glibc"
+			    RDEPEND="${RDEPEND} virtual/glibc"
 			    ;;
 		    *)
 			    DEPEND="$DEPEND $1"

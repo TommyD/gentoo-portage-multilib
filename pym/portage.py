@@ -2,7 +2,7 @@
 # Copyright 1998-2002 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
 
-VERSION="2.0.24"
+VERSION="2.0.28"
 
 from stat import *
 from commands import *
@@ -1102,6 +1102,11 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 			os.makedirs(settings["T"])
 		settings["WORKDIR"]=settings["BUILDDIR"]+"/work"
 		settings["D"]=settings["BUILDDIR"]+"/image/"
+	else:
+		#this is *important* so that we can properly run custom portage/python code in non-sandboxed
+		#functions and allow this code to add stuff to the dep cache. Otherwise, parent's $T gets inherited
+		#and messes up our "saved-env" stuff.
+		settings["T"]=""
 
 	if mydo=="unmerge": 
 		return unmerge(settings["CATEGORY"],settings["PF"],myroot)
@@ -1123,6 +1128,8 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 	# get possible slot information from the deps file
 	if mydo=="depend":
 		myso=getstatusoutput("/usr/sbin/ebuild.sh depend")
+		if debug:
+			print myso[1]
 		return myso[0]
 	try: 
 		settings["SLOT"], settings["RESTRICT"], myuris = db["/"]["porttree"].dbapi.aux_get(mykey,["SLOT","RESTRICT","SRC_URI"])
@@ -3027,8 +3034,10 @@ class portdbapi(dbapi):
 			#we need to update this next line when we have fully integrated the new db api
 			auxerr=0
 			try:
+				print 'DEBUG: trying aux_get for',mycpv
 				myaux=db["/"]["porttree"].dbapi.aux_get(mycpv, ["KEYWORDS"])
 			except (KeyError,IOError):
+				print "DEBUG: got error"
 				return []
 			if not myaux[0]:
 				#any aux_get errors will make an ebuild visible (get more accurate errors that way)
