@@ -2,6 +2,9 @@
 # Copyright 2001 Gentoo Technologies, Inc.; Distributed under the GPL
 # Written by Daniel Robbins (drobbins@gentoo.org)
 
+  20 Nov 2001; pdb, pdb.cgi and xpak used /usr/bin/python instead of
+  /usr/bin/spython.  Fixed.
+
 * portage 1.7.2 (13 Nov 2001)
 
   13 Nov 2001; Aron Griffis (agriffis@gentoo.org): emake will now try to build
