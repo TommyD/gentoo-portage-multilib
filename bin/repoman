@@ -478,7 +478,7 @@ scanlist=[]
 if repolevel==2:
 	#we are inside a category directory
 	catdir=reposplit[-1]
-	if catdir not in portage.categories:
+	if catdir not in repoman_settings.categories:
 		caterror(catdir)
 	mydirlist=os.listdir(startdir)
 	for x in mydirlist:
@@ -487,7 +487,7 @@ if repolevel==2:
 		if os.path.isdir(startdir+"/"+x):
 			scanlist.append(catdir+"/"+x)
 elif repolevel==1:
-	for x in portage.categories:
+	for x in repoman_settings.categories:
 		if not os.path.isdir(startdir+"/"+x):
 			continue
 		for y in os.listdir(startdir+"/"+x):
@@ -497,7 +497,7 @@ elif repolevel==1:
 				scanlist.append(x+"/"+y)
 elif repolevel==3:
 	catdir = reposplit[-2]
-	if catdir not in portage.categories:
+	if catdir not in repoman_settings.categories:
 		caterror(catdir)
 	scanlist.append(catdir+"/"+reposplit[-1])
 
