@@ -1296,7 +1296,7 @@ class config:
 			myuse = self["USE"]
 		else:
 			myuse = mydbapi.aux_get(mycpv, ["USE"])[0]
-		virts = portage_dep.use_reduce(portage_dep.paren_reduce(provides), uselist=myuse.split())
+		virts = flatten(portage_dep.use_reduce(portage_dep.paren_reduce(provides), uselist=myuse.split()))
 
 		cp = dep_getkey(mycpv)
 		for virt in virts:
@@ -4665,7 +4665,7 @@ class vartree(packagetree):
 				myuse = grabfile(self.root+VDB_PATH+"/"+mycpv+"/USE")
 				myuse = string.split(string.join(myuse))
 				mylines = string.join(mylines)
-				mylines = portage_dep.use_reduce(portage_dep.paren_reduce(mylines), uselist=myuse)
+				mylines = flatten(portage_dep.use_reduce(portage_dep.paren_reduce(mylines), uselist=myuse))
 				for myprovide in mylines:
 					mys = catpkgsplit(myprovide)
 					if not mys:
