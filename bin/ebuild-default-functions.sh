@@ -452,7 +452,7 @@ dyn_install() {
 		ewarn "file $file was installed with user portage!"
 		s=$(stat_perms $file)
 		chown root "$file"
-		[ -s "$file" ] || chmod "$s" "$file"
+		[ -h "$file" ] || chmod "$s" "$file"
 	done
 
 	if [ "$USERLAND" == "BSD" ]; then
@@ -460,14 +460,14 @@ dyn_install() {
 			ewarn "file $file was installed with group portage!"
 			s=$(stat_perms "$file")
 			chgrp wheel "$file"
-			[ -s "$file" ] || chmod "$s" "$file"
+			[ -h "$file" ] || chmod "$s" "$file"
 		done
 	else
 		find "${D}/" -group portage -print | while read file; do
 			ewarn "file $file was installed with group portage!"
 			s=$(stat_perms "$file")
 			chgrp root "$file"
-			[ -s "$file" ] || chmod "$s" "$file"
+			[ -h "$file" ] || chmod "$s" "$file"
 		done
 	fi
 
