@@ -2,6 +2,9 @@
 # Copyright 2000-2004 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  13 Feb 2004; Masatomo Nakano <nakano@gentoo.org> portage.py: Fixed parsing
+  SRC_URI bug when FEATURES="cvs". This should close #16159.
+
   12 Feb 2004; Masatomo Nakano <nakano@gentoo.org> emerge, pym/portage.py:
   TGL's patch for correction package size when emerge -v. -- Fixed
   use.default bug. It occurs when package in use.default exists in system

@@ -418,6 +418,10 @@ def exithandler(signum,frame):
 def tokenize(mystring):
 	"""breaks a string like 'foo? (bar) oni? (blah (blah))'
 	into embedded lists; returns None on paren mismatch"""
+
+	# This function is obsoleted.
+	# Use dep_parenreduce
+
 	newtokens=[]
 	curlist=newtokens
 	prevlists=[]
@@ -458,6 +462,10 @@ def tokenize(mystring):
 def evaluate(mytokens,mydefines,allon=0):
 	"""removes tokens based on whether conditional definitions exist or not.
 	Recognizes !"""
+
+	# This function is obsoleted.
+	# Use dep_opconvert
+	
 	pos=0
 	if mytokens==None:
 		return None
@@ -2272,17 +2280,8 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		print red("doebuild():")+" aux_get() error; aborting."
 		sys.exit(1)
 
-	newuris=db["/"]["porttree"].dbapi.getfetchlist(mycpv,mysettings=mysettings)
-	alluris=db["/"]["porttree"].dbapi.getfetchlist(mycpv,mysettings=mysettings,all=1)
-	alist=[]
-	aalist=[]
-	#uri processing list; create list with duplicates removed:
-	upl=[[newuris,alist],[alluris,aalist]]
-	for myl in upl:
-		for x in myl[0]:
-			mya=os.path.basename(x)
-			if not mya in myl[1]:
-				myl[1].append(mya)
+	newuris, alist=db["/"]["porttree"].dbapi.getfetchlist(mycpv,mysettings=mysettings)
+	alluris, aalist=db["/"]["porttree"].dbapi.getfetchlist(mycpv,mysettings=mysettings,all=1)
 	mysettings["A"]=string.join(alist," ")
 	mysettings["AA"]=string.join(aalist," ")
 	if ("cvs" in features) or ("mirror" in features):
@@ -4579,34 +4578,33 @@ class portdbapi(dbapi):
 		self.auxdb[cat].sync()
 		return returnme
 
-	def getfetchlist(self,mypkg,useflags=None,filemode=0,mysettings=None,all=0):
+	def getfetchlist(self,mypkg,useflags=None,mysettings=None,all=0):
 		if mysettings == None:
 			mysettings = self.mysettings
 		try: myuris = self.aux_get(mypkg,["SRC_URI"])[0]
 		except (IOError,KeyError):
 			print red("getfetchlist():")+" aux_get() error; aborting."
 			sys.exit(1)
-		if useflags == None:
+
+		myuris = myuris.replace("(", " ( ")
+		myuris = myuris.replace(")", " ) ")
+
+		if all:
+			useflags = ['*']
+		elif useflags == None:
 			useflags = string.split(mysettings["USE"])
 		
-		if all:
-			newuris = flatten(evaluate(tokenize(myuris),[],1))
-		else:
-			myuris = myuris.replace("(", " ( ");
-			myuris = myuris.replace(")", " ) ");
-			myurilist = myuris.split()
-			myurilist = dep_parenreduce(myurilist)
-			myurilist = dep_opconvert(myurilist,useflags,mysettings)
-			newuris = flatten(myurilist)
-		if not filemode:
-			return newuris
-		
+		myurilist = myuris.split()
+		myurilist = dep_parenreduce(myurilist)
+		myurilist = dep_opconvert(myurilist,useflags,mysettings)
+		newuris = flatten(myurilist)
+
 		myfiles = []
 		for x in newuris:
 			mya = os.path.basename(x)
 			if not mya in myfiles:
 				myfiles.append(mya)
-		return myfiles
+		return [newuris, myfiles]
 
 	def getfetchsizes(self,mypkg,useflags=None,debug=0):
 		# returns a filename:size dictionnary of remaining downloads
@@ -4617,9 +4615,9 @@ class portdbapi(dbapi):
 			return None
 		filesdict={}
 		if useflags == None:
-			myfiles=self.getfetchlist(mypkg,filemode=1,all=1)
+			myuris, myfiles = self.getfetchlist(mypkg,all=1)
 		else:
-			myfiles=self.getfetchlist(mypkg,useflags=useflags,filemode=1)
+			myuris, myfiles = self.getfetchlist(mypkg,useflags=useflags)
 		#XXX: maybe this should be improved: take partial downloads
 		# into account? check md5sums?
 		for myfile in myfiles:
