@@ -285,7 +285,8 @@ rm -rf ${TMP} 2> /dev/null
 mkdir ${TMP} || die "failed mkdir command!" 1
 
 # I need the CONFIG_PROTECT value
-source /etc/make.globals
+CONFIG_PROTECT="$(python -c 'import portage;print portage.settings["CONFIG_PROTECT"]')"
+CONFIG_PROTECT_MASK="$(python -c 'import portage;print portage.settings["CONFIG_PROTECT_MASK"]')"
 
 # load etc-config's configuration
 rm_opts=`get_config rm_opts`
