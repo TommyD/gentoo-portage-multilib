@@ -1,6 +1,13 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-1.9.14 (01 Jun 2002)
+
+  01 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: when a file to
+  be merged is identical to the one currently on disk (using the md5 test), we
+  now at least correctly update the target's mtime and atime so that cleaning
+  will work correctly.
+  
   27 May 2002; Daniel Robbins <drobbins@gentoo.org> bin/do*: changed "return"s
   to "exit 1".  Closes bug #3078.
 

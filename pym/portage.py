@@ -46,7 +46,7 @@
 #whole enchilada. (generally, I prefer this approach, though for runtime-only systems
 #subpackages make a lot of sense).
 
-VERSION="1.9.6_pre1"
+VERSION="1.9.13"
 
 import string,os
 from stat import *
@@ -3102,7 +3102,9 @@ class dblink:
 								if destmd5 in cfgfiledict[myrealdest]:
 									cfgfiledict[myrealdest]=cfgfiledict[myrealdest][cfgfiledict[myrealdest].index(destmd5):]
 							if mymd5==destmd5:
-								#file already in place (somehow) ... no need to merge this file -- avoid clutter....
+								#file already in place, so no need to merge this file.  However, we need to update the
+								#target file's times:
+								os.utime(mydest,(thismtime,thismtime))
 								zing="---"
 								moveme=0
 							elif cfgfiledict.has_key(myrealdest) and (mymd5 in cfgfiledict[myrealdest]):
