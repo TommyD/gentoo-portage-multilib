@@ -2787,7 +2787,13 @@ def getvirtuals(myroot):
 	myvirtfiles=[]
 	if profiledir:
 		myvirtfiles=[profiledir+"/virtuals"]
-	myvirtfiles.append(root+"/var/cache/edb/virtuals")
+
+	# repoman doesn't need local virtuals.
+	if os.environ.has_key("PORTAGE_CALLER") and os.environ["PORTAGE_CALLER"] == "repoman":
+		pass
+	else:
+		myvirtfiles.append(root+"/var/cache/edb/virtuals")
+
 	for myvirtfn in myvirtfiles:
 		if not os.path.exists(myvirtfn):
 			continue
