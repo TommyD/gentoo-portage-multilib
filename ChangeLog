@@ -9,6 +9,16 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  20 Jun 2004; Masatomo Nakano <nakano@gentoo.org> pym/portage.py:
+  Fixed problems that portage doesn't block with --update option(#52377)
+  and fail to block virual packages(#52506).
+	
+  20 Jun 2004; Masatomo Nakano <nakano@gentoo.org> pym/portage.py:
+  Fixed CONFIG_PROTECT/CONFIG_PROTECT_MASK in /etc/csv.env(#51646).
+
+  20 Jun 2004; Masatomo Nakano <nakano@gentoo.org> bin/ebuild.sh:
+  Added error message when pkg_config is not defined. (#51167)
+
   14 Jun 2004; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py:
   Fixed bug in portdbapi.aux_get where a problem ebuild would cause a lock
   to not be released.

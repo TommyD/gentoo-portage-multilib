@@ -531,6 +531,11 @@ pkg_postrm()
 	return
 }
 
+pkg_config()
+{
+	eerror "This ebuild does not have a config function."
+}
+
 # Used to generate the /lib/cpp and /usr/bin/cc wrappers
 gen_wrapper() {
 	cat > $1 << END

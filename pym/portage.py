@@ -693,7 +693,7 @@ def env_update(makelinks=1):
 		"CONFIG_PROTECT_MASK":[],"PRELINK_PATH":[],"PRELINK_PATH_MASK":[],
 		"PYTHONPATH":[], "ADA_INCLUDE_PATH":[], "ADA_OBJECTS_PATH":[]
 	}
-	colon_seperated = [
+	colon_separated = [
 		"ADA_INCLUDE_PATH",  "ADA_OBJECTS_PATH",
 		"LDPATH",            "MANPATH",
 		"PATH",              "PRELINK_PATH",
@@ -714,7 +714,7 @@ def env_update(makelinks=1):
 		# process PATH, CLASSPATH, LDPATH
 		for myspec in specials.keys():
 			if myconfig.has_key(myspec):
-				if myspec in colon_seperated:
+				if myspec in colon_separated:
 					specials[myspec].extend(string.split(varexpand(myconfig[myspec]),":"))
 				else:
 					specials[myspec].append(varexpand(myconfig[myspec]))
@@ -841,8 +841,12 @@ def env_update(makelinks=1):
 		if len(specials[path])==0:
 			continue
 		outstring="setenv "+path+" '"
-		for x in specials[path][:-1]:
-			outstring=outstring+x+":"
+		if path in ["CONFIG_PROTECT","CONFIG_PROTECT_MASK"]:
+			for x in specials[path][:-1]:
+				outstring += x+" "
+		else:
+			for x in specials[path][:-1]:
+				outstring=outstring+x+":"
 		outstring=outstring+specials[path][-1]+"'"
 		outfile.write(outstring+"\n")
 		#get it out of the way
@@ -3326,7 +3330,11 @@ def dep_virtual(mysplit):
 				if len(virts[mykey])==1:
 					a=string.replace(x, mykey, virts[mykey][0])
 				else:
-					a=['||']
+					if x[0]=="!":
+						# blocker needs "and" not "or(||)".
+						a=[]
+					else:
+						a=['||']
 					for y in virts[mykey]:
 						a.append(string.replace(x, mykey, y))
 				newsplit.append(a)
@@ -3720,6 +3728,15 @@ def dep_wordreduce(mydeplist,mydbapi,mode,use_cache=1):
 				tmp=(len(mydep)>=1)
 				if deplist[mypos][0]=="!":
 					tmp=not tmp
+
+				# This is ad-hoc code. We should rewrite this later.. (See #52377)
+				# The reason is that portage uses fakedb when --update option now.
+				# So portage considers that a block package doesn't exist even if it exists.
+				# Then, #52377 happens.
+				# ==== start
+				if mydbapi.__class__.__name__=="fakedbapi":
+					tmp=False
+				# ==== end
 				deplist[mypos]=tmp
 			else:
 				#encountered invalid string
