@@ -583,6 +583,8 @@ else:
 
 
 arch_caches={}
+re_metadata_dtd=re.compile('"[^"]+metadata.dtd"',re.I)
+re_escape_quotes=re.compile('"')
 for x in scanlist:
 	#ebuilds and digests added to cvs respectively.
 	if "--verbose" in myoptions:
@@ -720,11 +722,15 @@ for x in scanlist:
 	else:
 		#Only carry out if in package directory or check forced
 		if xmllint_capable:
-			st=getstatusoutput("xmllint --nonet '%s/metadata.xml' --dtdvalid '%s/metadata.dtd' 2>&1 > /dev/null" % (checkdir,portage.CACHE_PATH))
+			myf=open(checkdir+"/metadata.xml")
+			s=string.join(myf.readlines(),'')
+			myf.close()
+			s=re_metadata_dtd.sub('"%s/metadata.dtd"' % portage.CACHE_PATH, s)
+			# this is temporary, till spawn has been modified enough that we can hand a pipe to xmllint, and write on our end of it.
+			s=re_escape_quotes.sub('\\"',s)
+			st=getstatusoutput("echo \"%s\" | xmllint --valid -  2>&1 > /dev/null" % s)
 			if st[0] != 0:
-				#skip the first line, since it will be an IO error about not able to fetch the dtd via the web.
-				#this is a superflous error, since we have a local copy of the dtd to use.
-				for z in st[1].split("\n")[1:]:
+				for z in st[1].split("\n"):
 					print red("!!! ")+z
 				stats["metadata.bad"]+=1
 				fails["metadata.bad"].append(x+"/metadata.xml")

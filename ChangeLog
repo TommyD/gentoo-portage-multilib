@@ -9,6 +9,10 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  16 Aug 2004; Brian Harring <ferringb@gentoo.org> bin/repoman: Fixed a 
+  traceback related to file.size and --fix, added compatability tweaks for
+  xmllint.
+
   16 Aug 2004; Nicholas Jones <carpaski@gentoo.org> emerge: Fixed the lock
   handling and unique_array calls.
 
