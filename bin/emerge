@@ -719,6 +719,7 @@ if "--unmerge" in myopts:
 		print "No packages to unmerge have been provided."
 		print
 	else:
+		full_paths={}
 		full_ebuild_paths={}
 		full_package_paths={}
 		non_slot_packages=[]
@@ -727,9 +728,6 @@ if "--unmerge" in myopts:
 		# process all arguments, verify if they can be resolved to an installed
 		# ebuild file and add the absolute paths of these ebuild to a list
 		for x in myfiles:
-
-			# collection of full package paths for this particular package
-			full_paths={}
 
 			# an absolute path has been given
 			if (x[0]=='/'):
