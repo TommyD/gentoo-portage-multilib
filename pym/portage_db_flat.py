@@ -1,17 +1,19 @@
 
 import types,os.path
-from marshal import loads,dumps
 from copy import deepcopy
-from os import makedirs,unlink
+from os import makedirs,unlink,chown,utime,chmod
+import os.path
 from string import join
 
 import portage_db_template
 
 class database(portage_db_template.database):
-	def __init__(self,path,category,dbkeys):
+	def __init__(self,path,category,dbkeys,uid,gid):
 		self.path     = path
 		self.category = category
 		self.dbkeys   = dbkeys
+		self.uid      = uid
+		self.gid      = gid
 
 		self.lastkey  = None # Cache
 		self.lastval  = None # Cache
@@ -20,7 +22,12 @@ class database(portage_db_template.database):
 
 		if not os.path.exists(self.fullpath):
 			makedirs(self.fullpath)
-
+			try:
+				chown(self.fullpath, self.uid, self.gid)
+				chmod(self.fullpath, 02775)
+			except:
+				pass
+		
 	def has_key(self,key):
 		if os.path.exists(self.fullpath+key):
 			return 1
@@ -40,25 +47,23 @@ class database(portage_db_template.database):
 		if not key:
 			raise KeyError, "key is not set to a valid value"
 
-		if self.lastkey == key: # Use the cache
-			return copy.deepcopy(self.lastval)
-
-		if self.key_exists(key):
+		if self.has_key(key):
+			import os,stat
+			mtime = os.stat(self.fullpath+key)[stat.ST_MTIME]
 			myf = open(self.fullpath+key)
 			myl = myf.readlines()
-			if len(myl) != len(self.dbkeys):
-				return None
-			newl = []
 
-			for l in myl:
-				if l[-1] == "\n":
-					newl += [l[:-1]]
-				else:
-					newl += [l]
-			self.lastkey = key
-			self.lastval = copy.deepcopy(newl)
-			return newl
+			dict = {"_mtime_":mtime}
 			
+			if len(myl) != len(self.dbkeys):
+				raise ValueError, "Key count mismatch"
+			for x in range(0,len(myl)):
+				if myl[x] and myl[x][-1] == "\n":
+					dict[self.dbkeys[x]] = myl[x][:-1]
+				else:
+					dict[self.dbkeys[x]] = myl[x]
+				
+			return dict
 		return None
 	
 	def set_values(self,key,val):
@@ -66,14 +71,22 @@ class database(portage_db_template.database):
 			raise KeyError, "No key provided. key:%s val:%s" % (key,val)
 		if not val:
 			raise ValueError, "No value provided. key:%s val:%s" % (key,val)
-		if len(val) != len(self.dbkeys):
-			raise ValueError, "Not enough values provided key:%s val:%s" % (key,val)
 		
-		data = join(val,"\n")+"\n"
+		data = ""
+		for x in self.dbkeys:
+			data += val[x]+"\n"
+
+		if os.path.exists(self.fullpath+key):
+			os.unlink(self.fullpath+key)
+
 		myf = open(self.fullpath+key,"w")
 		myf.write(data)
 		myf.flush()
 		myf.close()
+		
+		chown(self.fullpath+key, self.uid, self.gid)
+		chmod(self.fullpath+key, 0664)
+		utime(self.fullpath+key, (val["_mtime_"],val["_mtime_"]))
 	
 	def del_key(self,key):
 		if self.key_exists(key):

@@ -4,7 +4,7 @@
 # $Header$
 
 # Very simple program to compare the md5sums of a package as listed
-# in /var/db/pkg/category/package/CONTENTS with the md5sums of the
+# in VDB_PATH/category/package/CONTENTS with the md5sums of the
 # actual programs on the system (and makes sure that symlinks point to
 # the right files).
 
@@ -53,7 +53,7 @@ def CONTENTScheck(path):
 if __name__ == '__main__':
 	import sys
 	if (len(sys.argv) != 2 or sys.argv[1] == "--help"):
-		print "This program compares md5sums in the file /var/db/pkg/category/package/CONTENTS"
+		print "This program compares md5sums in the file VDB_PATH/category/package/CONTENTS"
 		print "with the md5sums of the actual files on the filesystem"
 		print "(and makes sure that symlinks point to the right files)."
 		print "\nUsage: chkcontents path/to/CONTENTS"

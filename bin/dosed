@@ -9,7 +9,7 @@ for x in "$@" ; do
 	y="${D}${x}"
 	if [ -a "${y}" ] ; then
 		if [ -f "${y}" ] ; then
-			mysrc="${T}"/`/usr/bin/basename "${y}"`
+			mysrc="${T}/${y##*/}"
 			cp "${y}" "${mysrc}"
 			sed -e "${mysed}" "${mysrc}" > "${y}"
 		else

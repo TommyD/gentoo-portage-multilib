@@ -132,6 +132,13 @@ def match(argv):
 		sys.exit(1)
 
 
+def vdb_path(argv):
+	"""
+	Returns the path used for the var(installed) package database for the
+	set environment/configuration options.
+	"""
+	print portage.root+portage.VDB_PATH
+
 def gentoo_mirrors(argv):
 	"""
 	Returns the mirrors set to use in the portage configuration.

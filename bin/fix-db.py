@@ -5,7 +5,7 @@ sys.path = ["/usr/lib/portage/pym"]+sys.path
 
 from stat import *
 from output import *
-from portage import lockfile,unlockfile
+from portage import lockfile,unlockfile,VDB_PATH,root
 
 
 mylog = open("/var/log/emerge_fix-db.log", "a")
@@ -35,7 +35,7 @@ except:
 	writemsg("ERROR: Real counter is invalid.\n")
 	real_counter = 0
 
-vardbdir = "/var/db/pkg/"
+vardbdir = root+VDB_PATH
 for cat in os.listdir(vardbdir):
 	catdir = vardbdir+cat+"/"
 	if not os.path.isdir(catdir):

@@ -3,7 +3,9 @@
 # Distributed under the GNU Public License v2
 # $Header$
 
-VERSION="2.0.50_pre15"
+VERSION="2.0.50_pre17"
+
+VDB_PATH="var/db/pkg"
 
 import sys,string,os,re,types,shlex,shutil,xpak,fcntl,signal
 import time,cPickle,atexit,grp,traceback,commands,pwd,cvstree,copy
@@ -27,12 +29,20 @@ def writemsg(mystr,noiselevel=0):
 		sys.stderr.write(mystr)
 		sys.stderr.flush()
 
+def load_mod(name):
+	modname = string.join(string.split(name,".")[:-1],".")
+	mod = __import__(modname)
+	components = name.split('.')
+	for comp in components[1:]:
+		mod = getattr(mod, comp)
+	return mod
+
 def lockdir(mydir):
 	return lockfile(mydir,wantnewlockfile=1)
 def unlockdir(mylock):
 	return unlockfile(mylock)
 
-def lockfile(mypath,wantnewlockfile=0):
+def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 	"""Creates all dirs upto, the given dir. Creates a lockfile
 	for the given directory as the file: directoryname+'.portage_lockfile'."""
 	import fcntl
@@ -52,7 +62,6 @@ def lockfile(mypath,wantnewlockfile=0):
 		unlinkfile   = 1
 	else:
 		lockfilename = mypath
-		unlinkfile = 0
 	
 	if type(mypath) == types.StringType:
 		if not os.path.exists(os.path.dirname(mypath)):
@@ -70,7 +79,7 @@ def lockfile(mypath,wantnewlockfile=0):
 		# The file was deleted on us... Keep trying to make one...
 		os.close(myfd)
 		writemsg("lockfile recurse\n",1)
-		lockfilename,myfd,unlinkfile = lockfile(mypath,wantnewlockfile)
+		lockfilename,myfd,unlinkfile = lockfile(mypath,wantnewlockfile,unlinkfile)
 
 	writemsg(str((lockfilename,myfd,unlinkfile))+"\n",1)
 	return (lockfilename,myfd,unlinkfile)
@@ -111,6 +120,15 @@ def unlockfile(mytuple):
 	os.close(myfd)
 			
 	return 1
+
+def unique_array(array):
+	"""Takes an array and makes sure each element is unique."""
+	mya = []
+	for x in array:
+		if x not in mya:
+			mya.append(x)
+	return mya
+									
 
 ostype=os.uname()[0]
 if ostype=="Linux":
@@ -207,6 +225,19 @@ def suffix_array(array,suffix,doblanks=1):
 	for x in array:
 		if x or doblanks:
 			newarray.append(x + suffix)
+		else:
+			newarray.append(x)
+	return newarray
+
+def prefix_array(array,prefix,doblanks=1):
+	"""Prepends a given prefix to each element in an Array/List/Tuple.
+	Returns a List."""
+	if type(array) not in [types.ListType, types.TupleType]:
+		raise TypeError, "List or Tuple expected. Got %s" % type(array)
+	newarray=[]
+	for x in array:
+		if x or doblanks:
+			newarray.append(prefix + x)
 		else:
 			newarray.append(x)
 	return newarray
@@ -740,6 +771,48 @@ def grabfile(myfilename):
 		newlines.append(myline)
 	return newlines
 
+def grab_stacked(basename, locations, handler, incrementals=[], incremental_lines=0, all_must_exist=0):
+	final_list = None
+	final_dict = None
+	for loc in locations:
+		stuff = handler(loc+"/"+basename)
+		if type(stuff)==types.ListType:
+			if final_list == None:
+				final_list = []
+			for y in stuff:
+				if y:
+					if incremental_lines and y[0]=='-':
+						while y[1:] in final_list:
+							del final_list[final_list.index(y[1:])]
+					else:
+						if y not in final_list:
+							final_list.append(y)
+		elif type(stuff)==types.DictType:
+			if final_dict == None:
+				final_dict = {}
+			for y in stuff.keys():
+				if not final_dict.has_key(y):
+					final_dict[y] = stuff[y]
+				else:
+					for thing in stuff[y]:
+						if thing:
+							if thing[0] == '-':
+								if thing[1:] in final_dict[y]:
+									del final_dict[y][final_dict[y].index(thing[1:])]
+							else:
+								if thing not in final_dict[y]:
+									final_dict[y].insert(0,thing)
+		elif (stuff == None):
+			if all_must_exist:
+				return None
+		else:
+			raise ValueError, "Unknown type for '%s'\n" % stuff
+
+	if final_list == None:
+		return final_dict
+	else:
+		return final_list
+
 def grabdict(myfilename,juststrings=0):
 	"""This function grabs the lines in a file, normalizes whitespace and returns lines in a dictionary"""
 	newdict={}
@@ -815,8 +888,7 @@ def getconfig(mycfg,tolerant=0):
 	try:
 		f=open(mycfg,'r')
 	except IOError:
-		writemsg("Could not open \""+mycfg+"\"; exiting.\n")
-		sys.exit(1)
+		return None
 	lex=shlex.shlex(f)
 	lex.wordchars=string.digits+string.letters+"~!@#$%*_\:;?,./-+{}"     
 	lex.quotes="\"'"
@@ -1013,15 +1085,24 @@ def check_config_instance(test):
 		raise TypeError, "Invalid type for config object: %s" % test.__class__
 
 class config:
-	def __init__(self, clone=None, mycpv=None):
-		global incrementals,profiledir
+	def __init__(self, clone=None, mycpv=None, config_profile_path=None, config_incrementals=None):
+
 		self.locked   = 0
 		self.mycpv    = None
 		self.puse     = []
 		self.modifiedkeys = []
 
 		if clone:
-			self.usemask    = copy.deepcopy(clone.usemask)
+			self.incrementals = copy.deepcopy(clone.incrementals)
+			self.profile_path = copy.deepcopy(clone.profile_path)
+			self.configs  = copy.deepcopy(clone.configs)
+			self.defaults = copy.deepcopy(clone.defaults)
+			self.packages = copy.deepcopy(clone.packages)
+			self.virtuals = copy.deepcopy(clone.virtuals)
+
+			self.use_defs = copy.deepcopy(clone.use_defs)
+			self.usemask  = copy.deepcopy(clone.usemask)
+
 			self.configlist = copy.deepcopy(clone.configlist)
 			self.configlist[-1] = os.environ.copy()
 			self.configdict = { "globals":   self.configlist[0],
@@ -1036,6 +1117,27 @@ class config:
 			self.lookuplist = copy.deepcopy(clone.lookuplist)
 			self.uvlist     = copy.deepcopy(clone.uvlist)
 		else:
+			if not config_profile_path:
+				global profiledir
+				writemsg("config_profile_path not specified to class config\n")
+				self.profile_path = profiledir[:]
+			else:
+				self.profile_path = config_profile_path[:]
+
+			if not config_incrementals:
+				global incrementals
+				writemsg("incrementals not specified to class config\n")
+				self.incrementals = copy.deepcopy(incrementals)
+			else:
+				self.incrementals = copy.deepcopy(config_incrementals)
+			
+			self.configs  = {}
+			self.defaults = {
+				"portdbapi.metadbmodule": "portage_db_flat.database",
+				"portdbapi.auxdbmodule":  "portage_db_flat.database",
+				"eclass_cache.dbmodule":  "portage_db_cpickle.database",
+			}
+			
 			self.usemask=[]
 			self.configlist=[]
 			self.backupenv={}
@@ -1043,13 +1145,21 @@ class config:
 			self.configdict={}
 			# configlist will contain: [ globals, defaults, conf, pkg, auto, backupenv (incrementals), origenv ]
 
-			#get the masked use flags
-			if os.path.exists("/etc/make.profile/use.mask"):
-				self.usemask=grabfile("/etc/make.profile/use.mask")
-			if os.path.exists("/etc/portage/use.mask"):
-				self.usemask=self.usemask+grabfile("/etc/portage/use.mask")
+			self.profiles=[abssymlink("/etc/make.profile")]
+			mypath = self.profiles[0]
+			while os.path.exists(mypath+"/parent"):
+				mypath = os.path.normpath(os.path.dirname(mypath)+"///"+grabfile(mypath+"/parent")[0])
+				if os.path.exists(mypath):
+					self.profiles.insert(0,mypath)
 
-			self.mygcfg=getconfig("/etc/make.globals")
+			self.packages = grab_stacked("packages", self.profiles, grabfile, incremental_lines=1)
+			self.virtuals = self.getvirtuals('/')
+
+			# get profile-masked use flags -- INCREMENTAL Child over parent
+			self.usemask  = grab_stacked("use.mask", self.profiles, grabfile, incremental_lines=1)
+			self.use_defs = grab_stacked("use.defaults", self.profiles, grabdict)
+
+			self.mygcfg  = grab_stacked("make.globals", self.profiles+["/etc"], getconfig)
 			if self.mygcfg==None:
 				writemsg("!!! Parse error in /etc/make.globals. NEVER EDIT THIS FILE.\n")
 				writemsg("!!! Incorrect multiline literals can cause this. Do not use them.\n")
@@ -1059,8 +1169,8 @@ class config:
 			self.configdict["globals"]=self.configlist[-1]
 
 			self.mygcfg = {}
-			if profiledir:
-				self.mygcfg=getconfig("/etc/make.profile/make.defaults")
+			if self.profiles:
+				self.mygcfg = grab_stacked("make.defaults", self.profiles, getconfig)
 				if self.mygcfg==None:
 					writemsg("!!! Parse error in /etc/make.profile/make.defaults. Never modify this file.\n")
 					writemsg("!!! 'rm -Rf /usr/portage/profiles; emerge sync' may fix this. If it does\n")
@@ -1202,8 +1312,12 @@ class config:
 			myincrementals=incrementals
 		for mykey in myincrementals:
 			if mykey=="USE":
-				mydbs=self.uvlist		
-				self.configdict["auto"]["USE"]=autouse(db[root]["vartree"])
+				mydbs=self.uvlist
+				# XXX Global usage of db... Needs to go away somehow.
+				if db.has_key(root) and db[root].has_key("vartree"):
+					self.configdict["auto"]["USE"]=autouse(db[root]["vartree"])
+				else:
+					self.configdict["auto"]["USE"]=""
 			else:
 				mydbs=self.configlist[:-1]
 
@@ -1264,6 +1378,20 @@ class config:
 						usesplit.insert(0,self.configdict["defaults"]["ARCH"])
 
 		self.configlist[-1]["USE"]=string.join(usesplit," ")
+
+
+	def getvirtuals(self, myroot):
+		myvirts     = {}
+		myvirtfiles = []
+		myvirtdirs  = prefix_array(self.profiles,myroot)
+
+		# repoman doesn't need local virtuals.
+		if os.environ.has_key("PORTAGE_CALLER") and os.environ["PORTAGE_CALLER"] == "repoman":
+			pass
+		else:
+			myvirtfiles.append(myroot+"/var/cache/edb/virtuals")
+
+		return grab_stacked("/virtuals",myvirtdirs,grabdict)
 	
 	def __getitem__(self,mykey):
 		if mykey=="CONFIG_PROTECT_MASK":
@@ -1846,7 +1974,7 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0):
 				actionmap[mydo]["args"][0],
 				actionmap[mydo]["args"][1])
 
-def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,cleanup=0):
+def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,cleanup=0,dbkey=None):
 	global db
 	
 	ebuild_path = os.path.abspath(myebuild)
@@ -1933,6 +2061,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 			# XXX: This needs to use a FD for saving the output into a file.
 			# XXX: Set this up through spawn
 			pass
+		mysettings["dbkey"] = dbkey
 		return spawn("/usr/sbin/ebuild.sh depend",mysettings)
 
 	# Build directory creation isn't required for any of these.
@@ -2877,33 +3006,6 @@ def dep_listcleanup(deplist):
 				newlist.append(x)
 	return newlist
 	
-# gets virtual package settings
-
-def getvirtuals(myroot):
-	myvirts={}
-	myvirtfiles=[]
-	if profiledir:
-		myvirtfiles=[profiledir+"/virtuals"]
-
-	# repoman doesn't need local virtuals.
-	if os.environ.has_key("PORTAGE_CALLER") and os.environ["PORTAGE_CALLER"] == "repoman":
-		pass
-	else:
-		myvirtfiles.append(root+"/var/cache/edb/virtuals")
-
-	for myvirtfn in myvirtfiles:
-		if not os.path.exists(myvirtfn):
-			continue
-		myfile=open(myvirtfn)
-		mylines=myfile.readlines()
-		for x in mylines:
-			mysplit=string.split(x)
-			if len(mysplit)<2:
-				#invalid line
-				continue
-			myvirts[mysplit[0]]=mysplit[1:]
-	return myvirts
-
 def dep_getjiggy(mydep):
 	pos=0
 	# first, we fill in spaces where needed (for "()[]" chars)
@@ -3583,7 +3685,7 @@ class dbapi:
 				counter=long(cfile.readline())
 			except (ValueError,OverflowError):
 				try:
-					counter=long(commands.getoutput("for FILE in $(find /var/db/pkg -type f -name COUNTER); do echo $(<${FILE}); done | sort -n | tail -n1 | tr -d '\n'"))
+					counter=long(commands.getoutput("for FILE in $(find /"+VDB_PATH+" -type f -name COUNTER); do echo $(<${FILE}); done | sort -n | tail -n1 | tr -d '\n'"))
 					writemsg("!!! COUNTER was corrupted; resetting to value of %d\n" % counter)
 					changed=1
 				except (ValueError,OverflowError):
@@ -3594,7 +3696,7 @@ class dbapi:
 			cfile.close()
 		else:
 			try:
-				counter=long(commands.getoutput("for FILE in $(find /var/db/pkg -type f -name COUNTER); do echo $(<${FILE}); done | sort -n | tail -n1 | tr -d '\n'"))
+				counter=long(commands.getoutput("for FILE in $(find /"+VDB_PATH+" -type f -name COUNTER); do echo $(<${FILE}); done | sort -n | tail -n1 | tr -d '\n'"))
 				writemsg("!!! Global counter missing. Regenerated from counter files to: %s\n" % counter)
 			except:
 				writemsg("!!! Initializing global counter.\n")
@@ -3699,12 +3801,12 @@ class vardbapi(dbapi):
 
 	def cpv_exists(self,mykey):
 		"Tells us whether an actual ebuild exists on disk (no masking)"
-		return os.path.exists(self.root+"var/db/pkg/"+mykey)
+		return os.path.exists(self.root+VDB_PATH+"/"+mykey)
 
 	def cpv_counter(self,mycpv):
 		"This method will grab the COUNTER. Returns a counter value."
-		cdir=self.root+"var/db/pkg/"+mycpv
-		cpath=self.root+"var/db/pkg/"+mycpv+"/COUNTER"
+		cdir=self.root+VDB_PATH+"/"+mycpv
+		cpath=self.root+VDB_PATH+"/"+mycpv+"/COUNTER"
 
 		# We write our new counter value to a new file that gets moved into
 		# place to avoid filesystem corruption on XFS (unexpected reboot.)
@@ -3757,10 +3859,10 @@ class vardbapi(dbapi):
 	
 	def cpv_inject(self,mycpv):
 		"injects a real package into our on-disk database; assumes mycpv is valid and doesn't already exist"
-		os.makedirs(self.root+"var/db/pkg/"+mycpv)	
+		os.makedirs(self.root+VDB_PATH+"/"+mycpv)	
 		counter=db[self.root]["vartree"].dbapi.counter_tick(self.root,mycpv)
 		# write local package counter so that emerge clean does the right thing
-		lcfile=open(self.root+"var/db/pkg/"+mycpv+"/COUNTER","w")
+		lcfile=open(self.root+VDB_PATH+"/"+mycpv+"/COUNTER","w")
 		lcfile.write(str(counter))
 		lcfile.close()
 
@@ -3776,14 +3878,14 @@ class vardbapi(dbapi):
 			mynewcat=newcp.split("/")[0]
 			if mycpsplit[3]!="r0":
 				mynewcpv += "-"+mycpsplit[3]
-			origpath=self.root+"var/db/pkg/"+mycpv
+			origpath=self.root+VDB_PATH+"/"+mycpv
 			if not os.path.exists(origpath):
 				continue
 			writemsg("@")
-			if not os.path.exists(self.root+"var/db/pkg/"+mynewcat):
+			if not os.path.exists(self.root+VDB_PATH+"/"+mynewcat):
 				#create the directory
-				os.makedirs(self.root+"var/db/pkg/"+mynewcat)	
-			newpath=self.root+"var/db/pkg/"+mynewcpv
+				os.makedirs(self.root+VDB_PATH+"/"+mynewcat)	
+			newpath=self.root+VDB_PATH+"/"+mynewcpv
 			if os.path.exists(newpath):
 				#dest already exists; keep this puppy where it is.
 				continue
@@ -3793,7 +3895,7 @@ class vardbapi(dbapi):
 			catfile.write(mynewcat+"\n")
 			catfile.close()
 
-		dbdir = self.root+"var/db/pkg"
+		dbdir = self.root+VDB_PATH
 		for catdir in listdir(dbdir):
 			catdir = dbdir+"/"+catdir
 			if os.path.isdir(catdir):
@@ -3811,7 +3913,7 @@ class vardbapi(dbapi):
 		if not origmatches:
 			return
 		for mycpv in origmatches:
-			origpath=self.root+"var/db/pkg/"+mycpv
+			origpath=self.root+VDB_PATH+"/"+mycpv
 			if not os.path.exists(origpath):
 				continue
 
@@ -3832,14 +3934,14 @@ class vardbapi(dbapi):
 		if mysplit[0] == '*':
 			mysplit[0] = mysplit[0][1:]
 		try:
-			mystat=os.stat(self.root+"var/db/pkg/"+mysplit[0])[ST_MTIME]
+			mystat=os.stat(self.root+VDB_PATH+"/"+mysplit[0])[ST_MTIME]
 		except OSError:
 			mystat=0
 		if self.cpcache.has_key(mycp):
 			cpc=self.cpcache[mycp]
 			if cpc[0]==mystat:
 				return cpc[1]
-		list=listdir(self.root+"var/db/pkg/"+mysplit[0],EmptyOnError=1)
+		list=listdir(self.root+VDB_PATH+"/"+mysplit[0],EmptyOnError=1)
 
 		if (list==None):
 			return []
@@ -3850,7 +3952,7 @@ class vardbapi(dbapi):
 				continue
 			ps=pkgsplit(x)
 			if not ps:
-				self.invalidentry(self.root+"var/db/pkg/"+mysplit[0]+"/"+x)
+				self.invalidentry(self.root+VDB_PATH+"/"+mysplit[0]+"/"+x)
 				continue
 			if len(mysplit) > 1:
 				if ps[0]==mysplit[1]:
@@ -3861,7 +3963,7 @@ class vardbapi(dbapi):
 	def cpv_all(self):
 		returnme=[]
 		for x in categories:
-			for y in listdir(self.root+"var/db/pkg/"+x,EmptyOnError=1):
+			for y in listdir(self.root+VDB_PATH+"/"+x,EmptyOnError=1):
 				returnme += [x+"/"+y]
 		return returnme
 
@@ -3873,7 +3975,7 @@ class vardbapi(dbapi):
 				y = y[1:]
 			mysplit=catpkgsplit(y)
 			if not mysplit:
-				self.invalidentry(self.root+"var/db/pkg/"+y)
+				self.invalidentry(self.root+VDB_PATH+"/"+y)
 				continue
 			mykey=mysplit[0]+"/"+mysplit[1]
 			if not mykey in returnme:
@@ -3889,7 +3991,7 @@ class vardbapi(dbapi):
 		mykey=dep_getkey(mydep)
 		mycat=mykey.split("/")[0]
 		try:
-			curmtime=os.stat(self.root+"var/db/pkg/"+mycat)
+			curmtime=os.stat(self.root+VDB_PATH+"/"+mycat)
 		except:
 			curmtime=0
 
@@ -3908,7 +4010,7 @@ class vardbapi(dbapi):
 		if not self.cpv_exists(mycpv):
 			return []
 		for x in wants:
-			myfn = self.root+"var/db/pkg/"+str(mycpv)+"/"+str(x)
+			myfn = self.root+VDB_PATH+"/"+str(mycpv)+"/"+str(x)
 			if os.access(myfn,os.R_OK):
 				myf = open(myfn, "r")
 				myd = myf.read()
@@ -3943,7 +4045,7 @@ class vartree(packagetree):
 	def get_provide(self,mycpv):
 		myprovides=[]
 		try:
-			mylines = grabfile(self.root+"var/db/pkg/"+mycpv+"/PROVIDE")
+			mylines = grabfile(self.root+VDB_PATH+"/"+mycpv+"/PROVIDE")
 			if mylines:
 				for myprovide in string.split(string.join(mylines)):
 					mys = catpkgsplit(myprovide)
@@ -4002,11 +4104,11 @@ class vartree(packagetree):
 		a=catpkgsplit(cpv)
 		if not a:
 			return 0
-		mylist=listdir(self.root+"var/db/pkg/"+a[0],EmptyOnError=1)
+		mylist=listdir(self.root+VDB_PATH+"/"+a[0],EmptyOnError=1)
 		for x in mylist:
 			b=pkgsplit(x)
 			if not b:
-				self.dbapi.invalidentry(self.root+"var/db/pkg/"+a[0]+"/"+x)
+				self.dbapi.invalidentry(self.root+VDB_PATH+"/"+a[0]+"/"+x)
 				continue
 			if a[1]==b[0]:
 				return 1
@@ -4014,19 +4116,19 @@ class vartree(packagetree):
 			
 	def getebuildpath(self,fullpackage):
 		cat,package=fullpackage.split("/")
-		return self.root+"var/db/pkg/"+fullpackage+"/"+package+".ebuild"
+		return self.root+VDB_PATH+"/"+fullpackage+"/"+package+".ebuild"
 
 	def getnode(self,mykey):
 		mykey=key_expand(mykey,self.dbapi)
 		if not mykey:
 			return []
 		mysplit=mykey.split("/")
-		mydirlist=listdir(self.root+"var/db/pkg/"+mysplit[0],EmptyOnError=1)
+		mydirlist=listdir(self.root+VDB_PATH+"/"+mysplit[0],EmptyOnError=1)
 		returnme=[]
 		for x in mydirlist:
 			mypsplit=pkgsplit(x)
 			if not mypsplit:
-				self.dbapi.invalidentry(self.root+"var/db/pkg/"+mysplit[0]+"/"+x)
+				self.dbapi.invalidentry(self.root+VDB_PATH+"/"+mysplit[0]+"/"+x)
 				continue
 			if mypsplit[0]==mysplit[1]:
 				appendme=[mysplit[0]+"/"+x,[mysplit[0],mypsplit[0],mypsplit[1],mypsplit[2]]]
@@ -4037,7 +4139,7 @@ class vartree(packagetree):
 	def getslot(self,mycatpkg):
 		"Get a slot for a catpkg; assume it exists."
 		try:
-			myslotfile=open(self.root+"var/db/pkg/"+mycatpkg+"/SLOT","r")
+			myslotfile=open(self.root+VDB_PATH+"/"+mycatpkg+"/SLOT","r")
 			myslotvar=string.split(myslotfile.readline())
 			myslotfile.close()
 			if len(myslotvar):
@@ -4050,11 +4152,11 @@ class vartree(packagetree):
 		"""Does the particular node (cat/pkg key) exist?"""
 		mykey=key_expand(mykey,self.dbapi)
 		mysplit=mykey.split("/")
-		mydirlist=listdir(self.root+"var/db/pkg/"+mysplit[0],EmptyOnError=1)
+		mydirlist=listdir(self.root+VDB_PATH+"/"+mysplit[0],EmptyOnError=1)
 		for x in mydirlist:
 			mypsplit=pkgsplit(x)
 			if not mypsplit:
-				self.dbapi.invalidentry(self.root+"var/db/pkg/"+mysplit[0]+"/"+x)
+				self.dbapi.invalidentry(self.root+VDB_PATH+"/"+mysplit[0]+"/"+x)
 				continue
 			if mypsplit[0]==mysplit[1]:
 				return 1
@@ -4064,65 +4166,27 @@ class vartree(packagetree):
 		self.populated=1
 
 # ----------------------------------------------------------------------------
-myefn = "/var/cache/edb/eclass.pickle"
-try:
-	mypickle=cPickle.Unpickler(open(myefn))
-	mypickle.find_global=None
-	eclassdb=mypickle.load()
-except:
-	#print "!!!",e
-	eclassdb={"eclass":{},"packages":[],"version":"","starttime":0}
-if eclassdb.has_key("version") and eclassdb["version"]!=VERSION:
-	eclassdb["packages"] = []
-	eclassdb["eclass"] = {}
-
-eclassdb["modifications"] = 0
-eclassdb["modifications_limit"] = 1
-
-def save_eclassdb(forced=0):
-	if not forced and eclassdb["modifications"] < eclassdb["modifications_limit"]:
-		eclassdb["modifications"] += 1
-		return 0
-
-	try:
-		eclassdb["version"]=VERSION
-		cPickle.dump(eclassdb,open(myefn,"w"))
-		eclassdb["modifications"] = 0
-		#print "*** Wrote out mtimedb data successfully."
-		os.chown(myefn,uid,portage_gid)
-		os.chmod(myefn,0664)
-	except Exception, e:
-		return -1
-	
-	return 1
-
 class eclass_cache:
 	"""Maintains the cache information about eclasses used in ebuild."""
-	def __init__(self,fn):
-		self.pickle_fn = fn
-		self.db = {}
-			
+	def __init__(self,settings):
+		self.settings = settings
+		self.cachedir = self.settings["PORTAGE_CACHEDIR"]
 
-def eclass(myeclass=None,mycpv=None,mymtime=None):
-	"""Caches and retrieves information about ebuilds that use eclasses
-	Returns: Is the ebuild current with the eclass? (true/false)"""
-	#print "eclass("+str(myeclass)+","+str(mycpv)+","+str(mymtime)+")"
-	
-	global eclassdb
-	
-	if not eclassdb:
-		eclassdb={}
-	if not eclassdb.has_key("eclass") or type(eclassdb["eclass"]) is not types.DictType:
-		eclassdb["eclass"]={}
-		eclassdb["packages"]=[]
-	if not eclassdb.has_key("packages") or type(eclassdb["packages"]) is not types.ListType:
-		eclassdb["packages"]=[]
-	
-	if not eclassdb.has_key("starttime") or (eclassdb["starttime"]!=starttime):
-		eclassdb["starttime"]=starttime
-		# Update the cache
-		ec_overlays = suffix_array(string.split(settings["PORTDIR_OVERLAY"]), "/eclass")
-		for x in [settings["PORTDIR"]+"/eclass"]+ec_overlays:
+		try:
+			self.dbmodule = load_mod(self.settings.configs["eclass_cache.dbmodule"])
+		except:
+			self.dbmodule = load_mod(self.settings.defaults["eclass_cache.dbmodule"])
+
+		self.packages = {} # {"PV": {"eclass1": ["location", "_mtime_"]}}
+		self.eclasses = {} # {"Name": ["location","_mtime_"]}
+		
+		self.update_eclasses()
+
+
+	def update_eclasses(self):
+		self.eclasses = {}
+		ec_overlays = suffix_array(string.split(self.settings["PORTDIR_OVERLAY"]), "/eclass")
+		for x in [self.settings["PORTDIR"]+"/eclass"]+ec_overlays:
 			if x and os.path.exists(x):
 				dirlist = listdir(x)
 				for y in dirlist:
@@ -4130,84 +4194,97 @@ def eclass(myeclass=None,mycpv=None,mymtime=None):
 						try:
 							ys=y[:-len(".eclass")]
 							ymtime=os.stat(x+"/"+y)[ST_MTIME]
-							if eclassdb["eclass"].has_key(ys):
-								if ymtime!=eclassdb["eclass"][ys][0]:
-									# The mtime changed on the eclass
-									eclassdb["eclass"][ys]=[ymtime,x+"/"+y,eclassdb["eclass"][ys][2]]
-								else:
-									# nothing changed
-									pass
-							else:
-								# New eclass
-								eclassdb["eclass"][ys]=[ymtime,x+"/"+y, {}]
-						except Exception, e:
-							print "!!! stat exception:",e
+						except:
 							continue
-	if myeclass != None:
-		if not eclassdb["eclass"].has_key(myeclass):
-			# Eclass doesn't exist.
-			print "!!! eclass '"+myeclass+"' in '"+str(mycpv)+"' does not exist:"
-			raise KeyError
-		else:
-			if (mycpv!=None) and (mymtime!=None):
-				if mycpv not in eclassdb["packages"]:
-					eclassdb["packages"].append(mycpv)
-				if eclassdb["eclass"][myeclass][2].has_key(mycpv):
-					# Check if the ebuild mtime changed OR if the mtime for the eclass
-					# has changed since it was last updated.
-					#print "test:",mymtime!=eclassdb["eclass"][myeclass][2][mycpv][1],eclassdb["eclass"][myeclass][0]!=eclassdb["eclass"][myeclass][2][mycpv][0]
-					if (mymtime!=eclassdb["eclass"][myeclass][2][mycpv][1]) or (eclassdb["eclass"][myeclass][0]!=eclassdb["eclass"][myeclass][2][mycpv][0]):
-						# Store the new mtime before we expire the cache so we don't
-						# repeatedly regen this entry.
-						#print " regen --",myeclass,"--",mymtime,eclassdb["eclass"][myeclass][2][mycpv][1],"--",eclassdb["eclass"][myeclass][0],eclassdb["eclass"][myeclass][2][mycpv][0]
-						eclassdb["eclass"][myeclass][2][mycpv]=[eclassdb["eclass"][myeclass][0],mymtime]
-						save_eclassdb()
-						# Expire the cache. mtimes don't match.
-						return 0
-					else:
-						# Matches
-						#print "!regen --",myeclass,"--",mymtime,eclassdb["eclass"][myeclass][2][mycpv][1],"--",eclassdb["eclass"][myeclass][0],eclassdb["eclass"][myeclass][2][mycpv][0]
-						return 1
-				else:
-					# Don't have an entry... Must be new.
-					#print "*regen --",myeclass,"--",mymtime,eclassdb["eclass"][myeclass][2][mycpv][1],"--",eclassdb["eclass"][myeclass][0],eclassdb["eclass"][myeclass][2][mycpv][0]
-					eclassdb["eclass"][myeclass][2][mycpv]=[eclassdb["eclass"][myeclass][0],mymtime]
-					save_eclassdb()
-					return 0
-			else:
-				# We're missing some vital parts.
-				raise KeyError
-	else:
-		# Recurse without explicit eclass. (Recurse all)
-		if mycpv in eclassdb["packages"]:
-			for myeclass in eclassdb["eclass"].keys():
-				if eclassdb["eclass"][myeclass][2].has_key(mycpv):
-					if (mymtime!=eclassdb["eclass"][myeclass][2][mycpv][1]) or (eclassdb["eclass"][myeclass][0]!=eclassdb["eclass"][myeclass][2][mycpv][0]):
-						#print " regen mtime:",mymtime,eclassdb["eclass"][myeclass][2][mycpv][1],"--",eclassdb["eclass"][myeclass][0],eclassdb["eclass"][myeclass][2][mycpv][0]
-						#mtimes do not match
-						return 0
-		#print "!regen mtime"
+						self.eclasses[ys] = [x, ymtime]
+	
+	def setup_package(self, cat, pkg):
+		if not self.packages.has_key(cat):
+			self.packages[cat] = self.dbmodule(self.cachedir, cat+"-eclass", [], uid, portage_gid)
+	
+	def sync(self, cat, pkg):
+		if self.packages.has_key(cat):
+			self.packages[cat].sync()
+	
+	def update_package(self, cat, pkg, eclass_list):
+		self.setup_package(cat, pkg)
+		if not eclass_list:
+			return 1
+
+		data = {}
+		for x in eclass_list:
+			if x not in self.eclasses:
+				writemsg("Eclass '%s' does not exist for '%s'\n" % (x, cat+"/"+pkg))
+				return 0
+			data[x] = [self.eclasses[x][0],self.eclasses[x][1]]
+		
+		self.packages[cat][pkg] = data
+		self.sync(cat,pkg)
 		return 1
+
+	def is_current(self, cat, pkg, eclass_list):
+		self.setup_package(cat, pkg)
+
+		if not eclass_list:
+			return 1
+
+		if not (self.packages[cat].has_key(pkg) and self.packages[cat][pkg] and eclass_list):
+			return 0
+
+		eclass_list.sort()
+		eclass_list = unique_array(eclass_list)
+		
+		ec_data = self.packages[cat][pkg].keys()
+		ec_data.sort()
+		if eclass_list != ec_data:
+			return 0
+
+		for x in eclass_list:
+			if x not in self.eclasses:
+				return 0
+			data = self.packages[cat][pkg][x]
+			if data[1] != self.eclasses[x][1]:
+				return 0
+			if data[0] != self.eclasses[x][0]:
+				return 0
+
+		return 1			
+				
 # ----------------------------------------------------------------------------
 
 auxdbkeys=['DEPEND','RDEPEND','SLOT','SRC_URI','RESTRICT','HOMEPAGE','LICENSE','DESCRIPTION','KEYWORDS','INHERITED','IUSE','CDEPEND','PDEPEND']
 auxdbkeylen=len(auxdbkeys)
+
 class portdbapi(dbapi):
 	"this tree will scan a portage directory located at root (passed to init)"
 	def __init__(self,root):
+		self.mysettings = config(clone=settings)
+
 		#self.root=settings["PORTDIR"]
 		self.root = root
-		self.auxcache={}
-		self.loaded_caches=[]
-		self.storing_enabled=0 # Enables/Disables the auxcache pickles
+		
+		self.cachedir = self.mysettings["PORTAGE_CACHEDIR"]
+		
+		self.eclassdb = eclass_cache(self.mysettings)
+
+		self.metadb = {}
+		try:
+			self.metadbmodule = load_mod(self.mysettings.configs["portdbapi.metadbmodule"])
+		except:
+			self.metadbmodule = load_mod(self.mysettings.defaults["portdbapi.metadbmodule"])
+		
+		self.auxdb={}
+		try:
+			self.auxdbmodule = load_mod(self.mysettings.configs["portdbapi.auxdbmodule"])
+		except:
+			self.auxdbmodule = load_mod(self.mysettings.defaults["portdbapi.auxdbmodule"])
+
 		#if the portdbapi is "frozen", then we assume that we can cache everything (that no updates to it are happening)
 		self.xcache={}
 		self.frozen=0
 		#overlays="overlay roots"
 		self.overlays=[]
 		
-		self.mysettings = config(clone=settings)
-
 	def finddigest(self,mycpv):
 		try:
 			mydig   = self.findname2(mycpv)[0]
@@ -4253,33 +4330,20 @@ class portdbapi(dbapi):
 			sys.exit(17)
 		return myret,0
 
-	def flush_auxcache(self):
-		"""Clears the auxcache"""
-		# We don't clear the loaded_caches because we don't want them reloaded.
-		self.auxcache = {}
-
-	def save_auxcache(self,sa_root,blah=None):
-		if not self.storing_enabled:
-			return -1
-		for x in self.auxcache.keys():
-			if self.auxcache[x].has_key("modified"):
-				del self.auxcache[x]["modified"]
-				pickle_write(self.auxcache[x],sa_root+"/var/cache/edb/dep/"+x+".pickle")
-	
 	def aux_get(self,mycpv,mylist,strict=0,metacachedir=None,debug=0):
 		"stub code for returning auxilliary db information, such as SLOT, DEPEND, etc."
 		'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
 		'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or raise KeyError if error'
-		global auxdbkeys,auxdbkeylen,dbcachedir
+		global auxdbkeys,auxdbkeylen
 		cat,pkg = string.split(mycpv, "/", 1)
-		if (cat not in self.loaded_caches):
-			if self.storing_enabled and not metacachedir:
-				self.auxcache[cat] = pickle_read("/var/cache/edb/dep/"+cat+".pickle",default={})
-			else:
-				self.auxcache[cat] = {}
-			self.loaded_caches += [cat]
-		elif cat not in self.auxcache.keys():
-			self.auxcache[cat] = {}
+		
+		if cat not in self.auxdb:
+			self.auxdb[cat] = self.auxdbmodule(self.cachedir,cat,auxdbkeys,uid,portage_gid)
+		
+		if metacachedir:
+			if cat not in self.metadb:
+				self.metadb[cat] = self.metadbmodule(metacachedir,cat,auxdbkeys,uid,portage_gid)
+
 		dmtime=0
 		emtime=0
 		doregen=0
@@ -4288,223 +4352,75 @@ class portdbapi(dbapi):
 		stale=0
 		usingmdcache=0
 		myebuild,in_overlay=self.findname2(mycpv)
-		mydbkey=dbcachedir+"/"+mycpv
-		mymdkey=None
-		if not in_overlay and metacachedir and os.access(metacachedir, os.R_OK):
-			mymdkey=metacachedir+"/"+mycpv
 
-		#print "statusline1:",doregen,dmtime,emtime,mycpv
 		if os.access(myebuild, os.R_OK):
 			emtime=os.stat(myebuild)[ST_MTIME]
 		else:
-			print "!!! aux_get(): ebuild for '"+mycpv+"' does not exist at:"              
-			print "!!!            "+myebuild
+			writemsg("!!! aux_get(): ebuild for '%s' does not exist at:\n" % mycpv)
+			writemsg("!!!            %s\n" % myebuild)
 			raise KeyError
 
-		# first, we take a look at the size of the ebuild/cache entry to ensure we
-		# have a valid data, then we look at the mtime of the ebuild and the
-		# cache entry to see if we need to regenerate our cache entry.
-		auxcache_is_valid = self.auxcache[cat].has_key(pkg) and \
-		                    self.auxcache[cat][pkg].has_key("mtime") and \
-		                    self.auxcache[cat][pkg]["mtime"] == emtime
-		if auxcache_is_valid:
-			if debug > 1:
-				writemsg("auxcache is valid: "+str(auxcache_is_valid)+" "+str(pkg)+"\n")
-			dmtime = emtime
-		elif os.access(mydbkey, os.R_OK):
-			# Don't need to setup a try, as we don't expect it to fail now.
-			mydbkeystat=os.stat(mydbkey)
-			if mydbkeystat[ST_SIZE] == 0:
-				doregen=1
-				dmtime=0
-			else:
-				dmtime=mydbkeystat[ST_MTIME]
-				if dmtime!=emtime:
-					doregen=1
+		if not in_overlay and metacachedir and self.metadb[cat].has_key(pkg):
+			metadata = self.metadb[cat][pkg]
+			dmtime = metadata["_mtime_"]
+			self.eclassdb.update_package(cat,pkg,self.metadb[cat][pkg]["INHERITED"].split())
+			self.auxdb[cat][pkg] = metadata
 		else:
-			doregen=1
-
-		#print "statusline2:",doregen,dmtime,emtime,mycpv
-		if doregen or not eclass(None, mycpv, dmtime):
-			stale=1
-			#print "doregen:",doregen,mycpv
-			if mymdkey and os.access(mymdkey, os.R_OK):
-				if not self.storing_enabled:
-					try:
-						mydir=os.path.dirname(mydbkey)
-						if not os.path.exists(mydir):
-							os.makedirs(mydir, 2775)
-							os.chown(mydir,uid,portage_gid)
-						shutil.copy2(mymdkey, mydbkey)
-						usingmdcache=1
-					except Exception,e:
-						print "!!! Unable to copy '"+mymdkey+"' to '"+mydbkey+"'"
-						print "!!!",e
-				else:
-					usingmdcache=1
-					dmtime=emtime
+			auxdb_is_valid = self.auxdb[cat].has_key(pkg) and \
+			                 self.auxdb[cat][pkg].has_key("_mtime_") and \
+			                 self.auxdb[cat][pkg]["_mtime_"] == emtime
+			writemsg("auxdb is valid: "+str(auxdb_is_valid)+" "+str(pkg)+"\n", 2)
+			if auxdb_is_valid:
+				dmtime = emtime
 			else:
-				if debug:
-					writemsg("Generating cache entry(0) for: "+str(myebuild)+"\n")
-				myret=doebuild(myebuild,"depend","/",self.mysettings)
+				doregen=1
+
+			if doregen or not self.eclassdb.is_current(cat,pkg,self.auxdb[cat][pkg]["INHERITED"].split()):
+				stale=1
+				writemsg("doregen: %s %s\n" % (doregen,mycpv), 2)
+
+				writemsg("Generating cache entry(0) for: "+str(myebuild)+"\n",1)
+				mydbkey = self.cachedir+"/aux_db_key_temp"
+				mylock = lockfile(mydbkey,unlinkfile=1)
+				myret=doebuild(myebuild,"depend","/",self.mysettings,dbkey=mydbkey)
 				if myret:
-				
+					unlockfile(mylock)
 					#depend returned non-zero exit code...
 					writemsg(str(red("\naux_get():")+" (0) Error in "+mycpv+" ebuild. ("+str(myret)+")\n"
-             "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
+         	   "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
 					raise KeyError
 
 				try:
-					os.utime(mydbkey,(emtime,emtime))
-					mydbkeystat=os.stat(mydbkey)
-					if mydbkeystat[ST_SIZE] == 0:
-						if debug:
-							writemsg("File size zero: "+str(mydbkey)+"\n")
-						doregen2=5
-					else:
-						#print "!!! <-- Size != 0 -->"
-						dmtime=mydbkeystat[ST_MTIME]
-						doregen2=0
-				except OSError:
-					if debug:
-						writemsg("Failed to create depend file: "+str(mydbkey)+"\n")
-					doregen2=6
-					pass
-			
-		#print "--doregen"
-		#Now, our cache entry is possibly regenerated.  It could be up-to-date, but it may not be...
-		#If we regenerated the cache entry or we don't have an internal cache entry or or cache entry
-		#is stale, then we need to read in the new cache entry.
-
-		#print "statusline3:",doregen,dmtime,emtime,mycpv,usingmdcache
-		if usingmdcache or \
-		   not (self.auxcache[cat].has_key(pkg) and \
-		        self.auxcache[cat][pkg].has_key("mtime") and \
-		        self.auxcache[cat][pkg]["mtime"] == dmtime):
-			#print "stale auxcache"
-			stale=1
-
-			if self.storing_enabled and usingmdcache:
-				mdfile=mymdkey
-			else:
-				mdfile=mydbkey
-
-			try:
-				#print "grab cent"
-				mycent=open(mdfile,"r")
-				mylines=mycent.readlines()
-				mycent.close()
-			except (IOError, OSError):
-				writemsg(str(red("\naux_get():")+" (1) Error in "+mycpv+" ebuild.\n"
-				  "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
-				raise KeyError
-
-			#We now have the db
-			myeclasses=[]
-			#if we regenerated our cache entry earlier, there's no point in
-			#checking all this as we know we are up-to-date.  Otherwise....
-			if not mylines:
-				print "no mylines"
-				pass
-			elif doregen2 or len(mylines)<len(auxdbkeys):
-				doregen2=10
-				#print "too few auxdbkeys / invalid generation"
-			elif mylines[auxdbkeys.index("INHERITED")]!="\n":
-				#print "inherits"
-				#Verify if this ebuild is current against the eclasses it uses.
-				#eclass() -> Loads, checks, and returns 1 if it's current.
-				myeclasses=mylines[auxdbkeys.index("INHERITED")].split()
-				#print "))) 002"
-				doregen2=0
-				for myeclass in myeclasses:
-					myret=eclass(myeclass,mycpv,dmtime)
-					#print "eclass '",myeclass,"':",myret,doregen,doregen2
-					if myret==None:
-						# eclass is missing... We'll die if it doesn't get fixed on regen
-						doregen2=15
-						break
-					if myret==0 and not usingmdcache:
-						#print "((( 002 0"
-						#we set doregen2 to regenerate this entry in case it was fixed
-						#in the ebuild/eclass since the cache entry was created.
-						#print "Old cache entry. Regen."
-						doregen2=20
-						break
-
-			#print "doregen2: pre"
-			if doregen2:	
-				#writemsg("-")
-				#print "doregen2"
-				stale=1
-				#old cache entry, needs updating (this could raise IOError)
-
-				try:
-					# Can't set the mtime of a file we don't own, so to ensure that it
-					# is owned by the running user, we delete the file so we recreate it.
-					os.unlink(mydbkey)
-				except:
-					pass
-			
-				if usingmdcache:
-					if debug:
-						writemsg("Generating cache entry(2) for: "+str(myebuild)+"\n")
-					myret=doebuild(myebuild,"depend","/",self.mysettings)
-					if myret:
-						#depend returned non-zero exit code...
-						writemsg(str(red("\naux_get():")+" (2) Error in "+mycpv+" ebuild. ("+str(myret)+")\n"
-						  "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
-						raise KeyError
-					try:
-						os.utime(mydbkey,(emtime,emtime))
-						mycent=open(mydbkey,"r")
-					except (IOError, OSError):
-						writemsg(str(red("\naux_get():")+" (3) Error in "+mycpv+" ebuild.\n"
-						  "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
-						raise KeyError
+					#print "grab cent"
+					mycent=open(mydbkey,"r")
 					mylines=mycent.readlines()
 					mycent.close()
+				except (IOError, OSError):
+					writemsg(str(red("\naux_get():")+" (1) Error in "+mycpv+" ebuild.\n"
+					  "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
+					raise KeyError
+				unlockfile(mylock)
 
-			#print "stale: pre"
-			if stale:
-				#print "stale: in"
-				# due to a stale or regenerated cache entry,
-				# we need to update our internal dictionary....
-				try:
-					# Set the dep entry to the ebuilds mtime.
-					self.auxcache[cat]["modified"]=1
-					self.auxcache[cat][pkg]={"mtime": emtime}
-					myeclasses=mylines[auxdbkeys.index("INHERITED")].split()
-				except Exception, e:
-					print red("\n\naux_get():")+" stale entry was not regenerated for"
-					print "           "+mycpv+"; deleting and exiting."
-					print "!!!",e
-					if os.access(mydbkey, os.W_OK):
-						os.unlink(mydbkey)
-					else:
-						writemsg("!!! Cannot delete dbkey: "+str(mydbkey)+"\n")
+				mydata = {}
+				for x in range(0,len(mylines)):
+					if mylines[x][-1] == '\n':
+						mylines[x] = mylines[x][:-1]
+					mydata[auxdbkeys[x]] = mylines[x]
+				mydata["_mtime_"] = emtime
+
+				self.auxdb[cat][pkg] = mydata
+				if not self.eclassdb.update_package(cat, pkg, mylines[auxdbkeys.index("INHERITED")].split()):
 					sys.exit(1)
-				for myeclass in myeclasses:
-					if eclass(myeclass,mycpv,emtime)==None:
-						# Eclass wasn't found.
-						print red("\n\naux_get():")+' eclass "'+myeclass+'" from',mydbkey,"not found."
-						print "!!! Eclass '"+myeclass+"' not found."
-						sys.exit(1)
-				try:
-					for x in range(0,len(auxdbkeys)):
-						self.auxcache[cat]["modified"]=1
-						self.auxcache[cat][pkg][auxdbkeys[x]]=mylines[x][:-1]
-				except IndexError:
-					print red("\n\naux_get():")+" error processing",auxdbkeys[x],"for",mycpv
-					print "           Expiring the cache entry and exiting."
-					os.unlink(mydbkey)
-					sys.exit(1)
+
 		#finally, we look at our internal cache entry and return the requested data.
 		returnme=[]
 		for x in mylist:
-			if self.auxcache[cat][pkg].has_key(x):
-				returnme.append(self.auxcache[cat][pkg][x])
+			if self.auxdb[cat][pkg].has_key(x):
+				returnme.append(self.auxdb[cat][pkg][x])
 			else:
 				returnme.append("")
+
+		self.auxdb[cat].sync()
 		return returnme
 		
 	def getsize(self,mypkg,debug=0):
@@ -4996,7 +4912,7 @@ class dblink:
 		self.mycpv   = self.cat+"/"+self.pkg
 		self.mysplit = pkgsplit(self.mycpv)
 	
-		self.dbroot   = os.path.normpath(myroot+"///var/db/pkg")
+		self.dbroot   = os.path.normpath(myroot+VDB_PATH)
 		self.dbcatdir = self.dbroot+"/"+cat
 		self.dbpkgdir = self.dbcatdir+"/"+pkg
 		self.dbtmpdir = self.dbcatdir+"/-MERGING-"+pkg
@@ -5989,9 +5905,33 @@ if os.path.exists("/etc/make.profile/make.defaults"):
 
 db={}
 
+# =============================================================================
+# =============================================================================
+# -----------------------------------------------------------------------------
+# We're going to lock the global config to prevent changes, but we need
+# to ensure the global settings are right.
+settings=config(config_profile_path="/etc/make.profile",config_incrementals=incrementals)
+
+# useful info
+settings["PORTAGE_MASTER_PID"]=str(os.getpid())
+settings.backup_changes("PORTAGE_MASTER_PID")
+settings["BASH_ENV"]="/etc/portage/bashrc"
+settings.backup_changes("BASH_ENV")
+
+if not settings["PORTAGE_CACHEDIR"]:
+	#the auxcache is the only /var/cache/edb/ entry that stays at / even when "root" changes.
+	settings["PORTAGE_CACHEDIR"]="/var/cache/edb/dep/"
+	settings.backup_changes("PORTAGE_CACHEDIR")
+
+# gets virtual package settings
+def getvirtuals(myroot):
+	global settings
+	writemsg("--- DEPRECATED call to getvirtual\n")
+	return settings.getvirtuals(myroot)
+
 def do_vartree():
-	global virts,virts_p
-	virts=getvirtuals("/")
+	global virts,virts_p,settings
+	virts=settings.getvirtuals("/")
 	virts_p={}
 
 	if virts:
@@ -6006,36 +5946,14 @@ def do_vartree():
 		pass
 	db["/"]={"virtuals":virts,"vartree":vartree("/",virts)}
 	if root!="/":
-		virts=getvirtuals(root)
+		virts=settings.getvirtuals(root)
 		db[root]={"virtuals":virts,"vartree":vartree(root,virts)}
 	#We need to create the vartree first, then load our settings, and then set up our other trees
 
+usedefaults=settings.use_defs
 do_vartree()
+settings.regenerate() # XXX: Regenerate use after we get a vartree -- GLOBAL
 
-if profiledir:
-	usedefaults=grabfile(profiledir+"/use.defaults")
-else:
-	usedefaults=[]
-
-# =============================================================================
-# =============================================================================
-# -----------------------------------------------------------------------------
-# We're going to lock the global config to prevent changes, but we need
-# to ensure the global settings are right.
-settings=config()
-
-# useful info
-settings["PORTAGE_MASTER_PID"]=str(os.getpid())
-settings.backup_changes("PORTAGE_MASTER_PID")
-settings["BASH_ENV"]="/etc/portage/bashrc"
-settings.backup_changes("BASH_ENV")
-
-dbcachedir=settings["PORTAGE_CACHEDIR"]
-if not dbcachedir:
-	#the auxcache is the only /var/cache/edb/ entry that stays at / even when "root" changes.
-	dbcachedir="/var/cache/edb/dep/"
-	settings["PORTAGE_CACHEDIR"]=dbcachedir
-	settings.backup_changes("PORTAGE_CACHEDIR")
 
 # XXX: Might cause problems with root="/" assumptions
 portdb=portdbapi(settings["PORTDIR"])
@@ -6207,10 +6125,6 @@ def do_upgrade(mykey):
 def portageexit():
 	global uid,portage_gid,portdb
 	if secpass and not os.environ.has_key("SANDBOX_ACTIVE"):
-		save_eclassdb(forced=1)
-		for x in db.keys():
-			if db[x].has_key("porttree"):
-				db[x]["porttree"].dbapi.save_auxcache(x)
 		if mtimedb:
 		# Store mtimedb
 			mymfn=mtimedbfile
@@ -6290,10 +6204,8 @@ pkgmasklines += grabfile("/etc/portage/package.mask")
 
 pkgunmasklines = grabfile("/etc/portage/package.unmask");
 
-if profiledir:
-	pkglines = grabfile(profiledir+"/packages")
-else:
-	pkglines = []
+# COMPATABILITY -- This shouldn't be used.
+pkglines = settings.packages
 
 unmaskdict={}
 for x in pkgunmasklines:

@@ -8,7 +8,7 @@ sys.path = ["/usr/lib/portage/pym"]+sys.path
 
 import portage
 
-os.chdir(portage.root+"var/db/pkg")
+os.chdir(portage.root+portage.VDB_PATH)
 myvirts=portage.grabdict(portage.root+"var/cache/edb/virtuals")
 mypvirts={}
 if portage.profiledir:
@@ -53,6 +53,6 @@ if not os.path.exists("/tmp/db-upgrade-bak"):
 	os.mkdir("/tmp/db-upgrade-bak")
 print ">>> Backing up to /tmp/db-upgrade-bak..."
 for myarg in myvalidargs:
-	print ">>> Backing up",portage.root+"var/db/pkg/"+origkey[myarg]
-	os.system("mv "+portage.root+"var/db/pkg/"+origkey[myarg]+" /tmp/db-upgrade-bak")
+	print ">>> Backing up",portage.root+portage.VDB_PATH+origkey[myarg]
+	os.system("mv "+portage.root+portage.VDB_PATH+origkey[myarg]+" /tmp/db-upgrade-bak")
 print ">>> Done."

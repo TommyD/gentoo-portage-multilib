@@ -381,7 +381,7 @@ elif "--help" in myopts:
 	help()
 	sys.exit(0)
 elif portage.secpass!=2:
-	if myaction in ["search", "help", "info"]:
+	if myaction in ["search", "help", "info", "regen"]:
 		pass
 	elif (not myaction) and (not myfiles):
 		pass
@@ -647,7 +647,6 @@ class depgraph:
 		
 		self.missingbins=[]
 		self.myaction=myaction
-		self.virts=portage.getvirtuals("/")
 		self.digraph=portage.digraph()
 		self.orderedkeys=[]
 		#the following is so we have an empty vartree (used in emerge update calculations)
@@ -1628,10 +1627,10 @@ def unmerge(unmerge_action, unmerge_files):
 					return 0
 				absx=os.path.abspath(x)
 				spabsx=absx.split("/")
-				if absx[:12]!="/var/db/pkg/" or len(spabsx)!=7:
+				if (absx[:12]!=(portage.root+portage.VDB_PATH)) or len(spabsx)!=7:
 					print spabsx
 					print absx
-					print "\n!!!",x,"is not inside /var/db/pkg; aborting.\n"
+					print "\n!!!",x,"is not inside "+(portage.root+portage.VDB_PATH)+"; aborting.\n"
 					return 0
 				candidate_catpkgs.append("="+spabsx[4]+"/"+spabsx[5])
 
@@ -1871,7 +1870,10 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 		os.makedirs(myportdir,0755)	
 	syncuri=string.rstrip(portage.settings["SYNC"])
 	os.umask(0022)
-	if syncuri[:8]=="rsync://":
+	if 0:
+		print "skipping sync"
+		updatecache_flg = True
+	elif syncuri[:8]=="rsync://":
 		if not os.path.exists("/usr/bin/rsync"):
 			print "!!! /usr/bin/rsync does not exist, so rsync support is disabled."
 			print "!!! Type \"emerge net-misc/rsync\" to enable rsync support."
@@ -1891,9 +1893,13 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 		if portage.settings.has_key("RSYNC_RATELIMIT"):
 			rsynccommand = rsynccommand+ " --bwlimit="+portage.settings["RSYNC_RATELIMIT"]+" "
 
-		servertimestampdir=portage.settings["PORTAGE_TMPDIR"]+"/sync/"
+		servertimestampdir  = portage.settings["PORTAGE_CACHEDIR"]+"/"
+		servertimestampfile = portage.settings["PORTAGE_CACHEDIR"]+"/timestamp.chk"
 
-		content=portage.grabfile(portage.settings["PORTAGE_TMPDIR"]+"/sync/timestamp.chk.previous")
+		# We only use the backup if a timestamp exists in the portdir.
+		content=None
+		if os.path.exists(myportdir+"/metadata/timestamp.chk"):
+			content=portage.grabfile(servertimestampfile)
 		if (not content):
 			content=portage.grabfile(myportdir+"/metadata/timestamp.chk")
 
@@ -1905,10 +1911,10 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 		if not os.path.exists(servertimestampdir):
 			os.mkdir(servertimestampdir)
 			os.chown(servertimestampdir, os.getuid(), portage.portage_gid)
-			os.chmod(servertimestampdir, 06775)
+			os.chmod(servertimestampdir, 02775)
 
-		if os.path.exists(servertimestampdir+"/timestamp.chk"):
-			os.unlink(servertimestampdir+"/timestamp.chk")
+		if os.path.exists(servertimestampfile):
+			os.unlink(servertimestampfile)
 
 		#exitcode=0
 		try:
@@ -1952,7 +1958,7 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 			exitcode=portage.spawn(mycommand,portage.settings,free=1)
 			if (exitcode==0):
 				try:
-					servertimestamp = time.mktime(time.strptime(portage.grabfile(servertimestampdir+"/timestamp.chk")[0], "%a, %d %b %Y %H:%M:%S +0000"))
+					servertimestamp = time.mktime(time.strptime(portage.grabfile(servertimestampfile)[0], "%a, %d %b %Y %H:%M:%S +0000"))
 				except:
 					servertimestamp = 0
 				
@@ -2050,24 +2056,26 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 	if os.path.exists(myportdir+"/metadata/cache") and updatecache_flg:
 		print "\n>>> Updating Portage cache...  ",
 		os.umask(0002)
-		portage.db["/"]["porttree"].dbapi.flush_auxcache()
-		if os.path.exists(portage.dbcachedir):
-			portage.spawn("rm -Rf "+portage.dbcachedir+"/*",portage.settings,free=1)
+		cachedir = os.path.normpath(portage.settings["PORTAGE_CACHEDIR"])
+		if cachedir in ["/",    "/bin", "/dev",  "/etc",  "/home",
+		                "/lib", "/opt", "/proc", "/root", "/sbin",
+		                "/sys", "/tmp", "/usr",  "/var"]:
+			print "!!! PORTAGE_CACHEDIR IS SET TO A PRIMARY ROOT DIRECTORY ON YOUR SYSTEM."
+			print "!!! This is ALMOST CERTAINLY NOT what you want: "+str(cachedir)
+			sys.exit(73)
+		if os.path.exists(cachedir):
+			portage.spawn("rm -Rf "+cachedir+"/*",portage.settings,free=1)
+		else:
+			os.mkdir(cachedir)
 		try:
-			os.mkdir(portage.dbcachedir)
-			os.chown(portage.dbcachedir, os.getuid(), portage.portage_gid)
-			os.chmod(portage.dbcachedir, 06775)
 			os.umask(002)
+			os.chown(cachedir, os.getuid(), portage.portage_gid)
+			os.chmod(cachedir, 02775)
 		except:
 			pass
 		mynodes=portage.portdb.cp_all()
-		portage.eclassdb["modifications_limit"] = 1000
 		for x in mynodes:
 			myxsplit=x.split("/")
-			if not os.path.exists(portage.dbcachedir+"/"+myxsplit[0]):
-				os.mkdir(portage.dbcachedir+"/"+myxsplit[0])
-				os.chown(portage.dbcachedir+"/"+myxsplit[0], os.getuid(), portage.portage_gid)
-				os.chmod(portage.dbcachedir+"/"+myxsplit[0], 06775)
 			mymatches=portage.portdb.xmatch("match-all",x)
 			for y in mymatches:
 				update_spinner()
@@ -2075,18 +2083,8 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 					ignored=portage.portdb.aux_get(y,[],metacachedir=myportdir+"/metadata/cache",debug=("cachedebug" in portage.features))
 				except:
 					pass
-		portage.eclassdb["modifications_limit"] = 1
-		portage.save_eclassdb(forced=1)
-		portage.spawn("chmod -R g+rw "+portage.dbcachedir, portage.settings, free=1)
 		sys.stdout.write("\b\b  ...done!\n\n")
 		sys.stdout.flush()
-
-	# store timestamp.chk for checking timestamp in next time.
-	try:
-		portage.movefile(portage.settings["PORTAGE_TMPDIR"]+"/sync/timestamp.chk", portage.settings["PORTAGE_TMPDIR"]+"/sync/timestamp.chk.previous")
-	except Exception, e:
-		print "!!! Failed to store current timestamp."
-		print "!!!",e
 
 	portage.portageexit()
 	reload(portage)
@@ -2252,7 +2250,7 @@ elif "depclean"==myaction:
 	if not worldlist:
 		print "!!! You have no world file. Cannot determine explicit merges."
 	if not myvarlist:
-		print "!!! You have no /var/db tree. This is a problem."
+		print "!!! You have no installed package tree (%s). This is a problem." % portage.VDB_PATH
 	if not alldeps:
 		print "!!! You have no dependencies. Impossible. Bug."
 

@@ -72,7 +72,6 @@ unless (@ARGV) {
     print "Feed me perl modules\n";
     exit;
 }
-
 # Set our temporary overlay directory for the scope of this run. By setting an overlay directory,
 # we bypass the predefined portage directory and allow portage to build a package outside of its
 # normal tree.

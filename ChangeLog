@@ -2,6 +2,58 @@
 # Copyright 2000-2004 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  21 Jan 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Completed
+  inheritence capabilities for portage.config reading some files. Moved a
+  copy of the getvirtuals() function into settings to handle multiple
+  profiles properly.
+
+*portage-2.0.50_pre17/18/19 (21 Jan 2004): Modules for DBs and quick fixes
+
+  21 Jan 2004; Nicholas Jones <carpaski@gentoo.org> *: Moved all references
+  to var/db/pkg to portage.VDB_PATH --- This will change again -- NEED TO
+  BE MOVED INTO A PATH/CONSTANTS SETUP.
+
+  21 Jan 2004; Nicholas Jones <carpaski@gentoo.org> dosed: Quick fix for
+  the basename missing/misplaced issue.
+
+  21 Jan 2004; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Added
+  /dev/console to PREDICT to attempt a workaround for a serial console
+  bug. dbkey is now set through portage.py/doebuild to allow for modular
+  db code.
+
+  21 Jan 2004; Nicholas Jones <carpaski@gentoo.org> emerge: regen doesn't
+  require root anymore. Edited the timestamp check to be a little more
+  friendly -- delete the portdir timestamp and it won't use the alternate.
+  Fix some permission settings. Added some warnings in for cachedirs that
+  are very likely to ruin your system. Cleaned out some of the eclass code
+  that isnt valid any longer.
+
+  21 Jan 2004; Nicholas Jones <carpaski@gentoo.org> portageq: Added vdb_path
+  as a target to get the db directory. Quickpkg uses this.
+
+  21 Jan 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Added
+  load_mod() -- grabs a class/function from a module and passes it back
+  without loading the module into the global scope. Added unique_array()
+  which eliminates duplicates from an array. grab_stacked() operates like
+  the other grab* and getconfig functions, but takes a filename and a set
+  of paths that it will apply incrementally or clobbers -- for profile
+  inheritance. getconfig no longer exits on non-existance returns None.
+  Class config now should be passed a profile path and a set of incremental
+  values instead of using the globals -- defaults to using the globals
+  presently and print an error message. Adding support for module configs
+  as a set of strings 'class.subclass.objectmodule':'module.to.use.object'
+  for load_mod and the database modules. Profile inheritance started. Killed
+  the eclass() super-function and replaced it with class eclass_cache that
+  is visible and conceptually simpler -- Also uses the plugable modules.
+  Cleaned out the sync calls for the DBs. MASSIVE simplification of the
+  aux_get code -- removed memory-caching in favor of system cache (actually
+  faster in all cases so far -- P100 and P4-2.2G). Lockfile usage around the
+  cachefile.
+  
+  21 Jan 2004; Nicholas Jones <carpaski@gentoo.org> portage_db_*: Updated
+  the API a little but to have permissions set properly. A little more
+  reorganization and removed the keycount checks.
+
   21 Jan 2004; Masatomo Nakano <nakano@gentoo.org> emerge: download size 
   should not be displayed when the package is nomerge with --tree.
 

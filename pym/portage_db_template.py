@@ -17,12 +17,6 @@ class database:
 	def __setitem__(self,key,values):
 		return self.set_values(key,values)
 
-	def check_val(self,val):
-		if not val:
-			raise ValueError, "No value provided. val:%s" % (val)
-		if len(val) != len(self.dbkeys):
-			raise ValueError, "Not enough values provided val:%s" % (val)
-
 	def has_key(self,key):
 		raise NotImplementedError("Method not defined")
 	
@@ -37,7 +31,6 @@ class database:
 	
 	def set_values(self,key,val):
 		self.check_key(key)
-		self.check_val(val)
 		
 		raise NotImplementedError("Method not defined")
 
