@@ -657,7 +657,7 @@ if (("rsync" in mymode) or ("sync" in mymode)) and (not myaction or myaction=="-
 		#rsync://cvs.gentoo.org/gentoo-x86-portage/* "+myportdir
 		print ">>> starting rsync with "+syncuri+"..."
 	#protect users that did not set a default umask
-		sys.exit(os.system(mycommand))	
+		sys.exit(portage.spawn(mycommand,free=1))	
 	elif syncuri[:6]=="cvs://":
 		if not os.path.exists("/usr/bin/cvs"):
 			print "!!! /usr/bin/cvs does not exist, so rsync support is disabled."
@@ -668,13 +668,13 @@ if (("rsync" in mymode) or ("sync" in mymode)) and (not myaction or myaction=="-
 		if not os.path.exists(myportdir+"/CVS"):
 			#initial checkout
 			print ">>> starting initial cvs checkout with "+syncuri+"..."
-			if not os.system("cd "+cvsdir+"; cvs -d "+cvsroot+" login"):
+			if not portage.spawn("cd "+cvsdir+"; cvs -d "+cvsroot+" login",free=1):
 				print "!!! cvs login error; exiting."
 				sys.exit(1)
 			if os.path.exists(cvsdir+"/gentoo-x86"):
 				print "!!! existing",cvsdir+"/gentoo-x86 directory; exiting."
 				sys.exit(1)
-			if not os.system("cd "+cvsdir+"; cvs -d "+cvsroot+" co gentoo-x86"):
+			if not portage.spawn("cd "+cvsdir+"; cvs -d "+cvsroot+" co gentoo-x86",free=1):
 				print "!!! cvs checkout error; exiting."
 				sys.exit(1)
 			if cvsdir!=myportdir:
@@ -683,7 +683,7 @@ if (("rsync" in mymode) or ("sync" in mymode)) and (not myaction or myaction=="-
 		else:
 			#cvs update
 			print ">>> starting cvs update with "+syncuri+"..."
-			sys.exit(os.system("cd "+myportdir+"; cvs -q update -dP")) 
+			sys.exit(portage.spawn("cd "+myportdir+"; cvs -q update -dP",free=1)) 
 	else:
 		print "!!!",syncuri,"not recognized; exiting."
 		sys.exit(1)

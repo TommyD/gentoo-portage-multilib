@@ -56,6 +56,13 @@ import shutil
 import xpak
 import re
 import copy
+import signal
+
+#handle ^C interrupts correctly:
+def exithandler(signum,frame):
+	print "!!! Portage interrupted by SIGINT; exiting."
+	sys.exit(1)
+signal.signal(signal.SIGINT,exithandler)
 
 def tokenize(mystring):
 	"""breaks a string like 'foo? (bar) oni? (blah (blah))' into embedded lists; returns None on paren mismatch"""
@@ -547,11 +554,18 @@ class config:
 			mydict[x]=self[x]
 		return mydict
 	
-def spawn(mystring,debug=0):
+def spawn(mystring,debug=0,free=0):
+	"""spawn a subprocess with optional sandbox protection, 
+	depending on whether sandbox is enabled.  The "free" argument,
+	when set to 1, will disable sandboxing.  This allows us to 
+	spawn processes that are supposed to modify files outside of the
+	sandbox.  We can't use os.system anymore because it messes up
+	signal handling.  Using spawn allows our Portage signal handler
+	to work."""
 	mypid=os.fork()
 	if mypid==0:
 		myargs=[]
-		if "sandbox" in features:
+		if ("sandbox" in features) and (not free):
 			mycommand="/usr/lib/portage/bin/sandbox"
 			if debug:
 				myargs=["sandbox",mystring]
@@ -583,21 +597,57 @@ def getmycwd():
 	return a
 
 def fetch(myuris):
+	"fetch files.  Assumes digest file exists."
 	mirrors=settings["GENTOO_MIRRORS"].split()
+	fetchcommand=settings["FETCHCOMMAND"]
+	resumecommand=settings["RESUMECOMMAND"]
+	fetchcommand=string.replace(fetchcommand,"${DISTDIR}",settings["DISTDIR"])
+	resumecommand=string.replace(resumecommand,"${DISTDIR}",settings["DISTDIR"])
+	digestfn=settings["FILESDIR"]+"/digest-"+settings["PF"]
+	myfile=open(digestfn,"r")
+	mylines=myfile.readlines()
+	mydigests={}
+	for x in mylines:
+		myline=string.split(x)
+		if len(myline)<2:
+			#invalid line
+			continue
+		mydigests[myline[2]]={"md5":myline[1],"size":string.atol(myline[3])}
+	#expand $DISTDIR before we begin
 	for myuri in myuris:
+		if myuri[:14]=="http://mirror/":
+			#generic syntax for a file mirrored directly on a gentoo mirror
+			if len(mirrors):
+				#we have a mirror specified; use it:
+				myuri=mirrors[0]+"/distfiles/"+myuri[14:]
+			else:
+				#no mirrors specified in config files, so use a default:
+				myuri="http://www.ibiblio.org/gentoo/distfiles/"+myuri[14:]
 		myfile=os.path.basename(myuri)
-		if os.path.exists(settings["DISTDIR"]+"/"+myfile):
-			continue	
+		locfetch=fetchcommand
+		try:
+			mystat=os.stat(settings["DISTDIR"]+"/"+myfile)
+			if mystat[ST_SIZE]!=mydigests[myfile]["size"]:
+				print ">>> Resuming download..."
+				locfetch=resumecommand
+			else:
+				#we already have it downloaded, skip.
+				continue
+		except OSError:
+			pass
+			
 		gotit=0
 		locations=mirrors[:]
 		for y in range(0,len(locations)):
-			locations[y]=locations[y]+"/"+myfile
+			locations[y]=locations[y]+"/distfiles/"+myfile
 		#we'll try myuri last
 		locations.append(myuri)
 		for loc in locations:
 			print
 			print ">>> Downloading",loc
-			myret=os.system("/usr/bin/wget -t 5 --passive-ftp -P "+settings["DISTDIR"]+" "+loc)
+			locfetch=string.replace(locfetch,"${URI}",loc)
+			locfetch=string.replace(locfetch,"${FILE}",myfile)
+			myret=spawn(locfetch,free=1)
 			if not myret:
 				gotit=1
 				break
@@ -613,7 +663,7 @@ def digestgen(myarchives):
 		os.makedirs(settings["FILESDIR"])
 		if "cvs" in features:
 			print ">>> Auto-adding files/ dir to CVS..."
-			os.system("cd "+settings["O"]+"; cvs add files")
+			spawn("cd "+settings["O"]+"; cvs add files",free=1)
 	myoutfn=settings["FILESDIR"]+"/.digest-"+settings["PF"]
 	myoutfn2=settings["FILESDIR"]+"/digest-"+settings["PF"]
 	outfile=open(myoutfn,"w")
@@ -627,7 +677,7 @@ def digestgen(myarchives):
 	movefile(myoutfn,myoutfn2)
 	if "cvs" in features:
 		print ">>> Auto-adding digest file to CVS..."
-		os.system("cd "+settings["FILESDIR"]+"; cvs add digest-"+settings["PF"])
+		spawn("cd "+settings["FILESDIR"]+"; cvs add digest-"+settings["PF"],free=1)
 	print ">>> Computed message digests."
 	
 def digestcheck(myarchives):
@@ -2254,7 +2304,7 @@ class dblink:
 		print ">>> Updating mtimes..."
 		# before merging, it's *very important* to touch all the files
 		# this ensures that their mtime is current and unmerging works correctly
-		os.system("(cd "+srcroot+"; for x in `find`; do  touch -c $x 2>/dev/null; done)")
+		spawn("(cd "+srcroot+"; for x in `find`; do  touch -c $x 2>/dev/null; done)",free=1)
 		print ">>> Merging",self.cat+"/"+self.pkg,"to",destroot
 		# get old contents info for later unmerging
 		oldcontents=self.getcontents()
@@ -2586,7 +2636,7 @@ def pkgmerge(mytbz2,myroot):
 	origdir=getmycwd()
 	os.chdir(pkgloc)
 	print ">>> extracting",mypkg
-	notok=os.system("cat "+mytbz2+"| bzip2 -dq | tar xpf -")
+	notok=spawn("cat "+mytbz2+"| bzip2 -dq | tar xpf -",free=1)
 	if notok:
 		print "!!! Error extracting",mytbz2
 		cleanup_pkgmerge(mypkg,origdir)
