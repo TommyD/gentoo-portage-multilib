@@ -403,6 +403,9 @@ dyn_compile() {
 		then
 		cd ${S}
     fi
+	#our custom version of libtool uses $S and $D to fix
+	#invalid paths in .la files
+	export S D
     src_compile 
 	cd ${BUILDDIR}
     touch .compiled
@@ -457,11 +460,14 @@ dyn_install() {
     mkdir ${BUILDDIR}/image
     if [ -d ${S} ]
     then
-    cd ${S}
+    	cd ${S}
     fi
     echo
     echo ">>> Install ${PF} into ${D} category ${CATEGORY}"
-    src_install
+	#our custom version of libtool uses $S and $D to fix
+	#invalid paths in .la files
+	export S D
+	src_install
     prepall
 	cd ${D}
 	echo ">>> Completed installing into ${D}"

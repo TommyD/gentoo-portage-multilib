@@ -1,6 +1,10 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  13 Apr 2002; Martin Schlemmer <azarah@gentoo.org>: ebuild.sh:
+  Export $S and $D in dyn_compile and dyn_install, as our patched
+  version of libtool uses these to fixup .la files.
+
 *portage-1.8.19 (09 Apr 2002)
 
   08 Apr 2002; Geert Bevin <gbevin@gentoo.org>: emerge:
