@@ -1,23 +1,23 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
-	23 Oct 2002; Nicholas Jones <carpaski@gentoo.org> bin/new*:
-	Fix for "running as a root user" bug... code does 'rm -rf /' if
-	variables aren't defined in environment... That's a bad thing.
+  23 Oct 2002; Nicholas Jones <carpaski@gentoo.org> bin/new*:
+  Fix for "running as a root user" bug... code does 'rm -rf /' if
+  variables aren't defined in environment... That's a bad thing.
 
-	23 Oct 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
-	Possible fix for the aux_get() issues and IUSE.
+  23 Oct 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
+  Possible fix for the aux_get() issues and IUSE.
 
-	22 Oct 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
-	noauto got lost in some weird conflicts of .38, added it back.
+  22 Oct 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
+  noauto got lost in some weird conflicts of .38, added it back.
 
   22 Oct 2002; Nicholas Jones <carpaski@gentoo.org> emerge:
   Primitive logging via emergelog(). countdown(N,str) function does N second
   countdowns of the action 'str'. Error messages on dependancy traceback
   via try/except on select_dep(). Removed the 'unavailable' warning. Message
   updates. Added logging of basic actions to /var/log/emerge.log. Added
-	package/to-go counter. 'emerge info' displays a number of useful variables
-	that is good for bug reports.
+  package/to-go counter. 'emerge info' displays a number of useful variables
+  that is good for bug reports.
 
   22 Oct 2002; Nicholas Jones <carpaski@gentoo.org> prepallstrip:
   Bug 9508, fix for MSB architectures strip. Previous check assumed only
