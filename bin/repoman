@@ -624,7 +624,7 @@ else:
 					myout=[0]
 					mysplit=[0,string.split(string.split(mysplit[0],"\t")[1]," ")[1]]
 				else:
-					headerstart="'\$Header: "
+					headerstart="'\$Header: .*"
 					myout=getstatusoutput("egrep -q "+headerstart+"\$' "+mysplit[1])
 				if myout[0]==0:
 					myheaders.append(mysplit[1])
