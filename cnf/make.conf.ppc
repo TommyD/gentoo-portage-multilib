@@ -25,54 +25,57 @@ CHOST="powerpc-unknown-linux-gnu"
 #
 # For optimal performance, enable a CFLAGS setting appropriate for your CPU
 #
-# -mcpu=<cpu-type> for PowerPC systems selects the type of processor you want to
-# optimize your code for.   Code generated under those options will run best on 
-# that processor, and may not run at all on others.
+# -mcpu=<cpu-type> for PowerPC systems selects the type of processor you want
+# to optimize your code for.   Code generated under those options will run best
+# on that processor, and may not run at all on others.
 #
-# GCC 3.2 supports many powerpc processor types including:  rios, rios1, rsc, 
-# rios2, rs64a, 601, 602, 603, 603e, 604, 604e, 620, 630, 740, 7400, 7450, 
-# 750, power, power2, powerpc, 403, 505, 801, 821, 823, and 860 and common.
+# GCC 3.2 supports many powerpc processor types including:  rios, rios1, rsc,
+# rios2, rs64a, 601, 602, 603, 603e, 604, 604e, 620, 630, 740, 7400, 7450, 750,
+# power, power2, powerpc, 403, 505, 801, 821, 823, and 860 and common.
 #
-# GCC 2.95.3 lists these processor types as well, but only makes the distinction 
-# between pre G3 and G3 or better processors, whereas GCC 3.2 makes much finer
-# distinctions.
+# GCC 2.95.3 lists these processor types as well, but only makes the
+# distinction between pre G3 and G3 or better processors, whereas GCC 3.2 makes
+# much finer distinctions.
 #
 # Testing has shown that -mcpu should not be used an any pre G3 processors for
 # either gcc 2.95.3 or gcc 3.2.
 #
 # Recommended settings for GCC 3.2 only (Gentoo 1.4 or newer) :
 #
-# -maltivec enables optional (still limited) altivec support and should be used 
-# only for G4 processors,  on GCC 3.2 or newer.  It also requires that you have 
-# the alitvec option compiled into your kernel to take full advantage of this feature.
+# -maltivec enables optional (still limited) altivec support and should be used
+# only for G4 processors,  on GCC 3.2 or newer.  It also requires that you have
+# the alitvec option compiled into your kernel to take full advantage of this
+# feature.
 #
-# Optimized for G4; "cat /proc/cpuinfo" to get your CPU model number and substitute
-# it for the "7400" below (could be "7400", "7450", "7455"):
+# Optimized for G4; "cat /proc/cpuinfo" to get your CPU model number and
+# substitute it for the "7400" below (could be "7400", "7450", "7455"):
 #
 #CFLAGS="-O3 -pipe -mcpu=7400 -maltivec -mpowerpc-gfxopt -fsigned-char"
-
-# Optimized for G3; "cat /proc/cpuinfo" to get your CPU model number and substitute
-# it for the "750" below (may not be necessary to change this number but is safe):
+#
+# Optimized for G3; "cat /proc/cpuinfo" to get your CPU model number and
+# substitute it for the "750" below (may not be necessary to change this number
+# but is safe):
+#
 #
 #CFLAGS="-O3 -pipe -mcpu=750 -mpowerpc-gfxopt -fsigned-char"
-
-# All other processors should use these options (don't use -mcpu)
-# these should be safe for all processors and build generic code
-# that will run on all PPC's, if you use BootX to boot you should
-# select this option
+#
+# All other processors should use these options (don't use -mcpu) these should
+# be safe for all processors and build generic code that will run on all PPC's,
+# if you use BootX to boot you should select this option
 #
 #CFLAGS="-03 -pipe -fsigned-char"
 
 # Recommended settings for GCC 2.95.3 only (Gentoo 1.2 or older):
 #
-# PowerPC 750 > up: this works on G3's and G4s, gcc 2.95.3 doesn't make the distinction
-# between G3 and G4, so this is fine for all NewWorld machines, if you use yaboot
-# to boot you should select this option
+# PowerPC 750 > up: this works on G3's and G4s, gcc 2.95.3 doesn't make the
+# distinction between G3 and G4, so this is fine for all NewWorld machines, if
+# you use yaboot to boot you should select this option
+#
 #CFLAGS=" -O2 -pipe -mcpu=750 -mpowerpc-gfxopt -mmultiple -mstring "
-
-# This will run on all other processors, by building more generic code
-# This is safe for all PPC machines running gcc 2.95.3, and works for all
-# OldWorld machines - if you use BootX to boot you should select this option
+#
+# This will run on all other processors, by building more generic code This is
+# safe for all PPC machines running gcc 2.95.3, and works for all OldWorld
+# machines - if you use BootX to boot you should select this option
 #CFLAGS=" -O2 -pipe -mmultiple -mstring "
 
 # If you set a CFLAGS above, then this line will set your default C++ flags to
