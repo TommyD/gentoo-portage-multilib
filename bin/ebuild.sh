@@ -198,7 +198,7 @@ unpack() {
 	for x in "$@"
 	do
 		echo ">>> Unpacking ${x}"
-		y="$(echo $x | sed 's:.*\.\(tar\)\.[a-z0-9]*:\1:')"
+		y="$(echo $x | sed 's:.*\.\(tar\)\.[a-zA-Z0-9]*:\1:')"
 		case "${x##*.}" in
 		tar) 
 			tar x --no-same-owner -f ${DISTDIR}/${x} || die
