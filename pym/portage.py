@@ -2,7 +2,7 @@
 # Copyright 1998-2002 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
 
-VERSION="2.0.41-pre"
+VERSION="2.0.42"
 
 from stat import *
 from commands import *

@@ -1,17 +1,17 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
-	24 Oct 2002; Nicholas Jones <carpaski@gentoo.org> make.defaults.5:
-	Removed this file. It is horribly out of date and completely
-	wrong to boot. Users shouldn't be modifying the 3 lines in this file
-	anyway. They are obvious if you understand conf and defaults.
+  24 Oct 2002; Nicholas Jones <carpaski@gentoo.org> make.defaults.5:
+  Removed this file. It is horribly out of date and completely
+  wrong to boot. Users shouldn't be modifying the 3 lines in this file
+  anyway. They are obvious if you understand conf and defaults.
 
   24 Oct 2002; Nicholas Jones <carpaski@gentoo.org> emerge:
-	Added missing return statements to select_dep() that caused unmet packages
-	to be ignored.
+  Added missing return statements to select_dep() that caused unmet packages
+  to be ignored. Touchups to 'emerge info' and 'emerge --version' output.
 
   24 Oct 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
-	Warning touchups. Replaced constants (9) to index("INHERITED").
+  Warning touchups. Replaced constants (9) to index("INHERITED").
 
   23 Oct 2002; Nicholas Jones <carpaski@gentoo.org> bin/new*:
   Fix for "running as a root user" bug... code does 'rm -rf /' if
@@ -132,20 +132,20 @@
   12 Oct 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
   Bug 6361 -- Added checking on directories to ensure that we can
   write to them before we try and traceback. Also added pieces to
-	functions so that return conditions are propagated back to emerge
-	so that it actually dies on errors. Message on condition details
-	restart process.
+  functions so that return conditions are propagated back to emerge
+  so that it actually dies on errors. Message on condition details
+  restart process.
 
   11 Oct 2002; Nicholas Jones <carpaski@gentoo.org> make*globals:
   Removed the tomcat configs from CONFIG_PROTECT
 
   11 Oct 2002; Nicholas Jones <carpaski@gentoo.org> doman:
   Bug 8208 -- Added flags and auto-location support for 'x' manpages.
-	Added not-an-man-page message.
+  Added not-an-man-page message.
 
   11 Oct 2002; Nicholas Jones <carpaski@gentoo.org> dohtml:
   Bug 8208 -- Added 'js' to the include list, and added '-A' as an
-	append flag. '-a' was a filter-down-to.
+  append flag. '-a' was a filter-down-to.
 
   11 Oct 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
   Bug 8964 -- Fix for read-only traceback in digestgen().

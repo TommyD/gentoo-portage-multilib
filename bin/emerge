@@ -39,6 +39,23 @@ def countdown(secs=5, doing="Starting"):
 			time.sleep(1)
 		print
 
+def getportageversion():
+	try:
+		profilever=string.split(os.readlink("/etc/make.profile"), "/")[-1]
+	except:
+		profilever="unavailable"
+	glibcver=[]
+	for x in portage.vardbapi(portage.root).match("glibc"):
+		xs=portage.pkgsplit(x)
+		if glibcver:
+			glibcver+=","+xs[1]+"-"+xs[2]
+		else:
+			glibcver=xs[1]+"-"+xs[2]
+
+	gccver=commands.getstatusoutput("/usr/bin/gcc -dumpversion")[1]
+	return "Portage " + portage.VERSION +" ("+profilever+", gcc-"+gccver+", glibc-"+glibcver+")"
+
+
 def help():
 	if not myaction:
 		print
@@ -345,11 +362,7 @@ if ("--pretend" in myopts) or (myaction=="search"):
 		print "emerge: wheel group membership required for \"--pretend\" and search."
 		sys.exit(1)
 elif "--version" in myopts:
-	try:
-		profilever=string.split(os.readlink("/etc/make.profile"), "/")[-1]
-	except:
-		profilever="unavailable"
-	print "Portage " + portage.VERSION +" (profile "+profilever+", gcc-"+commands.getstatusoutput("/usr/bin/gcc -dumpversion")[1]+")"
+	print getportageversion()
 	sys.exit(0)
 elif "--help" in myopts:
 	help()
@@ -1367,13 +1380,10 @@ elif "config"==myaction:
 	print
 # INFO action
 elif "info"==myaction:
-	try:
-		profilever=string.split(os.readlink("/etc/make.profile"), "/")[-1]
-	except:
-		profilever="unavailable"
-	print
-	print "Portage " + portage.VERSION +" (profile "+profilever+", gcc-"+commands.getstatusoutput("/usr/bin/gcc -dumpversion")[1]+")"
+	unameout=commands.getstatusoutput("/bin/uname -mrp")[1]
+	print getportageversion()
 	print "================================================================="
+	print "System uname: "+unameout
 	for x in ['USE', 'ARCH', 'COMPILER', 'CHOST', 'CFLAGS', 'CXXFLAGS',
 	          'ACCEPT_KEYWORDS', 'CONFIG_PROTECT', 'CONFIG_PROTECT_MASK',
 						'MAKEOPTS', 'JDK_HOME', 'JAVA_HOME', 'AUTOCLEAN', 'SYNC',
