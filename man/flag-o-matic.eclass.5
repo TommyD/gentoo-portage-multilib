@@ -16,9 +16,9 @@ will only match complete flags.
 .BR "replace-flags " "\fI<orig-flag>\fR \fI<new-flag>\fR"
 Replace all occurences of \fIoriginal flag\fR with \fInew flag\fR.
 .TP
-.BR "replace-cpu-flags " "\fI<new cpu>\fR \fI<old cpus>\fR"
-Replace all -march and -mcpu flags which contain \fIold cpus\fR 
-with -march and -mcpu flags which contain \fInew cpu\fR.
+.BR "replace-cpu-flags " "\fI<old cpus>\fR \fI<new cpu>\fR"
+Replace all -march, -mcpu, and -mtune flags which contain \fIold cpus\fR 
+with -march, -mcpu, and -mtune flags which contain \fInew cpu\fR.
 .TP
 .BR "get-flag " "\fI<flag>\fR"
 If \fIflag\fR is prefixed with -, then the whole flag will 
