@@ -9,6 +9,11 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  14 Sep 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild.sh: Removed 
+  the ${T}/successful logic, it's no longer needed.  Existed only for the 
+  $0 "$@" 2>&1 | tee $PORTAGE_LOG trickery, which is now handled via
+  portage_exec.spawn.
+
   13 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Fix for empty
   categories/portage-tree causing a traceback.
 	

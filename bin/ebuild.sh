@@ -12,9 +12,6 @@ if [ ! -z "${PORTAGE_GPG_DIR}" ]; then
 fi
 
 if [ "$*" != "depend" ] && [ "$*" != "clean" ] && [ "$*" != "nofetch" ]; then
-	if [ -f "${T}/successful" ]; then
-		rm -f "${T}/successful"
-	fi
 	if [ -f "${T}/environment" ]; then
 		source "${T}/environment" &>/dev/null
 	fi
@@ -1720,8 +1717,5 @@ if [ "$myarg" != "clean" ]; then
 	chown portage:portage "${T}/environment" &>/dev/null
 	chmod g+w "${T}/environment" &>/dev/null
 fi
-touch "${T}/successful"  &>/dev/null
-chown portage:portage "${T}/successful" &>/dev/null
-chmod g+w "${T}/successful" &>/dev/null
 
 exit 0
