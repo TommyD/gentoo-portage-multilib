@@ -12,16 +12,16 @@
 *portage-2.0.51_rc1 (15 Sep 2004): And we have Release Candidate!
 
   15 Sep 2004; Nicholas Jones <carpaski@gentoo.org> ebuild: On merge, disable
-	the noauto feature explicitly.
+  the noauto feature explicitly.
 
   15 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Fixed the
-	'missing ebuild' for uninstalls of packages not in the tree.
+  'missing ebuild' for uninstalls of packages not in the tree.
 
   15 Sep 2004; Nicholas Jones <carpaski@gentoo.org> man/*: Started adding
-	to the documentation in order to break it an make it look funny. Added a
-	couple entries for missing concepts like 'inherit' and 'useq' and 'hasq'.
-	Cleared up a few things here and there with usage. Added in the metadata
-	target for emerge.
+  to the documentation in order to break it an make it look funny. Added a
+  couple entries for missing concepts like 'inherit' and 'useq' and 'hasq'.
+  Cleared up a few things here and there with usage. Added in the metadata
+  target for emerge.
 
 *portage-2.0.51_pre24 (14 Sep 2004): Last _pre before docs and rc/stable.
 
