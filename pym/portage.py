@@ -1990,10 +1990,13 @@ def dep_getcpv(mydep):
 def cpv_getkey(mycpv):
 	myslash=mycpv.split("/")
 	mysplit=pkgsplit(myslash[-1])
-	if len(myslash)==2:
+	mylen=len(myslash)
+	if mylen==2:
 		return myslash[0]+"/"+mysplit[0]
-	else:
+	elif mylen==1:
 		return mysplit[0]
+	else:
+		return mysplit
 
 def key_expand(mykey,mydb=None):
 	mysplit=mykey.split("/")
@@ -2029,6 +2032,7 @@ def cpv_expand(mycpv,mydb=None):
 		if mysplit:
 			myp=mysplit[0]
 		else:
+			# "foo" ?
 			myp=mycpv
 		mykey=None
 		if mydb:
@@ -2743,6 +2747,10 @@ class portdbapi(dbapi):
 		stale=0
 		mydbkey=dbcachedir+mycpv
 		mycsplit=catpkgsplit(mycpv)
+		if not mycsplit:
+			#invalid cpv specified
+			print "portage: aux_get():",mycpv,"is not a valid cat/pkg-v string."
+			raise KeyError
 		mysplit=mycpv.split("/")
 		myebuild=self.findname(mycpv)
 	
@@ -2864,6 +2872,9 @@ class portdbapi(dbapi):
 		"Tells us whether an actual ebuild exists on disk (no masking)"
 		cps2=mykey.split("/")
 		cps=catpkgsplit(mykey,0)
+		if not cps:
+			#invalid cat/pkg-v
+			return 0
 		if self.oroot:
 			if os.path.exists(self.oroot+"/"+cps[0]+"/"+cps[1]+"/"+cps2[1]+".ebuild") or os.path.exists(self.oroot+"/"+cps[0]+"/"+cps[1]+"/"+cps2[1]+".ebuild"):
 				return 1
@@ -3000,6 +3011,10 @@ class portdbapi(dbapi):
 		#first, we mask out packages in the package.mask file
 		mykey=newlist[0]
 		cpv=catpkgsplit(mykey)
+		if not cpv:
+			#invalid cat/pkg-v
+			print "portage: visible():",cpv,"is an invalid cat/pkg-v string. Aborting processing."
+			return []
 		mycp=cpv[0]+"/"+cpv[1]
 		if maskdict.has_key(mycp):
 			for x in maskdict[mycp]:
@@ -3572,6 +3587,9 @@ class dblink:
 				if isspecific(mycatpkg):
 					#convert a specific virtual like dev-lang/python-2.2 to dev-lang/python
 					mysplit=catpkgsplit(mycatpkg)
+					if not mysplit:
+						print "portage: treewalk():",mycatpkg,"is an invalid PROVIDE entry; skipping."
+						continue
 					mycatpkg=mysplit[0]+"/"+mysplit[1]
 				if myvirts.has_key(mycatpkg):
 					if myvkey not in myvirts[mycatpkg]:

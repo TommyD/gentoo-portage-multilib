@@ -1,6 +1,10 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  27 Aug 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: improved error
+  handling/detection of bad pkgsplit() and catpkgsplit() calls; should close
+  bug #6803.
+  
   26 Aug 2002; Daniel Robbins <drobbins@gentoo.org> emerge: fix so that "emerge
   prune rsync" doesn't complain that you are trying to rsync and prune at the
   same time. This closes bug #6785.
