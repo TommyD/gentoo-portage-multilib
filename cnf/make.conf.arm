@@ -1,0 +1,196 @@
+# Copyright 2000-2003 Daniel Robbins, Gentoo Technologies, Inc.
+# Contains local system settings for Portage system
+# This version targets the ARM, StrongARM, and XScale processors
+# Please review 'man make.conf' for more information.
+
+# Build-time functionality
+# ========================
+#
+# The USE variable is used to enable optional build-time functionality. For
+# example, quite a few packages have optional X, gtk or GNOME functionality
+# that can only be enabled or disabled at compile-time. Gentoo Linux has a
+# very extensive set of USE variables described in our USE variable HOWTO at
+# http://www.gentoo.org/doc/use-howto.html
+#
+# The available list of use flags with descriptions is in your portage tree.
+# Use 'less' to view them:  --> less /usr/portage/profiles/use.desc <--
+#
+# 'ufed' is an ncurses/dialog interface available in portage to make handling
+# useflags for you. 'emerge app-admin/ufed'
+#
+# Example:
+#USE="X gtk gnome -alsa"
+
+# Host Setting
+# ============
+#
+# All supported ARM platforms currently require this CHOST.
+#
+CHOST="armv4l-unknown-linux-gnu"
+
+# Host and optimization settings 
+# ==============================
+#
+# For optimal performance, enable a CFLAGS setting appropriate for your CPU.
+#
+# Please note that if you experience strange issues with a package, it may be
+# due to gcc's optimizations interacting in a strange way. Please test the
+# package (and in some cases the libraries it uses) at default optimizations
+# before reporting errors to developers.
+#
+# -mcpu=<cpu-type> means optimize code for the particular type of CPU without
+# breaking compatibility with other CPUs.
+#
+# -march=<cpu-type> means to take full advantage of the ABI and instructions
+# for the particular CPU; this will break compatibility with older CPUs (for
+# example, -march=xscale code will not run on a StrongARM 11x0, and
+# -march=strongarm110 code will not run on a StrongARM 110 (NetWinder).
+#
+# Don't use -O3. Even -O2 may be risky
+#
+# CPU types supported in gcc-3.2 and higher: 
+# 
+# CPU types supported in gcc-2.95*: 
+#
+# Decent examples:
+#
+# The defaults will support the Netwinder safely
+#CFLAGS="-mcpu=strongarm110 -O2 -pipe"
+
+# If you set a CFLAGS above, then this line will set your default C++ flags to
+# the same settings. If you don't set CFLAGS above, then comment this line out.
+#CXXFLAGS="${CFLAGS}"
+
+# Advanced Masking
+# ================
+#
+# Gentoo is using a new masking system to allow for easier stability testing
+# on packages. KEYWORDS are used in ebuilds to mask and unmask packages based
+# on the platform they are set for. A special form has been added that
+# indicates packages and revisions that are expected to work, but have not yet
+# been approved for the stable set. '~arch' is a superset of 'arch' which
+# includes the unstable, in testing, packages. Users of the 'x86' architecture
+# would add '~x86' to ACCEPT_KEYWORDS to enable unstable/testing packages.
+# '~ppc', '~sparc', '~sparc64' are the unstable KEYWORDS for their respective
+# platforms. DO NOT PUT ANYTHING BUT YOUR SPECIFIC ~ARCHITECTURE IN THE LIST.
+# IF YOU ARE UNSURE OF YOUR ARCH, OR THE IMPLICATIONS, DO NOT MODIFY THIS.
+#
+#ACCEPT_KEYWORDS="~arch"
+
+# Portage Directories
+# ===================
+#
+# Each of these settings controls an aspect of portage's storage and file
+# system usage. If you change any of these, be sure it is available when
+# you try to use portage. *** DO NOT INCLUDE A TRAILING "/" ***
+#
+# PORTAGE_TMPDIR is the location portage will use for compilations and
+#     temporary storage of data. This can get VERY large depending upon
+#     the application being installed.
+#PORTAGE_TMPDIR=/var/tmp
+#
+# PORTDIR is the location of the portage tree. This is the repository
+#     for all profile information as well as all ebuilds. This directory
+#     itself can reach 200M. WE DO NOT RECOMMEND that you change this.
+#PORTDIR=/usr/portage
+#
+# DISTDIR is where all of the source code tarballs will be placed for
+#     emerges. The source code is maintained here unless you delete
+#     it. The entire repository of tarballs for gentoo is 9G. This is
+#     considerably more than any user will ever download. 2-3G is
+#     a large DISTDIR.
+#DISTDIR=${PORTDIR}/distfiles
+#
+# PKGDIR is the location of binary packages that you can have created
+#     with '--buildpkg' or '-b' while emerging a package. This can get
+#     upto several hundred megs, or even a few gigs.
+#PKGDIR=${PORTDIR}/packages
+#
+# PORT_LOGDIR is the location where portage will store all the logs it
+#     creates from each individual merge. They are stored as YYMMDD-$PF.log
+#     in the directory specified. This is disabled until you enable it by
+#     providing a directory. Permissions will be modified as needed.
+#PORT_LOGDIR=/var/log/emerge
+#
+# PORTDIR_OVERLAY is a directory where local ebuilds may be stored without
+#     concern that they will be deleted by rsync updates. Default is not
+#     defined.
+#PORTDIR_OVERLAY=/usr/local/portage
+
+# Fetching files 
+# ==============
+#
+# If you need to set a proxy for wget or lukemftp, add the appropriate "export
+# ftp_proxy=<proxy>" and "export http_proxy=<proxy>" lines to /etc/profile if
+# all users on your system should use them.
+#
+# Portage uses wget by default. Here are some settings for some alternate
+# downloaders -- note that you need to merge these programs first before they
+# will be available.
+#
+# Lukemftp (BSD ftp):
+#FETCHCOMMAND="/usr/bin/lukemftp -s -a -o \${DISTDIR}/\${FILE} \${URI}"
+#RESUMECOMMAND="/usr/bin/lukemftp -s -a -R -o \${DISTDIR}/\${FILE} \${URI}"
+#
+# Prozilla (turbo downloader)
+#FETCHCOMMAND='/usr/bin/proz --no-getch -s ${URI} -P ${DISTDIR}'
+#
+# Portage uses GENTOO_MIRRORS to specify mirrors to use for source retrieval.
+# The list is a space seperated list which is read left to right. If you use
+# another mirror we highly recommend leaving the default mirror at the end of
+# the list so that portage will fall back to it if the files cannot be found
+# on your specified mirror. We _HIGHLY_ recommend that you change this setting
+# to a nearby mirror by merging and using the 'mirrorselect' tool.
+#GENTOO_MIRRORS="<your_mirror_here> http://gentoo.oregonstate.edu/ http://www.ibiblio.org/pub/Linux/distributions/gentoo"
+
+# Advanced Features
+# =================
+#
+# MAKEOPTS provides extra options that may be passed to 'make' when a
+#     program is compiled. Presently the only use is for specifying
+#     the number of parallel makes (-j) to perform. The suggested number
+#     for parallel makes is CPUs+1.
+#MAKEOPTS="-j2"
+#
+# AUTOCLEAN enables portage to automatically clean out older or overlapping
+#     packages from the system after every successful merge. This is the
+#     same as running 'emerge -c' after every merge. Set with: "yes" or "no".
+#     This does not affect the unpacked source. See 'noclean' below.
+#AUTOCLEAN="yes"
+#
+# FEATURES are settings that affect the functionality of portage. Most of
+#     these settings are for developer use, but some are available to non-
+#     developers as well. 'buildpkg' is an always-on setting for the emerge
+#     flag of the same name. It causes binary packages to be created of all
+#     packages that are merged. 'distcc' enables distcc support for via CC.
+#     'userpriv' allows portage to drop root privleges while it is compiling
+#     as a security measure, and as a side effect this can remove sandbox
+#     access violations for users. 'usersandbox' enables sandboxing while
+#     portage is running under userpriv. 'noclean' prevents portage from
+#     removing the source and temporary files after a merge -- for debugging
+#     purposes only. 'noauto' is a feature which causes ebuild to perform
+#     the action requested and not any other required actions like clean or
+#     unpack -- for debugging purposes only. 'cvs' is a feature for developers
+#     that causes portage to enable full settings and USE flags in SRC_URI and
+#     has wide effects -- don't set this unless you're ready for it. 'keeptemp'
+#     prevents the clean phase from deleting the temp files ($T) from a merge.
+#FEATURES="sandbox buildpkg ccache distcc userpriv usersandbox noclean noauto cvs keeptemp"
+#
+# RSYNC_RETRIES sets the number of times portage will attempt to retrieve
+#     a current portage tree before it exits with an error. This allows
+#     for a more successful retrieval without user intervention most times.
+#RSYNC_RETRIES="3"
+#
+# RSYNC_TIMEOUT sets the length of time rsync will wait before it times out
+#     on a connection. Most users will benefit from this setting as it will
+#     reduce the amount of 'dead air' they experience when they run across
+#     the occasional, unreachable mirror. Dialup users might want to set this
+#     value up around the 300 second mark.
+#RSYNC_TIMEOUT=180
+#
+# RSYNC_EXCLUDEFROM is a file that portage will pass to rsync when it updates
+#     the portage tree. Specific chucks of the tree may be excluded from
+#     consideration. This may cause dependancy failures if you are not careful.
+#     The file format is one pattern per line, blanks and ';' or '#' lines are
+#     comments. See 'man rsync' for more details on the exclude-from format.
+#RSYNC_EXCLUDEFROM=/etc/portage/rsync_excludes
