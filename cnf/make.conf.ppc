@@ -50,7 +50,7 @@ CHOST="powerpc-unknown-linux-gnu"
 # Optimized for G4; "cat /proc/cpuinfo" to get your CPU model number and
 # substitute it for the "7400" below (could be "7400", "7450"):
 #
-#CFLAGS="-O2 -pipe -mcpu=7400 -maltivec -mpowerpc-gfxopt -fsigned-char"
+#CFLAGS="-O2 -pipe -mcpu=7400 -maltivec -mabi=altivec -mpowerpc-gfxopt -fsigned-char"
 #
 # Optimized for G3; "cat /proc/cpuinfo" to get your CPU model number and
 # substitute it for the "750" below (may not be necessary to change this number
