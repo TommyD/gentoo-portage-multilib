@@ -1804,7 +1804,7 @@ class vartree(packagetree):
 			self.slots=[]
 		packagetree.__init__(self,virtual,clone)
 
-	def getEbuildPaths(self,fullpkg):
+	def getebuildpaths(self,fullpkg):
 		full_paths=[]
 		# add the possible default ebuild path
 		package_parts=string.split(fullpkg, '/')

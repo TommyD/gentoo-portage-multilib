@@ -1,6 +1,13 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+  9 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge :
+  added support for the rebuild mode which rebuilds all the packages on your
+  system for which a corresponding package could be found in to portage tree
+
+  9 Feb 2002; G.Bevin <gbevin@gentoo.org> portage.py :
+  renamed getEbuildPaths() or vartree to getebuildpaths()
+
   7 Feb 2002; G.Bevin <gbevin@gentoo.org> xpack.py :
   added additional argument to tbz2.getfile() which allows default content to
   be provided when the requested file couldn't be found in the tbz2 archive
