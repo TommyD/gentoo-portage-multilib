@@ -131,14 +131,14 @@ def evaluate(mytokens,mydefines,allon=0):
 	return mytokens
 
 def flatten(mytokens):
-	"""convert embedded list into string"""
-	newstring=""
+	"""this function now turns a [1,[2,3]] list into a [1,2,3] list and returns it."""
+	newlist=[]
 	for x in mytokens:
 		if type(x)==types.ListType:
-			newstring=newstring+" "+flatten(x)
+			newlist.extend(flatten(x))
 		else:
-			newstring=newstring+" "+x
-	return newstring
+			newlist.append(x)
+	return newlist
 
 #beautiful directed graph object
 
@@ -851,8 +851,8 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 	settings["RESTRICT"]=mydeps[4]	
 	# it's fetch time	
 	myuris=mydeps[3]
-	newuris=evaluate(tokenize(myuris),string.split(settings["USE"]))	
-	alluris=evaluate(tokenize(myuris),[],1)	
+	newuris=flatten(evaluate(tokenize(myuris),string.split(settings["USE"])))	
+	alluris=flatten(evaluate(tokenize(myuris),[],1))	
 	alist=[]
 	aalist=[]
 	for x in alluris:
@@ -1425,6 +1425,12 @@ class packagetree:
 			self.populated=0
 			self.virtual=virtual
 	
+	def load(self):
+		"loads a cat/pkg from disk into the tree"
+		#stub function for non-incremental caching:
+		if not self.populated:
+			self.populate()
+
 	def populate(self):
 		"populates the tree with values"
 		populated=1
@@ -1435,7 +1441,8 @@ class packagetree:
 		cps=catpkgsplit(mycatpkg,0)
 		mykey=cps[0]+"/"+cps[1]
 		if not self.tree.has_key(mykey):
-			return
+			#load cat/pkg'skeys from disk into tree
+			self.load(mykey)
 		x=0
 		while x<len(self.tree[mykey]):
 			if self.tree[mykey][x][0]==mycatpkg:
@@ -1445,24 +1452,29 @@ class packagetree:
 			del self.tree[mykey]
 
 	def inject(self,mycatpkg):
-		"add a catpkg to the deptree"
+		"add a specific catpkg to the deptree"
 		cps=catpkgsplit(mycatpkg,0)
 		mykey=cps[0]+"/"+cps[1]
 		if not self.tree.has_key(mykey):
-			self.tree[mykey]=[]
+			self.load(mykey)
+		for x in self.tree[mykey]:
+			if x[0]==mycatpkg:
+				#already in the tree
+				return
 		self.tree[mykey].append([mycatpkg,cps])
 	
 	def resolve_key(self,mykey):
 		"generates new key, taking into account virtual keys"
 		if not self.tree.has_key(mykey):
+			self.load(mykey)
+		if len(self.tree[mykey])==0:
+			#no packages correspond to the key
 			if self.virtual:
 				if self.virtual.has_key(mykey):
 					return self.virtual[mykey]
 		return mykey
 
 	def exists_specific(self,myspec):
-		if not self.populated:
-			self.populate()
 		myspec=self.resolve_specific(myspec)
 		if not myspec:
 			return None
@@ -1470,15 +1482,15 @@ class packagetree:
 		if not cps:
 			return None
 		mykey=cps[0]+"/"+cps[1]
-		if self.tree.has_key(mykey):
-			for x in self.tree[mykey]:
-				if x[0]==myspec: 
-					return 1
+		if not self.tree.has_key(mykey):
+			self.load(mykey)
+		for x in self.tree[mykey]:
+			if x[0]==myspec: 
+				return 1
 		return 0
 
 	def exists_specific_cat(self,myspec):
-		if not self.populated:
-			self.populate()
+		"give me a specific package, and I'll tell you whether the specific node exists."
 		myspec=self.resolve_specific(myspec)
 		if not myspec:
 			return None
@@ -1486,7 +1498,9 @@ class packagetree:
 		if not cps:
 			return None
 		mykey=cps[0]+"/"+cps[1]
-		if self.tree.has_key(mykey):
+		if not self.tree.has_key(mykey):
+			self.load(mykey)
+		if len(self.tree[mykey]):
 			return 1
 		return 0
 
@@ -1501,26 +1515,29 @@ class packagetree:
 		return mykey
 	
 	def hasnode(self,mykey):
-		if not self.populated:
-			self.populate()
-		if self.tree.has_key(self.resolve_key(mykey)):
-			return 1
+		"""Does the particular node (cat/pkg key) exist?"""
+		myreskey=self.resolve_key(mykey)
+		if self.tree.has_key(myreskey):
+			if len(self.tree[myreskey]):
+				return 1
 		return 0
 	
 	def getallnodes(self):
 		"returns a list of all keys in our tree"
 		if not self.populated:
-			self.populate()
-		return self.tree.keys()
+			self.populate
+		mykeys=[]
+		for x in self.tree.keys():
+			if len(self.tree[x]):
+				mykeys.append(x)
+		return mykeys
 
 	def getnode(self,nodename):
-		if not self.populated:
-			self.populate()
 		nodename=self.resolve_key(nodename)
 		if not nodename:
 			return []
 		if not self.tree.has_key(nodename):
-			return []
+			self.load(nodename)
 		return self.tree[nodename]
 	
 	def depcheck(self,depstring):
@@ -1529,8 +1546,6 @@ class packagetree:
 		[1, ["x11-base/foobar","sys-apps/oni"] = dependencies must be satisfied
 		[0, * ] = parse error
 		"""
-		if not self.populated:
-			self.populate()
 		myusesplit=string.split(settings["USE"])
 		mysplit=string.split(depstring)
 		#convert parenthesis to sublists
@@ -1814,7 +1829,7 @@ class packagetree:
 					#not a specific pkg, or parse error.  keep silent
 					return []
 				mykey=mycp[0]+"/"+mycp[1]
-				if not self.tree.has_key(mykey):
+				if not self.hasnode(mykey):
 					return []
 				x=0
 				while x<len(self.tree[mykey]):
@@ -1846,7 +1861,7 @@ class packagetree:
 			if not mycp:
 				return []
 			mykey=mycp[0]+"/"+mycp[1]
-			if not self.tree.has_key(mykey):
+			if not self.hasnode(mykey):
 				return []
 			mymatch=self.dep_bestmatch(mypkgdep)
 			if not mymatch:
@@ -1937,13 +1952,53 @@ class vartree(packagetree):
 			self.root=clone.root
 			#virtdb contains info on what entries are virtual
 			self.virtdb=copy.deepcopy(clone.virtdb)
+			self.gotcat=copy.deepcopy(clone.gotcat)
 		else:
 			self.root=root
 			self.virtdb={}
+			self.gotcat={}
 		packagetree.__init__(self,virtual,clone)
 	def getebuildpath(self,fullpackage):
 		cat,package=fullpackage.split("/")
 		return self.root+"var/db/pkg/"+fullpackage+"/"+package+".ebuild"
+	
+	def load(self,mykey):
+		mycat,mypkg=string.split(mykey,"/")
+		if not self.tree.has_key(mykey):
+			self.tree[mykey]=[]
+		if self.gotcat.has_key(mycat):
+			return
+		if not os.path.isdir(self.root+"/var/db/pkg/"+mycat):
+			return
+		for x in os.listdir(self.root+"/var/db/pkg/"+mycat):
+			if x[0:len(mypkg)]!=mypkg:
+				#skip, since we're definitely not interested if the package name doesn't match.
+				#note that this isn't a perfect test, but will weed out 99% of the packages we aren't interested in loading.
+				continue
+			if isjustname(x):
+				fullpkg=mycat+"/"+x+"-1.0"
+			else:
+				fullpkg=mycat+"/"+x
+			mysplit=catpkgsplit(fullpkg,0)
+			if mysplit==None:
+				print "!!! Error:",self.root+"/var/db/pkg/"+mycat+"/"+x,"is not a valid database entry, skipping..."
+				continue
+			mynewkey=mycat+"/"+mysplit[1]
+			if not self.tree.has_key(mynewkey):
+				self.tree[mynewkey]=[]
+			for y in self.tree[mynewkey]:
+				if y[0]==fullpkg:
+					#we've already got it, skip.
+					continue
+			self.tree[mynewkey].append([fullpkg,mysplit])
+			if os.path.exists(self.root+"/var/db/pkg"+mycat+"/"+x+"/VIRTUAL"):
+				#Setting to None *does* add an entry
+				self.virtdb[mycat+"/"+x]=None
+				#This is a virtual package; record the "fullpkg" as key
+				#If we have a "virtual/foo", add "virtual/foo-1.0" as well
+				if isjustname(x):
+					self.virtdb[fullpkg]=None
+
 	def populate(self):
 		"populates the local tree (/var/db/pkg)"
 		prevmask=os.umask(0)
@@ -1997,6 +2052,25 @@ class portagetree(packagetree):
 			self.root=root
 			self.portroot=settings["PORTDIR"]
 		packagetree.__init__(self,virtual)
+	
+	def load(self,mykey):
+		"adds a single set of cat/pkg key entries to our tree from disk"
+		mycat,mypkg=string.split(mykey,"/")
+		self.tree[mykey]=[]
+		if not os.path.isdir(self.portroot+"/"+mycat):
+			return
+		if not os.path.isdir(self.portroot+"/"+mykey):
+			return
+		for x in os.listdir(self.portroot+"/"+mykey):
+			if x[-7:] != ".ebuild":
+				continue
+			mynewpkg=mycat+"/"+x[:-7]
+			mysplit=catpkgsplit(mynewpkg,0)
+			if mysplit==None:
+				print "!!! Error:",self.portroot+"/"+mykey+"/"+x,"is not a valid ebuild filename, skipping..."
+				continue	
+			self.tree[mykey].append([mynewpkg,mysplit])
+			
 	def populate(self):
 		"populates the port tree"
 		origdir=getmycwd()
@@ -2102,6 +2176,7 @@ class binarytree(packagetree):
 				self.tree[mykey]=[]
 			self.tree[mykey].append([fullpkg,cps])
 		self.populated=1
+	
 	def getname(self,pkgname):
 		"returns file location for this particular package"
 		mysplit=string.split(pkgname,"/")

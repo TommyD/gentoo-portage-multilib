@@ -1,6 +1,20 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-1.8.9_pre23 (08 Mar 2002)
+
+  09 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: our portage
+  tree and /var/db/pkg tree now uses incremental caching rather than doing
+  an exhaustive scan on startup.  This should speed up this respective code
+  by 2-30x depending on how many packages you're emerging.  This involved
+  quite a few changes to the code, and there could be some bugs, although I
+  tried to be very careful.  These changes could also break code that access
+  internal .tree[] dictionaries directly. 
+  
+  08 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: SRC_URIs with
+  USE-enabled ( ) clauses in them weren't working because I was iterating
+  through multi-level lists without flatten()ing them.  Now fixed.
+  
   07 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: We no longer
   depend upon a file being unmerged.  We try to unlink during unmerge() in a
   "try" clause, with an exception for OSError.  If the directory is immutable
