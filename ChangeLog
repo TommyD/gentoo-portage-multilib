@@ -2,6 +2,9 @@
 # Copyright 2001 Gentoo Technologies, Inc.; Distributed under the GPL
 # Written by Daniel Robbins (drobbins@gentoo.org)
 
+
+  24 Jan 2002: <karltk@gentoo.org>: Fixed to typos in dojar
+  
 *portage 1.8.6 (23 Jan 2002)
   22 Jan 2002; G.Bevin <gbevin@gentoo.org> : added an additional check for 
   SANDBOX_ON in libsandbox.c to optimize the speed in the execvp function call.
