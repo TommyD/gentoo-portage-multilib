@@ -2,6 +2,20 @@
 # Copyright 2000-2004 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+*portage-2.0.51_pre5 (25 Apr 2003): Big cleanups & Ebuild QA Stuff.
+
+  25 Apr 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Fixed name
+  of the world file constant. Fixed the virtuals loading and vartree creation
+  circular dep with a repitition hack. Fixed the virtuals loading function so
+  that it doesn't destroy the virtuals before saving them.
+
+  25 Apr 2004; Nicholas Jones <carpaski@gentoo.org> emerge: Fixed all the
+  references to the world file to use portage constants. Made the verbose
+  output for use flags call unique array to make sure values aren't duped.
+
+  25 Apr 2004; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Typo fix for
+  inherited, and removed the delay.
+
 *portage-2.0.51_pre4 (25 Apr 2003): Big cleanups & Ebuild QA Stuff.
 
   25 Apr 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Creation of

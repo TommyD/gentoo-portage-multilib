@@ -15,7 +15,6 @@ CACHE_PATH              = "/var/cache/edb"
 DEPCACHE_PATH           = CACHE_PATH+"/dep"
 
 USER_CONFIG_PATH        = "/etc/portage"
-WORLD_FILE_PATH         = PRIVATE_PATH+"/world"
 MODULES_FILE_PATH       = USER_CONFIG_PATH+"/modules"
 CUSTOM_PROFILE_PATH     = USER_CONFIG_PATH+"/profile"
 
@@ -31,6 +30,7 @@ BASH_BINARY             = "/bin/bash"
 MOVE_BINARY             = "/bin/mv"
 PRELINK_BINARY          = "/usr/sbin/prelink"
 
+WORLD_FILE              = PRIVATE_PATH+"/world"
 MAKE_CONF_FILE          = "/etc/make.conf"
 MAKE_DEFAULTS_FILE      = PROFILE_PATH + "/make.defaults"
 DEPRECATED_PROFILE_FILE = PROFILE_PATH+"/deprecated"
@@ -1343,7 +1343,7 @@ class config:
 					self.prevmaskdict[mycatpkg].append(x)
 
 			# get virtuals
-			self.virtuals = self.getvirtuals('/')
+			self.loadVirtuals('/')
 
 			# get profile-masked use flags -- INCREMENTAL Child over parent
 			usemask_lists = grab_multiple("use.mask", self.profiles, grabfile)
@@ -1531,6 +1531,9 @@ class config:
 		if mycpv:
 			self.setcpv(mycpv)
 
+	def loadVirtuals(self,root):
+		self.virtuals = self.getvirtuals(root)
+
 	def load_best_module(self,property_string):
 		best_mod = best_from_dict(property_string,self.modules,self.module_priority)
 		return load_mod(best_mod)
@@ -1711,8 +1714,8 @@ class config:
 			if db.has_key(myroot):
 				myVarTree    = db[myroot]["vartree"]
 				treeVirtuals = map_dictlist_vals(getCPFromCPV,myVarTree.get_all_provides())
-				for x in treeVirtuals:
-					treeVirtuals[x] = map(unique_array, treeVirtuals[x])
+				for x in treeVirtuals.keys():
+					treeVirtuals[x] = unique_array(treeVirtuals[x])
 			myvirtdirs.append(myroot+USER_CONFIG_PATH)
 
 		dirVirtuals = grab_multiple("virtuals", myvirtdirs, grabdict)
@@ -5900,7 +5903,7 @@ class dblink:
 
 		# New code to remove stuff from the world and virtuals files when unmerged.
 		if trimworld:
-			worldlist=grabfile(self.myroot+WORLD_FILE_PATH)
+			worldlist=grabfile(self.myroot+WORLD_FILE)
 			mykey=cpv_getkey(self.mycpv)
 			newworldlist=[]
 			for x in worldlist:
@@ -5918,7 +5921,7 @@ class dblink:
 				else:
 					#this doesn't match the package we're unmerging; keep it.
 					newworldlist.append(x)
-			myworld=open(self.myroot+WORLD_FILE_PATH,"w")
+			myworld=open(self.myroot+WORLD_FILE,"w")
 			for x in newworldlist:
 				myworld.write(x+"\n")
 			myworld.close()
@@ -6560,7 +6563,13 @@ def do_vartree(mysettings):
 	#We need to create the vartree first, then load our settings, and then set up our other trees
 
 usedefaults=settings.use_defs
+
+# XXX: This is a circular fix.
 do_vartree(settings)
+settings.loadVirtuals('/')
+do_vartree(settings)
+settings.loadVirtuals('/')
+
 settings.reset() # XXX: Regenerate use after we get a vartree -- GLOBAL
 
 
@@ -6661,7 +6670,7 @@ def do_upgrade(mykey):
 	
 	myvirts=grabdict("/var/cache/edb/virtuals")
 	
-	worldlist=grabfile("/"+WORLD_FILE_PATH)
+	worldlist=grabfile("/"+WORLD_FILE)
 	myupd=grabfile(mykey)
 	db["/"]["bintree"]=binarytree("/",settings["PKGDIR"],virts)
 	for myline in myupd:
@@ -6712,7 +6721,7 @@ def do_upgrade(mykey):
 	if processed:
 		#update our internal mtime since we processed all our directives.
 		mtimedb["updates"][mykey]=os.stat(mykey)[ST_MTIME]
-	myworld=open("/"+WORLD_FILE_PATH,"w")
+	myworld=open("/"+WORLD_FILE,"w")
 	for x in worldlist:
 		myworld.write(x+"\n")
 	myworld.close()

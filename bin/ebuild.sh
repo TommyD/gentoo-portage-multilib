@@ -1139,11 +1139,10 @@ inherit() {
 		export ECLASS="$1"
 
 		if [ "$EBUILD_PHASE" != "depend" ]; then
-			if ! hasq $ECLASS $INHERITIED; then
+			if ! hasq $ECLASS $INHERITED; then
 				echo
 				echo "QA Notice: ECLASS '$ECLASS' inherited illegally in $CATEGORY/$PF" >&2
 				echo
-				sleep 5
 			fi
 		fi
 

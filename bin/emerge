@@ -691,7 +691,7 @@ def getlist(mode):
 		mylines=portage.settings.packages
 	elif mode=="world":
 		try:
-			myfile=open(portage.root+"var/cache/edb/world","r")
+			myfile=open(portage.root+portage.WORLD_FILE,"r")
 			mylines=myfile.readlines()
 			myfile.close()
 		except OSError:
@@ -1335,7 +1335,7 @@ class depgraph:
 							pass
 					iuse=""
 					now_use=self.applied_useflags[x[2]]
-					for ebuild_iuse in iuse_split:
+					for ebuild_iuse in portage.unique_array(iuse_split):
 						usechange=""
 						if old_use:
 							if (old_use.count(ebuild_iuse) and not now_use.count(ebuild_iuse)) or (not old_use.count(ebuild_iuse) and now_use.count(ebuild_iuse)):
@@ -1538,7 +1538,7 @@ class depgraph:
 				del portage.mtimedb["resume"]["mergelist"][0]
 				del mymergelist[0]
 		else:
-			myfavs=portage.grabfile(portage.root+"var/cache/edb/world")
+			myfavs=portage.grabfile(portage.root+portage.WORLD_FILE)
 			myfavdict=genericdict(myfavs)
 			for x in range(len(mylist)):
 				if mylist[x][3]!="nomerge":
@@ -1554,7 +1554,7 @@ class depgraph:
 							myfavdict[myfavkey]=myfavkey
 							print ">>> Recording",myfavkey,"in \"world\" favorites file..."
 			if not "--fetchonly" in myopts:
-				portage.writedict(myfavdict,portage.root+"var/cache/edb/world",writekey=0)
+				portage.writedict(myfavdict,portage.root+portage.WORLD_FILE,writekey=0)
 
 			portage.mtimedb["resume"]["mergelist"]=mymergelist[:]
 
@@ -1653,7 +1653,7 @@ class depgraph:
 				portage.db[x[1]]["vartree"].inject(x[2])
 				myfavkey=portage.cpv_getkey(x[2])
 				if (not "--fetchonly" in myopts) and (myfavkey in favorites):
-					myfavs=portage.grabfile(myroot+"var/cache/edb/world")
+					myfavs=portage.grabfile(myroot+portage.WORLD_FILE)
 					myfavdict=genericdict(myfavs)
 					mysysdict=genericdict(syslist)
 					#don't record if already in system profile or already recorded
@@ -1662,7 +1662,7 @@ class depgraph:
 						myfavdict[myfavkey]=myfavkey
 						print ">>> Recording",myfavkey,"in \"world\" favorites file..."
 						emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Updating world file ("+x[pkgindex]+")")
-						portage.writedict(myfavdict,myroot+"var/cache/edb/world",writekey=0)
+						portage.writedict(myfavdict,myroot+portage.WORLD_FILE,writekey=0)
 
 				if ("noclean" not in portage.features) and (x[0] != "binary"):
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Post-Build Cleaning ("+x[pkgindex]+"::"+y+")")
