@@ -135,11 +135,11 @@ main(int argc, const char **argv)
 	    exit(MEM_FAIL);
 	}
 	while((c=read(fd,file_buff + file_size, 4096)) == 4096) {
+	    file_size += 4096;
 	    if((file_buff = (char *)realloc(file_buff, file_size + 4096)) == NULL) {
 		fprintf(stderr, "failed allocing needed memory for file.\n");
 		exit(MEM_FAIL);
 	    }
-	    file_size += 4096;
 	}
 	file_size += c;
 	if(c == 4095) {
