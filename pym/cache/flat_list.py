@@ -52,7 +52,7 @@ class database(fs_template.FsBased):
 
 			d["_eclasses_"] = {}
 			for x in range(0,len(e), 3):
-				d["_eclasses_"][e[0]] = (e[1], long(e[2]))
+				d["_eclasses_"][e[x + 0]] = (e[x + 1], long(e[x + 2]))
 
 		except IndexError, e:
 #			print "caught exception internally, e=",e

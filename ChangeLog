@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  09 Mar 2005; Brian Harring <ferringb@gentoo.org> pym/cache/flat_list.py:
+  Damn I'm cool- _eclasses_ are now properly returned.
+
   09 Mar 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py, pym/ebuild.py:
   Two issues- use parsed restrict handling, and depends phase not bailing when
   a cpv's key's can't be sourced
