@@ -81,6 +81,7 @@ for x in tmpcmdline:
 				cmdline.append(shortmapping[y])
 			else:
 				print "!!! Error: -"+y+" is an invalid short action or option."
+				sys.exit(1)
 	else:
 		cmdline.append(x)
 
