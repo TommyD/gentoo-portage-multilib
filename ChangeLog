@@ -1,12 +1,16 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
-  21 Mar 2002; Dan Armak <danarmak@gentoo.org>
+*portage-1.8.9_pre32 (22 Mar 2002)
+
+  22 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: fixed a bug
+  related to scanning for available binary packages, which would cause emerge
+  to die.
   
-  portage.py: added ECLASSDIR (=$PORTDIR/eclass) to settings exported by python
-  side to bash side.
-  ebuild.sh: remove ECLASSDIR setting to use the one now provided by portage.py.
-  Also, clean inherit() and make it use debug-print().
+  21 Mar 2002; Dan Armak <danarmak@gentoo.org> portage.py: added ECLASSDIR
+  (=$PORTDIR/eclass) to settings exported by python side to bash side.
+  ebuild.sh: remove ECLASSDIR setting to use the one now provided by
+  portage.py.  Also, clean inherit() and make it use debug-print().
 
 *portage-1.8.9_pre31 (21 Mar 2002)
 

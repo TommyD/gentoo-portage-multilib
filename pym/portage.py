@@ -1481,6 +1481,8 @@ class packagetree:
 		#stub function for non-incremental caching:
 		if not self.populated:
 			self.populate()
+		if not self.tree.has_key(mykey):
+			self.tree[mykey]=[]
 
 	def populate(self):
 		"populates the tree with values"
@@ -2125,29 +2127,6 @@ class portagetree(packagetree):
 						self.pkglines.append(x)
 		packagetree.__init__(self,virtual)
 	
-	def load(self,mykey):
-		"adds a single set of cat/pkg key entries to our tree from disk"
-		"""print "load",mykey
-		mycat,mypkg=string.split(mykey,"/")
-		self.tree[mykey]=[]
-		if not os.path.isdir(self.portroot+"/"+mycat):
-			return
-		if not os.path.isdir(self.portroot+"/"+mykey):
-			return
-		for x in os.listdir(self.portroot+"/"+mykey):
-			if x[-7:] != ".ebuild":
-				continue
-			mynewpkg=mycat+"/"+x[:-7]
-			mysplit=catpkgsplit(mynewpkg,0)
-			if mysplit==None:
-				print "!!! Error:",self.portroot+"/"+mykey+"/"+x,"is not a valid ebuild filename, skipping..."
-				continue	
-			self.tree[mykey].append([mynewpkg,mysplit])"""
-		if not self.tree.has_key(mykey):
-			self.tree[mykey]=[]
-		if not self.populated:
-			self.populate()
-
 	def populate(self):
 		"populates the port tree"
 		origdir=getmycwd()
