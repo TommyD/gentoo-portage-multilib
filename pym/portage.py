@@ -852,7 +852,7 @@ def grab_stacked(basename, locations, handler, incrementals=[], incremental_line
 	else:
 		return final_list
 
-def grabdict(myfilename,juststrings=0):
+def grabdict(myfilename,juststrings=0,empty=0):
 	"""This function grabs the lines in a file, normalizes whitespace and returns lines in a dictionary"""
 	newdict={}
 	try:
@@ -867,13 +867,23 @@ def grabdict(myfilename,juststrings=0):
 		if x[0] == "#":
 			continue
 		myline=string.split(x)
-		if len(myline)<2:
+		if len(myline)<2 and empty==0:
+			continue
+		if len(myline)<1 and empty==1:
 			continue
 		if juststrings:
 			newdict[myline[0]]=string.join(myline[1:])
 		else:
 			newdict[myline[0]]=myline[1:]
 	return newdict
+
+def grabdict_package(myfilename,juststrings=0):
+	pkgs=grabdict(myfilename, juststrings, empty=1)
+	for x in pkgs.keys():
+		if not isvalidatom(x):
+			del(pkgs[x])
+			writemsg("--- Invalid atom in %s: %s\n" % (myfilename, x))
+	return pkgs
 
 def grabints(myfilename):
 	newdict={}
@@ -1168,6 +1178,11 @@ class config:
 			                    "env":       self.configlist[6] }
 			self.backupenv  = copy.deepcopy(clone.backupenv)
 			self.pusedict   = copy.deepcopy(clone.pusedict)
+			self.categories = copy.deepcopy(clone.categories)
+			self.pkeywordsdict = copy.deepcopy(clone.pkeywordsdict)
+			self.pmaskdict = copy.deepcopy(clone.pmaskdict)
+			self.punmaskdict = copy.deepcopy(clone.punmaskdict)
+			self.prevmaskdict = copy.deepcopy(clone.prevmaskdict)
 			self.lookuplist = copy.deepcopy(clone.lookuplist)
 			self.uvlist     = copy.deepcopy(clone.uvlist)
 		else:
@@ -1266,10 +1281,6 @@ class config:
 			self.configlist.append(self.mygcfg)
 			self.configdict["conf"]=self.configlist[-1]
 
-			# Never set anything in this. It's for non-originals.
-			self.pusedict=grabdict("/etc/portage/package.use")
-			for x in self.pusedict.keys():
-				self.pusedict[x] = string.join(self.pusedict[x])
 			self.configlist.append({})
 			self.configdict["pkg"]=self.configlist[-1]
 
@@ -1285,6 +1296,61 @@ class config:
 			self.configlist.append(os.environ.copy())
 			self.configdict["env"]=self.configlist[-1]
 
+
+			# make lookuplist for loading package.*
+			self.lookuplist=self.configlist[:]
+			self.lookuplist.reverse()
+
+			locations = [self["PORTDIR"] + "/profiles", "/etc/portage"]
+
+			#getting categories from an external file now
+			self.categories = grab_stacked("categories", locations, grabfile)
+
+			# Never set anything in this. It's for non-originals.
+			self.pusedict=grabdict_package("/etc/portage/package.use")
+					
+			#package.keywords
+			pkgdict=grabdict_package("/etc/portage/package.keywords")
+			for key in pkgdict.keys():
+				# default to ~arch if no specific keyword is given
+				if not pkgdict[key]:
+					mykeywordlist = []
+					groups = self.configdict["defaults"]["ACCEPT_KEYWORDS"].split()
+					for keyword in groups:
+						if not keyword[0] in "~-":
+							mykeywordlist.append("~"+keyword)
+					pkgdict[key] = mykeywordlist
+			self.pkeywordsdict = pkgdict
+
+			#package.mask
+			pkgmasklines = grab_stacked("package.mask", locations, grabdict_package)
+			self.pmaskdict = {}
+			for x in pkgmasklines:
+				mycatpkg=dep_getkey(x)
+				if self.pmaskdict.has_key(mycatpkg):
+					self.pmaskdict[mycatpkg].append(x)
+				else:
+					self.pmaskdict[mycatpkg]=[x]
+
+			#package.unmask
+			pkgunmasklines = grabdict_package("/etc/portage/package.unmask")
+			self.punmaskdict = {}
+			for x in pkgunmasklines:
+				mycatpkg=dep_getkey(x)
+				if self.punmaskdict.has_key(mycatpkg):
+					self.punmaskdict[mycatpkg].append(x)
+				else:
+					self.punmaskdict[mycatpkg]=[x]
+
+			# revmaskdict
+			self.prevmaskdict={}
+			for x in self.packages:
+				mycatpkg=dep_getkey(x)
+				if not self.prevmaskdict.has_key(mycatpkg):
+					self.prevmaskdict[mycatpkg]=[x]
+				else:
+					self.prevmaskdict[mycatpkg].append(x)
+				
 		self.lookuplist=self.configlist[:]
 		self.lookuplist.reverse()
 	
@@ -1378,7 +1444,7 @@ class config:
 		self.mycpv = mycpv
 		self.pusekey = best_match_to_list(self.mycpv, self.pusedict.keys())
 		if self.pusekey:
-			self.puse = self.pusedict[self.pusekey]
+			self.puse = string.join(self.pusedict[self.pusekey])
 		else:
 			self.puse = ""
 		self.configdict["pkg"]["PKGUSE"] = self.puse[:] # For saving to PUSE file
@@ -2630,6 +2696,26 @@ def ververify(myorigval,silent=1):
 	vercache[myorigval]=0
 	return 0
 
+def isvalidatom(atom):
+	mycpv_cps = catpkgsplit(dep_getcpv(atom))
+	operator = get_operator(atom)
+	if operator:
+		if mycpv_cps and mycpv_cps[0] != "null":
+			# >=cat/pkg-1.0
+			return 1 
+		else:
+			# >=cat/pkg or >=pkg-1.0 (no category)
+			return 0
+	if mycpv_cps:
+		# cat/pkg-1.0
+		return 0
+
+	if (len(string.split(atom, '/'))==2):
+		# cat/pkg
+		return 1
+	else:
+		return 0
+
 def isjustname(mypkg):
 	myparts=string.split(mypkg,'-')
 	for x in myparts:
@@ -3154,7 +3240,7 @@ def key_expand(mykey,mydb=None,use_cache=1):
 	mysplit=mykey.split("/")
 	if len(mysplit)==1:
 		if mydb and type(mydb)==types.InstanceType:
-			for x in categories:
+			for x in settings.categories:
 				if mydb.cp_list(x+"/"+mykey,use_cache=use_cache):
 					return x+"/"+mykey
 			if virts_p.has_key(mykey):
@@ -3193,7 +3279,7 @@ def cpv_expand(mycpv,mydb=None,use_cache=1):
 		mykey=None
 		matches=[]
 		if mydb:
-			for x in categories:
+			for x in settings.categories:
 				if mydb.cp_list(x+"/"+myp,use_cache=use_cache):
 					matches.append(x+"/"+myp)
 		if (len(matches)>1):
@@ -3338,13 +3424,16 @@ def dep_wordreduce(mydeplist,mydbapi,mode,use_cache=1):
 	return deplist
 
 def getmaskingstatus(mycpv):
+	global portdb
 	mysplit = catpkgsplit(mycpv)
 	if not mysplit:
 		raise ValueError("invalid CPV: %s" % mycpv)
 	if not portdb.cpv_exists(mycpv):
 		raise KeyError("CPV %s does not exist" % mycpv)
-	rValue = []
+	mycp=mysplit[0]+"/"+mysplit[1]
 	
+	rValue = []
+
 	# profile checking
 	if profiledir:
 		syslist = []
@@ -3356,45 +3445,50 @@ def getmaskingstatus(mycpv):
 		for pkg in syslist:
 			if pkg.find(mysplit[0]+"/"+mysplit[1]) >= 0 and not match_to_list(mycpv, [pkg]):
 				rValue.append("profile")
+				break
 	
 	# package.mask checking
-	pmask_global = grabfile(settings["PORTDIR"]+"/profiles/package.mask")
-	pmask_local = grabfile("/etc/portage/package.mask")
-	punmask_local = grabfile("/etc/portage/package.unmask")
-	mymatch = match_to_list(mycpv, pmask_global + pmask_local)
-	if mymatch:
-		if not match_to_list(mycpv, punmask_local):
-			rValue.append("package.mask")
-	
+	maskdict=settings.pmaskdict
+	unmaskdict=settings.punmaskdict
+	if maskdict.has_key(mycp):
+		for x in maskdict[mycp]:
+			if mycpv in portdb.xmatch("match-all", x):
+				unmask=0
+				if unmaskdict.has_key(mycp):
+					for z in unmaskdict[mycp]:
+						if mycpv in portdb.xmatch("match-all",z):
+							unmask=1
+							break
+				if unmask==0:
+					rValue.append("package.mask")
+
 	# keywords checking
-	mykeywords = portdb.aux_get(mycpv, ["KEYWORDS"])[0].split()
-	myAK = settings["ACCEPT_KEYWORDS"].split()
+	mygroups = portdb.aux_get(mycpv, ["KEYWORDS"])[0].split()
+	pgroups=groups[:]
 	myarch = settings["ARCH"]
-	myPK = grabfile("/etc/portage/package.keywords")
-	pkeywords = {}
-	for l in myPK:
-		parts = l.split()
-		if match_to_list(mycpv, [parts[0]]):
-			if len(parts) > 1:
-				for k in parts:
-					if k[0] == "-" and k[1:] in myAK:
-						myAK.remove(k[1:])
-					elif k[0] != "-":
-						myAK.append(k)
-			else:
-				myAK.append("~"+myarch)
-	
+	pkgdict = settings.pkeywordsdict
+
+	for mykey in pkgdict:
+		if portdb.xmatch("bestmatch-list", mykey, None, None, [mycpv]):
+			pgroups.extend(pkgdict[mykey])
+
 	kmask = "missing "
-	for k in mykeywords:
-		if k in myAK:
+	for gp in mygroups:
+		if gp=="*":
 			kmask = None
 			break
-		elif k[0] == "~" and k[1:] == myarch:
-			kmask = "~"
-		elif k[0] == "-" and k[1:] == myarch:
+		if gp=="-*":
+			kmask = "-*"
+			break
+		elif "-"+gp in pgroups:
 			kmask = "-"
-		elif k == "-*":
-			kmask = "-* "
+			break
+		elif gp in pgroups:
+			kmask = None
+			break
+		elif "~"+myarch==gp:
+			kmask = "~"
+			break
 
 	if kmask:
 		rValue.append(kmask+"keyword")
@@ -3509,12 +3603,11 @@ def get_operator(mydep):
 		else:
 			operator = "="
 	elif mydep[0] in "><":
-		if mydep[1] == "=":
+		if len(mydep) > 1 and mydep[1] == "=":
 			operator = mydep[0:2]
 		else:
 			operator = mydep[0]
 	else:
-		writemsg("!!! Invalid atom: %s\n" % mydep)
 		operator = None
 
 	return operator
@@ -3539,6 +3632,7 @@ def match_from_list(mydep,candidate_list):
 	if ver and rev:
 		operator = get_operator(mydep)
 		if not operator:
+			writemsg("!!! Invanlid atom: %s\n" % mydep)
 			return []
 	else:
 		operator = None
@@ -4108,7 +4202,7 @@ class vardbapi(dbapi):
 
 	def cpv_all(self,use_cache=1):
 		returnme=[]
-		for x in categories:
+		for x in settings.categories:
 			for y in listdir(self.root+VDB_PATH+"/"+x,EmptyOnError=1):
 				returnme += [x+"/"+y]
 		return returnme
@@ -4664,7 +4758,7 @@ class portdbapi(dbapi):
 	def cp_all(self):
 		"returns a list of all keys in our tree"
 		biglist=[]
-		for x in categories:
+		for x in self.mysettings.categories:
 			for y in listdir(self.root+"/"+x,EmptyOnError=1,ignorecvs=1):
 				biglist.append(x+"/"+y)
 			for oroot in self.overlays:
@@ -4774,6 +4868,8 @@ class portdbapi(dbapi):
 			print "visible(): invalid cat/pkg-v:",mykey
 			return []
 		mycp=cpv[0]+"/"+cpv[1]
+		maskdict=self.mysettings.pmaskdict
+		unmaskdict=self.mysettings.punmaskdict
 		if maskdict.has_key(mycp):
 			for x in maskdict[mycp]:
 				mymatches=self.xmatch("match-all",x)
@@ -4782,9 +4878,20 @@ class portdbapi(dbapi):
 					print "visible(): package.mask entry \""+x+"\" is invalid, ignoring..."
 					continue
 				for y in mymatches:
-					if not (unmaskdict.has_key(mycp) and (y in unmaskdict[mycp])):
-						while y in newlist:
+					unmask=0
+					if unmaskdict.has_key(mycp):
+						for z in unmaskdict[mycp]:
+							mymatches_unmask=self.xmatch("match-all",z)
+							if y in mymatches_unmask:
+								unmask=1
+								break
+					if unmask==0:
+						try:
 							newlist.remove(y)
+						except ValueError:
+							pass
+
+		revmaskdict=self.mysettings.prevmaskdict
 		if revmaskdict.has_key(mycp):
 			for x in revmaskdict[mycp]:
 				#important: only match against the still-unmasked entries...
@@ -4809,18 +4916,8 @@ class portdbapi(dbapi):
 		if mylist==None:
 			return []
 		newlist=[]
-		pkglist=grabfile("/etc/portage/package.keywords")
-		pkgdict = {}
-		for line in pkglist:
-			# default to ~arch if no specific keyword is given
-			if len(line.split()) == 1:
-				mykeywordlist = []
-				for keyword in groups:
-					if not keyword[0] in "~-":
-						mykeywordlist.append("~"+keyword)
-				pkgdict[line] = mykeywordlist
-			else:
-				pkgdict[line.split()[0]] = line.split()[1:]
+
+		pkgdict = self.mysettings.pkeywordsdict
 		for mycpv in mylist:
 			#we need to update this next line when we have fully integrated the new db api
 			auxerr=0
@@ -4836,10 +4933,6 @@ class portdbapi(dbapi):
 			pgroups=groups[:]
 			match=0
 			for mykey in pkgdict:
-				dkey = catpkgsplit(dep_getcpv(mykey))
-				if not (dkey or isjustname(mykey)):
-					writemsg("--- Invalid depend atom in package.keywords: %s\n" % mykey)
-					continue
 				if db["/"]["porttree"].dbapi.xmatch("bestmatch-list", mykey, None, None, [mycpv]):
 					pgroups.extend(pkgdict[mykey])
 			for gp in mygroups:
@@ -6421,46 +6514,9 @@ if not os.path.isdir(settings["PORTAGE_TMPDIR"]):
 	writemsg("is not a directory.  Please correct your PORTAGE_TMPDIR setting.\n")
 	sys.exit(1)
 
-#getting categories from an external file now
-categories  = grabfile(settings["PORTDIR"]+"/profiles/categories")
-categories += grabfile("/etc/portage/categories")
-
-pkgmasklines  = grabfile(settings["PORTDIR"]+"/profiles/package.mask")
-pkgmasklines += grabfile("/etc/portage/package.mask")
-
-pkgunmasklines = grabfile("/etc/portage/package.unmask");
-
 # COMPATABILITY -- This shouldn't be used.
 pkglines = settings.packages
 
-unmaskdict={}
-for x in pkgunmasklines:
-	mycatpkg=dep_getkey(x)
-	# Get each unmasked ebuild.
-	for y in db["/"]["porttree"].dbapi.xmatch("match-all", x):
-		if not unmaskdict.has_key(mycatpkg):
-			unmaskdict[mycatpkg]=[y]
-		else:
-			unmaskdict[mycatpkg].append(y)
-del pkgunmasklines
-
-maskdict={}
-for x in pkgmasklines:
-	mycatpkg=dep_getkey(x)
-	if maskdict.has_key(mycatpkg):
-		maskdict[mycatpkg].append(x)
-	else:
-		maskdict[mycatpkg]=[x]
-del pkgmasklines
-
-revmaskdict={}
-for x in pkglines:
-	mycatpkg=dep_getkey(x)
-	if not revmaskdict.has_key(mycatpkg):
-		revmaskdict[mycatpkg]=[x]
-	else:
-		revmaskdict[mycatpkg].append(x)
-del pkglines
 groups=settings["ACCEPT_KEYWORDS"].split()
 archlist=[]
 for myarch in grabfile(settings["PORTDIR"]+"/profiles/arch.list"):

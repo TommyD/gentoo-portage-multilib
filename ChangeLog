@@ -2,6 +2,10 @@
 # Copyright 2000-2004 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  22 Feb 2004; Masatomo Nakano <nakano@gentoo.org> emerge, portage.py: speedup
+  when /etc/portage/package.keywords is defined. Moved loading
+  /etc/portage/package.* processs to config class. This should fix #41520.
+
   19 Feb 2004; Masatomo Nakano <nakano@gentoo.org> portage.py:
   Fixed CATEGORY value after preinst phase. This should close #6414. Fixed
   nested dependency problem and cleaned up dep_zapdeps function.
