@@ -1,0 +1,33 @@
+--- ebuild.sh.orig	Tue Dec  4 02:04:08 2001
++++ ebuild.sh	Tue Dec  4 01:40:57 2001
+@@ -1,4 +1,8 @@
+ #!/bin/bash
++
++# Disable the SandBox for now ...
++export SANDBOX_ON="0"
++
+ #we need this next line for "die" and "assert"
+ shopt -s expand_aliases
+ source /etc/profile.env > /dev/null 2>&1
+@@ -694,7 +698,20 @@
+ 		  set +x
+ 		fi
+ 	    ;;
+-	unpack|compile|help|touch|clean|fetch|digest|pkginfo|pkgloc|unmerge|merge|package|install|rpm)
++# Only enable the SandBox for these functions ....
++	unpack|compile|clean|install)
++	    export SANDBOX_ON="1"
++            if [ "$PORTAGE_DEBUG" = "0" ]
++            then
++	      dyn_${myarg}
++	    else
++	      set -x
++	      dyn_${myarg}
++	      set +x
++            fi
++	    export SANDBOX_ON="0"
++            ;;
++	help|touch|fetch|digest|pkginfo|pkgloc|unmerge|merge|package|rpm)
+ 	    if [ "$PORTAGE_DEBUG" = "0" ]
+ 	    then
+ 	      dyn_${myarg}

@@ -1,0 +1,20 @@
+--- portage.py.orig	Tue Dec  4 02:03:34 2001
++++ portage.py	Tue Dec  4 00:38:46 2001
+@@ -525,11 +525,14 @@
+ 	global settings
+ 	mypid=os.fork()
+ 	if mypid==0:
+-		mycommand="/bin/bash"
++#		mycommand="/bin/bash"
++		mycommand="/usr/bin/sandbox"
+ 		if debug:
+-			myargs["bash","-x","-c",mystring]
++#			myargs["bash","-x","-c",mystring]
++			myargs=["sandbox",mystring]
+ 		else:
+-			myargs=["bash","-c",mystring]
++#			myargs["bash","-c",mystring]
++			myargs=["sandbox",mystring]
+ 		os.execve(mycommand,myargs,settings.environ())
+ 		return
+ 	retval=os.waitpid(mypid,0)[1]
