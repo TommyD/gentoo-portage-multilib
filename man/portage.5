@@ -139,6 +139,11 @@ list of packages that compose the special \fIsystem\fR class.
 \- one DEPEND atom per line of what to mask OUT
 .br
 \- packages to be added to the system class begin with a *
+.br
+.I Note:
+In a cascading profile setup, you can remove packages in children 
+profiles which were added by parent profiles by prefixing the atom with 
+a '-'
 
 .I Example:
 .br
