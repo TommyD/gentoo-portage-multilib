@@ -1,6 +1,9 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  08 Apr 2002; Geert Bevin <gbevin@gentoo.org>: emerge:
+  Better unmerge and clean reporting.
+
 *portage-1.8.18 (07 Apr 2002)
 
   07 Apr 2002; Geert Bevin <gbevin@gentoo.org>: make.globals, emerge:
