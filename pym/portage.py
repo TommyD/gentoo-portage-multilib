@@ -1947,25 +1947,7 @@ class dblink:
 				if not isdev(obj):
 					print "--- !dev  ","dev", obj
 					continue
-				myppath=""
-				for ppath in self.protect:
-					epath=expandpath(obj)
-					if epath[0:len(ppath)]==ppath:
-						masked=0
-						#config file management
-						for pmpath in self.protectmask:
-							if epath[0:len(pmpath)]==pmpath:
-								#skip, it's in the mask
-								masked=1
-								break
-						if not masked: 
-							myppath=ppath
-							break
-				if myppath:
-					print "--- cfg   ","fif",obj
-					continue
-				os.unlink(obj)
-				print "<<<       ","dev",obj
+				print "---       ","dev",obj
 
 		#remove provides
 		for mycatpkg in self.getelements("PROVIDE"):

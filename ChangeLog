@@ -1,3 +1,9 @@
+Portage 1.6.11, released 18 Oct 2001
+====================================
+
+	*portage.py; device nodes are now not unmerged at all.
+
+
 Portage 1.6.10, released 18 Oct 2001 
 ===================================
 
