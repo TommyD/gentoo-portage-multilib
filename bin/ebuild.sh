@@ -2,12 +2,17 @@
 
 # Save the current environment to file.
 esave_ebuild_env() {
-	# turn off globbing.
-	set -f
-	# we do not want to save critical variables
-	set | awk '!/PORTAGE_RESTORE_ENV|PORTAGE_MASTER_PID/ { print $0 }' \
-		> ${T}/saved_ebuild_env_${PORTAGE_MASTER_PID}
-	set +f
+	# only save when $T is valid, else it create a bogus
+	# /saved_ebuild_env_ file.
+	if [ -n "${T}" ]
+	then
+		# turn off globbing.
+		set -f
+		# we do not want to save critical variables
+		set | awk '!/PORTAGE_RESTORE_ENV|PORTAGE_MASTER_PID/ { print $0 }' \
+			> ${T}/saved_ebuild_env_${PORTAGE_MASTER_PID}
+		set +f
+	fi
 }
 
 # Save the environment apon exit

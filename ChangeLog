@@ -1,6 +1,10 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  06 Aug 2002; Martin Schlemmer <azarah@gentoo.org> ebuild.sh : only save
+  the environment of ebuild.sh when $T is valid, else /saved_ebuild_env_
+  is created.
+
   05 Aug 2002; Phil Bordelon <sunflare@gentoo.org> emerge.1: Updated the
   man page to match the current version of 2.0.25.
 
