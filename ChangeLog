@@ -8,6 +8,11 @@
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
   06 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> portage_dep.py emerge:
+  Added full code comments to the DependencyGraph class. Did some code
+  optimization where readability was not adversly affected. Removed the
+  testing output from emerge.
+
+  06 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> portage_dep.py emerge:
   Added a reimplementation of digraph. Still some work to do (including
   comments) in order to support the differences between *DEPEND. Modified
   emerge a little to build up both dep graphs for testing purposes.

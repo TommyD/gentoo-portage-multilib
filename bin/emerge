@@ -880,7 +880,7 @@ class depgraph:
 					child = jbigkey+" merge"
 				else:
 					child = jbigkey+" nomerge"
-				self.mynewgraph.add_relation(myparent, child, 1)
+				self.mynewgraph.add_relationship(myparent, child)
 			#this conditional is needed to prevent infinite recursion on already-processed deps
 			return 1
 
@@ -947,7 +947,7 @@ class depgraph:
 		self.digraph.addnode(string.join(mybigkey),myparent)
 		self.mynewgraph.add_node(string.join(mybigkey))
 		if myparent:
-			self.mynewgraph.add_relation(myparent, string.join(mybigkey), 1)
+			self.mynewgraph.add_relationship(myparent, string.join(mybigkey))
 		if ("deep" not in myparams) and (not merging):
 			return 1
 		elif "recurse" not in myparams:
@@ -2979,18 +2979,6 @@ else:
 		myopts.remove("--ask")
 
 	if ("--pretend" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts):
-		print "\n\nRoot nodes:"
-		graph = mydepgraph.mynewgraph
-		nodes = graph.get_root_nodes()
-		nodes.sort()
-		for node in nodes:
-			print "     ",node
-		print "\n\nLeaf nodes:"
-		graph = mydepgraph.mynewgraph
-		nodes = graph.get_leaf_nodes()
-		nodes.sort()
-		for node in nodes:
-			print "     ",node
 		if ("--resume" in myopts):
 			mydepgraph.display(portage.mtimedb["resume"]["mergelist"])
 		else:
