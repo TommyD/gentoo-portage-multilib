@@ -24,7 +24,14 @@ LOCALE_DATA_PATH        = PORTAGE_BASE_PATH+"/locale"
 
 EBUILD_SH_BINARY        = PORTAGE_BIN_PATH+"/ebuild.sh"
 EBUILD_DAEMON_PATH	= PORTAGE_BIN_PATH+"/ebuild-daemon.sh"
-SANDBOX_BINARY          = PORTAGE_BIN_PATH+"/sandbox"
+
+SANDBOX_BINARY          = "/usr/bin/sandbox"
+# XXX compatibility hack.  this shouldn't ever hit a stable release.
+import os
+if not os.path.exists(SANDBOX_BINARY):
+	if os.path.exists(PORTAGE_BIN_PATH+"/sandbox"):
+		SANDBOX_BINARY=PORTAGE_BIN_PATH+"/sandbox"
+
 DEPSCAN_SH_BINARY       = "/sbin/depscan.sh"
 BASH_BINARY             = "/bin/bash"
 MOVE_BINARY             = "/bin/mv"

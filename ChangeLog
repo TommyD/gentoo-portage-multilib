@@ -7,6 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  20 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage_const.py:
+  Added compatibility hack due to sandbox being moved.  Will remove it once 
+  people have shifted over to using the split out sandbox's new location.
+
   20 Nov 2004; Brian Harring <ferringb@gentoo.org> <collection-of-files>:
   Portage is now autotool'd, w/ relevant configure.  Needs work, specifically,
   cnf installation isn't there yet- would prefer to add that when the 101 arch 
