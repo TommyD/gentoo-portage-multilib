@@ -1,6 +1,12 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  10 Jun 2002; Martin Schlemmer <azarah@gentoo.org> portage.py : Merge
+  in the ld.so.preload changes.  Also updated spawn() to only run sandbox
+  if buildphase is one of clean, unpack, compile or install. This should
+  fix the handler not detecting some instances of sandbox running.  Updated
+  ebuildsh() to set buildphase="" on spawn exit.
+
   10 Jun 2002; Martin Schlemmer <azarah@gentoo.org> portage.py.ldsopreload,testsandbox.sh :
   Add support to test if another sandbox is running, if so dont delete
   /etc/ld.so.preload on kill.  I did not commit this to portage.py, as it is a bit

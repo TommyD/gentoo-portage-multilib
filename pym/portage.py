@@ -90,12 +90,44 @@ except ImportError:
 
 starttime=int(time.time())
 
+#defined in doebuild as global
+#dont set this to [], as it then gets seen as a list variable
+#which gives tracebacks (usually if ctrl-c is hit very early)
+buildphase=""
+
+#the build phases for which sandbox should be active
+sandboxactive=["unpack","compile","clean","install"]
+
 #handle ^C interrupts correctly:
 def exithandler(signum,frame):
 	print "!!! Portage interrupted by SIGINT; exiting."
 	#disable sandboxing to prevent problems
-	if os.path.exists("/etc/ld.so.preload"):
-		os.unlink("/etc/ld.so.preload")
+	settings=config()
+	features=settings["FEATURES"].split()
+	#only do this if sandbox is in $FEATURES
+	if "sandbox" in features:
+		mypid=[]
+		mypid=os.fork()
+		if mypid==0:
+			myargs=[]
+			mycommand="/usr/lib/portage/bin/testsandbox.sh"
+			#if we are in the unpack,compile,clean or install phases,
+			#there will already be one sandbox running for this call
+			#to emerge
+			if buildphase in sandboxactive:
+				myargs=["testsandbox.sh","1"]
+			else:
+				myargs=["testsandbox.sh","0"]
+			myenv={}
+			os.execve(mycommand,myargs,myenv)
+			os._exit(1)
+			sys.exit(1)
+		retval=os.waitpid(mypid,0)[1]
+		print "PORTAGE:  Checking for Sandbox ("+buildphase+")..."
+		if retval==0:
+			print "PORTAGE:  No Sandbox running, deleting /etc/ls.so.preload!"
+			if os.path.exists("/etc/ld.so.preload"):
+				os.unlink("/etc/ld.so.preload")
 	# 0=send to *everybody* in process group
 	os.kill(0,signal.SIGKILL)
 	sys.exit(1)
@@ -737,12 +769,23 @@ def spawn(mystring,debug=0,free=0):
 	mypid=os.fork()
 	if mypid==0:
 		myargs=[]
+		#technically I think we should only run sandbox if buildphase
+		#is one of the phases in sandboxactive, and not use the free
+		#argument.  This will enable a stricker sandbox activation.
 		if ("sandbox" in features) and (not free):
-			mycommand="/usr/lib/portage/bin/sandbox"
-			if debug:
-				myargs=["sandbox",mystring]
+			#only run sandbox for the following phases
+			if buildphase in sandboxactive:
+				mycommand="/usr/lib/portage/bin/sandbox"
+				if debug:
+					myargs=["sandbox",mystring]
+				else:
+					myargs=["sandbox",mystring]
 			else:
-				myargs=["sandbox",mystring]
+				mycommand="/bin/bash"
+				if debug:
+					myargs=["bash","-x","-c",mystring]
+				else:
+					myargs=["bash","-c",mystring]
 		else:
 			mycommand="/bin/bash"
 			if debug:
@@ -762,6 +805,18 @@ def spawn(mystring,debug=0,free=0):
 	else:
 		#interrupted by signal
 		return 16
+
+def ebuildsh(mystring,debug=0,free=0):
+	"spawns ebuild.sh more granular"
+	mylist=mystring.split()
+	for x in mylist:
+		global buildphase
+		buildphase=x
+		#here we always want to call spawn with free=0,
+		#else the exit handler may not detect things properly
+		retval=spawn("/usr/sbin/ebuild.sh "+x,debug)
+		buildphase=""
+		if retval: return retval
 
 def getmycwd():
 	"this handles situations where the current directory doesn't exist"
@@ -959,6 +1014,8 @@ def digestcheck(myarchives):
 # "checkdeps" support has been depreciated.  Relying on emerge to handle it.
 def doebuild(myebuild,mydo,myroot,debug=0):
 	global settings
+	global buildphase
+	buildphase=mydo
 	if not os.path.exists(myebuild):
 		print "!!! doebuild:",myebuild,"not found."
 		return 1
@@ -1020,7 +1077,7 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 
 	# if any of these are being called, stop now, handle them and stop now.
 	if mydo in ["help","clean","prerm","postrm","preinst","postinst","config","touch","setup"]:
-		return spawn("/usr/sbin/ebuild.sh "+mydo)
+		return ebuildsh(mydo)
 		#initial ebuild.sh bash environment configured
 	
 	mydbkey="/var/cache/edb/dep/dep-"+os.path.basename(settings["EBUILD"])
@@ -1093,18 +1150,18 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 				}
 	if mydo in actionmap.keys():	
 		if "noauto" in features:
-			return spawn("/usr/sbin/ebuild.sh "+mydo)
+			return ebuildsh(mydo)
 		else:
-			return spawn("/usr/sbin/ebuild.sh "+actionmap[mydo])
+			return ebuildsh(actionmap[mydo])
 	elif mydo=="qmerge": 
 		#qmerge is specifically not supposed to do a runtime dep check
 		return merge(settings["CATEGORY"],settings["PF"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot)
 	elif mydo=="merge":
-		retval=spawn("/usr/sbin/ebuild.sh setup unpack compile install")
+		retval=ebuildsh("setup unpack compile install")
 		if retval: return retval
 		return merge(settings["CATEGORY"],settings["PF"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot,myebuild=settings["EBUILD"])
 	elif mydo=="package":
-		retval=spawn("/usr/sbin/ebuild.sh setup")
+		retval=ebuildsh("setup")
 		if retval:
 			return retval
 		for x in ["","/"+settings["CATEGORY"],"/All"]:
@@ -1128,7 +1185,7 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 			print
 			return 0
 		else:
-			return spawn("/usr/sbin/ebuild.sh unpack compile install package")
+			return ebuildsh("unpack compile install package")
 
 def isfifo(x):
 	mymode=os.lstat(x)[ST_MODE]
