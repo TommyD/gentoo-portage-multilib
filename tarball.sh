@@ -1,8 +1,10 @@
 #!/bin/bash
 
 if [ -z "$1" ]; then
+	echo
 	echo "You need to have the version specified."
 	echo "e.g.: $0 2.0.39"
+	echo
 	exit 0
 fi
 
