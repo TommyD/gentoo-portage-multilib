@@ -1450,24 +1450,27 @@ def movefile(src,dest,newmtime=None,sstat=None):
 	except:
 		dstat=os.lstat(os.path.dirname(dest))
 		destexists=0
+
 	if destexists:
 		if S_ISLNK(dstat[ST_MODE]):
-			# XXX Possibly preserve symlinks in config protect dirs here...?
 			try:
-				target=os.readlink(src)
-				print "symlink read",
 				os.unlink(dest)
-				print " write",
-				os.symlink(target,dest)
-				print " create",
-				missingos.lchown(dest,sstat[ST_UID],sstat[ST_GID])
-				print " lchown"
-				return os.lstat(dest)
 			except Exception, e:
-				print "!!! failed to properly create symlink:"
-				print "!!!",dest,"->",target
-				print "!!!",e
-				return None
+				pass
+
+	if S_ISLNK(sstat[ST_MODE]):
+		try:
+			target=os.readlink(src)
+			if destexists and not S_ISDIR(dstat[ST_MODE]):
+				os.unlink(dest)
+			os.symlink(target,dest)
+			missingos.lchown(dest,sstat[ST_UID],sstat[ST_GID])
+			return os.lstat(dest)
+		except Exception, e:
+			print "!!! failed to properly create symlink:"
+			print "!!!",dest,"->",target
+			print "!!!",e
+			return None
 
 	renamefailed=1
 	if sstat[ST_DEV]==dstat[ST_DEV]:
