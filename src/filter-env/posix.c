@@ -16,10 +16,11 @@
 #define IO_FAIL		3
 #define PARSE_FAIL	4
 
-#define SPACE_PARSING	3
-#define ESCAPED_PARSING	2
-#define COMMAND_PARSING	1
-#define NO_PARSING	0
+#define SPACE_PARSING		4
+#define ESCAPED_PARSING		3
+#define COMMAND_PARSING		2
+#define DOLLARED_QUOTE_PARSING	1
+#define NO_PARSING		0
 
 void init_regexes();
 void free_regexes();
@@ -410,7 +411,7 @@ process_scope(FILE *out_fd, const char *buff, const char *end, regex_t *var_re, 
 		    if('(' == p[1]) {
 			p=walk_command(p + 2,end, ')',ESCAPED_PARSING);
 		    } else if('\'' == p[1]) {
-			p=walk_command(p + 2,end, '\'', NO_PARSING);
+			p=walk_command(p + 2,end, '\'', DOLLARED_QUOTE_PARSING);
 		    } else if('{' == p[1]) {
 			p=walk_command(p + 2,end, '}', ESCAPED_PARSING);
 		    } else {
@@ -470,11 +471,14 @@ walk_command(const char *p, const char *end, char endchar, const char interpret_
 	   (interpret_level == SPACE_PARSING && isspace(*p))) {
 	    if(!escaped)
 		return p;
+	} else if(NO_PARSING==interpret_level) {
+	    p++;
+	    continue;
 	} else if('\\' == *p && !escaped) {
 	    escaped = 1;	p++;	continue;
 	} else if(escaped) {
 	    escaped = 0;
-	} else if(NO_PARSING==interpret_level) {
+	} else if(DOLLARED_QUOTE_PARSING == interpret_level) {
 	    p++;
 	    continue;
 	} else if('<' == *p) {
