@@ -148,8 +148,8 @@ main(int argc, char *const *argv)
 		exit(MEM_FAIL);
 	    }
 	}
-	file_buff[file_size] = '\0';
     }
+    file_buff[file_size] = '\0';
     close(fd);
 
     init_regexes();
