@@ -78,7 +78,7 @@ def perform_checksum(filename, hash_function=md5hash, calc_prelink=0):
 			writemsg("!!! Unable to copy file '"+str(filename)+"'.\n")
 			writemsg("!!! "+str(e)+"\n")
 			sys.exit(1)
-		portage_exec.spawn(PRELINK_BINARY+" --undo "+prelink_tmpfile+" &>/dev/null", free=1)
+		portage_exec.spawn(PRELINK_BINARY+" --undo "+prelink_tmpfile,fd_pipes={})
 		myfilename=prelink_tmpfile
 
 	myhash, mysize = hash_function(myfilename)
