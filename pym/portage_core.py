@@ -24,6 +24,7 @@ class eid:
 				if mystring:
 					mysplit=string.split(mystring,"/")
 					self.category=mysplit[0]
+					self.cmp=None
 					myparts=string.split(mysplit[1],'-')
 					if myparts[-1][0]=="r":
 						self.revision=myparts[-1][1:]
@@ -48,6 +49,7 @@ class eid:
 					self.invalidate("More than one \"/\"")
 					return
 				self.category=mysplit[0]
+				self.cmp=None
 				myparts=string.split(mysplit[1],"-")
 				if len(myparts)<2:
 					self.invalidate("Missing version or name part")
@@ -94,6 +96,7 @@ class eid:
 				self.error=error
 		else:
 			self.error=None
+		self.cmp=None
 		self.category=None
 		self.package=None
 		self.version=None
@@ -167,19 +170,83 @@ class eid:
 			except:
 				print x,"(undefined)"
 	
-	def __repr__(self):
-		"return string representation of this eid"
-		
 	def __cmp__(self,other):
 		"comparison"
+		if self.cmp==None:
+			self.cmp=self.gencmp()
+		if other.cmp==None:
+			other.cmp=other.gencmp()
+		mycmp=self.cmp[:]
+		othercmp=other.cmp[:]
+		while(len(mycmp)<len(othercmp)):
+			mycmp.append([0,0,0])
+		while(len(mycmp)>len(othercmp)):
+			othercmp.append([0,0,0])
+		for x in range(0,len(mycmp)-1):
+			for y in range(0,3):
+				myret=mycmp[x][y]-othercmp[x][y]
+				if myret!=0:
+					return myret
+		return 0
+		
+	def gencmp(self):
+		"internal function used to generate comparison lists"
+		cmplist=[]
+		splitversion=string.split(self.version,".")
+		for x in splitversion[:-1]:
+			cmplist.append([string.atoi(x),0,0])
+		a=string.split(splitversion[-1],"_")
+		match=0
+		p1=0
+		p2=0
+		if len(a)==2:
+			pos=len(a[1])
+			number=string.atoi(a[0])
+			if a[1][-1] in string.digits:
+				pos=0
+				while a[1][pos-1] in string.digits:
+					pos=pos-1
+			for x in endversion.keys():
+				if a[1][0:pos]==x:
+					match=1
+					#p1 stores the numerical weight of _alpha, _beta, etc.
+					p1=endversion[x]
+					try:
+						p2=string.atoi(a[1][len(x):])
+					except:
+						p2=0
+					cmplist.append([number,p1,p2])
+					cmplist.append([string.atoi(self.revision),0,0])
+					return cmplist
+		if not match:	
+			#normal number or number with letter at end
+			if self.version[-1] not in string.digits:
+				#letter at end
+				p1=ord(self.version[-1])
+				number=string.atoi(splitversion[-1][0:-1])
+			else:
+				number=string.atoi(splitversion[-1])		
+		cmplist.append([number,p1,p2])
+		cmplist.append([string.atoi(self.revision),0,0])
+		return cmplist
 
-	def isvalid(self):
-		"is this a valid eid (proper category, package, version string, rev)"
-	
 	def similar(self,other):
 		"are we talking about the same category and package (but possibly different versions/revs)?"
 		if self.valid and other.valid:
 			if (self.category==other.category) and (self.package==other.package):
 				return 1
 		return 0
-	
+
+for x in ["1.0_rc6","4.0_pre12", "4.0","9.12.13","0.9.10","1.0.9-r1","3.0","3.0_alpha1","3.0_beta","3.0_rc1","3.0_pre1","3.0_p3","3.0a"]:
+	a=eid("sys-apps/foo-"+x)
+	b=eid("sys-apps/foo-3.0")
+	a.debug()
+	if not a.valid:
+		print x,"(INVALID)"
+		continue
+	if a>b:
+		print x,">","3.0"
+	elif a<b:
+		print x,"<","3.0"
+	else:
+		print x,"=","3.0"
