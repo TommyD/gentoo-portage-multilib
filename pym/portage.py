@@ -721,7 +721,7 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 		return spawn("/usr/sbin/ebuild.sh "+mydo)
 	elif mydo=="qmerge": 
 		#qmerge is specifically not supposed to do a runtime dep check
-		return merge(settings["CATEGORY"],settings["PF"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot)
+		return merge(settings["CATEGORY"],settings["PF"],settings["SLOT"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot)
 	elif mydo=="merge":
 		retval=spawn("/usr/sbin/ebuild.sh setup fetch unpack compile install")
 		if retval: return retval
