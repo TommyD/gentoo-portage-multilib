@@ -344,7 +344,6 @@ All these functions acct like the do* functions, but they only work with one
 file and the file gets installed as \fI[new filename]\fR.
 .SH "SEE ALSO"
 .BR ebuild (1),
-.BR make.globals (5),
 .BR make.conf (5)
 .TP
 The \fI/usr/sbin/ebuild.sh\fR script.
@@ -353,7 +352,7 @@ The helper apps in \fI/usr/lib/portage/bin\fR.
 .SH "FILES"
 .TP
 \fB/etc/make.conf\fR 
-Contains variables for the build\-process and overrides those in \fI/etc/make.globals\fR.
+Contains variables for the build\-process and overwrites those in make.defaults.
 .TP
 \fB/etc/make.globals\fR
 Contains the default variables for the build\-process, you should edit \fI/etc/make.conf\fR instead.
