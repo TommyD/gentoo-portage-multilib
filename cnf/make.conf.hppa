@@ -26,10 +26,12 @@
 # ============
 #
 # The generic CHOST value for hppa is hppa-unknown-linux-gnu.
-# But you might want to use hppa1.1-unknown-linux-gnu according to your
-# station.
+# But you might want to use hppa1.1-unknown-linux-gnu or hppa2.0-unknown-linux-gnu
+# according to your station.
 #
-CHOST="hppa1.1-unknown-linux-gnu"
+CHOST="hppa-unknown-linux-gnu"
+#CHOST="hppa1.1-unknown-linux-gnu"
+#CHOST="hppa2.0-unknown-linux-gnu"
 
 # Host and optimization settings 
 # ==============================
@@ -55,12 +57,22 @@ CHOST="hppa1.1-unknown-linux-gnu"
 #
 # Decent examples:
 #
-#CFLAGS="-march=1.1 -O3 -pipe -mschedule=7100LC"
+
+# Use this one if you have a hppa1.1
+#CFLAGS="-march=1.1 -O2 -pipe -mschedule=7100LC"
+
+# Or this one if you have a hppa2.0
+# Note that -march=2.0 was unstable on some stations.
+#CFLAGS="-O2 -pipe -mschedule=8000"
 
 
 # If you set a CFLAGS above, then this line will set your default C++ flags to
 # the same settings.
 #CXXFLAGS="${CFLAGS}"
+
+# Btw it's recommended to use this setting for stability.
+# There are still many bugs with higher level of optimisation.
+#CXXFLAGS="-O1 -pipe"
 
 # Advanced Masking
 # ================
