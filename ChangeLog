@@ -8,7 +8,11 @@
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
   22 Nov 2004; Brian Harring <ferringb@gentoo.org> src/filter-env/posix.c:
-  Final bugs should be shaken out of it now.  realloc and I don't get along.
+  Anchor generated regex filters, fix to the damned looping over stdin still.
+
+  22 Nov 2004; Brian Harring <ferringb@gentoo.org> src/filter-env/posix.c:
+  Final bugs should be shaken out of the pipe reading now.
+  realloc and I don't get along.
 
   22 Nov 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild-functions.sh:
   econf now ignores update_confcache's exit_code, and uses configure's.  Should

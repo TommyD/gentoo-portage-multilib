@@ -51,6 +51,7 @@ main(int argc, char *const *argv)
     regex_t vre, *pvre=NULL;
     regex_t fre, *pfre=NULL;
     const char *fsr, *vsr;
+    char *temp = NULL;
     struct stat st;
     debugging = 0;
     funcs = (char **)malloc(sizeof(char *)*10);
@@ -112,13 +113,32 @@ main(int argc, char *const *argv)
     vsr = build_regex_string((const char **)vars, vars_count);
     d1printf("vsr buffer=%s\n", vsr);
     if(fsr) { 
-	regcomp(&fre, fsr, REG_EXTENDED);
+	// prefix ^
+	if((temp = (char *)malloc(strlen(fsr) + 3)) == NULL) {
+	    fprintf(stderr, "failed allocing needed memory for regex patterns.\n");
+	    exit(MEM_FAIL);
+	}
+	temp[0]='^'; temp[1] = '\0';
+	temp = strcat(temp,fsr);
+	temp = strcat(temp,"$");
+	d1printf("fsr pattern is %s\n", temp);
+	regcomp(&fre, temp, REG_EXTENDED);
+	free(temp);	temp = NULL;
 	pfre=&fre;
 	free((void*)fsr);	fsr = NULL;
     } else
 	pfre=NULL;
     if(vsr) {
-	regcomp(&vre, vsr, REG_EXTENDED);
+	if((temp = (char *)malloc(strlen(vsr) + 3)) == NULL) {
+	    fprintf(stderr, "failed allocing needed memory for regex patterns.\n");
+	    exit(MEM_FAIL);
+	}
+	temp[0]='^'; temp[1] = '\0';
+	temp = strcat(temp,vsr);
+	temp = strcat(temp,"$");
+	d1printf("vsr pattern is %s\n", temp);
+	regcomp(&vre, temp, REG_EXTENDED);
+	free(temp);	temp = NULL;
 	pvre=&vre;
 	free((void*)vsr);	vsr = NULL;
     } else
@@ -141,18 +161,20 @@ main(int argc, char *const *argv)
 	    exit(MEM_FAIL);
 	}
 	buff_alloced = 4096;
-	while(!feof(file_in)) {
+	c=4096;
+	while(c > 0) {
 	    c=fread(file_buff+file_size, 1, 4096, file_in);
 	    file_size += c;
 	    // realloc +1 for null termination.
 	    if(buff_alloced < file_size + 4096) {
- 		if((file_buff = (char *)realloc(file_buff, file_size + c + 1)) == NULL) {
+ 		if((file_buff = (char *)realloc(file_buff, buff_alloced + 4096)) == NULL) {
 		    fprintf(stderr, "failed allocing needed memory for file.\n");
 		    exit(MEM_FAIL);
 		}
 		buff_alloced += 4096;
 	    }
 	}
+	d1printf("read %i bytes\n", file_size);
     }
     file_buff[file_size] = '\0';
     fclose(file_in);
@@ -338,7 +360,7 @@ process_scope(FILE *out_fd, const char *buff, const char *end, regex_t *var_re, 
 	    d1printf("ended processing  '%s'\n", temp_string);
 	    if(func_re!=NULL && regex_matches(func_re, temp_string)) {
 		//well, it matched.  so it gets skipped.
-//		fprintf(stderr, "setting window_end\n");
+		d1printf("filtering func '%s'\n", temp_string);
 		window_end = com_start;
 	    }
 
@@ -444,13 +466,13 @@ walk_command(const char *p, const char *end, char endchar, const char interpret_
 	   (interpret_level == SPACE_PARSING && isspace(*p))) {
 	    if(!escaped)
 		return p;
+	} else if(NO_PARSING==interpret_level) {
+	    p++;
+	    continue;
 	} else if('\\' == *p && !escaped) {
 	    escaped = 1;	p++;	continue;
 	} else if(escaped) {
 	    escaped = 0;
-	} else if(NO_PARSING==interpret_level) {
-	    p++;
-	    continue;
 	} else if('<' == *p) {
 	    here_count++;
 	    if(2 == here_count && interpret_level == COMMAND_PARSING) {
@@ -501,7 +523,6 @@ walk_command(const char *p, const char *end, char endchar, const char interpret_
 //	    fprintf(stderr,"process_scope called for %.10s\n", p - 10);
 //	    p=process_scope(NULL,p+1,end,NULL,NULL,'}');
 	    p=walk_command(p+1,end, '}', ESCAPED_PARSING);
-//NULL,p+1,end,NULL,NULL,'}');
 	    // kind of a hack.
 //	    fprintf(stderr, "returned char %c\n", *p);
 	} else if('(' == *p && endchar!='"') {
