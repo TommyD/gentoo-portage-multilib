@@ -8,13 +8,13 @@ program accepts a single ebuild script as an argument.  This script contains var
 
 
 .SH "EXAMPLES"
-Here's a simple example ebuild script, :
+Here's a simple example ebuild:
 
 .DS
 # Copyright 1999\-2002 Gentoo Technologies, Inc.
 .br 
-# Distributed under the terms of the GNU General Public License, v2 or later
-.br 
+# Distributed under the terms of the GNU General Public License v2
+.br
 # $Header$
 .br 
 
@@ -22,7 +22,7 @@ S=${WORKDIR}/${P}
 .br 
 DESCRIPTION="Super\-useful stream editor"
 .br 
-SRC_URI="ftp://alpha.gnu.org/pub/gnu/sed/${P}.ta r.gz"
+SRC_URI="ftp://alpha.gnu.org/pub/gnu/sed/${P}.tar.gz"
 .br 
 HOMEPAGE="http://www.gnu.org/software/sed/sed.html"
 .br 
@@ -41,20 +41,30 @@ RDEPEND="virtual/glibc"
 .br 
 
 src_compile() {
-   econf
-   emake
+.br
+	econf
+.br
+	emake
 .br 
 }
 
 src_install() {
-    into /usr
-    doinfo doc/sed.info
-    doman doc/sed.1
-    into /
-    dobin sed/sed
-    dodir /usr/bin
-    dosym /bin/sed /usr/bin/sed
-    dodoc COPYING NEWS README* THANKS TODO AUTHORS BUGS ANNOUNCE
+.br
+	into /usr
+.br
+	doinfo doc/sed.info
+.br
+	doman doc/sed.1
+.br
+	into /
+.br
+	dobin sed/sed
+.br
+	dodir /usr/bin
+.br
+	dosym /bin/sed /usr/bin/sed
+.br
+	dodoc COPYING NEWS README* THANKS TODO AUTHORS BUGS ANNOUNCE
 .br 
 }
 .DE
@@ -264,7 +274,7 @@ you should edit \fI/etc/make.conf\fR instead.
 .TP 
 .SH "AUTHORS"
 Achim Gottinger <achim@gentoo.org>
-.LP 
+.br
 Mark Guertin <gerk@gentoo.org>
 .br 
 Nicholas Jones <carpaski@gentoo.org>
