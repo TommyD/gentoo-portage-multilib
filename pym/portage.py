@@ -150,6 +150,7 @@ def exithandler(foo,bar):
 #			if os.path.exists("/tmp/sandboxpids.tmp"):
 #				os.unlink("/tmp/sandboxpids.tmp")
 	# 0=send to *everybody* in process group
+	portageexit()
 	os.kill(0,signal.SIGKILL)
 	sys.exit(1)
 
@@ -2855,8 +2856,10 @@ class vartree(packagetree):
 
 # ----------------------------------------------------------------------------
 def eclass(myeclass=None,mycpv=None,mymtime=None):
-	"""Caches and retrieves information about ebuilds that use eclasses"""
+	"""Caches and retrieves information about ebuilds that use eclasses
+	Returns: Is the ebuild current with the eclass? (true/false)"""
 	global mtimedb
+	#print "eclass("+str(myeclass)+","+str(mycpv)+","+str(mymtime)+")"
 	
 	if not mtimedb:
 		mtimedb={}
@@ -2902,21 +2905,22 @@ def eclass(myeclass=None,mycpv=None,mymtime=None):
 				if mtimedb["eclass"][myeclass][2].has_key(mycpv):
 					# Check if the ebuild mtime changed OR if the mtime for the eclass
 					# has changed since it was last updated.
+					#print "test:",mymtime!=mtimedb["eclass"][myeclass][2][mycpv][1],mtimedb["eclass"][myeclass][0]!=mtimedb["eclass"][myeclass][2][mycpv][0]
 					if (mymtime!=mtimedb["eclass"][myeclass][2][mycpv][1]) or (mtimedb["eclass"][myeclass][0]!=mtimedb["eclass"][myeclass][2][mycpv][0]):
 						# Store the new mtime before we expire the cache so we don't
 						# repeatedly regen this entry.
+						#print " regen --",myeclass,"--",mymtime,mtimedb["eclass"][myeclass][2][mycpv][1],"--",mtimedb["eclass"][myeclass][0],mtimedb["eclass"][myeclass][2][mycpv][0]
 						mtimedb["eclass"][myeclass][2][mycpv]=[mtimedb["eclass"][myeclass][0],mymtime]
 						# Expire the cache. mtimes don't match.
-						#print " regen"
 						return 0
 					else:
 						# Matches
-						#print "!regen"
+						#print "!regen --",myeclass,"--",mymtime,mtimedb["eclass"][myeclass][2][mycpv][1],"--",mtimedb["eclass"][myeclass][0],mtimedb["eclass"][myeclass][2][mycpv][0]
 						return 1
 				else:
 					# Don't have an entry... Must be new.
+					#print "*regen --",myeclass,"--",mymtime,mtimedb["eclass"][myeclass][2][mycpv][1],"--",mtimedb["eclass"][myeclass][0],mtimedb["eclass"][myeclass][2][mycpv][0]
 					mtimedb["eclass"][myeclass][2][mycpv]=[mtimedb["eclass"][myeclass][0],mymtime]
-					#print "*regen"
 					return 0
 			else:
 				# We're missing some vital parts.
@@ -2927,8 +2931,10 @@ def eclass(myeclass=None,mycpv=None,mymtime=None):
 			for myeclass in mtimedb["eclass"].keys():
 				if mtimedb["eclass"][myeclass][2].has_key(mycpv):
 					if (mymtime!=mtimedb["eclass"][myeclass][2][mycpv][1]) or (mtimedb["eclass"][myeclass][0]!=mtimedb["eclass"][myeclass][2][mycpv][0]):
+						#print " regen mtime:",mymtime,mtimedb["eclass"][myeclass][2][mycpv][1],"--",mtimedb["eclass"][myeclass][0],mtimedb["eclass"][myeclass][2][mycpv][0]
 						#mtimes do not match
 						return 0
+		#print "!regen mtime"
 		return 1
 # ----------------------------------------------------------------------------
 
@@ -2979,38 +2985,54 @@ class portdbapi(dbapi):
 		try:
 			mydbkeystat=os.stat(mydbkey)
 			if mydbkeystat[ST_SIZE] == 0:
-				doregen=1
+				doregen=2
 				dmtime=0
 			else:
 				dmtime=mydbkeystat[ST_MTIME]
 		except OSError:
-			doregen=1
+			doregen=4
 
 		emtime=0
+		#print "statusline1:",doregen,dmtime,emtime,mycpv
 		try:
 			emtime=os.stat(myebuild)[ST_MTIME]
 		except:
 			print "!!! Failed to stat ebuild:",myebuild
-			doregen=1
-		if dmtime<emtime:
-			doregen=1
+			doregen=8
+		if dmtime!=emtime:
+			doregen=doregen+1
+		#print "statusline2:",doregen,dmtime,emtime,mycpv
 
-		if doregen or not eclass(None, mycpv, dmtime):
+		if (doregen>1) or (doregen and not eclass(None, mycpv, dmtime)):
 			stale=1
+			#print "doregen:",doregen,mycpv
 			if doebuild(myebuild,"depend","/"):
 				#depend returned non-zero exit code...
 				if strict:
-					print red("\naux_get():")+" (0) Error in",mycpv,"ebuild."
+					sys.stderr.write(str(red("\naux_get():")+" (0) Error in",mycpv,"ebuild.\n"))
 					raise KeyError
-		
+			try:
+				mydbkeystat=os.stat(mydbkey)
+				if mydbkeystat[ST_SIZE] == 0:
+					doregen=1
+					dmtime=0
+				else:
+					dmtime=mydbkeystat[ST_MTIME]
+			except OSError:
+				#print "doregen1 failed."
+				pass
+		#print "--doregen"
 		#Now, our cache entry is possibly regenerated.  It could be up-to-date, but it may not be...
 		#If we regenerated the cache entry or we don't have an internal cache entry or or cache entry
 		#is stale, then we need to read in the new cache entry.
 
+		#print "statusline3:",doregen,dmtime,emtime,mycpv
 		if (not self.auxcache.has_key(mycpv)) or (not self.auxcache[mycpv].has_key("mtime")) or (self.auxcache[mycpv]["mtime"]!=dmtime):
+			#print "stale auxcache"
 			stale=1
 
 		try:
+			#print "grab cent"
 			mycent=open(mydbkey,"r")
 			mylines=mycent.readlines()
 			mycent.close()
@@ -3039,6 +3061,7 @@ class portdbapi(dbapi):
 			for myeclass in myeclasses:
 				#print "PASS ONE:",myeclass
 				myret=eclass(myeclass,mycpv,dmtime)
+				#print "eclass '",myeclass,"':",myret,doregen,doregen2
 				#print myret
 				if myret==None:
 					print red("\n\naux_get():")+' eclass "'+myeclass+'" from',mydbkey,"not found."
@@ -3051,10 +3074,11 @@ class portdbapi(dbapi):
 					#in the ebuild/eclass since the cache entry was created.
 					#print "Old cache entry. Regen."
 					doregen2=1
+					break
 
 		#print "doregen2: pre"
 		if doregen2:	
-			#print "doregen2: in"
+			#print "doregen2"
 			stale=1
 			#old cache entry, needs updating (this could raise IOError)
 			if doebuild(myebuild,"depend","/"):
@@ -3079,6 +3103,7 @@ class portdbapi(dbapi):
 			try:
 				mymtime=os.stat(mydbkey)[ST_MTIME]
 				self.auxcache[mycpv]={"mtime": mymtime}
+				#print "auxcache dmtime",mycpv,mymtime
 				#print "PASS TWO"
 				myeclasses=mylines[auxdbkeys.index("INHERITED")].split()
 				#print "))) 003"
@@ -3674,7 +3699,7 @@ class dblink:
 		writedict(newvirts,self.myroot+"var/cache/edb/virtuals")
 	
 		#new code to remove stuff from the world file when it's unmerged.
-		if not trimworld:
+		if trimworld:
 			worldlist=grabfile(self.myroot+"var/cache/edb/world")
 			mycpv=self.cat+"/"+self.pkg
 			mykey=cpv_getkey(mycpv)

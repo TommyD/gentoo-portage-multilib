@@ -16,11 +16,11 @@ merged=0
 params=["selective", "deep", "self", "recurse", "empty"]
 actions=["clean", "config", "help", "info", "prune", "rsync", "search", "sync", "system", "unmerge", "world", "inject", "regen", "depclean"]
 options=["--autoclean", "--deep", "--selective", "--buildpkg", "--buildpkgonly", "--debug", "--nodeps", "--emptytree", "--fetchonly", "--changelog",
-"--noreplace", "--onlydeps", "--pretend", "--usepkg", "--usepkgonly", "--searchdesc", "--verbose", "--update", "--help", "--oneshot", "--version"]
+"--noreplace", "--onlydeps", "--pretend", "--quiet", "--searchdesc", "--usepkg", "--usepkgonly", "--verbose", "--update", "--help", "--oneshot", "--version"]
 
 shortmapping={"a":"--autoclean", "b":"--buildpkg", "B":"--buildpkgonly", "c":"clean", "C":"unmerge", "e":"--emptytree", "d":"--debug", "f":"--fetchonly",
 	"h":"--help", "i":"inject", "k":"--usepkg", "K":"--usepkgonly", "l":"--changelog", "n":"--noreplace", "o":"--onlydeps", "O":"--nodeps",
-	"p":"--pretend", "P":"prune", "s":"search", "S":"--searchdesc", "u":"--update", "v":"--verbose", "V":"--version"}
+	"p":"--pretend", "P":"prune", "q":"--quiet", "s":"search", "S":"--searchdesc", "u":"--update", "v":"--verbose", "V":"--version"}
 
 def emergelog(mystr):
 	try:
@@ -1409,15 +1409,18 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 elif myaction=="regen":
 	emergelog(" === regen")
 	#regenerate cache entries
+	print "Regenerating cache entries... ",
+	sys.stdout.flush()
 	mynodes=portage.portdb.cp_all()
 	for x in mynodes:
 		mymatches=portage.portdb.xmatch("list-visible",x)
-		print "processing",x
+		if not "--quiet" in myopts:
+			print "processing",x
 		for y in mymatches:
 			try:
 				foo=portage.portdb.aux_get(y,["DEPEND"])
 			except:
-				print "error processing",y+", continuing..."
+				print "\nerror processing",y+", continuing..."
 	print "done!"
 # HELP action
 elif "config"==myaction:

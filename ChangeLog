@@ -1,6 +1,16 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  11 Feb 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Fix the
+  depcache code by adding in a missing stat call after regeneration.
+  Call portageexit() in exithandler() so that mtimedb gets written out
+  on cancelled runs. Add in --quiet option. Currently only kills the
+  processing messages on emerge regen.
+	
+  11 Feb 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Fix the
+  eclass code to remove the double inherits cause by eclasses managing
+  that on their own.
+
 *portage-2.0.46-r12 (07 Feb 2003): Fixups
 
   07 Feb 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Move
@@ -9,7 +19,7 @@
   to movefile() code to ensure symlinks are handled properly.
 
   07 Feb 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Make per-
-  ebuild logs use the counter to get a chronilogical list instead of a
+  ebuild logs use the counter to get a chronological list instead of a
   timestamp based one.
 	
   07 Feb 2003; Nicholas Jones <carpaski@gentoo.org> emerge: If a package

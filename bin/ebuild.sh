@@ -925,29 +925,26 @@ inherit() {
 	local location
 	while [ "$1" ]
 	do
-		export INHERITED="$INHERITED $1"
+		location="${ECLASSDIR}/${1}.eclass"
+		PECLASS="$ECLASS"
+		export ECLASS="$1"
 
 		# any future resolution code goes here
 		if [ -n "$PORTDIR_OVERLAY" ]
 		then
-			location="${PORTDIR_OVERLAY}/eclass/${1}.eclass"
-			if [ -e "$location" ]
-			then
-				debug-print "inherit: $1 -> $location"
-				source "$location" || die "died sourcing $location in inherit()"
-				#continue processing, skip sourcing of one in $ECLASSDIR
-				shift
-				continue
+			olocation="${PORTDIR_OVERLAY}/eclass/${1}.eclass"
+			if [ -e "$olocation" ]; then
+				location="${olocation}"
 			fi
 		fi
-			
-		location="${ECLASSDIR}/${1}.eclass"
 		debug-print "inherit: $1 -> $location"
-		PECLASS="$ECLASS"
-		export ECLASS="$1"
 		source "$location" || die "died sourcing $location in inherit()"
 		ECLASS="$PECLASS"
 		unset PECLASS
+
+		if ! has $1 $INHERITED &>/dev/null; then
+			export INHERITED="$INHERITED $1"
+		fi
 
 		shift
 	done
