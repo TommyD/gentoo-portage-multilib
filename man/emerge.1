@@ -384,7 +384,10 @@ Masks in \fBportage\fR provide three primary functions: they allow a
 testing period where the packages can be used in live machines; they
 prevent the use of a package when it will fail, and they mask existing
 packages that are broken or could pose a security risk.  Masking can be
-done by two methods: \fBpackage.mask\fR and \fBKEYWORDS\fR.
+done by two methods: \fBpackage.mask\fR and \fBKEYWORDS\fR.  Read below
+to find out how to unmask in either case.  Also note that if you give 
+\fBemerge\fR an ebuild then all forms of masking will be ignored and
+\fBemerge\fR will attempt to emerge the package.
 .TP
 .BR package.mask
 \fBpackage.mask\fR primarily blocks the use of packages that cause
