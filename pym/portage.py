@@ -3511,7 +3511,11 @@ def getmaskingstatus(mycpv):
 	revmaskdict=settings.prevmaskdict
 	if revmaskdict.has_key(mycp):
 		for x in revmaskdict[mycp]:
-			if not match_to_list(mycpv, [x]):
+			if x[0]=="*":
+				myatom = x[1:]
+			else:
+				myatom = x
+			if not match_to_list(mycpv, [myatom]):
 				rValue.append("profile")
 				break
 
