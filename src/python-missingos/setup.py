@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python2.2
 
 from os import chdir, stat
 from distutils.core import setup, Extension
