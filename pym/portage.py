@@ -1592,6 +1592,7 @@ class config:
 			del self.configdict["env"][x]
 		self.modifiedkeys = []
 		if not keeping_pkg:
+			self.puse = ""
 			for x in self.configdict["pkg"].keys():
 				del self.configdict["pkg"][x]
 		self.regenerate(use_cache=use_cache)
@@ -1629,9 +1630,12 @@ class config:
 		self.mycpv = mycpv
 		self.pusekey = best_match_to_list(self.mycpv, self.pusedict.keys())
 		if self.pusekey:
-			self.puse = string.join(self.pusedict[self.pusekey])
+			newpuse = string.join(self.pusedict[self.pusekey])
 		else:
-			self.puse = ""
+			newpuse = ""
+		if newpuse == self.puse:
+			return
+		self.puse = newpuse
 		self.configdict["pkg"]["PKGUSE"] = self.puse[:] # For saving to PUSE file
 		self.configdict["pkg"]["USE"]    = self.puse[:] # this gets appended to USE
 		self.reset(keeping_pkg=1,use_cache=use_cache)

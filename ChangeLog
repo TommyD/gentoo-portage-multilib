@@ -9,6 +9,9 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  03 Jun 2004; Jason Stubbs <jstubbs@gentoo.org> portage.py: Fixed bug #52720
+  and restored patch for a 35% drop in dep calc time.
+
 *portage-2.0.51_pre10 (02 Jun 2003): Fixes
 
   02 Jun 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Added MANPATH
