@@ -33,6 +33,8 @@ MAKEOPTS="-j2"
 FETCHCOMMAND="/usr/bin/wget -t 5 --passive-ftp \${x} -P \${DISTDIR}"
 #For Prozilla (really rocks):
 #FETCHCOMMAND="/usr/bin/proz -s \${x} -P \${DISTDIR}"
+#For Lukemftp (used by the BSD camp)
+#FETCHCOMMAND="/usr/bin/lukemftp -s -i -a -o \${DISTDIR}/\${y} \${x}"
 
 # Compile programs with GNOME/SLANG extensions 
 USE="slang readline gpm berkdb gdbm tcpd pam libwww ssl
