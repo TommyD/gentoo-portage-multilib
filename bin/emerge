@@ -1,20 +1,7 @@
 #!/usr/bin/env python2.2
-import os
-from os.path import walk, splitext, exists, basename, dirname
-import sys
-
-import output
-from output import *
-import portage
-import xpak
-import string
-from string import strip, find, replace, split
-import commands
-import shutil
-import re
-import time
-import copy
+import os,sys,portage,xpak,string,re,commands,time
 from stat import *
+from output import *
 
 spinner="\|/-\|/-"
 spinpos=0
@@ -159,7 +146,7 @@ class search:
 		print "[ Applications found : "+white(str(len(self.packagematches)))+" ]"
 		print " "
 		for match in self.packagematches:
-			full_package = strip(self.treecache.dep_bestmatch(match))
+			full_package = string.strip(self.treecache.dep_bestmatch(match))
 			if len(full_package) > 1:
 				print green("*")+"  "+white(match)
 				print "     ", "Latest version Available:",self.getVersion(full_package, search.VERSION_RELEASE)
@@ -228,10 +215,10 @@ class search:
 			else:
 				break;
 		file.close()
-		result = replace(result, "${PV}", packageVersion)
-		result = replace(result, "${pv}", packageVersion)
-		result = replace(result, "${description}", "KDE "  + packageVersion + " ")
-		result = replace(result, "\n", "")
+		result = string.replace(result, "${PV}", packageVersion)
+		result = string.replace(result, "${pv}", packageVersion)
+		result = string.replace(result, "${description}", "KDE "  + packageVersion + " ")
+		result = string.replace(result, "\n", "")
 		file.close()
 		# format and wrap the description text nicely
 		wraplength=60
@@ -254,7 +241,7 @@ class search:
 		return formatted_result
 
 	def getFullPath(self,packageShortName,packageFullName):  ## Returns the full path of the ebuild ##
-		absolute_path = '/usr/portage/' + strip(packageShortName)
+		absolute_path = '/usr/portage/' + packageShortName.strip()
 		package_parts = packageFullName.split("/")
 		result = absolute_path + "/" + package_parts[1] + ".ebuild"
 		return result
@@ -278,14 +265,8 @@ def getlist(mode):
 		else:
 			print "!!! No profile directory; system mode unavailable."
 			sys.exit(1)
-		if not os.path.exists(pfile):
-			print "!!! Couldn't find",pfile+":",
-			print mode,"mode unavailable."
-			sys.exit(1)
 	elif mode=="world":
 		pfile=portage.root+"var/cache/edb/world"
-		if not os.path.exists(pfile):
-			return []
 	try:
 		myfile=open(pfile,"r")
 	except OSError:
@@ -404,7 +385,16 @@ class depgraph:
 			myebuild=portage.db[myroot]["porttree"].getname(mykey)
 			mydbkey="/var/cache/edb/dep/dep-"+os.path.basename(myebuild)
 			#use the cached info if it is available and more recent than the ebuild itself (mtime)
-			if (not os.path.exists(mydbkey)) or (os.stat(mydbkey)[ST_MTIME]<os.stat(myebuild)[ST_MTIME]):
+			dbstat=0
+			regen=0
+			try:
+				dbstat=os.stat(mydbkey)[ST_MTIME]
+			except OSError:
+				regen=1
+			if not regen:
+				if dbstat<(os.stat(myebuild)[ST_MTIME]):
+					regen=1
+			if regen:
 				portage.doebuild(myebuild,"depend",myroot,edebug)
 			mydb=open(mydbkey,"r")
 			edepend=eval(mydb.readline())
@@ -485,11 +475,12 @@ class depgraph:
 				print
 				sys.exit(1)
 			splitski=string.split(mycurkey)
-			if "--update" in self.myopts:
-				if not portage.db["/"]["vartree"].exists_specific(splitski[2]):
-					portage.db["/"]["merge"].append(splitski)
-			else:
-				portage.db[splitski[1]]["merge"].append(splitski)	
+			#I'm not sure of the significance of the following lines (vestigal?) so I'm commenting 'em out.
+			#if "--update" in self.myopts:
+			#if not portage.db["/"]["vartree"].exists_specific(splitski[2]):
+			#	portage.db["/"]["merge"].append(splitski)
+			#else:
+			portage.db[splitski[1]]["merge"].append(splitski)	
 			mygraph.delnode(mycurkey)
 		for x in dolist:
 			for y in portage.db[x]["merge"]:
@@ -685,7 +676,7 @@ def unmerge(unmerge_action, unmerge_files):
 			print "\nNo packages to unmerge have been provided.\n"
 			return 0
 		for x in unmerge_files:
-			arg_parts=split(x,'/')
+			arg_parts=x.split('/')
 			if arg_parts[-1][-7:]!=".ebuild":
 				#possible cat/pkg or dep; treat as such
 				candidate_catpkgs.append(x)
@@ -699,7 +690,7 @@ def unmerge(unmerge_action, unmerge_files):
 					print "\n!!! The path '"+x+"' doesn't exist.\n"
 					return 0
 				absx=os.path.abspath(x)
-				spabsx=split(absx,"/")
+				spabsx=absx.split("/")
 				if absx[:12]!="/var/db/pkg/" or len(spabsx)!=7:
 					print spabsx
 					print absx
@@ -824,14 +815,12 @@ def post_emerge(retval=0):
 	if "--pretend" in myopts:
 		sys.exit(retval)
 	root=portage.root
-	if not os.path.isdir(root+"usr/share/info"):
-		print "    "+root+"usr/share/info doesn't exist, skipping info regeneration."
-	elif not os.path.exists("/usr/bin/install-info"):
-		print "    /usr/bin/install-info doesn't exist; skipping info regeneration."
-	else:
+	if os.path.isdir(root+"usr/share/info") and os.path.exists("/usr/bin/install-info"):
 		print " "+green("*")+" Regenerating GNU info directory index..."
-		if os.path.exists(root+"usr/share/info/dir"):
+		try:
 			os.rename(root+"usr/share/info/dir",root+"usr/share/info/dir.old")
+		except:
+			pass
 		icount=0
 		badcount=0
 		for x in os.listdir(root+"usr/share/info"):
@@ -1010,7 +999,7 @@ elif "--help" in myopts:
 		print "              Add a stub entry for a package so that Portage thinks that it's"
 		print "              installed when it really isn't.  Handy if you roll your own"
 		print "              packages.  Example: "
-		print "              "+bold("emerge inject sys-kernel/gentoo-sources-2.4.19")
+		print "              "+bold("emerge inject gentoo-sources-2.4.19")
 		print
 		print turquoise("Options:")
 		print "       "+green("--autoclean")+" ("+green("-a")+" short option)"
@@ -1220,6 +1209,7 @@ else:
 			else:
 				mykey=""
 				if "--usepkg" in myopts:
+					print "DEBUG: bestmatching",mypkg
 					mykey=portage.db[portage.root]["bintree"].dep_bestmatch(mypkg)
 					mytype="binary"
 				if not mykey:

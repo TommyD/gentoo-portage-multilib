@@ -1,24 +1,36 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
-  10 Jun 2002; Dan Armak <danarmak@gentoo.org> make.conf:
-  Update the ibiblio mirror path; it is now
-  www.ibiblio.org/pub/Linux/distributions/gentoo.
+*portage-2.0 (16 Jun 2002)
 
-  10 Jun 2002; Martin Schlemmer <azarah@gentoo.org> ebuild.sh : Some users
-  have $TMPDIR to a custom dir in thier home ...this will cause sandbox errors
-  with some ./configure scripts or libtool, so set it to $T.
+  16 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, ebuild.sh,
+  emerge: turbo-ified Portage, new Portage db API and many other fixes.
+  Unmerging now works again (bug introduced several releases ago.)  I
+  originally wanted to hold off on releasing 2.0, but since several major bugs
+  are fixed, we need to get these fixes out to our users ASAP.  We will be
+  releasing 2.1 in about a week which should include additional refinements.
 
-  10 Jun 2002; Martin Schlemmer <azarah@gentoo.org> portage.py : Merge
-  in the ld.so.preload changes.  Also updated spawn() to only run sandbox
-  if buildphase is one of clean, unpack, compile or install. This should
-  fix the handler not detecting some instances of sandbox running.  Updated
-  ebuildsh() to set buildphase="" on spawn exit.
+  16 Jun 2002; Daniel Robbins <drobbins@gentoo.org> repoman: New repoman
+  commit/check QA tool for developers.
 
-  10 Jun 2002; Martin Schlemmer <azarah@gentoo.org> portage.py.ldsopreload,testsandbox.sh :
-  Add support to test if another sandbox is running, if so dont delete
-  /etc/ld.so.preload on kill.  I did not commit this to portage.py, as it is a bit
-  more changes than we originally though.
+  10 Jun 2002; Dan Armak <danarmak@gentoo.org> make.conf: Update the ibiblio
+  mirror path; it is now www.ibiblio.org/pub/Linux/distributions/gentoo.
+
+  10 Jun 2002; Martin Schlemmer <azarah@gentoo.org> ebuild.sh : Some users have
+  $TMPDIR to a custom dir in their home ...this will cause sandbox errors with
+  some ./configure scripts or libtool, so set it to $T.
+
+  10 Jun 2002; Martin Schlemmer <azarah@gentoo.org> portage.py : Merge in the
+  ld.so.preload changes.  Also updated spawn() to only run sandbox if
+  buildphase is one of clean, unpack, compile or install. This should fix the
+  handler not detecting some instances of sandbox running.  Updated ebuildsh()
+  to set buildphase="" on spawn exit.
+
+  10 Jun 2002; Martin Schlemmer <azarah@gentoo.org>
+  portage.py.ldsopreload,testsandbox.sh : Add support to test if another
+  sandbox is running, if so dont delete /etc/ld.so.preload on kill.  I did not
+  commit this to portage.py, as it is a bit more changes than we originally
+  though.
 
   05 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: doebuild() now
   has proper logic for digest generation.  Digest will now get regenerated if

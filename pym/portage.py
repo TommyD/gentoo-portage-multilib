@@ -1,73 +1,36 @@
-# Gentoo Linux Dependency Checking Code
-# Copyright 1998-2000 Daniel Robbins, Gentoo Technologies, Inc.
-# Distributed under the GNU Public License
+# portage.py -- core Portage functionality 
+# Copyright 1998-2002 Daniel Robbins, Gentoo Technologies, Inc.
+# Distributed under the GNU Public License v2
 
-# TO-DO:
-# (I'm adding this here because I lose or forget about all my other Portage
-# TO-DO files... 
-#
-# rewrite download system
-# -----------------------
-# support partials, look into GENTOO_MIRRORS issue
-#
-# subpackages
-# ===========
-#src_install will work as normal, and will create the master image that includes
-#everything in ${D}.  There will be a new function, called src_subpkg that contains
-#instructions for selecting files from ${D} and copying them to subpkg dirs, where
-#they will get seperately packaged.  The function will look something like this:
-#
-#src_subpkg() {
-#	subpkg bin
-#	#maybe grab should use regular expressions, not globbing?
-#	grab /usr/bin/* /usr/sbin/* /usr/lib/*.so
-#	
-#	subpkg dev
-#	grab /usr/lib/*.a (any way to say "everything but *.so"?)
-#}
-#
-#Subpackage naming will work as follows.  For a package foo-1.0, foo-1.0.tbz2
-#will be the master package and include all subpackages.  foo:dev-1.0.tbz2 will
-#be the development package, and foo:run-1.0.tbz2 will be a runtime package,
-#etc.  It should be possible to simply treat them as unique package names with
-#P="foo:dev" and P="foo:run" respectively.
-#
-#dep resolution needs to be upgraded a bit, though.  "sys-apps/foo" will depend
-#on the foo master package (i.e. foo-1.0.tbz2) for backwards compatibility.  However,
-#it will now also be possible to depend on "sys-apps/foo:dev" or "sys-apps/foo:run",
-#and the dep system needs to be upgraded so that it knows how to satisfy these 
-#dependencies.	This should allow the new subpackages system to be integrated 
-#seamlessly into our existing dependency hierarchy.
-#
-#Note: It may also be a good idea to allow a make.conf option so that "sys-apps/foo:run"
-#automatically resolves to the master package (for those who prefer complete packages
-#rather than installing things piecemeal; a great idea for development boxes where many
-#things will depend on "sys-apps/foo:dev" for headers, but the developer may want the
-#whole enchilada. (generally, I prefer this approach, though for runtime-only systems
-#subpackages make a lot of sense).
+VERSION="2.0"
 
-VERSION="1.9.13"
-
-import string,os
 from stat import *
 from commands import *
-import types
-import sys
-import shlex
-import shutil
-import xpak
-import re
-import fcntl
-import copy
-import signal
-import time
-import missingos
+import string,os,types,sys,shlex,shutil,xpak,fcntl,signal,time,missingos
+dircache={}
+
+def listdir(path):
+    """List directory contents, using cache. (from dircache module; streamlined by drobbins)"""
+    try:
+        cached_mtime, list = dircache[path]
+    except KeyError:
+        cached_mtime, list = -1, []
+    try:
+        mtime = os.stat(path)[8]
+    except os.error:
+        return []
+    if mtime != cached_mtime:
+        try:
+            list = os.listdir(path)
+        except os.error:
+            return []
+    	dircache[path] = mtime, list
+    return list
 
 try:
 	import fchksum
 	def perform_checksum(filename):
 		return fchksum.fmd5t(filename)
-
 except ImportError:
 	import md5
 	def md5_to_hex(md5sum):
@@ -97,16 +60,17 @@ buildphase=""
 
 #the build phases for which sandbox should be active
 sandboxactive=["unpack","compile","clean","install"]
+#if the exithandler triggers before features has been initialized, then it's safe to assume
+#that the sandbox isn't active.
+features=[]
 
 #handle ^C interrupts correctly:
 def exithandler(signum,frame):
+	global features
 	print "!!! Portage interrupted by SIGINT; exiting."
 	#disable sandboxing to prevent problems
-	settings=config()
-	features=settings["FEATURES"].split()
 	#only do this if sandbox is in $FEATURES
 	if "sandbox" in features:
-		mypid=[]
 		mypid=os.fork()
 		if mypid==0:
 			myargs=[]
@@ -283,7 +247,7 @@ def env_update():
 		prevmask=os.umask(0)
 		os.makedirs(root+"etc/env.d",0755)
 		os.umask(prevmask)
-	fns=os.listdir(root+"etc/env.d")
+	fns=listdir(root+"etc/env.d")
 	fns.sort()
 	pos=0
 	while (pos<len(fns)):
@@ -311,13 +275,13 @@ def env_update():
 		for myspec in specials.keys():
 			if myconfig.has_key(myspec):
 				if myspec=="LDPATH":
-					specials[myspec].extend(string.split(expand(myconfig[myspec]),":"))
+					specials[myspec].extend(string.split(varexpand(myconfig[myspec]),":"))
 				else:
-					specials[myspec].append(expand(myconfig[myspec]))
+					specials[myspec].append(varexpand(myconfig[myspec]))
 				del myconfig[myspec]
 		# process all other variables
 		for myenv in myconfig.keys():
-			env[myenv]=expand(myconfig[myenv])
+			env[myenv]=varexpand(myconfig[myenv])
 			
 	if os.path.exists(root+"etc/ld.so.conf"):
 		myld=open(root+"etc/ld.so.conf")
@@ -334,7 +298,6 @@ def env_update():
 	# Where is the new ld.so.conf generated? (achim)
 	else:
 		oldld=None
-	specials["LDPATH"].sort()
 	if (oldld!=specials["LDPATH"]):
 		#ld.so.conf needs updating and ldconfig needs to be run
 		newld=open(root+"etc/ld.so.conf","w")
@@ -489,13 +452,20 @@ def getconfig(mycfg,tolerant=0):
 		mykeys[key]=val
 	return mykeys
 
-def expand(mystring,dictlist=[]):
+#cache expansions of constant strings
+cexpand={}
+def varexpand(mystring,dictlist=[]):
+	try:
+		return cexpand[" "+mystring]
+	except KeyError:
+		pass
 	"""
 	new variable expansion code.  Removes quotes, handles \n, etc, and
 	will soon use the dictlist to expand ${variable} references.
 	This code will be used by the configfile code, as well as others (parser)
 	This would be a good bunch of code to port to C.
 	"""
+	numvars=0
 	mystring=" "+mystring
 	#in single, double quotes
 	insing=0
@@ -548,6 +518,7 @@ def expand(mystring,dictlist=[]):
 			elif (mystring[pos]=="$") and (mystring[pos-1]!="\\"):
 				pos=pos+1
 				if (pos+1)>=len(mystring):
+					cexpand[mystring]=""
 					return ""
 				if mystring[pos]=="{":
 					pos=pos+1
@@ -557,30 +528,33 @@ def expand(mystring,dictlist=[]):
 				myvstart=pos
 				while mystring[pos] not in terminus:
 					if (pos+1)>=len(mystring):
+						cexpand[mystring]=""
 						return ""
 					pos=pos+1
 				myvarname=mystring[myvstart:pos]
 				pos=pos+1
 				if len(myvarname)==0:
+					cexpand[mystring]=""
 					return ""
 				newstring=newstring+settings[myvarname] 
+				numvars=numvars+1
 			else:
 				newstring=newstring+mystring[pos]
 				pos=pos+1
 		else:
 			newstring=newstring+mystring[pos]
 			pos=pos+1
+	if numvars==0:
+		cexpand[mystring]=newstring[1:]
 	return newstring[1:]	
 
 def autouse(myvartree):
 	"returns set of USE variables auto-enabled due to packages being installed"
+	global usedefaults
 	if profiledir==None:
 		return ""
-	mylines=grabfile(profiledir+"/use.defaults")
-	if not mylines:
-		return ""
 	myusevars=""
-	for x in mylines:
+	for x in usedefaults:
 		mysplit=string.split(x)
 		if len(mysplit)<2:
 			#invalid line
@@ -588,7 +562,7 @@ def autouse(myvartree):
 		myuse=mysplit[0]
 		mydep=x[len(mysplit[0]):]
 		#check dependencies; tell depcheck() to ignore settings["USE"] since we are still forming it.
-		myresult=myvartree.depcheck(mydep,lookatuse=0)
+		myresult=dep_check(mydep,myvartree.dbapi,lookatuse=0)
 		if myresult[0]==1 and not myresult[1]:
 			#deps satisfied, add USE variable...
 			myusevars=myusevars+" "+myuse
@@ -630,16 +604,6 @@ class config:
 	def __init__(self):
 		self.configdict={}
 		self.configdict["origenv"]=os.environ.copy()
-		if os.environ.has_key('KV'):
-			pass
-		else:
-			(KV,err) = ExtractKernelVersion('/usr/src/linux')
-			if KV != None:
-				self.configdict["origenv"]['KV'] = KV
-			else:
-				pass
-#				 print "!!! Couldn't extract kernel version - %s" % (err)
-
 		self.configdict["backupenv"]={}
 		if os.environ.has_key("FEATURES"):
 			self.configdict["backupenv"]["FEATURES"]=os.environ["FEATURES"]
@@ -670,17 +634,35 @@ class config:
 		for curdb in mydb:
 			if curdb.has_key(mykey):
 				#expand using only the current config file/db entry
-				mysplit=expand(curdb[mykey],curdb).split()
+				mysplit=varexpand(curdb[mykey],curdb).split()
 				for x in mysplit:
 					if x=="-*":
 						# "-*" is a special "minus" var that means "unset all settings".  so USE="-* gnome" will have *just* gnome enabled.
 						mysetting=[]
-					elif x[0]!="-":
-						if not x in mysetting:
-							mysetting.append(x)
+						continue
+					colonsplit=x.split(":")
+					if x[0]=="-":
+						if len(colonsplit)==2:
+							print "!!! USE variable syntax \""+x+"\" not supported; treating as \""+colonsplit[0]+"\""
+						remove=colonsplit[0][1:]
+						add=""
 					else:
-						while x[1:] in mysetting:
-							mysetting.remove(x[1:])
+						remove=colonsplit[0]
+						add=x
+					#remove any previous settings of this variable
+					dellist=[]
+					for y in range(0,len(mysetting)):
+						colonsplit2=mysetting[y].split(":")
+						if colonsplit2[0]==remove:
+							#we found a previously-defined variable; add it to our dellist for later removal.
+							dellist.append(mysetting[y])
+					for y in dellist:
+						while y in mysetting:
+							mysetting.remove(y)
+					#now append our new setting
+					if add:
+						mysetting.append(add)
+		
 		self[mykey]=string.join(mysetting," ")
 	
 	def populate(self):
@@ -715,7 +697,7 @@ class config:
 			returnme=""
 		for x in self.configlist:
 			if x.has_key(mykey):
-				returnme=returnme+expand(x[mykey],self.configlist)
+				returnme=returnme+varexpand(x[mykey],self.configlist)
 				#without this break, it concats all settings together -- interesting!
 				break
 		return returnme 	
@@ -747,8 +729,6 @@ class config:
 		if not self.populated:
 			self.populate()
 		self.configdict["env"]=self.configdict["origenv"].copy()
-		#new code here
-		self.regenerate("FEATURES",self.configlist)
 		self.use_regenerate()
 
 	def environ(self):
@@ -769,23 +749,12 @@ def spawn(mystring,debug=0,free=0):
 	mypid=os.fork()
 	if mypid==0:
 		myargs=[]
-		#technically I think we should only run sandbox if buildphase
-		#is one of the phases in sandboxactive, and not use the free
-		#argument.  This will enable a stricker sandbox activation.
 		if ("sandbox" in features) and (not free):
-			#only run sandbox for the following phases
-			if buildphase in sandboxactive:
-				mycommand="/usr/lib/portage/bin/sandbox"
-				if debug:
-					myargs=["sandbox",mystring]
-				else:
-					myargs=["sandbox",mystring]
+			mycommand="/usr/lib/portage/bin/sandbox"
+			if debug:
+				myargs=["sandbox",mystring]
 			else:
-				mycommand="/bin/bash"
-				if debug:
-					myargs=["bash","-x","-c",mystring]
-				else:
-					myargs=["bash","-c",mystring]
+				myargs=["sandbox",mystring]
 		else:
 			mycommand="/bin/bash"
 			if debug:
@@ -806,18 +775,9 @@ def spawn(mystring,debug=0,free=0):
 		#interrupted by signal
 		return 16
 
-def ebuildsh(mystring,debug=0,free=0):
-	"spawns ebuild.sh more granular"
-	mylist=mystring.split()
-	for x in mylist:
-		global buildphase
-		buildphase=x
-		#here we always want to call spawn with free=0,
-		#else the exit handler may not detect things properly
-		retval=spawn("/usr/sbin/ebuild.sh "+x,debug)
-		#reset it again
-		buildphase=""
-		if retval: return retval
+def ebuildsh(mystring):
+	"Spawn ebuild.sh, optionally in a sandbox"
+	pass
 
 def getmycwd():
 	"this handles situations where the current directory doesn't exist"
@@ -859,7 +819,7 @@ def fetch(myuris):
 			myfile=os.path.basename(myuri)
 			try:
 				mystat=os.stat(settings["DISTDIR"]+"/"+myfile)
-			except OSError:
+			except OSError,IOError:
 				# file does not exist
 				print "!!!",myfile,"not found in",settings["DISTDIR"]+"."
 				gotit=0
@@ -906,7 +866,7 @@ def fetch(myuris):
 				#we don't have the digest file, but the file exists.  Assume it is fully downloaded.
 				docontinue=1
 				pass
-		except OSError:
+		except OSError,IOError:
 			pass
 		if docontinue:
 			#you can't use "continue" when you're inside a "try" block
@@ -924,7 +884,7 @@ def fetch(myuris):
 					if mystat[ST_SIZE]==mydigests[myfile]["size"]:
 						gotit=1
 						break
-				except OSError:
+				except OSError,IOError:
 					pass
 			else:
 				if not myret:
@@ -1074,9 +1034,14 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 		print "!!! Please specify a valid command."
 		return 1
 
-	# if any of these are being called, stop now, handle them and stop now.
+	#set up KV variable
+	mykv,err=ExtractKernelVersion(root+"usr/src/linux")
+	if mykv:
+		settings["KV"]=mykv
+
+	# if any of these are being called, handle them and stop now.
 	if mydo in ["help","clean","prerm","postrm","preinst","postinst","config","touch","setup"]:
-		return ebuildsh(mydo)
+		return spawn("/usr/sbin/ebuild.sh "+mydo)
 		#initial ebuild.sh bash environment configured
 	
 	mydbkey="/var/cache/edb/dep/dep-"+os.path.basename(settings["EBUILD"])
@@ -1149,18 +1114,18 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 				}
 	if mydo in actionmap.keys():	
 		if "noauto" in features:
-			return ebuildsh(mydo)
+			return spawn("/usr/sbin/ebuild.sh "+mydo)
 		else:
-			return ebuildsh(actionmap[mydo])
+			return spawn("/usr/sbin/ebuild.sh "+actionmap[mydo])
 	elif mydo=="qmerge": 
 		#qmerge is specifically not supposed to do a runtime dep check
 		return merge(settings["CATEGORY"],settings["PF"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot)
 	elif mydo=="merge":
-		retval=ebuildsh("setup unpack compile install")
+		retval=spawn("/usr/sbin/ebuild.sh setup unpack compile install")
 		if retval: return retval
 		return merge(settings["CATEGORY"],settings["PF"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot,myebuild=settings["EBUILD"])
 	elif mydo=="package":
-		retval=ebuildsh("setup")
+		retval=spawn("/usr/sbin/ebuild.sh setup")
 		if retval:
 			return retval
 		for x in ["","/"+settings["CATEGORY"],"/All"]:
@@ -1184,30 +1149,9 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 			print
 			return 0
 		else:
-			return ebuildsh("unpack compile install package")
-
-def isfifo(x):
-	mymode=os.lstat(x)[ST_MODE]
-	if S_ISLNK(mymode):
-		return 0
-	return S_ISFIFO(mymode)
+			return spawn("/usr/sbin/ebuild.sh unpack compile install package")
 
 expandcache={}
-
-def expandpath(realroot,mypath):
-	"""The purpose of this function is to resolve the 'real' path on disk, with all
-	symlinks resolved except for the basename, since we may be installing a symlink
-	and definitely don't want it expanded.	In fact, the file that we want to install
-	doesn't need to exist; just the dirname."""
-	global expandcache
-	split=string.split(mypath,"/")
-	join=string.join(split[:-1],"/")
-	try:
-		return expandcache[join]+'/'+split[-1]
-	except:
-		pass
-	expandcache[join]=os.path.realpath(join)
-	return expandcache[join]
 
 def movefile(src,dest,newmtime=None,sstat=None):
 	"""moves a file from src to dest, preserving all permissions and attributes; mtime will
@@ -1395,15 +1339,8 @@ def movefile(src,dest,newmtime=None,sstat=None):
 		print "!!! unlink fail 1 on",destorig
 	return returnme 
 
-def getmtime(x):
-	 return `os.lstat(x)[-2]`
-
 def perform_md5(x):
 	return perform_checksum(x)[0]
-
-def pathstrip(x,mystart):
-    cpref=os.path.commonprefix([x,mystart])
-    return [root+x[len(cpref)+1:],x[len(cpref):]]
 
 def merge(mycat,mypkg,pkgloc,infloc,myroot,myebuild=None):
 	mylink=dblink(mycat,mypkg,myroot)
@@ -1417,14 +1354,6 @@ def unmerge(cat,pkg,myroot):
 	if mylink.exists():
 		mylink.unmerge()
 	mylink.delete()
-
-def getenv(mykey,dictlist=[]):
-	"dictlist contains a list of dictionaries to check *before* the environment"
-	dictlist.append(os.environ)
-	for x in dictlist:
-		if x.has_key(mykey):
-			return expand(x[mykey],dictlist)
-	return ""
 
 def relparse(myver):
 	"converts last version part into three components"
@@ -1466,22 +1395,16 @@ def relparse(myver):
 			number=string.atof(myver)  
 	return [number,p1,p2]
 
-def revverify(myrev):
-	if len(myrev)==0:
-		return 0
-	if myrev[0]=="r":
-		try:
-			string.atoi(myrev[1:])
-			return 1
-		except: 
-			pass
-	return 0
-
 #returns 1 if valid version string, else 0
 # valid string in format: <v1>.<v2>...<vx>[a-z,_{endversion}[vy]]
 # ververify doesn't do package rev.
 
+vercache={}
 def ververify(myorigval,silent=1):	
+	try:
+		return vercache[myorigval]
+	except KeyError:
+		pass
 	if len(myorigval)==0:
 		if not silent:
 			print "!!! Name error: package contains empty \"-\" part."
@@ -1490,25 +1413,30 @@ def ververify(myorigval,silent=1):
 	if len(myval)==0:
 		if not silent:
 			print "!!! Name error: empty version string."
+		vercache[myorigval]=0
 		return 0
 	#all but the last version must be a numeric
 	for x in myval[:-1]:
 		if not len(x):
 			if not silent:
 				print "!!! Name error in",myorigval+": two decimal points in a row"
+			vercache[myorigval]=0
 			return 0
 		try:
 			foo=string.atoi(x)
 		except:
 			if not silent:
 				print "!!! Name error in",myorigval+": \""+x+"\" is not a valid version component."
+			vercache[myorigval]=0
 			return 0
 	if not len(myval[-1]):
 			if not silent:
 				print "!!! Name error in",myorigval+": two decimal points in a row"
+			vercache[myorigval]=0
 			return 0
 	try:
 		foo=string.atoi(myval[-1])
+		vercache[myorigval]=1
 		return 1
 	except:
 		pass
@@ -1517,6 +1445,7 @@ def ververify(myorigval,silent=1):
 		try:
 			foo=string.atoi(myval[-1][:-1])
 			return 1
+			vercache[myorigval]=1
 			# 1a, 2.0b, etc.
 		except:
 			pass
@@ -1526,6 +1455,7 @@ def ververify(myorigval,silent=1):
 	if len(ep)!=2:
 		if not silent:
 			print "!!! Name error in",myorigval
+		vercache[myorigval]=0
 		return 0
 	try:
 		foo=string.atoi(ep[0])
@@ -1533,21 +1463,25 @@ def ververify(myorigval,silent=1):
 		#this needs to be numeric, i.e. the "1" in "1_alpha"
 		if not silent:
 			print "!!! Name error in",myorigval+": characters before _ must be numeric"
+		vercache[myorigval]=0
 		return 0
 	for mye in endversion_keys:
 		if ep[1][0:len(mye)]==mye:
 			if len(mye)==len(ep[1]):
 				#no trailing numeric; ok
+				vercache[myorigval]=1
 				return 1
 			else:
 				try:
 					foo=string.atoi(ep[1][len(mye):])
+					vercache[myorigval]=1
 					return 1
 				except:
 					#if no endversions work, *then* we return 0
 					pass	
 	if not silent:
 		print "!!! Name error in",myorigval
+	vercache[myorigval]=0
 	return 0
 
 def isjustname(mypkg):
@@ -1557,11 +1491,18 @@ def isjustname(mypkg):
 			return 0
 	return 1
 
+iscache={}
 def isspecific(mypkg):
+	"now supports packages with no category"
+	try:
+		return iscache[mypkg]
+	except:
+		pass
 	mysplit=string.split(mypkg,"/")
-	if len(mysplit)==2:
-		if not isjustname(mysplit[1]):
+	if not isjustname(mysplit[-1]):
+			iscache[mypkg]=1
 			return 1
+	iscache[mypkg]=0
 	return 0
 
 # This function can be used as a package verification function, i.e.
@@ -1570,63 +1511,111 @@ def isspecific(mypkg):
 # return a list containing: [ pkgname, pkgversion(norev), pkgrev ].
 # For foo-1.2-1, this list would be [ "foo", "1.2", "1" ].  For 
 # Mesa-3.0, this list would be [ "Mesa", "3.0", "0" ].
-
+pkgcache={}
 def pkgsplit(mypkg,silent=1):
+	try:
+		return pkgcache[mypkg]
+	except KeyError:
+		pass
 	myparts=string.split(mypkg,'-')
 	if len(myparts)<2:
 		if not silent:
 			print "!!! Name error in",mypkg+": missing a version or name part." 
+		pkgcache[mypkg]=None
 		return None
 	for x in myparts:
 		if len(x)==0:
 			if not silent:
 				print "!!! Name error in",mypkg+": empty \"-\" part."
+			pkgcache[mypkg]=None
 			return None
-	if revverify(myparts[-1]):
+	#verify rev
+	revok=0
+	myrev=myparts[-1]
+	if len(myrev) and myrev[0]=="r":
+		try:
+			string.atoi(myrev[1:])
+			revok=1
+		except: 
+			pass
+	if revok:
 		if ververify(myparts[-2]):
 			if len(myparts)==2:
+				pkgcache[mypkg]=None
 				return None
 			else:
 				for x in myparts[:-2]:
 					if ververify(x):
+						pkgcache[mypkg]=None
 						return None
 						#names can't have versiony looking parts
-				return [string.join(myparts[:-2],"-"),myparts[-2],myparts[-1]]
+				myval=[string.join(myparts[:-2],"-"),myparts[-2],myparts[-1]]
+				pkgcache[mypkg]=myval
+				return myval
 		else:
+			pkgcache[mypkg]=None
 			return None
 
 	elif ververify(myparts[-1],silent):
 		if len(myparts)==1:
 			if not silent:
 				print "!!! Name error in",mypkg+": missing name part."
+			pkgcache[mypkg]=None
 			return None
 		else:
 			for x in myparts[:-1]:
 				if ververify(x):
 					if not silent:
 						print "!!! Name error in",mypkg+": multiple version parts."
+					pkgcache[mypkg]=None
 					return None
-			return [string.join(myparts[:-1],"-"),myparts[-1],"r0"]
+			myval=[string.join(myparts[:-1],"-"),myparts[-1],"r0"]
+			pkgcache[mypkg]=myval
+			return myval
 	else:
+		pkgcache[mypkg]=None
 		return None
 
-def catpkgsplit(mycatpkg,silent=1):
-	"""returns [cat, pkgname, version, rev ]"""
-	mysplit=string.split(mycatpkg,"/")
-	if len(mysplit)!=2:
-		if not silent:
-			print "!!! Name error in",mycatpkg+": category or package part missing."
+catcache={}
+def catpkgsplit(mydata,silent=1):
+	"returns [cat, pkgname, version, rev ]"
+	try:
+		return catcache[mydata]
+	except KeyError:
+		pass
+	mysplit=mydata.split("/")
+	p_split=None
+	if len(mysplit)==1:
+		retval=["null"]
+		p_split=pkgsplit(mydata,silent)
+	elif len(mysplit)==2:
+		retval=[mysplit[0]]
+		p_split=pkgsplit(mysplit[1],silent)
+	if not p_split:
+		catcache[mydata]=None
 		return None
-	mysplit2=pkgsplit(mysplit[1],silent)
-	if mysplit2==None:
-		return None
-	return [mysplit[0],mysplit2[0],mysplit2[1],mysplit2[2]]
+	retval.extend(p_split)
+	catcache[mydata]=retval
+	return retval
 
 # vercmp:
 # This takes two version strings and returns an integer to tell you whether
 # the versions are the same, val1>val2 or val2>val1.
-
+vcmpcache={}
 def vercmp(val1,val2):
+	if val1==val2:
+		#quick short-circuit
+		return 0
+	valkey=val1+" "+val2
+	try:
+		return vcmpcache[valkey]
+		try:
+			return -vcmpcache[val2+" "+val1]
+		except KeyError:
+			pass
+	except KeyError:
+		pass
+	
 	# consider 1_p2 vc 1.1
 	# after expansion will become (1_p2,0) vc (1,1)
 	# then 1_p2 is compared with 1 before 0 is compared with 1
@@ -1677,7 +1666,9 @@ def vercmp(val1,val2):
 		for y in range(0,3):
 			myret=cmp1[y]-cmp2[y]
 			if myret != 0:
+				vcmpcache[valkey]=myret
 				return myret
+	vcmpcache[valkey]=0
 	return 0
 
 
@@ -1845,616 +1836,603 @@ def getvirtuals(myroot):
 			myvirts[mysplit[0]]=mysplit[1]
 	return myvirts
 
+def dep_getkey(mydep):
+	if not len(mydep):
+		return mydep
+	if mydep[0]=="*":
+		mydep=mydep[1:]
+	if mydep[-1]=="*":
+		mydep=mydep[:-1]
+	if len(mydep)<=2:
+		return mydep
+	if mydep[:2] in [ ">=", "<=" ]:
+		mydep=mydep[2:]
+	elif mydep[:1] in "=<>~!":
+		mydep=mydep[1:]
+	if isspecific(mydep):
+		mysplit=catpkgsplit(mydep)
+		if not mysplit:
+			return mydep
+		return mysplit[0]+"/"+mysplit[1]
+	else:
+		return mydep
+
+def dep_getcpv(mydep):
+	if not len(mydep):
+		return mydep
+	if mydep[0]=="*":
+		mydep=mydep[1:]
+	if mydep[-1]=="*":
+		mydep=mydep[:-1]
+	if len(mydep)<=2:
+		return mydep
+	if mydep[:2] in [ ">=", "<=" ]:
+		mydep=mydep[2:]
+	elif mydep[:1] in "=<>~!":
+		mydep=mydep[1:]
+	return mydep
+
+def cpv_getkey(mycpv):
+	myslash=mycpv.split("/")
+	mysplit=pkgsplit(myslash[-1])
+	if len(myslash)==2:
+		return myslash[0]+"/"+mysplit[0]
+	else:
+		return mysplit[0]
+
+def key_expand(mykey,mydb=None):
+	mysplit=mykey.split("/")
+	if len(mysplit)==2:
+		if virts and virts.has_key(mykey):
+			return virts[mykey]
+		else:
+			return mykey
+	#our key doesn't have a category; add one
+	if mydb:
+		for x in categories:
+			if mydb.cp_list(x+"/"+mykey):
+				return x+"/"+mykey
+	if virts_p.has_key(mykey):
+		return(virts_p[mykey])
+	return "null/"+mykey
+
+def cpv_expand(mycpv,mydb=None):
+	myslash=mycpv.split("/")
+	mysplit=pkgsplit(myslash[-1])
+	if len(myslash)==2:
+		if mysplit:
+			mykey=myslash[0]+"/"+mysplit[0]
+		else:
+			mykey=mycpv
+		if virts and virts.has_key(mykey):
+			mykey=virts[mykey]
+	else:
+		#specific cpv, no category, ie. "foo-1.0"
+		if mysplit:
+			myp=mysplit[0]
+		else:
+			myp=mycpv
+		mykey=None
+		if mydb:
+			for x in categories:
+				if mydb.cp_list(x+"/"+myp):
+					mykey=x+"/"+myp
+		if not mykey:
+			if virts_p.has_key(myp):
+				mykey=virts_p(myp)
+		if not mykey:
+			mykey="null/"+myp
+	if mysplit:
+		if mysplit[2]=="r0":
+			return mykey+"-"+mysplit[1]
+		else:
+			return mykey+"-"+mysplit[1]+"-"+mysplit[2]
+	else:
+		return mykey
+
+def dep_expand(mydep,mydb=None):
+	if not len(mydep):
+		return mydep
+	if mydep[0]=="*":
+		mydep=mydep[1:]
+	prefix=""
+	postfix=""
+	if mydep[-1]=="*":
+		mydep=mydep[:-1]
+		postfix="*"
+	if len(mydep)<=2:
+		return mydep
+	if mydep[:2] in [ ">=", "<=" ]:
+		prefix=mydep[:2]
+		mydep=mydep[2:]
+	elif mydep[:1] in "=<>~!":
+		prefix=mydep[:1]
+		mydep=mydep[1:]
+	return prefix+cpv_expand(mydep,mydb)+postfix
+
+
+
+def dep_check(depstring,mydbapi,lookatuse=1):
+	"""evaluates a dependency string and returns a 2-node result list
+	[1, None] = ok, no dependencies
+	[1, ["x11-base/foobar","sys-apps/oni"] = dependencies must be satisfied
+	[0, * ] = parse error
+	"""
+	if lookatuse:
+		myusesplit=string.split(settings["USE"])
+	else:
+		#we are being run by autouse(), don't consult USE vars yet.
+		myusesplit=[]
+	mysplit=string.split(depstring)
+	#convert parenthesis to sublists
+	mysplit=dep_parenreduce(mysplit)
+	#mysplit can't be None here, so we don't need to check
+	mysplit=dep_opconvert(mysplit,myusesplit)
+	#if mysplit==None, then we have a parse error (paren mismatch or misplaced ||)
+	#up until here, we haven't needed to look at the database tree
+	
+	if mysplit==None:
+		return [0,"Parse Error (parenthesis mismatch?)"]
+	elif mysplit==[]:
+		#dependencies were reduced to nothing
+		return [1,[]]
+	mysplit2=mysplit[:]
+	mysplit2=dep_wordreduce(mysplit2,mydbapi)
+	if mysplit2==None:
+		return [0,"Invalid token"]
+	myeval=dep_eval(mysplit2)
+	if myeval:
+		return [1,[]]
+	else:
+		mylist=dep_listcleanup(dep_zapdeps(mysplit,mysplit2))
+		mydict={}
+		for x in mylist:
+			mydict[x]=1
+		return [1,mydict.keys()]
+
+def dep_wordreduce(mydeplist,mydbapi):
+	"Reduces the deplist to ones and zeros"
+	mypos=0
+	deplist=mydeplist[:]
+	while mypos<len(deplist):
+		if type(deplist[mypos])==types.ListType:
+			#recurse
+			deplist[mypos]=dep_wordreduce(deplist[mypos],mydbapi)
+		else:
+			mydep=match(deplist[mypos],mydbapi)
+			if mydep!=None:
+				deplist[mypos]=(len(mydep)>=1)
+			else:
+				#encountered invalid string
+				return None
+		mypos=mypos+1
+	return deplist
+
 class packagetree:
 	def __init__(self,virtual,clone=None):
 		if clone:
 			self.tree=clone.tree.copy()
 			self.populated=clone.populated
 			self.virtual=clone.virtual
+			self.dbapi=None
 		else:
 			self.tree={}
 			self.populated=0
 			self.virtual=virtual
+			self.dbapi=None
+
+		
+	def resolve_key(self,mykey):
+		return key_expand(mykey,self.dbapi)
 	
-	def load(self,mykey):
-		"loads a cat/pkg from disk into the tree"
-		#stub function for non-incremental caching:
-		if not self.populated:
-			self.populate()
-		if not self.tree.has_key(mykey):
-			self.tree[mykey]=[]
+	def dep_nomatch(self,mypkgdep):
+		mykey=dep_getkey(mypkgdep)
+		nolist=self.dbapi.cp_list(mykey)
+		mymatch=match(mypkgdep,self.dbapi)
+		if match==None:
+			return nolist
+		for x in mymatch:
+			if x in nolist:
+				nolist.remove(x)
+		return nolist
+
+	def depcheck(self,mycheck,mylookatuse=1):
+		return dep_check(mycheck,self.dbapi,lookatuse=mylookatuse)
 
 	def populate(self):
 		"populates the tree with values"
 		populated=1
 		pass
 
-	def zap(self,mycatpkg):
-		"remove a catpkg from the deptree"
-		cps=catpkgsplit(mycatpkg,0)
-		mykey=cps[0]+"/"+cps[1]
-		if not self.tree.has_key(mykey):
-			#load cat/pkg'skeys from disk into tree
-			self.load(mykey)
-		x=0
-		while x<len(self.tree[mykey]):
-			if self.tree[mykey][x][0]==mycatpkg:
-				del self.tree[mykey][x]
-			x=x+1
-		if len(self.tree[mykey])==0:
-			self.tree[mykey]=[]
+def best(mymatches):
+	"accepts None arguments; assumes matches are valid."
+	if mymatches==None:
+		return "" 
+	if not len(mymatches):
+		return "" 
+	bestmatch=mymatches[0]
+	p2=catpkgsplit(bestmatch)[1:]
+	for x in mymatches[1:]:
+		p1=catpkgsplit(x)[1:]
+		if pkgcmp(p1,p2)>0:
+			bestmatch=x
+			p2=catpkgsplit(bestmatch)[1:]
+	return bestmatch		
 
-	def inject(self,mycatpkg):
-		"add a specific catpkg to the deptree"
-		cps=catpkgsplit(mycatpkg,0)
-		mykey=cps[0]+"/"+cps[1]
-		if not self.tree.has_key(mykey):
-			self.load(mykey)
-		for x in self.tree[mykey]:
-			if x[0]==mycatpkg:
-				#already in the tree
-				return
-		self.tree[mykey].append([mycatpkg,cps])
-		#new packages mean possible new auto-use settings, so regenerate USE vars
-		settings.use_regenerate()
+def match(origdep,mydata):
+	if type(mydata)==types.InstanceType:
+		mydep=dep_expand(origdep,mydata)
+		mylist=mydata.cp_list(dep_getkey(mydep))
+	else:
+		mydep=dep_expand(origdep)
+		mylist=mydata
+	mycpv=dep_getcpv(mydep)
+	if isspecific(mycpv):
+		cp_key=catpkgsplit(mycpv)
+		if cp_key==None:
+			return []
+	else:
+		cp_key=None
 	
-	def resolve_key(self,mykey):
-		"generates new key, taking into account virtual keys"
-		if not self.tree.has_key(mykey):
-			self.load(mykey)
-		if self.tree.has_key(mykey) and len(self.tree[mykey])==0:
-			#no packages correspond to the key
-			if self.virtual:
-				if self.virtual.has_key(mykey):
-					self.load(self.virtual[mykey])
-					return self.virtual[mykey]
-		return mykey
+	if (mydep[0]=="="):
+		if cp_key==None:
+			return []
+		if mydep[-1]=="*":
+			#example: "=sys-apps/foo-1.0*"
+			try:
+				#now, we grab the version of our dependency...
+				mynewsplit=string.split(cp_key[2],'.')
+				#split it...
+				mynewsplit[-1]=`int(mynewsplit[-1])+1`
+				#and increment the last digit of the version by one.
+				#We don't need to worry about _pre and friends because they're not supported with '*' deps.
+				new_v=string.join(mynewsplit,".")
+				#new_v will be used later in the code when we do our comparisons using pkgcmp()
+			except:
+				#erp, error.
+				return [] 
+			mynodes=[]
+			cmp1=cp_key[1:]
+			cmp2=[cp_key[1],new_v,"r0"]
+			for x in mylist:
+				cp_x=catpkgsplit(x)
+				if cp_x==None:
+					return None
+				#skip entries in our list that do not have matching categories
+				if cp_key[0]!=cp_x[0]:
+					continue
+				# ok, categories match. Continue to next step.	
+				if ((pkgcmp(cp_x[1:],cmp1)>=0) and (pkgcmp(cp_x[1:],cmp2)<0)):
+					# entry is >= the version in specified in our dependency, and <= the version in our dep + 1; add it:
+					mynodes.append(x)
+			return mynodes
+		else:
+			# Does our stripped key appear literally in our list?  If so, we have a match; if not, we don't.
+			if mycpv in mylist:
+				return [mycpv]
+			else:
+				return []
+	elif (mydep[0]==">") or (mydep[0]=="<"):
+		if cp_key==None:
+			return []
+		if (len(mydep)>1) and (mydep[1]=="="):
+			cmpstr=mydep[0:2]
+		else:
+			cmpstr=mydep[0]
+		mynodes=[]
+		for x in mylist:
+			cp_x=catpkgsplit(x)
+			if cp_x==None:
+				return None
+			if cp_key[0]!=cp_x[0]:
+				continue
+			if eval("pkgcmp(cp_x[1:],cp_key[1:])"+cmpstr+"0"):
+				mynodes.append(x)
+		return mynodes
+	elif mydep[0]=="~":
+		if cp_key==None:
+			return []
+		myrev=-1
+		for x in mylist:
+			cp_x=catpkgsplit(x)
+			if cp_x==None:
+				return None
+			if cp_key[0]!=cp_x[0]:
+				continue
+			if cp_key[2]!=cp_x[2]:
+				#if version doesn't match, skip it
+				continue
+			if string.atoi(cp_x[3][1:])>myrev:
+				myrev=string.atoi(cp_x[3][1:])
+				mymatch=x
+		if myrev==-1:
+			return []
+		else:
+			return [mymatch]
+	elif cp_key==None:
+		if mydep[0]=="!":
+			reverse=1
+		else:
+			reverse=0
+		mynodes=[]
+		cp_key=mycpv.split("/")
+		for x in mylist:
+			cp_x=catpkgsplit(x)
+			if cp_x==None:
+				return None
+			if cp_key[0]!=cp_x[0]:
+				if reverse:
+					mynodes.append(x)
+				else:
+					continue
+			if cp_key[1]!=cp_x[1]:
+				if reverse:
+					mynodes.append(x)
+				else:
+					continue
+			if reverse:
+				continue
+			else:
+				mynodes.append(x)
+		return mynodes
+	else:
+		return None
 
-	def exists_specific(self,myspec):
-		myspec=self.resolve_specific(myspec)
-		if not myspec:
-			return None
-		cps=catpkgsplit(myspec)
-		if not cps:
-			return None
-		mykey=cps[0]+"/"+cps[1]
-		if not self.tree.has_key(mykey):
-			self.load(mykey)
-		for x in self.tree[mykey]:
-			if x[0]==myspec: 
-				return 1
-		return 0
+def visible(mylist):
+	"strip out masked (invisible) entries"
+	if mylist==None:
+		return []
+	newlist=[]
+	for mykey in mylist:
+		cpv=catpkgsplit(mykey)
+		mycp=cpv[0]+"/"+cpv[1]
+		match1=0
+		match2=0
+		if maskdict.has_key(mycp):
+			for x in maskdict[mycp]:
+				mymatches=match(x,mylist)
+				if mymatches==None:
+					return None
+				if mykey in mymatches:
+					match1=1
+					continue
+		if not match1 and revmaskdict.has_key(mycp):
+			for x in revmaskdict[mycp]:
+				mymatches=match(x,mylist)
+				if mymatches==None:
+					return None
+				if mykey not in mymatches:
+					match2=1
+					continue
+		if (not match1) and (not match2):
+			newlist.append(mykey)
+	return newlist
 
-	def exists_specific_cat(self,myspec):
-		"give me a specific package, and I'll tell you whether the specific node exists."
-		myspec=self.resolve_specific(myspec)
-		if not myspec:
-			return None
-		cps=catpkgsplit(myspec)
-		if not cps:
-			return None
-		mykey=cps[0]+"/"+cps[1]
-		if not self.tree.has_key(mykey):
-			self.load(mykey)
-		if len(self.tree[mykey]):
-			return 1
-		return 0
+class portagetree:
+	def __init__(self,root="/",virtual=None,clone=None):
+		if clone:
+			self.root=clone.root
+			self.portroot=clone.portroot
+			self.pkglines=clone.pkglines
+		else:
+			self.root=root
+			self.portroot=settings["PORTDIR"]
+			self.virtual=virtual
+			self.dbapi=portdbapi()
+
+	def dep_bestmatch(self,mydep):
+		"compatibility method"
+		mymatch=best(visible(match(mydep,self.dbapi)))
+		if mymatch==None:
+			return ""
+		return mymatch
+
+	def dep_match(self,mydep):
+		"compatibility method"
+		mymatch=visible(match(mydep,self.dbapi))
+		if mymatch==None:
+			return []
+		return mymatch
+
+	def exists_specific(self,cpv):
+		return self.dbapi.cpv_exists(cpv)
+
+	def getallnodes(self):
+		"""new behavior: these are all *unmasked* nodes.  There may or may not be available
+		masked package for nodes in this nodes list."""
+		return self.dbapi.cp_all()
+
+	def getname(self,pkgname):
+		"returns file location for this particular package"
+		pkgname=self.resolve_specific(pkgname)
+		if not pkgname:
+			return ""
+		mysplit=string.split(pkgname,"/")
+		psplit=pkgsplit(mysplit[1])
+		return self.portroot+"/"+mysplit[0]+"/"+psplit[0]+"/"+mysplit[1]+".ebuild"
 
 	def resolve_specific(self,myspec):
 		cps=catpkgsplit(myspec)
 		if not cps:
 			return None
-		mykey=self.resolve_key(cps[0]+"/"+cps[1])
+		mykey=key_expand(cps[0]+"/"+cps[1],self.dbapi)
 		mykey=mykey+"-"+cps[2]
 		if cps[3]!="r0":
 			mykey=mykey+"-"+cps[3]
 		return mykey
+
+class dbapi:
+	def __init__(self):
+		pass
 	
-	def hasnode(self,mykey):
-		"""Does the particular node (cat/pkg key) exist?"""
-		myreskey=self.resolve_key(mykey)
-		if self.tree.has_key(myreskey):
-			if len(self.tree[myreskey]):
-				return 1
-		return 0
+	def cp_list(self,cp):
+		return
+
+	def aux_get(self,mycpv,mylist):
+		"stub code for returning auxilliary db information, such as SLOT, DEPEND, etc."
+		'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
+		'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or [] if mycpv not found'
+		pass
+
+class vardbapi(dbapi):
+	def __init__(self,root):
+		self.root=root
 	
-	def getallnodes(self):
-		"returns a list of all keys in our tree"
-		if not self.populated:
-			self.populate()
-		mykeys=[]
-		for x in self.tree.keys():
-			if len(self.tree[x]):
-				mykeys.append(x)
-		return mykeys
+	def cpv_exists(self,mykey):
+		"Tells us whether an actual ebuild exists on disk (no masking)"
+		return os.path.exists(self.root+"var/db/pkg/"+mykey)
 
-	def getnode(self,nodename):
-		nodename=self.resolve_key(nodename)
-		if not nodename:
-			return []
-		if not self.tree.has_key(nodename):
-			self.load(nodename)
-		return self.tree[nodename]
-	
-	def depcheck(self,depstring,lookatuse=1):
-		"""evaluates a dependency string and returns a 2-node result list
-		[1, None] = ok, no dependencies
-		[1, ["x11-base/foobar","sys-apps/oni"] = dependencies must be satisfied
-		[0, * ] = parse error
-		"""
-		if lookatuse:
-			myusesplit=string.split(settings["USE"])
-		else:
-			#we are being run by autouse(), don't consult USE vars yet.
-			myusesplit=[]
-		mysplit=string.split(depstring)
-		#convert parenthesis to sublists
-		mysplit=dep_parenreduce(mysplit)
-		#mysplit can't be None here, so we don't need to check
-		mysplit=dep_opconvert(mysplit,myusesplit)
-		#if mysplit==None, then we have a parse error (paren mismatch or misplaced ||)
-		#up until here, we haven't needed to look at the database tree
-		
-		if mysplit==None:
-			return [0,"Parse Error (parenthesis mismatch?)"]
-		elif mysplit==[]:
-			#dependencies were reduced to nothing
-			return [1,[]]
-		mysplit2=mysplit[:]
-		mysplit2=self.dep_wordreduce(mysplit2)
-		if mysplit2==None:
-			return [0,"Invalid token"]
-		myeval=dep_eval(mysplit2)
-		if myeval:
-			return [1,[]]
-		else:
-			mylist=dep_listcleanup(dep_zapdeps(mysplit,mysplit2))
-			mydict={}
-			for x in mylist:
-				mydict[x]=1
-			return [1,mydict.keys()]
-
-	def dep_wordreduce(self,mydeplist):
-		"""Calls dep_depreduce() on all the items in the deplist"""
-		mypos=0
-		deplist=mydeplist[:]
-		while mypos<len(deplist):
-			if type(deplist[mypos])==types.ListType:
-				#recurse
-				deplist[mypos]=self.dep_wordreduce(deplist[mypos])
-			else:
-				if deplist[mypos]=="||":
-					pass
-				else:
-					mydep=self.dep_depreduce(deplist[mypos])
-					if mydep!=None:
-						deplist[mypos]=mydep
-					else:
-						#encountered invalid string
-						return None
-			mypos=mypos+1
-		return deplist
-	
-	def dep_depreduce(self,mypkgdep):
-		if mypkgdep[0]=="!":
-			# !cat/pkg-v
-			#catch "! " errors
-			if not mypkgdep[1:]:
-				return None
-			mybestmatch=self.dep_bestmatch(mypkgdep[1:])
-			if mybestmatch:
-				return 0
-			else:
-				return 1
-		elif mypkgdep[0]=="=":
-			# =cat/pkg-v
-			if mypkgdep[-1]=="*":
-				if not mypkgdep[1:-1]:
-					return None
-				if not isspecific(mypkgdep[1:-1]):
-					return None
-				mycatpkg=catpkgsplit(mypkgdep[1:-1])
-				try:
-					mynewver=mycatpkg[2]
-					mynewsplit=string.split(mycatpkg[2],'.')
-					mynewsplit[-1]=`int(mynewsplit[-1])+1`
-				except:
-					return None
-				cmp1=mycatpkg[1:]
-				cmp2=[mycatpkg[1],string.join(mynewsplit,"."),"r0"]
-				for x in self.getnode(mycatpkg[0]+"/"+mycatpkg[1]):
-					if (pkgcmp(x[1][1:],cmp1)>=0) and (pkgcmp(x[1][1:],cmp2)<0):
-						return 1
-			else:
-				if not mypkgdep[1:]:
-					return None
-				return self.exists_specific(mypkgdep[1:])
-		elif (mypkgdep[0]=="<") or (mypkgdep[0]==">"):
-			# >=cat/pkg-v or <=,>,<
-			if mypkgdep[1]=="=":
-					cmpstr=mypkgdep[0:2]
-					cpv=mypkgdep[2:]
-			else:
-					cmpstr=mypkgdep[0]
-					cpv=mypkgdep[1:]
-			if not isspecific(cpv):
-				return None
-			mycatpkg=catpkgsplit(cpv,0)
-			if not mycatpkg:
-				#parse error
-				return 0
-			mykey=mycatpkg[0]+"/"+mycatpkg[1]
-			if self.hasnode(mykey):
-				for x in self.getnode(mykey):
-					if eval("pkgcmp(x[1][1:],mycatpkg[1:])"+cmpstr+"0"):
-						return 1
-			return 0
-		elif mypkgdep[0]=="~":
-			if not mypkgdep[1:]:
-				return None
-			if not isspecific(mypkgdep[1:]):
-				return None
-			cp=catpkgsplit(mypkgdep[1:])
-			if not cp:
-				return 0
-			mykey=cp[0]+"/"+cp[1]
-			if self.hasnode(mykey):
-				for x in self.getnode(mykey):
-					if pkgcmp(x[1][1:],cp[1:])>=0 and (x[1][2]==cp[2]):
-						return 1
-			return 0
-		if not isspecific(mypkgdep):
-			# cat/pkg 
-			if self.hasnode(mypkgdep):
-				return 1
-			else:
-				return 0
-		else:
-			return None
-
-	def dep_pkgcat(self,mypkgdep):
-		"""tries to find the category of a package dependency that has been provided without
-		a category, if it couldn't be found the initial argument in returned"""
-		# check if a slash has been provided to
-		# seperate the category from the application
-		# if not, seperate the deps chars and try
-		# to find a matching category
-		if not '/' in mypkgdep:
-			re_deps=re.compile("^([><=~]*)(.+)$")
-			mypkgdep_parts=re_deps.findall(mypkgdep)
-			# set default values
-			mypkgdep_deps=""
-			mypkgdep_package=mypkgdep
-			mypkgdep_packagename=mypkgdep
-			# try to get the deps chars and package name isolated
-			if mypkgdep_parts:
-				mypkgdep_deps=mypkgdep_parts[0][0]
-				mypkgdep_package=mypkgdep_parts[0][1]
-				mypkgdep_package_parts=pkgsplit(mypkgdep_package)
-				if mypkgdep_package_parts:
-					mypkgdep_packagename=mypkgdep_package_parts[0]
-			# try to contructs a full packagename with category
-			mypkgdep_withcat = ""
-			for cat in categories:
-				if self.hasnode(cat+"/"+mypkgdep_packagename):
-					mypkgdep_withcat = mypkgdep_deps+cat+"/"+mypkgdep_package
-					break
-			# if it succeeded, assign it as a result
-			if mypkgdep_withcat:
-				mypkgdep = mypkgdep_withcat
-		return mypkgdep
-
-	def dep_bestmatch(self,mypkgdep):
-		"""
-		returns best match for mypkgdep in the tree.  Accepts
-		a single depstring, such as ">foo/bar-1.0" and finds
-		the most recent version of foo/bar that satisfies the
-		dependency and returns it, i.e: "foo/bar-1.3".	Works
-		for >,<,>=,<=,=,and general deps.  Don't call with a !
-		dep, since there is no good match for a ! dep.
-		"""
-		mypkgdep=self.dep_pkgcat(mypkgdep)
-
-		if (mypkgdep[0]=="="):
-			if mypkgdep[-1]=="*":
-				if not isspecific(mypkgdep[1:-1]):
-					return ""
-				mycatpkg=catpkgsplit(mypkgdep[1:-1])
-				try:
-					mynewver=mycatpkg[2]
-					mynewsplit=string.split(mycatpkg[2],'.')
-					mynewsplit[-1]=`int(mynewsplit[-1])+1`
-				except:
-					return "" 
-				mynodes=[]
-				cmp1=mycatpkg[1:]
-				cmp2=[mycatpkg[1],string.join(mynewsplit,"."),"r0"]
-				for x in self.getnode(mycatpkg[0]+"/"+mycatpkg[1]):
-					if (pkgcmp(x[1][1:],cmp1)>=0) and (pkgcmp(x[1][1:],cmp2)<0):
-						mynodes.append(x)
-				if len(mynodes)==0:
-					return ""
-				bestmatch=mynodes[0]
-				for x in mynodes[1:]:
-					if pkgcmp(x[1][1:],bestmatch[1][1:])>0:
-						bestmatch=x
-				return bestmatch[0]		
-			else:
-				if self.exists_specific(mypkgdep[1:]):
-					return mypkgdep[1:]
-				else:
-					return ""
-		elif (mypkgdep[0]==">") or (mypkgdep[0]=="<"):
-			if mypkgdep[1]=="=":
-				cmpstr=mypkgdep[0:2]
-				cpv=mypkgdep[2:]
-			else:
-				cmpstr=mypkgdep[0]
-				cpv=mypkgdep[1:]
-			if not isspecific(cpv):
-				return ""
-			mycatpkg=catpkgsplit(cpv)
-			if not mycatpkg:
-				return ""
-			mykey=mycatpkg[0]+"/"+mycatpkg[1]
-			if not self.hasnode(mykey):
-				return ""
-			mynodes=[]
-			for x in self.getnode(mykey):
-				if eval("pkgcmp(x[1][1:],mycatpkg[1:])"+cmpstr+"0"):
-					mynodes.append(x)
-			#now we have a list of all nodes that qualify
-			if len(mynodes)==0:
-				return ""
-			bestmatch=mynodes[0]
-			for x in mynodes[1:]:
-				if pkgcmp(x[1][1:],bestmatch[1][1:])>0:
-					bestmatch=x
-			return bestmatch[0]		
-		elif (mypkgdep[0]=="~"):
-			mypkg=mypkgdep[1:]
-			if not isspecific(mypkg):
-				return ""
-			mycp=catpkgsplit(mypkg)
-			if not mycp:
-				return ""
-			mykey=mycp[0]+"/"+mycp[1]
-			if not self.hasnode(mykey):
-				return ""
-			myrev=-1
-			for x in self.getnode(mykey):
-				if mycp[2]!=x[1][2]:
-					continue
-				if string.atoi(x[1][3][1:])>myrev:
-					myrev=string.atoi(x[1][3][1:])
-					mymatch=x[0]
-			if myrev==-1:
-				return ""
-			else:
-				return mymatch
-		elif not isspecific(mypkgdep):
-			if not self.hasnode(mypkgdep):
-				return ""
-			mynodes=self.getnode(mypkgdep)[:]
-			if len(mynodes)==0:
-				return ""
-			bestmatch=mynodes[0]
-			for x in mynodes[1:]:
-				if pkgcmp(x[1][1:],bestmatch[1][1:])>0:
-					bestmatch=x
-			return bestmatch[0]
-
-	def dep_nomatch(self,mypkgdep):
-		"""dep_nomatch() has a very specific purpose.  You pass it a dep, like =sys-apps/foo-1.0.
-		Then, it scans the sys-apps/foo category and returns a list of sys-apps/foo packages that
-		*don't* match.	This method is used to clean the portagetree using entries in the 
-		make.profile/packages and profiles/package.mask files.
-		It is only intended to process specific deps, but should be robust enough to pass any type
-		of string to it and have it not die."""
-		mypkgdep=self.dep_pkgcat(mypkgdep)
-
+	def cp_list(self,mycp):
+		mysplit=mycp.split("/")
 		returnme=[]
-		if (mypkgdep[0]=="="):
-			if mypkgdep[-1]=="*":
-				if not isspecific(mypkgdep[1:-1]):
-					return []
-				mycatpkg=catpkgsplit(mypkgdep[1:-1])
-				try:
-					mynewver=mycatpkg[2]
-					mynewsplit=string.split(mycatpkg[2],'.')
-					mynewsplit[-1]=`int(mynewsplit[-1])+1`
-				except:
-					return [] 
-				mynodes=[]
-				cmp1=mycatpkg[1:]
-				cmp2=[mycatpkg[1],string.join(mynewsplit,"."),"r0"]
-				for x in self.getnode(mycatpkg[0]+"/"+mycatpkg[1]):
-					if not ((pkgcmp(x[1][1:],cmp1)>=0) and (pkgcmp(x[1][1:],cmp2)<0)):
-						mynodes.append(x[0])
-				return mynodes
-			else:
-				mycp=catpkgsplit(mypkgdep[1:],1)
-				if not mycp:
-					#not a specific pkg, or parse error.  keep silent
-					return []
-				mykey=mycp[0]+"/"+mycp[1]
-				if not self.hasnode(mykey):
-					return []
-				x=0
-				while x<len(self.tree[mykey]):
-					if self.tree[mykey][x][0]!=mypkgdep[1:]:
-						returnme.append(self.tree[mykey][x][0])
-					x=x+1
-		elif (mypkgdep[0]==">") or (mypkgdep[0]=="<"):
-			if mypkgdep[1]=="=":
-				cmpstr=mypkgdep[0:2]
-				cpv=mypkgdep[2:]
-			else:
-				cmpstr=mypkgdep[0]
-				cpv=mypkgdep[1:]
-			if not isspecific(cpv):
-				return []
-			mycatpkg=catpkgsplit(cpv,1)
-			if mycatpkg==None:
-				#parse error
-				return []
-			mykey=mycatpkg[0]+"/"+mycatpkg[1]
-			if not self.hasnode(mykey):
-				return []
-			for x in self.getnode(mykey):
-				if not eval("pkgcmp(x[1][1:],mycatpkg[1:])"+cmpstr+"0"):
-					returnme.append(x[0])
-		elif mypkgdep[0]=="~":
-			#"~" implies a "bestmatch"
-			mycp=catpkgsplit(mypkgdep[1:],1)
-			if not mycp:
-				return []
-			mykey=mycp[0]+"/"+mycp[1]
-			if not self.hasnode(mykey):
-				return []
-			mymatch=self.dep_bestmatch(mypkgdep)
-			if not mymatch:
-				for x in self.tree[mykey]:
-					returnme.append(x[0])
-			else:
-				x=0
-				while x<len(self.tree[mykey]):
-					if self.tree[mykey][x][0]!=mymatch:
-						returnme.append(self.tree[mykey][x][0])
-					x=x+1
-			#end of ~ section
-		else:
+		try:
+			mydirlist=listdir(self.root+"var/db/pkg/"+mysplit[0])
+		except OSError:
 			return []
+		for x in mydirlist:
+			ps=pkgsplit(x)
+			if not ps:
+				print "!!! Invalid db entry:",self.root+"var/db/pkg/"+mysplit[0]+"/"+x
+				continue
+			if ps[0]==mysplit[1]:
+				returnme.append(mysplit[0]+"/"+x)	
 		return returnme
 
-	def dep_match(self,mypkgdep):
-		"""
-		returns a list of all matches for mypkgdep in the tree.  Accepts
-		a single depstring, such as ">foo/bar-1.0" and finds
-		all the versions of foo/bar that satisfy the
-		dependency and returns them, i.e: ["foo/bar-1.3"].  Works
-		for >,<,>=,<=,=,and general deps.  Don't call with a !
-		dep, since there is no good match for a ! dep.
-		"""
-		mypkgdep=self.dep_pkgcat(mypkgdep)
-
-		if (mypkgdep[0]=="="):
-			if mypkgdep[-1]=="*":
-				if not isspecific(mypkgdep[1:-1]):
-					return []
-				mycatpkg=catpkgsplit(mypkgdep[1:-1])
-				try:
-					mynewver=mycatpkg[2]
-					mynewsplit=string.split(mycatpkg[2],'.')
-					mynewsplit[-1]=`int(mynewsplit[-1])+1`
-				except:
-					return [] 
-				mynodes=[]
-				cmp1=mycatpkg[1:]
-				cmp2=[mycatpkg[1],string.join(mynewsplit,"."),"r0"]
-				for x in self.getnode(mycatpkg[0]+"/"+mycatpkg[1]):
-					if ((pkgcmp(x[1][1:],cmp1)>=0) and (pkgcmp(x[1][1:],cmp2)<0)):
-						mynodes.append(x[0])
-				return mynodes
-			elif self.exists_specific(mypkgdep[1:]):
-				return [mypkgdep[1:]]
-			else:
-				return []
-		elif (mypkgdep[0]==">") or (mypkgdep[0]=="<"):
-			if mypkgdep[1]=="=":
-				cmpstr=mypkgdep[0:2]
-				cpv=mypkgdep[2:]
-			else:
-				cmpstr=mypkgdep[0]
-				cpv=mypkgdep[1:]
-			if not isspecific(cpv):
-				return []
-			mycatpkg=catpkgsplit(cpv,0)
-			if mycatpkg==None:
-				#parse error
-				return []
-			mykey=mycatpkg[0]+"/"+mycatpkg[1]
-			if not self.hasnode(mykey):
-				return []
-			mynodes=[]
-			for x in self.getnode(mykey):
-				if eval("pkgcmp(x[1][1:],mycatpkg[1:])"+cmpstr+"0"):
-					mynodes.append(x[0])
-			#now we have a list of all nodes that qualify
-			#since we want all nodes that match, return this list
-			return mynodes
-		elif mypkgdep[0]=="~":
-			#"~" implies a "bestmatch"
-			return [self.dep_bestmatch(mypkgdep)]
-		elif not isspecific(mypkgdep):
-			if not self.hasnode(mypkgdep):
-				return [] 
-			mynodes=[]
-			for x in self.getnode(mypkgdep)[:]:
-				mynodes.append(x[0])
-			return mynodes
+	def cp_all(self):
+		returnme=[]
+		for x in categories:
+			try:
+				mylist=listdir(self.root+"var/db/pkg/"+x)
+			except OSError:
+				mylist=[]
+			for y in mylist:
+				mysplit=pkgsplit(y)
+				if not mysplit:
+					print "!!! Invalid db entry:",self.root+"var/db/pkg/"+x+"/"+y
+					continue
+				mykey=x+"/"+mysplit[0]
+				if not mykey in returnme:
+					returnme.append(mykey)
+		return returnme
 
 class vartree(packagetree):
 	"this tree will scan a var/db/pkg database located at root (passed to init)"
 	def __init__(self,root="/",virtual=None,clone=None):
 		if clone:
 			self.root=clone.root
-			self.gotcat=copy.deepcopy(clone.gotcat)
+			self.dbapi=clone.dbapi
+			self.populated=1
 		else:
 			self.root=root
-			self.gotcat={}
-		packagetree.__init__(self,virtual,clone)
+			self.dbapi=vardbapi(self.root)
+			self.populated=1
+
+	def zap(self,foo):
+		return
+
+	def inject(self,foo):
+		return
+	
+	def dep_bestmatch(self,mydep):
+		"compatibility method -- all matches, not just visible ones"
+		mymatch=best(match(dep_expand(mydep,self.dbapi),self.dbapi))
+		if mymatch==None:
+			return ""
+		else:
+			return mymatch
+			
+	def dep_match(self,mydep):
+		"compatibility method -- we want to see all matches, not just visible ones"
+		mymatch=match(mydep,self.dbapi)
+		if mymatch==None:
+			return []
+		else:
+			return mymatch
+
+	def exists_specific(self,cpv):
+		if self.root==None:
+			return 0
+		return self.dbapi.cpv_exists(cpv)
+
+	def getallnodes(self):
+		"""new behavior: these are all *unmasked* nodes.  There may or may not be available
+		masked package for nodes in this nodes list."""
+		return self.dbapi.cp_all()
+
+	def exists_specific_cat(self,cpv):
+		if self.root==None:
+			return 0
+		cpv=key_expand(cpv,self.dbapi)
+		a=catpkgsplit(cpv)
+		if not a:
+			return 0
+		try:
+			mylist=listdir(self.root+"var/db/pkg/"+a[0])
+		except OSError:
+			return 0
+		for x in mylist:
+			b=pkgsplit(x)
+			if not b:
+				print "!!! Invalid db entry:",self.root+"var/db/pkg/"+a[0]+"/"+x
+				continue
+			if a[1]==b[0]:
+				return 1
+		return 0
+			
 	def getebuildpath(self,fullpackage):
 		cat,package=fullpackage.split("/")
 		return self.root+"var/db/pkg/"+fullpackage+"/"+package+".ebuild"
-	
-	def load(self,mykey):
-		if '/' in mykey:
-			mycat,mypkg=string.split(mykey,"/")
-		else:
-			return []
-		if not self.tree.has_key(mykey):
-			self.tree[mykey]=[]
-		#This next line allows us to set root to None and disable loading (for "emptytrees")
-		if not self.root:
-			return
-		if self.gotcat.has_key(mycat):
-			return
-		if not os.path.isdir(self.root+"/var/db/pkg/"+mycat):
-			return
-		for x in os.listdir(self.root+"/var/db/pkg/"+mycat):
-			if x[0:len(mypkg)]!=mypkg:
-				#skip, since we're definitely not interested if the package name doesn't match.
-				#note that this isn't a perfect test, but will weed out 99% of the packages we aren't interested in loading.
-				continue
-			if isjustname(x):
-				fullpkg=mycat+"/"+x+"-1.0"
-			else:
-				fullpkg=mycat+"/"+x
-			mysplit=catpkgsplit(fullpkg,0)
-			if mysplit==None:
-				print "!!! Error:",self.root+"/var/db/pkg/"+mycat+"/"+x,"is not a valid database entry, skipping..."
-				continue
-			mynewkey=mycat+"/"+mysplit[1]
-			if not self.tree.has_key(mynewkey):
-				self.tree[mynewkey]=[]
-			for y in self.tree[mynewkey]:
-				if y[0]==fullpkg:
-					#we've already got it, skip.
-					continue
-			self.tree[mynewkey].append([fullpkg,mysplit])
 
+	def getnode(self,mykey):
+		mykey=key_expand(mykey,self.dbapi)
+		if not mykey:
+			return []
+		mysplit=mykey.split("/")
+		try:
+			mydirlist=listdir(self.root+"var/db/pkg/"+mysplit[0])
+		except:
+			return []
+		returnme=[]
+		for x in mydirlist:
+			mypsplit=pkgsplit(x)
+			if not mypsplit:
+				print "!!! Invalid db entry:",self.root+"var/db/pkg/"+mysplit[0]+"/"+x
+				continue
+			if mypsplit[0]==mysplit[1]:
+				appendme=[mysplit[0]+"/"+x,[mysplit[0],mypsplit[0],mypsplit[1],mypsplit[2]]]
+				returnme.append(appendme)
+		return returnme
+
+	
 	def getslot(self,mycatpkg):
-		"""Get a slot for a catpkg; assume it exists."""
-		if not os.path.exists(self.root+"var/db/pkg/"+mycatpkg+"/SLOT"):
+		"Get a slot for a catpkg; assume it exists."
+		try:
+			myslotfile=open(self.root+"var/db/pkg/"+mycatpkg+"/SLOT","r")
+		except:
 			return ""
-		myslotfile=open(self.root+"var/db/pkg/"+mycatpkg+"/SLOT","r")
 		myslotvar=string.split(myslotfile.readline())
 		myslotfile.close()
 		if len(myslotvar):
 			return myslotvar[0]
 		else:
 			return ""
+	
+	def hasnode(self,mykey):
+		"""Does the particular node (cat/pkg key) exist?"""
+		mykey=key_expand(mykey,self.dbapi)
+		mysplit=mykey.split("/")
+		try:
+			mydirlist=listdir(self.root+"var/db/pkg/"+mysplit[0])
+		except:
+			return 0
+		for x in mydirlist:
+			mypsplit=pkgsplit(x)
+			if not mypsplit:
+				print "!!! Invalid db entry:",self.root+"var/db/pkg/"+mysplit[0]+"/"+x
+				continue
+			if mypsplit[0]==mysplit[1]:
+				return 1
+		return 0
 	
 	def gettimeval(self,mycatpkg):
 		"""Get an integer time value that can be used to compare against other catpkgs; the timeval will try to use
@@ -2475,144 +2453,85 @@ class vartree(packagetree):
 			return starttime+mycountervar
 	
 	def populate(self):
-		"populates the local tree (/var/db/pkg)"
-		prevmask=os.umask(0)
-		if not os.path.isdir(self.root+"var"):
-			os.mkdir(self.root+"var",0755)
-		if not os.path.isdir(self.root+"var/db"):
-			os.mkdir(self.root+"var/db",0755)
-		if not os.path.isdir(self.root+"var/db/pkg"):
-			os.mkdir(self.root+"var/db/pkg",0755)
-		os.umask(prevmask)
-		dbdir=self.root+"var/db/pkg"
-		origdir=getmycwd()
-		os.chdir(dbdir)
-		mywd=os.getcwd()
-		for x in os.listdir(mywd):
-			if not os.path.isdir(mywd+"/"+x):
-				continue
-			for y in os.listdir(mywd+"/"+x):
-				if isjustname(y):
-					fullpkg=x+"/"+y+"-1.0"
-				else:
-					fullpkg=x+"/"+y
-				mysplit=catpkgsplit(fullpkg,0)
-				if mysplit==None:
-					print "!!! Error:",self.root+"var/db/pkg/"+x+"/"+y,"is not a valid database entry, skipping..."
-					continue
-				mykey=x+"/"+mysplit[1]
-				if not self.tree.has_key(mykey):
-					self.tree[mykey]=[]
-				self.tree[mykey].append([fullpkg,mysplit])
-		os.chdir(origdir)
 		self.populated=1
 
-class portagetree(packagetree):
+	
+class portdbapi(dbapi):
 	"this tree will scan a portage directory located at root (passed to init)"
-	def __init__(self,root="/",virtual=None,clone=None):
-		if clone:
-			self.root=clone.root
-			self.portroot=clone.portroot
-			self.pkgmaskdict=clone.pkgmaskdict
-			self.pkglines=clone.pkglines
-		else:
-			self.root=root
-			self.portroot=settings["PORTDIR"]
-			self.pkgmaskdict={}
-			self.pkgmasklines=grabfile(self.portroot+"/profiles/package.mask")
-			self.pkglines=[]
-			#remove '*'s from beginnning of deps
-			if profiledir:
-				for x in grabfile(profiledir+"/packages"):
-					if x[0]=="*":
-						self.pkglines.append(x[1:])
-					else:
-						self.pkglines.append(x)
-		packagetree.__init__(self,virtual)
-	
-	def populate(self):
-		"populates the port tree"
-		origdir=getmycwd()
-		os.chdir(self.portroot)
+	def __init__(self):
+		self.portroot=settings["PORTDIR"]
+						
+	def cpv_exists(self,mykey):
+		"Tells us whether an actual ebuild exists on disk (no masking)"
+		cps2=mykey.split("/")
+		cps=catpkgsplit(mykey,0)
+		if os.path.exists(self.portroot+"/"+cps[0]+"/"+cps[1]+"/"+cps2[1]+".ebuild"):
+			return 1
+		return 0
+
+	def cp_num(self,mykey):
+		"Tells us whether an actual category and package exists on disk (no masking)"
+		ecount=0
+		try:
+			mylist=listdir(self.portroot+"/"+mykey)
+			for x in mylist:
+				if x[-7:]==".ebuild":
+					ecount=ecount+1	
+		except OSError,IOError:
+			return 0
+		return ecount
+
+	def cp_all(self):
+		"returns a list of all keys in our tree"
+		biglist=[]
 		for x in categories:
-			if not os.path.isdir(os.getcwd()+"/"+x):
-				continue
-			for y in os.listdir(os.getcwd()+"/"+x):
-				if not os.path.isdir(os.getcwd()+"/"+x+"/"+y):
-					continue
-				if y=="CVS":
-					continue
-				for mypkg in os.listdir(os.getcwd()+"/"+x+"/"+y):
-					if mypkg[-7:] != ".ebuild":
-						continue
-					mypkg=mypkg[:-7]
-					mykey=x+"/"+y
-					fullpkg=x+"/"+mypkg
-					if not self.tree.has_key(mykey):
-						self.tree[mykey]=[]
-					mysplit=catpkgsplit(fullpkg,0)
-					if mysplit==None:
-						print "!!! Error:",self.portroot+"/"+x+"/"+y,"is not a valid Portage directory, skipping..."
-						continue	
-					self.tree[mykey].append([fullpkg,mysplit])
-		#self.populated must be set here, otherwise dep_match will cause recursive populate() calls
-		self.populated=1
-		self.domask()
-		
-	def domask(self):
-		"mask out appropriate entries in our database.	We call this whenever we add to the db."
-		for x in self.pkgmasklines:
-			matches=self.dep_match(x)
-			if matches:
-				for y in matches:
-					self.zap(y)
-		for x in self.pkglines:
-			matches=self.dep_nomatch(x)
-			for y in matches:
-				self.zap(y)
-
-	def getdeps(self,pf):
-		"returns list of dependencies, if any"
-		if self.exists_specific(pf):
-			mysplit=catpkgsplit(pf)
-			if mysplit==None:
-				#parse error
-				return ""
-			mydepfile=self.portroot+"/"+mysplit[0]+"/"+mysplit[1]+"/files/depend-"+string.split(pf,"/")[1]
-			if os.path.exists(mydepfile):
-				myd=open(mydepfile,"r")
-				mydeps=myd.readlines()
-				myd.close()
-				returnme=""
-				for x in mydeps:
-					returnme=returnme+" "+x[:-1]
-				return returnme
-		return ""
+			if os.path.isdir(self.portroot+"/"+x):
+				for y in listdir(self.portroot+"/"+x):
+					biglist.append(x+"/"+y)
+		return biglist
 	
-	def getname(self,pkgname):
-		"returns file location for this particular package"
-		pkgname=self.resolve_specific(pkgname)
-		if not pkgname:
-			return ""
-		mysplit=string.split(pkgname,"/")
-		psplit=pkgsplit(mysplit[1])
-		return self.portroot+"/"+mysplit[0]+"/"+psplit[0]+"/"+mysplit[1]+".ebuild"
+	def p_list(self,mycp):
+		returnme=[]
+		try:
+			for x in listdir(self.portroot+"/"+mycp):
+				if x[-7:]==".ebuild":
+					returnme.append(x[:-7])	
+		except OSError,IOError:
+			return []
+		return returnme
 
+	def cp_list(self,mycp):
+		mysplit=mycp.split("/")
+		returnme=[]
+		try: 
+			for x in listdir(self.portroot+"/"+mycp):
+				if x[-7:]==".ebuild":
+					returnme.append(mysplit[0]+"/"+x[:-7])	
+		except OSError,IOError:
+			return []
+		return returnme
+		
 class binarytree(packagetree):
 	"this tree scans for a list of all packages available in PKGDIR"
 	def __init__(self,root="/",virtual=None,clone=None):
 		if clone:
 			self.root=clone.root
 			self.pkgdir=clone.pkgdir
+			self.dbapi=clone.dbapi
+			self.populated=clone.populated
+			self.tree=clone.tree
 		else:
 			self.root=root
 			self.pkgdir=settings["PKGDIR"]
-		packagetree.__init__(self,virtual)
+			self.dbapi=dbapi()
+			self.populated=0
+			self.tree={}
+	
 	def populate(self):
 		"popules the binarytree"
 		if (not os.path.isdir(self.pkgdir)):
 			return 0
-		for mypkg in os.listdir(self.pkgdir+"/All"):
+		for mypkg in listdir(self.pkgdir+"/All"):
 			if mypkg[-5:]!=".tbz2":
 				continue
 			mytbz2=xpak.tbz2(self.pkgdir+"/All/"+mypkg)
@@ -2622,16 +2541,55 @@ class binarytree(packagetree):
 				continue
 			mycat=string.strip(mycat)
 			fullpkg=mycat+"/"+mypkg[:-5]
-			cps=catpkgsplit(fullpkg,0)
-			if cps==None:
-				print "!!! Error:",mytbz2,"contains corrupt cat/pkg information, skipping..."
-				continue
-			mykey=mycat+"/"+cps[1]
+			mykey=dep_getkey(fullpkg)
 			if not self.tree.has_key(mykey):
 				self.tree[mykey]=[]
-			self.tree[mykey].append([fullpkg,cps])
+			self.tree[mykey].append(fullpkg)
 		self.populated=1
+
+	def inject(self,cpv):
+		mykey=dep_getkey(cpv)
+		if not self.tree.has_key(mykey):
+			self.tree[mykey]=[]
+		if not cpv in self.tree[mykey]:
+			self.tree[mykey].append(cpv)
 	
+	def exists_specific(self,cpv):
+		if not self.populated:
+			self.populate()
+		mykey=dep_getkey(cpv)
+		if self.tree.has_key(mykey):
+			return (cpv in self.tree[mykey])
+
+	def expand(self,mykey):
+		mysplit=mykey.split("/")
+		if len(mysplit)==2:
+			if virts and virts.has_key(mykey):
+				return virts[mykey]
+			else:
+				return mykey
+		#our key doesn't have a category; add one
+		for x in categories:
+			if self.tree.has_key(x+"/"+mykey):
+				return x+"/"+mykey
+		if virts_p.has_key(mykey):
+			return(virts_p[mykey])
+		return "null/"+mykey
+
+	def dep_bestmatch(self,mydep):
+		"compatibility method -- all matches, not just visible ones"
+		if not self.populated:
+			self.populate()
+		mykey=dep_getkey(mydep)
+		mylist=[]
+		mykey=self.expand(mykey)
+		if self.tree.has_key(mykey):
+			mylist=self.tree[mykey]
+		mymatch=best(match(mykey,mylist))
+		if mymatch==None:
+			return ""
+		return mymatch
+
 	def getname(self,pkgname):
 		"returns file location for this particular package"
 		mysplit=string.split(pkgname,"/")
@@ -2666,7 +2624,7 @@ class dblink:
 		"erase this db entry completely"
 		if not os.path.exists(self.dbdir):
 			return
-		for x in os.listdir(self.dbdir):
+		for x in listdir(self.dbdir):
 			os.unlink(self.dbdir+"/"+x)
 		os.rmdir(self.dbdir)
 	
@@ -2763,27 +2721,29 @@ class dblink:
 				if not os.path.exists(obj):
 					print "--- !found", pkgfiles[obj][0], obj
 					continue
-			if (pkgfiles[obj][0] not in ("dir","fif","dev")) and (getmtime(obj) != pkgfiles[obj][1]):
+			lstatobj=os.lstat(obj)
+			lmtime=`lstatobj[ST_MTIME]`
+			if (pkgfiles[obj][0] not in ("dir","fif","dev")) and (lmtime != pkgfiles[obj][1]):
 				print "--- !mtime", pkgfiles[obj][0], obj
 				continue
 			if pkgfiles[obj][0]=="dir":
 				if not os.path.isdir(obj):
 					print "--- !dir  ","dir", obj
 					continue
-				if os.listdir(obj):
+				if listdir(obj):
 					print "--- !empty","dir", obj
 					continue
 				try:
 					os.rmdir(obj)
-				except OSError:
+				except OSError,IOError:
 					#We couldn't remove the dir; maybe it's immutable?
 					pass
-				print "<<<	 ","dir",obj
+				print "<<<       ","dir",obj
 			elif pkgfiles[obj][0]=="sym":
 				if not os.path.islink(obj):
 					print "--- !sym  ","sym", obj
 					continue
-				if (getmtime(obj) != pkgfiles[obj][1]):
+				if (lmtime != pkgfiles[obj][1]):
 					print "--- !mtime sym",obj
 					continue
 				mydest=os.readlink(obj)
@@ -2809,10 +2769,10 @@ class dblink:
 					continue
 				try:
 					os.unlink(obj)
-				except OSError:
+				except OSError,IOError:
 					#immutable?
 					pass
-				print "<<<	 ","sym",obj
+				print "<<<       ","sym",obj
 			elif pkgfiles[obj][0]=="obj":
 				if not os.path.isfile(obj):
 					print "--- !obj  ","obj", obj
@@ -2841,11 +2801,11 @@ class dblink:
 				else:
 					try:
 						os.unlink(obj)
-					except OSError:
+					except OSError,IOError:
 						pass		
-					print "<<<	 ","obj",obj
+					print "<<<       ","obj",obj
 			elif pkgfiles[obj][0]=="fif":
-				if not isfifo(obj):
+				if not S_ISFIFO(lstatobj[ST_MODE]):
 					print "--- !fif  ","fif", obj
 					continue
 				myppath=""
@@ -2866,11 +2826,11 @@ class dblink:
 					continue
 				try:
 					os.unlink(obj)
-				except OSError:
+				except OSError,IOError:
 					pass
-				print "<<<	 ","fif",obj
+				print "<<<       ","fif",obj
 			elif pkgfiles[obj][0]=="dev":
-				print "---	 ","dev",obj
+				print "---       ","dev",obj
 
 		#remove self from vartree database so that our own virtual gets zapped if we're the last node
 		db[self.myroot]["vartree"].zap(self.cat+"/"+self.pkg)
@@ -2997,7 +2957,7 @@ class dblink:
 			self.unmerge(oldcontents)
 			print ">>> original instance of package unmerged safely."	
 		# copy "info" files (like SLOT, CFLAGS, etc.) into the database
-		for x in os.listdir(inforoot):
+		for x in listdir(inforoot):
 			self.copyfile(inforoot+"/"+x)
 		
 		#write out our collection of md5sums
@@ -3038,7 +2998,7 @@ class dblink:
 		# this is supposed to merge a list of files.  There will be 2 forms of argument passing.
 		if type(stufftomerge)==types.StringType:
 			#A directory is specified.  Figure out protection paths, listdir() it and process it.
-			mergelist=os.listdir(srcroot+stufftomerge)
+			mergelist=listdir(srcroot+stufftomerge)
 			offset=stufftomerge
 			# We need mydest defined up here to calc. protection paths.  This is now done once per
 			# directory rather than once per file merge.  This should really help merge performance.
@@ -3183,7 +3143,7 @@ class dblink:
 								# positioning (for reference):
 								# 0123456789012
 								mypfile=""
-								for pfile in os.listdir(mydestdir):
+								for pfile in listdir(mydestdir):
 									if pfile[0:5]!="._cfg":
 										continue
 									if pfile[10:]!=pmatch:
@@ -3347,11 +3307,12 @@ def pkgmerge(mytbz2,myroot):
 	cleanup_pkgmerge(mypkg,origdir)
 	return returnme
 
-root=getenv("ROOT")
-if len(root)==0:
+if os.environ.has_key("ROOT"):
+	root=os.environ["ROOT"]
+	if root[-1]!="/":
+		root=root+"/"
+else:
 	root="/"
-elif root[-1]!="/":
-	root=root+"/"
 if root != "/":
 	if not os.path.exists(root[:-1]):
 		print "!!! Error: ROOT",root,"does not exist.  Please correct this."
@@ -3373,6 +3334,8 @@ if not os.path.exists(root+"var/tmp"):
 	print ">>> "+root+"var/tmp doesn't exist, creating it..."
 	os.mkdir(root+"var",0755)
 	os.mkdir(root+"var/tmp",01777)
+if not os.path.exists("/var/cache/edb/dep"):
+	os.mkdir("/var/cache/edb/dep",0755)
 os.umask(022)
 profiledir=None
 if os.path.exists("/etc/make.profile/make.defaults"):
@@ -3381,12 +3344,23 @@ else:
 	print ">>> Note: /etc/make.profile isn't available; an 'emerge sync' will probably fix this."
 #from here on in we can assume that profiledir is set to something valid
 db={}
+
 virts=getvirtuals("/")
+virts_p={}
+
+if virts:
+	myvkeys=virts.keys()
+	for x in myvkeys:
+		vkeysplit=x.split("/")
+		if not virts_p.has_key(vkeysplit[1]):
+			virts_p[vkeysplit[1]]=virts[x]
+
 db["/"]={"virtuals":virts,"vartree":vartree("/",virts)}
 if root!="/":
 	virts=getvirtuals(root)
 	db[root]={"virtuals":virts,"vartree":vartree(root,virts)}
 #We need to create the vartree first, then load our settings, and then set up our other trees
+usedefaults=grabfile(profiledir+"/use.defaults")
 settings=config()
 #continue setting up other trees
 db["/"]["porttree"]=portagetree("/",virts)
@@ -3404,4 +3378,22 @@ if os.path.exists(settings["PORTDIR"]+"/profiles/categories"):
 else:
 	categories=[]
 
+pkgmasklines=grabfile(settings["PORTDIR"]+"/profiles/package.mask")
+pkglines=grabfile(profiledir+"/packages")
+maskdict={}
+for x in pkgmasklines:
+	mycatpkg=dep_getkey(x)
+	if not maskdict.has_key(mycatpkg):
+		maskdict[mycatpkg]=[x]
+	else:
+		maskdict[mycatpkg].append(x)
+del pkgmasklines
+revmaskdict={}
+for x in pkglines:
+	mycatpkg=dep_getkey(x)
+	if not revmaskdict.has_key(mycatpkg):
+		revmaskdict[mycatpkg]=[x]
+	else:
+		revmaskdict[mycatpkg].append(x)
+del pkglines
 

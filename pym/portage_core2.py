@@ -61,7 +61,6 @@ class selector:
 		return self.repr
 
 class key(selector):
-
 	"""A 'key' (name may change in the future) is used to specify a category
 	(in "not specific" mode) or a category and package (in "specific" mode).
 	It does not specify any version information."""

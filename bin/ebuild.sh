@@ -1,12 +1,33 @@
 #!/bin/bash
 
 use() {
-	local x
+	local x xopts flag opts
+	
+	# Splice off the use flag and space-separate its options
+	flag="${1%%:*}"
+	if [ "$flag" != "$1" ]
+	then
+		opts="${1#*:}"
+		opts="${opts//,/ }"
+	else
+		opts=
+	fi
+	
 	for x in $USE
 	do
-		if [ "$x" = "$1" ]
+		# If there are options specified, make sure all of them are on.
+		if [ "${x%%:*}" == "$flag" ]
 		then
-			echo "$x"
+			xopts="${x#*:}"
+			xopts=" ${xopts//,/ } "
+			for i in $opts
+			do
+				if [ "${xopts/ $i /}" == "${xopts}" ]
+				then
+					return 1
+				fi
+			done
+			echo "$1"
 			return 0
 		fi
 	done
@@ -496,8 +517,8 @@ dyn_install() {
 	#our custom version of libtool uses $S and $D to fix
 	#invalid paths in .la files
 	export S D
-	#some users have $TMPDIR to a custom dir in thier home ...
-	#this will cause sandbox errors with some ./configure
+	#some users have $TMPDIR to a custom dir in thier home ...            
+	#this will cause sandbox errors with some ./configure            
 	#scripts, so set it to $T.
 	export TMPDIR="${T}"
 	src_install
