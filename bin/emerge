@@ -86,8 +86,7 @@ for x in tmpcmdline:
 
 # process the command arguments
 for x in cmdline:
-	if len(x)>=2:
-		if x[0:2]=="--":
+	if len(x)>=2 and x[0:2]=="--":
 			if x in options:
 				myopts.append(x)
 			else:
