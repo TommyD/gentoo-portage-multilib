@@ -2055,7 +2055,7 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 				droppriv=actionmap[mydo]["args"][1],logfile=logfile)
 	return retval
 
-def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,cleanup=0,dbkey=None,use_cache=1,fetchall=0):
+def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,cleanup=0,dbkey=None,use_cache=1,fetchall=0,tree="porttree"):
 	global db
 	
 	ebuild_path = os.path.abspath(myebuild)
@@ -2122,6 +2122,15 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	mysettings["PV"] = mysplit[1]
 	mysettings["PR"] = mysplit[2]
 
+	if mydo != "depend":
+		try:
+			mysettings["INHERITED"], mysettings["PORTAGE_RESTRICT"] = db[root][tree].dbapi.aux_get( \
+				mycpv,["INHERITED","RESTRICT"])
+			mysettings["PORTAGE_RESTRICT"]=string.join(flatten(portage_dep.use_reduce(portage_dep.paren_reduce( \
+				mysettings["PORTAGE_RESTRICT"]), uselist=mysettings["USE"].split())),'')
+		except:
+			pass
+	
 	if mysplit[2] == "r0":
 		mysettings["PVR"]=mysplit[1]
 	else:
@@ -2135,6 +2144,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		mysplit=[]
 	if PORTAGE_BIN_PATH not in mysplit:
 		mysettings["PATH"]=PORTAGE_BIN_PATH+":"+mysettings["PATH"]
+
 
 	mysettings["BUILD_PREFIX"] = mysettings["PORTAGE_TMPDIR"]+"/portage"
 	mysettings["HOME"]         = mysettings["BUILD_PREFIX"]+"/homedir"
@@ -2172,11 +2182,6 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		retval = spawn(EBUILD_SH_BINARY+" depend",mysettings)
 		return retval
 		
-	try:
-		mysettings["INHERITED"] = db[root]["porttree"].dbapi.aux_get(mycpv,["INHERITED"])[0]
-	except:
-		pass
-
 	logfile=None
 	# Build directory creation isn't required for any of these.
 	if mydo not in ["fetch","digest","manifest"]:

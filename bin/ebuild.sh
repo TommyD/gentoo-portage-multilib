@@ -1520,8 +1520,11 @@ if hasq "depend" "$@"; then
 	done
 	unset src bin_path body
 fi
-
 source ${EBUILD} || die "error sourcing ebuild"
+if ! hasq depend $EBUILD_PHASE; then
+	RESTRICT="${PORTAGE_RESTRICT}"
+	unset PORTAGE_RESTRICT
+fi
 [ -z "${ERRORMSG}" ] || die "${ERRORMSG}"
 
 # Expand KEYWORDS

@@ -9,6 +9,9 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  05 Sep 2004; Brian Harring <ferringb@gentoo.org> portage.py ebuild.sh:
+  Added use flag support to RESTRICT; usual syntax.
+
   04 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage_data.py: Added
 	FreeBSD as a BSD-type OS and merged the Darwin branch with them.
 
