@@ -575,6 +575,8 @@ def env_update(makelinks=1):
 					break
 			if not plmasked:
 				newprelink.write("-h "+x+"\n")
+		for x in specials["PRELINK_PATH_MASK"]:
+			newprelink.write("-b "+x+"\n")
 		newprelink.close()
 
 	if not mtimedb.has_key("ldpath"):
@@ -2085,7 +2087,6 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		# XXX: We're doing a little hack here to curtain the gvisible locking
 		# XXX: that creates a deadlock... Really need to isolate that.
 		mysettings.reset(use_cache=use_cache)
-		
 	mysettings.setcpv(mycpv,use_cache=use_cache)
 
 	validcommands = ["help","clean","prerm","postrm","preinst","postinst",
@@ -2181,7 +2182,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 			# XXX: This needs to use a FD for saving the output into a file.
 			# XXX: Set this up through spawn
 			pass
-		writemsg("!!! DEBUG: dbkey: %s\n" % str(dbkey),2)
+		writemsg("!!! DEBUG: dbkey: %s\n" % str(dbkey), 2)
 		if dbkey:
 			mysettings["dbkey"] = dbkey
 		else:
@@ -4451,8 +4452,11 @@ class vartree(packagetree):
 					myprovides += [mys[0] + "/" + mys[1]]
 			return myprovides
 		except Exception, e:
-			print "mylines:",mylines
-			print e
+			print
+			print "Check " + self.root+VDB_PATH+"/"+mycpv+"/PROVIDE and USE."
+			print "Possibly Invalid: " + str(mylines)
+			print "Exception: "+str(e)
+			print
 			return []
 
 	def get_all_provides(self):
@@ -4908,7 +4912,10 @@ class portdbapi(dbapi):
 				if self.lock_held:
 					raise "Lock is already held by me?"
 				self.lock_held = 1
-				mylock = portage_locks.lockfile(mydbkey,unlinkfile=1)
+				mylock = portage_locks.lockfile(mydbkey, wantnewlockfile=1)
+
+				if os.path.exists(mydbkey):
+					os.unlink(mydbkey)
 
 				myret=doebuild(myebuild,"depend","/",self.mysettings,dbkey=mydbkey)
 				if myret:
@@ -4921,6 +4928,7 @@ class portdbapi(dbapi):
 
 				try:
 					mycent=open(mydbkey,"r")
+					os.unlink(mydbkey)
 					mylines=mycent.readlines()
 					mycent.close()
 				except (IOError, OSError):
@@ -6247,13 +6255,13 @@ class dblink:
 						#now create our directory
 						os.mkdir(mydest)
 						os.chmod(mydest,mystat[0])
-						os.chown(mydest,mystat[4],mystat[5])
+						lchown(mydest,mystat[4],mystat[5])
 						print ">>>",mydest+"/"
 				else:
 					#destination doesn't exist
 					os.mkdir(mydest)
 					os.chmod(mydest,mystat[0])
-					os.chown(mydest,mystat[4],mystat[5])
+					lchown(mydest,mystat[4],mystat[5])
 					print ">>>",mydest+"/"
 				outfile.write("dir "+myrealdest+"\n")
 				# recurse and merge this directory

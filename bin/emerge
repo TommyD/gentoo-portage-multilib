@@ -793,11 +793,7 @@ class depgraph:
 					self.mydbapi[portage.root].cpv_inject(pkg)
 			
 		if "--usepkg" in myopts:
-			try:
-				portage.db["/"]["bintree"].populate(("--getbinpkg" in myopts), ("--getbinpkgonly" in myopts))
-			except Exception, e:
-				sys.stderr.write(red("!!! Failed to get all metadata:\n")+"    "+str(e)+"\n")
-				sys.exit(1)
+			portage.db["/"]["bintree"].populate(("--getbinpkg" in myopts), ("--getbinpkgonly" in myopts))
 
 	def create(self,mybigkey,myparent=None,addme=1,myuse=None):
 		"""creates the actual digraph of packages to merge.  return 1 on success, 0 on failure
@@ -2339,7 +2335,7 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 					print
 				elif (servertimestamp == 0) or (servertimestamp > mytimestamp):
 					# actual sync
-					mycommand=rsynccommand+" "+dosyncuri+"/* "+myportdir
+					mycommand=rsynccommand+" "+dosyncuri+"/ "+myportdir
 					exitcode=portage.spawn(mycommand,portage.settings,free=1)
 					if exitcode in [0,1,2,3,4,11,14,20,21]:
 						break

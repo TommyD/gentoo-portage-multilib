@@ -380,7 +380,7 @@ else
 	rm_opts=""
 	mv_opts=""
 	cp_opts=""
-	pager=""P
+	pager=""
 fi
 
 declare -i count=0

@@ -189,7 +189,7 @@ def make_http_request(conn, address, params={}, headers={}, dest=None):
 				conn,ignore,ignore,ignore,ignore = create_conn(address)
 			conn.request("GET", address, params, headers)
 		except Exception, e:
-			return None,None,"Server request failed:",e[1]
+			return None,None,"Server request failed: "+str(e)
 		response = conn.getresponse()
 		rc = response.status
 
@@ -278,7 +278,7 @@ def dir_get_list(baseurl,conn=None):
 			del page
 			listing = parser.get_anchors()
 		else:
-			raise Exception, "Unable to get listing: %s" % (rc,msg)
+			raise Exception, "Unable to get listing: %s %s" % (rc,msg)
 	elif protocol in ["ftp"]:
 		if address[-1] == '/':
 			olddir = conn.pwd()

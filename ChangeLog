@@ -6,8 +6,40 @@
     1. /var/cache/edb/virtuals is no longer used at all. It's calculated now.
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
-    4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
-       It is for convenience. Do not mistake this for the actual file.
+
+*portage-2.0.51_rc2 (25 Sep 2004): And we another Release Candidate!
+
+  25 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage_locks.py: Changed
+	all the calls to lockf which wraps fcntl. Made the chown on the locks
+	optional -- if it fails, it'll be annoying, but there's a message. Added
+	code to perform the hardlink-shuffle which uses hardlinks as a locking
+	mechanism (NFSv2 needs this).
+
+  25 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage_db_flat.py:
+	Added locking around the file creation to ensure atomicity.
+	
+  25 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage_localization.py:
+	A little spot to provide the '_' function and examples and future code.
+
+  25 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage_file.py: Added
+	the module to contain file/directory functions that are useful. Additional
+	function 'makedirs' handles creation of directories with recursive perms.
+	
+  25 Sep 2004; Nicholas Jones <carpaski@gentoo.org> getbinpkg.py: Fixed the
+	exception handling to not traceback.
+	
+  25 Sep 2004; Nicholas Jones <carpaski@gentoo.org> etc-update: Typo fix.
+	
+  25 Sep 2004; Nicholas Jones <carpaski@gentoo.org> emerge: Caused the
+	binary metadata downloading to be a little more verbose. Fixed the
+	sync command's arguments so that it deletes top level files.
+
+  25 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Added
+	Cretin's patch for prelink blacklists. Increased the verbosity of the
+	'mylines' output to let people know what files are affected with nulls.
+	Added a workaround for a race condition that somehow exists inside of
+	auxget when there is heavy lockfile contention -- Must be a lockfile
+	cleanup issue.
 
   25 Sep 2004; Jason Stubbs <jstubbs@gentoo.org> emerge: Modified env_update
   to always run ldconfig if makelinks is True, in order to ensure that
@@ -36,8 +68,6 @@
   16 Sep 2004; Jason Stubbs <jstubbs@gentoo.org> portage.py: Modified
   getmaskingstatus() to use settings.prevmaskdict rather than reading packages
   directly in support of cascading profiles.
-
-*portage-2.0.51_rc1 (15 Sep 2004): And we have Release Candidate!
 
   15 Sep 2004; Nicholas Jones <carpaski@gentoo.org> ebuild: On merge, disable
   the noauto feature explicitly.

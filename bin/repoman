@@ -602,7 +602,7 @@ for x in scanlist:
 				fails["file.executable"].append(checkdir+"/"+y)
 	digestlist=[]
 	if isCvs:
-		try: 
+		try:
 			mystat=os.stat(checkdir+"/files")[0]
 			if len(ebuildlist) and not S_ISDIR(mystat):
 				raise Exception
