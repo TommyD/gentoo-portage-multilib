@@ -2,8 +2,11 @@
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
   10 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge :
-  added suport for 'emerge --unmerge world' which removes all old package
+  added support for 'emerge --unmerge world' which removes all old package
   versions from the system
+  made 'emerge --unmerge' take binary compatibility slots into account, this
+  prevents that packages with different versions but also different slots, are
+  being unmerged
 
   9 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge :
   added support for the rebuild mode which rebuilds all the packages on your
