@@ -233,8 +233,9 @@ function do_cfg() {
 					${showdiffcmd}
 				) | ${pager}
 			else
-				echo "Showing differences between ${ofile} and ${file}"
+				echo "Beginning of differences between ${ofile} and ${file}"
 				${showdiffcmd}
+				echo "End of differences between ${ofile} and ${file}"
 			fi
 			if [ -L "${file}" ]; then
 				echo
