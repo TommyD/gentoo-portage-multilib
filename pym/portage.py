@@ -511,16 +511,19 @@ class config:
 						else:
 							while x[1:] in myuse:
 								myuse.remove(x[1:])
+			#inject into configlist[0] *and* origenv so that our USE tweaks are preserved beyond a self.reset()
 			self.configlist[0]["USE"]=string.join(myuse," ")
+			self.origenv["USE"]=self.configlist[0]["USE"]
 		else:
 			self.configlist=[self.origenv.copy(),getconfig("/etc/make.conf"),getconfig("/etc/make.globals")]
 		self.populated=1
-		if settings.has_key("MAINTAINER"):
-			if settings["MAINTAINER"]=="yes":
-				settings["MAINTAINER"]=settings["MAINTAINER_DEFAULT"]
-			maintainerparts=string.split(settings["MAINTAINER"],' ')
+		if self.has_key("MAINTAINER"):
+			if self["MAINTAINER"]=="yes":
+				self["MAINTAINER"]=self["MAINTAINER_DEFAULT"]
+				self.origenv["MAINTAINER"]=self["MAINTAINER_DEFAULT"]
+			maintainerparts=string.split(self["MAINTAINER"],' ')
 			for x in maintainerparts:
-				settings["MAINTAINER_"+x]="1"
+				self["MAINTAINER_"+x]="1"
 	
 	def __getitem__(self,mykey):
 		if not self.populated:
@@ -658,26 +661,24 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 	settings["D"]=settings["BUILDDIR"]+"/image/"
 	
 	#initial ebuild.sh bash environment configured
-	myso=getstatusoutput("/usr/sbin/ebuild.sh depend")
-	if myso[0]!=0:
-		print
-		print
-		print "!!! Portage had a problem processing this file:"
-		print "!!!",settings["EBUILD"]
-		print 
-		print myso[1]
-		print
-		print "!!! aborting."
-		print
-		return 1
-	# obtain the dependency and slot information from the deps file
-	a=open(settings["T"]+"/deps","r")
-	counter=0
-	mydeps=a.readlines()
-	# remove trailing lines
-	for mydeps_entry in mydeps:
-		mydeps[counter]=mydeps_entry.strip()
-		counter=counter+1
+	mydbkey="/var/cache/edb/dep/dep-"+os.path.basename(settings["EBUILD"])
+	if (not os.path.exists(mydbkey)) or os.stat(mydbkey)[7]<os.stat(settings["EBUILD"])[7]:
+		#cached info stale or non-existent
+		myso=getstatusoutput("/usr/sbin/ebuild.sh depend")
+		if myso[0]!=0:
+			print
+			print
+			print "!!! Portage had a problem processing this file:"
+			print "!!!",settings["EBUILD"]
+			print 
+			print myso[1]
+			print
+			print "!!! aborting."
+			print
+			return 1
+	# obtain the dependency, slot and SRC_URI information from the edb cache file
+	a=open(mydbkey,"r")
+	mydeps=eval(a.readline())
 	a.close()
 	# get possible slot information from the deps file
 	if mydeps[2]!="":
@@ -700,9 +701,7 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 		
 	#initial dep checks complete; time to process main commands
 	
-	a=open(settings["T"]+"/src_uri","r")
-	myuris=a.readline()
-	a.close()
+	myuris=mydeps[3]
 	newuris=evaluate(tokenize(myuris),string.split(settings["USE"]))	
 	alluris=evaluate(tokenize(myuris),[],1)	
 	a=open(settings["T"]+"/src_uri_new","w")
@@ -787,6 +786,7 @@ def isfifo(x):
 expandcache={}
 
 def expandpath(mypath):
+	"""this is obsoleted by os.path.realpath() in python2.2"""
 	"""The purpose of this function is to resolve the 'real' path on disk, with all
 	symlinks resolved except for the basename, since we may be installing a symlink
 	and definitely don't want it expanded.  In fact, the file that we want to install
@@ -807,7 +807,9 @@ def expandpath(mypath):
 		return a[1]+"/"+split[-1]
 
 def movefile(src,dest,unlink=1):
-	"""moves a file from src to dest, preserving all permissions and attributes."""
+	"""moves a file from src to dest, preserving all permissions and attributes; mtime will
+	be preserved even when moving across filesystems.  Returns true on success and false on
+	failure."""
 	#The next 2 lines avoid writing to the target
 	if os.path.islink(dest):
 		os.unlink(dest)
@@ -1852,6 +1854,9 @@ class vartree(packagetree):
 					#Setting to None *does* add an entry
 					self.virtdb[x+"/"+y]=None
 					#This is a virtual package; record the "fullpkg" as key
+					#If we have a "virtual/foo", add "virtual/foo-1.0" as well
+					if isjustname(y):
+						self.virtdb[fullpkg]=None
 		os.chdir(origdir)
 		self.populated=1
 	def isvirtual(self,cpv):
@@ -2220,7 +2225,125 @@ class dblink:
 		if a:
 			print "!!! pkg_postrm() script failed; exiting."
 			sys.exit(a)
+	
+	def treewalk(srcroot,destroot,inforoot,secondhand=[],mypath=None):
+		# srcroot = ${D}; destroot=where to merge, ie. ${ROOT}, inforoot=root of db entry,
+		# secondhand = list of symlinks that have been skipped due to their target not existing (will merge later),
+		# mypath = path offset for srcroot and destroot
+		"this is going to be the new merge code"
+		if mypath==None:
+			mypath=srcroot
+			if not os.path.exists(self.dbdir):
+				self.create()
+			print ">>> Updating mtimes..."
+			# before merging, it's *very important* to touch all the files
+			# this ensures that their mtime is current and unmerging works correctly
+			os.system("(cd "+srcroot+"; for x in `find`; do  touch -c $x 2>/dev/null; done)")
+			print ">>> Merging",self.cat+"/"+self.pkg,"to",destroot
+			# get old contents info for later unmerging
+			oldcontents=self.getcontents()
+			# run preinst script
+			a=doebuild(inforoot+"/"+self.pkg+".ebuild","preinst",root)
+			if a:
+				print "!!! pkg_preinst() script failed; exiting."
+				sys.exit(a)
+			# open CONTENTS file (possibly overwriting old one) for recording
+			outfile=open(inforoot+"/CONTENTS","w")
+	
+		# iterate through all files in the current directory
+		for x in os.listdir(mypath):
+			# stat file once, test using S_* macros many times (faster that way)
+			mystat=os.lstat(mypath+"/"+x)
+			mymode=mystat[ST_MODE]
+			mymtime=mystat[ST_MTIME]
+			# handy variables; mydest is the target object on the live filesystems;
+			# mysrc is the source object in the temporary install dir; myrealdest
+			# is the "real" final location of the file (minus any $ROOT) offsets.
+			# myrealdest is what gets recorded in CONTENTS.  mydest gets printed
+			# onscreen.
+			mydest=destroot+"/"+mypath+"/"+x
+			try:
+				mydmode=os.lstat(mydest)[ST_MODE]
+			except:
+				#dest file doesn't exist
+				mydmode=None
+			mysrc=srcroot+"/"+mypath+"/"+x
+			# below, the [len(destroot):] is there to chop off the $ROOT 
+			# (we don't record this in CONTENTS) after the real
+			# target path has been expanded. os.path.realpath gets the "real"
+			# path, taking any existing symlinks into account.  That way, if
+			# the symlinks are unmerged, this object can still be found and unmerged
+			# too, since we record myrealdest in CONTENTS.
+			myrealdest=os.path.realpath(mydest)[len(destroot):]
+			if S_ISLNK(mymode):
+				# we are merging a symbolic link
+				myto=os.readlink(mysrc)
+				# myrealto contains the path of the real file to which this symlink points.
+				# we can simply test for existence of this file to see if the target has been merged yet
+				myrealto=os.path.normpath(os.path.join(destroot,myto))
+				if mydmode!=None:
+					#destination exists
+					if (not S_ISLNK(mydmode)) and (S_ISDIR(mydmode)):
+						# directory in the way: we can't merge a symlink over a directory
+						print "!!!",mydest,"->",myto
+						# we won't merge this, continue with next file...
+						continue
+				if not os.path.exists(myrealto):
+					# either the target directory doesn't exist yet or the target file doesn't exist -- or
+					# the target is a broken symlink.  We will add this file to our "second hand" and merge
+					# it later.
+					secondhand.append(mysrc)
+					continue
+				# unlinking no longer necessary; "movefile" will overwrite symlinks atomically and correctly
+				if movefile(mysrc,mydest):
+					print ">>>",mydest,"->",myto
+					outfile.write("sym "+myrealdest+" -> "+myto+" "+mymtime+"\n")
+				else:
+					print "!!!",rootfile,"->",myto
+			elif S_ISDIR(mymode):
+				# we are merging a directory
+				if mydmode!=None:
+					# destination exists
+					if S_ISDIR(mydmode):
+						if S_ISLNK(mydmode):
+							# a symlink to an existing directory will work for us; keep it:
+							print "---",rootfile+"/"
+						else:
+							# a normal directory will work too
+							print "---",rootfile+"/"
+					else:
+						# a non-directory and non-symlink-to-directory.  Won't work for us.  Move out of the way.
+						movefile(rootfile,rootfile+".backup")
+						print "bak",rootfile,rootfile+".backup"
+						#now create our directory
+						os.mkdir(rootfile)
+						os.chmod(rootfile,mystat[0])
+						os.chown(rootfile,mystat[4],mystat[5])
+						print ">>>",rootfile+"/"
+				else:				
+					os.mkdir(rootfile)
+					os.chmod(rootfile,mystat[0])
+					os.chown(rootfile,mystat[4],mystat[5])
+					print ">>>",rootfile+"/"
+				outfile.write("dir "+expandpath(relfile)+"\n")
+				#enter directory, recurse
+				os.chdir(x)
+				self.merge(mergeroot,inforoot,myroot,mergestart+"/"+x,outfile)
+				#return to original path
+				os.chdir(mergestart)
+				if mypath!=myroot:
+					mygraph.addnode(relpath[:-1],relpath+x)
+				else:
+					mygraph.addnode(relpath+x)
+				treewalk(myroot,mypath+"/"+x,relpath+x+"/",mygraph)
+			else:
+				if mypath!=myroot:
+					mygraph.addnode(relpath[:-1],relpath+x)
+				else:
+					mygraph.addnode(relpath+x)	
+		return mygraph
 
+	
 	def merge(self,mergeroot,inforoot,myroot,mergestart=None,outfile=None):
 		global prevmask	
 		#myroot=os.environ["ROOT"]

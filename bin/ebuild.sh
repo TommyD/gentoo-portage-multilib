@@ -553,11 +553,7 @@ dyn_compile() {
 	echo "$LICENSE" > LICENSE
 	echo "$CATEGORY" > CATEGORY
 	echo "$PF" > PF
-	#It seems like a good plan to leave SLOT out of unslotted ebuilds
-	if [ "$SLOT" ]
-	then
-		echo "$SLOT" > SLOT
-	fi
+	echo "$SLOT" > SLOT
 	echo "$RDEPEND" > RDEPEND
 	echo "$PROVIDE" > PROVIDE
 	cp ${EBUILD} ${PF}.ebuild
@@ -805,10 +801,8 @@ do
 	    fi
 	    ;;
 	depend)
-		echo $DEPEND > ${T}/deps
-		echo $RDEPEND >> ${T}/deps
-		echo $SLOT >> ${T}/deps
-		echo $SRC_URI > ${T}/src_uri
+		#the echo commands remove newlines
+		echo "['`echo $DEPEND`', '`echo $RDEPEND`', '`echo $SLOT`', '`echo $SRC_URI`' ]" > /var/cache/edb/dep/dep-${PF}.ebuild
 		;;
 	*)
 	    echo "Please specify a valid command."

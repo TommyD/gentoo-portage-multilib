@@ -354,24 +354,15 @@ class depgraph:
 				sys.exit(1)
 				mydep={}
 			myebuild=self.db[myroot]["porttree"].getname(mykey)
-			#some test XFS caching code using extended attributes; not as fast since we use the "attr" exe
-			#if "--xfshack" in self.myopts:
-			#	myattr=commands.getstatusoutput("attr -ql "+myebuild)[1]
-			#	if string.find(myattr,"DEPEND")!=-1:
-			#		edepend=eval(commands.getstatusoutput("attr -qg DEPEND "+myebuild)[1])
-			#	else:
-			#		edepend=portage.doebuild(myebuild,"depend",myroot,1,edebug)
-			#		commands.getstatusoutput('attr -qs DEPEND -V"'+`edepend`+'" '+myebuild)
 			mydbkey="/var/cache/edb/dep/dep-"+os.path.basename(myebuild)
 			#use the cached info if it is available and more recent than the ebuild itself (mtime)
 			if os.path.exists(mydbkey) and os.stat(mydbkey)[7]>=os.stat(myebuild)[7]:
+				#problem does not appear to be here.
 				mydb=open(mydbkey,"r")
 				edepend=eval(mydb.readline())
+				mydb.close()
 			else:
 				edepend=portage.doebuild(myebuild,"depend",myroot,1,edebug)
-				mydb=open(mydbkey,"w")
-				mydb.write(`edepend`)
-			mydb.close()
 			if edepend==1:
 				print "!!! emerge aborting."
 				sys.exit(1)
