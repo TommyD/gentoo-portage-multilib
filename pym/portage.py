@@ -228,6 +228,11 @@ class digraph:
 # all but _p (where it is required) can be followed by an optional trailing integer
 
 endversion={"pre":-2,"p":0,"alpha":-4,"beta":-3,"rc":-1}
+# as there's no reliable way to set {}.keys() order
+# netversion_keys will be used instead of endversion.keys
+# to have fixed search order, so that "pre" is checked
+# before "p"
+endversion_keys = ["pre", "p", "alpha", "beta", "rc"]
 
 #parse /etc/env.d and generate /etc/profile.env
 
@@ -821,7 +826,7 @@ def relparse(myver):
 		#an endversion
 		number=string.atof(mynewver[0])
 		match=0
-		for x in endversion.keys():
+		for x in endversion_keys:
 			elen=len(x)
 			if mynewver[1][:elen] == x:
 				match=1
@@ -919,7 +924,7 @@ def ververify(myorigval,silent=1):
 		if not silent:
 			print "!!! Name error in",myorigval+": characters before _ must be numeric"
 		return 0
-	for mye in endversion.keys():
+	for mye in endversion_keys:
 		if ep[1][0:len(mye)]==mye:
 			if len(mye)==len(ep[1]):
 				#no trailing numeric; ok
@@ -1012,28 +1017,50 @@ def catpkgsplit(mycatpkg,silent=1):
 # the versions are the same, val1>val2 or val2>val1.
 
 def vercmp(val1,val2):
+	# consider 1_p2 vc 1.1
+	# after expansion will become (1_p2,0) vc (1,1)
+	# then 1_p2 is compared with 1 before 0 is compared with 1
+	# to solve the bug we need to convert it to (1,0_p2)
+	# by splitting _xx part and adding it back _after_expansion
+	val1_xxx = val2_xxx = ''
+	if val1.count('_'):
+		val1, val1_xxx = val1.split('_', 1)
+	if val2.count('_'):
+		val2, val2_xxx = val2.split('_', 1)
+
+	# replace '-' by '.'
+	# FIXME: Is it needed? can val1/2 contain '-'?
 	val1=string.split(val1,'-')
 	if len(val1)==2:
 		val1[0]=val1[0]+"."+val1[1]
-	val1=string.split(val1[0],'.')
-	#add back decimal point so that .03 does not become "3" !
-	for x in val1[1:]:
-		x="."+x
 	val2=string.split(val2,'-')
 	if len(val2)==2:
 		val2[0]=val2[0]+"."+val2[1]
+
+	val1=string.split(val1[0],'.')
 	val2=string.split(val2[0],'.')
-	for x in val2[1:]:
-		x="."+x
+
+	#add back decimal point so that .03 does not become "3" !
+	for x in range(1,len(val1)):
+		if val1[x][0] == '0' :
+			val1[x]='.' + val1[x]
+	for x in range(1,len(val2)):
+		if val2[x][0] == '0' :
+			val2[x]='.' + val2[x]
+
+	# extend varion numbers
 	if len(val2)<len(val1):
-		for x in range(0,len(val1)-len(val2)):
-			val2.append("0")
+		val2.extend(["0"]*(len(val1)-len(val2)))
 	elif len(val1)<len(val2):
-		for x in range(0,len(val2)-len(val1)):
-			val1.append("0")
+		val1.extend(["0"]*(len(val2)-len(val1)))
+
+	# add back _xxx tails
+	if val1_xxx:
+		val1[-1] += '_' + val1_xxx
+	if val2_xxx:
+		val2[-1] += '_' + val2_xxx
 	#The above code will extend version numbers out so they
 	#have the same number of digits.
-	myval1=[]
 	for x in range(0,len(val1)):
 		cmp1=relparse(val1[x])
 		cmp2=relparse(val2[x])
