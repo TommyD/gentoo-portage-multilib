@@ -3,7 +3,7 @@
 # Brian Harring <ferringb@gentoo.org>
 # this needs a good enema of commented out code
 # potentially a restructuring, although that likely is overkill.
-
+ 
 source /usr/lib/portage/bin/ebuild.sh daemonize
 
 alias die='diefunc "$FUNCNAME" "$LINENO" "$?"'
