@@ -4,6 +4,28 @@
 # Distributed under the terms of the GNU General Public License, v2 or later
 # Author Karl Trygve Kalleberg <karltk@gentoo.org>
 # $Header$
+#
+# Typical usage:
+# dohtml -r docs/*
+#  - put all files and directories in docs into /usr/share/doc/${PF}/html
+# dohtml foo.html
+#  - put foo.html into /usr/share/doc/${PF}/html
+#
+#
+# Detailed usage:
+# dohtml <list-of-files> 
+#  - will install the files in the list of files (space-separated list) into 
+#    /usr/share/doc/${PF}/html, provided the file ends in .html, .png, .jpg 
+#     or .css
+# dohtml -r <list-of-files-and-directories>
+#  - will do as 'dohtml', but recurse into all directories, as long as the 
+#    directory name is not CVS
+# dohtml -a png,gif,html,htm [-r] <list-of-files[-and-directories]>
+#  - will do as 'dohtml' but filter on .png,.gif,.html,.htm (default filter 
+#    list is ignored
+# dohtml -x CVS,SCCS,RCS -r <list-of-files-and-directories>
+#  - will do as 'dohtml -r', but ignore directories named CVS, SCCS, RCS
+#
 
 import os
 import sys
@@ -25,7 +47,7 @@ def install(basename, dirname, recurse=0, prefix=""):
 		
 	destdir = D + "usr/share/doc/" + PF + "/html/" + prefix
 
-	print fullpath, destdir
+#	print fullpath, destdir
 	
 	if os.path.isfile(fullpath):
 		ext = os.path.splitext(basename)[1]
