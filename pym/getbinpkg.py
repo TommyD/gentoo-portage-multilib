@@ -518,7 +518,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 	sys.stderr.write("\n")
 	
 	try:
-		if metadata[baseurl]["modified"]:
+		if metadata[baseurl].has_key("modified") and metadata[baseurl]["modified"]:
 			metadata[baseurl]["timestamp"] = int(time.time())
 			metadatafile = open("/var/cache/edb/remote_metadata.pickle", "w+")
 			cPickle.dump(metadata,metadatafile)

@@ -105,7 +105,7 @@ def sha1hash(filename):
 
 def perform_checksum(filename, hash_function=md5hash, calc_prelink=0):
 	myfilename      = filename[:]
-	prelink_tmpfile = PRIVATE_PATH+"/prelink-checksum.tmp"
+	prelink_tmpfile = PRIVATE_PATH+"/prelink-checksum.tmp."+str(os.getpid())
 	mylock          = None
 	
 	if calc_prelink and prelink_capable:

@@ -7,7 +7,20 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
-*portage-2.0.51_rc10_pre1 (18 Oct 2004): Spork.
+
+*portage-2.0.51_rc10 (19 Oct 2004): Potential Final #1.
+
+  19 Oct 2004; Nicholas Jones <carpaski@gentoo.org> emerge: Visual acuity
+  enhancements. Fixed all the spaces in the option handling.
+
+  19 Oct 2004; Nicholas Jones <carpaski@gentoo.org> emerge.1: Updated for
+  'f' and 'S'.
+
+  19 Oct 2004; Nicholas Jones <carpaski@gentoo.org> getbinpkg.py: Potential
+  fix for a missing dict key.
+
+  19 Oct 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Prelink
+  tempfile per pid.
 
   18 Oct 2004; Nicholas Jones <carpaski@gentoo.org> *.py: Added a protocol
   change for cPickles to make them more efficient (binary).

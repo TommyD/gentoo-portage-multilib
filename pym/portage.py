@@ -7087,12 +7087,17 @@ def portageexit():
 				mtimedb["version"]=VERSION
 				cPickle.dump(mtimedb, open(mymfn,"w"), cPickle.HIGHEST_PROTOCOL)
 				#print "*** Wrote out mtimedb data successfully."
+			except SystemExit, e:
+				raise
+			except Exception, e:
+				writemsg("Failed to write to mtimedb: %(reason)s\n" % {"reason":str(e)})
+
+			try:
 				os.chown(mymfn,uid,portage_gid)
 				os.chmod(mymfn,0664)
 			except SystemExit, e:
 				raise
 			except Exception, e:
-				print "MTIMEDB:",e
 				pass
 
 atexit.register(portageexit)

@@ -216,54 +216,54 @@ for x in tmpcmdline:
 
 # process the options and command arguments
 for x in cmdline:
-        if not x:
-                continue
-        if len(x)>=2 and x[0:2]=="--":
-                        if x in options:
-                                myopts.append(x)
-                        elif x[2:] in actions:
-                                if x[2:]=="rsync" or x=="rsync":
-					# "emerge --rsync"
-                                        print
-                                        print red("*** '--rsync' has been deprecated.")
-                                        print red("*** Please use '--sync' instead.")
-                                        print
-                                        x="--sync"
-                                if myaction:
-                                        if myaction not in ["system", "world"]:
-                                                myaction="--"+myaction
-                                        print
-                                        print red("!!!")+green(" Multiple actions requested... Please choose one only.")
-                                        print red("!!!")+" '"+darkgreen(myaction)+"' "+red("or")+" '"+darkgreen(x)+"'"
-                                        print
-                                        sys.exit(1)
-                                myaction=x[2:]
-                        else:
-                                print "!!! Error:",x,"is an invalid option."
-                                sys.exit(1)
-        elif (not myaction) and (x in actions):
-                if x not in ["system", "world"]:
-                        #print red("*** Deprecated use of action '"+x+"'")
-                        if x=="rsync":
+	if not x:
+		continue
+	if len(x)>=2 and x[0:2]=="--":
+		if x in options:
+			myopts.append(x)
+		elif x[2:] in actions:
+			if x[2:]=="rsync" or x=="rsync":
+				# "emerge --rsync"
+				print
+				print red("*** '--rsync' has been deprecated.")
+				print red("*** Please use '--sync' instead.")
+				print
+				x="--sync"
+			if myaction:
+				if myaction not in ["system", "world"]:
+					myaction="--"+myaction
+				print
+				print red("!!!")+green(" Multiple actions requested... Please choose one only.")
+				print red("!!!")+" '"+darkgreen(myaction)+"' "+red("or")+" '"+darkgreen(x)+"'"
+				print
+				sys.exit(1)
+			myaction=x[2:]
+		else:
+			print "!!! Error:",x,"is an invalid option."
+			sys.exit(1)
+	elif (not myaction) and (x in actions):
+		if x not in ["system", "world"]:
+			#print red("*** Deprecated use of action '"+x+"'")
+			if x=="rsync":
 				# "emerge rsync"
-                                print
-                                print red("*** 'rsync' will now install the package rsync.")
-                                print red("*** To sync the tree, please use '--sync' instead.")
-                                print
-                                myfiles.append(x)
+				print
+				print red("*** 'rsync' will now install the package rsync.")
+				print red("*** To sync the tree, please use '--sync' instead.")
+				print
+				myfiles.append(x)
 				continue
-                if myaction:
-                        print
-                        print red("!!!")+green(" Multiple actions requested... Please choose one only.")
-                        print red("!!! '")+darkgreen(myaction)+"' "+red("or")+" '"+darkgreen(x)+"'"
-                        print
-                        sys.exit(1)
-                myaction=x
-        elif x[-1]=="/":
-                # this little conditional helps tab completion
-                myfiles.append(x[:-1])
-        else:
-                myfiles.append(x)
+		if myaction:
+			print
+			print red("!!!")+green(" Multiple actions requested... Please choose one only.")
+			print red("!!! '")+darkgreen(myaction)+"' "+red("or")+" '"+darkgreen(x)+"'"
+			print
+			sys.exit(1)
+		myaction=x
+	elif x[-1]=="/":
+		# this little conditional helps tab completion
+		myfiles.append(x[:-1])
+	else:
+		myfiles.append(x)
 
 
 if "moo" in myfiles:
@@ -1454,7 +1454,7 @@ class depgraph:
 							addl+=turquoise("U")+" "
 					else:
 						# New slot, mark it new.
-						addl=" "+green("S")+" "+fetch+"  "
+						addl=" "+green("NS")+fetch+"  "
 
 					if "--changelog" in myopts:
 						changelogs.extend(self.calc_changelog(
@@ -1503,7 +1503,10 @@ class depgraph:
 								usechange="*"
 
 						if ebuild_iuse in self.applied_useflags[x[2]]:
-							iuse=red("+"+ebuild_iuse)
+							if usechange == "*":
+								iuse=green("+"+ebuild_iuse)
+							else:
+								iuse=red("+"+ebuild_iuse)
 						elif ebuild_iuse in portage.settings.usemask:
 							iuse=blue("(-"+ebuild_iuse+")")
 						else:

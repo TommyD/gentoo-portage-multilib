@@ -283,11 +283,24 @@ Instead of actually performing the merge, simply display what *would*
 have been installed if \fB\-\-pretend\fR weren't used.  Using \fB\-\-pretend\fR
 is strongly recommended before installing an unfamiliar package.  In
 the printout, 
-\fIN\fR = new, 
-\fIU\fR = upgrading, 
-\fIR\fR = replacing, 
-\fIF\fR = fetch restricted, 
-\fIB\fR = blocked by an already installed package.
+.br 
+ 
+.br 
+\fIN\fR = new, (not yet installed)
+.br 
+\fIS\fR = new, Slot installation (side-by-side versions) 
+.br 
+\fIU\fR = updating, (changing versions)
+.br 
+\fID\fR = downgrade, (Best version seems lower) 
+.br 
+\fIR\fR = replacing, (Remerging same version))
+.br 
+\fIF\fR = fetch restricted, (Manual download)
+.br 
+\fIf\fR = fetch restricted, (Already downloaded)
+.br 
+\fIB\fR = blocked by an already installed package
 .TP
 .BR "\-\-quiet " (\fB\-q\fR)
 Results may vary, but the general outcome is a reduced or condensed
@@ -365,7 +378,7 @@ simultaneously emerged because they usually provide the same functionality.
 .B [ebuild  N    ] app\-games/qstat\-25c
 Qstat is New to your system, and will be emerged for the first time.
 .TP
-.B [ebuild  S    ] dev-libs/glib-2.4.7
+.B [ebuild  NS   ] dev-libs/glib-2.4.7
 You already have a version of glib installed, but a 'new' version in 
 a different SLOT is available.
 .TP
@@ -378,6 +391,9 @@ The realplayer package requires that you Fetch the sources manually.
 When you attempt to emerge the package, if the sources are not found, 
 then portage will halt and you will be provided with instructions on how 
 to download the required files.
+.TP
+.B [ebuild    f  ] media\-video/realplayer\-8\-r6
+The realplayer package's files are already downloaded.
 .TP
 .B [ebuild     U ] net\-fs/samba\-2.2.8_pre1 [2.2.7a]
 Samba 2.2.7a has already been emerged and can be Updated to version 
