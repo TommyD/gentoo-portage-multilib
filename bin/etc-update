@@ -359,8 +359,8 @@ rm -rf ${TMP} 2> /dev/null
 mkdir ${TMP} || die "failed mkdir command!" 1
 
 # I need the CONFIG_PROTECT value
-CONFIG_PROTECT=$(/usr/lib/portage/bin/portageq config_protect)
-CONFIG_PROTECT_MASK=$(/usr/lib/portage/bin/portageq config_protect_mask)
+CONFIG_PROTECT=$(/usr/lib/portage/bin/portageq envvar CONFIG_PROTECT)
+CONFIG_PROTECT_MASK=$(/usr/lib/portage/bin/portageq envvar CONFIG_PROTECT_MASK)
 
 # load etc-config's configuration
 EU_AUTOMERGE=`get_config eu_automerge`
