@@ -33,7 +33,7 @@ def xtermTitle(mystr):
 	if havecolor and dotitles:
 		myt=os.environ["TERM"]
 		if myt in ["xterm","Eterm","aterm"]:
-			print "\x1b]1;\x07\x1b]2;"+str(mystr)+"\x07"
+			print "\x1b]1;\x07\x1b]2;"+str(mystr)+"\x07",
 
 def notitles():
 	"turn off title setting"
