@@ -35,11 +35,25 @@
 #undef open
 #undef open64
 
-#define PIDS_FILE		"/tmp/sandboxpids.tmp"
-#define LD_PRELOAD_FILE	"/etc/ld.so.preload"
+#define PIDS_FILE	"/tmp/sandboxpids.tmp"
 
-int 	check_access(const char*, const char*);
-int 	check_syscall(const char*, const char*);
+typedef struct {
+	int		show_access_violation;
+	char**	deny_prefixes;
+	int		num_deny_prefixes;
+	char**	read_prefixes;
+	int		num_read_prefixes;
+	char**	write_prefixes;
+	int		num_write_prefixes;
+	char**	predict_prefixes;
+	int		num_predict_prefixes;
+	char**	write_denied_prefixes;
+	int		num_write_denied_prefixes;
+} sbcontext_t;
+
+void	init_context(sbcontext_t*);
+int 	check_access(sbcontext_t*, const char*, const char*);
+int 	check_syscall(sbcontext_t*, const char*, const char*);
 int 	before_syscall(const char*, const char*);
 int 	before_syscall_open_int(const char*, const char*, int);
 int 	before_syscall_open_char(const char*, const char*, const char*);
@@ -47,20 +61,6 @@ void 	clean_env_entries(char***, int*);
 void 	init_env_entries(char***, int*, char*);
 int		is_sandbox_pid();
 void*	get_dl_symbol(char*);
-
-/* TODO: is it useful to also implement execution prefixes, thus mirroring
-   a complete permission system. */ 
-int		show_access_violation = 1;
-char**	deny_prefixes = NULL;
-int		num_deny_prefixes = 0;
-char**	read_prefixes = NULL;
-int		num_read_prefixes = 0;
-char**	write_prefixes = NULL;
-int		num_write_prefixes = 0;
-char**	predict_prefixes = NULL;
-int		num_predict_prefixes = 0;
-char*	write_denied_prefixes[] = {LD_PRELOAD_FILE};
-int		num_write_denied_prefixes = sizeof(write_denied_prefixes)/sizeof(char*);
 
 /* Wrapper macros and functions */
 
@@ -330,7 +330,6 @@ wrsysc2(1, int, chmod, const char*, mode_t)
 wrsysc1ptr(1, DIR*, opendir, const char*)
 
 /* execution syscalls */
-
 wrsysc1(1, int, system, const char*)
 
 wrexec2va(1, int, execl,  const char*, const char*)
@@ -383,7 +382,20 @@ int execvp(const char* file, char* const* argv)
    are not wrapped since they can't be used if open is wrapped correctly
    and unaccessible file descriptors are not possible to create */
 
-
+void init_context(sbcontext_t* context)
+{
+	context->show_access_violation = 1;
+	context->deny_prefixes = NULL;
+	context->num_deny_prefixes = 0;
+	context->read_prefixes = NULL;
+	context->num_read_prefixes = 0;
+	context->write_prefixes = NULL;
+	context->num_write_prefixes = 0;
+	context->predict_prefixes = NULL;
+	context->num_predict_prefixes = 0;
+	context->write_denied_prefixes = NULL;
+	context->num_write_denied_prefixes = 0;
+}
 
 int is_sandbox_pid()
 {
@@ -432,66 +444,73 @@ int is_sandbox_pid()
 void clean_env_entries(char*** prefixes_array, int* prefixes_num)
 {
 	int i = 0;
-	for (i = 0; i < *prefixes_num; i++)
+	if (NULL != *prefixes_array)
 	{
-		free((*prefixes_array)[i]);
-		(*prefixes_array)[i] = NULL;
-	}
-	free(*prefixes_array);
-	*prefixes_array = NULL;
+		for (i = 0; i < *prefixes_num; i++)
+		{
+			if (NULL != (*prefixes_array)[i])
+			{
+				free((*prefixes_array)[i]);
+				(*prefixes_array)[i] = NULL;
+			}
+		}
+		free(*prefixes_array);
+		*prefixes_array = NULL;
 
-	*prefixes_num = 0;
+		*prefixes_num = 0;
+	}
 }
 
 void init_env_entries(char*** prefixes_array, int* prefixes_num, char* env)
 {
-	if (NULL == *prefixes_array)
+	char* prefixes_env = getenv(env);
+
+	if (NULL == prefixes_env)
 	{
-		char* prefixes_env = getenv(env);
+		fprintf(stderr, "Sandbox error : the %s environmental variable should be defined.\n", env);
+	}
+	else
+	{
+		char*	buffer = NULL;
+		int		prefixes_env_length = strlen(prefixes_env);
+		int		i = 0;
+		int		num_delimiters = 0;
+		char*	token = NULL;
+		char*	prefix = NULL;
 
-		if (NULL == prefixes_env)
+		for (i = 0; i < prefixes_env_length; i++)
 		{
-			fprintf(stderr, "Sandbox error : the %s environmental variable should be defined.\n", env);
+			if (':' == prefixes_env[i])
+			{
+				num_delimiters++;
+			}
 		}
-		else
+
+		if (num_delimiters > 0)
 		{
-			char	buffer[255];
-			int		prefixes_env_length = strlen(prefixes_env);
-			int		i = 0;
-			int		num_delimiters = 0;
-			char*	token = NULL;
-			char*	prefix = NULL;
+			buffer = (char*)malloc(sizeof(char)*(prefixes_env_length+1));
+			*prefixes_array = (char**)malloc(sizeof(char*)*(num_delimiters+1));
 
-			for (i = 0; i < prefixes_env_length; i++)
+			strcpy(buffer, prefixes_env);
+			token = strtok(buffer, ":");
+			while (NULL != token &&
+				   strlen(token) > 0)
 			{
-				if (':' == prefixes_env[i])
-				{
-					num_delimiters++;
-				}
-			}
-
-			if (num_delimiters > 0)
-			{
-				*prefixes_array = (char**)malloc(sizeof(char*)*num_delimiters+1);
-
-				strcpy(buffer, prefixes_env);
-				token = strtok(buffer, ":");
-				while (NULL != token &&
-					   strlen(token) > 0)
-				{
-					prefix = (char*)malloc((sizeof(char)*strlen(token))+1);
-					strcpy(prefix, token);
-					(*prefixes_array)[(*prefixes_num)++] = prefix;
-					token = strtok(NULL, ":");
-				}
-			}
-			else if(prefixes_env_length > 0)
-			{
-				*prefixes_array = (char**)malloc(sizeof(char*));
-				prefix = (char*)malloc((sizeof(char)*strlen(prefixes_env))+1);
-				strcpy(prefix, prefixes_env);
+				prefix = (char*)malloc(sizeof(char)*(strlen(token)+1));
+				strcpy(prefix, token);
 				(*prefixes_array)[(*prefixes_num)++] = prefix;
+				token = strtok(NULL, ":");
 			}
+			free(buffer);
+			buffer = NULL;
+		}
+		else if(prefixes_env_length > 0)
+		{
+			(*prefixes_array) = (char**)malloc(sizeof(char*));
+			
+			prefix = (char*)malloc(sizeof(char)*(prefixes_env_length+1));
+			strcpy(prefix, prefixes_env);
+			(*prefixes_array)[(*prefixes_num)++] = prefix;
 		}
 	}
 }
@@ -507,7 +526,7 @@ void* get_dl_symbol(char* symname)
 	return result;
 }
 
-int check_access(const char* func, const char* path)
+int check_access(sbcontext_t* sbcontext, const char* func, const char* path)
 {
 	int		i = 0;
 	char*	filtered_path = (char*)path;
@@ -528,18 +547,18 @@ int check_access(const char* func, const char* path)
 		return 1;
 	}
 	
-	if (NULL != deny_prefixes)
+	if (NULL != sbcontext->deny_prefixes)
 	{
-		for (i = 0; i < num_deny_prefixes; i++)
+		for (i = 0; i < sbcontext->num_deny_prefixes; i++)
 		{
-			if (0 == strncmp(filtered_path, deny_prefixes[i], strlen(deny_prefixes[i])))
+			if (0 == strncmp(filtered_path, sbcontext->deny_prefixes[i], strlen(sbcontext->deny_prefixes[i])))
 			{
 				return 0;
 			}
 		}
 	}
 	
-	if (NULL != read_prefixes &&
+	if (NULL != sbcontext->read_prefixes &&
 		(0 == strcmp(func, "open_rd") ||
 		 0 == strcmp(func, "popen") ||
 		 0 == strcmp(func, "opendir") ||
@@ -551,15 +570,15 @@ int check_access(const char* func, const char* path)
 		 0 == strcmp(func, "execvp") ||
 		 0 == strcmp(func, "execve")))
 	{
-		for (i = 0; i < num_read_prefixes; i++)
+		for (i = 0; i < sbcontext->num_read_prefixes; i++)
 		{
-			if (0 == strncmp(filtered_path, read_prefixes[i], strlen(read_prefixes[i])))
+			if (0 == strncmp(filtered_path, sbcontext->read_prefixes[i], strlen(sbcontext->read_prefixes[i])))
 			{
 				return 1;
 			}
 		}
 	}
-	else if (NULL != write_prefixes &&
+	else if (NULL != sbcontext->write_prefixes &&
 			 (0 == strcmp(func, "open_wr") ||
 			  0 == strcmp(func, "creat") ||
 			  0 == strcmp(func, "creat64") ||
@@ -579,16 +598,16 @@ int check_access(const char* func, const char* path)
 	{
 		struct stat	tmp_stat;
 
-		for (i = 0; i < num_write_denied_prefixes; i++)
+		for (i = 0; i < sbcontext->num_write_denied_prefixes; i++)
 		{
-			if (0 == strncmp(filtered_path, write_denied_prefixes[i], strlen(write_denied_prefixes[i])))
+			if (0 == strncmp(filtered_path, sbcontext->write_denied_prefixes[i], strlen(sbcontext->write_denied_prefixes[i])))
 			{
 				return 0;
 			}
 		}
-		for (i = 0; i < num_write_prefixes; i++)
+		for (i = 0; i < sbcontext->num_write_prefixes; i++)
 		{
-			if (0 == strncmp(filtered_path, write_prefixes[i], strlen(write_prefixes[i])))
+			if (0 == strncmp(filtered_path, sbcontext->write_prefixes[i], strlen(sbcontext->write_prefixes[i])))
 			{
 				return 1;
 			}
@@ -599,16 +618,16 @@ int check_access(const char* func, const char* path)
 		{
 			if (0 == stat(filtered_path, &tmp_stat))
 			{
-				show_access_violation = 0;
+				sbcontext->show_access_violation = 0;
 				return 0;
 			}
 		}
 	
-		for (i = 0; i < num_predict_prefixes; i++)
+		for (i = 0; i < sbcontext->num_predict_prefixes; i++)
 		{
-			if (0 == strncmp(filtered_path, predict_prefixes[i], strlen(predict_prefixes[i])))
+			if (0 == strncmp(filtered_path, sbcontext->predict_prefixes[i], strlen(sbcontext->predict_prefixes[i])))
 			{
-				show_access_violation = 0;
+				sbcontext->show_access_violation = 0;
 				return 0;
 			}
 		}
@@ -619,9 +638,10 @@ int check_access(const char* func, const char* path)
 	return 0;
 }
 
-int check_syscall(const char* func, const char* file)
+int check_syscall(sbcontext_t* sbcontext, const char* func, const char* file)
 {
-	char	absolute_path[512];
+	int		result = 1;
+	char*	absolute_path = NULL;
 	char*	tmp_buffer = NULL;
 	char*	log_path = NULL;
 	int 	log_file = 0;
@@ -632,11 +652,13 @@ int check_syscall(const char* func, const char* file)
 
 	if ('/' == file[0])
 	{
+		absolute_path = (char*)malloc(sizeof(char)*(strlen(file)+1));
 		sprintf(absolute_path, "%s", file);
 	}
 	else
 	{
 		tmp_buffer = get_current_dir_name();
+		absolute_path = (char*)malloc(sizeof(char)*(strlen(tmp_buffer)+1+strlen(file)+1));
 		sprintf(absolute_path,"%s/%s", tmp_buffer, file);
 		free(tmp_buffer);
 		tmp_buffer = NULL;
@@ -648,25 +670,25 @@ int check_syscall(const char* func, const char* file)
 	
 	if ((NULL == log_path || 0 != strcmp(absolute_path, log_path)) &&
 		(NULL == debug_log_env || NULL == debug_log_path || 0 != strcmp(absolute_path, debug_log_path)) &&
-		0 == check_access(func, absolute_path))
+		0 == check_access(sbcontext, func, absolute_path))
 	{
-		if (1 == show_access_violation)
+		if (1 == sbcontext->show_access_violation)
 		{
 			fprintf(stderr, "\e[31;01mACCESS DENIED\033[0m  %s:%*s%s\n", func, (int)(10-strlen(func)), "", absolute_path);
 			
 			if (NULL != log_path)
 			{
+				sprintf(buffer, "%s:%*s%s\n", func, (int)(10-strlen(func)), "", absolute_path);
 				log_file = open(log_path, O_APPEND|O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
 				if(log_file >= 0)
 				{
-					sprintf(buffer, "%s:%*s%s\n", func, (int)(10-strlen(func)), "", absolute_path);
 					write(log_file, buffer, strlen(buffer));
 					close(log_file);
 				}
 			}
 		}
 
-		return 0;
+		result = 0;
 	}
 	else if (NULL != debug_log_env)
 	{
@@ -674,10 +696,10 @@ int check_syscall(const char* func, const char* file)
 		{
 			if (0 != strcmp(absolute_path, debug_log_path))
 			{
+				sprintf(buffer, "%s:%*s%s\n", func, (int)(10-strlen(func)), "", absolute_path);
 				debug_log_file = open(debug_log_path, O_APPEND|O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
 				if(debug_log_file >= 0)
 				{
-					sprintf(buffer, "%s:%*s%s\n", func, (int)(10-strlen(func)), "", absolute_path);
 					write(debug_log_file, buffer, strlen(buffer));
 					close(debug_log_file);
 				}
@@ -688,30 +710,35 @@ int check_syscall(const char* func, const char* file)
 			fprintf(stderr, "\e[32;01mACCESS ALLOWED\033[0m %s:%*s%s\n", func, (int)(10-strlen(func)), "", absolute_path);
 		}
 	}
+
+	free(absolute_path);
+	absolute_path = NULL;
 	
-	return 1;
+	return result;
 }
 
 int before_syscall(const char* func, const char* file)
 {
-	int result = 1;
+	int 		result = 1;
 
-	show_access_violation = 1;
+	sbcontext_t	sbcontext;
+
+	init_context(&sbcontext);
 
 	if (NULL != getenv("SANDBOX_ON") &&
 		0 == strcmp(getenv("SANDBOX_ON"), "1"))
 	{
-		init_env_entries(&deny_prefixes, &num_deny_prefixes, "SANDBOX_DENY");
-		init_env_entries(&read_prefixes, &num_read_prefixes, "SANDBOX_READ");
-		init_env_entries(&write_prefixes, &num_write_prefixes, "SANDBOX_WRITE");
-		init_env_entries(&predict_prefixes, &num_predict_prefixes, "SANDBOX_PREDICT");
+		init_env_entries(&(sbcontext.deny_prefixes), &(sbcontext.num_deny_prefixes), "SANDBOX_DENY");
+		init_env_entries(&(sbcontext.read_prefixes), &(sbcontext.num_read_prefixes), "SANDBOX_READ");
+		init_env_entries(&(sbcontext.write_prefixes), &(sbcontext.num_write_prefixes), "SANDBOX_WRITE");
+		init_env_entries(&(sbcontext.predict_prefixes), &(sbcontext.num_predict_prefixes), "SANDBOX_PREDICT");
 
-		result = check_syscall(func, file);
+		result = check_syscall(&sbcontext, func, file);
 
-		clean_env_entries(&deny_prefixes, &num_deny_prefixes);
-		clean_env_entries(&read_prefixes, &num_read_prefixes);
-		clean_env_entries(&write_prefixes, &num_write_prefixes);
-		clean_env_entries(&predict_prefixes, &num_predict_prefixes);
+		clean_env_entries(&(sbcontext.deny_prefixes), &(sbcontext.num_deny_prefixes));
+		clean_env_entries(&(sbcontext.read_prefixes), &(sbcontext.num_read_prefixes));
+		clean_env_entries(&(sbcontext.write_prefixes), &(sbcontext.num_write_prefixes));
+		clean_env_entries(&(sbcontext.predict_prefixes), &(sbcontext.num_predict_prefixes));
 	}
 	
 	if (0 == result)
