@@ -7,6 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  25 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> portage.py: Wrapped entire
+  lock-holding section of fetch() in a try-finally to ensure that the lock
+  file gets released regardless of exception.
+
   25 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> etc-update: Added patch
   from #48218 to continue on to next file when answering "no" to the
   interactive replace prompt of menu option -3.

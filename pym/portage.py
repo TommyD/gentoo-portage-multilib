@@ -1715,156 +1715,158 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					file_lock = portage_locks.lockfile(mysettings["DISTDIR"]+"/"+locks_in_subdir+"/"+myfile,wantnewlockfile=1)
 				else:
 					file_lock = portage_locks.lockfile(mysettings["DISTDIR"]+"/"+myfile,wantnewlockfile=1)
-		for loc in filedict[myfile]:
-			if listonly:
-				writemsg(loc+" ")
-				continue
-			# allow different fetchcommands per protocol
-			protocol = loc[0:loc.find("://")]
-			if mysettings.has_key("FETCHCOMMAND_"+protocol.upper()):
-				fetchcommand=mysettings["FETCHCOMMAND_"+protocol.upper()]
-			else:
-				fetchcommand=mysettings["FETCHCOMMAND"]
-			if mysettings.has_key("RESUMECOMMAND_"+protocol.upper()):
-				resumecommand=mysettings["RESUMECOMMAND_"+protocol.upper()]
-			else:
-				resumecommand=mysettings["RESUMECOMMAND"]
-			
-			fetchcommand=string.replace(fetchcommand,"${DISTDIR}",mysettings["DISTDIR"])
-			resumecommand=string.replace(resumecommand,"${DISTDIR}",mysettings["DISTDIR"])
-
-			try:
-				mystat=os.stat(mysettings["DISTDIR"]+"/"+myfile)
-				if mydigests.has_key(myfile):
-					#if we have the digest file, we know the final size and can resume the download.
-					if mystat[stat.ST_SIZE]<mydigests[myfile]["size"]:
-						fetched=1
-					else:
-						#we already have it downloaded, skip.
-						#if our file is bigger than the recorded size, digestcheck should catch it.
-						if not fetchonly:
-							fetched=2
-						else:
-							# Check md5sum's at each fetch for fetchonly.
-							verified_ok,reason = portage_checksum.verify_all(mysettings["DISTDIR"]+"/"+myfile, mydigests[myfile])
-							if not verified_ok:
-								writemsg("!!! Previously fetched file: "+str(myfile)+"\n!!! Reason: "+reason+"\nRefetching...\n\n")
-								os.unlink(mysettings["DISTDIR"]+"/"+myfile)
-								fetched=0
-							else:
-								for x_key in mydigests[myfile].keys():
-									writemsg(">>> Previously fetched file: "+str(myfile)+" "+x_key+" ;-)\n")
-								fetched=2
-								break #No need to keep looking for this file, we have it!
-				else:
-					#we don't have the digest file, but the file exists.  Assume it is fully downloaded.
-					fetched=2
-			except (OSError,IOError),e:
-				writemsg("An exception was caught(1)...\nFailing the download: %s.\n" % (str(e)),1)
-				fetched=0
-
-			if not can_fetch:
-				if fetched != 2:
-					if fetched == 0:
-						writemsg("!!! File %s isn't fetched but unable to get it.\n" % myfile)
-					else:
-						writemsg("!!! File %s isn't fully fetched, but unable to complete it\n" % myfile)
-					return 0
-				else:
+		try:
+			for loc in filedict[myfile]:
+				if listonly:
+					writemsg(loc+" ")
 					continue
-	
-			# check if we can actually write to the directory/existing file.
-			if fetched!=2 and os.path.exists(mysettings["DISTDIR"]+"/"+myfile) != \
-				os.access(mysettings["DISTDIR"]+"/"+myfile, os.W_OK):
-				writemsg(red("***")+" Lack write access to %s, failing fetch\n" % str(mysettings["DISTDIR"]+"/"+myfile))
-				fetched=0
-				break
-			elif fetched!=2:
-				#we either need to resume or start the download
-				#you can't use "continue" when you're inside a "try" block
-				if fetched==1:
-					#resume mode:
-					writemsg(">>> Resuming download...\n")
-					locfetch=resumecommand
+				# allow different fetchcommands per protocol
+				protocol = loc[0:loc.find("://")]
+				if mysettings.has_key("FETCHCOMMAND_"+protocol.upper()):
+					fetchcommand=mysettings["FETCHCOMMAND_"+protocol.upper()]
 				else:
-					#normal mode:
-					locfetch=fetchcommand
-				writemsg(">>> Downloading "+str(loc)+"\n")
-				myfetch=string.replace(locfetch,"${URI}",loc)
-				myfetch=string.replace(myfetch,"${FILE}",myfile)
+					fetchcommand=mysettings["FETCHCOMMAND"]
+				if mysettings.has_key("RESUMECOMMAND_"+protocol.upper()):
+					resumecommand=mysettings["RESUMECOMMAND_"+protocol.upper()]
+				else:
+					resumecommand=mysettings["RESUMECOMMAND"]
+				
+				fetchcommand=string.replace(fetchcommand,"${DISTDIR}",mysettings["DISTDIR"])
+				resumecommand=string.replace(resumecommand,"${DISTDIR}",mysettings["DISTDIR"])
+	
 				try:
-					if selinux_enabled:
-						con=selinux.getcontext()
-						con=string.replace(con,mysettings["PORTAGE_T"],mysettings["PORTAGE_FETCH_T"])
-						selinux.setexec(con)
-						myret=spawn(myfetch,mysettings,free=1)
-						selinux.setexec(None)
+					mystat=os.stat(mysettings["DISTDIR"]+"/"+myfile)
+					if mydigests.has_key(myfile):
+						#if we have the digest file, we know the final size and can resume the download.
+						if mystat[stat.ST_SIZE]<mydigests[myfile]["size"]:
+							fetched=1
+						else:
+							#we already have it downloaded, skip.
+							#if our file is bigger than the recorded size, digestcheck should catch it.
+							if not fetchonly:
+								fetched=2
+							else:
+								# Check md5sum's at each fetch for fetchonly.
+								verified_ok,reason = portage_checksum.verify_all(mysettings["DISTDIR"]+"/"+myfile, mydigests[myfile])
+								if not verified_ok:
+									writemsg("!!! Previously fetched file: "+str(myfile)+"\n!!! Reason: "+reason+"\nRefetching...\n\n")
+									os.unlink(mysettings["DISTDIR"]+"/"+myfile)
+									fetched=0
+								else:
+									for x_key in mydigests[myfile].keys():
+										writemsg(">>> Previously fetched file: "+str(myfile)+" "+x_key+" ;-)\n")
+									fetched=2
+									break #No need to keep looking for this file, we have it!
 					else:
-						myret=spawn(myfetch,mysettings,free=1)
-				finally:
-					#if root, -always- set the perms.
-					if os.path.exists(mysettings["DISTDIR"]+"/"+myfile) and (fetched != 1 or os.getuid() == 0):
-						if os.stat(mysettings["DISTDIR"]+"/"+myfile).st_gid != portage_gid:
-							try:
-								os.chown(mysettings["DISTDIR"]+"/"+myfile,-1,portage_gid)
-							except SystemExit, e:
-								raise
-							except:
-								portage_util.writemsg("chown failed on distfile: " + str(myfile))
-						os.chmod(mysettings["DISTDIR"]+"/"+myfile,0664)
-
-				if mydigests!=None and mydigests.has_key(myfile):
+						#we don't have the digest file, but the file exists.  Assume it is fully downloaded.
+						fetched=2
+				except (OSError,IOError),e:
+					writemsg("An exception was caught(1)...\nFailing the download: %s.\n" % (str(e)),1)
+					fetched=0
+	
+				if not can_fetch:
+					if fetched != 2:
+						if fetched == 0:
+							writemsg("!!! File %s isn't fetched but unable to get it.\n" % myfile)
+						else:
+							writemsg("!!! File %s isn't fully fetched, but unable to complete it\n" % myfile)
+						return 0
+					else:
+						continue
+		
+				# check if we can actually write to the directory/existing file.
+				if fetched!=2 and os.path.exists(mysettings["DISTDIR"]+"/"+myfile) != \
+					os.access(mysettings["DISTDIR"]+"/"+myfile, os.W_OK):
+					writemsg(red("***")+" Lack write access to %s, failing fetch\n" % str(mysettings["DISTDIR"]+"/"+myfile))
+					fetched=0
+					break
+				elif fetched!=2:
+					#we either need to resume or start the download
+					#you can't use "continue" when you're inside a "try" block
+					if fetched==1:
+						#resume mode:
+						writemsg(">>> Resuming download...\n")
+						locfetch=resumecommand
+					else:
+						#normal mode:
+						locfetch=fetchcommand
+					writemsg(">>> Downloading "+str(loc)+"\n")
+					myfetch=string.replace(locfetch,"${URI}",loc)
+					myfetch=string.replace(myfetch,"${FILE}",myfile)
 					try:
-						mystat=os.stat(mysettings["DISTDIR"]+"/"+myfile)
-						# no exception?  file exists. let digestcheck() report
-						# an appropriately for size or md5 errors
-						if (mystat[stat.ST_SIZE]<mydigests[myfile]["size"]):
-							# Fetch failed... Try the next one... Kill 404 files though.
-							if (mystat[stat.ST_SIZE]<100000) and (len(myfile)>4) and not ((myfile[-5:]==".html") or (myfile[-4:]==".htm")):
-								html404=re.compile("<title>.*(not found|404).*</title>",re.I|re.M)
+						if selinux_enabled:
+							con=selinux.getcontext()
+							con=string.replace(con,mysettings["PORTAGE_T"],mysettings["PORTAGE_FETCH_T"])
+							selinux.setexec(con)
+							myret=spawn(myfetch,mysettings,free=1)
+							selinux.setexec(None)
+						else:
+							myret=spawn(myfetch,mysettings,free=1)
+					finally:
+						#if root, -always- set the perms.
+						if os.path.exists(mysettings["DISTDIR"]+"/"+myfile) and (fetched != 1 or os.getuid() == 0):
+							if os.stat(mysettings["DISTDIR"]+"/"+myfile).st_gid != portage_gid:
 								try:
-									if html404.search(open(mysettings["DISTDIR"]+"/"+myfile).read()):
-										try:
-											os.unlink(mysettings["DISTDIR"]+"/"+myfile)
-											writemsg(">>> Deleting invalid distfile. (Improper 404 redirect from server.)\n")
-										except SystemExit, e:
-											raise
-										except:
-											pass
+									os.chown(mysettings["DISTDIR"]+"/"+myfile,-1,portage_gid)
 								except SystemExit, e:
 									raise
 								except:
-									pass
-							continue
-						if not fetchonly:
-							fetched=2
-							break
-						else:
-							# File is the correct size--check the MD5 sum for the fetched
-							# file NOW, for those users who don't have a stable/continuous
-							# net connection. This way we have a chance to try to download
-							# from another mirror...
-							verified_ok,reason = portage_checksum.verify_all(mysettings["DISTDIR"]+"/"+myfile, mydigests[myfile])
-							if not verified_ok:
-								writemsg("!!! Fetched file: "+str(myfile)+" VERIFY FAILED!\n!!! Reason: "+reason+"\nRemoving corrupt distfile...\n")
-								os.unlink(mysettings["DISTDIR"]+"/"+myfile)
-								fetched=0
-							else:
-								for x_key in mydigests[myfile].keys():
-									writemsg(">>> "+str(myfile)+" "+x_key+" ;-)\n")
+									portage_util.writemsg("chown failed on distfile: " + str(myfile))
+							os.chmod(mysettings["DISTDIR"]+"/"+myfile,0664)
+	
+					if mydigests!=None and mydigests.has_key(myfile):
+						try:
+							mystat=os.stat(mysettings["DISTDIR"]+"/"+myfile)
+							# no exception?  file exists. let digestcheck() report
+							# an appropriately for size or md5 errors
+							if (mystat[stat.ST_SIZE]<mydigests[myfile]["size"]):
+								# Fetch failed... Try the next one... Kill 404 files though.
+								if (mystat[stat.ST_SIZE]<100000) and (len(myfile)>4) and not ((myfile[-5:]==".html") or (myfile[-4:]==".htm")):
+									html404=re.compile("<title>.*(not found|404).*</title>",re.I|re.M)
+									try:
+										if html404.search(open(mysettings["DISTDIR"]+"/"+myfile).read()):
+											try:
+												os.unlink(mysettings["DISTDIR"]+"/"+myfile)
+												writemsg(">>> Deleting invalid distfile. (Improper 404 redirect from server.)\n")
+											except SystemExit, e:
+												raise
+											except:
+												pass
+									except SystemExit, e:
+										raise
+									except:
+										pass
+								continue
+							if not fetchonly:
 								fetched=2
 								break
-					except (OSError,IOError),e:
-						writemsg("An exception was caught(2)...\nFailing the download: %s.\n" % (str(e)),1)
-						fetched=0
-				else:
-					if not myret:
-						fetched=2
-						break
-					elif mydigests!=None:
-						writemsg("No digest file available and download failed.\n\n")
-		if use_locks and file_lock:
-			portage_locks.unlockfile(file_lock)
+							else:
+								# File is the correct size--check the MD5 sum for the fetched
+								# file NOW, for those users who don't have a stable/continuous
+								# net connection. This way we have a chance to try to download
+								# from another mirror...
+								verified_ok,reason = portage_checksum.verify_all(mysettings["DISTDIR"]+"/"+myfile, mydigests[myfile])
+								if not verified_ok:
+									writemsg("!!! Fetched file: "+str(myfile)+" VERIFY FAILED!\n!!! Reason: "+reason+"\nRemoving corrupt distfile...\n")
+									os.unlink(mysettings["DISTDIR"]+"/"+myfile)
+									fetched=0
+								else:
+									for x_key in mydigests[myfile].keys():
+										writemsg(">>> "+str(myfile)+" "+x_key+" ;-)\n")
+									fetched=2
+									break
+						except (OSError,IOError),e:
+							writemsg("An exception was caught(2)...\nFailing the download: %s.\n" % (str(e)),1)
+							fetched=0
+					else:
+						if not myret:
+							fetched=2
+							break
+						elif mydigests!=None:
+							writemsg("No digest file available and download failed.\n\n")
+		finally:
+			if use_locks and file_lock:
+				portage_locks.unlockfile(file_lock)
 		
 		if listonly:
 			writemsg("\n")
