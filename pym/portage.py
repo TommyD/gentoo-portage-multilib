@@ -1934,6 +1934,9 @@ class packagetree:
 	def dep_depreduce(self,mypkgdep):
 		if mypkgdep[0]=="!":
 			# !cat/pkg-v
+			#catch "! " errors
+			if not mypkgdep[1:]:
+				return None
 			mybestmatch=self.dep_bestmatch(mypkgdep[1:])
 			if mybestmatch:
 				return 0
@@ -1942,6 +1945,8 @@ class packagetree:
 		elif mypkgdep[0]=="=":
 			# =cat/pkg-v
 			if mypkgdep[-1]=="*":
+				if not mypkgdep[1:-1]:
+					return None
 				if not isspecific(mypkgdep[1:-1]):
 					return None
 				mycatpkg=catpkgsplit(mypkgdep[1:-1])
@@ -1957,6 +1962,8 @@ class packagetree:
 					if (pkgcmp(x[1][1:],cmp1)>=0) and (pkgcmp(x[1][1:],cmp2)<0):
 						return 1
 			else:
+				if not mypkgdep[1:]:
+					return None
 				return self.exists_specific(mypkgdep[1:])
 		elif (mypkgdep[0]=="<") or (mypkgdep[0]==">"):
 			# >=cat/pkg-v or <=,>,<
@@ -1979,6 +1986,8 @@ class packagetree:
 						return 1
 			return 0
 		elif mypkgdep[0]=="~":
+			if not mypkgdep[1:]:
+				return None
 			if not isspecific(mypkgdep[1:]):
 				return None
 			cp=catpkgsplit(mypkgdep[1:])

@@ -439,7 +439,14 @@ class depgraph:
 				else:
 					mycheck=portage.db[dep]["vartree"].depcheck(mydep[dep])
 				if mycheck[0]==0:
-					print "!!! depgraph.create() error: string format:",mydep
+					if mytype=="binary":
+						print "!!! Error merging",mytbz2+": invalid dependency in:"
+					elif mytype=="ebuild":
+						print "!!! Error merging",myebuild+": invalid dependency in:"
+					else:
+						print "!!! Error merging",mykey+": invalid dependency in:"
+					print white("\n'"+mydep[dep]+"'")
+					print ">>> Please report this ebuild error to http://bugs.gentoo.org.\n"
 					return 0
 				for x in mycheck[1]:
 					mynew=self.match(x,dep,mykey)

@@ -1,6 +1,15 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-1.9.7 (06 May 2002)
+
+  06 May 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, emerge: initial
+  bunch of robustness/error-handling fixes.  Emerge should now report a
+  comprehensible error message for errors in DEPEND and RDEPEND rather than
+  giving a traceback.  Fixed dep_depreduce() to catch errors rather than
+  passing them on to dep_bestmatch() (which doesn't check for errors and
+  assumes correct input)
+  
   02 May 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: typo fix for
   S_ISFIFO call; thanks woodchip!
 
