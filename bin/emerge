@@ -304,6 +304,7 @@ class depgraph:
 		#the following is so we have an empty vartree (used in emerge update calculations)
 		self.emptytree=portage.vartree("/",virts,self.db["/"]["vartree"])
 		self.emptytree.tree={}
+		self.outdatedpackages=[]
 	def create(self,mybigkey,myparent=None,addme=1):
 		"""creates the actual digraph of packages to merge.  return 1 on success, 0 on failure
 		mybigkey = specification of package to merge; myparent = parent package (one depending on me);
@@ -407,7 +408,7 @@ class depgraph:
 
 	def syscreate(self,mylines=[]):
 		for myline in mylines:	
-			if "--update"==self.myaction:
+			if "--update"==self.myaction or "--rebuild"==self.myaction:
 				self.create(self.match(myline,mykey="update (likely old /var/db/pkg entry)"))
 			else:
 				mycheck=self.db[portage.root]["vartree"].depcheck(myline)
@@ -419,20 +420,34 @@ class depgraph:
 				for x in mycheck[1]:
 					self.create(self.match(myline,mykey="syscreate1"))
 	
-	def match(self,mydep,myroot=portage.root,mykey=None,):
+	def match(self,mydep,myroot=portage.root,mykey=None):
 		# support mutual exclusive deps
 		mydep2=mydep
 		if mydep2[0]=="!":
 			mydep2=mydep[1:]
 
-		myeb=self.db[portage.root]["porttree"].dep_bestmatch(mydep2)
-		if not myeb:
-			if not mykey:
-				print "\n!!! Warning: couldn't find match for",mydep
-			else:
-				print "\n!!! Warning: couldn't find match for",mydep,"in",mykey
-			return None
+		if self.myaction=="--rebuild":
+			myeb=self.db[portage.root]["vartree"].dep_bestmatch(mydep2)
+			if not self.db[portage.root]["porttree"].exists_specific(myeb):
+				self.outdatedpackages.append(myeb)
+				return None
+		else:
+			myeb=self.db[portage.root]["porttree"].dep_bestmatch(mydep2)
+			if not myeb:
+				if not mykey:
+					print "\n!!! Warning: couldn't find match for",mydep
+				else:
+					print "\n!!! Warning: couldn't find match for",mydep,"in",mykey
+				return None
 
+		# handle filtering of virtual deps for the rebuild action
+		if self.myaction=="--rebuild" and myeb[0:len("virtual")]=="virtual":
+			return None
+		
+		# handle filtering of non slot packages
+		if "noslot" in mymode and self.db[portage.root]["vartree"].slotted(myeb)==1:
+			return None
+		
 		if mydep[0]=="!":
 			myk="blocks "+myroot+" "+myeb
 		else:
@@ -460,6 +475,9 @@ class depgraph:
 				else:
 					addl=" "+green("N")+"   "
 				print "["+x[0]+" "+addl+"]",x[2],"to",x[1]
+
+	def outdated(self):
+		return self.outdatedpackages
 				
 	def merge(self,mylist):
 		returnme=0
@@ -945,7 +963,10 @@ elif "--zap"==myaction:
 			if "--pretend" in myopts:
 				print
 			else:
-				secs=string.atoi(portage.settings["UNMERGE_DELAY"])
+				if portage.settings["UNMERGE_DELAY"]:
+					secs=string.atoi(portage.settings["UNMERGE_DELAY"])
+				else:
+					secs=5
 				if secs > 0:
 					print
 					print "Waiting",secs,"seconds to make sure that you want these"
@@ -963,110 +984,54 @@ elif "--zap"==myaction:
 
 # REBUILD action
 elif "--rebuild"==myaction:
-	localtree=portage.vartree(portage.root)
-	porttree=portage.portagetree(portage.root)
-	mypackages={}
-	myoutdated=[]
-	print "Examining installed packages",
-	sys.stdout.flush()
-	mynodes=[]
-	if "system" in mymode:
-		mynodes=getsyslist()
-	elif "world" in mymode or "noslot" in mymode:
-		mynodes=localtree.getallnodes()
-	else:
+	if not "system" in mymode and not "world" in mymode and not "noslot" in mymode:
 		print
 		print " "+red("* WARNING:"),green("emerge --rebuild"),"shouldn't be used for regular packages"
 		print " "+red("*"),"it's only intended to be used with",green("system")+", "+green("world")+", and",green("noroot")
 		print
-		sys.exit(1)
-
-	if len(mynodes)>0:
-		localtree.populate()
-		porttree.populate()
-
-		for mynode in mynodes:
-			for mypackage in localtree.dep_match(mynode):
-				sys.stdout.write(".")	
-				sys.stdout.flush()
-				if (not "noslot" in mymode) or ("noslot" in mymode and localtree.slotted(mypackage)==0):
-					if not mypackage[0:len("virtual")]=="virtual":
-						if porttree.exists_specific(mypackage):
-							mypackages[mypackage]=porttree.getname(mypackage)
-						else:
-							myoutdated.append(mypackage)
-	print " done!"
-	mypackageskeys=[]
-	mypackageskeys=mypackages.keys()
-	mypackageskeys.sort()
-	if "--pretend" in myopts:
-		print
-		print "These are the packages that I would merge, sorted."
-		print
-		for mypackage in mypackageskeys:
-			print "[ebuild   "+yellow("R")+" ]",mypackage,"to",portage.root
-		if len(myoutdated):
-			if "--verbose" not in myopts:
-				print
-				print " "+yellow("* IMPORTANT:"),len(myoutdated),"packages aren't available anymore; use "+green("--verbose")+" for details."
-			else:
-				print
-				print " "+yellow("* IMPORTANT:"),len(myoutdated),"packages aren't available anymore"
-				print " "+yellow("*")+" Your portage tree doesn't contain the ebuilds anymore that correspond to the"
-				print " "+yellow("*")+" following packages. This means that portage is unable to rebuild them."
-				print " "+yellow("*")+" Instead you should upgrade to the latest versions or install possible"
-				print " "+yellow("*")+" alternative packages that provide the same functionalities."
-				myoutdated.sort()
-				for mypackage in myoutdated:
-					print "    "+mypackage
-
 	else:
-		returnme=0
-		for mypackage in mypackageskeys:
-			myebuild=mypackages[mypackage]
-			print ">>> emerge",mypackage,"to",portage.root
-			if "--fetchonly" in myopts:
-				retval=portage.doebuild(myebuild,"fetch",portage.root,0,edebug)
-				if retval:
+		if "--pretend" in myopts:
+				print
+				print "These are the packages that I would rebuild, in order."
+				print
+	
+		if "system" in mymode:
+			mydepgraph=depgraph(mymode,myaction,myopts)
+			print "Calculating system dependencies",
+			mydepgraph.syscreate(getsyslist())
+			print " done!"
+		elif "world" in mymode:
+			mydepgraph=depgraph(mymode,myaction,myopts)
+			print "Calculating world dependencies",
+			mydepgraph.syscreate(mydepgraph.db["/"]["vartree"].getallnodes())
+			print " done!"
+		elif "noslot" in mymode:
+			mydepgraph=depgraph(mymode,myaction,myopts)
+			print "Calculating noslot dependencies",
+			mydepgraph.syscreate(mydepgraph.db["/"]["vartree"].getallnodes())
+			print " done!"
+
+		if "--pretend" in myopts:
+			mydepgraph.display(mydepgraph.altlist())
+			
+			myoutdated=mydepgraph.outdated()
+			if len(myoutdated):
+				if "--verbose" not in myopts:
 					print
-					print "!!! Fetch for",myebuild,"failed, continuing..."
-					print	
-					returnme=1
-			elif "--buildpkg" in myopts:
-				#create pkg, then merge pkg
-				retval=portage.doebuild(myebuild,"clean",portage.root,0,edebug)
-				if retval:
-					print "!!! emerge aborting on ",myebuild,"."
-					sys.exit(1)
-				retval=portage.doebuild(myebuild,"package",portage.root,0,edebug)
-				if retval:
-					print "!!! emerge aborting on ",myebuild,"."
-					sys.exit(1)
-				#try to merge the binary package
-				mysplit=string.split(mypackage,"/")
-				mytbz2=portage.settings["PKGDIR"]+"/All/"+mysplit[1]+".tbz2"
-				retval=portage.pkgmerge(mytbz2,portage.root)
-				if retval==None:
-					print "!!! emerge aborting on ",myebuild,"."
-					sys.exit(1)
-			else:
-				retval=portage.doebuild(myebuild,"clean",portage.root,0,edebug)
-				if retval:
-					print "!!! emerge aborting on ",myebuild,"."
-					sys.exit(1)
-				retval=portage.doebuild(myebuild,"merge",portage.root,0,edebug)
-				if retval:
-					print "!!! emerge aborting on ",myebuild,"."
-					sys.exit(1)
-		#by doing an exit this way, --fetchonly can continue to try to
-		#fetch everything even if a particular download fails.
-		if "--fetchonly" in myopts:
-			if returnme:
-				print "\n\n!!! Some fetch errors were encountered.  Please see above for details.\n\n"
-				sys.exit(returnme)
-			else:
-				sys.exit(0)
-	post_emerge()
+					print " "+yellow("* IMPORTANT:"),len(myoutdated),"packages aren't available anymore; use "+green("--verbose")+" for details."
+				else:
+					print
+					print " "+yellow("* IMPORTANT:"),len(myoutdated),"packages aren't available anymore"
+					print " "+yellow("*")+" Your portage tree doesn't contain the ebuilds anymore that correspond to the"
+					print " "+yellow("*")+" following packages. This means that portage is unable to rebuild them."
+					print " "+yellow("*")+" Instead you should upgrade to the latest versions or install possible"
+					print " "+yellow("*")+" alternative packages that provide the same functionalities."
+					myoutdated.sort()
+					for mypackage in myoutdated:
+						print "    "+mypackage
+		else:
+			mydepgraph.merge(mydepgraph.altlist())
+		post_emerge()
 
 # INSTALL and UPDATE action
 elif "--update"==myaction or not myaction:
@@ -1088,17 +1053,13 @@ elif "--update"==myaction or not myaction:
 			print " done!"
 		elif "world" in mymode:
 			mydepgraph=depgraph(mymode,myaction,myopts)
-			print "Calculating system dependencies",
+			print "Calculating world dependencies",
 			mydepgraph.syscreate(mydepgraph.db["/"]["vartree"].getallnodes())
 			print " done!"
 		elif "noslot" in mymode:
 			mydepgraph=depgraph(mymode,myaction,myopts)
-			print "Calculating system dependencies",
-			mynodes=[]
-			for x in mydepgraph.db["/"]["vartree"].getallnodes():
-				if mydepgraph.db["/"]["vartree"].slotted(x)==0:
-					mynodes.append(x)
-			mydepgraph.syscreate(mynodes)
+			print "Calculating noslot dependencies",
+			mydepgraph.syscreate(mydepgraph.db["/"]["vartree"].getallnodes())
 			print " done!"
 		else:
 			mydepgraph=depgraph(mymode,myaction,myopts)
