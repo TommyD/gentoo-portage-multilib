@@ -161,8 +161,7 @@ cleanup()
 	int pids_file = -1, num_of_pids = 0;
 	int *pids_array = NULL;
 	char pid_string[255];
-	char sandbox_pids_file[255];
-	char *tmp_string;
+	char *sandbox_pids_file;
 #ifdef USE_LD_SO_PRELOAD
 	int preload_file = -1, num_of_preloads = 0;
 	char preload_entry[255];
@@ -170,11 +169,7 @@ cleanup()
 #endif
 
 	/* Generate sandbox pids-file path */
-	tmp_string = get_sandbox_pids_file();
-	strncpy(sandbox_pids_file, tmp_string, sizeof(sandbox_pids_file)-1);
-	if (tmp_string)
-		free(tmp_string);
-	tmp_string = NULL;
+	sandbox_pids_file = get_sandbox_pids_file();
 
 	/* Remove this sandbox's bash pid from the global pids
 	 * file if it has rights to adapt the ld.so.preload file */
@@ -286,6 +281,7 @@ cleanup()
 		pids_array = NULL;
 	}
 
+	free(sandbox_pids_file);
 	if (0 == success)
 		return;
 }
@@ -499,7 +495,7 @@ main(int argc, char **argv)
 	char sandbox_debug_log[255];
 	char sandbox_dir[255];
 	char sandbox_lib[255];
-	char sandbox_pids_file[255];
+	char *sandbox_pids_file;
 	char sandbox_rc[255];
 	char pid_string[255];
 	char **argv_bash = NULL;
@@ -547,11 +543,7 @@ main(int argc, char **argv)
 		tmp_string = NULL;
 
 		/* Generate sandbox pids-file path */
-		tmp_string = get_sandbox_pids_file();
-		strncpy(sandbox_pids_file, tmp_string, 254);
-		if (tmp_string)
-			free(tmp_string);
-		tmp_string = NULL;
+		sandbox_pids_file = get_sandbox_pids_file();
 
 		/* Generate sandbox bashrc path */
 		tmp_string = get_sandbox_rc(sandbox_dir);
