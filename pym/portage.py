@@ -1863,8 +1863,8 @@ def digestCreateLines(filelist, mydict):
 			if sumName not in portage_checksum.get_valid_checksum_keys():
 				continue
 			mysum = mydigests[myarchive][sumName]
-			
-			myline = sumName[:]
+
+			myline = sumName
 			myline += " "+mysum
 			myline += " "+myarchive
 			myline += " "+str(mysize)
