@@ -958,7 +958,7 @@ inherit() {
 # code will be eval'd:
 # src_unpack() { base_src_unpack; }
 EXPORT_FUNCTIONS() {
-	if [ -n "$ECLASS" ]; then
+	if [ -z "$ECLASS" ]; then
 		echo "EXPORT_FUNCTIONS without a defined ECLASS" >&2
 		exit 1
 	fi
