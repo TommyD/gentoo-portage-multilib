@@ -56,7 +56,15 @@ do_pkg() {
 		cp ${SRCDIR}/* ${MYDIR}/temp/
 
 		# create filelist and a basic tbz2
-		grep -v "^dir" ${SRCDIR}/CONTENTS | cut -f 2 -d " " - >${MYDIR}/filelist
+		awk '{
+			if ($1 != "dir") {
+				if ($1 == "obj")
+					NF=NF-2
+				else if ($1 == "sym")
+					NF=NF-3
+				print
+			}
+		}' ${SRCDIR}/CONTENTS | cut -f2- -d" " - > ${MYDIR}/filelist
 		tar -vjcf ${MYDIR}/bin.tar.bz2 --files-from=${MYDIR}/filelist --no-recursion
 
 		# join together the basic tbz2 and the pkg info files
@@ -71,14 +79,14 @@ do_pkg() {
 
 		# cleanup again
 		rm -rf ${MYDIR}
-	) >& ${PORTAGE_TMPDIR}/quickpkglog
+	) >& ${PORTAGE_TMPDIR}/$1-quickpkglog
 
 	if [ -e ${PKGDIR}/All/$1.tbz2 ] ; then
-		rm -f ${PORTAGE_TMPDIR}/quickpkglog
+		rm -f ${PORTAGE_TMPDIR}/$1-quickpkglog
 		PKGSTATS="${PKGSTATS}"$'\n'"$(einfo $1: `ls -alh ${PKGDIR}/All/$1.tbz2 | awk '{print $5}'`)"
 		eend 0
 	else
-		cat ${PORTAGE_TMPDIR}/quickpkglog
+		cat ${PORTAGE_TMPDIR}/$1-quickpkglog
 		PKGSTATS="${PKGSTATS}"$'\n'"$(ewarn $1: not created)"
 		eend 1
 	fi

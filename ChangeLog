@@ -7,6 +7,17 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  02 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> ebuild.sh: Turned off
+  shell option extglob as it interferes with the g++ QA interceptor. #69690
+
+  02 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> portage.py: Fixed a bug
+  where a broken symlink blocking the installation of a regular file would
+  cause a traceback. #69672
+
+  02 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> quickpkg: Applied vapier's
+  fix for processing file names that contain spaces. #36997  Applied
+  vapier's fix for parallel quickpkg's writing to a single log file. #37270
+
   31 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> g-cpan.pl: Applied fix
   for case-less matching of packages names. #69464
 

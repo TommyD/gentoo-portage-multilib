@@ -1532,6 +1532,9 @@ unset E_IUSE E_DEPEND E_RDEPEND E_CDEPEND E_PDEPEND
 declare -r T P PN PV PVR PR A D EBUILD EMERGE_FROM O PPID FILESDIR
 declare -r PORTAGE_TMPDIR
 
+# Turn of extended glob matching so that g++ doesn't get incorrectly matched.
+shopt -u extglob
+
 QA_INTERCEPTORS="javac java-config python python-config perl grep egrep fgrep sed gcc g++ cc bash awk nawk gawk pkg-config"
 # level the QA interceptors if we're in depend
 if hasq "depend" "$@"; then

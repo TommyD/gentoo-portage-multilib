@@ -6586,9 +6586,10 @@ class dblink:
 						# install of destination is blocked by an existing directory with the same name
 						moveme=0
 						print "!!!",mydest
-					elif stat.S_ISREG(mydmode) or (stat.S_ISLNK(mydmode) and stat.S_ISREG(os.stat(mydest)[stat.ST_MODE])):
+					elif stat.S_ISREG(mydmode) or (stat.S_ISLNK(mydmode) and os.path.exists(mydest) and stat.S_ISREG(os.stat(mydest)[stat.ST_MODE])):
 						cfgprot=0
-						# install of destination is blocked by an existing regular file;
+						# install of destination is blocked by an existing regular file,
+						# or by a symlink to an existing regular file;
 						# now, config file management may come into play.
 						# we only need to tweak mydest if cfg file management is in play.
 						if myppath:
