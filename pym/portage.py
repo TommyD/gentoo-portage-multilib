@@ -2,7 +2,7 @@
 # Copyright 1998-2002 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
 
-VERSION="2.0.40-pre"
+VERSION="2.0.41-pre"
 
 from stat import *
 from commands import *
@@ -24,6 +24,7 @@ except KeyError:
 	pass
 
 incrementals=["USE","FEATURES","ACCEPT_KEYWORDS","ACCEPT_LICENSE","CONFIG_PROTECT_MASK","CONFIG_PROTECT"]
+stickies=["KEYWORDS_ACCEPT","USE","CFLAGS","CXXFLAGS","MAKEOPTS"]
 
 def getcwd():
 	"this fixes situations where the current directory doesn't exist"
@@ -3769,10 +3770,13 @@ class dblink:
 				# whether config protection or not, we merge the new file the same way.  Unless moveme=0 (blocking directory)
 				if moveme:
 					mymtime=movefile(mysrc,mydest,thismtime,mystat)
+					zing=">>>"
 				else:
-					# This causes the entry to exist int he CONTENTS, but makes it
-					# obvious that it already existed on the FS.
-					mymtime=0
+					mymtime=thismtime
+					# We need to touch the destination so that on --update the
+					# old package won't yank the file with it. (non-cfgprot related)
+					os.utime(mydest,(thismtime,thismtime))
+					zing="---"
 				if mymtime!=None:
 					zing=">>>"
 					outfile.write("obj "+myrealdest+" "+mymd5+" "+`mymtime`+"\n")

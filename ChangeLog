@@ -1,12 +1,16 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  16 Oct 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
+	Fixed an mtimes issue. --update on a package might yank non-cfgprot
+	files during the clean-phase because they didn't have mtimes updated.
+
   15 Oct 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
   Added 'IUSE' to the auxdbkey list. Fixed random aux_get() errors
   caused by random empty files in the dep cache.
 
   15 Oct 2002; Nicholas Jones <carpaski@gentoo.org> ebuild.sh
-	Actually committed the --host portion of econf.
+  Actually committed the --host portion of econf.
 
   15 Oct 2002; Martin Schlemmer <azarah@gentoo.org> portage.py, missingos.c:
   Remove testsandbox.sh, and comment code in portage.py that still
@@ -20,9 +24,9 @@
   dependancy merged.
 
   15 Oct 2002; Nicholas Jones <carpaski@gentoo.org> ebuild.sh:
-	depend now prints IUSE. Doesn't do anything with it yet.
+  depend now prints IUSE. Doesn't do anything with it yet.
   unpack() -- unzip silently overwrites files ().
-	econf() -- now specifies '--host=${CHOST}'
+  econf() -- now specifies '--host=${CHOST}'
 
   15 Oct 2002; Nicholas Jones <carpaski@gentoo.org> make.globals:
   Touch ups + warning.
@@ -36,8 +40,8 @@
   13 Oct 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
   Bug 5926 -- If the fetchonly AND pretend flags are specified, then
   portage should give a list of all the SRC_URIs so that they can be
-	downloaded or sent into another app. Made sandbox display name in
-	'ps' as '[$PF] sandbox'.
+  downloaded or sent into another app. Made sandbox display name in
+  'ps' as '[$PF] sandbox'.
 
   13 Oct 2002; Nicholas Jones <carpaski@gentoo.org> emerge:
   Bug 5926 -- See portage.py for today. (emerge -pf)
