@@ -7,6 +7,11 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  20 Nov 2004; Brian Harring <ferringb@gentoo.org> <collection-of-files>:
+  Portage is now autotool'd, w/ relevant configure.  Needs work, specifically,
+  cnf installation isn't there yet- would prefer to add that when the 101 arch 
+  specific make.conf's are collapsed down to one file.
+
   18 Nov 2004; Marius Mauch <genone@gentoo.org> pym/portage_versions.py:
   Fixing version regexp to allow weird package names.
 

@@ -1,0 +1,17 @@
+PORTAGE_BASEDIR = @PORTAGE_BASE@
+INSTALL		= @INSTALL@
+INSTALL_script 	= @INSTALL_PROGRAM@ -D
+
+all:
+install:
+	$(INSTALL) -d -m 644 $(DESTDIR)/$(PORTAGE_BASEDIR)/bin
+	find . -type f -maxdepth 1 -exec $(INSTALL_script) {} $(DESTDIR)/$(PORTAGE_BASEDIR)/bin/{} \;
+
+DISTFILES := $(shell find . -type f -maxdepth 1 | egrep -v '(^| )(CVS|\.svn)( |$)' \
+	| sed -e 's:^\./::')
+
+distdir:
+	find . -type f -maxdepth 1 -exec $(INSTALL_script) {} $(distdir)/{} \;
+clean:
+
+.PHONY:	distdir	install	clean
