@@ -735,7 +735,7 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 		return 1
 
 def isfifo(x):
-	mymode=os.stat(x)[ST_MODE]
+	mymode=os.lstat(x)[ST_MODE]
 	if S_ISLNK(mymode):
 		return 0
 	return S_ISFIFO(mymode)

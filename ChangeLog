@@ -3,7 +3,7 @@
 # Written by Daniel Robbins (drobbins@gentoo.org)
 
   18 Jan 2002; Slight tweaks spurred by bug #172.  This bug was previously
-  fixed.
+  fixed.  Converted isfifo() from os.stat() to os.lstat() to be sure.
   
   17 Jan 2002; The package chosen by "emerge sys-apps/shadow" now matches that
   chosen in an emerge update or emerge system.  I forgot to add some "*" dep
