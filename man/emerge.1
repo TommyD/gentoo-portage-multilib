@@ -309,15 +309,20 @@ simultaneously emerged because they usually provide the same functionality.
 Qstat is New to your system, and will be emerged for the first time.
 .TP
 .B [ebuild   R   ] sys-apps/sed-4.0.5
-Sed 4.0.5 has already been emerged, but if you run the command, then portage will
-Re-emerge the specified package (sed in this case).
+Sed 4.0.5 has already been emerged, but if you run the command, then 
+portage will Re-emerge the specified package (sed in this case).
+.TP
+.B [ebuild    F  ] media-video/realplayer-8-r6
+Realplayer sources were not found on your harddrive so if you continue 
+with the previous command, they must be Fetched first.
 .TP
 .B [ebuild     U ] net-fs/samba-2.2.8_pre1 [2.2.7a]
-Samba 2.2.7a has already been emerged and can be Updated to version 2.2.8_pre1.
+Samba 2.2.7a has already been emerged and can be Updated to version 
+2.2.8_pre1.
 .TP
 .B [ebuild     UD] media-libs/libgd-1.8.4 [2.0.11]
-Libgd 2.0.11 is already emerged, but if you run the command, then portage will
-Downgrade to version 1.8.4 for you.
+Libgd 2.0.11 is already emerged, but if you run the command, then 
+portage will Downgrade to version 1.8.4 for you.
 .br
 This may occur if a newer version of a package has been masked because it is
 broken or it creates a security risk on your system and a fix has not been
