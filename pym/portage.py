@@ -2831,9 +2831,6 @@ def best_match_to_list(mypkg,mylist):
 			bestm  = x
 	return bestm
 
-def catsplit(mydep):
-	return mydep.split("/", 1)
-	
 def match_from_list(mydep,candidate_list):
 	if mydep[0] == "!":
 		mydep = mydep[1:]
@@ -2842,7 +2839,7 @@ def match_from_list(mydep,candidate_list):
 	mycpv_cps = portage_versions.catpkgsplit(mycpv) # Can be None if not specific
 
 	if not mycpv_cps:
-		cat,pkg = catsplit(mycpv)
+		cat,pkg = portage_versions.catsplit(mycpv)
 		ver     = None
 		rev     = None
 	else:
@@ -4024,14 +4021,14 @@ class portdbapi(dbapi):
 		l.sort()
 		if not len(l):
 			return
-		oldcat = catsplit(l[0])[0]
+		oldcat = portage_versions.catsplit(l[0])[0]
 		savelist = []
 
 		for p in l:
-			cat=catsplit(p)[0]
+			cat=portage_versions.catsplit(p)[0]
 			if cleanse_stale and oldcat != cat:
 				for x in range(0,len(savelist)):
-					savelist[x] = catsplit(savelist[x])[1]
+					savelist[x] = portage_versions.catsplit(savelist[x])[1]
 				for tree in self.porttrees:
 					if not self.auxdb.get(tree,{}).has_key(oldcat):
 						continue
@@ -4059,7 +4056,7 @@ class portdbapi(dbapi):
 
 		if cleanse_stale:
 			for x in range(0,len(savelist)):
-				savelist[x] = catsplit(savelist[x])[1]
+				savelist[x] = portage_versions.catsplit(savelist[x])[1]
 			for tree in self.porttrees:
 				if not self.auxdb.get(tree,{}).has_key(oldcat):
 					continue
@@ -5416,7 +5413,7 @@ class dblink:
 					candidates_checked.extend(rd)
 
 					for r in rd:
-						s=catsplit(r)
+						s=portage_versions.catsplit(r)
 #						print "%s=" % r, s
 						c=dblink(s[0],s[1],self.myroot,self.settings).getcontents()
 						if c == None:
@@ -5454,7 +5451,7 @@ class dblink:
 
 				candidates_checked.append(r)
 
-				s=catsplit(r)
+				s=portage_versions.catsplit(r)
 				c=dblink(s[0],s[1],self.myroot,self.settings).getcontents()
 				if c == None:
 					print yellow("---")+" Installed package %s seems to lack a contents file" % r

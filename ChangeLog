@@ -7,6 +7,11 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  10 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py,
+  pym/portage_versions.py: Moved catsplit into versions and updated
+  references to it.  Likely just broke a few external tools (assuming
+  they were coded correctly and weren't abusing string.split("/")).
+
   10 Nov 2004; Brian Harring <ferringb@gentoo.org> 
   bin/ebuild-default-functions.sh, bin/affect-fakeroot-perms.sh:
   Closing out bug where suid/sgid is wiped by chowning,

@@ -216,3 +216,7 @@ def catpkgsplit(mydata,silent=1):
 	retval.extend(p_split)
 	catcache[mydata]=retval
 	return retval
+
+def catsplit(mydep):
+        return mydep.split("/", 1)
+
