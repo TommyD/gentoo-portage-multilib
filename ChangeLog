@@ -7,13 +7,19 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  23 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> repoman: Fixed traceback in
+  repoman on invalid LICENSE syntax.
+
   22 Oct 2004; Brian Harring <ferringb@gentoo.org> ebuild.sh: silencing use/has.
+
+  22 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> emerge: Added python version
+  to "emerge info" output.
 
 *portage-2.0.51 (20 Oct 2004): Everyone loves finding bugs in stable!
 
   20 Oct 2004; Nicholas Jones <carpaski@gentoo.org> emerge: Fixed the result
-	checking when ebuilds are called -- this removes the continuing-after failure
-	big discovered by AMD64 today.
+  checking when ebuilds are called -- this removes the continuing-after failure
+  big discovered by AMD64 today.
 
   20 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> emerge: Fixed a bug where
   users were warned against emerging by path when a file/dir exists of the

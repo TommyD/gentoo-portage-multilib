@@ -101,6 +101,7 @@ qahelp={
 	"DEPEND.syntax":"Syntax error in DEPEND (usually an extra/missing space/parenthesis)",
 	"RDEPEND.syntax":"Syntax error in RDEPEND (usually an extra/missing space/parenthesis)",
 	"PDEPEND.syntax":"Syntax error in PDEPEND (usually an extra/missing space/parenthesis)",
+	"LICENSE.syntax":"Syntax error in LICENSE (usually an extra/missing space/parenthesis)",
 	"ebuild.syntax":"Error generating cache entry for ebuild; typically caused by ebuild syntax error",
 	"ebuild.output":"A simple sourcing of the ebuild produces output; this breaks ebuild policy.",
 	"ebuild.nesteddie":"Placing 'die' inside ( ) prints an error, but doesn't stop the ebuild.",
@@ -856,6 +857,7 @@ for x in scanlist:
 					arches.append([keyword, keyword, [keyword]])
 
 		baddepsyntax = False
+		badlicsyntax = False
 		catpkg = catdir+"/"+y
 		for mytype in ["DEPEND","RDEPEND","PDEPEND","LICENSE"]:
 			mydepstr = string.join(portage.db["/"]["porttree"].dbapi.aux_get(catpkg, [mytype]))
@@ -864,17 +866,21 @@ for x in scanlist:
 				fails[mytype+".syntax"].append(catpkg+".ebuild "+mytype+": '?' preceded by space")
 				if mytype != "LICENSE":
 					baddepsyntax = True
+				else:
+					badlicsyntax = True
 			try:
 				# Missing closing parenthesis will result in a ValueError
 				mydeplist=portage_dep.paren_reduce(mydepstr)
 				# Missing opening parenthesis will result in a final "" element
-				if "" in mydeplist:
+				if "" in mydeplist or "(" in mydeplist:
 					raise ValueError
 			except ValueError:
 				stats[mytype+".syntax"] += 1
 				fails[mytype+".syntax"].append(catpkg+".ebuild "+mytype+": Mismatched parenthesis")
 				if mytype != "LICENSE":
 					baddepsyntax = True
+				else:
+					badlicsyntax = True
 
 		if not baddepsyntax:
 			for keyword,arch,groups in arches:
@@ -967,19 +973,20 @@ for x in scanlist:
 			fails["IUSE.invalid"].append(x+"/"+y+".ebuild: %s" % myuse[mypos])	
 
 		# license checks
-		myuse=portage.db["/"]["porttree"].dbapi.aux_get(catdir+"/"+y,["LICENSE"])[0]
-		# Parse the LICENSE variable, remove USE conditions and
-		# flatten it.
-		myuse=portage_dep.use_reduce(portage_dep.paren_reduce(myuse), matchall=1)
-		myuse=portage.flatten(myuse)
-		# Check each entry to ensure that it exists in PORTDIR's
-		# license directory.
-		for mypos in range(0,len(myuse)):
-			# Need to check for "||" manually as no portage
-			# function will remove it without removing values.
-			if myuse[mypos] not in liclist and myuse[mypos] != "||":
-				stats["LICENSE.invalid"]=stats["LICENSE.invalid"]+1
-				fails["LICENSE.invalid"].append(x+"/"+y+".ebuild: %s" % myuse[mypos])
+		if not badlicsyntax:
+			myuse=portage.db["/"]["porttree"].dbapi.aux_get(catdir+"/"+y,["LICENSE"])[0]
+			# Parse the LICENSE variable, remove USE conditions and
+			# flatten it.
+			myuse=portage_dep.use_reduce(portage_dep.paren_reduce(myuse), matchall=1)
+			myuse=portage.flatten(myuse)
+			# Check each entry to ensure that it exists in PORTDIR's
+			# license directory.
+			for mypos in range(0,len(myuse)):
+				# Need to check for "||" manually as no portage
+				# function will remove it without removing values.
+				if myuse[mypos] not in liclist and myuse[mypos] != "||":
+					stats["LICENSE.invalid"]=stats["LICENSE.invalid"]+1
+					fails["LICENSE.invalid"].append(x+"/"+y+".ebuild: %s" % myuse[mypos])
 
 		#keyword checks
 		myuse=string.split(portage.db["/"]["porttree"].dbapi.aux_get(catdir+"/"+y,["KEYWORDS"])[0])

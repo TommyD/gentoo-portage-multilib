@@ -2682,12 +2682,15 @@ elif "info"==myaction:
 	binutils_vers = string.join(portage.db["/"]["vartree"].dbapi.match("sys-devel/binutils"), ",")
 	header_vers = string.join(portage.db["/"]["vartree"].dbapi.match("virtual/os-headers"), ",")
 	libtool_vers = string.join(portage.db["/"]["vartree"].dbapi.match("sys-devel/libtool"), ",")
+	py_vers = string.join(portage.db["/"]["vartree"].dbapi.match("dev-lang/python"), ",")
+	py_this = string.strip(string.split(sys.version,"\n")[0])
 
 	print "Autoconf: " + ac_vers
 	print "Automake: " + am_vers
 	print "Binutils: " + binutils_vers
 	print "Headers:  " + header_vers
 	print "Libtools: " + libtool_vers
+	print "Python:   " + py_vers + "  [" + py_this + "]"
 	
 	if "--verbose" in myopts:
 		myvars=portage.settings.keys()
