@@ -1137,7 +1137,9 @@ def digestgen(myarchives,overwrite=1):
 		#The [:-1] on the following line is to remove the trailing "L"
 		outfile.write("MD5 "+mymd5+" "+x+" "+`mysize`[:-1]+"\n")	
 	outfile.close()
-	movefile(myoutfn,myoutfn2)
+	if not movefile(myoutfn,myoutfn2):
+		print "!!! Failed to move digest."
+		sys.exit(1)
 	if "cvs" in features:
 		print ">>> Auto-adding digest file to CVS..."
 		spawn("cd "+settings["FILESDIR"]+"; cvs add digest-"+settings["PF"],free=1)
@@ -1439,8 +1441,11 @@ def movefile(src,dest,newmtime=None,sstat=None):
 
 	renamefailed=1
 	if sstat[ST_DEV]==dstat[ST_DEV]:
+		print "SAME DEVICE"
 		try:
-			os.rename(src,dest)
+			print "RENAME"
+			ret=os.rename(src,dest)
+			print "RET VAL:",ret
 			renamefailed=0
 		except Exception, e:
 			import errno
@@ -1452,11 +1457,11 @@ def movefile(src,dest,newmtime=None,sstat=None):
 			# Invalid cross-device-link 'bind' mounted or actually Cross-Device
 
 	if renamefailed:
+		print "RENAME FAILED"
 		didcopy=0
 		if S_ISREG(sstat[ST_MODE]):
 			try: # For safety copy then move it over.
 				shutil.copyfile(src,dest+"#new")
-				os.unlink(dest)
 				os.rename(dest+"#new",dest)
 				didcopy=1
 			except Exception, e:
