@@ -103,17 +103,15 @@ def spawn(mycommand,env={},opt_name=None,fd_pipes=None,returnpid=False,uid=None,
 					os.close(x)
 				except:
 					pass
-		if uid:
-			os.setuid(uid)
+		# note this order must be preserved- can't change gid/groups if you change uid first.
 		if gid:
 			os.setgid(gid)
 		if groups:
 			os.setgroups(groups)
+		if uid:
+			os.setuid(uid)
 		if umask:
 			os.umask(umask)
-#		print "mycommand=",mycommand[0]
-#		print "args=",myargs
-#		print "env=",env
 		try:
 			os.execve(mycommand[0],myargs,env)
 		except Exception, e:
