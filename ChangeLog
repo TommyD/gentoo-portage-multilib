@@ -1,6 +1,12 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-1.8.9_pre27 (19 Mar 2002)
+
+  19 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py:
+  /etc/make.profile/packages wasn't correctly masking core system packages;
+  fixed.
+
 *portage-1.8.9_pre26 (18 Mar 2002)
 
   18 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: configuration

@@ -2107,11 +2107,13 @@ class portagetree(packagetree):
 			self.portroot=settings["PORTDIR"]
 			self.pkgmaskdict={}
 			self.pkgmasklines=grabfile(self.portroot+"/profiles/package.mask")
-			self.pkglines=grabfile(profiledir+"/packages")
+			self.pkglines=[]
 			#remove '*'s from beginnning of deps
-			for x in self.pkglines:
+			for x in grabfile(profiledir+"/packages"):
 				if x[0]=="*":
-					x=x[1:]
+					self.pkglines.append(x[1:])
+				else:
+					self.pkglines.append(x)
 		packagetree.__init__(self,virtual)
 	
 	def load(self,mykey):
