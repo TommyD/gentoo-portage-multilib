@@ -52,7 +52,7 @@ shortmapping={"a":"--autoclean",
 	"t":"--slots",
 	"u":"--update",
 	"v":"--verbose"}
-modes=["rsync","config","system","world"]
+modes=["rsync","sync","config","system","world"]
 myaction=None
 myopts=[]
 mymode=[]
@@ -364,7 +364,7 @@ class depgraph:
 				edepend=eval(mydb.readline())
 				mydb.close()
 			else:
-				edepend=portage.doebuild(myebuild,"depend",myroot,1,edebug)
+				edepend=portage.doebuild(myebuild,"depend",myroot,edebug)
 			if edepend==1:
 				print "!!! emerge aborting."
 				sys.exit(1)
@@ -520,7 +520,7 @@ class depgraph:
 			y=self.db[myroot]["porttree"].getname(x[2])
 			if x[0]=="ebuild":
 				if "--fetchonly" in self.myopts:
-					retval=portage.doebuild(y,"fetch",myroot,0,edebug)
+					retval=portage.doebuild(y,"fetch",myroot,edebug)
 					if retval:
 						print
 						print "!!! Fetch for",y,"failed, continuing..."
@@ -528,11 +528,11 @@ class depgraph:
 						returnme=1
 				elif "--buildpkg" in self.myopts:
 					#create pkg, then merge pkg
-					retval=portage.doebuild(y,"clean",myroot,0,edebug)
+					retval=portage.doebuild(y,"clean",myroot,edebug)
 					if retval:
 						print "!!! emerge aborting on ",y,"."
 						sys.exit(1)
-					retval=portage.doebuild(y,"package",myroot,0,edebug)
+					retval=portage.doebuild(y,"package",myroot,edebug)
 					if retval:
 						print "!!! emerge aborting on ",y,"."
 						sys.exit(1)
@@ -544,11 +544,11 @@ class depgraph:
 						print "!!! emerge aborting on ",y,"."
 						sys.exit(1)
 				else:
-					retval=portage.doebuild(y,"clean",myroot,0,edebug)
+					retval=portage.doebuild(y,"clean",myroot,edebug)
 					if retval:
 						print "!!! emerge aborting on ",y,"."
 						sys.exit(1)
-					retval=portage.doebuild(y,"merge",myroot,0,edebug)
+					retval=portage.doebuild(y,"merge",myroot,edebug)
 					if retval:
 						print "!!! emerge aborting on ",y,"."
 						sys.exit(1)
@@ -563,7 +563,7 @@ class depgraph:
 				#need to check for errors
 			self.db[x[1]]["vartree"].inject(x[2])
 			if "--autoclean" in self.myopts:
-				retval=portage.doebuild(y,"clean",myroot,0,edebug)
+				retval=portage.doebuild(y,"clean",myroot,edebug)
 				if retval:
 					print "!!! emerge aborting on ",y,"."
 					sys.exit(1)
@@ -640,10 +640,7 @@ if "--debug" in myopts:
 
 # process modes that aren't in the universal emerge interface format first
 # this format is 'emerge --action --option --option [packageset]'
-if "rsync" in mymode and (not myaction or myaction=="--clean"):
-	if not os.path.exists("/usr/bin/rsync"):
-		print "!!! /usr/bin/rsync does not exist, so rsync support is disabled."
-		sys.exit(1)
+if ("rsync" in mymode) or ("sync" in mymode):
 	rclean=0
 	myportdir=portage.settings["PORTDIR"]
 	if myportdir[-1]=="/":
@@ -654,15 +651,51 @@ if "rsync" in mymode and (not myaction or myaction=="--clean"):
 	if "--clean" in myopts:
 		#we'll --delete files when we rsync
 		rclean=1
-	mycommand="/usr/bin/rsync -rlptDv --stats --progress "
-	if rclean:
-		mycommand=mycommand+"--delete --exclude='distfiles/*' --exclude='packages/*' "
-	mycommand=mycommand+"rsync://cvs.gentoo.org/gentoo-x86-portage/* "+myportdir
-	print ">>> starting rsync with cvs.gentoo.org..."
-	#protect users that did not set a default umask
+	syncuri=portage.settings["SYNC"]
 	os.umask(022)
-	sys.exit(os.system(mycommand))	
-
+	if syncuri[:8]=="rsync://":
+		if not os.path.exists("/usr/bin/rsync"):
+			print "!!! /usr/bin/rsync does not exist, so rsync support is disabled."
+			print "!!! Type \"emerge net-misc/cvs\" to enable rsync support."
+			sys.exit(1)
+		mycommand="/usr/bin/rsync -rlptDv --stats --progress "
+		if rclean:
+			mycommand=mycommand+"--delete --exclude='distfiles/*' --exclude='packages/*' "
+		mycommand=mycommand+syncuri+"/* "+myportdir
+		#rsync://cvs.gentoo.org/gentoo-x86-portage/* "+myportdir
+		print ">>> starting rsync with "+syncuri+"..."
+	#protect users that did not set a default umask
+		sys.exit(os.system(mycommand))	
+	elif syncuri[:6]=="cvs://":
+		if not os.path.exists("/usr/bin/cvs"):
+			print "!!! /usr/bin/cvs does not exist, so rsync support is disabled."
+			print "!!! Type \"emerge dev-util/cvs\" to enable CVS support."
+			sys.exit(1)
+		cvsroot=syncuri[6:]
+		cvsdir=os.path.dirname(myportdir)
+		if not os.path.exists(myportdir+"/CVS"):
+			#initial checkout
+			print ">>> starting initial cvs checkout with "+syncuri+"..."
+			if not os.system("cd "+cvsdir+"; cvs -d "+cvsroot+" login"):
+				print "!!! cvs login error; exiting."
+				sys.exit(1)
+			if os.path.exists(cvsdir+"/gentoo-x86"):
+				print "!!! existing",cvsdir+"/gentoo-x86 directory; exiting."
+				sys.exit(1)
+			if not os.system("cd "+cvsdir+"; cvs -d "+cvsroot+" co gentoo-x86"):
+				print "!!! cvs checkout error; exiting."
+				sys.exit(1)
+			if cvsdir!=myportdir:
+				portage.movefile(cvsdir,portage.settings["PORTDIR"])
+			sys.exit(0)
+		else:
+			#cvs update
+			print ">>> starting cvs update with "+syncuri+"..."
+			sys.exit(os.system("cd "+myportdir+"; cvs -q update -dP")) 
+	else:
+		print "!!!",syncuri,"not recognized; exiting."
+		sys.exit(1)
+	
 # HELP action
 elif "--help"==myaction:
 	if len(mymode)==0:
@@ -1124,7 +1157,7 @@ elif "--clean"==myaction:
 					print secs
 				for full_path in full_paths:
 					print "Unmerging "+os.path.basename(full_path)+" ..."
-					retval=portage.doebuild(full_path,"unmerge",portage.root,0,edebug)
+					retval=portage.doebuild(full_path,"unmerge",portage.root,edebug)
 	post_emerge()
 
 # REBUILD action

@@ -1,6 +1,19 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+  21 Feb 2002; Daniel Robbins <drobbins@gentoo.org>: moved entirety of Portage
+  download/digest code from ebuild.sh (bash) to portage.py (python).  No
+  support for custom FETCHCOMMANDs yet, but that's coming soon.  Good news is
+  that it appears to work well and allowed some cleanups and optimizations to
+  doebuild().  SYNC support added.  See cnf/make.conf for more info --
+  basically, "emerge rsync" (now callable via "emerge sync" as well) supports a
+  configurable "Portage server" that begins either with "rsync://" or "cvs://".
+  "emerge sync" is now not only a clean front-end, but a configurable front-end
+  to the Portage update process.  I also removed dependency checking from
+  'ebuild'.  This allowed me to removed some redundant code from portage.py,
+  and seemed fine to do since 'ebuild' is more and more becoming a low-level
+  developer tool.
+  
   21 Feb 2002; Daniel Robbins <drobbins@gentoo.org>: rewrite of cumulative USE
   setting code so that the new FEATURES (what used to be called MAINTAINER) is
   now cumulative and supports "-" and "-*" options.  FEATURES is expanded using

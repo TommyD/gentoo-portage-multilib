@@ -6,7 +6,7 @@
 #HTTP_PROXY=
 #FTP_PROXY=
 GENTOO_MIRRORS="http://www.ibiblio.org/gentoo"
-
+SYNC="rsync://cvs.gentoo.org/gentoo-x86-portage"
 # Host-type
 CHOST=i686-pc-linux-gnu
 

@@ -45,27 +45,6 @@
 #things will depend on "sys-apps/foo:dev" for headers, but the developer may want the
 #whole enchilada. (generally, I prefer this approach, though for runtime-only systems
 #subpackages make a lot of sense).
-#
-#new dependency functionality
-#============================
-#
-#Important new dep functionality:
-#
-# ~ IS NOW ADDED
-#
-#~sys-apps/foo-1.0 will match the latest rev of foo-1.0.  Useful because the latest rev
-#should be the most stable and reliable version.
-#
-#Next, sys-apps/foo-1.0* will match the latest package that starts with 1.0; so 1.0.3 will
-#match.  This is an excellent way to depend on libraries where you need a specific major
-#or minor version, but also want to be able to use the latest "really minor" version and
-#rev available.  For example, if your app depends on glib-1.2:
-#
-#dev-libs/glib-1.2*
-#
-#This will match glib-1.2, glib-1.2-r1, glib-1.2.1 and glib-1.2.1.1-r1.  Of these four
-#examples, the last will be chosen (most recent) if all are available.  However, glib-1.3
-#will not be considered for this dependency.
 
 import string,os
 from stat import *
@@ -603,6 +582,94 @@ def getmycwd():
 		a=os.getcwd()
 	return a
 
+def fetch(myuris):
+	mirrors=settings["GENTOO_MIRRORS"].split()
+	for myuri in myuris:
+		myfile=os.path.basename(myuri)
+		if os.path.exists(settings["DISTDIR"]+"/"+myfile):
+			continue	
+		gotit=0
+		locations=mirrors[:]
+		for y in range(0,len(locations)):
+			locations[y]=locations[y]+"/"+myfile
+		#we'll try myuri last
+		locations.append(myuri)
+		for loc in locations:
+			print
+			print ">>> Downloading",loc
+			myret=os.system("/usr/bin/wget --non-verbose -t 5 --passive-ftp -P "+settings["DISTDIR"]+" "+loc)
+			if not myret:
+				gotit=1
+				break
+		if not gotit:
+			print '!!! Couldn\'t download',myfile+".  Aborting."
+			return 0
+	return 1
+
+def digestgen(myarchives):
+	"generates digest file if missing.  Assumes all files are available."
+	print ">>> Generating digest file..."
+	if not os.path.isdir(settings["FILESDIR"]):
+		os.makedirs(settings["FILESDIR"])
+		if "cvs" in features:
+			print ">>> Auto-adding files/ dir to CVS..."
+			os.system("cd "+settings["O"]+"; cvs add files")
+	myoutfn=settings["FILESDIR"]+"/.digest-"+settings["PF"]
+	myoutfn2=settings["FILESDIR"]+"/digest-"+settings["PF"]
+	outfile=open(myoutfn,"w")
+	for x in myarchives:
+		myfile=settings["DISTDIR"]+"/"+x
+		mymd5=md5(myfile)
+		mysize=os.stat(myfile)[ST_SIZE]
+		#The [:-1] on the following line is to remove the trailing "L"
+		outfile.write("MD5 "+mymd5+" "+x+" "+`mysize`[:-1]+"\n")	
+	outfile.close()
+	movefile(myoutfn,myoutfn2)
+	if "cvs" in features:
+		print ">>> Auto-adding digest file to CVS..."
+		os.system("cd "+settings["FILESDIR"]+"; cvs add digest-"+settings["PF"])
+	print ">>> Computed message digests."
+	
+def digestcheck(myarchives):
+	"Checks md5sums.  Assumes all files have been downloaded."
+	digestfn=settings["FILESDIR"]+"/digest-"+settings["PF"]
+	if not os.path.exists(digestfn):
+		print "!!! No message digest file found.",digestfn
+		if "digest" in features:
+			digestgen(myarchives)
+			return 1
+		else:
+			print "!!! Type \"ebuild foo.ebuild digest\" to generate a digest."
+			return 0
+	myfile=open(digestfn,"r")
+	mylines=myfile.readlines()
+	mydigests={}
+	for x in mylines:
+		myline=string.split(x)
+		if len(myline)<2:
+			#invalid line
+			continue
+		mydigests[myline[2]]=[string.upper(myline[1]),myline[3]]
+	for x in myarchives:
+		if not mydigests.has_key(x):
+			print "!!! No message digest found for",x+"."
+			print "!!! Type \"ebuild foo.ebuild digest\" to generate a digest."
+			return 0
+		mymd5=md5(settings["DISTDIR"]+"/"+x) 
+		if mymd5 != mydigests[x][0]:
+			print
+			print "!!!",x+": message digests do not match!"
+			print "!!!",x,"is corrupt or incomplete."
+			print ">>> our recorded digest:",mydigests[x][0]
+			print ">>>  your file's digest:",mymd5
+			print ">>> Please delete",settings["DISTDIR"]+"/"+x,"and refetch."
+			print
+			return 0
+		else:
+			print ">>> md5 ;-)",x
+	return 1
+
+# "checkdeps" support has been depreciated.  Relying on emerge to handle it.
 def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 	global settings
 	if not os.path.exists(myebuild):
@@ -661,77 +728,82 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 		#cached info stale or non-existent
 		myso=getstatusoutput("/usr/sbin/ebuild.sh depend")
 		if myso[0]!=0:
-			print
-			print
-			print "!!! Portage had a problem processing this file:"
-			print "!!!",settings["EBUILD"]
-			print 
-			print myso[1]
-			print
-			print "!!! aborting."
-			print
+			print "\n\n!!! Portage had a problem processing this file:"
+			print "!!!",settings["EBUILD"]+"\n"+myso[1]+"\n"+"!!! aborting.\n"
 			return 1
+	
+	# if any of these are being called, stop now.
+	if mydo in ["help","clean","prerm","postrm","preinst","postinst","touch","setup"]:
+		return spawn("/usr/sbin/ebuild.sh "+mydo)
+	
 	# obtain the dependency, slot and SRC_URI information from the edb cache file
 	a=open(mydbkey,"r")
 	mydeps=eval(a.readline())
 	a.close()
+
 	# get possible slot information from the deps file
 	if mydeps[2]!="":
 		settings["SLOT"]=mydeps[2]
-	if checkdeps:
-		if mydo=="depend":
-			return mydeps
-		elif mydo=="check":
-			return dep_frontend("build",myebuild,mydeps[0])
-		elif mydo=="rcheck":
-			return dep_frontend("runtime",myebuild,mydeps[1])
-		if mydo in ["merge","qmerge", "compile", "rpm", "package"]:
-			#optional dependency check -- if emerge is merging, this is skipped 
-			retval=dep_frontend("build",myebuild,mydeps[0])
-			if (retval): return retval
-	else:
-		if mydo in ["depend","check","rcheck"]:
-			print "!!! doebuild(): ",mydo,"cannot be called with checkdeps equal to zero."
-			return 1
-		
-	#initial dep checks complete; time to process main commands
 	
+	# it's fetch time	
 	myuris=mydeps[3]
 	newuris=evaluate(tokenize(myuris),string.split(settings["USE"]))	
 	alluris=evaluate(tokenize(myuris),[],1)	
-	a=open(settings["T"]+"/src_uri_new","w")
-	a.write(flatten(newuris))
-	a.close()
-	a=open(settings["T"]+"/src_uri_all","w")
-	a.write(flatten(alluris))
-	a.close()
-	actionmap={	"help":"help", 
-				"unpack":"fetch unpack", 
-				"compile":"setup fetch unpack compile",
-				"install":"setup fetch unpack compile install",
-				"rpm":"setup fetch unpack compile install rpm"
+	alist=[]
+	aalist=[]
+	for x in alluris:
+		mya=os.path.basename(x)
+		if not mya in alist:
+			alist.append(mya)
+	for x in newuris:
+		mya=os.path.basename(x)
+		if not mya in aalist:
+			aalist.append(mya)
+	settings["A"]=string.join(alist," ")
+	settings["AA"]=string.join(aalist," ")
+	if "cvs" in features:
+		fetchme=alluris
+		checkme=aalist
+	else:
+		fetchme=newuris
+		checkme=alist
+
+	# if we need to generate digests, do it here and exit.
+	if mydo=="digest":
+		digestgen(checkme)	
+		sys.exit(0)	
+	
+	if not fetch(fetchme):
+		sys.exit(1)
+	
+	if mydo=="fetch":
+		sys.exit(0)
+
+	if not digestcheck(checkme):
+		sys.exit(1)
+	#initial dep checks complete; time to process main commands
+	
+	actionmap={	"unpack":"unpack", 
+				"compile":"setup unpack compile",
+				"install":"setup unpack compile install",
+				"rpm":"setup unpack compile install rpm"
 				}
 	if mydo in actionmap.keys():	
 		if "noauto" in features:
 			return spawn("/usr/sbin/ebuild.sh "+mydo)
 		else:
 			return spawn("/usr/sbin/ebuild.sh "+actionmap[mydo])
-	elif mydo in ["prerm","postrm","preinst","postinst","config","touch","clean","setup","fetch","digest","batchdigest"]:
-		return spawn("/usr/sbin/ebuild.sh "+mydo)
 	elif mydo=="qmerge": 
 		#qmerge is specifically not supposed to do a runtime dep check
 		return merge(settings["CATEGORY"],settings["PF"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot)
 	elif mydo=="merge":
-		retval=spawn("/usr/sbin/ebuild.sh setup fetch unpack compile install")
+		retval=spawn("/usr/sbin/ebuild.sh setup unpack compile install")
 		if retval: return retval
-		if checkdeps:
-			retval=dep_frontend("runtime",myebuild,mydeps[1])
-			if (retval): return retval
 		return merge(settings["CATEGORY"],settings["PF"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot)
 	elif mydo=="unmerge": 
 		return unmerge(settings["CATEGORY"],settings["PF"],myroot)
 	elif mydo=="package":
-		retval=spawn("/usr/sbin/ebuild.sh setup fetch")
+		retval=spawn("/usr/sbin/ebuild.sh setup")
 		if retval:
 			return retval
 		for x in ["","/"+settings["CATEGORY"],"/All"]:
@@ -781,7 +853,7 @@ def expandpath(mypath):
 	except:
 		pass
 	expandcache[join]=os.path.realpath(join)
-	return a+"/"+split[-1]
+	return expandcache[join]
 
 def movefile(src,dest,unlink=1):
 	"""moves a file from src to dest, preserving all permissions and attributes; mtime will
@@ -1232,43 +1304,6 @@ def dep_listcleanup(deplist):
 				newlist.append(x)
 	return newlist
 	
-def dep_frontend(mytype,myebuild,depstring):
-	"""ebuild frontend for dependency system"""
-	
-	if ebuild_initialized==0:
-		ebuild_init()
-	if depstring=="":
-		print ">>> No",mytype,"dependencies."
-		return 0
-	if mytype=="build":
-		myparse=localtree.depcheck(depstring)
-	elif mytype=="runtime":
-		myparse=roottree.depcheck(depstring)
-	else:
-		print "!!! Error: dependency type",mytype,"not recognized.  Exiting."
-		return 1
-	if myparse[0]==0:
-		#error
-		print '!!! '+mytype+' dependency error:',myparse[1]
-		return 1
-	elif myparse[1]==[]:
-		print '>>> '+mytype+' dependencies OK ;)'
-		return 0
-	else:
-		# don't take blocking deps into account when issuing a command through ebuild
-		# blocking packages should only be warned about and prevent merging through
-		# emerge
-		for x in myparse[1]:
-			if x[0]=="!":
-				continue
-			else:
-				# there were deps that need resolving that are not of the ! dep type
-				print '!!! Some '+mytype+' dependencies must be satisfied first.'
-				print '!!! To view the dependency list, type "emerge --pretend',myebuild+'".'
-				return 1
-		print '>>> '+mytype+' dependencies OK ;)'
-		return 0
-
 # gets virtual package settings
 def getvirtuals(myroot):
 	if (not profiledir) or (not os.path.exists(profiledir+"/virtuals")):
@@ -2599,21 +2634,7 @@ def pkgmerge(mytbz2,myroot):
 		a.close()
 	cleanup_pkgmerge(mypkg,origdir)
 	return returnme
-def ebuild_init():
-	"performs db/variable initialization for the ebuild system.  Not required for other scripts."
-	global local_virts, root_virts, roottree, localtree, ebuild_initialized, root, virtuals
-	local_virts=getvirtuals("/")
-	if root=="/":
-		root_virts=local_virts
-	else:
-		root_virts=getvirtuals(root)
-	
-	localtree=vartree("/",local_virts)	
-	if root=="/":
-		roottree=localtree
-	else:
-		roottree=vartree(root,root_virts)
-	ebuild_initialized=1
+
 root=getenv("ROOT")
 if len(root)==0:
 	root="/"
@@ -2650,13 +2671,9 @@ if not profiledir:
 		profiledir="/etc/make.profile"
 settings=config()
 features=settings["FEATURES"].split()
-for x in features:
-	#this is handy for ebuilds
-	settings.hardset("FEATURES_"+x,"1")
 #getting categories from an external file now
 if os.path.exists(settings["PORTDIR"]+"/profiles/categories"):
 	categories=grabfile(settings["PORTDIR"]+"/profiles/categories")
 else:
 	categories=[]
-ebuild_initialized=0
 
