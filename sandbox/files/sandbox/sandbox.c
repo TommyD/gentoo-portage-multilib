@@ -30,23 +30,25 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#define LIB_NAME		"libsandbox.so"
-#define BASHRC_NAME		"sandbox.bashrc"
-#define PIDS_FILE		"/tmp/sandboxpids.tmp"
-#define LOG_FILE_PREFIX	"/tmp/sandbox-"
-#define LOG_FILE_EXT	".log"
+#define LIB_NAME				"libsandbox.so"
+#define BASHRC_NAME				"sandbox.bashrc"
+#define PIDS_FILE				"/tmp/sandboxpids.tmp"
+#define LOG_FILE_PREFIX			"/tmp/sandbox-"
+#define DEBUG_LOG_FILE_PREFIX	"/tmp/sandbox-debug-"
+#define LOG_FILE_EXT			".log"
 
-#define ENV_SANDBOX_LOG		"SANDBOX_LOG"
-#define ENV_SANDBOX_DIR		"SANDBOX_DIR"
-#define ENV_SANDBOX_LIB		"SANDBOX_LIB"
+#define ENV_SANDBOX_DEBUG_LOG	"SANDBOX_DEBUG_LOG"
+#define ENV_SANDBOX_LOG			"SANDBOX_LOG"
+#define ENV_SANDBOX_DIR			"SANDBOX_DIR"
+#define ENV_SANDBOX_LIB			"SANDBOX_LIB"
 
-#define ENV_SANDBOX_DENY	"SANDBOX_DENY"
-#define ENV_SANDBOX_READ	"SANDBOX_READ"
-#define ENV_SANDBOX_WRITE	"SANDBOX_WRITE"
-#define ENV_SANDBOX_PREDICT	"SANDBOX_PREDICT"
+#define ENV_SANDBOX_DENY		"SANDBOX_DENY"
+#define ENV_SANDBOX_READ		"SANDBOX_READ"
+#define ENV_SANDBOX_WRITE		"SANDBOX_WRITE"
+#define ENV_SANDBOX_PREDICT		"SANDBOX_PREDICT"
 
-#define ENV_SANDBOX_ON		"SANDBOX_ON"
-#define ENV_SANDBOX_BEEP	"SANDBOX_BEEP"
+#define ENV_SANDBOX_ON			"SANDBOX_ON"
+#define ENV_SANDBOX_BEEP		"SANDBOX_BEEP"
 
 #define DEFAULT_BEEP_COUNT	3
 
@@ -336,6 +338,7 @@ int main(int argc, char** argv)
 	struct stat	sandbox_log_stat;
 	int			sandbox_log_presence = 0;
 	int			sandbox_log_file = -1;
+	char		sandbox_debug_log[255];
 	char		sandbox_dir[255];
 	char		sandbox_lib[255];
 	struct stat	sandbox_lib_stat;
@@ -586,6 +589,10 @@ int main(int argc, char** argv)
 			strcat(sandbox_log, pid_string);
 			strcat(sandbox_log, LOG_FILE_EXT);
 			setenv(ENV_SANDBOX_LOG, sandbox_log, 1);
+			strcpy(sandbox_debug_log, DEBUG_LOG_FILE_PREFIX);
+			strcat(sandbox_debug_log, pid_string);
+			strcat(sandbox_debug_log, LOG_FILE_EXT);
+			setenv(ENV_SANDBOX_DEBUG_LOG, sandbox_debug_log, 1);
 			home_dir = getenv("HOME");
 			portage_tmp_dir = getenv("PORTAGE_TMPDIR");
 			setenv(ENV_SANDBOX_DIR, sandbox_dir, 1);
