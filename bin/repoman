@@ -529,8 +529,6 @@ for x in qacats:
 	stats[x]=0
 	fails[x]=[]
 xmllint_capable = False
-xmllint_nonet_option="--nonet"
-
 if getstatusoutput('which xmllint')[0] != 0:
 	print red("!!! xmllint not found. Can't check metadata.xml.\n")
 	if "--xmlparse" in myoptions or repolevel==3:
@@ -580,18 +578,7 @@ else:
 		if not val:
 			print red("!!!")+" fetching new metadata.dtd failed, aborting"
 			sys.exit(1)
-	# this can be problematic if xmllint changes their output
-	# check xmllint version, setting option as needed.
-	#
-	#XXX this is ugly, clean it up after pre18 is out.
-	xml_ver=getstatusoutput("xmllint --version")[1].split("\n")[0]
-	if not xml_ver.find("libxml version 20"):
-		print "!!! unable to identify libxml version: "+xml_ver
-		print "bailing (sorry)"
-		sys.exit(1)
-	p=len("libxml version 20")+xml_ver.find("libxml version 20")
-	if xml_ver[p:p+1] < 6:
-		xmllint_nonet_option="--noent"
+	#this can be problematic if xmllint changes their output
 	xmllint_capable=True
 
 
@@ -726,7 +713,7 @@ for x in scanlist:
 	else:
 		#Only carry out if in package directory or check forced
 		if xmllint_capable:
-			st=getstatusoutput("xmllint %s '%s/metadata.xml' --dtdvalid '%s/metadata.dtd' 2>&1 > /dev/null" % (xmllint_nonet_option,checkdir,portage.CACHE_PATH))
+			st=getstatusoutput("xmllint --nonet '%s/metadata.xml' --dtdvalid '%s/metadata.dtd' 2>&1 > /dev/null" % (checkdir,portage.CACHE_PATH))
 			if st[0] != 0:
 				#skip the first line, since it will be an IO error about not able to fetch the dtd via the web.
 				#this is a superflous error, since we have a local copy of the dtd to use.
