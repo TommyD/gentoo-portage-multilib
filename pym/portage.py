@@ -6085,7 +6085,7 @@ class dblink:
 			# feel free to improve
 			if os.path.exists(self.myroot+"var/db/pkg/"+self.cat):
 				for mydir in os.listdir(self.myroot+"var/db/pkg/"+self.cat):
-					if os.path.isdir(mydir):
+					if os.path.isdir(self.myroot+"var/db/pkg/"+self.cat+mydir):
 						otherpkg.append(self.cat+"/"+mydir.split("/")[-1])
 			for p in otherpkg:
 				# the new package doesn't have a category, this can create problems
