@@ -38,6 +38,9 @@ Show the help screen.
 Scan current directory tree for QA issues.  If OK, commit via cvs.
 .SH QA KEYWORDS
 .TP
+.BR CVS/Entries.IO_error
+While attempting to commit, a CVS/Entries directory wasn't found- either the cvs co is damaged, or permissions block repoman from reading the file.
+.TP
 .BR digest.stray
 Digest files were found that do not have a corresponding ebuild.
 .TP
@@ -64,6 +67,9 @@ The ebuilds were not added to cvs when the matching digest had already been adde
 .TP
 .BR digest.disjointed
 The digests were not added to cvs when the matching ebuild had already been added.
+.TP
+.BR filedir.missing
+The package lacks a files directory.
 .TP
 .BR file.size
 The file's size exceeds 20k, current policy is no files over 20k in a packages files directory.

@@ -57,6 +57,7 @@ optionshelp={
 }
 
 qahelp={
+	"CVS/Entries.IO_error":"Attempting to commit, and an IO error was encountered access the Entries file",
 	"digest.stray":"Digest files that do not have a corresponding ebuild",
 	"digest.missing":"Digest files that are missing (ebuild exists, digest doesn't)",
 	"ebuild.invalidname":"Ebuild files with a non-parseable or syntactically incorrect name",
@@ -68,6 +69,7 @@ qahelp={
 	"digest.unmatch":"Digests which are incomplete (please check if your USE/ARCH includes all files)",
 	"ebuild.notadded":"Ebuilds that exist but have not been added to cvs",
 	"changelog.notadded":"ChangeLogs that exist but have not been added to cvs",
+	"filedir.missing":"Package lacks a files directory",
 	"file.executable":"Ebuilds, digests, metadata.xml, Manifest, and ChangeLog do note need the executable bit",
 	"file.size":"Files in the files directory must be under 20k",
 	"KEYWORDS.missing":"Ebuilds that have a missing KEYWORDS variable",
@@ -600,6 +602,14 @@ for x in scanlist:
 				fails["file.executable"].append(checkdir+"/"+y)
 	digestlist=[]
 	if isCvs:
+		try: 
+			mystat=os.stat(checkdir+"/files")[0]
+			if len(ebuildlist) and not S_ISDIR(mystat):
+				raise Exception
+		except:
+			stats["filedir.missing"] += 1
+			fails["filedir.missing"].append(checkdir)
+			continue
 		try:
 			myf=open(checkdir+"/CVS/Entries","r")
 			myl=myf.readlines()
@@ -615,6 +625,9 @@ for x in scanlist:
 				if splitl[0]=="ChangeLog":
 					cladded=1
 		except IOError:
+			if mymode=="commit":
+				stats["CVS/Entries.IO_error"] += 1
+				fails["CVS/Entries.IO_error"].append(checkdir+"/CVS/Entries")
 			continue
 
 		try:
@@ -630,6 +643,9 @@ for x in scanlist:
 				if splitl[0][:7]=="digest-":
 					dadded.append(splitl[0][7:])
 		except IOError:
+			if mymode=="commit":
+				stats["CVS/Entries.IO_error"] += 1
+				fails["CVS/Entries.IO_error"].append(checkdir+"/files/CVS/Entries")
 			continue
 
 	if os.path.exists(checkdir+"/files"):
