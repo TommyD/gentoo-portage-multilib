@@ -7,6 +7,7 @@
 
   9 Feb 2002; G.Bevin <gbevin@gentoo.org> portage.py :
   renamed getEbuildPaths() or vartree to getebuildpaths()
+  fixed bug in the merging of binary packages
 
   7 Feb 2002; G.Bevin <gbevin@gentoo.org> xpack.py :
   added additional argument to tbz2.getfile() which allows default content to

@@ -2609,8 +2609,10 @@ def pkgmerge(mytbz2,myroot):
 	if not mycat:
 		print "!!! CATEGORY info missing from info chunk, aborting..."
 		return None
+	mycat=mycat.strip()
 	mypkgparts=pkgsplit(mypkg)
 	myslot=xptbz2.getfile("SLOT",mypkgparts[1])
+	myslot=myslot.strip()
 	mycatpkg=mycat+"/"+mypkg
 
 	tmploc=settings["PKG_TMPDIR"]
