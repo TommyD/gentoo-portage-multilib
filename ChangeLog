@@ -9,6 +9,8 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  30 Apr 2004; Marius Mauch <genone@gentoo.org> bin/ebuild.sh:
+  modified ebuild.sh error message on seemants and roger55s request.
 
 *portage-2.0.51_pre7 (26 Apr 2003): Big cleanups & Ebuild QA Stuff.
 

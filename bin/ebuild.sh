@@ -277,6 +277,7 @@ diefunc() {
 	echo "!!! ERROR: $CATEGORY/$PF failed." >&2
 	echo "!!! Function $funcname, Line $lineno, Exitcode $exitcode" >&2
 	echo "!!! ${*:-(no error message)}" >&2
+	echo "!!! If you need support, post the topmost build error, NOT this status message." >&2
 	echo >&2
 	exit 1
 }
