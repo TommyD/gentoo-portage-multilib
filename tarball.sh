@@ -10,6 +10,9 @@ do
 	cp -ax $x ${DEST}
 	rm -rf ${DEST}/${x}/CVS
 done
+cp ${DEST}/pym/portage.py ${DEST}/pym/portage.py.orig
+sed "s/@portage_version@/${V}/" < ${DEST}/pym/portage.py.orig > ${DEST}/pym/portage.py
+rm ${DEST}/pym/portage.py.orig
 rm -rf ${DEST}/src/sandbox/CVS
 cp ChangeLog ${DEST}
 chown -R root.root ${DEST}

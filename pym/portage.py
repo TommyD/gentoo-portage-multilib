@@ -46,6 +46,8 @@
 #whole enchilada. (generally, I prefer this approach, though for runtime-only systems
 #subpackages make a lot of sense).
 
+VERSION="@portage_version@"
+
 import string,os
 from stat import *
 from commands import *
