@@ -431,8 +431,17 @@ econf() {
 		fi
 		
 		# if the profile defines a location to install libs to aside from default, pass it on.
-		if [ ! -z "${CONF_LIBDIR}" ]; then
-			EXTRA_ECONF="--libdir=/usr/${CONF_LIBDIR} ${EXTRA_ECONF}"
+		# if the ebuild passes in --libdir, they're responsible for the conf_libdir fun.
+		if [ ! -z "${CONF_LIBDIR}" ] && [ "${*/--libdir}" == "$*" ]; then
+			if [ "${*/--prefix}" == "${EXTRA_ECONF}" ]; then
+				CONF_PREFIX="/usr"
+			else
+				local args="$(echo $@)"
+				local -a pref=($(echo ${args/*--prefix[= ]}))
+				CONF_PREFIX=${pref}
+			fi
+			export CONF_PREFIX
+			EXTRA_ECONF="--libdir=/${CONF_PREFIX}/${CONF_LIBDIR} ${EXTRA_ECONF}"
 		fi
 		
 		echo ./configure \
@@ -462,8 +471,9 @@ econf() {
 }
 
 einstall() {
-	if [ ! -z "${CONF_LIBDIR}" ]; then
-		EXTRA_EINSTALL="libdir=${D}/usr/${CONF_LIBDIR} ${EXTRA_EINSTALL}"
+	# CONF_PREFIX is only set if they didn't pass in libdir above.
+	if [ ! -z "${CONF_LIBDIR}" ] && [ "${CONF_PREFIX:-unset}" != "unset" ]; then
+		EXTRA_EINSTALL="libdir=${D}/${CONF_PREFIX}/${CONF_LIBDIR} ${EXTRA_EINSTALL}"
 	fi
 	if [ -f ./[mM]akefile -o -f ./GNUmakefile ] ; then
 		if [ ! -z "${PORTAGE_DEBUG}" ]; then
