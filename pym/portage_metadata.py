@@ -3,7 +3,6 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-import string 
 from xml.sax import saxutils, make_parser, handler
 from xml.sax.handler import feature_namespaces
 
