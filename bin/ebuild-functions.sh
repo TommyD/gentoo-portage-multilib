@@ -101,7 +101,7 @@ econf() {
 		fi
 		local EECONF_CACHE
 		if request_confcache "${T}/local_cache"; then
-			EECONF_CACHE="${EXTRA_ECONF} --cache-file=${T}/local_cache"
+			EECONF_CACHE="--cache-file=${T}/local_cache"
 		fi
 		echo ./configure \
 			--prefix=/usr \
@@ -139,7 +139,7 @@ einstall()
 {
 	# CONF_PREFIX is only set if they didn't pass in libdir above
 	if [ ! -z "${CONF_LIBDIR}" ] && [ "${CONF_PREFIX:-unset}" != "unset" ]; then
-		EXTA_EINSTALL="libdir=${D}/${CONF_PREFIX}/${CONF_LIBDIR} ${EXTRA_EINSTALL}"
+		EXTRA_EINSTALL="libdir=${D}/${CONF_PREFIX}/${CONF_LIBDIR} ${EXTRA_EINSTALL}"
 	fi
 	if [ -f ./[mM]akefile -o -f ./GNUmakefile ] ; then
 		if [ ! -z "${PORTAGE_DEBUG}" ]; then
