@@ -1,4 +1,4 @@
-#!/usr/bin/spython
+#!/usr/bin/python
 import sys
 null=open("/dev/null","w")
 sys.stdout=null

@@ -1,4 +1,4 @@
-#!/usr/bin/env spython
+#!/usr/bin/env python
 import os
 from os.path import walk, splitext, exists, basename, dirname
 import sys

@@ -1,4 +1,4 @@
-#! /usr/bin/env spython
+#! /usr/bin/env python
 
 # Very simple program that searches the /usr/portage tree for 
 # ebuilds that match a key provided by the user.

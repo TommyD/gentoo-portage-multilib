@@ -1,4 +1,4 @@
-#!/usr/bin/spython
+#!/usr/bin/python
 
 import portage
 portage.env_update()

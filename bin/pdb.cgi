@@ -1,4 +1,4 @@
-#!/usr/bin/spython
+#!/usr/bin/python
 # pdb.cgi -- cgi to update and query local and remote portage package databases
 # Copyright (C) Sept 2001, Chris Houser <chouser@bluweb.com>
 # Distributed under the GNU General Public License
