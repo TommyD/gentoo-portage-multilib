@@ -12,6 +12,10 @@
 
 export PORTAGE_CALLER="etc-update"
 
+if [ $(/usr/lib/portage/bin/portageq envvar USERLAND) = BSD ] ; then
+	function sed() { gsed "$@"; }
+fi
+
 function get_config() {
 	item=$1
 
