@@ -102,7 +102,7 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 				# try for the exclusive lock now.
 				lock(myfd,fcntl.LOCK_EX)
 				link_success = True
-			elif e.errno in (errno.ENOLCK, errno.EINVALID):
+			elif e.errno == errno.ENOLCK:
 				continue
 			else:
 				raise e
@@ -142,7 +142,14 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 def unlockfile(mytuple):
 	import fcntl
 
-	lockfilename,myfd,unlinkfile,locking_method = mytuple
+	#XXX: Compatability hack.
+	if len(mytuple) == 3:
+		lockfilename,myfd,unlinkfile = mytuple
+		locking_method = fcntl.flock
+	elif len(mytuple) == 4:
+		lockfilename,myfd,unlinkfile,locking_method = mytuple
+	else:
+		raise
 
 	if(myfd == HARDLINK_FD):
 		unhardlink_lockfile(lockfilename)
