@@ -1,0 +1,71 @@
+#!/usr/bin/spython
+
+# Copyright 1999-2001 Gentoo Technologies, Inc.
+# Distributed under the terms of the GNU General Public License, v2 or later
+# Author Karl Trygve Kalleberg <karltk@gentoo.org>
+# $Header$
+
+import os
+import sys
+import string
+import os.path
+
+def dodir(path):
+	os.system("install -d " + path)
+
+def dofile(src,dst):
+
+	os.system("install -m0644 " + src + " " + dst)
+		
+def install(basename, dirname, recurse=0, prefix=""):
+
+	fullpath = basename
+	if prefix: fullpath = prefix + "/" + fullpath
+	if dirname: fullpath = dirname + "/" + fullpath
+		
+	destdir = D + "usr/share/doc/" + PF + "/html/" + prefix
+
+	print fullpath, destdir
+	
+	if os.path.isfile(fullpath):
+		ext = os.path.splitext(basename)[1]
+		if len(ext) and ext[1:] in allowed_exts:
+			dodir(destdir)
+			dofile(fullpath, destdir + "/" + basename)
+	elif recurse and os.path.isdir(fullpath) and \
+	     basename not in disallowed_dirs:
+		for i in os.listdir(fullpath):
+			pfx = basename
+			if prefix: pfx = prefix + "/" + pfx
+			install(i, dirname, recurse, pfx)
+
+skip = 0
+files = []
+D=os.environ["D"]
+PF=os.environ["PF"]
+allowed_exts = [ 'png', 'html', 'htm', 'jpg', 'css' ]
+disallowed_dirs = [ 'CVS' ]
+recurse = 0
+
+for i in xrange(1,len(sys.argv)):
+	if skip:
+		skip = skip - 1
+		continue
+		
+	if sys.argv[i]	== "-a":
+		allowed_exts = string.split(sys.argv[i + 1], ',')
+		skip = 1
+		continue
+	elif sys.argv[i] == "-x":
+		disallowed_dirs = string.split(sys.argv[i + 1], ',')
+		skip = 1
+		continue
+	elif sys.argv[i] == "-r":
+		recurse = 1
+		continue
+	files.append(sys.argv[i])
+
+for i in files:
+	basename = os.path.basename(i)
+	dirname  = os.path.dirname(i)
+	install(basename, dirname, recurse)	
