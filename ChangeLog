@@ -1,6 +1,12 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  14 Nov 2002; Phil Bordelon <sunflare@gentoo.org> man/emerge.1:
+  Cleaned up the more recent edits to the man page to more closely
+  match the previous format, fix various typos, and so on.  Expanded
+  the REPORTING BUGS section, and made the PACKAGE MASKING part of the
+  NOTES a stand-alone section.
+
 *portage-2.0.44 (11 Nov 2002): bug fixes and 1.2 rescue/install setup
 
   11 Nov 2002; Nicholas Jones <carpaski@gentoo.org> *:

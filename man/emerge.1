@@ -2,7 +2,7 @@
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
-.TP
+.TP 
 \fBemerge\fR
 [\fIoptions\fR] [\fIaction\fR] [\fIebuild\fR | \fItbz2file\fR | \fIclass\fR | \fIdependency\fR] ...
 .TP 
@@ -82,13 +82,13 @@ clean binutils\fR cleans out old versions of binutils; \fBemerge clean net\-www/
 cleans out that specific version of Mozilla.  This is generally safe to use. \fBNote that\fR clean \fBdoes not remove unslotted packages.\fR
 .TP 
 \fBdepclean\fR
-Determines all packages installed on the system that have to explicit reason for being there. The system packages and world file are used to create a list of all packages expected to be on the system, and the list of installed packages is compared against it. The differences are listed as unnecessary packages and are suggested for unmerge. \fBWARNING:\fR removing some packages may cause packages that had linked to it to stop working and complain about missing libraries. REMERGE the complaining package to fix this issue. Changes in USE flags can drastically affect the output of depclean.
+Determines all packages installed on the system that have no explicit reason for being there.  \fBemerge\fR generates a list of packages which it expects to be installed by checking the \fBsystem\fR package list and the \fBworld\fR file.  It then compares that list to the list of packages which are actually installed; the differences are listed as unnecessary packages and are suggested for unmerging. \fBWARNING: Removing some packages may cause packages which link to the removed package to stop working and complain about missing libraries.\fR Re\-\fBemerge\fR the complaining package to fix this issue. \fBNote that changes in USE flags can drastically affect the output of depclean.\fR
 .TP 
 \fBhelp\fR (\fB\-h\fR)
 Displays help information for emerge.  Adding one of the additional arguments listed above will give you more specific help information on that subject.  The internal \fBemerge\fR help documentation is updated more frequently than this man page; check it out if you are having problems that this man page does not help resolve.
 .TP 
 \fBinfo\fR
-This is a listing of information to INCLUDE IN BUG REPORTS to aid in fixing problems you may report. PLEASE include this information when submitting a bug report.
+This is a list of information to include in bug reports which aids the developers with fixing any problems you may report. \fBPlease include this information when submitting a bug report.\fR
 .TP 
 \fBinject\fR (\fB\-i\fR)
 Injecting a package inserts a 'stub' for that package so that Portage thinks that it is installed.
@@ -124,7 +124,7 @@ Displays the version number of \fBemerge\fR.
 .SH "OPTIONS "
 .TP 
 \fB\-\-autoclean\fR (\fB\-a\fR)
-\fBemerge\fR normally cleans out the package\-specific temporary build directory before it starts the building a package.  With \-\-autoclean, it will also clean the directory *after* the build completes.  This option is automatically enabled for normal users, but maintainers can use this option to enable autocleaning.
+\fBemerge\fR normally cleans out the package\-specific temporary build directory before it starts the building a package.  With \fB\-\-autoclean\fR, it will also clean the directory \fIafter\fR the build completes.  This option is automatically enabled for normal users, but maintainers can use this option to enable autocleaning.
 .TP 
 \fB\-\-buildpkg\fR (\fB\-b\fR)
 Tells emerge to build binary packages for all ebuilds processed in addition to actually merging the packages.  Useful for maintainers or if you administrate multiple Gentoo Linux systems (build once, emerge tbz2s everywhere).  The package will be created in the \fI${PKGDIR}\fR/All directory.
@@ -199,12 +199,43 @@ fail with an error message, it may be that an ebuild uses some
 newer feature not present in this version of \fBemerge\fR.  You
 can use \fBemerge \-\-update portage\fR to upgrade to the lastest
 version, which should support any necessary new features.
+.SH "MASKED PACKAGES"
+\fINOTE: Please use caution when using development packages. Problems and bugs resulting from misusing masked packages drains Gentoo developer time. Please be
+sure you are capable of handling problems that may ensue.\fR
+.LP 
+Masks in \fBportage\fR provide three primary functions: they allow a testing
+period where the packages can be used in live machines; they prevent the use of a
+package when it will fail, and they mask existing packages that have are broken or
+pose a security risk. Masking can be done by two methods: \fBpackage.mask\fR and
+KEYWORDS. 
 .TP 
-\fBMASKED Packages\fR
-\fIWARNING: Please use caution when using development packages. Problems and bugs resulting from misusing masked packages drains Gentoo developers time. Please be sure you are capable of handling problems that may ensue.\fR
-Masks in portage provide 3 functions: allow a testing interval where the packages can be used in live machines, prevent the use of a package when it will fail, or mask existing packages that have been discovered broken or are a security risk. Masking can be done in two relevant ways: package.mask and KEYWORDS. Package.mask's primary purpose is to block packages that cause problems or can cause problems. It sits in PORTDIR (/usr/portage/) in the profiles directory. Packages may be unmasked in the file by added a comment character ("#") to the beginning of the line defining the mask. KEYWORDS is another method used for packages in testing. KEYWORDS defines architectures that have been shown to properly build the package, but have not been proven of 'stable' quality yet. This masking method works by examining ACCEPT_KEYWORDS for matches. Users may ONLY set "~arch" ("~x86", "~ppc", "~sparc", "~alpha") for the architecture they are on. DO NOT SET ANYTHING ELSE IN THIS VARIABLE. 'ACCEPT_KEYWORDS="~x86" emerge xfree' would allow all testing versions of xfree to be candidate for merging.
+\fBpackage.mask\fR
+\fBpackage.mask\fR primarily blocks the use of packages that cause
+problems or are known to have issues on disparate systems. It resides in
+\fI${PORTDIR}/profiles\fR. Packages may be unmasked in the file by adding a comment
+character (\fB#\fR) to the beginning of the line which masks the package.
+.TP 
+\fBKEYWORDS\fR
+KEYWORDS are also used for masking packages still in testing. There are
+architecture\-specific keywords for each package that let \fBportage\fR
+know which systems are compatible with the package.  Packages which compile on
+an architecture, but have not been proven to be "stable", are masked with a tilde
+(\fB~\fR) in front of the architecture name.  \fBemerge\fR examines the
+\fBACCEPT_KEYWORDS\fR environment variable to allow or disallow the emerging of
+a package masked by a KEYWORD.  To inform \fBemerge\fR that it should build these
+'testing' versions of packages, you may set \fBACCEPT_KEYWORDS\fR to
+"\fB~arch\fR", where \fBarch\fR is one of \fBx86\fR, \fBppc\fR,
+\fBsparc\fR, \fBsparc64\fR, or \fBalpha\fR.  For example,
+\fBACCEPT_KEYWORDS="~x86" emerge xfree\fR will cause \fBemerge\fR to consider
+KEYWORDS\-masked versions of XFree it decides the packages to build.  \fBWARNING:
+Do \fInot\fR set this variable to anything other than the value cooresponding to
+your architecture.\fR
 .SH "REPORTING BUGS"
-Please report bugs via http://bugs.gentoo.org/
+Please report any bugs you encounter through our website:
+.LP 
+\fBhttp://bugs.gentoo.org/\fR
+.LP 
+Please include the output of \fBemerge info\fR when you submit your bug report.
 .SH "SEE ALSO"
 .BR ebuild (1),
 .BR ebuild (5),
@@ -246,11 +277,11 @@ classes consult this file. \fBDo not edit this file\fR.
 Contains the default variables for the build process. \fBDo not edit this file\fR.
 .SH "AUTHORS"
 Daniel Robbins <drobbins@gentoo.org>
-.br
+.br 
 Geert Bevin <gbevin@gentoo.org>
-.br
+.br 
 Achim Gottinger <achim@gentoo.org>
-.br
+.br 
 Nicholas Jones <carpaski@gentoo.org>
-.br
+.br 
 Phil Bordelon <sunflare@gentoo.org>
