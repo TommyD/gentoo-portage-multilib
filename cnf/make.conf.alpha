@@ -20,7 +20,7 @@
 # useflags for you. 'emerge app-admin/ufed'
 #
 # Example:
-#USE="X gtk gnome alpha gnome -alsa"
+#USE="X gtk gnome -alsa"
 
 # Host Setting
 # ============
