@@ -11,7 +11,7 @@
 import os,sys,string,signal,portage,readline
 from output import *
 exename=os.path.basename(sys.argv[0])	
-version="1.1"	
+version="1.2"	
 
 def err(txt):
 	print exename+": "+txt
@@ -35,9 +35,8 @@ modeshelp={"scan":"Scan current directory tree for QA issues (default)",
 optionshelp={"--pretend":"Don't actually perform commit or fix steps; just show what would be done.",
 "--help":"Show this screen"
 }
-qacats=["digest.stray","digest.missing","ebuild.invalidname","ebuild.namenomatch","changelog.missing","ebuild.notadded","digest.notadded","ebuild.disjointed","digest.disjointed",
-"DEPEND.unsolvable","RDEPEND.unsolvable"]
-qawarnings=["changelog.missing","ebuild.notadded","digest.notadded"]
+qacats=["digest.stray","digest.missing","ebuild.invalidname","ebuild.namenomatch","changelog.missing","ebuild.notadded","digest.notadded","ebuild.disjointed","digest.disjointed", "DEPEND.bad","RDEPEND.bad","DEPEND.badmasked","RDEPEND.badmasked"]
+qawarnings=["changelog.missing","ebuild.notadded","digest.notadded","DEPEND.badmasked","RDEPEND.badmasked"]
 missingvars=["KEYWORDS","LICENSE","DESCRIPTION","SLOT"]
 allvars=missingvars[:]
 allvars.extend(["DEPEND","RDEPEND"])
@@ -58,8 +57,10 @@ qahelp={
 	"LICENSE.missing":"Ebuilds that have a missing LICENSE variable",
 	"DESCRIPTION.missing":"Ebuilds that have a missing DESCRIPTION variable",
 	"SLOT.missing":"Ebuilds that have a missing SLOT variable",
-	"DEPEND.unsolvable":"Ebuilds with DEPEND values that can't be matched",
-	"RDEPEND.unsolvable":"Ebuilds with RDEPEND values that can't be matched",
+	"DEPEND.bad":"User-visible ebuilds with bad DEPEND settings (matched against *visible* ebuilds)",
+	"RDEPEND.bad":"User-visible ebuilds with bad RDEPEND settings (matched against *visible* ebuilds)",
+	"DEPEND.badmasked":"Masked ebuilds with bad DEPEND settings (matched against *all* ebuilds)",
+	"RDEPEND.badmasked":"Masked ebuilds with RDEPEND settings (matched against *all* ebuilds)",
 }
 
 def err(txt):
@@ -271,9 +272,16 @@ for x in scanlist:
 				myqakey=missingvars[pos]+".missing"
 				stats[myqakey]=stats[myqakey]+1
 				fails[myqakey].append(x+"/"+y+".ebuild")
+		if not catdir+"/"+y in portage.db["/"]["porttree"].dbapi.xmatch("list-visible",x):
+			#we are testing deps for a masked package; give it some lee-way
+			suffix="masked"
+			matchmode="match-all"
+		else:
+			suffix=""
+			matchmode="match-visible"
 		for mytype,mypos in [["DEPEND",len(missingvars)],["RDEPEND",len(missingvars)+1]]:
-			mykey=mytype+".unsolvable"
-			mydep=portage.db["/"]["porttree"].depcheck(myaux[mypos],mylookatuse=10)
+			mykey=mytype+".bad"+suffix
+			mydep=portage.dep_check(myaux[mypos],portage.db["/"]["porttree"].dbapi,use="all",mode=matchmode)
 			if mydep[0]==1:
 				if mydep[1]!=[]:
 					#we have some unsolvable deps

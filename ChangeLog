@@ -1,7 +1,20 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
-*portage-2.0.10 (07 Jul 2002)
+*portage-2.0.11 (07 Jul 2002)
+
+  07 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: rewrote
+  portdbapi's xmatch() and visible() to fix significant bugs.  Logic errors in
+  both methods caused ~ deps to not work correctly.  After the rewrite,
+  dependency checking is now 44% faster.
+
+  07 Jul 2002; Daniel Robbins <drobbins@gentoo.org> repoman, portage.py: Added
+  new DEPEND and RDEPEND.badmasked categories to repoman.  repoman now checks
+  dependencies of masked packages using *all* ebuilds, rather than trying to
+  match them against all visible ebuilds.  DEPEND.bad and RDEPEND.bad (used to
+  be ".unsolvable") now only tally visible ebuilds, not masked ones.
+
+*portage-2.0.10 (06 Jul 2002)
 
   05 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, repoman: Added
   new capabilities to repoman -- the ability to detect unsolvable DEPEND and

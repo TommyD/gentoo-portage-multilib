@@ -95,7 +95,7 @@ def exithandler(signum,frame):
 		retval=os.waitpid(mypid,0)[1]
 		print "PORTAGE:  Checking for Sandbox ("+buildphase+")..."
 		if retval==0:
-			print "PORTAGE:  No Sandbox running, deleting /etc/ls.so.preload!"
+			print "PORTAGE:  No Sandbox running, deleting /etc/ld.so.preload!"
 			if os.path.exists("/etc/ld.so.preload"):
 				os.unlink("/etc/ld.so.preload")
 	# 0=send to *everybody* in process group
@@ -609,7 +609,7 @@ def autouse(myvartree):
                 myuse=mysplit[0]
                 mydep=x[len(mysplit[0]):]
                 #check dependencies; tell depcheck() to ignore settings["USE"] since we are still forming it.
-                myresult=dep_check(mydep,myvartree.dbapi,lookatuse=0)
+                myresult=dep_check(mydep,myvartree.dbapi,use="no")
                 if myresult[0]==1 and not myresult[1]:
                         #deps satisfied, add USE variable...
                         myusevars=myusevars+" "+myuse
@@ -658,7 +658,7 @@ class config:
 		self.regenerate()
 	
 	def regenerate(self,useonly=0):
-		global incrementals
+		global incrementals,usesplit
 		if useonly:
 			myincrementals=["USE"]
 		else:
@@ -706,7 +706,8 @@ class config:
 						mysetting.append(add)
 			#store setting in last element of configlist, the original environment:
 			self.configlist[-1][mykey]=string.join(mysetting," ")
-
+		#cache split-up USE var in a global
+		usesplit=string.split(self.configlist[-1]["USE"])
 	
 	def __getitem__(self,mykey):
 		for x in self.lookuplist:
@@ -1999,18 +2000,14 @@ def dep_expand(mydep,mydb):
 		mydep=mydep[1:]
 	return prefix+cpv_expand(mydep,mydb)+postfix
 
-
-def dep_check(depstring,mydbapi,lookatuse=1):
-	"""evaluates a dependency string and returns a 2-node result list
-	[1, None] = ok, no dependencies
-	[1, ["x11-base/foobar","sys-apps/oni"] = dependencies must be satisfied
-	[0, * ] = parse error
-	"""
-	if lookatuse==10:
+def dep_check(depstring,mydbapi,use="yes",mode=None):
+	global usesplit
+	if use=="all":
 		#enable everything (for repoman)
 		myusesplit=["*"]
-	elif lookatuse:
-		myusesplit=string.split(settings["USE"])
+	elif use=="yes":
+		#default behavior
+		myusesplit=usesplit
 	else:
 		#we are being run by autouse(), don't consult USE vars yet.
 		myusesplit=[]
@@ -2028,7 +2025,7 @@ def dep_check(depstring,mydbapi,lookatuse=1):
 		#dependencies were reduced to nothing
 		return [1,[]]
 	mysplit2=mysplit[:]
-	mysplit2=dep_wordreduce(mysplit2,mydbapi)
+	mysplit2=dep_wordreduce(mysplit2,mydbapi,mode)
 	if mysplit2==None:
 		return [0,"Invalid token"]
 	myeval=dep_eval(mysplit2)
@@ -2041,16 +2038,19 @@ def dep_check(depstring,mydbapi,lookatuse=1):
 			mydict[x]=1
 		return [1,mydict.keys()]
 
-def dep_wordreduce(mydeplist,mydbapi):
+def dep_wordreduce(mydeplist,mydbapi,mode):
 	"Reduces the deplist to ones and zeros"
 	mypos=0
 	deplist=mydeplist[:]
 	while mypos<len(deplist):
 		if type(deplist[mypos])==types.ListType:
 			#recurse
-			deplist[mypos]=dep_wordreduce(deplist[mypos],mydbapi)
+			deplist[mypos]=dep_wordreduce(deplist[mypos],mydbapi,mode)
 		else:
-			mydep=mydbapi.match(deplist[mypos])
+			if mode:
+				mydep=mydbapi.xmatch(mode,deplist[mypos])
+			else:
+				mydep=mydbapi.match(deplist[mypos])
 			if mydep!=None:
 				deplist[mypos]=(len(mydep)>=1)
 			else:
@@ -2086,8 +2086,8 @@ class packagetree:
 				nolist.remove(x)
 		return nolist
 
-	def depcheck(self,mycheck,mylookatuse=1):
-		return dep_check(mycheck,self.dbapi,lookatuse=mylookatuse)
+	def depcheck(self,mycheck,use="yes"):
+		return dep_check(mycheck,self.dbapi,use="yes")
 
 	def populate(self):
 		"populates the tree with values"
@@ -2235,7 +2235,7 @@ class portagetree:
 		"compatibility method"
 		#mymatch=best(gvisible(visible(match(mydep,self.dbapi))))
 		#mymatch=best(visible(match(mydep,self.dbapi)))
-		mymatch=self.dbapi.xmatch(2,mydep)
+		mymatch=self.dbapi.xmatch("bestmatch-visible",mydep)
 		if mymatch==None:
 			return ""
 		return mymatch
@@ -2244,7 +2244,7 @@ class portagetree:
 		"compatibility method"
 		#mymatch=gvisible(visible(match(mydep,self.dbapi)))
 		#mymatch=visible(match(mydep,self.dbapi))
-		mymatch=self.dbapi.xmatch(1,mydep)
+		mymatch=self.dbapi.xmatch("match-visible",mydep)
 		if mymatch==None:
 			return []
 		return mymatch
@@ -2275,8 +2275,8 @@ class portagetree:
 			mykey=mykey+"-"+cps[3]
 		return mykey
 
-	def depcheck(self,mycheck,mylookatuse=1):
-		return dep_check(mycheck,self.dbapi,lookatuse=mylookatuse)
+	def depcheck(self,mycheck,use="yes"):
+		return dep_check(mycheck,self.dbapi,use=use)
 
 
 class dbapi:
@@ -2639,59 +2639,115 @@ class portdbapi(dbapi):
 			return []
 		return returnme
 
-	def xmatch(self,level,origdep,mydep=None,mykey=None):
-		"caching match function"
+	def xmatch(self,level,origdep,mydep=None,mykey=None,mylist=None):
+		"caching match function; very trick stuff"
+		global KeyError
 		if not mydep:
+			#this stuff only runs on first call of xmatch()
+			#create mydep, mykey from origdep
 			mydep=dep_expand(origdep,self)
 			mykey=dep_getkey(mydep)
-		try:
-			curmtime=os.stat(self.root+"/"+mykey)
-		except:
-			curmtime=0
-		if self.xcache[level].has_key(mydep):
-			myxc=self.xcache[level][mydep]
-			if myxc[0]==curmtime:
-				return myxc[1]
-		elif level==2:
-			self.xcache[2][mydep]=[curmtime,best(self.xmatch(level-1,None,mydep,mykey))]
-		elif level==1:
-			self.xcache[1][mydep]=[curmtime,self.visible(self.xmatch(level-1,None,mydep,mykey))]
-			#self.xcache[1][mydep]=[curmtime,self.gvisible(self.visible(self.xmatch(level-1,None,mydep,mykey)))]
-		elif level==0:
-			self.xcache[0][mydep]=[curmtime,self.match2(mydep,mykey)]
-		return self.xcache[level][mydep][1]
+			#check and potentially invalidate cache entry if mtime is stale
+			try:
+				curmtime=os.stat(self.root+"/"+mykey)[ST_MTIME]
+			except:
+				return []
+			if self.xcache.has_key(mykey):
+				if self.xcache[mykey]["mtime"]!=curmtime:
+					#invalidate entire cache
+					self.xcache[mykey]={"mtime":curmtime}
+			else:
+				self.xcache[mykey]={"mtime":curmtime}
+		elif not self.xcache.has_key(mykey):
+			try:
+				curmtime=os.stat(self.root+"/"+mykey)[ST_MTIME]
+			except:
+				return []
+			self.xcache[mykey]={"mtime":curmtime}
+		if not mylist:
+			#we did not specify a list, so we are not doing a list query that wouldn't get cached.
+			#...so let's check our cache :)
+			try:
+				if level=="list-visible":
+					#return cached entry based on keyword
+					return self.xcache[mykey][level]
+				elif self.xcache[mykey][level].has_key(mydep):
+					#return cached entry based on dep
+					return self.xcache[mykey][level][mydep]
+			except KeyError:
+				pass
+		if level=="list-visible":
+			#a list of all visible packages, not called directly (just my xmatch())
+			myval=self.visible(self.cp_list(mykey))
+		elif level=="bestmatch-visible":
+			#dep match -- best match of all visible packages
+			myval=best(self.xmatch("match-visible",None,mydep,mykey))
+			#get all visible matches (from xmatch()), then choose the best one
+		elif level=="bestmatch-list":
+			#dep match -- find best match but restrict search to sublist 
+			myval=best(self.match2(mydep,mykey,mylist))
+			#no point is calling xmatch again since we're not caching list deps
+		elif level=="match-list":
+			#dep match -- find all matches but restrict search to sublist (used in 2nd half of visible())
+			myval=self.match2(mydep,mykey,mylist)
+		elif level=="match-visible":
+			#dep match -- find all visible matches
+			myval=self.match2(mydep,mykey,self.xmatch("list-visible",None,mydep,mykey))
+			#get all visible packages, then get the matching ones
+		elif level=="match-all":
+			#match *all* visible *and* masked packages
+			myval=self.match2(mydep,mykey,self.cp_list(mykey))
+		else:
+			print "ERROR: xmatch doesn't handle",level,"query!"
+			raise KeyError
+		if not mylist:
+			if level=="list-visible":
+				self.xcache[mykey][level]=myval
+			else:
+				if not self.xcache[mykey].has_key(level):
+					self.xcache[mykey][level]={}
+				self.xcache[mykey][level][mydep]=myval
+		return myval
 
 	def match(self,mydep):
-		return self.xmatch(2,mydep)
+		return self.xmatch("match-visible",mydep)
+
 
 	def visible(self,mylist):
-		"strip out masked (invisible) entries"
-		if mylist==None:
+		"""two functions in one.  Accepts a list of cpv values and uses the package.mask *and*
+		packages file to remove invisible entries, returning remaining items.  This function assumes
+		that all entries in mylist have the same category and package name."""
+		if (mylist==None) or (len(mylist)==0):
 			return []
-		newlist=[]
-		for mykey in mylist:
-			cpv=catpkgsplit(mykey)
-			mycp=cpv[0]+"/"+cpv[1]
-			match1=0
-			match2=0
-			if maskdict.has_key(mycp):
-				for x in maskdict[mycp]:
-					mymatches=self.xmatch(0,x)
-					if mymatches==None:
-						return None
-					if mykey in mymatches:
-						match1=1
-						continue
-			if not match1 and revmaskdict.has_key(mycp):
-				for x in revmaskdict[mycp]:
-					mymatches=self.xmatch(0,x)
-					if mymatches==None:
-						return None
-					if mykey not in mymatches:
-						match2=1
-						continue
-			if (not match1) and (not match2):
-				newlist.append(mykey)
+		newlist=mylist[:]
+		#first, we mask out packages in the package.mask file
+		mykey=newlist[0]
+		cpv=catpkgsplit(mykey)
+		mycp=cpv[0]+"/"+cpv[1]
+		if maskdict.has_key(mycp):
+			for x in maskdict[mycp]:
+				mymatches=self.xmatch("match-all",x)
+				if mymatches==None:
+					#error
+					return None
+				for y in mymatches:
+					while y in newlist:
+						newlist.remove(y)
+		if revmaskdict.has_key(mycp):
+			for x in revmaskdict[mycp]:
+				#important: only match against the still-unmasked entries...
+				#notice how we pass "newlist" to the xmatch() call below....
+				#Without this, ~ deps in the packages files are broken.
+				mymatches=self.xmatch("match-list",x,mylist=newlist)
+				if mymatches==None:
+					#error
+					return None
+				pos=0
+				while pos<len(newlist):
+					if newlist[pos] not in mymatches:
+						del newlist[pos]
+					else:
+						pos += 1
 		return newlist
 
 	def gvisible(self,mylist):
@@ -2726,7 +2782,7 @@ class portdbapi(dbapi):
 				newlist.append(mycpv)
 		return newlist
 		
-	def match2(self,mydep,mykey):
+	def match2(self,mydep,mykey,mylist):
 		mycpv=dep_getcpv(mydep)
 		if isspecific(mycpv):
 			cp_key=catpkgsplit(mycpv)
@@ -2734,7 +2790,7 @@ class portdbapi(dbapi):
 				return []
 		else:
 			cp_key=None
-		mylist=self.cp_list(mykey)
+		#Otherwise, this is a special call; we can only select out of the ebuilds specified in the specified mylist
 		if (mydep[0]=="="):
 			if cp_key==None:
 				return []
