@@ -7,6 +7,15 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  05 Dec 2004; Brian Harring <ferringb@gentoo.org> pym/cache, pym/cache/template.py,
+  pym/cache/fs_template.py, pym/cache/sql_template.py, pym/cache/flat_list.py, 
+  pym/cache/anydbm.py, pym/cache/sqlite.py, pym/cache/cache_errors.py, 
+  pym/cache/__init__.py:  Cache refactoring, not active in the code currently.
+  All backends should work, although the code is not finished.  Locking support
+  needs to be added into fs_template- possibly do it in the derived fsbased 
+  backeends, since locking for flat_list is quite different from locking for 
+  anydbm.
+
   05 Dec 2004; Nicholas Jones <carpaski@gentoo.org> pym/portage.py: swegener
   made quite a find in portdbapi.cpv_exists, the comparison on the tuple
   returned by findname2 always evaluated true.
