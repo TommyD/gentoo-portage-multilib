@@ -1,4 +1,7 @@
 #!/usr/bin/python -O
+# Copyright 1999-2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header$
 
 import os,sys,string
 os.environ["PORTAGE_CALLER"]="mirror"

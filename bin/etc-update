@@ -1,14 +1,14 @@
 #!/bin/bash
-# Copyright 2002 Gentoo Technologies, Inc.
-# Distributed under the terms of the GNU Public License v2
+# Copyright 1999-2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header$
+
 # Author Brandon Low <lostlogic@gentoo.org>
 #
 # Previous version (from which I've borrowed a few bits) by:
 # Jochem Kossen <j.kossen@home.nl>
 # Leo Lipelis <aeoo@gentoo.org>
 # Karl Trygve Kalleberg <karltk@gentoo.org>
-#
-# $Header$
 
 export PORTAGE_CALLER="etc-update"
 

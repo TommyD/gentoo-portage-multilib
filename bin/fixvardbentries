@@ -1,5 +1,7 @@
 #!/usr/bin/python -O
-# arch-tag: c2d62f90-d585-4f81-b92b-8588b9238e58
+# Copyright 1999-2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header$
 
 import os
 import sys

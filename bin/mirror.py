@@ -1,4 +1,7 @@
 #!/usr/bin/python -O
+# Copyright 1999-2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header$
 
 # Defines the number of threads carrying out the downloading.
 maxsems=5

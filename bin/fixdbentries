@@ -1,7 +1,10 @@
 #!/bin/bash
+# Copyright 1999-2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header$
+
 # Script to adjust the contents of the DB entries after a package move.
 # Fairly straight forward... ./movedbentry 'from/here' 'to/here' /over/here
-# $Header$
 
 VAR=$1
 NEW=$2
