@@ -9,6 +9,11 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  07 Aug 2004; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py
+  pym/portage_dep.py: Added profile masked use flags to repoman check.
+  Moved || refactoring to a separate function. Reworked use_reduce logic
+  into simpler sections.
+
   05 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage_dep.py:
   What can I say, I can't get enough of bug (#59574).
   I'm operating under the assumption there still is a bug in the 

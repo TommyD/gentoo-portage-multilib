@@ -59,105 +59,96 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0):
 	"""Takes a paren_reduce'd array and reduces the use? conditionals out
 	leaving an array with subarrays
 	"""
-	debugging=False
-	for x in range(1,len(deparray[1:])+1):
+	# Quick validity checks
+	for x in range(1,len(deparray)):
 		if deparray[x] in ["||","&&"]:
 			if len(deparray) == x:
+				# Operator is the last element
 				raise portage_exception.InvalidDependString("INVALID "+deparray[x]+" DEPEND STRING: "+str(deparray))
 			if type(deparray[x+1]) != types.ListType:
+				# Operator is not followed by a list
 				raise portage_exception.InvalidDependString("INVALID "+deparray[x]+" DEPEND STRING: "+str(deparray))
+	if deparray and deparray[-1] and deparray[-1][-1] == "?":
+		# Conditional with no target
+		raise portage_exception.InvalidDependString("INVALID "+deparray[x]+" DEPEND STRING: "+str(deparray))
 	
+	#XXX: Compatibility -- Still required?
 	if ("*" in uselist):
 		matchall=1
+	
 	mydeparray = deparray[:]
 	rlist = []
 	while mydeparray:
 		head = mydeparray.pop(0)
 
-		# Hack in management of the weird || for dep_wordreduce, etc.
-		# dep_opconvert: [stuff, ["||", list, of, things]]
-		# At this point: [stuff, "||", [list, of, things]]
-		try:
-			if (head == "||") and (type(mydeparray[0]) == types.ListType):
-					mydeparray[0].insert(0,"||")
-					head = mydeparray.pop(0)
-			elif (head == "&&") and (type(mydeparray[0]) == types.ListType):
-				mydeparray[0].insert(0,"&&")
-				head = mydeparray.pop(0)
-			elif (type(head) == types.ListType):
-				# If it's a list, and we have ||/&& somewhere inside it and not
-				# in front then it is not a valid dep string.
-				for x in head[1:]:
-					if (x in ["||","&&"]):
-						myIndex = head[1:].index(x)
-						if type(head[myIndex+2]) != types.ListType:
-							raise portage_exception.InvalidDependString("Stray "+str(x)+" in depend string. Use --debug for more info.")
-		except (IndexError,TypeError):
-			raise portage_exception.InvalidDependString("Run with --debug for more information")
-
 		if type(head) == types.ListType:
 			rlist = rlist + [use_reduce(head, uselist, masklist, matchall)]
+
 		else:
 			if head[-1] == "?": # Use reduce next group on fail.
-				if head[0] == "!":
-					matchon = False # Inverted... match on false
-					head = head[1:]
-				else:
-					matchon = True # Match on true
-				newdeparray = [mydeparray.pop(0)]
+				# Pull any other use conditions and the following atom or list into a separate array
+				newdeparray = [head]
 				while isinstance(newdeparray[-1], str) and newdeparray[-1][-1] == "?":
-
 					if mydeparray:
 						newdeparray.append(mydeparray.pop(0))
 					else:
-						if len(newdeparray) > 1:
-							sys.stderr.write("Note: Nested use flags without parenthesis! (Deprecated)\n")
-							sys.stderr.write("      "+string.join(map(str,[head]+newdeparray))+"\n")
 						raise ValueError, "Conditional with no target."
 
-				if newdeparray:
-					warned = 0
-					if len(newdeparray[-1]) == 0:
-						sys.stderr.write("Note: Empty target in string. (Deprecated)\n")
-						warned = 1
-					if len(newdeparray) != 1:
-						sys.stderr.write("Note: Nested use flags without parenthesis (Deprecated)\n")
-						warned = 1
-					if warned:
-						sys.stderr.write("  --> "+string.join(map(str,[head]+newdeparray))+"\n")
+				# Deprecation checks
+				warned = 0
+				if len(newdeparray[-1]) == 0:
+					sys.stderr.write("Note: Empty target in string. (Deprecated)\n")
+					warned = 1
+				if len(newdeparray) != 2:
+					sys.stderr.write("Note: Nested use flags without parenthesis (Deprecated)\n")
+					warned = 1
+				if warned:
+					sys.stderr.write("  --> "+string.join(map(str,[head]+newdeparray))+"\n")
 
-				# Is it a match based on use?
-
-				matchonMatch = ((head[:-1] in uselist or matchall) == matchon)
-
-
-				# We only exclude positive matches. Negative matches are allowed.
-				# !ppc64? ( tcp? ( sys-apps/tcp-wrappers) )
-				# So we only exclude positive/true matches that are masked.
-
-				maskedMatch = False
-				if matchonMatch and (matchon == True):
-					if (head[:-1] in masklist):
-						maskedMatch = True
-
-				if debugging:
-					print "head=",head,"matchon=",matchon
-					print "head=",head,"matchonMatch=",matchonMatch
-					print "head=",head,"maskedMatch=",maskedMatch
-					print "head=",head,"masklist=",masklist
-					print "head=",head,"in masklist=",head[:-1] in masklist
-				if (matchall and (head[:-1] not in masklist)==matchon) or \
-				   (matchonMatch and not maskedMatch):
-					# It is set, keep it.
-					if debugging:
-						print "   appending to deps"
-						print "   matchall and (head[:-1]=",(matchall and (head[:-1] not in masklist))
-						print "   matchonMatch and ......=",(matchonMatch and not maskedMatch)
-					if newdeparray: # Error check: if nothing more, then error.
-						rlist += use_reduce(newdeparray, uselist, masklist, matchall)
+				# Check that each flag matches
+				ismatch = True
+				for head in newdeparray[:-1]:
+					head = head[:-1]
+					if head[0] == "!":
+						head = head[1:]
+						if not matchall and head in uselist:
+							ismatch = False
+							break
+					elif head not in masklist:
+						if not matchall and head not in uselist:
+							ismatch = False
+							break
 					else:
-						raise ValueError, "Conditional with no target."
+						ismatch = False
+
+				# If they all match, process the target
+				if ismatch:
+					target = newdeparray[-1]
+					if isinstance(target, list):
+						rlist += [use_reduce(target, uselist, masklist, matchall)]
+					else:
+						rlist += [target]
+
 			else:
-				rlist = rlist + [head]
+				rlist += [head]
 
 	return rlist
+
+
+def dep_opconvert(deplist):
+	"""Move || and && to the beginning of the following arrays"""
+	# Hack in management of the weird || for dep_wordreduce, etc.
+	# dep_opconvert: [stuff, ["||", list, of, things]]
+	# At this point: [stuff, "||", [list, of, things]]
+	retlist = []
+	x = 0
+	while x != len(deplist):
+		if isinstance(deplist[x], list):
+			retlist.append(dep_opconvert(deplist[x]))
+		elif deplist[x] == "||" or deplist[x] == "&&":
+			retlist.append([deplist[x]] + dep_opconvert(deplist[x+1]))
+			x += 1
+		else:
+			retlist.append(deplist[x])
+		x += 1
+	return retlist
