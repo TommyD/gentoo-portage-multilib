@@ -68,5 +68,5 @@ class CustomConnection:
 			fd_pipes={1:1,2:2}
 		else:
 			fd_pipes={}
-		return portage_exec.spawn(f,fd_pipes=fd_pipes,selinux_context=self.__selinux_context)
+		return portage_exec.spawn_bash(f,fd_pipes=fd_pipes,selinux_context=self.__selinux_context)
 			

@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  22 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/transports/fetchcommand.py:
+  spawn_bash, not spawn.
+
   22 Nov 2004; Brian Harring <ferringb@gentoo.org> src/filter-env/posix.c:
   Anchor generated regex filters, fix to the damned looping over stdin still.
 
