@@ -2,6 +2,22 @@
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+  27 Jul 2003; Martin Schlemmer <azarah@gentoo.org> getcwd.c, libsandbox.c,
+  sandbox_futils.c, canonicalize.c :
+  Once again coreutils fails, as my systems had 2.5 kernel, the getcwd system
+  call handled strings larger than PATH_MAX (bug #21766).  It however does not
+  work the same on 2.4 kernels.
+
+  To fix, I added the posix implementation of getcwd() (from glibc cvs) that
+  do not need the system call.  We use the default getcwd() function via a
+  wrapper (egetcwd), and then lstat the returned path.  If lstat fails, it
+  means the current directory was removed, OR that the the system call for
+  getcwd failed (curious is that it do not fail and return NULL or set
+  errno, but rather just truncate the retured directory - usually from the
+  start), and if so, we use the generic getcwd() function (__egetcwd).  Note
+  that we do not use the generic version all the time, as it calls lstat()
+  a great number of times, and performance degrade much.
+
   29 Jun 2003; Martin Schlemmer <azarah@gentoo.org> create-localdecls,
   libsandbox.c :
   Make sure SB_PATH_MAX will not wrap.  Fix two possible memory leaks.

@@ -8,6 +8,8 @@
 # Modified 19 Aug 2002; Martin Schlemmer <azarah@gentoo.org>
 #  Major rewrite to support new stuff
 #
+# Indent:  indent -kr -i2 -ts2 -sob -l80 -ss -bs -psl
+#
 # $Header$
 
 CC = gcc
@@ -22,7 +24,7 @@ TARGETS = libsandbox.so sandbox
 
 all:	$(TARGETS)
 
-sandbox: sandbox.o sandbox_futils.o
+sandbox: sandbox.o sandbox_futils.o getcwd.c
 	$(CC) $^ -ldl -lc -o $@
 
 sandbox.o: sandbox.c sandbox.h
@@ -31,14 +33,11 @@ sandbox.o: sandbox.c sandbox.h
 sandbox_futils.o: sandbox_futils.c sandbox.h
 	$(CC) $(CFLAGS) -Wall -c $(OBJ_DEFINES) sandbox_futils.c
 
-libsandbox.so: libsandbox.o sandbox_futils.o canonicalize.o
+libsandbox.so: libsandbox.o sandbox_futils.o
 	$(CC) $^ -shared -fPIC -ldl -lc -o $@ -nostdlib -lgcc
 
-libsandbox.o: libsandbox.c localdecls.h
+libsandbox.o: libsandbox.c localdecls.h canonicalize.c getcwd.c
 	$(CC) $(CFLAGS) -Wall -c $(OBJ_DEFINES) libsandbox.c
-
-canonicalize.o: canonicalize.c localdecls.h
-	$(CC) $(CFLAGS) -Wall -c $(OBJ_DEFINES) canonicalize.c
 
 localdecls.h: create-localdecls libctest.c
 	./create-localdecls

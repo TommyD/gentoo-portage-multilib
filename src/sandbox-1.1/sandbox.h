@@ -23,7 +23,6 @@
 /* ONLY FOR DEBUGGING PURPOSES!! (strace needs it like that) */
 /* #define NO_FORK */
 
-
 #define LD_PRELOAD_FILE		"/etc/ld.so.preload"
 #define LIB_NAME		"libsandbox.so"
 #define BASHRC_NAME		"sandbox.bashrc"
@@ -64,6 +63,5 @@ int file_truncate(int fd);
 int file_exist(char *filename, int checkmode);
 
 #endif
-
 
 // vim:expandtab noai:cindent ai
