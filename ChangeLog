@@ -8,6 +8,7 @@
   Both understand world and system targets, and the --all option which doesn't
   check which packages are old and outdated.
   Documentation fixes.
+  AUTOCLEAN var addition and added the autoclean functionality.
   
 *portage-1.8.17 (05 Apr 2002)
 

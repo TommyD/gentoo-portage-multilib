@@ -58,5 +58,7 @@ NOCOLOR="false"
 
 # By default wait 5 secs before cleaning a package
 CLEAN_DELAY="5"
+# Set to yes automatically run "emerge clean" after each merge
+AUTOCLEAN="no"
 
 # The CLEANMODE var has been deprecated
