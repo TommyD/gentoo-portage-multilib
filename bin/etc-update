@@ -186,6 +186,7 @@ function do_file() {
 			if (( ${my_input} == 0 )); then
 				my_input=1
 			elif (( ${my_input} == -1 )); then
+				input=0 
 				return
 			elif (( ${my_input} == ${fcount} )); then
 				break

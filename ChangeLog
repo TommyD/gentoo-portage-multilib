@@ -2,6 +2,11 @@
 # Copyright 2000-2004 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  11 Apr 2004; Masatomo Nakano <nakano@gentoo.org> etc-update, ebuild.sh:
+  Fixed infinity loop in etc-update(#19144). Fixed glob problem in 
+  ebuild.sh(#37066). Fixed deleting build-info problem with
+  FEATURES="keepwork"(#29044).
+	
   10 Apr 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Includes the
 	deadlock breaks marked with 'XXX:' to indicate where fixes are needed. Added
 	HTTP encoding to PORTAGE_BINHOST with checks and fallbacks. Fallback for

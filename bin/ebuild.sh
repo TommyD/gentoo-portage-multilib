@@ -548,7 +548,6 @@ dyn_unpack() {
 
 dyn_clean() {
 	rm -rf "${BUILDDIR}/image"
-	rm -rf "${BUILDDIR}/build-info"
 
 	if ! has keeptemp $FEATURES; then
 		rm -rf "${T}"/*
@@ -559,6 +558,7 @@ dyn_clean() {
 	if ! has keepwork $FEATURES; then
 		rm -rf "${BUILDDIR}/.compiled"
 		rm -rf "${BUILDDIR}/.unpacked"
+		rm -rf "${BUILDDIR}/build-info"
 		rm -rf "${WORKDIR}"
 	fi
 
@@ -1240,7 +1240,7 @@ do_newdepend() {
 		# variable. This is a sneaky way to make this infinately expandable.
 		# The normal translation of this would look something like this:
 		# E_DEPEND="${E_DEPEND} $1"  ::::::  Cool, huh? :)
-		eval export ${TARGET}=\"\${${TARGET}} $1\"
+		eval export ${TARGET}=\"\${${TARGET}} \$1\"
 		shift
 	done
 }
