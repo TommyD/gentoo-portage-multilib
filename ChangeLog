@@ -4,6 +4,11 @@
 
 *portage-2.0.49_pre19 (20 Aug 2003): Fixes + security enhancements
 
+  20 Aug 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Fix for
+  auxcache saving.
+
+*portage-2.0.49_pre19 (20 Aug 2003): Fixes + security enhancements
+
   20 Aug 2003; Nicholas Jones <carpaski@gentoo.org> *: Updates to Wayne's
   modifications on dispatch-conf.
   

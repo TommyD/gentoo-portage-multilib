@@ -5035,6 +5035,7 @@ for x in mtimedb.keys():
 
 #,"porttree":portagetree(root,virts),"bintree":binarytree(root,virts)}
 features=settings["FEATURES"].split()
+portdb=portdbapi()
 
 
 do_upgrade_packagesmessage=0
@@ -5096,9 +5097,8 @@ def do_upgrade(mykey):
 	writedict(myvirts,"/var/cache/edb/virtuals")
 	print ""
 
-
 def portageexit():
-	global uid,portage_gid
+	global uid,portage_gid,portdb
 	if secpass and not os.environ.has_key("SANDBOX_ACTIVE"):
 		portdb.saveauxcache()
 
@@ -5148,8 +5148,6 @@ if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
 		
 
 
-#the new standardized db names:
-portdb=portdbapi()
 overlays = string.split(settings["PORTDIR_OVERLAY"])
 if overlays:
 	portdb.overlays = overlays[:]
