@@ -195,9 +195,16 @@ Defines the location where created .tbz2 binary packages will be stored.
 .br
 Defaults to ${PORTDIR}/packages.
 .TP
-\fBPORT_LOGDIR\fR
+.B PORT_LOGDIR
 This variable defines the directory in which per-ebuild logs are kept.
 Logs are created only when this is set and writable.
+.TP
+\fBPORTAGE_BINHOST\fR = \fI"ftp://login:pass@grp.mirror.site/pub/grp/i686/athlon-xp/"\fR
+This is the host from which portage will grab prebuilt-binary packages.  
+The list is a single entry specifying the full address of the directory 
+serving the tbz2's for your system.  This is only used when running with 
+the get binary pkg options are given to \fBemerge\fR.  Review \fBemerge\fR(1) 
+for more information.
 .TP
 \fBPORTAGE_NICENESS\fR = \fI[number]\fR
 The value of this variable will be added to the current nice level that 
