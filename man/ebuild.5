@@ -684,7 +684,8 @@ runs sed on ${D}/usr/bin/some-script
 Creates a directory inside of ${D}.
 .br
 .BR 'dodir\ /usr/lib/apache'
-creates ${D}/usr/lib/apache
+creates ${D}/usr/lib/apache.  Note that the do* functions will run 
+\fBdodir\fR for you.
 .TP
 \fBdiropts\fR \fI[options for install(1)]\fR
 Can be used to define options for the install function used in
@@ -710,15 +711,18 @@ Creates all necessary dirs.
 .TP
 \fBdoinitd\fR \fI<init.d script> [list of more init.d scripts]\fR
 Install Gentoo \fIinit.d scripts\fR.  They will be installed into the 
-correct location for Gentoo init.d scripts (/etc/init.d/).
+correct location for Gentoo init.d scripts (/etc/init.d/).  Creates all 
+necessary dirs.
 .TP
 \fBdoconfd\fR \fI<conf.d file> [list of more conf.d file]\fR
 Install Gentoo \fIconf.d files\fR.  They will be installed into the 
-correct location for Gentoo conf.d files (/etc/conf.d/).
+correct location for Gentoo conf.d files (/etc/conf.d/).  Creates all 
+necessary dirs.
 .TP
 \fBdoenvd\fR \fI<env.d entry> [list of more env.d entries]\fR
 Install Gentoo \fIenv.d entries\fR.  They will be installed into the 
-correct location for Gentoo env.d entries (/etc/env.d/).
+correct location for Gentoo env.d entries (/etc/env.d/).  Creates all 
+necessary dirs.
 
 .PD 0
 .TP
@@ -737,8 +741,8 @@ the \fBdolib\fR functions.  The default is \fI-m0644\fR.
 .TP
 \fBdoman\fR \fI<man-page> [list of more man\-pages]\fR
 Installs manual\-pages into /usr/share/man/man[1\-8n] depending on the
-manual file ending. The files are gzipped if they are not already. Creates
-all necessary dirs.
+manual file ending.  The files are gzipped if they are not already.  
+Creates all necessary dirs.
 .PD 0
 .TP
 \fBdohard\fR \fI<filename> <linkname>\fR
@@ -785,7 +789,8 @@ Can be used to define options for the install function used in
 \fBdoins\fR.  The default is \fI\-m0644\fR.
 .TP
 \fBdoins\fR \fI<file> [list of more files]\fR
-Installs files into \fIINSDESTTREE\fR.  This function uses \fBinstall\fR(1).
+Installs files into \fIINSDESTTREE\fR.  This function uses \fBinstall\fR(1).  
+Creates all necessary dirs.
 .TP
 \fBexeinto\fR \fI[path]\fR
 Sets the root (\fIEXEDESTTREE\fR) for the \fBdoexe\fR function.
@@ -798,7 +803,7 @@ The default is \fI\-m0755\fR.
 .TP
 \fBdoexe\fR \fI<executable> [list of more executables]\fR
 Installs a executable or a list of executable into \fIEXEDESTTREE\fR.
-This function uses \fBinstall\fR(1).
+This function uses \fBinstall\fR(1).  Creates all necessary dirs.
 .TP
 \fBdocinto\fR \fI[path]\fR
 Sets the relative subdir (\fIDOCDESTTREE\fR) used by \fBdodoc\fR.
