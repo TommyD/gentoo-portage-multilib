@@ -3,7 +3,7 @@
 # Distributed under the GNU Public License v2
 # $Header$
 
-VERSION="2.0.47-r4"
+VERSION="2.0.47-r6"
 
 from stat import *
 from commands import *
