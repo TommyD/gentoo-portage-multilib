@@ -9,6 +9,10 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  27 Jul 2004; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py:
+  Reversed the order of profile virtuals (dirVirtuals) so that a cascading
+  profile's virtuals are stacked in the correct order.
+
   26 Jul 2004; Brian Harring <ferringb@gentoo.org> bin/emerge:
   Removed the `which blah` calls- A) stage1 lacks which, B) which searches
   $PATH- all sane shells do this already when handed a command not that 

@@ -1797,6 +1797,7 @@ class config:
 			user_profile_dir = myroot+USER_CONFIG_PATH
 
 		self.dirVirtuals = grab_multiple("virtuals", myvirtdirs, grabdict)
+		self.dirVirtuals.reverse()
 		self.userVirtuals = {}
 		if user_profile_dir and os.path.exists(user_profile_dir+"/virtuals"):
 			self.userVirtuals = grabdict(user_profile_dir+"/virtuals")
