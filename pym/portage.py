@@ -3522,18 +3522,18 @@ class dbapi:
 		min_counter = 0
 		if mycpv:
 			mysplit = pkgsplit(mycpv)
-			for x in self.match(mysplit[0]+"/"+mysplit[1]):
+			for x in self.match(mysplit[0]):
 				try:
 					old_counter = long(self.aux_get(x,["COUNTER"])[0])
-					writemsg("COUNTER '%d' '%s'\n" % (old_counter, x))
+					writemsg("COUNTER '%d' '%s'\n" % (old_counter, x),1)
 				except:
 					old_counter = 0
-					writemsg("COUNTER '!%d' '%s'\n" % (old_counter, x))
+					writemsg("!!! BAD COUNTER in '%s'\n" % (x))
 				if old_counter > min_counter:
 					min_counter = old_counter
 
-		#We write our new counter value to a new file that gets moved into
-		#place to avoid filesystem corruption on XFS (unexpected reboot.)
+		# We write our new counter value to a new file that gets moved into
+		# place to avoid filesystem corruption.
 		if os.path.exists(cpath):
 			cfile=open(cpath, "r")
 			try:
@@ -3541,20 +3541,20 @@ class dbapi:
 			except (ValueError,OverflowError):
 				try:
 					counter=long(commands.getoutput("for FILE in $(find /var/db/pkg -type f -name COUNTER); do echo $(<${FILE}); done | sort -n | tail -n1 | tr -d '\n'"))
-					print "portage: COUNTER was corrupted; resetting to value of",counter
+					writemsg("!!! COUNTER was corrupted; resetting to value of %d\n" % counter)
 					changed=1
 				except (ValueError,OverflowError):
-					print red("portage:")+" COUNTER data is corrupt in pkg db. The values need to be"
-					print red("portage:")+" corrected/normalized so that portage can operate properly."
-					print red("portage:")+" A simple solution is not yet available so try #gentoo on IRC."
+					writemsg("!!! COUNTER data is corrupt in pkg db. The values need to be\n")
+					writemsg("!!! corrected/normalized so that portage can operate properly.\n")
+					writemsg("!!! A simple solution is not yet available so try #gentoo on IRC.\n")
 					sys.exit(2)
 			cfile.close()
 		else:
 			try:
 				counter=long(commands.getoutput("for FILE in $(find /var/db/pkg -type f -name COUNTER); do echo $(<${FILE}); done | sort -n | tail -n1 | tr -d '\n'"))
-				print red("portage:")+" Global counter missing. Regenerated from counter files to:",counter
+				writemsg("!!! Global counter missing. Regenerated from counter files to: %s\n" % counter)
 			except:
-				print red("portage:")+" Initializing global counter."
+				writemsg("!!! Initializing global counter.\n")
 				counter=long(0)
 			changed=1
 
@@ -3563,6 +3563,7 @@ class dbapi:
 			changed = 1
 
 		if incrementing or changed:
+			
 			#increment counter
 			counter += 1
 			# update new global counter file
@@ -3714,7 +3715,7 @@ class vardbapi(dbapi):
 	def cpv_inject(self,mycpv):
 		"injects a real package into our on-disk database; assumes mycpv is valid and doesn't already exist"
 		os.makedirs(self.root+"var/db/pkg/"+mycpv)	
-		counter=db[self.root]["vartree"].dbapi.counter_tick(self.root)
+		counter=db[self.root]["vartree"].dbapi.counter_tick(self.root,mycpv)
 		# write local package counter so that emerge clean does the right thing
 		lcfile=open(self.root+"var/db/pkg/"+mycpv+"/COUNTER","w")
 		lcfile.write(str(counter))
@@ -4955,6 +4956,10 @@ class dblink:
 		self.dbpkgdir = self.dbcatdir+"/"+pkg
 		self.dbtmpdir = self.dbcatdir+"/-MERGING-"+pkg
 		self.dbdir    = self.dbpkgdir
+		
+		self.lock_pkg = None
+		self.lock_tmp = None
+		self.lock_num = 0    # Count of the held locks on the db.
 	
 		self.settings = mysettings
 		if self.settings==1:
@@ -4962,6 +4967,18 @@ class dblink:
 	
 		self.myroot=myroot
 		self.updateprotect()
+
+	def lockdb(self):
+		if self.lock_num == 0:
+			self.lock_pkg = lockdir(self.dbpkgdir)
+			self.lock_tmp = lockdir(self.dbtmpdir)
+		self.lock_num += 1
+		
+	def unlockdb(self):
+		self.lock_num -= 1
+		if self.lock_num == 0:
+			unlockdir(self.lock_tmp)
+			unlockdir(self.lock_pkg)
 
 	def getpath(self):
 		"return path to location of db information (for >>> informational display)"
@@ -5024,7 +5041,7 @@ class dblink:
 					x=len(mydat)-1
 					if (x >= 13) and (mydat[-1][-1]==')'): # Old/Broken symlink entry
 						mydat = mydat[:-10]+[mydat[-10:][ST_MTIME][:-1]]
-						print "FIXED SYMLINK LINE:",mydat
+						writemsg("FIXED SYMLINK LINE: %s\n" % mydat, 1)
 						x=len(mydat)-1
 					splitter=-1
 					while(x>=0):
@@ -5081,7 +5098,8 @@ class dblink:
 	def unmerge(self,pkgfiles=None,trimworld=1,cleanup=0):
 		global dircache
 		dircache={}
-		mydbdir_lock = lockdir(self.dbdir)
+		
+		self.lockdb()
 		
 		self.settings.load_infodir(self.dbdir)
 
@@ -5166,6 +5184,7 @@ class dblink:
 						print "--- !obj  ","obj", obj
 						continue
 					mymd5=perform_md5(obj, calc_prelink=1)
+
 					# string.lower is needed because db entries used to be in upper-case.  The
 					# string.lower allows for backwards compatibility.
 					if mymd5 != string.lower(pkgfiles[obj][2]):
@@ -5266,13 +5285,12 @@ class dblink:
 		#step 5: well, removal of package objects is complete, now for package *meta*-objects....
 
 		#remove self from vartree database so that our own virtual gets zapped if we're the last node
-		db[self.myroot]["vartree"].zap(self.cat+"/"+self.pkg)
+		db[self.myroot]["vartree"].zap(self.mycpv)
 
 		# New code to remove stuff from the world and virtuals files when unmerged.
 		if trimworld:
 			worldlist=grabfile(self.myroot+"var/cache/edb/world")
-			mycpv=self.cat+"/"+self.pkg
-			mykey=cpv_getkey(mycpv)
+			mykey=cpv_getkey(self.mycpv)
 			newworldlist=[]
 			for x in worldlist:
 				if dep_getkey(x)==mykey:
@@ -5301,9 +5319,9 @@ class dblink:
 			for myvirt in myvirts.keys():
 				newvirts[myvirt]=[]
 				for mykey in myvirts[myvirt]:
-					if mykey == self.cat+"/"+pkgsplit(self.pkg)[0] and myprovides.has_key(myvirt) and myprovides[myvirt].count(self.cat+"/"+self.pkg)>0:
+					if mykey == self.cat+"/"+pkgsplit(self.pkg)[0] and myprovides.has_key(myvirt) and myprovides[myvirt].count(self.mycpv)>0:
 						# remove myself first
-						myprovides[myvirt].remove(self.cat+"/"+self.pkg)
+						myprovides[myvirt].remove(self.mycpv)
 						for x in myprovides[myvirt]:
 							if pkgsplit(x)[0]==mykey:
 								if mykey not in newvirts[myvirt]:
@@ -5331,7 +5349,7 @@ class dblink:
 				writemsg("!!! FAILED postrm: "+str(a)+"\n")
 				sys.exit(123)
 
-		unlockdir(mydbdir_lock)
+		self.unlockdb()
 
 	def treewalk(self,srcroot,destroot,inforoot,myebuild,cleanup=0):
 		global db
@@ -5341,27 +5359,21 @@ class dblink:
 		# secondhand = list of symlinks that have been skipped due to
 		#              their target not existing (will merge later),
 
-		# get old contents info for later unmerging
-		oldcontents=self.getcontents()
-
-		# This blocks until we can get the dir to ourselves.
 		if not os.path.exists(self.dbcatdir):
 			os.makedirs(self.dbcatdir)
-		mytmpdir_lock = lockdir(self.dbtmpdir)
+
+		# This blocks until we can get the dirs to ourselves.
+		self.lockdb()
+
+		# get old contents info for later unmerging
+		oldcontents = self.getcontents()
+
 		self.dbdir = self.dbtmpdir
 		self.delete()
 		if not os.path.exists(self.dbtmpdir):
 			os.makedirs(self.dbtmpdir)
 		
-		print ">>> Merging",self.cat+"/"+self.pkg,"to",destroot
-
-		# get current counter value (counter_tick also takes care of incrementing it)
-		# XXX Need to make this destroot, but it needs to be initialized first. XXX
-		counter=db["/"]["vartree"].dbapi.counter_tick(self.myroot,self.cat+"/"+self.pkg)
-		# write local package counter for recording
-		lcfile=open(inforoot+"/COUNTER","w")
-		lcfile.write(str(counter))
-		lcfile.close()
+		print ">>> Merging",self.mycpv,"to",destroot
 
 		# run preinst script
 		if myebuild:
@@ -5376,8 +5388,20 @@ class dblink:
 			writemsg("!!! FAILED preinst: "+str(a)+"\n")
 			sys.exit(123)
 
+		# copy "info" files (like SLOT, CFLAGS, etc.) into the database
+		for x in listdir(inforoot):
+			self.copyfile(inforoot+"/"+x)
+
+		# get current counter value (counter_tick also takes care of incrementing it)
+		# XXX Need to make this destroot, but it needs to be initialized first. XXX
+		counter = db["/"]["vartree"].dbapi.counter_tick(self.myroot,self.mycpv)
+		# write local package counter for recording
+		lcfile = open(self.dbtmpdir+"/COUNTER","w")
+		lcfile.write(str(counter))
+		lcfile.close()
+
 		# open CONTENTS file (possibly overwriting old one) for recording
-		outfile=open(inforoot+"/CONTENTS","w")
+		outfile=open(self.dbtmpdir+"/CONTENTS","w")
 
 		self.updateprotect()
 
@@ -5392,60 +5416,68 @@ class dblink:
 			cfgfiledict["IGNORE"]=0
 
 		# set umask to 0 for merging; back up umask, save old one in prevmask (since this is a global change)
-		mymtime=long(time.time())
-		prevmask=os.umask(0)
-		secondhand=[]	
+		mymtime    = long(time.time())
+		prevmask   = os.umask(0)
+		secondhand = []
+
 		# we do a first merge; this will recurse through all files in our srcroot but also build up a
 		# "second hand" of symlinks to merge later
 		if self.mergeme(srcroot,destroot,outfile,secondhand,"",cfgfiledict,mymtime):
 			return 1
+
 		# now, it's time for dealing our second hand; we'll loop until we can't merge anymore.	The rest are
 		# broken symlinks.  We'll merge them too.
 		lastlen=0
 		while len(secondhand) and len(secondhand)!=lastlen:
-			# clear the thirdhand.	Anything from our second hand that couldn't get merged will be
-			# added to thirdhand.
+			# clear the thirdhand.	Anything from our second hand that
+			# couldn't get merged will be added to thirdhand.
+
 			thirdhand=[]
 			self.mergeme(srcroot,destroot,outfile,thirdhand,secondhand,cfgfiledict,mymtime)
+
 			#swap hands
 			lastlen=len(secondhand)
-			# our thirdhand now becomes our secondhand.  It's ok to throw away secondhand since 
-			# thirdhand contains all the stuff that couldn't be merged.
-			secondhand=thirdhand
+			
+			# our thirdhand now becomes our secondhand.  It's ok to throw
+			# away secondhand since thirdhand contains all the stuff that
+			# couldn't be merged.
+			secondhand = thirdhand
+
 		if len(secondhand):
 			# force merge of remaining symlinks (broken or circular; oh well)
 			self.mergeme(srcroot,destroot,outfile,None,secondhand,cfgfiledict,mymtime)
 		
 		#restore umask
 		os.umask(prevmask)
-		#if we opened it, close it	
+
+		#if we opened it, close it
+		outfile.flush()
 		outfile.close()
-		print
+
 		if (oldcontents):
 			print ">>> Safely unmerging already-installed instance..."
-			olddbdir = self.dbdir
 			self.dbdir = self.dbpkgdir
 			self.unmerge(oldcontents,trimworld=0)
-			self.dbdir = olddbdir
+			self.dbdir = self.dbtmpdir
 			print ">>> original instance of package unmerged safely."	
-		# copy "info" files (like SLOT, CFLAGS, etc.) into the database
-		for x in listdir(inforoot):
-			self.copyfile(inforoot+"/"+x)
 
-		# Now we lock the real directory, and move to it. Atomic.
-		mypkgdir_lock = lockdir(self.dbpkgdir)
+		# We hold both directory locks.
 		self.dbdir = self.dbpkgdir
 		self.delete()
 		movefile(self.dbtmpdir, self.dbpkgdir)
-		unlockdir(mytmpdir_lock)
-		unlockdir(mypkgdir_lock)
+
+		self.unlockdb()
 
 		#write out our collection of md5sums
 		if cfgfiledict.has_key("IGNORE"):
 			del cfgfiledict["IGNORE"]
+
+		mylock = lockfile(destroot+"/var/cache/edb/config")
 		writedict(cfgfiledict,destroot+"/var/cache/edb/config")
+		unlockfile(mylock)
 		
 		#create virtual links
+		mylock = lockfile(destroot+"var/cache/edb/virtuals")
 		myprovides=self.getelements("PROVIDE")
 		if myprovides:
 			myvkey=self.cat+"/"+pkgsplit(self.pkg)[0]
@@ -5464,6 +5496,7 @@ class dblink:
 				else:
 					myvirts[mycatpkg]=[myvkey]
 			writedict(myvirts,destroot+"var/cache/edb/virtuals")
+		unlockfile(mylock)
 		
 		#do postinst script
 		if myebuild:
@@ -5480,7 +5513,7 @@ class dblink:
 	
 		#update environment settings, library paths. DO NOT change symlinks.
 		env_update(makelinks=0)
-		print ">>>",self.cat+"/"+self.pkg,"merged."
+		print ">>>",self.mycpv,"merged."
 
 
 	def new_protect_filename(self, mydest, newmd5=None):

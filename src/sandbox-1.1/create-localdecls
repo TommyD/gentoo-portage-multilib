@@ -42,7 +42,7 @@ fi
 echo -n 'Checking libc version... '
 gcc -Wall -o libctest libctest.c
 VERSION=`ldd libctest | grep libc\\.so | grep -v 'ld-uClibc' | awk '{print $1}'`
-rm libctest
+
 echo $VERSION
 echo "#define LIBC_VERSION \"$VERSION\"" >> $OUTFILE
 if test "$VERSION" = 'libc.so.5' ; then
@@ -61,12 +61,13 @@ else
 fi
 
 if test "$VERSION" = 'libc.so.6' ; then
-	echo -n 'Checking glibc subversion... '
-	tmp="$(ldd /usr/bin/* 2>/dev/null | grep libc.so | tail -n 1)"
+	echo -n 'Checking glibc subversion...'
+	tmp="$(ldd libctest 2>/dev/null | grep libc.so 2>/dev/null | head -n 1)"
 	LibcPath=`expr "$tmp" : '[^/]*\(/[^ ]*\)'`
 	tmp="`strings $LibcPath | grep -i 'c library'`"
 	OsLibcMajor=`expr "$tmp" : '.* \([0-9][0-9]*\)'`
 	OsLibcMinor=`expr "$tmp" : '.* [0-9][0-9]*\.\([0-9][0-9]*\)'`
+	echo " ${OsLibcMajor}.${OsLibcMinor}"
 	case "$OsLibcMajor" in
 	2)
 		# 2 is the glibc version
@@ -91,6 +92,8 @@ if test "$VERSION" = 'libc.so.6' ; then
 		;;
 	esac
 fi
+
+rm libctest
 
 echo '
 #ifdef PATH_MAX

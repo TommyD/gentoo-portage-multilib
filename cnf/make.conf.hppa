@@ -86,6 +86,12 @@ CHOST="hppa-unknown-linux-gnu"
 # includes the unstable, in testing, packages. Users of the 'hppa' architecture
 # would add '~hppa' to ACCEPT_KEYWORDS to enable unstable/testing packages.
 # '~ppc', '~sparc' are the unstable KEYWORDS for their respective platforms.
+#
+# Please note that this is not for development, alpha, beta, nor cvs release
+# packages. "Broken" packages will not be added to testing and should not be
+# requested to be added. Alternative routes are available to developers
+# for experimental packages, and it is at their discretion to use them.
+#
 # DO NOT PUT ANYTHING BUT YOUR SPECIFIC ~ARCHITECTURE IN THE LIST.
 # IF YOU ARE UNSURE OF YOUR ARCH, OR THE IMPLICATIONS, DO NOT MODIFY THIS.
 #
