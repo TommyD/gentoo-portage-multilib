@@ -5,7 +5,8 @@
 
   04 Feb 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: distcc
   fixups along with ccache fixups from the bug 13897 effort. Added more
-  varaibles to the build data output.
+  varaibles to the build data output. Allow CC/CXX to be set if they are
+	not set in environment.
 
   04 Feb 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Removed an
   unnecessary call to os.unlink() in movefile that resulted in it failing

@@ -157,8 +157,8 @@ shopt -s expand_aliases
 OCC="$CC"
 OCXX="$CXX"
 source /etc/profile.env > /dev/null 2>&1
-export CC="$OCC"
-export CXX="$OCXX"
+[ ! -z "$OCC" ] && export CC="$OCC"
+[ ! -z "$OCXX" ] && export CXX="$OCXX"
 export PATH="/sbin:/usr/sbin:/usr/lib/portage/bin:/bin:/usr/bin:${ROOTPATH}"
 if [ -e /etc/init.d/functions.sh ]
 then
