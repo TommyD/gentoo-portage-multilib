@@ -2,13 +2,13 @@
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
   03 Nov 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
-	eclass() function uses a caching and cPickle storing method to determine
-	currency of eclass-derived depcache entries. All previous methods are
-	already removed. eclass_save() is called via store() now. Stripped some
-	cruft from aux_get(). Error message touchups.
+  eclass() function uses a caching and cPickle storing method to determine
+  currency of eclass-derived depcache entries. All previous methods are
+  already removed. eclass_save() is called via store() now. Stripped some
+  cruft from aux_get(). Error message touchups.
 
   03 Nov 2002; Nicholas Jones <carpaski@gentoo.org> emerge:
-	A couple message touchups.
+  A couple message touchups.
 
   29 Oct 2002; Nicholas Jones <carpaski@gentoo.org> emerge:
   Moved the autoclean section under the --pretend check so it doesn't flip

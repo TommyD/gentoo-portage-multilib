@@ -713,10 +713,12 @@ debug-print-section() {
 
 # Sources all eclasses in parameters
 inherit() {
-	
+	unset INHERITED
 	local location
     while [ "$1" ]
 	do
+		export INHERITED="$INHERITED $1"
+
 		# any future resolution code goes here
 		if [ -n "$PORTDIR_OVERLAY" ]
 		then

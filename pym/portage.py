@@ -2,12 +2,12 @@
 # Copyright 1998-2002 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
 
-VERSION="2.0.44_pre1"
+VERSION="2.0.44_pre3"
 
 from stat import *
 from commands import *
 from select import *
-import string,os,types,sys,shlex,shutil,xpak,fcntl,signal,time,missingos,cPickle,atexit,grp
+import string,os,types,sys,shlex,shutil,xpak,fcntl,signal,time,missingos,cPickle,atexit,grp,traceback
 
 #Secpass will be set to 1 if the user is root or in the wheel group.
 uid=os.getuid()
@@ -2755,14 +2755,16 @@ def eclass_save(filename):
 	except Exception, e:
 		print "Failed to save mtimedb:",e
 
-def eclass(myeclass=None,mycpv=None, mymtime=None):
+def eclass(myeclass=None,mycpv=None,mymtime=None):
 	"""Caches and retrieves information about ebuilds that use eclasses"""
+	#print "def eclass("+str(myeclass)+","+str(mycpv)+","+str(mymtime)+")"
 	if not mtimedb.has_key("eclass"):
+		#print "mtimedb doesn't exist."
 		try:
 			mtimedb["eclass"]=cPickle.load(open(eclassdbfile))
-			print "Loaded file!"
+			#print "Loaded file!"
 		except:
-			print "Load failed."
+			#print "Load failed."
 			mtimedb["eclass"]={}
 		# Update the cache
 		for x in [settings["PORTDIR"]+"/eclass", settings["PORTDIR_OVERLAY"]+"/eclass"]:
@@ -2775,36 +2777,60 @@ def eclass(myeclass=None,mycpv=None, mymtime=None):
 							ys=y[:-len(".eclass")]
 							#print "ys:",ys
 							ymtime=os.stat(x+"/"+y)[ST_MTIME]
-							mtimedb["eclass"][ys]=[ymtime,x+"/"+y, {}]
-						except:
+							if mtimedb["eclass"].has_key(ys):
+								if ymtime!=mtimedb["eclass"][ys][0]:
+									print "mtimes don't match:",ys
+									print mtimedb["eclass"][ys],ymtime,x+"/"+y
+									mtimedb["eclass"][ys]=[ymtime,x+"/"+y,mtimedb["eclass"][ys][2]]
+								else:
+									#print "mtimes match:",ys
+									pass
+							else:
+								#print "new mtime:",ys
+								mtimedb["eclass"][ys]=[ymtime,x+"/"+y, {}]
+						except Exception, e:
+							print "stat exception:",e
 							continue
 	if myeclass != None:
 		if not mtimedb["eclass"].has_key(myeclass):
-			print "!!! Eclass '"+myeclass+"' does not exist."
+			# Eclass doesn't exist.
 			return None
 		else:
 			#print mtimedb["eclass"][myeclass],"\n\n"
 			if mycpv and mymtime:
 				if mtimedb["eclass"][myeclass][2].has_key(mycpv):
-					if mymtime>=mtimedb["eclass"][myeclass][2][mycpv]:
-						# It is more current than the stored one.
-						mtimedb["eclass"][myeclass][2][mycpv]=mymtime
-						return 1
-					else:
-						# Expire the cache. It's old.
-						del mtimedb["eclass"][myeclass][2][mycpv]
+					# Check if the ebuild mtime changed OR if the mtime for the eclass
+					# has changed since it was last updated.
+					if (mymtime!=mtimedb["eclass"][myeclass][2][mycpv][1]) or (mtimedb["eclass"][myeclass][0]!=mtimedb["eclass"][myeclass][2][mycpv][0]):
+						# Expire the cache. mtimes don't match.
+						print "expired:",mycpv
+						#print mymtime,mtimedb["eclass"][myeclass][0],mtimedb["eclass"][myeclass][2][mycpv]
+						#del mtimedb["eclass"][myeclass][2][mycpv]
+						mtimedb["eclass"][myeclass][2][mycpv]=[mtimedb["eclass"][myeclass][0],mymtime]
+						#print mymtime,mtimedb["eclass"][myeclass][0],mtimedb["eclass"][myeclass][2][mycpv]
 						return 0
+					else:
+						#print "matches:",mycpv
+						return 1
 				else:
 					# Don't have an entry... Must be new.
-					mtimedb["eclass"][myeclass][2][mycpv]=mymtime
+					#print "new:",mycpv
+					mtimedb["eclass"][myeclass][2][mycpv]=[mtimedb["eclass"][myeclass][0],mymtime]
 					return 1
 			else:
-				# We actually have such an eclass, and nothing else
-				# was requested, so return 1 (eclass exists)
-				return 1
+				raise KeyError
 	else:
+		#print mycpv
+		for myeclass in mtimedb["eclass"].keys():
+			#print ".",
+			if mtimedb["eclass"][myeclass][2].has_key(mycpv):
+				#print "m",
+				if (mymtime!=mtimedb["eclass"][myeclass][2][mycpv][1]) or (mtimedb["eclass"][myeclass][0]!=mtimedb["eclass"][myeclass][2][mycpv][0]):
+					#print "|||",mycpv
+					return 0
 		# We are just caching eclass times.
-		return None
+		return 1
+		#raise KeyError
 # ----------------------------------------------------------------------------
 
 auxdbkeys=['DEPEND','RDEPEND','SLOT','SRC_URI','RESTRICT','HOMEPAGE','LICENSE','DESCRIPTION','KEYWORDS','INHERITED','IUSE']
@@ -2855,16 +2881,20 @@ class portdbapi(dbapi):
 			mydbkeystat=os.stat(mydbkey)
 			if mydbkeystat[ST_SIZE] == 0:
 				doregen=1
+				dmtime=0
 			else:
 				dmtime=mydbkeystat[ST_MTIME]
 		except OSError:
 			doregen=1
-		if not doregen:
-			emtime=os.stat(myebuild)[ST_MTIME]
-			if dmtime<emtime:
-				doregen=1
 
-		if doregen:
+		emtime=os.stat(myebuild)[ST_MTIME]
+		if dmtime<emtime:
+			doregen=1
+
+		#print "))) 001"
+		if doregen or not eclass(None, mycpv, dmtime):
+			stale=1
+			#print "((( 001",doregen
 			if doebuild(myebuild,"depend","/"):
 				#depend returned non-zero exit code...
 				if strict:
@@ -2874,42 +2904,55 @@ class portdbapi(dbapi):
 		#Now, our cache entry is possibly regenerated.  It could be up-to-date, but it may not be...
 		#If we regenerated the cache entry or we don't have an internal cache entry or or cache entry
 		#is stale, then we need to read in the new cache entry.
-		
-		if doregen or (not self.auxcache.has_key(mycpv)) or (self.auxcache[mycpv]["mtime"]!=dmtime):
+
+		if (not self.auxcache.has_key(mycpv)) or (self.auxcache[mycpv]["mtime"]!=dmtime):
 			stale=1
-			try:
-				mycent=open(mydbkey,"r")
-			except (IOError, OSError):
-				print "portage: aux_get(): (1) couldn't open cache entry for",mycpv
-				print "(likely caused by syntax error or corruption in the",mycpv,"ebuild.)"
-				raise KeyError
+
+		try:
+			mycent=open(mydbkey,"r")
 			mylines=mycent.readlines()
 			mycent.close()
-			
-			#We now have the db
-		
-		myeclasses=[]
-		if not doregen:
-			#if we regenerated our cache entry earlier, there's no point in checking all this as we know
-			#we are up-to-date.  Otherwise....
-			if not mylines:
-				pass
-			elif len(mylines)<auxdbkeylen:
-				doregen2=1
-			elif mylines[auxdbkeys.index("INHERITED")]!="\n":
-				#Verify if this ebuild is current against the eclasses it uses.
-				#eclass() -> Loads, checks, and returns 1 if it's current.
-				myeclasses=mylines[auxdbkeys.index("INHERITED")].split()
-				for myeclass in myeclasses:
-					if not eclass(myeclass,mycpv,emtime):
-						print "portage: aux_get():"
-						print ' eclass "'+x+'" from',mydbkey,"not found."
-						#we set doregen2 to regenerate this entry in case it was fixed
-						#in the ebuild/eclass since the cache entry was created.
-						doregen2=1
-						break
+		except (IOError, OSError):
+			print "portage: aux_get(): (1) couldn't open cache entry for",mycpv
+			print "(likely caused by syntax error or corruption in the",mycpv,"ebuild.)"
+			raise KeyError
 
+		#We now have the db
+		myeclasses=[]
+		#if we regenerated our cache entry earlier, there's no point in
+		#checking all this as we know we are up-to-date.  Otherwise....
+		if not mylines:
+			#print "no mylines"
+			pass
+		elif len(mylines)<auxdbkeylen:
+			doregen2=1
+			#print "too few auxdbkeys"
+		elif (0) and mylines[auxdbkeys.index("INHERITED")]!="\n":
+			#print "inherits"
+			#Verify if this ebuild is current against the eclasses it uses.
+			#eclass() -> Loads, checks, and returns 1 if it's current.
+			myeclasses=mylines[auxdbkeys.index("INHERITED")].split()
+			#print "))) 002"
+			for myeclass in myeclasses:
+				#print "PASS ONE:",myeclass
+				myret=eclass(myeclass,mycpv,dmtime)
+				#print myret
+				if myret==None:
+					print "portage: aux_get():"
+					print ' eclass "'+myeclass+'" from',mydbkey,"not found."
+					# Eclass not found.
+					doregen2=1
+					break
+				if myret==0:
+					#print "((( 002 0"
+					#we set doregen2 to regenerate this entry in case it was fixed
+					#in the ebuild/eclass since the cache entry was created.
+					print "Old cache entry. Regen."
+					doregen2=1
+
+		#print "doregen2: pre"
 		if doregen2:	
+			#print "doregen2: in"
 			stale=1
 			#old cache entry, needs updating (this could raise IOError)
 			if doebuild(myebuild,"depend","/"):
@@ -2925,13 +2968,18 @@ class portdbapi(dbapi):
 				raise KeyError
 			mylines=mycent.readlines()
 			mycent.close()
-			
+
+		#print "stale: pre"
 		if stale:
+			#print "stale: in"
 			# due to a stale or regenerated cache entry,
 			# we need to update our internal dictionary....
 			try:
 				mymtime=os.stat(mydbkey)[ST_MTIME]
 				self.auxcache[mycpv]={"mtime": mymtime}
+				#print "PASS TWO"
+				myeclasses=mylines[auxdbkeys.index("INHERITED")].split()
+				#print "))) 003"
 				for myeclass in myeclasses:
 					eclass(myeclass,mycpv,mymtime)
 			except Exception, e:
@@ -4156,8 +4204,8 @@ def store():
 	global uid,wheelgid
 	if secpass:
 		mymfn=eclassdbfile
-		eclass_save(mymfn)	
 		try:
+			eclass_save(mymfn)	
 			os.chown(mymfn,uid,wheelgid)
 			try:
 				os.chmod(mymfn,0664)
