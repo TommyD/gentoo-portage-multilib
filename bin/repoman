@@ -538,6 +538,54 @@ objsadded=[]
 for x in qacats:
 	stats[x]=0
 	fails[x]=[]
+xmllint_capable = False
+if getstatusoutput('which xmllint')[0] != 0:
+	print red("!!! xmllint not found. Can't check metadata.xml.\n")
+	if "--xmlparse" in myoptions or repolevel==3:
+		print red("!!!")+" sorry, xmllint is needed.  failing\n"
+		sys.exit(1)
+else:
+	#hardcoded paths/urls suck. :-/
+	must_fetch=1
+	backup_exists=0
+	try:
+		# if it's been over a week since fetching (or the system clock is fscked), grab an updated copy of metadata.dtd 
+		# clock is fscked or it's been a week. time to grab a new one.
+		ct=os.stat(portage.CACHE_PATH + '/metadata.dtd')[ST_CTIME]
+		if abs(time() - ct) > (60*60*24*7):
+			# don't trap the exception, we're watching for errno 2 (file not found), anything else is a bug.
+			backup_exists=1
+		else:
+			must_fetch=0
+
+	except (OSError,IOError), e:
+		if e.errno != 2:
+			print red("!!!")+" caught exception '%s' for %s/metadata.dtd, bailing" % (str(e), portage.CACHE_PATH)
+			sys.exit(1)
+
+	if must_fetch:
+		print 
+		print green("***")+" the local copy of metadata.dtd needs to be refetched, doing that now"
+		print
+		try:
+			val=portage.fetch(['http://www.gentoo.org/dtd/metadata.dtd'],repoman_settings,fetchonly=0, \
+				try_mirrors=0)
+			if val:
+				if backup_exists:
+					os.remove(portage.CACHE_PATH+'/.backup_metadata.dtd')
+				os.rename(repoman_settings["DISTDIR"]+'/metadata.dtd',portage.CACHE_PATH+'/metadata.dtd')
+
+		except Exception,e:
+			print
+			print red("!!!")+" attempting to fetch 'http://www.gentoo.org/dtd/metadata.dtd', caught"
+			print red("!!!")+" exception '%s' though." % str(e)
+			val=0
+		if not val:
+			print red("!!!")+" fetching new metadata.dtd failed, aborting"
+			sys.exit(1)
+	#this can be problematic if xmllint changes their output
+	xmllint_capable=True
+
 
 arch_caches={}
 for x in scanlist:
@@ -655,13 +703,15 @@ for x in scanlist:
 	#metadata.xml parse check
 	else:
 		#Only carry out if in package directory or check forced
-		if "--xmlparse" in myoptions or repolevel==3:
-			if getstatusoutput('which xmllint')[0] != 0:
-				print red("!!! xmllint not found. Can't check metadata.xml.\n")
-			else:
-				if getstatusoutput('xmllint --valid '+checkdir+"/metadata.xml")[0]!= 0:
-					stats["metadata.bad"]+=1
-					fails["metadata.bad"].append(x+"/metadata.xml")
+		if xmllint_capable:
+			st=getstatusoutput("xmllint --nonet '%s/metadata.xml' --dtdvalid /var/cache/edb/metadata.dtd 2>&1 > /dev/null" % checkdir)
+			if st[0] != 0:
+				#skip the first line, since it will be an IO error about not able to fetch the dtd via the web.
+				#this is a superflous error, since we have a local copy of the dtd to use.
+				for z in st[1].split("\n")[1:]:
+					print red("!!! ")+z
+				stats["metadata.bad"]+=1
+				fails["metadata.bad"].append(x+"/metadata.xml")
 
 	for y in ebuildlist:
 		if os.stat(checkdir+"/"+y+".ebuild")[0] & 0x0248:

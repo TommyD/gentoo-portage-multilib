@@ -2000,7 +2000,7 @@ def spawn(mystring,mysettings,debug=0,free=0,droppriv=0,fd_pipes=None):
 	else:
 		return ((retval & 0xff) << 8) # interrupted by signal
 
-def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",use_locks=1):
+def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",use_locks=1, try_mirrors=1):
 	"fetch files.  Will use digest file if available."
 	if ("mirror" in features) and ("nomirror" in mysettings["RESTRICT"].split()):
 		print ">>> \"mirror\" mode and \"nomirror\" restriction enabled; skipping fetch."
@@ -2021,12 +2021,13 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		# We don't add any mirrors.
 		pass
 	else:
-		for x in mysettings["GENTOO_MIRRORS"].split():
-			if x:
-				if x[-1] == '/':
-					mymirrors += [x[:-1]]
-				else:
-					mymirrors += [x]
+		if try_mirrors:
+			for x in mysettings["GENTOO_MIRRORS"].split():
+				if x:
+					if x[-1] == '/':
+						mymirrors += [x[:-1]]
+					else:
+						mymirrors += [x]
 	
 	mydigests=None
 	digestfn=mysettings["FILESDIR"]+"/digest-"+mysettings["PF"]
