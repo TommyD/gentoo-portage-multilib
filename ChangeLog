@@ -9,6 +9,9 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  26 Jul 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge pym/portage.py:
+  Refactored slot code into portage.py to remove usage off portage_dep.
+
   25 Jul 2004; Brian Harring <ferringb@gentoo.org> bin/dohtml ChangeLog:
   Corrected a bug in dohtml where it was unable to install files with a space 
   in their name (#58258)

@@ -4289,6 +4289,17 @@ class portagetree:
 	def depcheck(self,mycheck,use="yes",myusesplit=None):
 		return dep_check(mycheck,self.dbapi,use=use,myusesplit=myusesplit)
 
+	def getslot(self,mycatpkg,uselist):
+		"Get a slot for a catpkg; assume it exists."
+		myslot = ""
+		try:
+			myslotvar=self.dbapi.aux_get(mycatpkg,["SLOT"])[0]
+			if myslotvar:
+				myslot = string.join(portage_dep.use_reduce(portage_dep.paren_reduce(myslotvar), uselist))
+		except Exception, e:
+			pass
+		return myslot
+
 
 class dbapi:
 	def __init__(self):
@@ -4855,7 +4866,7 @@ class vartree(packagetree):
 		return returnme
 
 	
-	def getslot(self,mycatpkg):
+	def getslot(self,mycatpkg,uselist=None):
 		"Get a slot for a catpkg; assume it exists."
 		myslot = ""
 		try:
@@ -5755,6 +5766,17 @@ class binarytree(packagetree):
 			pass
 		getbinpkg.file_get(settings["PORTAGE_BINHOST"]+"/"+tbz2name, mydest, fcmd=settings["RESUMECOMMAND"])
 		return
+
+	def getslot(self,mycatpkg,uselist=None):
+		"Get a slot for a catpkg; assume it exists."
+		myslot = ""
+		try:
+			[myslotvar,uselist]=self.dbapi.aux_get(mycatpkg,["SLOT","USE"])[0]
+			if myslotvar:
+				myslot = string.join(portage_dep.use_reduce(portage_dep.paren_reduce(myslotvar), uselist.split()))
+		except Exception, e:
+			pass
+		return myslot
 
 class dblink:
 	"this class provides an interface to the standard text package database"

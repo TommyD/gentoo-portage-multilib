@@ -11,7 +11,7 @@ import emergehelp,xpak,string,re,commands,time,shutil,traceback,atexit,signal,so
 from stat import *
 from output import *
 
-import portage,portage_dep
+import portage
 if (not sys.stdout.isatty()) or (portage.settings["NOCOLOR"] in ["yes","true"]):
 	nocolor()
 
@@ -975,14 +975,10 @@ class depgraph:
 
 		matches=portage.db[myroot]["vartree"].dbapi.match(pkg)
 		if matches:
-			myslot=portage.portdb.aux_get(pkgver,["SLOT"])[0]
-			myslot=string.join(portage_dep.use_reduce(portage_dep.paren_reduce(myslot),
-			                                          self.pkgsettings["USE"]))
+			myslot=portage.db["/"]["porttree"].getslot(pkgver,self.pkgsettings["USE"].split())
 			for match in matches:
 				if portage.pkgcmp(portage.catpkgsplit(pkgver)[1:], portage.catpkgsplit(match)[1:]) < 0:
-					curslot=portage.db[myroot]["vartree"].dbapi.aux_get(match,["SLOT"])[0]
-					curslot=string.join(portage_dep.use_reduce(portage_dep.parent_reduce(curslot),
-					    string.split(portage.db[myroot]["vartree"].dbapi.aux_get(match,["USE"])[0])))
+					curslot=portage.db[myroot]["vartree"].getslot(match)
 					if curslot == myslot:
 						return match
 
@@ -1324,13 +1320,9 @@ class depgraph:
 					addl="  "+yellow("R")+fetch+"  "
 				elif (not "--emptytree" in myopts) and portage.db[x[1]]["vartree"].exists_specific_cat(x[2]):
 					if x[0] == "binary":
-						mynewslot=portage.db["/"]["bintree"].dbapi.aux_get(x[2],["SLOT"])[0]
-						mynewslot=string.join(portage_dep.use_reduce(portage_dep.paren_reduce(myslot),
-						       string.join(portage.db["/"]["bintree"].dbapi.aux_get(x[2],["USE"])[0])))
+						mynewslot=portage.db["/"]["bintree"].getslot(x[2])
 					elif x[0] == "ebuild":
-						mynewslot=portage.portdb.aux_get(x[2],["SLOT"])[0]
-						mynewslot=string.join(portage_dep.use_reduce(portage_dep.paren_reduce(mynewslot),
-						                                             self.pkgsettings["USE"]))
+						mynewslot=portage.db["/"]["porttree"].getslot(x[2],self.pkgsettings["USE"].split())
 					myoldlist=portage.db[x[1]]["vartree"].dbapi.match(portage.pkgsplit(x[2])[0])
 					myinslotlist=filter((lambda p: portage.db[portage.root]["vartree"].getslot(p)==mynewslot),myoldlist)
 					if myinslotlist:
