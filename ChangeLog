@@ -1,6 +1,12 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+*portage 1.8.9_pre7 (11 Feb 2002)
+
+  11 Feb 2002; G.Bevin <gbevin@gentoo.org> portage.py :
+  fixed bug in packagetree.dep_match() where a ~ dependency is returned as a
+  string instead of as a list
+  
   11 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge :
   - removed support for --all and world in 'emerge --unmerge', by default now
     all matching packages are removed since with the new slots functionality
@@ -16,7 +22,12 @@
   - added UNMERGE_DELAY var to make.globals and support it in emerge to obtain
     the number of seconds to wait
   - support for NOCOLOR="yes" as wel as NOCOLOR="true"
-  
+  - major speedups for emerge -search
+  - added formatted package descriptions of the matches from emerge --search
+    that nicely wrap at 80 chars
+  - rewrote retrieval of package descriptions to support descriptions that are
+    specified on multiple lines
+  - added support for 'noslot' to --zap, --update and --rebuild
   
   11 Feb 2002; G.Bevin <gbevin@gentoo.org> sandbox.c, libsandbox.c :
   added checks to see if the files where information is written to are really

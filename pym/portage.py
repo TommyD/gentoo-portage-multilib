@@ -1784,7 +1784,7 @@ class packagetree:
 			return mynodes
 		elif mypkgdep[0]=="~":
 			#"~" implies a "bestmatch"
-			return self.dep_bestmatch(mypkgdep)
+			return [self.dep_bestmatch(mypkgdep)]
 		elif not isspecific(mypkgdep):
 			if not self.hasnode(mypkgdep):
 				return [] 
@@ -1810,12 +1810,18 @@ class vartree(packagetree):
 		package_parts=string.split(fullpkg, '/')
 		regular_ebuild=self.root+"var/db/pkg"+"/"+fullpkg+"/"+package_parts[1]+".ebuild"
 		if os.path.exists(regular_ebuild):
-			full_paths.append(regular_ebuild);
+			full_paths.append(regular_ebuild)
 		# add the possible slot matches
 		for x in self.slots:
 			if x[0]==fullpkg:
-				full_paths.append(x[1]);
+				full_paths.append(x[1])
 		return full_paths
+
+	def slotted(self,fullpkg):
+		for x in self.slots:
+			if x[0]==fullpkg:
+				return 1
+		return 0
 
 	def populate(self):
 		"populates the local tree (/var/db/pkg)"

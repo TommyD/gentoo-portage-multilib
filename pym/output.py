@@ -4,12 +4,12 @@
 import portage;
 
 def resetColor():
-	if portage.settings["NOCOLOR"] and (portage.settings["NOCOLOR"]=="true" or portage.settings["NOCOLOR"]=="false"):
+	if portage.settings["NOCOLOR"] and (portage.settings["NOCOLOR"]=="true" or portage.settings["NOCOLOR"]=="yes"):
 		return ""
 	return "\x1b[0m"
 
 def startColor(color):
-	if portage.settings["NOCOLOR"] and (portage.settings["NOCOLOR"]=="true" or portage.settings["NOCOLOR"]=="false"):
+	if portage.settings["NOCOLOR"] and (portage.settings["NOCOLOR"]=="true" or portage.settings["NOCOLOR"]=="yes"):
 		return ""
 	return color
 

@@ -115,8 +115,8 @@ for x in sys.argv[1:]:
 					myfiles.append(x)
 
 # check if root user is the current user for the actions where emerge needs this
-if os.getuid()!=0 and "--help" not in myopts and "--search" not in myopts:
-	print "!!! to be able to perform the requested action emerge must be run by root."
+if os.getuid()!=0 and "--help"!=myaction and "--search"!=myaction:
+	print "!!! to be able to perform the requested action, emerge must be run by root."
 	sys.exit(1)
 
 # search functionality
@@ -137,11 +137,11 @@ class search:
 		This makes successive searches faster."""
 		self.searchkey = searchkey
 		self.treecache = portage.portagetree()
+		self.treecache.populate()
 		self.installcache = portage.vartree()
+		self.installcache.populate()
 		self.re_portagedir = re.compile('/usr/portage/')
 		self.re_description = re.compile('DESCRIPTION="')
-		self.re_quote = re.compile('"')
-		self.re_slash = re.compile('/')
 		self.initResults()
 		
 	def setKey(self,searchkey):
@@ -153,7 +153,14 @@ class search:
 		"""Performs the saerch for the supplied search key"""
 		if self.searchkey:
 			self.initResults()
-			walk("/usr/portage", self.searchVisit, 0)
+			for package in self.treecache.getallnodes():
+				package_parts=package.split("/")
+				if package_parts:
+					if self.searchkey != "*":
+						if re.search(self.searchkey.lower(), package_parts[1].lower()):
+							self.packagematches.append(package)
+					else:
+						self.packagematches.append(package)
 
 	def output(self):
 		"""Outputs the results of the search."""
@@ -164,9 +171,9 @@ class search:
 			full_package = strip(self.treecache.dep_bestmatch(match))
 			if len(full_package) > 1:
 				print green("*")+"  "+white(match)
-				print "     ", "Latest version Available: ", self.getVersion(full_package, search.VERSION_RELEASE)
+				print "     ", "Latest version Available:",self.getVersion(full_package, search.VERSION_RELEASE)
 				print "     ", self.getInstallationStatus(match)
-				print "     ", "Description: ", self.getDescription(self.getFullPath(match, full_package),self.getVersion(full_package, search.VERSION_SHORT))
+				print "     ", "Description:",self.getDescription(self.getFullPath(match, full_package),self.getVersion(full_package, search.VERSION_SHORT))
 				print " "
 			else:
 				print green("*")+"  "+white(match)+" "+red("[ Masked ]")
@@ -178,49 +185,67 @@ class search:
 	def initResults(self):
 		self.packagematches = []
 	
-	def searchVisit(self,arg,dirname,names):
-		p = self.re_portagedir.split(dirname)
-		if len(p) > 1: ## Don't process /usr/portage itself ##
-			p = p[1].split('/')
-			if len(p) < 3: ## Remove 'Files' dirs, not needed for the prog ##
-				if len(p) > 1: ## Filter out main dirs, like x11-libs and such ##
-					if p[1] != 'CVS' and p[0] != 'profiles' and p[0] != 'packages' and p[0] != 'incoming' and p[0] != 'distfiles': ## For the Dev's among us :o) ##
-						if self.searchkey != "*":
-							if re.search(self.searchkey.lower(), p[1].lower()): ## Files that are searched for ##
-								self.packagematches.append(strip(p[0] + "/" + p[1]))
-						else:
-							self.packagematches.append(strip(p[0] + "/" + p[1]))
-	
 	def getInstallationStatus(self,package):
 		installed_package = self.installcache.dep_bestmatch(package)
 		result = ""
 		version = self.getVersion(installed_package,search.VERSION_RELEASE)
 		if len(version) > 1:
-			result = "Latest version Installed:  " + version
+			result = "Latest version Installed: "+version
 		else:
-			result = "Latest version Installed:  [ Not Installed ]"
+			result = "Latest version Installed: [ Not Installed ]"
 		return result
 
 	def getDescription(self,ebuildPath,packageVersion): ## Gets description from latest ebuild ##
 		file = open(ebuildPath)
 		result = "";
+		indescription=0
 		while 1:
 			data = file.readline()
 			if data:
 				if self.re_description.match(data.upper()):
+					indescription=1
 					p = self.re_description.split(data)
-					p = self.re_quote.split(p[1])
-					result = replace(p[0], "${PV}", packageVersion)
-					result = replace(result, "${pv}", packageVersion)
-					result = replace(result, "${description}", "KDE "  + packageVersion + " ")
+					p = p[1].split('"')
+					result = p[0].strip()
+					if len(p)>1:
+						break
+				elif indescription==1:
+					if '"' in data:
+						p = data.split('"')
+						result = result+" "+p[0].strip()
+						indescription = 0
+					else:
+						result = result+" "+data.strip()
 			else:
 				break;
+		result = replace(result, "${PV}", packageVersion)
+		result = replace(result, "${pv}", packageVersion)
+		result = replace(result, "${description}", "KDE "  + packageVersion + " ")
+		result = replace(result, "\n", "")
 		file.close()
-		return result
+		# format and wrap the description text nicely
+		wraplength=60
+		formatted_result=""
+		while len(result)>wraplength:
+			lineposition=0
+			position=wraplength
+			while result[lineposition+position]!=' ' and position != 0:
+				position = position-1
+			if position==0:
+				position=wraplength
+			if len(formatted_result)==0:
+				formatted_result=result[:position]
+			else:
+				formatted_result=formatted_result+"\n      "+result[:position]
+			result=result[position+1:]
+			if wraplength==60:
+				wraplength=73
+		formatted_result=formatted_result+"\n      "+result
+		return formatted_result
 
 	def getFullPath(self,packageShortName,packageFullName):  ## Returns the full path of the ebuild ##
 		absolute_path = '/usr/portage/' + strip(packageShortName)
-		package_parts = self.re_slash.split(packageFullName)
+		package_parts = packageFullName.split("/")
 		result = absolute_path + "/" + package_parts[1] + ".ebuild"
 		return result
 
@@ -236,6 +261,31 @@ class search:
 		return result
 
 #build our package digraph
+def getsyslist():
+	if os.path.exists(portage.profiledir+"/packages"):
+		pfile=portage.profiledir+"/packages"
+	else:
+		print "!!! Couldn't find",portage.profiledir+"/packages;"
+		print "\"system\" mode unavailable."
+		sys.exit(1)
+	myfile=open(pfile,"r")
+	mylines=myfile.readlines()
+	myfile.close()
+	
+	mynewlines=[]
+	for x in mylines:
+		myline=string.join(string.split(x))
+		if not len(myline):
+			continue
+		elif myline[0]=="#":
+			continue
+		elif myline[0]!="*":
+			continue
+		myline=myline[1:]
+		mynewlines.append(myline.strip())
+
+	return mynewlines
+
 class depgraph:
 
 	def __init__(self,mymode,myaction,myopts):
@@ -355,26 +405,8 @@ class depgraph:
 				retlist.append(y)
 		return retlist
 
-	def processsyslist(self,mylines=[]):
-		mynewlines=[]
-		for x in mylines:
-			myline=string.join(string.split(x))
-			if not len(myline):
-				continue
-			elif myline[0]=="#":
-				continue
-			elif myline[0]!="*":
-				continue
-			myline=myline[1:]
-			mynewlines.append(myline)
-		return mynewlines
-	
-	def syscreate(self,mylines=[],depformat=1):
-		if depformat==1:
-			mynewlines=self.processsyslist(mylines)
-		else:
-			mynewlines=mylines
-		for myline in mynewlines:	
+	def syscreate(self,mylines=[]):
+		for myline in mylines:	
 			if "--update"==self.myaction:
 				self.create(self.match(myline,mykey="update (likely old /var/db/pkg entry)"))
 			else:
@@ -774,7 +806,7 @@ elif "--search"==myaction:
 
 # ZAP action
 elif "--zap"==myaction:
-	if not myfiles:
+	if not myfiles and not "noslot" in mymode:
 		print
 		print "No packages to unmerge have been provided."
 		print
@@ -785,54 +817,11 @@ elif "--zap"==myaction:
 		non_slot_packages=[]
 		
 		var_path=portage.root+"var/db/pkg"
-		# process all arguments, verify if they can be resolved to an installed
-		# ebuild file and add the absolute paths of these ebuild to a list
-		for x in myfiles:
-
-			# an absolute path has been given
-			if (x[0]=='/'):
-				path_parts=split(x, '/')
-				if len(path_parts) != 6:
-					print "When providing an absolute path it should be"
-					print "in the following format : "+var_path+"/category/package"
-					print "The path '"+x+"' doesn't respect this."
-					sys.exit(1)
-				elif not os.path.exists(x):
-					print "The path '"+x+"' doesn't exist."
-					sys.exit(1)
-				elif -1 == find(x, var_path):
-					print "The path '"+x+"' didn't commence with '"+var_path+"'."
-					sys.exit(1)
-				else:
-					# check if the SLOT file is present, and get the package version
-					# from the PF file in that case
-					package_slot_path=strip(x)+"/SLOT"
-					package_pf_path=strip(x)+"/PF"
-					if os.path.exists(package_pf_path):
-						package_pf_file=open(package_pf_path)
-						package_pf=package_pf_file.readline().strip()
-						package_pf_file.close()
-					else:
-						package_pf=path_parts[5]
-					full_path=strip(x)+"/"+package_pf+".ebuild"
-					if not os.path.exists(full_path):
-						print "The ebuild '"+full_path+"' couldn't be found."
-						print "Your portage installation tree seems to be corrupted."
-					else:
-						path_parts=split(full_path, "/")
-						full_ebuild_paths[full_path]=path_parts[4]+"/"+package_pf
-
-			# a category and package name have been given
-			else:
-				localtree=portage.vartree(portage.root)	
-				mymatches=localtree.dep_match(x)
-				# if no matches were found, try again by adding a '=' dep symbol if no
-				# dep symbols are already present
-				if not mymatches and x[0] not in ('<','>','=','~'):
-					mymatches=localtree.dep_match("="+x)
-
-				# only loops over the matches if they were found
-				if mymatches:
+		if "noslot" in mymode:
+			localtree=portage.vartree(portage.root)	
+			for x in localtree.getallnodes():
+				if localtree.slotted(x)==0:
+					mymatches=localtree.dep_match(x)
 					for package in mymatches:
 						myfullpaths=localtree.getebuildpaths(package)
 						for full_path in myfullpaths :
@@ -841,22 +830,79 @@ elif "--zap"==myaction:
 								print "Your portage installation tree seems to be corrupted."
 							else:
 								full_package_paths[full_path]=package
-
-			# determine what the non slot packages are
-			if len(full_package_paths) > 0:
-				# determine the latest installed packages of each cat/pkg key
-				full_paths_keys=full_package_paths.keys()
-				# sort the ebuild paths
-				full_paths_keys.sort()
-				previous_package_set=None
-				for full_path in full_paths_keys:
-					# construct the key that will be used to determine when a new package set
-					# is being processed, the package slot is taken into account for this
-					package_parts=portage.pkgsplit(full_package_paths[full_path])
-					slot_path=dirname(full_path)+"/SLOT"
-					if not os.path.exists(slot_path):
-						package_slot=package_parts[1]
-						non_slot_packages.append(package_parts[0]+"-"+package_parts[1])
+		else:
+			# process all arguments, verify if they can be resolved to an installed
+			# ebuild file and add the absolute paths of these ebuild to a list
+			for x in myfiles:
+	
+				# an absolute path has been given
+				if (x[0]=='/'):
+					path_parts=split(x, '/')
+					if len(path_parts) != 6:
+						print "When providing an absolute path it should be"
+						print "in the following format : "+var_path+"/category/package"
+						print "The path '"+x+"' doesn't respect this."
+						sys.exit(1)
+					elif not os.path.exists(x):
+						print "The path '"+x+"' doesn't exist."
+						sys.exit(1)
+					elif -1 == find(x, var_path):
+						print "The path '"+x+"' didn't commence with '"+var_path+"'."
+						sys.exit(1)
+					else:
+						# check if the SLOT file is present, and get the package version
+						# from the PF file in that case
+						package_slot_path=strip(x)+"/SLOT"
+						package_pf_path=strip(x)+"/PF"
+						if os.path.exists(package_pf_path):
+							package_pf_file=open(package_pf_path)
+							package_pf=package_pf_file.readline().strip()
+							package_pf_file.close()
+						else:
+							package_pf=path_parts[5]
+						full_path=strip(x)+"/"+package_pf+".ebuild"
+						if not os.path.exists(full_path):
+							print "The ebuild '"+full_path+"' couldn't be found."
+							print "Your portage installation tree seems to be corrupted."
+						else:
+							path_parts=split(full_path, "/")
+							full_ebuild_paths[full_path]=path_parts[4]+"/"+package_pf
+	
+				# a category and package name have been given
+				else:
+					localtree=portage.vartree(portage.root)	
+					mymatches=localtree.dep_match(x)
+					# if no matches were found, try again by adding a '=' dep symbol if no
+					# dep symbols are already present
+					if not mymatches and x[0] not in ('<','>','=','~'):
+						mymatches=localtree.dep_match("="+x)
+	
+					# only loops over the matches if they were found
+					if mymatches:
+						for package in mymatches:
+							myfullpaths=localtree.getebuildpaths(package)
+							for full_path in myfullpaths :
+								if not os.path.exists(full_path):
+									print "The ebuild '"+full_path+"' couldn't be found."
+									print "Your portage installation tree seems to be corrupted."
+								else:
+									full_package_paths[full_path]=package
+	
+				# determine what the non slot packages are
+				if len(full_package_paths) > 0:
+					# determine the latest installed packages of each cat/pkg key
+					full_paths_keys=full_package_paths.keys()
+					# sort the ebuild paths
+					full_paths_keys.sort()
+					previous_package_set=None
+					for full_path in full_paths_keys:
+						# construct the key that will be used to determine when a new package set
+						# is being processed, the package slot is taken into account for this
+						package_parts=portage.pkgsplit(full_package_paths[full_path])
+						slot_path=dirname(full_path)+"/SLOT"
+						if not os.path.exists(slot_path):
+							package_slot=package_parts[1]
+							non_slot_packages.append(package_parts[0]+"-"+package_parts[1])
 
 		full_paths=full_ebuild_paths.keys()
 		full_paths.extend(full_package_paths.keys())
@@ -923,17 +969,32 @@ elif "--rebuild"==myaction:
 	myoutdated=[]
 	print "Examining installed packages",
 	sys.stdout.flush()
-	localtree.populate()
-	porttree.populate()
-	for mynode in localtree.getallnodes():
-		for mypackage in localtree.dep_match(mynode):
-			sys.stdout.write(".")	
-			sys.stdout.flush()
-			if not mypackage[0:len("virtual")]=="virtual":
-				if porttree.exists_specific(mypackage):
-					mypackages[mypackage]=porttree.getname(mypackage)
-				else:
-					myoutdated.append(mypackage)
+	mynodes=[]
+	if "system" in mymode:
+		mynodes=getsyslist()
+	elif "world" in mymode or "noslot" in mymode:
+		mynodes=localtree.getallnodes()
+	else:
+		print
+		print " "+red("* WARNING:"),green("emerge --rebuild"),"shouldn't be used for regular packages"
+		print " "+red("*"),"it's only intended to be used with",green("system")+", "+green("world")+", and",green("noroot")
+		print
+		sys.exit(1)
+
+	if len(mynodes)>0:
+		localtree.populate()
+		porttree.populate()
+
+		for mynode in mynodes:
+			for mypackage in localtree.dep_match(mynode):
+				sys.stdout.write(".")	
+				sys.stdout.flush()
+				if (not "noslot" in mymode) or ("noslot" in mymode and localtree.slotted(mypackage)==0):
+					if not mypackage[0:len("virtual")]=="virtual":
+						if porttree.exists_specific(mypackage):
+							mypackages[mypackage]=porttree.getname(mypackage)
+						else:
+							myoutdated.append(mypackage)
 	print " done!"
 	mypackageskeys=[]
 	mypackageskeys=mypackages.keys()
@@ -946,8 +1007,10 @@ elif "--rebuild"==myaction:
 			print "[ebuild   "+yellow("R")+" ]",mypackage,"to",portage.root
 		if len(myoutdated):
 			if "--verbose" not in myopts:
-				print " "+yellow("* IMPORTANT:"),len(myoutdated),"packages aren't available anymore; use "+green("--verbose")+" to view details."
+				print
+				print " "+yellow("* IMPORTANT:"),len(myoutdated),"packages aren't available anymore; use "+green("--verbose")+" for details."
 			else:
+				print
 				print " "+yellow("* IMPORTANT:"),len(myoutdated),"packages aren't available anymore"
 				print " "+yellow("*")+" Your portage tree doesn't contain the ebuilds anymore that correspond to the"
 				print " "+yellow("*")+" following packages. This means that portage is unable to rebuild them."
@@ -1012,11 +1075,6 @@ elif "--update"==myaction or not myaction:
 		print " "+red("* WARNING:"),green("emerge world"),"can't be used without an action"
 		print " "+red("*"),green("world"),"is only intended to be used with",green("emerge --update")
 		print
-	elif "noslot" in mymode:
-		print
-		print " "+red("* WARNING:"),green("emerge noslot"),"can't be used without an action"
-		print " "+red("*"),green("noslot"),"is only intended to be used with",green("emerge --rebuild")
-		print
 	else:
 		if "--pretend" in myopts:
 				print
@@ -1024,24 +1082,23 @@ elif "--update"==myaction or not myaction:
 				print
 
 		if "system" in mymode:
-			#system profile mode
-			if os.path.exists(portage.profiledir+"/packages"):
-				pfile=portage.profiledir+"/packages"
-			else:
-				print "!!! Couldn't find",portage.profiledir+"/packages;"
-				print "\"system\" mode unavailable."
-				sys.exit(1)
-			myfile=open(pfile,"r")
-			mylines=myfile.readlines()
-			myfile.close()
 			mydepgraph=depgraph(mymode,myaction,myopts)
 			print "Calculating system dependencies",
-			mydepgraph.syscreate(mylines)
+			mydepgraph.syscreate(getsyslist())
 			print " done!"
 		elif "world" in mymode:
 			mydepgraph=depgraph(mymode,myaction,myopts)
 			print "Calculating system dependencies",
-			mydepgraph.syscreate(mydepgraph.db["/"]["vartree"].getallnodes(),depformat=0)
+			mydepgraph.syscreate(mydepgraph.db["/"]["vartree"].getallnodes())
+			print " done!"
+		elif "noslot" in mymode:
+			mydepgraph=depgraph(mymode,myaction,myopts)
+			print "Calculating system dependencies",
+			mynodes=[]
+			for x in mydepgraph.db["/"]["vartree"].getallnodes():
+				if mydepgraph.db["/"]["vartree"].slotted(x)==0:
+					mynodes.append(x)
+			mydepgraph.syscreate(mynodes)
 			print " done!"
 		else:
 			mydepgraph=depgraph(mymode,myaction,myopts)
