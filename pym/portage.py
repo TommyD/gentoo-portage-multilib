@@ -6084,9 +6084,9 @@ def getvirtuals(myroot):
 	writemsg("--- DEPRECATED call to getvirtual\n")
 	return settings.getvirtuals(myroot)
 
-def do_vartree():
-	global virts,virts_p,settings
-	virts=settings.getvirtuals("/")
+def do_vartree(mysettings):
+	global virts,virts_p
+	virts=mysettings.getvirtuals("/")
 	virts_p={}
 
 	if virts:
@@ -6101,12 +6101,12 @@ def do_vartree():
 		pass
 	db["/"]={"virtuals":virts,"vartree":vartree("/",virts)}
 	if root!="/":
-		virts=settings.getvirtuals(root)
+		virts=mysettings.getvirtuals(root)
 		db[root]={"virtuals":virts,"vartree":vartree(root,virts)}
 	#We need to create the vartree first, then load our settings, and then set up our other trees
 
 usedefaults=settings.use_defs
-do_vartree()
+do_vartree(settings)
 settings.regenerate() # XXX: Regenerate use after we get a vartree -- GLOBAL
 
 
@@ -6329,7 +6329,7 @@ if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
 			pass
 		if didupdate:
 			#make sure our internal databases are consistent; recreate our virts and vartree
-			do_vartree()
+			do_vartree(settings)
 			if do_upgrade_packagesmessage and \
 				 listdir(settings["PKGDIR"]+"/All/",EmptyOnError=1):
 				writemsg("\n\n\n ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the")

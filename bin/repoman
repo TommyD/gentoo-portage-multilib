@@ -699,18 +699,21 @@ for x in scanlist:
 				portage.groups=groups
 
 				if (profiles.has_key(arch)):
-					portage.profiledir=repoman_settings["PORTDIR"]+"/profiles/"+profiles[arch][0]
+					profdir=repoman_settings["PORTDIR"]+"/profiles/"+profiles[arch][0]
 				else:
-					portage.profiledir=repoman_settings["PORTDIR"]+"/profiles/default-"+arch+"-1.4"
+					profdir=repoman_settings["PORTDIR"]+"/profiles/default-"+arch+"-1.4"
 					
-				if (not os.path.exists(portage.profiledir)):
-					raise IOError, "Profile dir does not exist: "+portage.profiledir
-				
-				if (os.path.exists(portage.profiledir+"/use.mask")):
-					repoman_settings.usemask=portage.grabfile(portage.profiledir+"/use.mask")
-					repoman_settings.regenerate()
+				if (not os.path.exists(profdir)):
+					raise IOError, "Profile dir does not exist: "+profdir
 
-				portage.do_vartree()
+				if (os.path.exists(profdir+"/use.mask")):
+					repoman_settings.usemask=portage.grabfile(profdir+"/use.mask")
+
+				portage.profiledir=profdir
+				repoman_settings.profiles=[profdir]
+
+				portage.do_vartree(repoman_settings)
+				repoman_settings.regenerate()
 				portage.db["/"]["porttree"]=portage.portagetree("/",portage.virts)
 
 				if not catdir+"/"+y in portage.db["/"]["porttree"].dbapi.xmatch("list-visible",x):
