@@ -2667,6 +2667,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	if (mydo!="depend") or not mysettings.has_key("KVERS"):
 		myso=os.uname()[2]
 		mysettings["KVERS"]=myso[1]
+	
 
 	# get possible slot information from the deps file
 	if mydo=="depend":
@@ -2690,6 +2691,12 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 
 	# Build directory creation isn't required for any of these.
 	if mydo not in ["fetch","digest","manifest"]:
+
+		if not os.path.exists(mysettings["PORTAGE_TMPDIR"]):
+			os.makedirs(mysettings["PORTAGE_TMPDIR"])
+		os.chown(mysettings["PORTAGE_TMPDIR"],portage_uid,portage_gid)
+		os.chmod(mysettings["PORTAGE_TMPDIR"],00775)
+
 		# Should be ok again to set $T, as sandbox does not depend on it
 		mysettings["T"]=mysettings["BUILDDIR"]+"/temp"
 		if cleanup or mydo=="clean":
@@ -2699,6 +2706,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 			os.makedirs(mysettings["T"])
 		os.chown(mysettings["T"],portage_uid,portage_gid)
 		os.chmod(mysettings["T"],02770)
+
 
 		try:
 			if ("nouserpriv" not in string.split(mysettings["RESTRICT"])):

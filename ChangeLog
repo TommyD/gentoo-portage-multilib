@@ -9,6 +9,9 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  03 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py: 
+  Added check to ensure /var/tmp/portage's permissions were sane. (#56665)
+
   03 Aug 2004; Brian Harring <ferringb@gentoo.org> bin/repoman: Added 
   explicit check for missing files directory, rather then ignoring it.
   Also added an explicit commit-time check for CVS/Entries being sane.
