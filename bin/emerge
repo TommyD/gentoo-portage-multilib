@@ -44,6 +44,9 @@ options=["--autoclean",
 
 shortmapping={"a":"--autoclean",
 	"b":"--buildpkg",
+	"u":"update",
+	"s":"search",
+	"e":"--emptytree",
 	"d":"--debug",
 	"f":"--fetchonly",
 	"h":"--help",
@@ -52,6 +55,7 @@ shortmapping={"a":"--autoclean",
 	"o":"--onlydeps",
 	"p":"--pretend",
 	"v":"--verbose" }
+
 myaction=None
 myopts=[]
 myfiles=[]
@@ -657,17 +661,23 @@ if myaction in ["sync","rsync"]:
 elif "--help" in myopts:
 	if not myaction:
 		print
-		print bold("Usage: ")+turquoise("emerge")+" [ "+green("action")+" ] [ "+green("options")+" ] [ "+turquoise("ebuildfile")+" | "+turquoise("tbz2file")+" | "+turquoise("dependency")+" ] ..."
-		print "       "+turquoise("emerge")+" [ "+green("action")+" ] [ "+green("options")+" ] [ "+turquoise("system")+" | "+turquoise("world")+" ]"
-		print "       "+turquoise("emerge")+" [ "+green("--clean")+" "+green("-c")+" ] "+turquoise("rsync")
-		print "       "+turquoise("emerge")+" "+green("--help")+" "" "+green("-h")+" [ "+turquoise("rsync")+" | "+turquoise("system")+" | "+turquoise("world")+" | "+turquoise("config")+" ] "
+		print bold("Usage: ")+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] [ "+turquoise("ebuildfile")+" | "+turquoise("tbz2file")+" | "+turquoise("dependency")+" ] ..."
+		print "       "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] "+turquoise("system")
+		print "       "+turquoise("emerge")+" [ "+green("--clean")+" "+green("-c")+" ] "+turquoise("sync")+" | "+turquoise("rsync")
+		print "       "+turquoise("emerge")+" "+green("--help")+" "" "+green("-h")+" [ "+turquoise("rsync")+" | "+turquoise("system")+" | "+turquoise("config")+" ] "
+		print
+		print turquoise("Help (this screen):")
+		print "       "+green("--help")+" ("+green("-h")+" short option)"
+		print "              Displays this help; an additional argument (see above) will tell"
+		print "              emerge to display detailed help."
 		print
 		print turquoise("Actions:")
-		print "       "+green("--clean")+" "+green("-c")
-		print "              removes an installed package. the arguments can be in several"
+		print "       "+green("unmerge")+" (no short option)"
+		print "              "+turquoise("WARNING: This option will remove *all* matching packages")
+		print "              Removes an installed package. the arguments can be in several"
 		print "              different formats : /var/db/pkg/category/package-version,"
-		print "              category/package, system or world"
- 		print "              A few examples of the second format:"
+		print "              or dependency specification.  Here are a few examples of the"
+ 		print "              dependency specification format:"
 		print "              "+bold("binutils")+" matches"
 		print "                  binutils-2.11.90.0.7 and binutils-2.11.92.0.12.3-r1"
 		print "              "+bold(">binutils-2.11.90.0.7")+" matches"
@@ -685,38 +695,24 @@ elif "--help" in myopts:
 		print "              "+bold("<=sys-devel/binutils-2.11.92.0.12.3-r1")+" matches"
 		print "                  binutils-2.11.90.0.7 and binutils-2.11.92.0.12.3-r1"
 		print
-		print "       "+green("--help")+" "+green("-h")
-		print "              displays this help, an additional mode specifier provides"
-		print "              detailed help about that mode instead"
+		print "       "+green("update")+" ("+green("-u")+" short option)"
+		print "              Updates packages that are part of the base system profile to the"
+		print "              most recent versions available."
 		print 
-		print "       "+green("--update")+" "+green("-u")
-		print "              updates installed packages, this is typically used with",bold("world")
-		print "              and",bold("system")
-		print 
-		print "       "+green("--rebuild")+" "+green("-r")
-		print "              forcably rebuild installed packages, this is typically used with"
-		print "              "+bold("world"),"and",bold("system")
-		print
-		print "       "+green("--search")+" "+green("-s")
+		print "       "+green("search")+" ("+green("-s")+" short option)"
 		print "              searches for matches of the supplied string in the current local"
 		print "              portage tree. The search string is a regular expression."
 		print "              A few examples: "
-		print "              "+bold("emerge --search \"^kde\"")
+		print "              "+bold("emerge search \"^kde\"")
 		print "                  list all packages starting with kde"
-		print "              "+bold("emerge --search \"gcc$\"")
+		print "              "+bold("emerge search \"gcc$\"")
 		print "                  list all packages ending with gcc"
-		print "              "+bold("emerge --search \"\"")+" or"
-		print "              "+bold("emerge --search \"*\"")
+		print "              "+bold("emerge search \"\"")+" or"
+		print "              "+bold("emerge search \"*\"")
 		print "                  list all available packages "
 		print
 		print turquoise("Options:")
-		print "       "+green("--all")+" "+green("-l")
- 		print "              complements the --clean action to make sure that all"
-		print "              installed versions of an application will be unmerged."
-		print "              Beware, this will remove every instance of the package"
-		print "              from your disc."
-		print
-		print "       "+green("--autoclean")+" "+green("-a")
+		print "       "+green("--autoclean")+" ("+green("-a")+" short option)"
 		print "              emerge normally cleans out the package-specific temporary"
 		print "              build directory before it starts the building a package.  With"
 		print "              --autoclean, it will also clean the directory *after* the"
@@ -724,52 +720,47 @@ elif "--help" in myopts:
 		print "              normal users, but maintainers can use this option to enable"
 		print "              autocleaning."
 		print
-		print "       "+green("--buildpkg")+" "+green("-b")
+		print "       "+green("--buildpkg")+" ("+green("-b")+" short option)"
 		print "              tell emerge to build binary packages for all ebuilds processed"
 		print "              (in addition to actually merging the packages.  Useful for"
 		print "              maintainers or if you administrate multiple Gentoo Linux"
 		print "              systems (build once, emerge tbz2s everywhere)."
 		print
-		print "       "+green("--debug")+" "+green("-d")
+		print "       "+green("--debug")+" ("+green("-d")+" short option)"
 		print "              Tell emerge to run the ebuild command in --debug mode. In this"
 		print "              mode, the bash build environment will run with the -x option,"
 		print "              causing it to output verbose debug information print to stdout."
 		print "              --debug is great for finding bash syntax errors."
 		print
-		print "       "+green("--emptytree")+" "+green("-e")
+		print "       "+green("--emptytree")+" ("+green("-e")+" short option)"
 		print "              Virtually tweaks the tree of installed packages to only contain"
 		print "              glibc, this is great to use together with --pretend. This makes"
 		print "              it possible for developers to get a complete overview of the"
 		print "              complete dependency tree of a certain package."
 		print
-		print "       "+green("--fetchonly")+" "+green("-f")
+		print "       "+green("--fetchonly")+" ("+green("-f")+" short option)"
 		print "              Instead of doing any package building, just perform fetches for"
 		print "              all packages (main package as well as all dependencies.)"
 		print
-		print "       "+green("--onlydeps")+" "+green("-o")
+		print "       "+green("--onlydeps")+" ("+green("-o")+" short option)"
 		print "              Only merge (or pretend to merge) the dependencies of the"
 		print "              specified packages, not the packages themselves."
 		print
-		print "       "+green("--pretend")+" "+green("-p")
+		print "       "+green("--pretend")+" ("+green("-p")+" short option)"
 		print "              instead of actually performing the merge, simply display what"
 		print "              ebuilds and tbz2s *would* have been installed if --pretend"
 		print "              weren't used.  Using --pretend is strongly recommended before"
 		print "              installing an unfamiliar package.  In the printout, N = new,"
 		print "              U = upgrading, R = replacing."
 		print
-		print "       "+green("--noreplace")+" "+green("-n")
+		print "       "+green("--noreplace")+" ("+green("-n")+" short option)"
 		print "              Skip the packages specified on the command-line that have"
 		print "              already been installed.  Without this option, any packages,"
 		print "              ebuilds, or deps you specify on on the command-line *will* cause"
 		print "              Portage to remerge the package, even if it is already installed."
-		print "              Note that Portage will never remerge dependencies automatically."
+		print "              Note that Portage won't remerge dependencies by default."
 		print
-		print "       "+green("--slots")+" "+green("-t")
- 		print "              complements the --clean action to remove packages that are part"
- 		print "              part of old binary compatibility slots. This will only keep one"
- 		print "              version of a particular package installed."
-		print
-		print "       "+green("--usepkg")+" "+green("-k")
+		print "       "+green("--usepkg")+" ("+green("-k")+" short option)"
 		print "              tell emerge to use binary packages (from $PKGDIR) if they are"
 		print "              available, thus possibly avoiding some time-consuming compiles."
 		print "              This option is useful for CD installs; you can export"
@@ -777,28 +768,26 @@ elif "--help" in myopts:
 		print "              emerge \"pull\" binary packages from the CD in order to satisfy" 
 		print "              dependencies."
 		print
-		print "       "+green("--verbose")+" "+green("-v")
+		print "       "+green("--verbose")+" ("+green("-v")+" short option)"
 		print "              Tell emerge to run in verbose mode.  Currently, this causes"
 		print "              emerge to print out GNU info errors, if any."
-		print
-		print "       "+green("--versions")+" "+green("-i")
- 		print "              complements the --clean action to remove old versions of packages"
-		print "              This will only keep one version of a particular package installed"
-		print "              within each binary compatibility slot."
-		print 
 	elif myaction in ["rsync","sync"]:
 		print
-		print bold("Usage: ")+turquoise("emerge")+" [ "+green("--clean")+" "+green("-c")+" ] "+turquoise("rsync")
+		print bold("Usage: ")+turquoise("emerge")+" [ "+green("--clean")+" "+green("-c")+" ] "+turquoise("sync")
 		print
-		print "       \"emerge rsync\" initiates an rsync update with cvs.gentoo.org,"
-		print "       updating your Portage tree (typically in /usr/portage).  This option"
-		print "       will erase any changes that you have made to existing Portage files"
-		print "       so be careful.  \"emerge --clean rsync\" does the same thing as \"emerge"
-		print "       rsync\", but files that no longer exist on our server are removed."
+		print "       \"emerge sync\" tells emerge to update the Portage tree as specified in"
+		print "       The SYNC variable found in /etc/make.conf.  By default, SYNC instructs"
+		print "       emerge to perform an rsync-style update with cvs.gentoo.org.  Available"
+		print "       sync methods are rsync and anoncvs.  To use anoncvs rather than rsync,"
+		print "       put 'SYNC=\"cvs://:pserver:cvs.gentoo.org:/home/cvsroot\" in your"
+		print "       /etc/make.conf.  If you haven't used anoncvs before, you'll be prompted"
+		print "       for a password, which for cvs.gentoo.org is empty (just hit enter.)"
+		print "       "+turquoise("NOTE:")+" if using rsync, adding a --clean will tell emerge to"
+		print "       remove any files in your Portage tree that aren't in our main repository."
 		print
 	elif myaction=="system":
 		print
-		print bold("Usage: ")+turquoise("emerge")+" [ "+green("action")+" ] "+" [ "+green("options")+" ] "+turquoise("system")
+		print bold("Usage: ")+turquoise("emerge")+" [ "+green("options")+" ] "+turquoise("system")
 		print
 		print "       \"emerge system\" is the Portage system update command.  When run, it"
 		print "       will scan the etc/make.profile/packages file and determine what"

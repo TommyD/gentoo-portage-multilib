@@ -1,15 +1,20 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
-  26 Feb 2002; Daniel Robbins <drobbins@gentoo.org> portage.py : Fixed an 
-  unmerge error caused by digests now being recorded in lowercase.  unmerge
-  now compensates for 100% backwards compatibility.  Moved "continue" outside
-  of "try" block since this is disallowed in Python.  This fixes a python
-  warning during fetch.
+*portage-1.8.9_pre17 (27 Feb 2002)
+
+  27 Feb 2002; Daniel Robbins <drobbins@gentoo.org> emerge : --help
+  documentation is now up-to-date; short options tweaked.
   
-  26 Feb 2002; Geert Bevin <gbevin@gentoo.org> bin/dohtml :
-  Added support for installing .gif files too since quite some docs still ship
-  with those instead of .jpg or .png.
+  26 Feb 2002; Daniel Robbins <drobbins@gentoo.org> portage.py : Fixed an
+  unmerge error caused by digests now being recorded in lowercase.  unmerge now
+  compensates for 100% backwards compatibility.  Moved "continue" outside of
+  "try" block since this is disallowed in Python.  This fixes a python warning
+  during fetch.
+  
+  26 Feb 2002; Geert Bevin <gbevin@gentoo.org> bin/dohtml : Added support for
+  installing .gif files too since quite some docs still ship with those instead
+  of .jpg or .png.
 
 *portage-1.8.9_pre16 (25 Feb 2002)
 
