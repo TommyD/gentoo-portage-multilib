@@ -2,6 +2,11 @@
 # Copyright 2001 Gentoo Technologies, Inc.; Distributed under the GPL
 # Written by Daniel Robbins (drobbins@gentoo.org)
 
+  1 Feb 2002; G.Bevin <gbevin@gentoo.org> : added emerge --unmerge support
+
+  1 Feb 2002; G.Bevin <gbevin@gentoo.org> : added packagename without category
+  support in the portage.py dep_match function
+
 *portage 1.8.7 (30 Jan 2002)
 
   30 Jan 2002; G.Bevin <gbevin@gentoo.org> : integrated and slightly adapted
