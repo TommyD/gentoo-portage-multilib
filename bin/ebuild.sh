@@ -3,50 +3,58 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-# Hurray for per-ebuild logging.
-if [ ! -z "${PORT_LOGDIR}" ] && [ "$*" != "depend" ]; then
+cd ${PORT_TMPDIR}
+
+if [ "$*" != "depend" ]; then
 	if [ -f ${T}/successful ]; then
 		rm -f ${T}/successful
 	fi
 
-	if [ -z "${PORT_LOGGING}" ]; then
-		export PORT_LOGGING=1
-		export SANDBOX_WRITE="$SANDBOX_WRITE:${PORT_LOGDIR}"
-		install -d ${PORT_LOGDIR} &>/dev/null
-		chown root:portage ${PORT_LOGDIR} &>/dev/null
-		chmod g+rwxs ${PORT_LOGDIR} &> /dev/null
-		touch "${PORT_LOGDIR}/$(date +%y%m%d)-${PF}.log" &> /dev/null
-		chmod g+w "${PORT_LOGDIR}/$(date +%y%m%d)-${PF}.log" &> /dev/null
-		$0 $* 2>&1 | tee -a "${PORT_LOGDIR}/$(date +%y%m%d)-${PF}.log"
-		if [ "$?" != "0" ]; then
-			echo "Problem creating logfile in ${PORT_LOGDIR}"
-			exit 1
-		fi
-		if [ -f ${T}/successful ]; then
-			exit 0
-		else
-			exit 1
+	# Hurray for per-ebuild logging.
+	if [ ! -z "${PORT_LOGDIR}" ]; then
+		if [ -z "${PORT_LOGGING}" ]; then
+			export PORT_LOGGING=1
+			export SANDBOX_WRITE="$SANDBOX_WRITE:${PORT_LOGDIR}"
+			install -d ${PORT_LOGDIR} &>/dev/null
+			chown root:portage ${PORT_LOGDIR} &>/dev/null
+			chmod g+rwxs ${PORT_LOGDIR} &> /dev/null
+			touch "${PORT_LOGDIR}/$(date +%y%m%d)-${PF}.log" &> /dev/null
+			chmod g+w "${PORT_LOGDIR}/$(date +%y%m%d)-${PF}.log" &> /dev/null
+			$0 $* 2>&1 | tee -a "${PORT_LOGDIR}/$(date +%y%m%d)-${PF}.log"
+			if [ "$?" != "0" ]; then
+				echo "Problem creating logfile in ${PORT_LOGDIR}"
+				exit 1
+			fi
+			if [ -f ${T}/successful ]; then
+				exit 0
+			else
+				exit 1
+			fi
 		fi
 	fi
-fi
 
-# Fix the temp dirs so we don't have booboos.
-for DIR in $(find ${BUILD_PREFIX} -type d -name temp -maxdepth 2 -mindepth 2 -print); do
-	chown -R portage $DIR &>/dev/null
-done
+	# Fix the temp dirs so we don't have booboos.
+	for DIR in $(find ${BUILD_PREFIX} -type d -name temp -maxdepth 2 -mindepth 2 -print); do
+		chown -R portage $DIR &>/dev/null
+	done
 
-if [ -f "${WORKDIR}/environment" ]; then
-	source "${WORKDIR}/environment"
-fi
+	if [ -f "${WORKDIR}/environment" ]; then
+		source "${WORKDIR}/environment"
+	fi
+
+	if [ `id -nu` == "portage" ] ; then
+		export CCACHE_DIR=${HOME}/.ccache
+		export USER=portage
+	fi
+fi # $*!=depend
+
+# Prevent aliases from causing portage to act inappropriately.
+unalias -a
 
 if [ -n "$#" ]
 then
 	ARGS="${*}"
 fi
-
-# Otherwise people using funny aliases might cause portage to
-# act inappropriately.
-unalias -a
 
 use() {
 	local x
@@ -144,11 +152,6 @@ use_enable() {
 	fi
 }
 
-if [ `id -nu` == "portage" ] ; then
-	export CCACHE_DIR=${HOME}/.ccache
-	export USER=portage
-fi
-
 #we need this next line for "die" and "assert"
 shopt -s expand_aliases
 source /etc/profile.env > /dev/null 2>&1
@@ -199,7 +202,8 @@ export EXEOPTIONS="-m0755"
 export LIBOPTIONS="-m0644"
 export DIROPTIONS="-m0755"
 export MOPREFIX=${PN}
-export KVERS=`uname -r`
+#Moved to portage
+#export KVERS=`uname -r`
 
 check_KV()
 {
@@ -969,8 +973,8 @@ fi
 #turn off glob expansion from here on in to prevent *'s and ? in the DEPEND
 #syntax from getting expanded :)  Fixes bug #1473
 set -f
-if [ -z "`set | grep ^RDEPEND=`" ]
-then
+#if [ -z "`set | grep ^RDEPEND=`" ]; then
+if [ "${RDEPEND-unset}" == "unset" ]; then
 	export RDEPEND=${DEPEND}
 fi
 set +f
@@ -1046,6 +1050,8 @@ do
 		then
 			install -d -g wheel -m2775 ${PORTAGE_CACHEDIR}/${CATEGORY}
 		fi
+		# Make it group writable. 666&~002==664
+		umask 002
 		echo `echo "$DEPEND"` > $dbkey
 		echo `echo "$RDEPEND"` >> $dbkey
 		echo `echo "$SLOT"` >> $dbkey
@@ -1061,7 +1067,7 @@ do
 		echo `echo "$PDEPEND"` >> $dbkey
 		set +f
 		#make sure it is writable by our group:
-		chmod g+ws $dbkey
+		#chmod g+ws $dbkey
 		exit 0
 		;;
 	*)
@@ -1079,7 +1085,8 @@ do
 done
 
 # Save current environment and touch a success file. (echo for success)
-set > ${T}/environment &>/dev/null
-touch ${T}/successful &>/dev/null
-chmod g+w ${T}/environment ${T}/successful &>/dev/null
+umask 002
+set > ${T}/environment 2>/dev/null
+touch ${T}/successful 2>/dev/null
+#chmod g+w ${T}/environment ${T}/successful &>/dev/null
 echo -n ""

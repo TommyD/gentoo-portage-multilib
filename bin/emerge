@@ -119,7 +119,8 @@ if (myaction in ["world", "system"]) and myfiles:
 	sys.exit(1)
 
 # Always create packages if FEATURES=buildpkg
-if "buildpkg" in portage.features:
+# Imply --buildpkg if --buildpkgonly
+if ("buildpkg" in portage.features) or ("--buildpkgonly" in myopts):
 	if "--buildpkg" not in myopts:
 		myopts.append("--buildpkg")
 
@@ -186,8 +187,8 @@ if "--selective" in myopts:
 if myaction in ["world","system"]:
 	add.extend(["selective"])
 elif myaction in ["depclean"]:
-	sub.extend(["selective"])
 	add.extend(["empty"])
+	sub.extend(["selective"])
 for x in add:
 	if (x not in myparams) and (x not in sub):
 		myparams.append(x)
@@ -396,7 +397,7 @@ class depgraph:
 	def __init__(self,myaction,myopts):
 		global olddbapi
 		self.myaction=myaction
-		virts=portage.getvirtuals("/")
+		self.virts=portage.getvirtuals("/")
 		self.digraph=portage.digraph()
 		self.orderedkeys=[]
 		#the following is so we have an empty vartree (used in emerge update calculations)
@@ -592,7 +593,10 @@ class depgraph:
 				myk=["blocks",myroot,x[1:]]
 			else:
 				#We are not processing a blocker but a normal dependency
-				myeb=portage.portdb.xmatch("bestmatch-visible",x)
+				if "--usepkgonly" in myopts:
+					myeb=portage.db[portage.root]["bintree"].dep_bestmatch(x)
+				else:
+					myeb=portage.portdb.xmatch("bestmatch-visible",x)
 				if not myeb:
 					if not arg:
 						xinfo='"'+x+'"'
@@ -602,9 +606,13 @@ class depgraph:
 						xfrom = '(dependency required by '+green('"'+myparent.split()[2]+'"')+red(' ['+myparent.split()[0]+"])")
 					alleb=portage.portdb.xmatch("match-all",x)
 					if alleb:
-						print "\n!!! "+red("all ebuilds that could satisfy ")+green(xinfo)+red(" have been masked.")
-						if myparent:
-							print     "!!!    "+red(xfrom)
+						if "--usepkgonly" not in myopts:
+							print "\n!!! "+red("all ebuilds that could satisfy ")+green(xinfo)+red(" have been masked.")
+							if myparent:
+								print     "!!!    "+red(xfrom)
+						else:
+							print "\n!!! "+red("There are no packages available to satisfy: ")+green(xinfo)
+							print "!!! Either add a suitable binary package or compile from an ebuild."
 					else:
 						print "\nemerge: there are no masked or unmasked ebuilds to satisfy "+xinfo+"."
 					return 0
@@ -921,36 +929,38 @@ class depgraph:
 				if retval==None:
 					sys.exit(1)
 				#need to check for errors
-			portage.db[x[1]]["vartree"].inject(x[2])
-			myfavkey=portage.cpv_getkey(x[2])
-			if (not "--fetchonly" in myopts) and (myfavkey in favorites):
-				myfavs=portage.grabfile(myroot+"var/cache/edb/world")
-				myfavdict=genericdict(myfavs)
-				mysysdict=genericdict(syslist)
-				#don't record if already in system profile or already recorded
-				if (not mysysdict.has_key(myfavkey)) and (not myfavdict.has_key(myfavkey)):
-					#we don't have a favorites entry for this package yet; add one
-					myfavdict[myfavkey]=myfavkey
-					print ">>> Recording",myfavkey,"in \"world\" favorites file..."
-					portage.writedict(myfavdict,myroot+"var/cache/edb/world",writekey=0)
+			if "--buildpkgonly" not in myopts:
+				portage.db[x[1]]["vartree"].inject(x[2])
+				myfavkey=portage.cpv_getkey(x[2])
+				if (not "--fetchonly" in myopts) and (myfavkey in favorites):
+					myfavs=portage.grabfile(myroot+"var/cache/edb/world")
+					myfavdict=genericdict(myfavs)
+					mysysdict=genericdict(syslist)
+					#don't record if already in system profile or already recorded
+					if (not mysysdict.has_key(myfavkey)) and (not myfavdict.has_key(myfavkey)):
+						#we don't have a favorites entry for this package yet; add one
+						myfavdict[myfavkey]=myfavkey
+						print ">>> Recording",myfavkey,"in \"world\" favorites file..."
+						portage.writedict(myfavdict,myroot+"var/cache/edb/world",writekey=0)
 
-			if "--autoclean" in myopts:
-				retval=portage.doebuild(y,"clean",myroot,edebug)
-				if retval:
-					sys.exit(1)
+				if "--autoclean" in myopts:
+					retval=portage.doebuild(y,"clean",myroot,edebug)
+					if retval:
+						sys.exit(1)
 			
-			if ("--pretend" not in myopts) and ("--fetchonly" not in myopts):
-				# Clean the old package that we have merged over top of it.
-				if portage.settings["AUTOCLEAN"] and (portage.settings["AUTOCLEAN"]=="yes"):
-					xsplit=portage.pkgsplit(x[2])
-					emergelog(" >>> AUTOCLEAN: "+xsplit[0])
-					if not unmerge("clean", [xsplit[0]]):
-						emergelog(" --- AUTOCLEAN: Nothing unmerged.")
-				emergelog(" ::: completed emerge ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[2]+" to "+x[1])
-
+				if ("--pretend" not in myopts) and ("--fetchonly" not in myopts):
+					# Clean the old package that we have merged over top of it.
+					if portage.settings["AUTOCLEAN"] and (portage.settings["AUTOCLEAN"]=="yes"):
+						xsplit=portage.pkgsplit(x[2])
+						emergelog(" >>> AUTOCLEAN: "+xsplit[0])
+						if not unmerge("clean", [xsplit[0]]):
+							emergelog(" --- AUTOCLEAN: Nothing unmerged.")
 				mysplit=portage.pkgsplit(x[2])
 				if mysplit[0]=="sys-apps/portage":
-					if mysplit[1]+"-"+mysplit[2]!=portage.VERSION:
+					myver=mysplit[1]+"-"+mysplit[2]
+					if myver[-3:]=='-r0':
+						myver=myver[:-3]
+					if myver!=portage.VERSION:
 						if len(mymergelist) > mergecount:
 							myargv=sys.argv
 							myr=0
@@ -964,6 +974,9 @@ class depgraph:
 								myr+=1
 							emergelog(" *** RESTARTING emerge via exec() after change of portage version.")
 							os.execv("/usr/lib/portage/bin/emerge", myargv)
+
+			if ("--pretend" not in myopts) and ("--fetchonly" not in myopts):
+				emergelog(" ::: completed emerge ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[2]+" to "+x[1])
 
 		if ("--pretend" not in myopts):
 			if ("--fetchonly" not in myopts):

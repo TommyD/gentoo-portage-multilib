@@ -1262,13 +1262,18 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 		print "!!! Please specify a valid command."
 		return 1
 
-	#set up KV variable
-	mykv,err1=ExtractKernelVersion(root+"usr/src/linux")
-	if mykv:
-		# Regular source tree
-		settings["KV"]=mykv
-	else:
-		settings["KV"]=""
+	#set up KV variable -- DEP SPEEDUP :: Don't waste time. Keep var persistant.
+	if not settings.has_key("KV"):
+		mykv,err1=ExtractKernelVersion(root+"usr/src/linux")
+		if mykv:
+			# Regular source tree
+			settings["KV"]=mykv
+		else:
+			settings["KV"]=""
+
+	if not settings.has_key("KVERS"):
+		myso=getstatusoutput("uname -r")
+		settings["KVERS"]=myso[1]
 
 	# if any of these are being called, handle them -- running them out of the sandbox -- and stop now.
 	if mydo in ["help","clean","setup","prerm","postrm","preinst","postinst","config"]:
@@ -4351,7 +4356,7 @@ def do_upgrade(mykey):
 	myworld.close()
 	writedict(myvirts,"/var/cache/edb/virtuals")
 
-if secpass==2:
+if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
 	#only do this if we're root
 	updpath=os.path.normpath(settings["PORTDIR"]+"/profiles/updates")
 	didupdate=0

@@ -1,6 +1,18 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  14 Jan 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Persistant
+  KV and KVERS on depend calls. Sandbox violation of do_upgrade()	caught.
+
+  14 Jan 2003; Nicholas Jones <carpaski@gentoo.org> emerge: --buildpkg
+  touchups and forward porting of some of 2.0.46-r6. Restart on -r0/proper
+  versions of portage due to VERSION not matching pkgsplit output	fixed.
+
+  14 Jan 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: 20% speedup
+  in dep generation by removing all external app calls. Moved KVERS to
+  portage to make it persistent during dep calls. Other code moved into
+  conditionals based on $*!=depend. chmod's swaped with umask.
+
   11 Jan 2003; Jack Morgan <jmorgan@gentoo.org> cnf/make.conf.sparc:
   updated make.conf.sparc to add CFLAGS for sparc32 and sparc64
 
