@@ -6267,7 +6267,7 @@ def do_vartree(mysettings):
 
 usedefaults=settings.use_defs
 do_vartree(settings)
-settings.regenerate() # XXX: Regenerate use after we get a vartree -- GLOBAL
+settings.reset() # XXX: Regenerate use after we get a vartree -- GLOBAL
 
 
 # XXX: Might cause problems with root="/" assumptions
