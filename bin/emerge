@@ -345,6 +345,9 @@ if "--selective" in myopts:
 	add.extend(["selective"])
 if myaction in ["world","system"]:
 	add.extend(["selective"])
+elif myaction in ["depclean"]:
+	sub.extend(["selective"])
+	add.extend(["empty"])
 for x in add:
 	if (x not in myparams) and (x not in sub):
 		myparams.append(x)
@@ -1328,6 +1331,8 @@ elif "unmerge"==myaction or "prune"==myaction or "clean"==myaction:
 		post_emerge()
 	
 elif "depclean"==myaction:
+	# Kill packages that aren't explicitly merged or are required as a
+	# dependancy of another package. World file is explicit.
 	mydepgraph=depgraph(myaction,myopts)
 	syslist=getlist("system")
 	worldlist=getlist("world")
@@ -1336,10 +1341,6 @@ elif "depclean"==myaction:
 		print "\n!!! Failed to create deptree."
 		sys.exit(1)
 	print "\b\b ... done!"
-
-	#for x in mydepgraph.digraph.dict.keys():
-	#	print x+" :: "+str(mydepgraph.digraph.dict[x][0])+" :: "+str(len(mydepgraph.digraph.dict[x][1]))
-	#sys.exit(1)
 
 	alldeps=mydepgraph.digraph.allnodes()
 	myvarlist=portage.vardbapi(portage.root).cp_all()
@@ -1354,7 +1355,7 @@ elif "depclean"==myaction:
 		print "!!! You have no /var/db tree. This is a problem."
 
 	if not alldeps:
-		print "!!! You have no packages without dependancies. Impossible. Bug."
+		print "!!! You have no dependancies. Impossible. Bug."
 
 	if not (syslist and worldlist and myvarlist and alldeps):
 		print
@@ -1386,18 +1387,26 @@ elif "depclean"==myaction:
 		if catpack in cleanlist:
 			cleanlist.remove(catpack)
 
-	print "\n\n\nCleaning: "
-	for x in cleanlist:
-		print x
-	print
+	#print "\n\n\nCleaning: "
+	#for x in cleanlist:
+	#	print x
+	#print
 
-	print "varlist:   "+str(len(myvarlist))
-	print "worldlist: "+str(len(worldlist))
-	print "syslist:   "+str(len(syslist))
-	print "alldeps:   "+str(len(alldeps))
-	print "reallist:  "+str(len(reallist))
-	print "dc count:  "+str(len(cleanlist))
-	sys.exit(0)
+	if len(cleanlist):
+		unmerge("unmerge", cleanlist)
+
+	print
+	print "Packages installed:   "+str(len(myvarlist))
+	print "Packages in world:    "+str(len(worldlist))
+	print "Packages in system:   "+str(len(syslist))
+	print "Unique package names: "+str(len(reallist))
+	print "Requred packages:     "+str(len(alldeps))
+	if "--pretend" in myopts:
+		print "Number to remove:     "+str(len(cleanlist))
+	else:
+		print "Number removed:       "+str(len(cleanlist))
+
+	post_emerge()
 	
 # "update", "system", or just process files:
 else:

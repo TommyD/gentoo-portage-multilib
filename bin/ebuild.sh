@@ -882,6 +882,7 @@ do
 		echo `echo "$DESCRIPTION"` >> $dbkey
 		echo `echo "$KEYWORDS"` >> $dbkey
 		echo `echo "$INHERITED"` >> $dbkey
+		echo `echo "$IUSE"` >> $dbkey
 		set +f
 		#make sure it is writable by our group:
 		chmod g+ws $dbkey
