@@ -241,7 +241,9 @@ def exithandler(foo,bar):
 #				os.unlink("/tmp/sandboxpids.tmp")
 	# 0=send to *everybody* in process group
 	portageexit()
-	os.kill(0,signal.SIGKILL)
+	atexit.register(None)
+	signal.signal(signum, signal.SIG_DFL)
+	os.kill(0,signum)
 	sys.exit(1)
 
 # dropping the signal handler to gives better tracebacks
@@ -450,7 +452,7 @@ def env_update(makelinks=1):
 		# process PATH, CLASSPATH, LDPATH
 		for myspec in specials.keys():
 			if myconfig.has_key(myspec):
- 				if myspec in ["LDPATH","PATH","PRELINK_PATH","PRELINK_PATH_MASK"]:
+				if myspec in ["LDPATH","PATH","PRELINK_PATH","PRELINK_PATH_MASK"]:
 					specials[myspec].extend(string.split(varexpand(myconfig[myspec]),":"))
 				else:
 					specials[myspec].append(varexpand(myconfig[myspec]))
@@ -567,6 +569,8 @@ def env_update(makelinks=1):
 			continue
 		outfile.write("setenv "+x+" '"+env[x]+"'\n")
 	outfile.close()
+	
+	spawn("/sbin/depscan.sh",free=1)
 
 def grabfile(myfilename):
 	"""This function grabs the lines in a file, normalizes whitespace and returns lines in a list; if a line
@@ -1164,8 +1168,8 @@ def fetch(myuris, listonly=0, fetchonly=0):
 						sys.stderr.write(red("!!! YOU HAVE A BROKEN PYTHON/GLIBC.\n"))
 						sys.stderr.write(    "!!! You are most likely on a pentium4 box and have specified -march=pentium4\n")
 						sys.stderr.write(    "!!! or -fpmath=sse2. GCC was generating invalid sse2 instructions in versions\n")
-						sys.stderr.write(    "!!! prior to 3.2.3-r3. Please rebuild python with either -march=pentium3 or\n")
-						sys.stderr.write(    "!!! set -mno-sse2 in your cflags.\n\n\n")
+						sys.stderr.write(    "!!! prior to 3.2.3. Please merge the latest gcc or rebuid python with either\n")
+						sys.stderr.write(    "!!! -march=pentium3 or set -mno-sse2 in your cflags.\n\n\n")
 						time.sleep(10)
 						
 					for locmirr in thirdpartymirrors[mirrorname]:
@@ -1670,6 +1674,28 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0,fetchonly=0):
 					spawn("chmod -R g+rw "+settings["CCACHE_DIR"], free=1)
 		except:
 			pass
+			
+		if "distcc" in features:
+			try:
+				if (not settings.has_key("DISTCC_DIR")) or (settings["DISTCC_DIR"]==""):
+					settings["DISTCC_DIR"]=settings["PORTAGE_TMPDIR"]+"/portage/.distcc"
+				if not os.path.exists(settings["DISTCC_DIR"]):
+					os.makedirs(settings["DISTCC_DIR"])
+					os.chown(settings["DISTCC_DIR"],portage_uid,portage_gid)
+					os.chmod(settings["DISTCC_DIR"],0644)
+				for x in ("/lock", "/state"):
+					if not os.path.exists(settings["DISTCC_DIR"]+x):
+						os.mkdir(settings["DISTCC_DIR"]+x)
+						os.chown(settings["DISTCC_DIR"]+x,portage_uid,portage_gid)
+						os.chmod(settings["DISTCC_DIR"]+x,0644)
+			except OSError, e:
+				sys.stderr.write("\n!!! File system problem when setting DISTCC_DIR directory permissions.\n")
+				sys.stderr.write(  "!!! DISTCC_DIR="+str(settings["DISTCC_DIR"]+"\n"))
+				sys.stderr.write(  "!!! "+str(e)+"\n\n")
+				sys.stderr.flush()
+				time.sleep(5)
+				features.remove("distcc")
+				settings["DISTCC_DIR"]=""
 
 		settings["WORKDIR"]=settings["BUILDDIR"]+"/work"
 		settings["D"]=settings["BUILDDIR"]+"/image/"
@@ -2612,9 +2638,9 @@ def dep_check(depstring,mydbapi,use="yes",mode=None,myuse=None):
 	elif use=="yes":
 		if myuse==None:
 			#default behavior
-			myusesplit=usesplit
+			myusesplit = usesplit
 		else:
-			myusesplit = string.split(myuse)
+			myusesplit = myuse
 			# We've been given useflags to use.
 			#print "USE FLAGS PASSED IN."
 			#print myuse
@@ -2986,7 +3012,7 @@ def counter_tick_core(myroot,incrementing=1):
 				counter=long(cfile.readline())
 			except (ValueError,OverflowError):
 				try:
-					counter=long(commands.getoutput("for FILE in $(find /var/db/pkg -type f -name COUNTER); do cat ${FILE}; echo; done | sort -n | tail -n1 | tr -d '\n'"))
+					counter=long(commands.getoutput("for FILE in $(find /var/db/pkg -type f -name COUNTER); do echo $(<${FILE}); done | sort -n | tail -n1 | tr -d '\n'"))
 					print "portage: COUNTER was corrupted; resetting to value of",counter
 					changed=1
 				except (ValueError,OverflowError):
@@ -2997,7 +3023,7 @@ def counter_tick_core(myroot,incrementing=1):
 			cfile.close()
 		else:
 			try:
-				counter=long(commands.getoutput("for FILE in $(find /var/db/pkg -type f -name COUNTER); do cat ${FILE}; echo; done | sort -n | tail -n1 | tr -d '\n'"))
+				counter=long(commands.getoutput("for FILE in $(find /var/db/pkg -type f -name COUNTER); do echo $(<${FILE}); done | sort -n | tail -n1 | tr -d '\n'"))
 				print red("portage:")+" Global counter missing. Regenerated from counter files to:",counter
 			except:
 				print red("portage:")+" Initializing global counter."
@@ -3035,11 +3061,12 @@ class vardbapi(dbapi):
 		return counter_tick_core(self.root)
 
 	def cpv_counter(self,mycpv):
-		"This method will grab the next COUNTER value and record it back to the global file.  Returns new counter value."
+		"This method will grab the COUNTER. Returns a counter value."
+		cdir=self.root+"var/db/pkg/"+mycpv
 		cpath=self.root+"var/db/pkg/"+mycpv+"/COUNTER"
 
-		#We write our new counter value to a new file that gets moved into
-		#place to avoid filesystem corruption on XFS (unexpected reboot.)
+		# We write our new counter value to a new file that gets moved into
+		# place to avoid filesystem corruption on XFS (unexpected reboot.)
 		corrupted=0
 		if os.path.exists(cpath):
 			cfile=open(cpath, "r")
@@ -3050,6 +3077,11 @@ class vardbapi(dbapi):
 				counter=long(0)
 				corrupted=1
 			cfile.close()
+		elif os.path.exists(cdir):
+			sys.stderr.write("!!! COUNTER file is missing for "+str(mycpv)+" in /var/db.\n")
+			sys.stderr.write("!!! Please run /usr/lib/portage/bin/fix-db.pl\n")
+			sys.stderr.flush()
+			sys.exit(1)
 		else:
 			counter=long(0)
 		if corrupted:
@@ -3317,22 +3349,62 @@ class vartree(packagetree):
 		self.populated=1
 
 # ----------------------------------------------------------------------------
+myefn = "/var/cache/edb/eclass.pickle"
+try:
+	mypickle=cPickle.Unpickler(open(myefn))
+	mypickle.find_global=None
+	eclassdb=mypickle.load()
+except:
+	#print "!!!",e
+	eclassdb={"eclass":{},"packages":[],"version":"","starttime":0}
+if eclassdb.has_key("version") and eclassdb["version"]!=VERSION:
+	eclassdb["packages"] = []
+	eclassdb["eclass"] = {}
+
+eclassdb["modifications"] = 0
+eclassdb["modifications_limit"] = 1
+
+def save_eclassdb(forced=0):
+	if not forced and eclassdb["modifications"] < eclassdb["modifications_limit"]:
+		eclassdb["modifications"] += 1
+		return 0
+
+	try:
+		eclassdb["version"]=VERSION
+		cPickle.dump(eclassdb,open(myefn,"w"))
+		eclassdb["modifications"] = 0
+		#print "*** Wrote out mtimedb data successfully."
+		os.chown(myefn,uid,portage_gid)
+		os.chmod(myefn,0664)
+	except Exception, e:
+		return -1
+	
+	return 1
+
+class eclass_cache:
+	"""Maintains the cache information about eclasses used in ebuild."""
+	def __init__(self,fn):
+		self.pickle_fn = fn
+		self.db = {}
+			
+
 def eclass(myeclass=None,mycpv=None,mymtime=None):
 	"""Caches and retrieves information about ebuilds that use eclasses
 	Returns: Is the ebuild current with the eclass? (true/false)"""
-	global mtimedb
 	#print "eclass("+str(myeclass)+","+str(mycpv)+","+str(mymtime)+")"
 	
-	if not mtimedb:
-		mtimedb={}
-	if not mtimedb.has_key("eclass") or type(mtimedb["eclass"]) is not types.DictType:
-		mtimedb["eclass"]={}
-		mtimedb["packages"]=[]
-	if not mtimedb.has_key("packages") or type(mtimedb["packages"]) is not types.ListType:
-		mtimedb["packages"]=[]
+	global eclassdb
 	
-	if not mtimedb.has_key("starttime") or (mtimedb["starttime"]!=starttime):
-		mtimedb["starttime"]=starttime
+	if not eclassdb:
+		eclassdb={}
+	if not eclassdb.has_key("eclass") or type(eclassdb["eclass"]) is not types.DictType:
+		eclassdb["eclass"]={}
+		eclassdb["packages"]=[]
+	if not eclassdb.has_key("packages") or type(eclassdb["packages"]) is not types.ListType:
+		eclassdb["packages"]=[]
+	
+	if not eclassdb.has_key("starttime") or (eclassdb["starttime"]!=starttime):
+		eclassdb["starttime"]=starttime
 		# Update the cache
 		ec_overlays = suffix_array(string.split(settings["PORTDIR_OVERLAY"]), "/eclass")
 		for x in [settings["PORTDIR"]+"/eclass"]+ec_overlays:
@@ -3343,58 +3415,60 @@ def eclass(myeclass=None,mycpv=None,mymtime=None):
 						try:
 							ys=y[:-len(".eclass")]
 							ymtime=os.stat(x+"/"+y)[ST_MTIME]
-							if mtimedb["eclass"].has_key(ys):
-								if ymtime!=mtimedb["eclass"][ys][0]:
+							if eclassdb["eclass"].has_key(ys):
+								if ymtime!=eclassdb["eclass"][ys][0]:
 									# The mtime changed on the eclass
-									mtimedb["eclass"][ys]=[ymtime,x+"/"+y,mtimedb["eclass"][ys][2]]
+									eclassdb["eclass"][ys]=[ymtime,x+"/"+y,eclassdb["eclass"][ys][2]]
 								else:
 									# nothing changed
 									pass
 							else:
 								# New eclass
-								mtimedb["eclass"][ys]=[ymtime,x+"/"+y, {}]
+								eclassdb["eclass"][ys]=[ymtime,x+"/"+y, {}]
 						except Exception, e:
 							print "!!! stat exception:",e
 							continue
 	if myeclass != None:
-		if not mtimedb["eclass"].has_key(myeclass):
+		if not eclassdb["eclass"].has_key(myeclass):
 			# Eclass doesn't exist.
 			print "!!! eclass '"+myeclass+"' in '"+str(mycpv)+"' does not exist:"
 			raise KeyError
 		else:
 			if (mycpv!=None) and (mymtime!=None):
-				if mycpv not in mtimedb["packages"]:
-					mtimedb["packages"].append(mycpv)
-				if mtimedb["eclass"][myeclass][2].has_key(mycpv):
+				if mycpv not in eclassdb["packages"]:
+					eclassdb["packages"].append(mycpv)
+				if eclassdb["eclass"][myeclass][2].has_key(mycpv):
 					# Check if the ebuild mtime changed OR if the mtime for the eclass
 					# has changed since it was last updated.
-					#print "test:",mymtime!=mtimedb["eclass"][myeclass][2][mycpv][1],mtimedb["eclass"][myeclass][0]!=mtimedb["eclass"][myeclass][2][mycpv][0]
-					if (mymtime!=mtimedb["eclass"][myeclass][2][mycpv][1]) or (mtimedb["eclass"][myeclass][0]!=mtimedb["eclass"][myeclass][2][mycpv][0]):
+					#print "test:",mymtime!=eclassdb["eclass"][myeclass][2][mycpv][1],eclassdb["eclass"][myeclass][0]!=eclassdb["eclass"][myeclass][2][mycpv][0]
+					if (mymtime!=eclassdb["eclass"][myeclass][2][mycpv][1]) or (eclassdb["eclass"][myeclass][0]!=eclassdb["eclass"][myeclass][2][mycpv][0]):
 						# Store the new mtime before we expire the cache so we don't
 						# repeatedly regen this entry.
-						#print " regen --",myeclass,"--",mymtime,mtimedb["eclass"][myeclass][2][mycpv][1],"--",mtimedb["eclass"][myeclass][0],mtimedb["eclass"][myeclass][2][mycpv][0]
-						mtimedb["eclass"][myeclass][2][mycpv]=[mtimedb["eclass"][myeclass][0],mymtime]
+						#print " regen --",myeclass,"--",mymtime,eclassdb["eclass"][myeclass][2][mycpv][1],"--",eclassdb["eclass"][myeclass][0],eclassdb["eclass"][myeclass][2][mycpv][0]
+						eclassdb["eclass"][myeclass][2][mycpv]=[eclassdb["eclass"][myeclass][0],mymtime]
+						save_eclassdb()
 						# Expire the cache. mtimes don't match.
 						return 0
 					else:
 						# Matches
-						#print "!regen --",myeclass,"--",mymtime,mtimedb["eclass"][myeclass][2][mycpv][1],"--",mtimedb["eclass"][myeclass][0],mtimedb["eclass"][myeclass][2][mycpv][0]
+						#print "!regen --",myeclass,"--",mymtime,eclassdb["eclass"][myeclass][2][mycpv][1],"--",eclassdb["eclass"][myeclass][0],eclassdb["eclass"][myeclass][2][mycpv][0]
 						return 1
 				else:
 					# Don't have an entry... Must be new.
-					#print "*regen --",myeclass,"--",mymtime,mtimedb["eclass"][myeclass][2][mycpv][1],"--",mtimedb["eclass"][myeclass][0],mtimedb["eclass"][myeclass][2][mycpv][0]
-					mtimedb["eclass"][myeclass][2][mycpv]=[mtimedb["eclass"][myeclass][0],mymtime]
+					#print "*regen --",myeclass,"--",mymtime,eclassdb["eclass"][myeclass][2][mycpv][1],"--",eclassdb["eclass"][myeclass][0],eclassdb["eclass"][myeclass][2][mycpv][0]
+					eclassdb["eclass"][myeclass][2][mycpv]=[eclassdb["eclass"][myeclass][0],mymtime]
+					save_eclassdb()
 					return 0
 			else:
 				# We're missing some vital parts.
 				raise KeyError
 	else:
 		# Recurse without explicit eclass. (Recurse all)
-		if mycpv in mtimedb["packages"]:
-			for myeclass in mtimedb["eclass"].keys():
-				if mtimedb["eclass"][myeclass][2].has_key(mycpv):
-					if (mymtime!=mtimedb["eclass"][myeclass][2][mycpv][1]) or (mtimedb["eclass"][myeclass][0]!=mtimedb["eclass"][myeclass][2][mycpv][0]):
-						#print " regen mtime:",mymtime,mtimedb["eclass"][myeclass][2][mycpv][1],"--",mtimedb["eclass"][myeclass][0],mtimedb["eclass"][myeclass][2][mycpv][0]
+		if mycpv in eclassdb["packages"]:
+			for myeclass in eclassdb["eclass"].keys():
+				if eclassdb["eclass"][myeclass][2].has_key(mycpv):
+					if (mymtime!=eclassdb["eclass"][myeclass][2][mycpv][1]) or (eclassdb["eclass"][myeclass][0]!=eclassdb["eclass"][myeclass][2][mycpv][0]):
+						#print " regen mtime:",mymtime,eclassdb["eclass"][myeclass][2][mycpv][1],"--",eclassdb["eclass"][myeclass][0],eclassdb["eclass"][myeclass][2][mycpv][0]
 						#mtimes do not match
 						return 0
 		#print "!regen mtime"
@@ -3408,6 +3482,8 @@ class portdbapi(dbapi):
 	def __init__(self):
 		self.root=settings["PORTDIR"]
 		self.auxcache={}
+		self.loaded_caches=[]
+		self.storing_enabled=0 # Enables/Disables the auxcache pickles
 		#if the portdbapi is "frozen", then we assume that we can cache everything (that no updates to it are happening)
 		self.xcache={}
 		self.frozen=0
@@ -3459,12 +3535,34 @@ class portdbapi(dbapi):
 				sys.exit(1)
 			return ""
 		return myret,0
+
+	def flush_auxcache(self):
+		"""Clears the auxcache"""
+		# We don't clear the loaded_caches because we don't want them reloaded.
+		self.auxcache = {}
+
+	def save_auxcache(self,sa_root,blah=None):
+		if not self.storing_enabled:
+			return -1
+		for x in self.auxcache.keys():
+			if self.auxcache[x].has_key("modified"):
+				del self.auxcache[x]["modified"]
+				pickle_write(self.auxcache[x],sa_root+"/var/cache/edb/dep/"+x+".pickle")
 	
-	def aux_get(self,mycpv,mylist,strict=0,metacachedir=None):
+	def aux_get(self,mycpv,mylist,strict=0,metacachedir=None,debug=0):
 		"stub code for returning auxilliary db information, such as SLOT, DEPEND, etc."
 		'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
 		'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or raise KeyError if error'
 		global auxdbkeys,auxdbkeylen,dbcachedir
+		cat,pkg = string.split(mycpv, "/", 1)
+		if (cat not in self.loaded_caches):
+			if self.storing_enabled and not metacachedir:
+				self.auxcache[cat] = pickle_read("/var/cache/edb/dep/"+cat+".pickle",default={})
+			else:
+				self.auxcache[cat] = {}
+			self.loaded_caches += [cat]
+		elif cat not in self.auxcache.keys():
+			self.auxcache[cat] = {}
 		dmtime=0
 		emtime=0
 		doregen=0
@@ -3479,17 +3577,26 @@ class portdbapi(dbapi):
 			mymdkey=metacachedir+"/"+mycpv
 
 		#print "statusline1:",doregen,dmtime,emtime,mycpv
-		try:
+		if os.access(myebuild, os.R_OK):
 			emtime=os.stat(myebuild)[ST_MTIME]
-		except:
+		else:
 			print "!!! aux_get(): ebuild for '"+mycpv+"' does not exist at:"              
 			print "!!!            "+myebuild
 			raise KeyError
-		
+
 		# first, we take a look at the size of the ebuild/cache entry to ensure we
 		# have a valid data, then we look at the mtime of the ebuild and the
 		# cache entry to see if we need to regenerate our cache entry.
-		try:
+		auxcache_is_valid = self.auxcache[cat].has_key(pkg) and \
+		                    self.auxcache[cat][pkg].has_key("mtime") and \
+		                    self.auxcache[cat][pkg]["mtime"] == emtime
+		if auxcache_is_valid:
+			if debug > 1:
+				sys.stderr.write("auxcache is valid: "+str(auxcache_is_valid)+" "+str(pkg)+"\n")
+				sys.stderr.flush()
+			dmtime = emtime
+		elif os.access(mydbkey, os.R_OK):
+			# Don't need to setup a try, as we don't expect it to fail now.
 			mydbkeystat=os.stat(mydbkey)
 			if mydbkeystat[ST_SIZE] == 0:
 				doregen=1
@@ -3498,7 +3605,7 @@ class portdbapi(dbapi):
 				dmtime=mydbkeystat[ST_MTIME]
 				if dmtime!=emtime:
 					doregen=1
-		except OSError:
+		else:
 			doregen=1
 
 		#print "statusline2:",doregen,dmtime,emtime,mycpv
@@ -3506,8 +3613,7 @@ class portdbapi(dbapi):
 			stale=1
 			#print "doregen:",doregen,mycpv
 			if mymdkey and os.access(mymdkey, os.R_OK):
-					#sys.stderr.write("+")
-					#sys.stderr.flush()
+				if not self.storing_enabled:
 					try:
 						mydir=os.path.dirname(mydbkey)
 						if not os.path.exists(mydir):
@@ -3518,44 +3624,59 @@ class portdbapi(dbapi):
 					except Exception,e:
 						print "!!! Unable to copy '"+mymdkey+"' to '"+mydbkey+"'"
 						print "!!!",e
+				else:
+					usingmdcache=1
+					dmtime=emtime
 			else:
+				if debug:
+					sys.stderr.write("Generating cache entry(0) for: "+str(myebuild)+"\n")
+					sys.stderr.flush()
 				if doebuild(myebuild,"depend","/"):
 					#depend returned non-zero exit code...
 					sys.stderr.write(str(red("\naux_get():")+" (0) Error in "+mycpv+" ebuild.\n"
              "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
 					raise KeyError
 
-			doregen2=1
-			dmtime=0
-			try:
-				os.utime(mydbkey,(emtime,emtime))
-				mydbkeystat=os.stat(mydbkey)
-				if mydbkeystat[ST_SIZE] == 0:
-					#print "!!! <-- Size == 0 -->"
+				try:
+					os.utime(mydbkey,(emtime,emtime))
+					mydbkeystat=os.stat(mydbkey)
+					if mydbkeystat[ST_SIZE] == 0:
+						if debug:
+							sys.stderr.write("File size zero: "+str(mydbkey)+"\n")
+							sys.stderr.flush()
+						doregen2=5
+					else:
+						#print "!!! <-- Size != 0 -->"
+						dmtime=mydbkeystat[ST_MTIME]
+						doregen2=0
+				except OSError:
+					if debug:
+						sys.stderr.write("Failed to create depend file: "+str(mydbkey)+"\n")
+						sys.stderr.flush()
+					doregen2=6
 					pass
-				else:
-					#print "!!! <-- Size != 0 -->"
-					dmtime=mydbkeystat[ST_MTIME]
-					doregen2=0
-			except OSError:
-				#print "doregen1 failed."
-				pass
 			
 		#print "--doregen"
 		#Now, our cache entry is possibly regenerated.  It could be up-to-date, but it may not be...
 		#If we regenerated the cache entry or we don't have an internal cache entry or or cache entry
 		#is stale, then we need to read in the new cache entry.
 
-		#print "statusline3:",doregen,dmtime,emtime,mycpv
-		if not (self.auxcache.has_key(mycpv) and \
-		        self.auxcache[mycpv].has_key("mtime") and \
-		        self.auxcache[mycpv]["mtime"] == dmtime):
+		#print "statusline3:",doregen,dmtime,emtime,mycpv,usingmdcache
+		if usingmdcache or \
+		   not (self.auxcache[cat].has_key(pkg) and \
+		        self.auxcache[cat][pkg].has_key("mtime") and \
+		        self.auxcache[cat][pkg]["mtime"] == dmtime):
 			#print "stale auxcache"
 			stale=1
 
+			if self.storing_enabled and usingmdcache:
+				mdfile=mymdkey
+			else:
+				mdfile=mydbkey
+
 			try:
 				#print "grab cent"
-				mycent=open(mydbkey,"r")
+				mycent=open(mdfile,"r")
 				mylines=mycent.readlines()
 				mycent.close()
 			except (IOError, OSError):
@@ -3571,7 +3692,7 @@ class portdbapi(dbapi):
 				print "no mylines"
 				pass
 			elif doregen2 or len(mylines)<len(auxdbkeys):
-				doregen2=1
+				doregen2=10
 				#print "too few auxdbkeys / invalid generation"
 			elif mylines[auxdbkeys.index("INHERITED")]!="\n":
 				#print "inherits"
@@ -3579,19 +3700,20 @@ class portdbapi(dbapi):
 				#eclass() -> Loads, checks, and returns 1 if it's current.
 				myeclasses=mylines[auxdbkeys.index("INHERITED")].split()
 				#print "))) 002"
+				doregen2=0
 				for myeclass in myeclasses:
 					myret=eclass(myeclass,mycpv,dmtime)
 					#print "eclass '",myeclass,"':",myret,doregen,doregen2
 					if myret==None:
 						# eclass is missing... We'll die if it doesn't get fixed on regen
-						doregen2=1
+						doregen2=15
 						break
 					if myret==0 and not usingmdcache:
 						#print "((( 002 0"
 						#we set doregen2 to regenerate this entry in case it was fixed
 						#in the ebuild/eclass since the cache entry was created.
 						#print "Old cache entry. Regen."
-						doregen2=1
+						doregen2=20
 						break
 
 			#print "doregen2: pre"
@@ -3609,6 +3731,9 @@ class portdbapi(dbapi):
 				except:
 					pass
 			
+				if debug:
+					sys.stderr.write("Generating cache entry(2) for: "+str(myebuild)+"\n")
+					sys.stderr.flush()
 				if doebuild(myebuild,"depend","/"):
 					#depend returned non-zero exit code...
 					sys.stderr.write(str(red("\naux_get():")+" (2) Error in "+mycpv+" ebuild.\n"
@@ -3631,13 +3756,18 @@ class portdbapi(dbapi):
 				# we need to update our internal dictionary....
 				try:
 					# Set the dep entry to the ebuilds mtime.
-					self.auxcache[mycpv]={"mtime": emtime}
+					self.auxcache[cat]["modified"]=1
+					self.auxcache[cat][pkg]={"mtime": emtime}
 					myeclasses=mylines[auxdbkeys.index("INHERITED")].split()
 				except Exception, e:
 					print red("\n\naux_get():")+" stale entry was not regenerated for"
 					print "           "+mycpv+"; deleting and exiting."
 					print "!!!",e
-					os.unlink(mydbkey)
+					if os.access(mydbkey, os.W_OK):
+						os.unlink(mydbkey)
+					else:
+						sys.stderr.write("!!! Cannot delete dbkey: "+str(mydbkey)+"\n")
+						sys.stderr.flush()
 					sys.exit(1)
 				for myeclass in myeclasses:
 					if eclass(myeclass,mycpv,emtime)==None:
@@ -3647,7 +3777,8 @@ class portdbapi(dbapi):
 						sys.exit(1)
 				try:
 					for x in range(0,len(auxdbkeys)):
-						self.auxcache[mycpv][auxdbkeys[x]]=mylines[x][:-1]
+						self.auxcache[cat]["modified"]=1
+						self.auxcache[cat][pkg][auxdbkeys[x]]=mylines[x][:-1]
 				except IndexError:
 					print red("\n\naux_get():")+" error processing",auxdbkeys[x],"for",mycpv
 					print "           Expiring the cache entry and exiting."
@@ -3656,8 +3787,8 @@ class portdbapi(dbapi):
 		#finally, we look at our internal cache entry and return the requested data.
 		returnme=[]
 		for x in mylist:
-			if self.auxcache[mycpv].has_key(x):
-				returnme.append(self.auxcache[mycpv][x])
+			if self.auxcache[cat][pkg].has_key(x):
+				returnme.append(self.auxcache[cat][pkg][x])
 			else:
 				returnme.append("")
 		return returnme
@@ -3883,9 +4014,11 @@ class binarytree(packagetree):
 			mycpsplit=catpkgsplit(mycpv)
 			mynewcpv=newcp+"-"+mycpsplit[2]
 			mynewcat=newcp.split("/")[0]
+			mynewpkg=mynewcpv.split("/")[1]
+			myoldpkg=mycpv.split("/")[1]
 			if mycpsplit[3]!="r0":
 				mynewcpv += "-"+mycpsplit[3]
-			if os.path.exists(self.getname(mynewcpv)):
+			if (mynewpkg != myoldpkg) and os.path.exists(self.getname(mynewcpv)):
 				sys.stderr.write("!!! Cannot update binary: Destination exists.\n")
 				sys.stderr.write("!!! "+mycpv+" -> "+mynewcpv+"\n")
 				continue
@@ -3918,7 +4051,8 @@ class binarytree(packagetree):
 			mytbz2.recompose(mytmpdir, cleanup=1)
 			
 			self.dbapi.cpv_remove(mycpv)
-			os.rename(tbz2path,self.getname(mynewcpv))
+			if (mynewpkg != myoldpkg):
+				os.rename(tbz2path,self.getname(mynewcpv))
 			self.dbapi.cpv_inject(mynewcpv)
 		return 1
 
@@ -4048,8 +4182,7 @@ class binarytree(packagetree):
 		if self.isremote(pkgname):
 			return string.split(self.remotepkgs[mysplit[1]+".tbz2"]["USE"][:])
 		tbz2=xpak.tbz2(self.getname(pkgname))
-		return tbz2.getfile("USE")
-			
+		return string.split(tbz2.getfile("USE"))
 	
 	def gettbz2(self,pkgname):
 		"fetches the package from a remote site, if necessary."
@@ -4191,6 +4324,9 @@ class dblink:
 		return (protected > masked)
 
 	def unmerge(self,pkgfiles=None,trimworld=1):
+		global dircache
+		dircache={}
+		
 		if not pkgfiles:
 			print "No package files given... Grabbing a set."
 			pkgfiles=self.getcontents()
@@ -4882,7 +5018,7 @@ def pkgmerge(mytbz2,myroot):
 	origdir=getcwd()
 	os.chdir(pkgloc)
 	print ">>> extracting",mypkg
-	notok=spawn("bzip2 -dc "+mytbz2+" | tar xpf -",free=1)
+	notok=spawn("bzip2 -dqc "+mytbz2+" | tar xpf -",free=1)
 	if notok:
 		print "!!! Error extracting",mytbz2
 		cleanup_pkgmerge(mypkg,origdir)
@@ -5026,8 +5162,8 @@ def flushmtimedb(record):
 #grab mtimes for eclasses and upgrades
 mtimedb={}
 mtimedbkeys=[
-"updates", "eclass",  "packages",
-"info",    "version", "starttime",
+"updates", "info",
+"version", "starttime",
 "resume"
 ]
 mtimedbfile=root+"var/cache/edb/mtimedb"
@@ -5042,10 +5178,7 @@ try:
 		del mtimedb["cur"]
 except:
 	#print "!!!",e
-	mtimedb={"updates":{},"eclass":{},"packages":[],"version":"","starttime":0}
-if mtimedb.has_key("version") and mtimedb["version"]!=VERSION:
-	flushmtimedb("packages")
-	flushmtimedb("eclass")
+	mtimedb={"updates":{},"version":"","starttime":0}
 
 for x in mtimedb.keys():
 	if x not in mtimedbkeys:
@@ -5120,8 +5253,12 @@ def do_upgrade(mykey):
 def portageexit():
 	global uid,portage_gid,portdb
 	if secpass and not os.environ.has_key("SANDBOX_ACTIVE"):
+		save_eclassdb(forced=1)
+		for x in db.keys():
+			if db[x].has_key("porttree"):
+				db[x]["porttree"].dbapi.save_auxcache(x)
 		if mtimedb:
-  	 	# Store mtimedb
+		# Store mtimedb
 			mymfn=mtimedbfile
 			try:
 				mtimedb["version"]=VERSION
@@ -5142,7 +5279,12 @@ if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
 		if not mtimedb.has_key("updates"):
 			mtimedb["updates"]={}
 		try:
-			for myfile in listdir(updpath,EmptyOnError=1):
+			mylist=listdir(updpath,EmptyOnError=1)
+			# resort the list
+			mylist=[myfile[3:]+"-"+myfile[:2] for myfile in mylist]
+			mylist.sort()
+			mylist=[myfile[5:]+"-"+myfile[:4] for myfile in mylist]
+			for myfile in mylist:
 				mykey=updpath+"/"+myfile
 				if not os.path.isfile(mykey):
 					continue
@@ -5171,7 +5313,7 @@ if overlays:
 	portdb.overlays = overlays[:]
 	for ov in overlays:
 		if not os.path.isdir(ov):
-			sys.stderr.write(red("!!! Invalid PORTDIR_OVERLAY entry removed: "+ov+"\n"))
+			sys.stderr.write(red("!!! Invalid PORTDIR_OVERLAY (not a dir): "+ov+"\n"))
 			portdb.overlays.remove(ov)
 	os.environ["PORTDIR_OVERLAY"] = string.join(portdb.overlays)
 	settings["PORTDIR_OVERLAY"] = string.join(portdb.overlays)
@@ -5253,9 +5395,53 @@ archlist=[]
 for myarch in grabfile(settings["PORTDIR"]+"/profiles/arch.list"):
 	archlist += [myarch,"~"+myarch]
 for group in groups:
-	if group not in archlist:
-		sys.stderr.write("\n"+red("!!! INVALID ACCEPT_KEYWORD: ")+str(group)+"\n")
+	if (group not in archlist) and group[0]!='-':
+		sys.stderr.write("\n"+red("!!! INVALID ACCEPT_KEYWORDS: ")+str(group)+"\n")
 
 # Clear the cache that we probably won't need anymore.
 dircache={}
+
+def pickle_write(data,filename,debug=0):
+	import cPickle
+	try:
+		myf=open(filename,"w")
+		cPickle.dump(data,myf)
+		myf.flush()
+		myf.close()
+		if debug:
+			sys.stderr.write("Wrote pickle: "+str(filename)+"\n")
+			sys.stderr.flush()
+		os.chown(myefn,uid,portage_gid)
+		os.chmod(myefn,0664)
+	except Exception, e:
+		return 0
+	return 1
+
+def pickle_read(filename,default=None,debug=0):
+	import cPickle,os
+	if not os.access(filename, os.R_OK):
+		if debug:
+			sys.stderr.write("pickle_read(): File not readable. '"+filename+"'\n")
+			sys.stderr.flush()
+		return default
+	data = None
+	try:
+		myf = open(filename)
+		mypickle = cPickle.Unpickler(myf)
+		mypickle.find_global = None
+		data = mypickle.load()
+		myf.close()
+		del mypickle,myf
+		if debug:
+			sys.stderr.write("pickle_read(): Loaded pickle. '"+filename+"'\n")
+			sys.stderr.flush()
+	except Exception, e:
+		if debug:
+			sys.stderr.write("!!! Failed to load pickle: "+str(e)+"\n")
+			sys.stderr.flush()
+		data = default
+	return data
+
+
+
 

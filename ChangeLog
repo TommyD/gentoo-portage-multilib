@@ -2,6 +2,60 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+*portage-2.0.49-r7 (26 Sep 2003): Binary package fixes + spacing issues.
+
+  26 Sep 2003; Nicholas Jones <carpaski@gentoo.org> emerge.sh: Spacing fixes
+  for tab/space mixes. glob fix for getgccversion().
+  
+  26 Sep 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Fix for binary
+  use flag tb.
+
+  26 Sep 2003; Nicholas Jones <carpaski@gentoo.org> xpak.py: Fix for scan()
+  tb when file is invalid or shorter than XPAK header length.
+
+*portage-2.0.49-r6 (23 Sep 2003): SELinux, DistCC, and pretend output fixes.
+
+  23 Sep 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: selinux context
+  fixes -- using ${T} now. DISTCC_DIR added by default and given an addwrite.
+  
+  23 Sep 2003; Nicholas Jones <carpaski@gentoo.org> emerge: gccversion() added
+  to help distcc and the version checking calls that break distcc permissions.
+  Fix for create() and the useflag passing from binary packages. When using
+  pkgs, is_newer_ver_installed() no longer trashes ebuild names. Don't look
+  for fetch restrictions with binary packages. Included a modified patch that
+  shows only in-slot versions for packages during pretend output -- In-slot
+  now shows up exactly as a single-slot package would -- New slots show up
+  as new packages -- proper output. Killed debug for everything except regen
+  which now shows the deps being regenerated. Fixed regen to ignore keywords
+  just like sync does already... should fix a few missing cache entry problems
+  on rsync1 and speed up sync times all around.
+  
+  23 Sep 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Additions for
+  distcc support.
+  
+
+*portage-2.0.49-r5 (19 Sep 2003): Fixes
+
+  19 Sep 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Make
+  DISTCC_DIR set if not defined.
+  
+  19 Sep 2003; Nicholas Jones <carpaski@gentoo.org> emerge: Fix for -U
+  introduced bugs with Str+None tracebacks. Mild change to log info -- Added
+  short pkgname before ebuild. Eclassdb changes and flush/save calls.
+
+  19 Sep 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Unregister
+  signal handling after receiving the signal and resend the signal we got.
+  Run depscan during env-update. Migrated eclass stuff into it's own pickle.
+  Code for moving /var/cache/edb/dep into a pickle for each category added --
+  disabled via hardcoded value presently. Removed some try blocks in favor
+  of detecting the cause of an error first -- Hopefully gives a little speed
+  up. Cache fixes and useful output added. A tbz2 moving bug where an error
+  was printed about files the destination existing already is now fixed. The
+  dircache is cleared on every unmerge now, to ensure the cache does not
+  interfere. bzip2 is spawned with the quiet flag now. Update list is sorted
+  for proper year/quarter order now. -arch isn't an invalid keywork anymore.
+  Generic pickle reading and writing functions added.
+
 *portage-2.0.49-r4 (10 Sep 2003): Fixes
 
   10 Sep 2003; Nicholas Jones <carpaski@gentoo.org> *: Added the facility

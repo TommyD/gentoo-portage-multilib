@@ -656,6 +656,9 @@ dyn_compile() {
 	[ "${LDFLAGS-unset}"     != "unset" ] && export LDFLAGS
 	[ "${ASFLAGS-unset}"     != "unset" ] && export ASFLAGS
 
+	[ "${DISTCC_DIR-unset}"  == "unset" ] && export DISTCC_DIR="${PORT_TMPDIR}/.distcc"
+	[ ! -z "${DISTCC_DIR}" ] && addwrite "${DISTCC_DIR}"
+
 	if has noauto $FEATURES &>/dev/null && [ ! -f ${BUILDDIR}/.unpacked ]; then
 		echo
 		echo "!!! We apparently haven't unpacked... This is probably not what you"
@@ -802,9 +805,13 @@ dyn_install() {
 
 	if use selinux; then
 		if [ -x /usr/sbin/setfiles ]; then
-			if [ -e ${POLICYDIR}/file_contexts/file_contexts ]; then
-				setfiles -r ${D} ${POLICYDIR}/file_contexts/file_contexts ${D}
+			if [ -f ${POLICYDIR}/file_contexts/file_contexts ]; then
+				cp -f ${POLICYDIR}/file_contexts/file_contexts ${T}
+			else
+				make -C ${POLICYDIR} FC=${T}/file_contexts ${T}/file_contexts
 			fi
+
+			/usr/sbin/setfiles -r ${D} ${T}/file_contexts ${D}
 		fi
 	fi
 
