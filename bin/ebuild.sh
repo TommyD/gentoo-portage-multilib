@@ -425,6 +425,12 @@ econf() {
 		if [ ! -z "${CBUILD}" ]; then
 			EXTRA_ECONF="--build=${CBUILD} ${EXTRA_ECONF}"
 		fi
+		
+		# if the profile defines a location to install libs to aside from default, pass it on.
+		if [ ! -z "${ECONF_LIBDIR}" ]; then
+			EXTRA_ECONF="--libdir=/usr/${ECONF_LIBDIR} ${EXTRA_ECONF}"
+		fi
+		
 		echo ./configure \
 			--prefix=/usr \
 			--host=${CHOST} \
