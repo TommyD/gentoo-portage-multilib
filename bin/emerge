@@ -371,8 +371,12 @@ if ("--debug" in myopts):
 if "inject" == myaction:
 	print
 	print red("*** --inject has been deprecated.")
-	print red("*** Please add package to /etc/portage/profile/package.provided")
-	print red("*** using its full name (eg foo/bar-1.0) instead.")
+	print red("*** If you manage a piece of software yourself, add it's name and")
+	print red("*** version (eg foo/bar-1.0) to /etc/portage/profile/package.provided.")
+	print red("*** If you want to prevent portage from upgrading a package, add it to")
+	print red("*** /etc/portage/package.mask prepending it with '>' (eg >foo/bar-1.0)")
+	print red("*** For more information on fine-grained portage control, please see")
+	print red("*** the portage man page.")
 	print
 
 def emergelog(mystr,short_msg=None):
