@@ -1,6 +1,20 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  29 Apr 2002; Daniel Robbins <drobbins@gentoo.org> ebuild.sh: added jnelson's
+  KV_extract.awk script which extracts the kernel version from the actual
+  kernel sources Makefile, making our KV setting much more robust!  Thanks Jon
+  :)
+  
+  29 Apr 2002; Daniel Robbins <drobbins@gentoo.org> emerge: correctly fixed
+  emerge search examples to use single quotes (to turn off globbing.)  This
+  closes bug #1609.
+
+  29 Apr 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: virtual entries
+  for no-longer-installed packages now get automatically removed on unmerge.
+  This closes bug #2255 and #1891 (Thilo Bangert's comment on #1891 is also
+  fixed.)
+
 *portage-1.9.4 (29 Apr 2002)
 
   29 Apr 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: Added support

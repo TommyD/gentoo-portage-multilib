@@ -1068,7 +1068,7 @@ elif "--help" in myopts:
 		print "              * world "
 		print "              * system "
 		print "              * /var/db/pkg/category/package-version, or"
-		print "              * dependency specification."
+		print "              * 'dependency specification' (in single quotes is best.)"
 		print "              Here are a few examples of the dependency specification format:"
 		print "              "+bold("binutils")+" matches"
 		print "                  binutils-2.11.90.0.7 and binutils-2.11.92.0.12.3-r1"
@@ -1106,12 +1106,12 @@ elif "--help" in myopts:
 		print "              searches for matches of the supplied string in the current local"
 		print "              portage tree. The search string is a regular expression."
 		print "              A few examples: "
-		print "              "+bold("emerge search \"^kde\"")
+		print "              "+bold("emerge search '^kde'")
 		print "                  list all packages starting with kde"
-		print "              "+bold("emerge search \"gcc$\"")
+		print "              "+bold("emerge search 'gcc$'")
 		print "                  list all packages ending with gcc"
-		print "              "+bold("emerge search \"\"")+" or"
-		print "              "+bold("emerge search \"*\"")
+		print "              "+bold("emerge search ''")+" or"
+		print "              "+bold("emerge search '.*'")
 		print "                  list all available packages "
 		print
 		print turquoise("Options:")

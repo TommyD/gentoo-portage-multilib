@@ -702,15 +702,12 @@ newdepend() {
 # --- functions end, main part begins ---
 
 #grab currently-installed kernel symlink version and set KV
-KV="`readlink ${ROOT}usr/src/linux 2>/dev/null`"
-if [ $? -ne 0 ]
+if [ ! -e /usr/src/linux/Makefile ]
 then
 	KV=""
+else
+	KV=`awk -f /usr/lib/portage/bin/KV_extract.awk /usr/src/linux/Makefile`
 fi
-# get the basename
-KV=${KV##*/}
-# isolate the version number
-KV="${KV/linux-/}"
 
 source ${EBUILD} 
 if [ $? -ne 0 ]

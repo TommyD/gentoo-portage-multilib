@@ -46,7 +46,7 @@
 #whole enchilada. (generally, I prefer this approach, though for runtime-only systems
 #subpackages make a lot of sense).
 
-VERSION="1.9.3"
+VERSION="1.9.4"
 
 import string,os
 from stat import *
@@ -1776,7 +1776,7 @@ class packagetree:
 				del self.tree[mykey][x]
 			x=x+1
 		if len(self.tree[mykey])==0:
-			del self.tree[mykey]
+			self.tree[mykey]=[]
 
 	def inject(self,mycatpkg):
 		"add a specific catpkg to the deptree"
@@ -2724,10 +2724,19 @@ class dblink:
 			elif pkgfiles[obj][0]=="dev":
 				print "---	 ","dev",obj
 
-		#remove provides -- We don't do this anymore (drobbins, 28 Mar 2002)
-		#reasoning is that just unmerging postfix doesn't mean that you don't want virtual/mta
-		#to continue to map to postfix.  if you want to change your mapping, unmerge postfix,
-		#merge your new mta.  Then you'll have a new virtual/mta mapping.
+		#remove self from vartree database so that our own virtual gets zapped if we're the last node
+		db[self.myroot]["vartree"].zap(self.cat+"/"+self.pkg)
+		#remove stale virtual entries (mappings for packages that no longer exist)
+		newvirts={}
+		myvirts=grabdict(self.myroot+"var/cache/edb/virtuals")
+		for myvirt in myvirts.keys():
+			newvirts[myvirt]=[]
+			for mykey in myvirts[myvirt]:
+				if db[self.myroot]["vartree"].hasnode(mykey):
+					newvirts[myvirt].append(mykey)
+			if newvirts[myvirt]==[]:
+				del newvirts[myvirt]
+		writedict(newvirts,self.myroot+"var/cache/edb/virtuals")
 		
 		#do original postrm
 		a=doebuild(self.dbdir+"/"+self.pkg+".ebuild","postrm",self.myroot)
