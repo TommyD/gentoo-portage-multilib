@@ -3,6 +3,11 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
+SANDBOX_PREDICT="${SANDBOX_PREDICT}:/proc/self/maps"
+SANDBOX_WRITE="${SANDBOX_WRITE}:/dev/shm"
+SANDBOX_READ="${SANDBOX_READ}:/dev/shm"
+
+
 if [ "$*" != "depend" ] && [ "$*" != "clean" ]; then
 	if [ -f "${T}/successful" ]; then
 		rm -f "${T}/successful"

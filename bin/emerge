@@ -2098,6 +2098,11 @@ elif "info"==myaction:
 		else:
 			print "[disabled]"
 
+	ac_vers = string.join(portage.db["/"]["vartree"].dbapi.match("sys-devel/autoconf"), ",")
+	am_vers = string.join(portage.db["/"]["vartree"].dbapi.match("sys-devel/automake"), ",")
+	print "Autoconf: " + ac_vers
+	print "Automake: " + am_vers
+	
 	if "--verbose" in myopts:
 		myvars=portage.settings.keys()
 	else:

@@ -2,6 +2,19 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+*portage-2.0.50_pre8 (24 Dec 2003): API change + enhancements
+
+  22 Dec 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Added
+  /proc/self/maps to SANDBOX_PREDICT, and /dev/shm to read/write.
+  
+  22 Dec 2003; Nicholas Jones <carpaski@gentoo.org> emerge: Added automake
+  and autoconf versions to the output of emerge info.
+
+  22 Dec 2003; Nicholas Jones <carpaski@gentoo.org> etc-update: Added
+  edit merged file option -- defaults to EDITOR var or "nano -w".
+
+  22 Dec 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Use
+  os.uname instead of calling out to uname which might not exist.
 
 *portage-2.0.50_pre7 (22 Dec 2003): API change + enhancements
 

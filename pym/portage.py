@@ -1891,7 +1891,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0):
 			mysettings["KV"]=""
 
 	if (mydo!="depend") or not mysettings.has_key("KVERS"):
-		myso=getstatusoutput("uname -r")
+		myso=os.uname()[2]
 		mysettings["KVERS"]=myso[1]
 
 	# get possible slot information from the deps file

@@ -1,7 +1,6 @@
 # getbinpkg.py -- Portage binary-package helper functions
 # Copyright 2003 Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
-# Author: Nicholas Jones <carpaski@gentoo.org>
 # $Id$
 
 from output import *
