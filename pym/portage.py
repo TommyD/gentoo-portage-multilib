@@ -625,7 +625,7 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 		settings["PVR"]=mysplit[1]
 	else:
 		settings["PVR"]=mysplit[1]+"-"+mysplit[2]
-	settings["SLOT"]=settings["PV"]
+	settings["SLOT"]=""
 	if settings.has_key("PATH"):
 		mysplit=string.split(settings["PATH"],":")
 	else:

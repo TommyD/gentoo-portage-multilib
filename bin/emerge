@@ -945,6 +945,20 @@ elif "--clean"==myaction:
 							else:
 								full_package_paths[full_path]=package
 
+		# remove packages with the null slot from slots functionality
+		if len(full_package_paths) > 0:
+			if "--slots" in myopts:
+				for full_path in full_package_paths.keys():
+					slot_path=dirname(full_path)+"/SLOT"
+					if os.path.exists(slot_path):
+						slot_file=open(slot_path)
+						package_slot=slot_file.readline().strip()
+						slot_file.close()
+						if package_slot=='':
+							del full_package_paths[full_path]
+					else:
+						del full_package_paths[full_path]
+		
 		# if the --all switch was not specified, remove the latest version of each package set
 		# to make sure that the system stays running
 		if not "--all" in myopts:
