@@ -1065,11 +1065,23 @@ def movefile(src,dest):
 		try:
 			os.unlink(dest)
 		except:
+			print "!!! Error unlinking"
 			return 0
-		a=getstatusoutput("/sbin/sln '"+mytarget+"' '"+dest+"'")
-		#restore permissions
-		os.chmod(dest,mylstat[ST_MODE])
-		os.chown(dest,mylstat[ST_UID],mylstat[ST_GID])
+		try:
+			os.symlink(mytarget,dest)
+		except:
+			print "!!! Error creating symlink"
+			return 0
+		try:
+			os.chmod(dest,mylstat[ST_MODE])
+		except:
+			print "!!! Error doing chmod"
+			return 0
+		try:
+			os.chown(dest,mylstat[ST_UID],mylstat[ST_GID])
+		except:
+			print "!!! Error doing chown"
+			return 0
 	return not a[0]
 
 def getmtime(x):
