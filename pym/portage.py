@@ -1054,35 +1054,58 @@ def expandpath(realroot,mypath):
 def movefile(src,dest):
 	"""moves a file from src to dest, preserving all permissions and attributes; mtime will
 	be preserved even when moving across filesystems.  Returns true on success and false on
-	failure."""
-	a=getstatusoutput("/bin/mv -f "+"'"+src+"' '"+dest+"'")	
-	if a[0]!=0 and os.path.islink(src) and os.path.exists("/sbin/sln"):
-		print ">>> /sbin/sln fallback mode..."
-		#fallback mode: if we're dealing with symlinks, use sln to create our symlink
-		#NOTE: we need to preserve permissions....
-		mytarget=os.readlink(src)
-		mylstat=os.lstat(src)
+	failure.  Move is atomic."""
+	try:
+		dstat=os.lstat(dest)
+		destexists=1
+	except:
+		#stat the directory for same-filesystem testing purposes
+		dstat=os.lstat(os.path.dirname(dest))
+		destexists=0
+	sstat=os.lstat(src)
+	if not destexists:
+		if sstat[ST_DEV]==dstat[ST_DEV]:
+			try:
+				os.rename(src,dest)
+				return 1
+			except:
+				return 0
+		else:
+			#not on same fs
+			try:
+				shutil.copy2(src,dest)
+				os.unlink(src)
+				return 1
+			except:
+				#copy failure
+				return 0
+	try:
+		os.link(dest,dest+"#orig#")
+	except:
+		#backup failure
+		return 0
+	if sstat[ST_DEV]==dstat[ST_DEV]:
 		try:
-			os.unlink(dest)
+			os.rename(src,dest+"#new#")
 		except:
-			print "!!! Error unlinking"
 			return 0
+	else:
+		#not on same fs
 		try:
-			os.symlink(mytarget,dest)
+			shutil.copy2(src,dest+"#new#")
+			os.unlink(src)
 		except:
-			print "!!! Error creating symlink"
+			#copy failure
 			return 0
-		try:
-			os.chmod(dest,mylstat[ST_MODE])
-		except:
-			print "!!! Error doing chmod"
-			return 0
-		try:
-			os.chown(dest,mylstat[ST_UID],mylstat[ST_GID])
-		except:
-			print "!!! Error doing chown"
-			return 0
-	return not a[0]
+	try:
+		os.rename(dest+"#new#",dest)
+	except:
+		return 0
+	try:
+		os.unlink(dest+"#orig#")
+	except:
+		pass
+	return 1
 
 def getmtime(x):
 	 return `os.lstat(x)[-2]`

@@ -1,6 +1,18 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-1.8.9.3 (31 Mar 2002)
+
+  31 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: promising
+  rewrite of movefile() not only will probably fix glibc merge bug but also
+  speeds up merging at least 20x!  Calling "mv" for every file really make
+  things super-slow!
+
+*portage-1.8.9.2 (31 Mar 2002)
+
+  31 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: desperate attempt
+  to fix movefile() bug... a hack really.  glibc merges still dying.
+
 *portage-1.8.9.1 (31 Mar 2002)
 
   31 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: it appears that
