@@ -111,6 +111,13 @@ class SignatureException(PortageException):
 	def __str__(self):
 		return repr(self.value)
 
+class DigestException(SignatureException):
+	"""A problem exists in the digest"""
+	def __init__(self,value):
+		self.value = value[:]
+	def __str__(self):
+		return repr(self.value)
+
 class MissingSignature(SignatureException):
 	"""Signature was not present in the checked file"""
 	def __init__(self,value):

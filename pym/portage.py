@@ -71,9 +71,8 @@ try:
 	import re,pwd,grp,commands
 	import shlex,shutil
 
-	from stat import *
-	from commands import *
-	from select import *
+	import stat
+	import commands
 	from time import sleep
 	from random import shuffle
 except Exception, e:
@@ -102,8 +101,14 @@ try:
 	import xpak
 	import getbinpkg
 	import portage_dep
+
+	# XXX: This needs to get cleaned up.
+	# XXX: Output's color handling is mildly broken is a few cases.
 	from output import *
-	from portage_data import *
+
+	from portage_data import ostype, lchown, userland, secpass, uid, wheelgid, \
+	                         portage_uid, portage_gid
+	
 	import portage_util
 	from portage_util import grab_multiple, grabdict, grabdict_package, grabfile, grabints, map_dictlist_vals, \
 		pickle_read, pickle_write, stack_dictlist, stack_dicts, stack_lists, unique_array, varexpand, \
@@ -133,8 +138,20 @@ except Exception, e:
 # ===========================================================================
 
 
+def exithandler(signum,frame):
+	"""Handles ^C interrupts in a sane manner"""
+	signal.signal(signal.SIGINT, signal.SIG_IGN)
+	signal.signal(signal.SIGTERM, signal.SIG_IGN)
+
+	# 0=send to *everybody* in process group
+	portageexit()
+	print "Exiting due to signal"
+	os.kill(0,signum)
+	sys.exit(1)
 
 signal.signal(signal.SIGCHLD, signal.SIG_DFL)
+signal.signal(signal.SIGINT, exithandler)
+signal.signal(signal.SIGTERM, exithandler)
 
 def load_mod(name):
 	modname = string.join(string.split(name,".")[:-1],".")
@@ -221,8 +238,8 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError):
 		cached_mtime, list, ftype = -1, [], []
 	try:
 		pathstat = os.stat(mypath)
-		if S_ISDIR(pathstat[ST_MODE]):
-			mtime = pathstat[ST_MTIME]
+		if stat.S_ISDIR(pathstat[stat.ST_MODE]):
+			mtime = pathstat[stat.ST_MTIME]
 		else:
 			raise Exception
 	except:
@@ -237,9 +254,9 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError):
 		for x in list:
 			try:
 				pathstat = os.stat(mypath+"/"+x)
-				if S_ISREG(pathstat[ST_MODE]):
+				if stat.S_ISREG(pathstat[stat.ST_MODE]):
 					ftype.append(0)
-				elif S_ISDIR(pathstat[ST_MODE]):
+				elif stat.S_ISDIR(pathstat[stat.ST_MODE]):
 					ftype.append(1)
 				else:
 					ftype.append(2)
@@ -308,16 +325,6 @@ def listdir (mypath,
 
 starttime=long(time.time())
 features=[]
-
-def exithandler(signum,frame):
-	"""Handles ^C interrupts in a sane manner"""
-	global features,secpass
-	# 0=send to *everybody* in process group
-	portageexit()
-	atexit.register(None)
-	signal.signal(signum, signal.SIG_DFL)
-	os.kill(0,signum)
-	sys.exit(1)
 
 def tokenize(mystring):
 	"""breaks a string like 'foo? (bar) oni? (blah (blah))'
@@ -584,7 +591,7 @@ def env_update(makelinks=1):
 
 	for x in specials["LDPATH"]+['/usr/lib','/lib']:
 		try:
-			newldpathtime=os.stat(x)[ST_MTIME]
+			newldpathtime=os.stat(x)[stat.ST_MTIME]
 		except:
 			newldpathtime=0
 		if mtimedb["ldpath"].has_key(x):
@@ -604,9 +611,9 @@ def env_update(makelinks=1):
 		# we can safely create links.
 		writemsg(">>> Regenerating "+str(root)+"etc/ld.so.cache...\n")
 		if makelinks:
-			getstatusoutput("cd / ; /sbin/ldconfig -r "+root)
+			commands.getstatusoutput("cd / ; /sbin/ldconfig -r "+root)
 		else:
-			getstatusoutput("cd / ; /sbin/ldconfig -X -r "+root)
+			commands.getstatusoutput("cd / ; /sbin/ldconfig -X -r "+root)
 			
 	del specials["LDPATH"]
 
@@ -1488,19 +1495,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 	mydigests=None
 	digestfn=mysettings["FILESDIR"]+"/digest-"+mysettings["PF"]
 	if os.path.exists(digestfn):
-		myfile=open(digestfn,"r")
-		mylines=myfile.readlines()
-		mydigests={}
-		for x in mylines:
-			myline=string.split(x)
-			if len(myline)<4:
-				#invalid line
-				print "!!! The digest",digestfn,"appears to be corrupt.  Aborting."
-				return 0
-			try:
-				mydigests[myline[2]]={"md5":myline[1],"size":string.atol(myline[3])}
-			except ValueError:
-				print "!!! The digest",digestfn,"appears to be corrupt.  Aborting."
+		mydigests = digestParseFile(digestfn)
 
 	fsmirrors = []
 	for x in range(len(mymirrors)-1,-1,-1):
@@ -1613,9 +1608,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					raise oe
 	
 		# writable by portage_gid?  This is specific to root, adjust perms if needed automatically.
-		if not S_IMODE(mystat.st_mode) & 020:
+		if not stat.S_IMODE(mystat.st_mode) & 020:
 			try:
-				os.chmod(mysettings["DISTDIR"],S_IMODE(mystat.st_mode) | 020)
+				os.chmod(mysettings["DISTDIR"],stat.S_IMODE(mystat.st_mode) | 020)
 			except OSError, oe:
 				if oe.errno == 1:
 					print red("!!!")+" Unable to chmod %s to perms 0755.  Non-root users will experience issues.\n" % mysettings["DISTDIR"]
@@ -1671,7 +1666,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				mystat=os.stat(mysettings["DISTDIR"]+"/"+myfile)
 				if mydigests!=None and mydigests.has_key(myfile):
 					#if we have the digest file, we know the final size and can resume the download.
-					if mystat[ST_SIZE]<mydigests[myfile]["size"]:
+					if mystat[stat.ST_SIZE]<mydigests[myfile]["size"]:
 						fetched=1
 					else:
 						#we already have it downloaded, skip.
@@ -1680,13 +1675,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							fetched=2
 						else:
 							# Check md5sum's at each fetch for fetchonly.
-							mymd5=portage_checksum.perform_md5(mysettings["DISTDIR"]+"/"+myfile)
-							if mymd5 != mydigests[myfile]["md5"]:
-								writemsg("!!! Previously fetched file: "+str(myfile)+" MD5 FAILED! Refetching...\n")
+							verified_ok,reason = portage_checksum.verify_all(mysettings["DISTDIR"]+"/"+myfile, mydigests[myfile])
+							if not verified_ok:
+								writemsg("!!! Previously fetched file: "+str(myfile)+"\n!!! Reason: "+reason+"\nRefetching...\n\n")
 								os.unlink(mysettings["DISTDIR"]+"/"+myfile)
 								fetched=0
 							else:
-								writemsg(">>> Previously fetched file: "+str(myfile)+" MD5 ;-)\n")
+								for x_key in mydigests[myfile].keys():
+									writemsg(">>> Previously fetched file: "+str(myfile)+" "+x_key+" ;-)\n")
 								fetched=2
 								break #No need to keep looking for this file, we have it!
 				else:
@@ -1749,9 +1745,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						mystat=os.stat(mysettings["DISTDIR"]+"/"+myfile)
 						# no exception?  file exists. let digestcheck() report
 						# an appropriately for size or md5 errors
-						if (mystat[ST_SIZE]<mydigests[myfile]["size"]):
+						if (mystat[stat.ST_SIZE]<mydigests[myfile]["size"]):
 							# Fetch failed... Try the next one... Kill 404 files though.
-							if (mystat[ST_SIZE]<100000) and (len(myfile)>4) and not ((myfile[-5:]==".html") or (myfile[-4:]==".htm")):
+							if (mystat[stat.ST_SIZE]<100000) and (len(myfile)>4) and not ((myfile[-5:]==".html") or (myfile[-4:]==".htm")):
 								html404=re.compile("<title>.*(not found|404).*</title>",re.I|re.M)
 								try:
 									if html404.search(open(mysettings["DISTDIR"]+"/"+myfile).read()):
@@ -1771,13 +1767,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							# file NOW, for those users who don't have a stable/continuous
 							# net connection. This way we have a chance to try to download
 							# from another mirror...
-							mymd5=portage_checksum.perform_md5(mysettings["DISTDIR"]+"/"+myfile)
-							if mymd5 != mydigests[myfile]["md5"]:
-								writemsg("!!! Fetched file: "+str(myfile)+" MD5 FAILED! Removing corrupt distfile...\n")
+							verified_ok,reason = portage_checksum.verify_all(mysettings["DISTDIR"]+"/"+myfile, mydigests[myfile])
+							if not verified_ok:
+								writemsg("!!! Fetched file: "+str(myfile)+" VERIFY FAILED!\n!!! Reason: "+reason+"\nRemoving corrupt distfile...\n")
 								os.unlink(mysettings["DISTDIR"]+"/"+myfile)
 								fetched=0
 							else:
-								writemsg(">>> "+str(myfile)+" MD5 ;-)\n")
+								for x_key in mydigests[myfile].keys():
+									writemsg(">>> "+str(myfile)+" "+x_key+" ;-)\n")
 								fetched=2
 								break
 					except (OSError,IOError),e:
@@ -1802,7 +1799,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 def digestCreate(myfiles,basedir):
 	"""Takes a list of files and the directory they are in and returns the
-	dict of dict[filename]=[md5,size]
+	dict of dict[filename][CHECKSUM_KEY] = hash
 	returns None on error."""
 	mydigests={}
 	for x in myfiles:
@@ -1812,11 +1809,28 @@ def digestCreate(myfiles,basedir):
 			print "!!! Given file does not appear to be readable. Does it exist?"
 			print "!!! File:",myfile
 			return None
-		mymd5=portage_checksum.perform_md5(myfile)
-		mysize=os.stat(myfile)[ST_SIZE]
-		mydigests[x]=[mymd5,mysize]
+		mysize = os.stat(myfile)[stat.ST_SIZE]
+		mysums = portage_checksum.perform_all(myfile)
+		mydigests[x] = mysums
+		mydigests[x]["size"] = mysize
 	return mydigests
 
+def digestCreateLines(filelist, mydict):
+	mylines = []
+	mydigests = copy.deepcopy(mydict)
+	for myarchive in filelist:
+		mysize = mydigests[myarchive]["size"]
+		del mydigests[myarchive]["size"]
+		if len(mydigests[myarchive]) == 0:
+			raise portage_exception.DigestException, "No generate digest for '%(file)s'" % {"file":myarchive}
+		for sumName in mydigests[myarchive].keys():
+			mysum = mydigests[myarchive][sumName]
+			compat_prefix="##COMPAT==>1<=="
+			myline = sumName+" "+mysum+" "+myarchive+" "+str(mysize)
+			if sumName != "MD5":
+				myline = compat_prefix + myline
+			mylines.append(myline)
+	return mylines
 
 def digestgen(myarchives,mysettings,overwrite=1,manifestonly=0):
 	"""generates digest file if missing.  Assumes all files are available.	If
@@ -1857,10 +1871,8 @@ def digestgen(myarchives,mysettings,overwrite=1,manifestonly=0):
 			print "!!! Filesystem error skipping generation. (Read-Only?)"
 			print "!!!",e
 			return 0
-		for myarchive in myarchives:
-			mymd5=mydigests[myarchive][0]
-			mysize=mydigests[myarchive][1]
-			outfile.write("MD5 "+mymd5+" "+myarchive+" "+str(mysize)+"\n")	
+		for x in digestCreateLines(myarchives, mydigests):
+			outfile.write(x+"\n")
 		outfile.close()
 		try:
 			os.chown(digestfn,os.getuid(),portage_gid)
@@ -1884,10 +1896,8 @@ def digestgen(myarchives,mysettings,overwrite=1,manifestonly=0):
 		print "!!! Filesystem error skipping generation. (Read-Only?)"
 		print "!!!",e
 		return 0
-	for mypfile in mypfiles:
-		mymd5=mydigests[mypfile][0]
-		mysize=mydigests[mypfile][1]
-		outfile.write("MD5 "+mymd5+" "+mypfile+" "+str(mysize)+"\n")	
+	for x in digestCreateLines(mypfiles, mydigests):
+		outfile.write(x+"\n")
 	outfile.close()
 	try:
 		os.chown(manifestfn,os.getuid(),portage_gid)
@@ -1924,20 +1934,31 @@ def digestParseFile(myfilename):
 	MD5 MD5_STRING_OF_HEX_CHARS FILE_NAME FILE_SIZE
 	Ignores lines that do not begin with 'MD5' and returns a
 	dict with the filenames as keys and [md5,size] as the values."""
-	try:
-		myfile=open(myfilename,"r")
-		mylines=myfile.readlines()
-	except:
+
+	if not os.path.exists(myfilename):
 		return None
+	mylines = portage_util.grabfile(myfilename, compat_level=1)
+
 	mydigests={}
 	for x in mylines:
 		myline=string.split(x)
-		if len(myline)!=4:
+		if len(myline) < 4:
 			#invalid line
 			continue
-		if myline[0]!='MD5': # Ignore non-md5 lines.
+		if myline[0] not in portage_checksum.get_valid_checksum_keys():
 			continue
-		mydigests[myline[2]]=[myline[1],myline[3]]
+		mykey  = myline.pop(0)
+		myhash = myline.pop(0)
+		mysize = long(myline.pop())
+		myfn   = string.join(myline, " ")
+		if myfn not in mydigests:
+			mydigests[myfn] = {}
+		mydigests[myfn][mykey] = myhash
+		if "size" in mydigests[myfn]:
+			if mydigests[myfn]["size"] != mysize:
+				raise portage_exception.DigestException, "Conflicting sizes in digest: %(filename)s" % {"filename":myfilename}
+		else:
+			mydigests[myfn]["size"] = mysize
 	return mydigests
 
 # XXXX strict was added here to fix a missing name error.
@@ -1962,13 +1983,13 @@ def digestCheckFiles(myfiles, mydigests, basedir, note="", strict=0):
 				print "!!! File does not exist:",myfile
 				return 0
 			continue
-		mymd5=portage_checksum.perform_md5(myfile)
-		if mymd5 != mydigests[x][0]:
+		
+		ok,reason = portage_checksum.verify_all(myfile,mydigests[x])
+		if not ok:
 			print
-			print red("!!! File is corrupt or incomplete. (Digests do not match)")
-			print green(">>> our recorded digest:"),mydigests[x][0]
-			print green(">>>  your file's digest:"),mymd5
-			print red("!!! File does not exist:"),myfile
+			print red("!!! Digest verification Failed:")
+			print red("!!!")+"    "+str(myfile)
+			print red("!!! Reason: ")+reason
 			print
 			return 0
 		else:
@@ -2280,7 +2301,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 
 		try:
 			mystat=os.stat(mysettings["CCACHE_DIR"])
-			if (mystat[ST_GID]!=portage_gid) or ((mystat[ST_MODE]&02070)!=02070):
+			if (mystat[stat.ST_GID]!=portage_gid) or ((mystat[stat.ST_MODE]&02070)!=02070):
 				print "*** Adjusting ccache permissions for portage user..."
 				os.chown(mysettings["CCACHE_DIR"],portage_uid,portage_gid)
 				os.chmod(mysettings["CCACHE_DIR"],02770)
@@ -2371,7 +2392,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 
 	try:
 		mystat=os.stat(mysettings["DISTDIR"]+"/cvs-src")
-		if ((mystat[ST_GID]!=portage_gid) or ((mystat[ST_MODE]&02770)!=02770)) and not listonly:
+		if ((mystat[stat.ST_GID]!=portage_gid) or ((mystat[stat.ST_MODE]&02770)!=02770)) and not listonly:
 			print "*** Adjusting cvs-src permissions for portage user..."
 			os.chown(mysettings["DISTDIR"]+"/cvs-src",0,portage_gid)
 			os.chmod(mysettings["DISTDIR"]+"/cvs-src",02770)
@@ -2465,28 +2486,28 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 		destexists=0
 
 	if destexists:
-		if S_ISLNK(dstat[ST_MODE]):
+		if stat.S_ISLNK(dstat[stat.ST_MODE]):
 			try:
 				os.unlink(dest)
 				destexists=0
 			except Exception, e:
 				pass
 
-	if S_ISLNK(sstat[ST_MODE]):
+	if stat.S_ISLNK(sstat[stat.ST_MODE]):
 		try:
 			target=os.readlink(src)
 			if mysettings and mysettings["D"]:
 				if target.find(mysettings["D"])==0:
 					target=target[len(mysettings["D"]):]
-			if destexists and not S_ISDIR(dstat[ST_MODE]):
+			if destexists and not stat.S_ISDIR(dstat[stat.ST_MODE]):
 				os.unlink(dest)
 			if selinux_enabled:
 				sid = selinux.get_lsid(src)
 				selinux.secure_symlink(target,dest,sid)
 			else:
 				os.symlink(target,dest)
-			lchown(dest,sstat[ST_UID],sstat[ST_GID])
-			return os.lstat(dest)[ST_MTIME]
+			lchown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
+			return os.lstat(dest)[stat.ST_MTIME]
 		except Exception, e:
 			print "!!! failed to properly create symlink:"
 			print "!!!",dest,"->",target
@@ -2494,7 +2515,7 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 			return None
 
 	renamefailed=1
-	if sstat[ST_DEV]==dstat[ST_DEV] or selinux_enabled:
+	if sstat[stat.ST_DEV]==dstat[stat.ST_DEV] or selinux_enabled:
 		try:
 			if selinux_enabled:
 				ret=selinux.secure_rename(src,dest)
@@ -2511,7 +2532,7 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 			# Invalid cross-device-link 'bind' mounted or actually Cross-Device
 	if renamefailed:
 		didcopy=0
-		if S_ISREG(sstat[ST_MODE]):
+		if stat.S_ISREG(sstat[stat.ST_MODE]):
 			try: # For safety copy then move it over.
 				if selinux_enabled:
 					selinux.secure_copy(src,dest+"#new")
@@ -2527,9 +2548,9 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 		else:
 			#we don't yet handle special, so we need to fall back to /bin/mv
 			if selinux_enabled:
-				a=getstatusoutput(MOVE_BINARY+" -c -f "+"'"+src+"' '"+dest+"'")
+				a=commands.getstatusoutput(MOVE_BINARY+" -c -f "+"'"+src+"' '"+dest+"'")
 			else:
-				a=getstatusoutput(MOVE_BINARY+" -f "+"'"+src+"' '"+dest+"'")
+				a=commands.getstatusoutput(MOVE_BINARY+" -f "+"'"+src+"' '"+dest+"'")
 				if a[0]!=0:
 					print "!!! Failed to move special file:"
 					print "!!! '"+src+"' to '"+dest+"'"
@@ -2537,8 +2558,8 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 					return None # failure
 		try:
 			if didcopy:
-				lchown(dest,sstat[ST_UID],sstat[ST_GID])
-				os.chmod(dest, S_IMODE(sstat[ST_MODE])) # Sticky is reset on chown
+				lchown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
+				os.chmod(dest, stat.S_IMODE(sstat[stat.ST_MODE])) # Sticky is reset on chown
 				os.unlink(src)
 		except Exception, e:
 			print "!!! Failed to chown/chmod/unlink in movefile()"
@@ -2549,8 +2570,8 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 	if newmtime:
 		os.utime(dest,(newmtime,newmtime))
 	else:
-		os.utime(dest, (sstat[ST_ATIME], sstat[ST_MTIME]))
-		newmtime=sstat[ST_MTIME]
+		os.utime(dest, (sstat[stat.ST_ATIME], sstat[stat.ST_MTIME]))
+		newmtime=sstat[stat.ST_MTIME]
 	return newmtime
 
 def merge(mycat,mypkg,pkgloc,infloc,myroot,mysettings,myebuild=None):
@@ -4323,7 +4344,7 @@ class vardbapi(dbapi):
 		if mysplit[0] == '*':
 			mysplit[0] = mysplit[0][1:]
 		try:
-			mystat=os.stat(self.root+VDB_PATH+"/"+mysplit[0])[ST_MTIME]
+			mystat=os.stat(self.root+VDB_PATH+"/"+mysplit[0])[stat.ST_MTIME]
 		except OSError:
 			mystat=0
 		if use_cache and self.cpcache.has_key(mycp):
@@ -4398,7 +4419,7 @@ class vardbapi(dbapi):
 				del self.matchcache[mycat]
 			return match_from_list(mydep,self.cp_list(mykey,use_cache=use_cache))
 		try:
-			curmtime=os.stat(self.root+VDB_PATH+"/"+mycat)[ST_MTIME]
+			curmtime=os.stat(self.root+VDB_PATH+"/"+mycat)[stat.ST_MTIME]
 		except:
 			curmtime=0
 
@@ -4617,7 +4638,7 @@ class eclass_cache:
 					if y[-len(".eclass"):]==".eclass":
 						try:
 							ys=y[:-len(".eclass")]
-							ymtime=os.stat(x+"/"+y)[ST_MTIME]
+							ymtime=os.stat(x+"/"+y)[stat.ST_MTIME]
 						except:
 							continue
 						self.eclasses[ys] = [x, ymtime]
@@ -4877,7 +4898,7 @@ class portdbapi(dbapi):
 			self.auxdb[mylocation][cat] = self.auxdbmodule(self.depcachedir+"/"+mylocation,cat,auxdbkeys,uid,portage_gid)
 
 		if os.access(myebuild, os.R_OK):
-			emtime=os.stat(myebuild)[ST_MTIME]
+			emtime=os.stat(myebuild)[stat.ST_MTIME]
 		else:
 			writemsg("!!! aux_get(): ebuild for '%(cpv)s' does not exist at:\n" % {"cpv":mycpv})
 			writemsg("!!!            %s\n" % myebuild)
@@ -5622,7 +5643,7 @@ class dblink:
 					#format: type, mtime, dest
 					x=len(mydat)-1
 					if (x >= 13) and (mydat[-1][-1]==')'): # Old/Broken symlink entry
-						mydat = mydat[:-10]+[mydat[-10:][ST_MTIME][:-1]]
+						mydat = mydat[:-10]+[mydat[-10:][stat.ST_MTIME][:-1]]
 						writemsg("FIXED SYMLINK LINE: %s\n" % mydat, 1)
 						x=len(mydat)-1
 					splitter=-1
@@ -5747,7 +5768,7 @@ class dblink:
 					continue
 
 				lstatobj=os.lstat(obj)
-				lmtime=str(lstatobj[ST_MTIME])
+				lmtime=str(lstatobj[stat.ST_MTIME])
 				if (pkgfiles[obj][0] not in ("dir","fif","dev","sym")) and (lmtime != pkgfiles[obj][1]):
 					print "--- !mtime", pkgfiles[obj][0], obj
 					continue
@@ -5779,7 +5800,7 @@ class dblink:
 						pass		
 					print "<<<       ","obj",obj
 				elif pkgfiles[obj][0]=="fif":
-					if not S_ISFIFO(lstatobj[ST_MODE]):
+					if not stat.S_ISFIFO(lstatobj[stat.ST_MODE]):
 						print "--- !fif  ","fif", obj
 						continue
 					try:
@@ -6202,16 +6223,16 @@ class dblink:
 				sys.exit(1)
 				
 				
-			mymode=mystat[ST_MODE]
+			mymode=mystat[stat.ST_MODE]
 			# handy variables; mydest is the target object on the live filesystems;
 			# mysrc is the source object in the temporary install dir 
 			try:
-				mydmode=os.lstat(mydest)[ST_MODE]
+				mydmode=os.lstat(mydest)[stat.ST_MODE]
 			except:
 				#dest file doesn't exist
 				mydmode=None
 			
-			if S_ISLNK(mymode):
+			if stat.S_ISLNK(mymode):
 				# we are merging a symbolic link
 				myabsto=abssymlink(mysrc)
 				if myabsto[0:len(srcroot)]==srcroot:
@@ -6227,8 +6248,8 @@ class dblink:
 				myrealto=os.path.normpath(os.path.join(destroot,myabsto))
 				if mydmode!=None:
 					#destination exists
-					if not S_ISLNK(mydmode):
-						if S_ISDIR(mydmode):
+					if not stat.S_ISLNK(mydmode):
+						if stat.S_ISDIR(mydmode):
 							# directory in the way: we can't merge a symlink over a directory
 							# we won't merge this, continue with next file...
 							continue
@@ -6255,7 +6276,7 @@ class dblink:
 					print "!!! Failed to move file."
 					print "!!!",mydest,"->",myto
 					sys.exit(1)
-			elif S_ISDIR(mymode):
+			elif stat.S_ISDIR(mymode):
 				# we are merging a directory
 				if mydmode!=None:
 					# destination exists
@@ -6268,7 +6289,7 @@ class dblink:
 						writemsg("!!! And finish by running this: env-update\n\n")
 						return 1
 
-					if S_ISLNK(mydmode) or S_ISDIR(mydmode):
+					if stat.S_ISLNK(mydmode) or stat.S_ISDIR(mydmode):
 						# a symlink to an existing directory will work for us; keep it:
 						print "---",mydest+"/"
 					else:
@@ -6299,7 +6320,7 @@ class dblink:
 				# recurse and merge this directory
 				if self.mergeme(srcroot,destroot,outfile,secondhand,offset+x+"/",cfgfiledict,thismtime):
 					return 1
-			elif S_ISREG(mymode):
+			elif stat.S_ISREG(mymode):
 				# we are merging a regular file
 				mymd5=portage_checksum.perform_md5(mysrc,calc_prelink=1)
 				# calculate config file protection stuff
@@ -6308,11 +6329,11 @@ class dblink:
 				zing="!!!"
 				if mydmode!=None:
 					# destination file exists
-					if S_ISDIR(mydmode):
+					if stat.S_ISDIR(mydmode):
 						# install of destination is blocked by an existing directory with the same name
 						moveme=0
 						print "!!!",mydest
-					elif S_ISREG(mydmode) or (S_ISLNK(mydmode) and S_ISREG(os.stat(mydest)[ST_MODE])):
+					elif stat.S_ISREG(mydmode) or (stat.S_ISLNK(mydmode) and stat.S_ISREG(os.stat(mydest)[stat.ST_MODE])):
 						cfgprot=0
 						# install of destination is blocked by an existing regular file;
 						# now, config file management may come into play.
@@ -6422,7 +6443,7 @@ class dblink:
 					# destination doesn't exist
 					if movefile(mysrc,mydest,newmtime=thismtime,sstat=mystat, mysettings=self.settings)!=None:
 						zing=">>>"
-						if S_ISFIFO(mymode):
+						if stat.S_ISFIFO(mymode):
 							# we don't record device nodes in CONTENTS,
 							# although we do merge them.
 							outfile.write("fif "+myrealdest+"\n")
@@ -6692,7 +6713,7 @@ if not os.environ.has_key("SANDBOX_ACTIVE"):
 			mystat=os.lstat(cachedir+"/dep")
 			os.chown(cachedir+"/dep",uid,portage_gid)
 			os.chmod(cachedir+"/dep",02775)
-			if mystat[ST_GID]!=portage_gid:
+			if mystat[stat.ST_GID]!=portage_gid:
 				spawn("chown -R "+str(uid)+":"+str(portage_gid)+" "+cachedir+"/dep",settings,free=1)
 				spawn("chmod -R u+rw,g+rw "+cachedir+"/dep",settings,free=1)
 		except OSError:
@@ -6833,7 +6854,7 @@ def do_upgrade(mykey):
 	
 	if processed:
 		#update our internal mtime since we processed all our directives.
-		mtimedb["updates"][mykey]=os.stat(mykey)[ST_MTIME]
+		mtimedb["updates"][mykey]=os.stat(mykey)[stat.ST_MTIME]
 	myworld=open("/"+WORLD_FILE,"w")
 	for x in worldlist:
 		myworld.write(x+"\n")
@@ -6886,7 +6907,7 @@ if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
 				if not os.path.isfile(mykey):
 					continue
 				if (not mtimedb["updates"].has_key(mykey)) or \
-					 (mtimedb["updates"][mykey] != os.stat(mykey)[ST_MTIME]) or \
+					 (mtimedb["updates"][mykey] != os.stat(mykey)[stat.ST_MTIME]) or \
 					 (settings["PORTAGE_CALLER"] == "fixpackages"):
 					didupdate=1
 					do_upgrade(mykey)

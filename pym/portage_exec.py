@@ -48,7 +48,7 @@ def spawn(mycommand,env={},opt_name=None,fd_pipes=None,returnpid=False,uid=None,
 		mycommand=mycommand.split()
 	if not os.path.exists(mycommand[0]):
 		# this sucks. badly.
-		return -13
+		return None
 	mypid=[]
 	if logfile:
 		pr,pw=os.pipe()
@@ -72,7 +72,7 @@ def spawn(mycommand,env={},opt_name=None,fd_pipes=None,returnpid=False,uid=None,
 	myargs.extend(mycommand[1:])
 	mypid.append(os.fork())
 	if mypid[-1] == 0:
-		# this may look ugly, but basically it moves file descriptors around to ensure no 
+		# this may look ugly, but basically it moves file descriptors around to ensure no
 		# handles that are needed are accidentally closed during the final dup2 calls.
 		trg_fd=[]
 		if type(fd_pipes)==types.DictType:

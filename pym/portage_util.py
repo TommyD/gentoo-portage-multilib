@@ -12,7 +12,7 @@ def writemsg(mystr,noiselevel=0):
 		sys.stderr.write(mystr)
 		sys.stderr.flush()
 
-def grabfile(myfilename):
+def grabfile(myfilename, compat_level=0):
 	"""This function grabs the lines in a file, normalizes whitespace and returns lines in a list; if a line
 	begins with a #, it is ignored, as are empty lines"""
 
@@ -30,7 +30,19 @@ def grabfile(myfilename):
 		if not len(myline):
 			continue
 		if myline[0]=="#":
-			continue
+			# Check if we have a compat-level string. BC-integration data.
+			# '##COMPAT==>N<==' 'some string attached to it'
+			mylinetest = string.split(myline, "<==", 1)
+			if len(mylinetest) == 2:
+				myline_potential = mylinetest[1]
+				mylinetest = string.split(mylinetest[0],"##COMPAT==>")
+				if len(mylinetest) == 2:
+					if compat_level >= int(mylinetest[1]):
+						# It's a compat line, and the key matches.
+						newlines.append(myline_potential)
+				continue
+			else:
+				continue
 		newlines.append(myline)
 	return newlines
 

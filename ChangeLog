@@ -7,6 +7,31 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  05 Oct 2004; Nicholas Jones <carpaski@gentoo.org> portage_util.py: grabfile
+  now handles a compat_level option for comment-based compatability changes --
+  This feautre is for migration only and is thus transitory.
+
+  05 Oct 2004; Nicholas Jones <carpaski@gentoo.org> portage_exception: Added
+  a DigestException which is a SignatureException.
+
+  05 Oct 2004; Nicholas Jones <carpaski@gentoo.org> perform_checksum.py: Added
+  a perform_all() and verify_all() functions that handle the new dict of hashes
+  that digestParse returns -- It creates hashes for all the listed/known
+  formats or verifies them all returning a tuple of ok,reason.
+
+  05 Oct 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Cleared up
+  a few system-package import-alls (stat,commands) -- If it breaks something,
+  they can fix their code -- They are standard modules. Removed the import
+  for select, as it appears nowhere in usage. Changed the portage_data import.
+  Added exithandler() back into usage, it was disabled -- Also corrected it's
+  handling. Unified the digest-parsing code and made it into an intelligable
+  dict instead of the fixed format. Merged digest functions and added SHA1
+  (arbitrary) handling in a new COMPAT mode using comments until we get the
+  handling transitioned into common usage. digestCreateLines() handles the
+  compatibility line values, and grabfile() has a compat-level handler.
+
+  05 Oct 2004; Nicholas Jones <carpaski@gentoo.org> man/*: Random touchups.
+
   04 Oct 2004; <jstubbs@gentoo.org> pym/portage.py: Added fix for config
   protection failure when destination is a symlink. #13007
 

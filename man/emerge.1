@@ -34,7 +34,8 @@ An \fIebuild\fR must be, at a minimum, a valid Portage
 package directory name without a version or category, such as
 \fBportage\fR or \fBpython\fR.
 Both categories and version numbers may be used in addition, such
-as \fBsys\-apps/portage\fR or \fB=python\-2.2.1\-r2\fR.  \fBemerge\fR
+as \fBsys\-apps/portage\fR or \fB=python\-2.2.1\-r2\fR.
+\fBemerge\fR
 ignores a trailing slash so that filename completion can be used.
 The \fIebuild\fR may also be an actual filename, such as
 \fB/usr/portage/app\-admin/python/python\-2.2.1\-r2.ebuild\fR.
@@ -57,8 +58,9 @@ commands are generally used in conjunction with \fB\-\-update\fR.
 .TP 
 .BR dependency
 A \fIdependency\fR describes bounds on a package that you wish
-to install.  For example, \fB>=dev\-lang/python\-2.2.1\-r2\fR
-matches the latest available version of Python greater than or equal
+to install. \fISee portage(5) for the details on these 'atoms'.\fR For
+example, \fB>=dev\-lang/python\-2.2.1\-r2\fR matches the latest
+available version of Python greater than or equal
 to 2.2.1\-r2.  Similarly, \fB<dev\-lang/python\-2.0\fR matches
 the latest available version of Python before 2.0.  Note that in many
 shells you will need to escape characters such as '<' and '=';
