@@ -1,4 +1,29 @@
 #!/bin/bash
+
+# disable the sandbox for now ...
+export SANDBOX_ON="0"
+
+# sandbox support functions
+addread()
+{
+	export SANDBOX_READ="$SANDBOX_READ:$1"
+}
+
+addwrite()
+{
+	export SANDBOX_WRITE="$SANDBOX_WRITE:$1"
+}
+
+adddeny()
+{
+	export SANDBOX_DENY="$SANDBOX_DENY:$1"
+}
+
+addpredict()
+{
+	export SANDBOX_PREDICT="$SANDBOX_PREDICT:$1"
+}
+
 #we need this next line for "die" and "assert"
 shopt -s expand_aliases
 source /etc/profile.env > /dev/null 2>&1
@@ -694,7 +719,25 @@ do
 		  set +x
 		fi
 	    ;;
-	unpack|compile|help|touch|clean|fetch|digest|pkginfo|pkgloc|unmerge|merge|package|install|rpm)
+	# Only enable the SandBox for these functions
+	unpack|compile|clean|install)
+		if [ ${SANDBOX_DISABLED="0"} = "0" ]
+		then
+			export SANDBOX_ON="1"
+		else
+			export SANDBOX_ON="0"
+		fi
+		if [ "$PORTAGE_DEBUG" = "0" ]
+		then
+			dyn_${myarg}
+		else
+			set -x
+			dyn_${myarg}
+			set +x
+		fi
+		export SANDBOX_ON="0"
+		;;
+	help|touch|fetch|digest|pkginfo|pkgloc|unmerge|merge|package|rpm)
 	    if [ "$PORTAGE_DEBUG" = "0" ]
 	    then
 	      dyn_${myarg}

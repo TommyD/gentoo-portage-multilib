@@ -545,11 +545,19 @@ def spawn(mystring,debug=0):
 	global settings
 	mypid=os.fork()
 	if mypid==0:
-		mycommand="/bin/bash"
-		if debug:
-			myargs["bash","-x","-c",mystring]
+		myargs=[]
+		if settings["MAINTAINER"]=="yes":
+			mycommand="/usr/lib/portage/bin/sandbox"
+			if debug:
+				myargs=["sandbox",mystring]
+			else:
+				myargs=["sandbox",mystring]
 		else:
-			myargs=["bash","-c",mystring]
+			mycommand="/bin/bash"
+			if debug:
+				myargs=["bash","-x","-c",mystring]
+			else:
+				myargs=["bash","-c",mystring]
 		os.execve(mycommand,myargs,settings.environ())
 		return
 	retval=os.waitpid(mypid,0)[1]
@@ -579,6 +587,7 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 	#PEBUILD
 	settings["FILESDIR"]=settings["O"]+"/files"
 	settings["PF"]=os.path.basename(settings["EBUILD"])[:-7]
+	settings["SANDBOX_LOG"]=settings["PF"]
 	mysplit=pkgsplit(settings["PF"],0)
 	if mysplit==None:
 		print "!!! Error: PF is null; exiting."
