@@ -7,6 +7,15 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  10 Nov 2004; Marius Mauch <genone@gentoo.org> +pym/portage_versions.py,
+  bin/db-update.py, bin/emerge, bin/fixvirtuals, bin/pkgname, bin/repoman,
+  pym/ebuild.py, pym/portage.py, pym/portage_dep.py:
+  Integrated the new version parsing and comparison code from bug #37406, moved
+  pkgsplit, catpkgsplit, pkgcmp, vercmp and ververify in portage_versions.py
+  and changed all calls to them. The new code allows for more flexible 
+  version strings, some functions probably still have to be fixed to work
+  with those new extensions.
+
   09 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/dcache.py, 
   pym/orig_dict_cache.py, portage.py:  Removed listdir optional arg
   EmptyOnError- wasn't abided by for non-recursive calls, for recursive calls

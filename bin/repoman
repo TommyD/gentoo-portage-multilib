@@ -830,7 +830,7 @@ for x in scanlist:
 			else:
 				stats["digest.missing"]=stats["digest.missing"]+1
 				fails["digest.missing"].append(x+"/files/digest-"+y)
-		myesplit=portage.pkgsplit(y)
+		myesplit=portage.portage_versions.pkgsplit(y)
 		if myesplit==None or not valid_ebuild_name(x.split("/")[0]+"/"+y):
 			stats["ebuild.invalidname"]=stats["ebuild.invalidname"]+1
 			fails["ebuild.invalidname"].append(x+"/"+y+".ebuild")

@@ -19,7 +19,7 @@ myprovides=portage.db["/"]["vartree"].get_all_provides()
 for myvirt in myprovides.keys():
 	newvirts[myvirt]=[]
 	for mycatpkg in myprovides[myvirt]:
-		mysplit=portage.catpkgsplit(mycatpkg)
+		mysplit=portage.portage_versions.catpkgsplit(mycatpkg)
 		pkg=mysplit[0]+"/"+mysplit[1]
 
 		try:

@@ -28,14 +28,14 @@ for x in sys.argv[1:]:
 	myline=myfile.readline()
 	mykey=string.join(string.split(myline))
 	if portage.isspecific(x):
-		mysplit=portage.catpkgsplit(x)
+		mysplit=portage.portage_versions.catpkgsplit(x)
 		newkey=mysplit[0]+"/"+mysplit[1]
 		origkey[newkey]=x
 		x=newkey
 	else:
 		origkey[x]=x
 	if portage.isspecific(mykey):
-		mysplit=portage.catpkgsplit(mykey)
+		mysplit=portage.portage_versions.catpkgsplit(mykey)
 		mykey=mysplit[0]+"/"+mysplit[1]
 	myvalidargs.append(x)
 	mydict[x]=mykey

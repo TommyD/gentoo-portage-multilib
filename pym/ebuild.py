@@ -11,6 +11,7 @@ import portage_const,types
 from portage_const import *
 import portage_locks, portage_util
 import portage_exec
+import portage_versions
 import shutil, anydbm
 import stat
 import string
@@ -565,7 +566,7 @@ class ebuild_handler:
 		mypv        = os.path.basename(ebuild_path)[:-7]
 		mycpv       = cat+"/"+mypv
 	
-		mysplit=portage_dep.pkgsplit(mypv,silent=0)
+		mysplit=portage_versions.pkgsplit(mypv,silent=0)
 		if mysplit==None:
 			writemsg("!!! Error: PF is null '%s'; exiting.\n" % mypv)
 			return 1

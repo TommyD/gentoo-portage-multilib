@@ -7,7 +7,7 @@
 # START OF CONSTANTS -- START OF CONSTANTS -- START OF CONSTANTS -- START OF
 # ===========================================================================
 
-VERSION="20040626"
+VERSION="20041110"
 
 INCREMENTALS=["USE","FEATURES","ACCEPT_KEYWORDS","ACCEPT_LICENSE","CONFIG_PROTECT_MASK","CONFIG_PROTECT","PRELINK_PATH","PRELINK_PATH_MASK"]
 incrementals=INCREMENTALS
@@ -69,9 +69,11 @@ try:
 	import getbinpkg
 	import portage_dep
 
+	import portage_versions
+	
 	#assign these to portage's namespace to keep the esearch monkeys happy.
-	catpkgsplit = portage_dep.catpkgsplit
-	pkgsplit = portage_dep.pkgsplit
+	portage_versions.catpkgsplit = portage_versions.catpkgsplit
+	pkgsplit = portage_versions.pkgsplit
 
 	# XXX: This needs to get cleaned up.
 	# XXX: Output's color handling is mildly broken is a few cases.
@@ -1024,7 +1026,7 @@ class config:
 
 			self.pprovideddict = {}
 			for x in pkgprovidedlines:
-				cpv=portage_dep.catpkgsplit(x)
+				cpv=portage_versions.catpkgsplit(x)
 				if not x:
 					continue
 				mycatpkg=dep_getkey(x)
@@ -2171,41 +2173,6 @@ def unmerge(cat,pkg,myroot,mysettings,mytrimworld=1):
 		mylink.unmerge(trimworld=mytrimworld,cleanup=1)
 	mylink.delete()
 
-def relparse(myver):
-	"converts last version part into three components"
-	number=0
-	suffix=0
-	endtype=0
-	endnumber=0
-	
-	mynewver=string.split(myver,"_")
-	myver=mynewver[0]
-
-	#normal number or number with letter at end
-	divider=len(myver)-1
-	if myver[divider:] not in "1234567890":
-		#letter at end
-		suffix=ord(myver[divider:])
-		number=string.atof(myver[0:divider])
-	else:
-		number=string.atof(myver)  
-
-	if len(mynewver)==2:
-		#an endversion
-		for x in endversion_keys:
-			elen=len(x)
-			if mynewver[1][:elen] == x:
-				match=1
-				endtype=endversion[x]
-				try:
-					endnumber=string.atof(mynewver[1][elen:])
-				except SystemExit, e:
-					raise
-				except:
-					endnumber=0
-				break
-	return [number,suffix,endtype,endnumber]
-
 iscache={}
 def isspecific(mypkg):
 	"now supports packages with no category"
@@ -2223,99 +2190,9 @@ def isspecific(mypkg):
 	return 0
 
 def getCPFromCPV(mycpv):
-	"""Calls portage_dep.pkgsplit on a cpv and returns only the cp."""
-	return portage_dep.pkgsplit(mycpv)[0]
+	"""Calls portage_versions.pkgsplit on a cpv and returns only the cp."""
+	return portage_versions.pkgsplit(mycpv)[0]
 
-# vercmp:
-# This takes two version strings and returns an integer to tell you whether
-# the versions are the same, val1>val2 or val2>val1.
-vcmpcache={}
-def vercmp(val1,val2):
-	if val1==val2:
-		#quick short-circuit
-		return 0
-	valkey=val1+" "+val2
-	try:
-		return vcmpcache[valkey]
-		try:
-			return -vcmpcache[val2+" "+val1]
-		except KeyError:
-			pass
-	except KeyError:
-		pass
-	
-	# consider 1_p2 vc 1.1
-	# after expansion will become (1_p2,0) vc (1,1)
-	# then 1_p2 is compared with 1 before 0 is compared with 1
-	# to solve the bug we need to convert it to (1,0_p2)
-	# by splitting _prepart part and adding it back _after_expansion
-	val1_prepart = val2_prepart = ''
-	if val1.count('_'):
-		val1, val1_prepart = val1.split('_', 1)
-	if val2.count('_'):
-		val2, val2_prepart = val2.split('_', 1)
-
-	# replace '-' by '.'
-	# FIXME: Is it needed? can val1/2 contain '-'?
-	val1=string.split(val1,'-')
-	if len(val1)==2:
-		val1[0]=val1[0]+"."+val1[1]
-	val2=string.split(val2,'-')
-	if len(val2)==2:
-		val2[0]=val2[0]+"."+val2[1]
-
-	val1=string.split(val1[0],'.')
-	val2=string.split(val2[0],'.')
-
-	#add back decimal point so that .03 does not become "3" !
-	for x in range(1,len(val1)):
-		if val1[x][0] == '0' :
-			val1[x]='.' + val1[x]
-	for x in range(1,len(val2)):
-		if val2[x][0] == '0' :
-			val2[x]='.' + val2[x]
-
-	# extend version numbers
-	if len(val2)<len(val1):
-		val2.extend(["0"]*(len(val1)-len(val2)))
-	elif len(val1)<len(val2):
-		val1.extend(["0"]*(len(val2)-len(val1)))
-
-	# add back _prepart tails
-	if val1_prepart:
-		val1[-1] += '_' + val1_prepart
-	if val2_prepart:
-		val2[-1] += '_' + val2_prepart
-	#The above code will extend version numbers out so they
-	#have the same number of digits.
-	for x in range(0,len(val1)):
-		cmp1=relparse(val1[x])
-		cmp2=relparse(val2[x])
-		for y in range(0,4):
-			myret=cmp1[y]-cmp2[y]
-			if myret != 0:
-				vcmpcache[valkey]=myret
-				return myret
-	vcmpcache[valkey]=0
-	return 0
-
-
-def pkgcmp(pkg1,pkg2):
-	"""if returnval is less than zero, then pkg2 is newer than pkg1, zero if equal and positive if older."""
-	if pkg1[0] != pkg2[0]:
-		return None
-	mycmp=vercmp(pkg1[1],pkg2[1])
-	if mycmp>0:
-		return 1
-	if mycmp<0:
-		return -1
-	r1=int(pkg1[2][1:])
-	r2=int(pkg2[2][1:])
-	if r1>r2:
-		return 1
-	if r2>r1:
-		return -1
-	return 0
 
 def dep_parenreduce(mysplit,mypos=0):
 	"Accepts a list of strings, and converts '(' and ')' surrounded items to sub-lists"
@@ -2597,7 +2474,7 @@ def dep_getkey(mydep):
 	elif mydep[:1] in "=<>~":
 		mydep=mydep[1:]
 	if isspecific(mydep):
-		mysplit=portage_dep.catpkgsplit(mydep)
+		mysplit=portage_versions.catpkgsplit(mydep)
 		if not mysplit:
 			return mydep
 		return mysplit[0]+"/"+mysplit[1]
@@ -2606,7 +2483,7 @@ def dep_getkey(mydep):
 
 def cpv_getkey(mycpv):
 	myslash=mycpv.split("/")
-	mysplit=portage_dep.pkgsplit(myslash[-1])
+	mysplit=portage_versions.pkgsplit(myslash[-1])
 	mylen=len(myslash)
 	if mylen==2:
 		return myslash[0]+"/"+mysplit[0]
@@ -2638,7 +2515,7 @@ def cpv_expand(mycpv,mydb=None,use_cache=1):
 	virtual is a valid choice and defaults to the first element when there
 	are no installed/available candidates."""
 	myslash=mycpv.split("/")
-	mysplit=portage_dep.pkgsplit(myslash[-1])
+	mysplit=portage_versions.pkgsplit(myslash[-1])
 	if len(myslash)>2:
 		# this is illegal case.
 		mysplit=[]
@@ -2921,12 +2798,12 @@ def best(mymatches):
 	if not len(mymatches):
 		return "" 
 	bestmatch=mymatches[0]
-	p2=portage_dep.catpkgsplit(bestmatch)[1:]
+	p2=portage_versions.catpkgsplit(bestmatch)[1:]
 	for x in mymatches[1:]:
-		p1=portage_dep.catpkgsplit(x)[1:]
-		if pkgcmp(p1,p2)>0:
+		p1=portage_versions.catpkgsplit(x)[1:]
+		if portage_versions.pkgcmp(p1,p2)>0:
 			bestmatch=x
-			p2=portage_dep.catpkgsplit(bestmatch)[1:]
+			p2=portage_versions.catpkgsplit(bestmatch)[1:]
 	return bestmatch		
 
 def match_to_list(mypkg,mylist):
@@ -2962,7 +2839,7 @@ def match_from_list(mydep,candidate_list):
 		mydep = mydep[1:]
 
 	mycpv     = portage_dep.dep_getcpv(mydep)
-	mycpv_cps = portage_dep.catpkgsplit(mycpv) # Can be None if not specific
+	mycpv_cps = portage_versions.catpkgsplit(mycpv) # Can be None if not specific
 
 	if not mycpv_cps:
 		cat,pkg = catsplit(mycpv)
@@ -2985,7 +2862,7 @@ def match_from_list(mydep,candidate_list):
 
 	if operator == None:
 		for x in candidate_list:
-			xs = portage_dep.pkgsplit(x)
+			xs = portage_versions.pkgsplit(x)
 			if xs == None:
 				if x != mycpv:
 					continue
@@ -3005,7 +2882,7 @@ def match_from_list(mydep,candidate_list):
 
 	elif operator == "~": # version, any revision, match
 		for x in candidate_list:
-			xs = portage_dep.catpkgsplit(x)
+			xs = portage_versions.catpkgsplit(x)
 			if xs[0:2] != mycpv_cps[0:2]:
 				continue
 			if xs[2] != ver:
@@ -3015,7 +2892,7 @@ def match_from_list(mydep,candidate_list):
 	elif operator in [">", ">=", "<", "<="]:
 		for x in candidate_list:
 			try:
-				result = pkgcmp(portage_dep.pkgsplit(x), [cat+"/"+pkg,ver,rev])
+				result = portage_versions.pkgcmp(portage_versions.pkgsplit(x), [cat+"/"+pkg,ver,rev])
 			except SystemExit, e:
 				raise
 			except:
@@ -3050,7 +2927,7 @@ def match_from_list_original(mydep,mylist):
 	"""
 	mycpv=portage_dep.dep_getcpv(mydep)
 	if isspecific(mycpv):
-		cp_key=portage_dep.catpkgsplit(mycpv)
+		cp_key=portage_versions.catpkgsplit(mycpv)
 		if cp_key==None:
 			return []
 	else:
@@ -3069,7 +2946,7 @@ def match_from_list_original(mydep,mylist):
 				#and increment the last digit of the version by one.
 				#We don't need to worry about _pre and friends because they're not supported with '*' deps.
 				new_v=string.join(mynewsplit,".")+"_alpha0"
-				#new_v will be used later in the code when we do our comparisons using pkgcmp()
+				#new_v will be used later in the code when we do our comparisons using portage_versions.pkgcmp()
 			except SystemExit, e:
 				raise
 			except:
@@ -3080,7 +2957,7 @@ def match_from_list_original(mydep,mylist):
 			cmp1[1]=cmp1[1]+"_alpha0"
 			cmp2=[cp_key[1],new_v,"r0"]
 			for x in mylist:
-				cp_x=portage_dep.catpkgsplit(x)
+				cp_x=portage_versions.catpkgsplit(x)
 				if cp_x==None:
 					#hrm, invalid entry.  Continue.
 					continue
@@ -3088,7 +2965,7 @@ def match_from_list_original(mydep,mylist):
 				if cp_key[0]!=cp_x[0]:
 					continue
 				# ok, categories match. Continue to next step.	
-				if ((pkgcmp(cp_x[1:],cmp1)>=0) and (pkgcmp(cp_x[1:],cmp2)<0)):
+				if ((portage_versions.pkgcmp(cp_x[1:],cmp1)>=0) and (portage_versions.pkgcmp(cp_x[1:],cmp2)<0)):
 					# entry is >= the version in specified in our dependency, and <= the version in our dep + 1; add it:
 					mynodes.append(x)
 			return mynodes
@@ -3107,13 +2984,13 @@ def match_from_list_original(mydep,mylist):
 			cmpstr=mydep[0]
 		mynodes=[]
 		for x in mylist:
-			cp_x=portage_dep.catpkgsplit(x)
+			cp_x=portage_versions.catpkgsplit(x)
 			if cp_x==None:
 				#invalid entry; continue.
 				continue
 			if cp_key[0]!=cp_x[0]:
 				continue
-			if eval("pkgcmp(cp_x[1:],cp_key[1:])"+cmpstr+"0"):
+			if eval("portage_versions.pkgcmp(cp_x[1:],cp_key[1:])"+cmpstr+"0"):
 				mynodes.append(x)
 		return mynodes
 	elif mydep[0]=="~":
@@ -3121,7 +2998,7 @@ def match_from_list_original(mydep,mylist):
 			return []
 		myrev=-1
 		for x in mylist:
-			cp_x=portage_dep.catpkgsplit(x)
+			cp_x=portage_versions.catpkgsplit(x)
 			if cp_x==None:
 				#invalid entry; continue
 				continue
@@ -3145,7 +3022,7 @@ def match_from_list_original(mydep,mylist):
 		mynodes=[]
 		cp_key=mycpv.split("/")
 		for x in mylist:
-			cp_x=portage_dep.catpkgsplit(x)
+			cp_x=portage_versions.catpkgsplit(x)
 			if cp_x==None:
 				#invalid entry; continue
 				continue
@@ -3199,11 +3076,11 @@ class portagetree:
 		if not pkgname:
 			return ""
 		mysplit=string.split(pkgname,"/")
-		psplit=portage_dep.pkgsplit(mysplit[1])
+		psplit=portage_versions.pkgsplit(mysplit[1])
 		return self.portroot+"/"+mysplit[0]+"/"+psplit[0]+"/"+mysplit[1]+".ebuild"
 
 	def resolve_specific(self,myspec):
-		cps=portage_dep.catpkgsplit(myspec)
+		cps=portage_versions.catpkgsplit(myspec)
 		if not cps:
 			return None
 		mykey=key_expand(cps[0]+"/"+cps[1],mydb=self.dbapi)
@@ -3265,7 +3142,7 @@ class dbapi:
 		changed=0
 		min_counter = 0
 		if mycpv:
-			mysplit = portage_dep.pkgsplit(mycpv)
+			mysplit = portage_versions.pkgsplit(mycpv)
 			for x in self.match(mysplit[0],use_cache=0):
 				# fixed bug #41062
 				if x==mycpv:
@@ -3459,7 +3336,7 @@ class vardbapi(dbapi):
 				corrupted=1
 			cfile.close()
 		elif os.path.exists(cdir):
-			mys = portage_dep.pkgsplit(mycpv)
+			mys = portage_versions.pkgsplit(mycpv)
 			myl = self.match(mys[0],use_cache=0)
 			print mys,myl
 			if len(myl) == 1:
@@ -3521,12 +3398,12 @@ class vardbapi(dbapi):
 		if not origmatches:
 			return
 		for mycpv in origmatches:
-			mycpsplit=portage_dep.catpkgsplit(mycpv)
+			mycpsplit=portage_versions.catpkgsplit(mycpv)
 			mynewcpv=newcp+"-"+mycpsplit[2]
 			mynewcat=newcp.split("/")[0]
 			if mycpsplit[3]!="r0":
 				mynewcpv += "-"+mycpsplit[3]
-			mycpsplit_new = portage_dep.catpkgsplit(mynewcpv)
+			mycpsplit_new = portage_versions.catpkgsplit(mynewcpv)
 			origpath=self.root+VDB_PATH+"/"+mycpv
 			if not os.path.exists(origpath):
 				continue
@@ -3608,7 +3485,7 @@ class vardbapi(dbapi):
 			if x[0] == '-':
 				#writemsg(red("INCOMPLETE MERGE:")+str(x[len("-MERGING-"):])+"\n")
 				continue
-			ps=portage_dep.pkgsplit(x)
+			ps=portage_versions.pkgsplit(x)
 			if not ps:
 				self.invalidentry(self.root+VDB_PATH+"/"+mysplit[0]+"/"+x)
 				continue
@@ -3634,7 +3511,7 @@ class vardbapi(dbapi):
 			for y in listdir(basepath+x):
 				subpath = x+"/"+y
 				# -MERGING- should never be a cpv, nor should files.
-				if os.path.isdir(basepath+subpath) and (portage_dep.pkgsplit(y) is not None):
+				if os.path.isdir(basepath+subpath) and (portage_versions.pkgsplit(y) is not None):
 					returnme += [subpath]
 		return returnme
 
@@ -3644,7 +3521,7 @@ class vardbapi(dbapi):
 		for y in mylist:
 			if y[0] == '*':
 				y = y[1:]
-			mysplit=portage_dep.catpkgsplit(y)
+			mysplit=portage_versions.catpkgsplit(y)
 			if not mysplit:
 				self.invalidentry(self.root+VDB_PATH+"/"+y)
 				continue
@@ -3730,7 +3607,7 @@ class vartree(packagetree):
 				mylines = string.join(mylines)
 				mylines = flatten(portage_dep.use_reduce(portage_dep.paren_reduce(mylines), uselist=myuse))
 				for myprovide in mylines:
-					mys = portage_dep.catpkgsplit(myprovide)
+					mys = portage_versions.catpkgsplit(myprovide)
 					if not mys:
 						mys = string.split(myprovide, "/")
 					myprovides += [mys[0] + "/" + mys[1]]
@@ -3788,12 +3665,12 @@ class vartree(packagetree):
 
 	def exists_specific_cat(self,cpv,use_cache=1):
 		cpv=key_expand(cpv,mydb=self.dbapi,use_cache=use_cache)
-		a=portage_dep.catpkgsplit(cpv)
+		a=portage_versions.catpkgsplit(cpv)
 		if not a:
 			return 0
 		mylist=listdir(self.root+VDB_PATH+"/"+a[0])
 		for x in mylist:
-			b=portage_dep.pkgsplit(x)
+			b=portage_versions.pkgsplit(x)
 			if not b:
 				self.dbapi.invalidentry(self.root+VDB_PATH+"/"+a[0]+"/"+x)
 				continue
@@ -3813,7 +3690,7 @@ class vartree(packagetree):
 		mydirlist=listdir(self.root+VDB_PATH+"/"+mysplit[0])
 		returnme=[]
 		for x in mydirlist:
-			mypsplit=portage_dep.pkgsplit(x)
+			mypsplit=portage_versions.pkgsplit(x)
 			if not mypsplit:
 				self.dbapi.invalidentry(self.root+VDB_PATH+"/"+mysplit[0]+"/"+x)
 				continue
@@ -3840,7 +3717,7 @@ class vartree(packagetree):
 		mysplit=mykey.split("/")
 		mydirlist=listdir(self.root+VDB_PATH+"/"+mysplit[0])
 		for x in mydirlist:
-			mypsplit=portage_dep.pkgsplit(x)
+			mypsplit=portage_versions.pkgsplit(x)
 			if not mypsplit:
 				self.dbapi.invalidentry(self.root+VDB_PATH+"/"+mysplit[0]+"/"+x)
 				continue
@@ -4034,7 +3911,7 @@ class portdbapi(dbapi):
 		self.porttrees=[self.porttree_root]+self.mysettings["PORTDIR_OVERLAY"].split()
 
 	def getmaskingreason(self,mycpv):
-		mysplit = portage_dep.catpkgsplit(mycpv)
+		mysplit = portage_versions.catpkgsplit(mycpv)
 		if not mysplit:
 			raise ValueError("invalid CPV: %s" % mycpv)
 		if not self.cpv_exists(mycpv):
@@ -4063,7 +3940,7 @@ class portdbapi(dbapi):
 		return None
 
 	def getmaskingstatus(self,mycpv):
-		mysplit = portage_dep.catpkgsplit(mycpv)
+		mysplit = portage_versions.catpkgsplit(mycpv)
 		if not mysplit:
 			raise ValueError("invalid CPV: %s" % mycpv)
 		if not self.cpv_exists(mycpv):
@@ -4233,7 +4110,7 @@ class portdbapi(dbapi):
 			print "!!! This is a bug, please report it. ("+mycpv+")"
 			sys.exit(1)
 		
-		psplit=portage_dep.pkgsplit(mysplit[1])
+		psplit=portage_versions.pkgsplit(mysplit[1])
 		ret=None
 		if psplit:
 			for x in self.porttrees:
@@ -4486,7 +4363,7 @@ class portdbapi(dbapi):
 	def cpv_exists(self,mykey):
 		"Tells us whether an actual ebuild exists on disk (no masking)"
 		cps2=mykey.split("/")
-		cps=portage_dep.catpkgsplit(mykey,silent=0)
+		cps=portage_versions.catpkgsplit(mykey,silent=0)
 		if not cps:
 			#invalid cat/pkg-v
 			return 0
@@ -4592,7 +4469,7 @@ class portdbapi(dbapi):
 		newlist=mylist[:]
 		#first, we mask out packages in the package.mask file
 		mykey=newlist[0]
-		cpv=portage_dep.catpkgsplit(mykey)
+		cpv=portage_versions.catpkgsplit(mykey)
 		if not cpv:
 			#invalid cat/pkg-v
 			print "visible(): invalid cat/pkg-v:",mykey
@@ -4725,7 +4602,7 @@ class binarytree(packagetree):
 		if not origmatches:
 			return
 		for mycpv in origmatches:
-			mycpsplit=portage_dep.catpkgsplit(mycpv)
+			mycpsplit=portage_versions.catpkgsplit(mycpv)
 			mynewcpv=newcp+"-"+mycpsplit[2]
 			mynewcat=newcp.split("/")[0]
 			mynewpkg=mynewcpv.split("/")[1]
@@ -4780,7 +4657,7 @@ class binarytree(packagetree):
 		if not origmatches:
 			return
 		for mycpv in origmatches:
-			mycpsplit=portage_dep.catpkgsplit(mycpv)
+			mycpsplit=portage_versions.catpkgsplit(mycpv)
 			myoldpkg=mycpv.split("/")[1]
 			tbz2path=self.getname(mycpv)
 			if os.path.exists(tbz2path) and not os.access(tbz2path,os.W_OK):
@@ -4979,7 +4856,7 @@ class dblink:
 		self.cat     = cat
 		self.pkg     = pkg
 		self.mycpv   = self.cat+"/"+self.pkg
-		self.mysplit = portage_dep.pkgsplit(self.mycpv)
+		self.mysplit = portage_versions.pkgsplit(self.mycpv)
 		self.treetype = treetype
 
 		self.dbroot   = os.path.normpath(myroot+VDB_PATH)
@@ -5794,7 +5671,7 @@ class dblink:
 
 		downgrade = False
 		for v in otherversions:
-			if pkgcmp(portage_dep.catpkgsplit(self.pkg)[1:], portage_dep.catpkgsplit(v)[1:]) < 0:
+			if portage_versions.pkgcmp(portage_versions.catpkgsplit(self.pkg)[1:], portage_versions.catpkgsplit(v)[1:]) < 0:
 				downgrade = True
 
 		#update environment settings, library paths. DO NOT change symlinks.
@@ -5913,7 +5790,7 @@ class dblink:
 				if mydmode!=None:
 					# destination exists
 					if not os.access(mydest, os.W_OK):
-						pkgstuff = portage_dep.pkgsplit(self.pkg)
+						pkgstuff = portage_versions.pkgsplit(self.pkg)
 						writemsg("\n!!! Cannot write to '"+mydest+"'.\n")
 						writemsg("!!! Please check permissions and directories for broken symlinks.\n")
 						writemsg("!!! You may start the merge process again by using ebuild:\n")

@@ -19,6 +19,7 @@
 
 import os,string,types,sys,copy
 import portage_exception
+import portage_versions
 
 OPERATORS="*<=>~!"
 ENDVERSION_KEYS = ["pre", "p", "alpha", "beta", "rc"]
@@ -50,13 +51,13 @@ def get_operator(mydep):
 def isjustname(mypkg):
 	myparts=string.split(mypkg,'-')
 	for x in myparts:
-		if ververify(x):
+		if portage_versions.ververify(x):
 			return 0
 	return 1
 
 
 def isvalidatom(atom):
-	mycpv_cps = catpkgsplit(dep_getcpv(atom))
+	mycpv_cps = portage_versions.catpkgsplit(dep_getcpv(atom))
 	operator = get_operator(atom)
 	if operator:
 		if mycpv_cps and mycpv_cps[0] != "null":
@@ -73,215 +74,6 @@ def isvalidatom(atom):
 		return 1
 	else:
 		return 0
-
-catcache={}
-def catpkgsplit(mydata,silent=1):
-	"returns [cat, pkgname, version, rev ]"
-	try:
-		if not catcache[mydata]:
-			return None
-		return catcache[mydata][:]
-	except KeyError:
-		pass
-	mysplit=mydata.split("/")
-	p_split=None
-	if len(mysplit)==1:
-		retval=["null"]
-		p_split=pkgsplit(mydata,silent=silent)
-	elif len(mysplit)==2:
-		retval=[mysplit[0]]
-		p_split=pkgsplit(mysplit[1],silent=silent)
-	if not p_split:
-		catcache[mydata]=None
-		return None
-	retval.extend(p_split)
-	catcache[mydata]=retval
-	return retval
-
-# This function can be used as a package verification function, i.e.
-# "pkgsplit("foo-1.2-1") will return None if foo-1.2-1 isn't a valid
-# package (with version) name.  If it is a valid name, pkgsplit will
-# return a list containing: [ pkgname, pkgversion(norev), pkgrev ].
-# For foo-1.2-1, this list would be [ "foo", "1.2", "1" ].  For
-# Mesa-3.0, this list would be [ "Mesa", "3.0", "0" ].
-pkgcache={}
-def pkgsplit(mypkg,silent=1):
-	try:
-		if not pkgcache[mypkg]:
-			return None
-		return pkgcache[mypkg][:]
-	except KeyError:
-		pass
-	myparts=string.split(mypkg,'-')
-	if len(myparts)<2:
-		if not silent:
-			print "!!! Name error in",mypkg+": missing a version or name part."
-		pkgcache[mypkg]=None
-		return None
-	for x in myparts:
-		if len(x)==0:
-			if not silent:
-				print "!!! Name error in",mypkg+": empty \"-\" part."
-			pkgcache[mypkg]=None
-			return None
-	#verify rev
-	revok=0
-	myrev=myparts[-1]
-	if len(myrev) and myrev[0]=="r":
-		try:
-			int(myrev[1:])
-			revok=1
-		except SystemExit, e:
-			raise
-		except:
-			pass
-	if revok:
-		if ververify(myparts[-2]):
-			if len(myparts)==2:
-				pkgcache[mypkg]=None
-				return None
-			else:
-				for x in myparts[:-2]:
-					if ververify(x):
-						pkgcache[mypkg]=None
-						return None
-						#names can't have versiony looking parts
-				myval=[string.join(myparts[:-2],"-"),myparts[-2],myparts[-1]]
-				pkgcache[mypkg]=myval
-				return myval
-		else:
-			pkgcache[mypkg]=None
-			return None
-
-	elif ververify(myparts[-1],silent=silent):
-		if len(myparts)==1:
-			if not silent:
-				print "!!! Name error in",mypkg+": missing name part."
-			pkgcache[mypkg]=None
-			return None
-		else:
-			for x in myparts[:-1]:
-				if ververify(x):
-					if not silent:
-						print "!!! Name error in",mypkg+": multiple version parts."
-					pkgcache[mypkg]=None
-					return None
-			myval=[string.join(myparts[:-1],"-"),myparts[-1],"r0"]
-			pkgcache[mypkg]=myval[:]
-			return myval
-	else:
-		pkgcache[mypkg]=None
-		return None
-
-#returns 1 if valid version string, else 0
-# valid string in format: <v1>.<v2>...<vx>[a-z,_{endversion}[vy]]
-# ververify doesn't do package rev.
-
-vercache={}
-def ververify(myorigval,silent=1):
-	try:
-		return vercache[myorigval]
-	except KeyError:
-		pass
-	if len(myorigval)==0:
-		if not silent:
-			print "!!! Name error: package contains empty \"-\" part."
-		return 0
-	myval=string.split(myorigval,'.')
-	if len(myval)==0:
-		if not silent:
-			print "!!! Name error: empty version string."
-		vercache[myorigval]=0
-		return 0
-	#all but the last version must be a numeric
-	for x in myval[:-1]:
-		if not len(x):
-			if not silent:
-				print "!!! Name error in",myorigval+": two decimal points in a row"
-			vercache[myorigval]=0
-			return 0
-		try:
-			foo=int(x)
-		except SystemExit, e:
-			raise
-		except:
-			if not silent:
-				print "!!! Name error in",myorigval+": \""+x+"\" is not a valid version component."
-			vercache[myorigval]=0
-			return 0
-	if not len(myval[-1]):
-			if not silent:
-				print "!!! Name error in",myorigval+": two decimal points in a row"
-			vercache[myorigval]=0
-			return 0
-	try:
-		foo=int(myval[-1])
-		vercache[myorigval]=1
-		return 1
-	except SystemExit, e:
-		raise
-	except:
-		pass
-	#ok, our last component is not a plain number or blank, let's continue
-	if myval[-1][-1] in string.lowercase:
-		try:
-			foo=int(myval[-1][:-1])
-			vercache[myorigval]=1
-			return 1
-			# 1a, 2.0b, etc.
-		except SystemExit, e:
-			raise
-		except:
-			pass
-	#ok, maybe we have a 1_alpha or 1_beta2; let's see
-	#ep="endpart"
-	ep=string.split(myval[-1],"_")
-	if len(ep)!=2:
-		if not silent:
-			print "!!! Name error in",myorigval
-		vercache[myorigval]=0
-		return 0
-	try:
-		foo=int(ep[0][-1])
-		chk=ep[0]
-	except SystemExit, e:
-		raise
-	except:
-		# because it's ok last char is not numeric. example: foo-1.0.0a_pre1
-		chk=ep[0][:-1]
-
-	try:
-		foo=int(chk)
-	except SystemExit, e:
-		raise
-	except:
-		#this needs to be numeric or numeric+single letter,
-		#i.e. the "1" in "1_alpha" or "1a_alpha"
-		if not silent:
-			print "!!! Name error in",myorigval+": characters before _ must be numeric or numeric+single letter"
-		vercache[myorigval]=0
-		return 0
-	for mye in ENDVERSION_KEYS:
-		if ep[1][0:len(mye)]==mye:
-			if len(mye)==len(ep[1]):
-				#no trailing numeric; ok
-				vercache[myorigval]=1
-				return 1
-			else:
-				try:
-					foo=int(ep[1][len(mye):])
-					vercache[myorigval]=1
-					return 1
-				except SystemExit, e:
-					raise
-				except:
-					#if no endversions work, *then* we return 0
-					pass
-	if not silent:
-		print "!!! Name error in",myorigval
-	vercache[myorigval]=0
-	return 0
-
 
 
 def strip_empty(myarr):

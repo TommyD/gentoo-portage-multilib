@@ -8,7 +8,7 @@ sys.path = ["/usr/lib/portage/pym"]+sys.path
 
 import portage
 
-a=portage.pkgsplit(sys.argv[1])
+a=portage.portage_versions.pkgsplit(sys.argv[1])
 if a:
 	print a[0],a[1],a[2][1:]
 	sys.exit(0)

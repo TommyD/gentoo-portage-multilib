@@ -547,7 +547,7 @@ def getportageversion():
 	libclist += portage.vardbapi(portage.root).match("virtual/glibc")
 	libclist  = portage_util.unique_array(libclist)
 	for x in libclist:
-		xs=portage.portage_dep.catpkgsplit(x)
+		xs=portage.portage_versions.catpkgsplit(x)
 		if libcver:
 			libcver+=","+string.join(xs[1:], "-")
 		else:
@@ -731,7 +731,7 @@ class search:
 						full_package=portage.best(portage.portdb.xmatch("match-all",match))
 				else:
 					full_package = match
-					match        = portage.portage_dep.pkgsplit(match)[0]
+					match        = portage.portage_versions.pkgsplit(match)[0]
 
 				if full_package:
 					try:
@@ -809,7 +809,7 @@ class search:
 
 	def getVersion(self,full_package,detail):
 		if len(full_package) > 1:
-			package_parts = portage.portage_dep.catpkgsplit(full_package)
+			package_parts = portage.portage_versions.catpkgsplit(full_package)
 			if detail == search.VERSION_RELEASE and package_parts[3] != 'r0':
 				result = package_parts[2]+ "-" + package_parts[3]
 			else:
@@ -977,7 +977,7 @@ class depgraph:
 
 		edepend={}
 		if mytype=="binary":
-			mypkgparts=portage.portage_dep.catpkgsplit(mykey)
+			mypkgparts=portage.portage_versions.catpkgsplit(mykey)
 			tbz2name = string.split(mykey, "/")[1]+".tbz2"
 			if tbz2name in portage.db[portage.root]["bintree"].invalids:
 				sys.stderr.write("\nINVALID PACKAGE (is required to continue): "+str(mykey)+"\n")
@@ -1127,7 +1127,7 @@ class depgraph:
 		if matches:
 			myslot=portage.db["/"]["porttree"].getslot(pkgver)
 			for match in matches:
-				if portage.pkgcmp(portage.portage_dep.catpkgsplit(pkgver)[1:], portage.portage_dep.catpkgsplit(match)[1:]) < 0:
+				if portage.portage_versions.pkgcmp(portage.portage_versions.catpkgsplit(pkgver)[1:], portage.portage_versions.catpkgsplit(match)[1:]) < 0:
 					curslot=portage.db[myroot]["vartree"].getslot(match)
 					if curslot == myslot:
 						return match
@@ -1225,12 +1225,12 @@ class depgraph:
 					print "binpkg:",myeb_pkg
 
 				if myeb and myeb_pkg:
-					myeb_s     = portage.portage_dep.catpkgsplit(myeb)
+					myeb_s     = portage.portage_versions.catpkgsplit(myeb)
 					myeb_s     = [myeb_s[0]+"/"+myeb_s[1], myeb_s[2], myeb_s[3]]
-					myeb_pkg_s = portage.portage_dep.catpkgsplit(myeb_pkg)
+					myeb_pkg_s = portage.portage_versions.catpkgsplit(myeb_pkg)
 					myeb_pkg_s = [myeb_pkg_s[0]+"/"+myeb_pkg_s[1], myeb_pkg_s[2], myeb_pkg_s[3]]
 					
-					if portage.pkgcmp(myeb_s, myeb_pkg_s) == 0: # pkg is same version as ebuild
+					if portage.portage_versions.pkgcmp(myeb_s, myeb_pkg_s) == 0: # pkg is same version as ebuild
 						myeb = None
 					else:
 						myeb_pkg = None
@@ -1452,12 +1452,12 @@ class depgraph:
 						mynewslot=portage.db["/"]["bintree"].getslot(x[2])
 					elif x[0] == "ebuild":
 						mynewslot=portage.db["/"]["porttree"].getslot(x[2])
-					myoldlist=portage.db[x[1]]["vartree"].dbapi.match(portage.portage_dep.pkgsplit(x[2])[0])
+					myoldlist=portage.db[x[1]]["vartree"].dbapi.match(portage.portage_versions.pkgsplit(x[2])[0])
 					myinslotlist=filter((lambda p: portage.db[portage.root]["vartree"].getslot(p)==mynewslot),myoldlist)
 					if myinslotlist:
 						myoldbest=portage.best(myinslotlist)
 						addl="   "+fetch
-						if portage.pkgcmp(portage.portage_dep.pkgsplit(x[2]), portage.portage_dep.pkgsplit(myoldbest)) < 0:
+						if portage.portage_versions.pkgcmp(portage.portage_versions.pkgsplit(x[2]), portage.portage_versions.pkgsplit(myoldbest)) < 0:
 							# Downgrade in slot
 							addl+=turquoise("U")+blue("D")
 						else:
@@ -1470,7 +1470,7 @@ class depgraph:
 					if "--changelog" in myopts:
 						changelogs.extend(self.calc_changelog(
 							portage.portdb.findname(x[2]),
-							portage.db["/"]["vartree"].dep_bestmatch('/'.join(portage.portage_dep.catpkgsplit(x[2])[:2])),
+							portage.db["/"]["vartree"].dep_bestmatch('/'.join(portage.portage_versions.catpkgsplit(x[2])[:2])),
 							x[2]
 							))
 				else:
@@ -1526,7 +1526,7 @@ class depgraph:
 					if (verbosity and "--pretend" not in myopts) or \
 						(verbosity > 1 and "--pretend" in myopts):
 						# show herd/maintainers.
-						metadata_file=portage.settings["PORTDIR"] + "/" + portage.portage_dep.pkgsplit(x[2])[0] + "/metadata.xml"
+						metadata_file=portage.settings["PORTDIR"] + "/" + portage.portage_versions.pkgsplit(x[2])[0] + "/metadata.xml"
 	        				if not os.path.exists(metadata_file):
 							verboseadd += red("(Missing metadata.xml) ")
 						else:
@@ -1571,7 +1571,7 @@ class depgraph:
 					else:
 						verboseadd += "[No ebuild?]"
 
-				xs=portage.portage_dep.pkgsplit(x[2])
+				xs=portage.portage_versions.pkgsplit(x[2])
 				if xs[2]=="r0":
 					xs[2]=""
 				else:
@@ -1587,7 +1587,7 @@ class depgraph:
 				indent=""
 
 				if myoldbest:
-					myoldbest=portage.portage_dep.pkgsplit(myoldbest)[1]+"-"+portage.portage_dep.pkgsplit(myoldbest)[2]
+					myoldbest=portage.portage_versions.pkgsplit(myoldbest)[1]+"-"+portage.portage_versions.pkgsplit(myoldbest)[2]
 					if myoldbest[-3:]=="-r0":
 						myoldbest=myoldbest[:-3]
 					myoldbest=blue("["+myoldbest+"]")
@@ -1621,7 +1621,7 @@ class depgraph:
 				p.append(myprint)
 
 			if ("--tree" not in myopts):
-				mysplit=portage.portage_dep.pkgsplit(x[2])
+				mysplit=portage.portage_versions.pkgsplit(x[2])
 	
 				# XXX mysplit _can_ be None.... Why?
 				if mysplit and (len(mysplit)==3):
@@ -1663,9 +1663,9 @@ class depgraph:
 				sys.stdout.write(text)
 
 	def calc_changelog(self,ebuildpath,current,next):
-		current = '-'.join(portage.portage_dep.catpkgsplit(current)[1:])
+		current = '-'.join(portage.portage_versions.catpkgsplit(current)[1:])
 		if current.endswith('-r0'): current = current[:-3]
-		next = '-'.join(portage.portage_dep.catpkgsplit(next)[1:])
+		next = '-'.join(portage.portage_versions.catpkgsplit(next)[1:])
 		if next.endswith('-r0'): next = next[:-3]
 		changelogpath = os.path.join(os.path.split(ebuildpath)[0],'ChangeLog')
 		try:
@@ -1935,14 +1935,14 @@ class depgraph:
 				if ("--pretend" not in myopts) and ("--fetchonly" not in myopts) and ("--fetch-all-uri" not in myopts):
 					# Clean the old package that we have merged over top of it.
 					if self.pkgsettings["AUTOCLEAN"]=="yes":
-						xsplit=portage.portage_dep.pkgsplit(x[2])
+						xsplit=portage.portage_versions.pkgsplit(x[2])
 						emergelog(" >>> AUTOCLEAN: "+xsplit[0])
 						retval=unmerge("clean", [xsplit[0]])
 						if not retval:
 							emergelog(" --- AUTOCLEAN: Nothing unmerged.")
 
 					# Figure out if we need a restart.
-					mysplit=portage.portage_dep.pkgsplit(x[2])
+					mysplit=portage.portage_versions.pkgsplit(x[2])
 					if mysplit[0]=="sys-apps/portage":
 						myver=mysplit[1]+"-"+mysplit[2]
 						if myver[-3:]=='-r0':
@@ -2177,7 +2177,7 @@ def unmerge(unmerge_action, unmerge_files):
 			print string.rjust(mytype,12)+":",
 			if pkgmap[x][mytype]:
 				for mypkg in pkgmap[x][mytype]:
-					mysplit=portage.portage_dep.catpkgsplit(mypkg)
+					mysplit=portage.portage_versions.catpkgsplit(mypkg)
 					if mysplit[3]=="r0":
 						myversion=mysplit[2]
 					else:
@@ -2731,7 +2731,7 @@ elif "inject"==myaction:
 			print "!!! Must be 'category/package-version' with no other symbols."
 			print
 			continue
-		mycps=portage.portage_dep.catpkgsplit(x)
+		mycps=portage.portage_versions.catpkgsplit(x)
 		if (not mycps) or (mycps[0]=="null"):
 			print "!!!",x,"is not a specific cat/pkg-version, skipping..."
 			continue
@@ -2811,7 +2811,7 @@ elif "depclean"==myaction:
 
 	reallist=[]
 	for x in alldeps:
-		myparts=portage.portage_dep.catpkgsplit(string.split(x)[2])
+		myparts=portage.portage_versions.catpkgsplit(string.split(x)[2])
 		if not myparts:
 			sys.stderr.write(
 			  red("!!! There appears to be a problem with the following package:\n")+
@@ -2833,7 +2833,7 @@ elif "depclean"==myaction:
 				cleanlist.append(x)
 
 	for x in syslist+worldlist:
-		myparts = portage.portage_dep.catpkgsplit(x)
+		myparts = portage.portage_versions.catpkgsplit(x)
 		if myparts:
 			if myparts[0][0] in ('<','>','='):
 				myparts[0] = myparts[0][1:]
