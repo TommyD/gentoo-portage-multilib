@@ -9,27 +9,31 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
-  12 Aug 2004; Jason Stubbs <ferringb@gentoo.org> bin/emerge:
+  12 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py: 
+  Cleaned up fetch a bit more, saner error messages when unable to 
+  write to DISTDIR.
+
+  12 Aug 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge:
   Fixed the fix for the earlier traceback on installed package not being
   in PORTDIR to remove duplicate work.
 
-  08 Aug 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild.sh: 
+  11 Aug 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild.sh: 
   Added FEATURES="autoconfig" support. (#55476)
 
-  08 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py: 
+  11 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py: 
   Added check to lockfile and fetch, if file already is owned by 
   portage group, don't try and chown it.  This will close #60079.
 
-  08 Aug 2004; Brian Harring <ferringb@gentoo.org> bin/emerge: Fixed a 
+  10 Aug 2004; Brian Harring <ferringb@gentoo.org> bin/emerge: Fixed a 
   traceback issue, an ebuild is no longer in the tree, but is installed 
   and needs to be used in the depgraph- the problem was, emerge 
   assumed the ebuild was in porttree's db, when vartree should be used 
   if the package is known to be installed.
 
-  08 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py:
+  10 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py:
   Killed a couple of corner cases for non-root fetch and lockfile calls.
 
-  08 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py
+  10 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py
   bin/ebuild.sh: Add check to ensure that install phase has been 
   ran prior to qmerge phase being attempted.  This can happen 
   when the user is using ebuild to step through the phases.
@@ -37,11 +41,11 @@
   []- all callee's expect a returned list, not None.  Same for ftype,
   cause's a tb if you just haphazardly rely on cachedir's return.
 
-  08 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py: 
+  09 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py: 
   Leave /var/tmp w/out it's own permissions, chowning/chmoding just 
   /var/tmp/portage (#37521).
 
-  08 Aug 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild.sh 
+  09 Aug 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild.sh 
   pym/portage.py: Corrected bug in profile.bashrc support, added aliases 
   for saving/restoring IFS (remove_path_entry and profile.bashrc loop 
   adjust IFS temporarily).  Closes #59749.

@@ -2157,28 +2157,51 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		return 0
 	del missingSourceHost
 
-	if use_locks and locks_in_subdir:
-		if os.path.exists(mysettings["DISTDIR"]+"/"+locks_in_subdir):
-			if not os.access(mysettings["DISTDIR"]+"/"+locks_in_subdir,os.W_OK):
-				writemsg("!!! No write access to write to %s.  Aborting.\n" % mysettings["DISTDIR"]+"/"+locks_in_subdir)
-				return 0
-		elif not os.access(mysettings["DISTDIR"]+"/",os.W_OK):
-			writemsg("!!! No write access to write to %s.  Aborting\n" % mysettings["DISTDIR"]+"/")
-			return 0
-		else:
-			old_umask=os.umask(0002)
-			os.mkdir(mysettings["DISTDIR"]+"/"+locks_in_subdir,0775)
-			if os.stat(mysettings["DISTDIR"]+"/"+locks_in_subdir).st_gid != portage_gid:
-				os.chown(mysettings["DISTDIR"]+"/"+locks_in_subdir,-1,portage_gid)
-			os.umask(old_umask)
+	can_fetch=True
+	if not os.access(mysettings["DISTDIR"]+"/",os.W_OK):
+		print "!!! No write access to %s" % mysettings["DISTDIR"]+"/"
+		can_fetch=False
+	else:
+		mystat=os.stat(mysettings["DISTDIR"]+"/")
+		if mystat.st_gid != portage_gid:
+			try:
+				os.chown(mysettings["DISTDIR"],-1,portage_gid)
+			except OSError, oe:
+				if oe.errno == 1:
+					print red("!!!")+" Unable to chgrp of %s to portage, continuing\n" % mysettings["DISTDIR"]
+				else:
+					raise oe
+	
+		# writable by portage_gid?  This is specific to root, adjust perms if needed automatically.
+		if not S_IMODE(mystat.st_mode) & 020:
+			try:
+				os.chmod(mysettings["DISTDIR"],S_IMODE(mystat.st_mode) | 020)
+			except OSError, oe:
+				if oe.errno == 1:
+					print red("!!!")+" Unable to chmod %s to perms 0755.  Non-root users will experience issues.\n" % mysettings["DISTDIR"]
+				else:
+					raise oe
+ 		
+		if use_locks and locks_in_subdir:
+			if os.path.exists(mysettings["DISTDIR"]+"/"+locks_in_subdir):
+				if not os.access(mysettings["DISTDIR"]+"/"+locks_in_subdir,os.W_OK):
+					writemsg("!!! No write access to write to %s.  Aborting.\n" % mysettings["DISTDIR"]+"/"+locks_in_subdir)
+					return 0
+			else:
+				old_umask=os.umask(0002)
+				os.mkdir(mysettings["DISTDIR"]+"/"+locks_in_subdir,0775)
+				if os.stat(mysettings["DISTDIR"]+"/"+locks_in_subdir).st_gid != portage_gid:
+					os.chown(mysettings["DISTDIR"]+"/"+locks_in_subdir,-1,portage_gid)
+				os.umask(old_umask)
 
+	
 	for myfile in filedict.keys():
+		fetched=0
+		file_lock = None
 		if listonly:
-			fetched=0
 			writemsg("\n")
-			file_lock = None
 		else:
-			if use_locks:
+			if use_locks and can_fetch:
 				if locks_in_subdir:
 					file_lock = lockfile(mysettings["DISTDIR"]+"/"+locks_in_subdir+"/"+myfile,wantnewlockfile=1)
 				else:
@@ -2230,7 +2253,16 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				writemsg("An exception was caught(1)...\nFailing the download: %s.\n" % (str(e)),1)
 				fetched=0
 
-
+			if not can_fetch:
+				if fetch != 2:
+					if fetch == 0:
+						writemsg("!!! File %s isn't fetched but unable to get it.\n" % myfile)
+					else:
+						writemsg("!!! File %s isn't fully fetched, but unable to complete it\n" % myfile)
+					return 0
+				else:
+					continue
+	
 			# check if we can actually write to the directory/existing file.
 			if fetched!=2 and not (os.access(mysettings["DISTDIR"],os.W_OK) and 
 				(os.path.exists(mysettings["DISTDIR"]+"/"+myfile) == os.access(mysettings["DISTDIR"]+"/"+myfile, os.W_OK))):
@@ -2311,7 +2343,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						break
 					elif mydigests!=None:
 						writemsg("No digest file available and download failed.\n")
-		if use_locks:
+		if use_locks and file_lock:
 			unlockfile(file_lock)
 		
 		if listonly:
