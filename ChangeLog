@@ -2,6 +2,15 @@
 # Copyright 2001 Gentoo Technologies, Inc.; Distributed under the GPL
 # Written by Daniel Robbins (drobbins@gentoo.org)
 
+*portage 1.7.8 (21 Dec 2001)
+
+  21 Dec 2001; portage.py: ebuild install doesn't throw away the compile
+  directory if ebuild has been changed and MAINTAINER is set; we now use
+  mv -f to move files into location on the filesystem, making our library
+  install method even more robust.  It should now be totally safe to 
+  upgrade glibc while in X and playing music with xmms and surfing the
+  Web and compiling 20 applications at once :)
+
 * portage 1.7.7 (14 Dec 2001)
 
   14 Dec 2001; Aron Griffis (agriffis@gentoo.org): portage.py: movefile() now

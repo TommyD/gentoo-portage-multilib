@@ -661,6 +661,8 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 	elif mydo=="compile":
 		return spawn("/usr/sbin/ebuild.sh fetch unpack compile")
 	elif mydo=="install":
+		if settings["MAINTAINER"]=="yes":
+			return spawn("/usr/sbin/ebuild.sh install")
 		return spawn("/usr/sbin/ebuild.sh fetch unpack compile install")
 	elif mydo in ["prerm","postrm","preinst","postinst","config","touch","clean","fetch","digest","batchdigest"]:
 		return spawn("/usr/sbin/ebuild.sh "+mydo)
