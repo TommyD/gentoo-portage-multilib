@@ -72,42 +72,26 @@ except ImportError:
 
 starttime=int(time.time())
 
-#defined in doebuild as global
-#dont set this to [], as it then gets seen as a list variable
-#which gives tracebacks (usually if ctrl-c is hit very early)
-buildphase=""
-
-#the build phases for which sandbox should be active
-sandboxactive=["unpack","compile","clean","install","help","setup"]
-#if the exithandler triggers before features has been initialized, then it's safe to assume
-#that the sandbox isn't active.
 features=[]
 
 #handle ^C interrupts correctly:
 def exithandler(foo,bar):
 	global features,secpass
-	#disable sandboxing to prevent problems
-	#only do this if sandbox is in $FEATURES and we are root.
+	#remove temp sandbox files
 	if (secpass==2) and ("sandbox" in features):
 		mypid=os.fork()
 		if mypid==0:
 			myargs=[]
 			mycommand="/usr/lib/portage/bin/testsandbox.sh"
-			#if we are in the unpack,compile,clean or install phases,
-			#there will already be one sandbox running for this call
-			#to emerge
-			if buildphase in sandboxactive:
-				myargs=["testsandbox.sh","1"]
-			else:
-				myargs=["testsandbox.sh","0"]
+			myargs=["testsandbox.sh","0"]
 			myenv={}
 			os.execve(mycommand,myargs,myenv)
 			os._exit(1)
 			sys.exit(1)
 		retval=os.waitpid(mypid,0)[1]
-		if retval==0:
-			if os.path.exists("/etc/ld.so.preload"):
-				os.unlink("/etc/ld.so.preload")
+#		if retval==0:
+#			if os.path.exists("/tmp/sandboxpids.tmp"):
+#				os.unlink("/tmp/sandboxpids.tmp")
 	# 0=send to *everybody* in process group
 	os.kill(0,signal.SIGKILL)
 	sys.exit(1)
@@ -791,27 +775,18 @@ def spawn(mystring,debug=0,free=0):
 	signal handling.  Using spawn allows our Portage signal handler
 	to work."""
 
-	# we use the pid of the python instance to create a temp file
-	# spawnebuild.sh and ebuild.sh uses to save/restore the environment.
+	# usefull if an ebuild or so needs to get the pid of our python process
 	settings["PORTAGE_MASTER_PID"]=`os.getpid()`
 	
 	mypid=os.fork()
 	if mypid==0:
 		myargs=[]
 		if ("sandbox" in features) and (not free):
-			#only run sandbox for the following phases
-			if buildphase in sandboxactive:
-				mycommand="/usr/lib/portage/bin/sandbox"
-				if debug:
-					myargs=["sandbox",mystring]
-				else:
-					myargs=["sandbox",mystring]
+			mycommand="/usr/lib/portage/bin/sandbox"
+			if debug:
+				myargs=["sandbox",mystring]
 			else:
-				mycommand="/bin/bash"
-				if debug:
-					myargs=["bash","-x","-c",mystring]
-				else:
-					myargs=["bash","-c",mystring]
+				myargs=["sandbox",mystring]
 		else:
 			mycommand="/bin/bash"
 			if debug:
@@ -832,32 +807,6 @@ def spawn(mystring,debug=0,free=0):
 	else:
 		#interrupted by signal
 		return 16
-
-def ebuildsh(mystring,debug=0):
-	"Spawn ebuild.sh, optionally in a sandbox"
-
-	mylist=mystring.split()
-	for x in mylist:
-		global buildphase
-		buildphase=x
-
-		#here we always want to call spawn with free=0,
-		#else the exit handler may not detect things properly
-		retval=spawn("/usr/sbin/ebuild.sh "+x,debug)
-		
-		#reset it again
-		buildphase=""
-
-		#it is a batch call to ebuild.sh, so ebuild.sh should
-		#load the saved environment on next call.
-		settings["PORTAGE_RESTORE_ENV"]="1"
-
-		if retval:
-			settings["PORTAGE_RESTORE_ENV"]="0"
-			return retval
-
-	#reset it again
-	settings["PORTAGE_RESTORE_ENV"]="0"
 
 def fetch(myuris):
 	"fetch files.  Will use digest file if available."
@@ -1089,21 +1038,16 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 
 	settings["BUILD_PREFIX"]=settings["PORTAGE_TMPDIR"]+"/portage"
 	settings["PKG_TMPDIR"]=settings["PORTAGE_TMPDIR"]+"/portage-pkg"
-	if mydo!="depend":
-		#depend may be run as non-root
-		settings["BUILDDIR"]=settings["BUILD_PREFIX"]+"/"+settings["PF"]
-		if not os.path.exists(settings["BUILDDIR"]):
-			os.makedirs(settings["BUILDDIR"])
-		settings["T"]=settings["BUILDDIR"]+"/temp"
-		if not os.path.exists(settings["T"]):
-			os.makedirs(settings["T"])
-		settings["WORKDIR"]=settings["BUILDDIR"]+"/work"
-		settings["D"]=settings["BUILDDIR"]+"/image/"
-	else:
-		#this is *important* so that we can properly run custom portage/python code in non-sandboxed
-		#functions and allow this code to add stuff to the dep cache. Otherwise, parent's $T gets inherited
-		#and messes up our "saved-env" stuff.
-		settings["T"]=""
+	#depend may be run as non-root
+	settings["BUILDDIR"]=settings["BUILD_PREFIX"]+"/"+settings["PF"]
+	if not os.path.exists(settings["BUILDDIR"]) and mydo!="depend":
+		os.makedirs(settings["BUILDDIR"])
+	# Should be ok again to set $T, as sandbox do not depend on it
+	settings["T"]=settings["BUILDDIR"]+"/temp"
+	if not os.path.exists(settings["T"]) and mydo!="depend":
+		os.makedirs(settings["T"])
+	settings["WORKDIR"]=settings["BUILDDIR"]+"/work"
+	settings["D"]=settings["BUILDDIR"]+"/image/"
 
 	if mydo=="unmerge": 
 		return unmerge(settings["CATEGORY"],settings["PF"],myroot)
@@ -1120,7 +1064,7 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 
 	# if any of these are being called, handle them and stop now.
 	if mydo in ["help","clean","setup","prerm","postrm","preinst","postinst","config"]:
-		return ebuildsh(mydo,debug)
+		return spawn("/usr/sbin/ebuild.sh "+mydo,debug)
 	
 	# get possible slot information from the deps file
 	if mydo=="depend":
@@ -1133,12 +1077,6 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 	except (IOError,KeyError):
 		print "portage: doebuild(): aux_get() error; aborting."
 		sys.exit(1)
-	#if the dep cache is stale, it is possible that aux_get() will call doebuild(depend) to
-	#regenerate it again.  This call will cause $T to be set to "", which will break anything
-	#that needs $T to be set to a writeble location inside the sandbox, thus set $T again to
-	#its proper value.
-	if mydo!="depend":
-		settings["T"]=settings["BUILDDIR"]+"/temp"
 	newuris=flatten(evaluate(tokenize(myuris),string.split(settings["USE"])))	
 	alluris=flatten(evaluate(tokenize(myuris),[],1))	
 	alist=[]
@@ -1188,12 +1126,12 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 				"rpm":"setup unpack compile install rpm"
 				}
 	if mydo in actionmap.keys():	
-		return ebuildsh(actionmap[mydo],debug)
+		return spawn("/usr/sbin/ebuild.sh "+actionmap[mydo],debug)
 	elif mydo=="qmerge": 
 		#qmerge is specifically not supposed to do a runtime dep check
 		return merge(settings["CATEGORY"],settings["PF"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot)
 	elif mydo=="merge":
-		retval=ebuildsh("setup unpack compile install")
+		retval=spawn("/usr/sbin/ebuild.sh setup unpack compile install")
 		if retval: return retval
 		return merge(settings["CATEGORY"],settings["PF"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot,myebuild=settings["EBUILD"])
 	elif mydo=="package":
@@ -1218,7 +1156,7 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 			print
 			return 0
 		else:
-			return ebuildsh("setup unpack compile install package")
+			return spawn("/usr/sbin/ebuild.sh setup unpack compile install package")
 
 expandcache={}
 

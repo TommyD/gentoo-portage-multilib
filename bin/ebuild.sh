@@ -1,48 +1,17 @@
 #!/bin/bash 
 
-if [ -n "$T" ]
+if [ -n "$#" ]
 then
-	# If $T is defined, then we're not simply calculating dependencies and
-	# can backup/restore our env otherwise, we don't wanna try it.
-	
-	# Save the environment apon exit
-	trap "esave_ebuild_env" EXIT
-
-	# Calls ebuild.sh with the required arguments, restoring a saved
-	# environment if needed.
-	if [ "${PORTAGE_RESTORE_ENV}" = "1" ] && \
-	[ -f ${T}/saved_ebuild_env_${PORTAGE_MASTER_PID} ]
-	then
-		set -f
-		source ${T}/saved_ebuild_env_${PORTAGE_MASTER_PID} > /dev/null 2>&1
-		set +f
-		# Do not use from saved environ.
-		unset SANDBOX_ON
-	fi
+	ARGS="${*}"
 fi
-
-# Save the current environment to file.
-esave_ebuild_env() {
-	# turn off globbing.
-	set -f
-	# unset this function, else we get problems on
-	# restore.  Problem is that because we take out
-	# PORTAGE_RESTORE_ENV and PORTAGE_MASTER_PID, this
-	# function gets saved incomplete.
-	unset esave_ebuild_env
-	# we do not want to save critical variables
-	set | awk '!/PORTAGE_RESTORE_ENV|PORTAGE_MASTER_PID/ { print $0 }' \
-		> ${T}/saved_ebuild_env_${PORTAGE_MASTER_PID}
-	set +f
-}
 
 use() {
 	local x
-	for x in $USE
+	for x in ${USE}
 	do
-		if [ "$x" = "$1" ]
+		if [ "${x}" = "${1}" ]
 		then
-			echo "$x"
+			echo "${x}"
 			return 0
 		fi
 	done
@@ -168,7 +137,7 @@ unpack() {
 	local x
 	local y
 	local myfail
-	for x in "$@"
+	for x in $@
 	do
 		myfail="failure unpacking ${x}"
 		echo ">>> Unpacking ${x}"
@@ -306,7 +275,7 @@ dyn_unpack() {
 	then
 		local x
 		local checkme
-		for x in $AA
+		for x in ${AA}
 		do
 			echo ">>> Checking ${x}'s mtime..."
 			if [ ${DISTDIR}/${x} -nt ${WORKDIR} ]
@@ -743,27 +712,19 @@ debug-print-section() {
 # Sources all eclasses in parameters
 inherit() {
 
-	# Do not source the eclasses if we restore the saved environment,
-	# as this will cause them to effect the current env multiple times.
-	# ---
-	# is broken; please reconsider --danarmak
-	#if [ "${PORTAGE_RESTORE_ENV}" != "1" ]; then
-    
-	    while [ "$1" ]; do
-    
-		# any future resolution code goes here
-		local location
-		location="${ECLASSDIR}/${1}.eclass"
-	
-		debug-print "inherit: $1 -> $location"
-	
-		source "$location" || die "died sourcing $location in inherit()"
-	
-		shift
-	
-	    done
+    while [ "$1" ]; do
+   
+	# any future resolution code goes here
+	local location
+	location="${ECLASSDIR}/${1}.eclass"
 
-	#fi
+	debug-print "inherit: $1 -> $location"
+
+	source "$location" || die "died sourcing $location in inherit()"
+
+	shift
+
+    done
 
 }
 
@@ -831,7 +792,7 @@ then
 fi
 set +f
 
-for myarg in "${*}"
+for myarg in $*
 do
 	case $myarg in
 	prerm|postrm|preinst|postinst|config)
