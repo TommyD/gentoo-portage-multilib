@@ -696,7 +696,9 @@ then
 fi
 KV="${KV/linux-/}"
 
-
+#turn off glob expansion from here on in to prevent *'s and ? in the DEPEND
+#syntax from getting expanded :)  Fixes bug #1473
+set -f
 source ${EBUILD} 
 if [ $? -ne 0 ]
 then

@@ -869,7 +869,7 @@ def digestcheck(myarchives):
 	return 1
 
 # "checkdeps" support has been depreciated.  Relying on emerge to handle it.
-def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
+def doebuild(myebuild,mydo,myroot,debug=0):
 	global settings
 	if not os.path.exists(myebuild):
 		print "!!!",myebuild,"not found."

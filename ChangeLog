@@ -1,6 +1,16 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  15 Apr 2002; Daniel Robbins <drobbins@gentoo.org>: emerge: "emerge R" now
+  works correctly, closing bug #1094.
+  
+  15 Apr 2002; Daniel Robbins <drobbins@gentoo.org>: ebuild.sh: *'s and ?'s in
+  DEPEND and SRC_URI syntax should no longer get glob-expanded to files in
+  /usr/portage.  This fixes some cryptic bugs.  It also closes bug #1473.
+  
+  15 Apr 2002; Daniel Robbins <drobbins@gentoo.org>: portage.py: emerge --debug
+  now works again.  Closes bug #1437.
+  
   15 Apr 2002; Daniel Robbins <drobbins@gentoo.org>: portage.py: moved argument
   check to the beginning of the doebuild() function to prevent "ebuild
   foo.ebuild fart" from causing the md5sums to be checked before recognizing

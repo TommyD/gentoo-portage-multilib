@@ -93,14 +93,14 @@ for x in cmdline:
 			else:
 				print "!!! Error:",x,"is an invalid option."
 				sys.exit(1)
-		elif (not myaction) and (x in actions):
-			myaction=x
-		else:	
-			# this little conditional helps tab completion
-			if x[-1]=="/":
-				myfiles.append(x[:-1])
-			else:
-				myfiles.append(x)
+	elif (not myaction) and (x in actions):
+		myaction=x
+	else:	
+		# this little conditional helps tab completion
+		if x[-1]=="/":
+			myfiles.append(x[:-1])
+		else:
+			myfiles.append(x)
 
 # check if root user is the current user for the actions where emerge needs this
 if os.getuid()!=0 and ("--help" not in myopts) and ("--version" not in myopts) and ("search"!=myaction):
@@ -601,7 +601,7 @@ class depgraph:
 					sys.exit(1)
 				#need to check for errors
 			portage.db[x[1]]["vartree"].inject(x[2])
-			if x[2] in favorites:
+			if (not "--fetchonly" in self.myopts) and (x[2] in favorites):
 				mysplit=portage.catpkgsplit(x[2])
 				myfavkey=mysplit[0]+"/"+mysplit[1]
 				myfavs=portage.grabfile(myroot+"var/cache/edb/world")
