@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  03 Oct 2004; <genone@gentoo.org> pym/emergehelp.py:
+  Add --metadata documentation to --help output.
+
   03 Oct 2004; <genone@gentoo.org> cnf/*, man/emerge.1, man/make.conf.5, 
   man/portage.5, pym/emergehelp.py:
   Changed documentation to use --action instead of action (bug #2365). 

@@ -11,7 +11,7 @@ def shorthelp():
 	print bold("Usage:")
 	print "   "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] [ "+turquoise("ebuildfile")+" | "+turquoise("tbz2file")+" | "+turquoise("dependency")+" ] [ ... ]"
 	print "   "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] < "+turquoise("system")+" | "+turquoise("world")+" >"
-	print "   "+turquoise("emerge")+" < "+turquoise("--sync")+" | "+turquoise("--info")+" >"
+	print "   "+turquoise("emerge")+" < "+turquoise("--sync")+" | "+turquoise("--metadata")+" | "+turquoise("--info")+" >"
 	print "   "+turquoise("emerge")+" "+turquoise("--resume")+" [ "+green("--pretend")+" | "+green("--ask")+" | "+green("--skipfirst")+" ]"
 	print "   "+turquoise("emerge")+" "+turquoise("--help")+" [ "+green("system")+" | "+green("config")+" | "+green("sync")+" ] "
 	print bold("Options:")+" "+green("-")+"["+green("abcCdDefhikKlnoOpPsSuUvV")+"] ["+green("--oneshot")+"] ["+green("--newuse")+"] ["+green("--noconfmem")+"]"
@@ -85,6 +85,12 @@ def help(myaction,myopts,havecolor=1):
 		print "              packages.  Example: "
 		#NOTE: this next line *needs* the "sys-kernel/"; *please* don't remove it!
 		print "              "+bold("emerge --inject sys-kernel/gentoo-sources-2.4.19")
+		print
+		print "       "+green("--metadata")
+		print "              Causes portage to process all the metacache files as is normally done"
+		print "              on the tail end of an rsync update using "+bold("emerge --sync")+". The"
+		print "              processing creates the cache database that portage uses for"
+		print "              pre-parsed lookups of package data."
 		print
 		print "       "+green("--prune")+" ("+green("-P")+" short option)"
 		print "              "+turquoise("WARNING: This action can remove important packages!")
