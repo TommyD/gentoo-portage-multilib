@@ -1,6 +1,14 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-1.8.9_pre21 (07 Mar 2002)
+
+  07 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: fixed symlink
+  merge bug related to "safe" emerges.  This should fix problems of Portage
+  dying when merging certain things.  I'm hoping that this fix will give us a
+  solid merge implementation.  It should.  Thanks to Bart Verwilst for tracking
+  down a merge problem that I could reproduce.
+
 *portage-1.8.9_pre20 (06 Mar 2002)
 
   06 Mar 2002; Daniel Robbins <drobbins@gentoo.org> ebuild.sh, others: users

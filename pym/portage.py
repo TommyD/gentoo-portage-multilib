@@ -2398,11 +2398,17 @@ class dblink:
 		self.mergeme(srcroot,destroot,outfile,secondhand,"")
 		# now, it's time for dealing our second hand; we'll loop until we can't merge anymore.  The rest are
 		# broken symlinks.  We'll merge them too.
-		thirdhand=[]
-		while len(secondhand)!=len(thirdhand):
+		lastlen=0
+		while len(secondhand) and len(secondhand)!=lastlen:
+			# clear the thirdhand.  Anything from our second hand that couldn't get merged will be
+			# added to thirdhand.
+			thirdhand=[]
 			self.mergeme(srcroot,destroot,outfile,thirdhand,secondhand)
 			#swap hands
-			[thirdhand,secondhand]=[secondhand,thirdhand]
+			lastlen=len(secondhand)
+			# our thirdhand now becomes our secondhand.  It's ok to throw away secondhand since 
+			# thirdhand contains all the stuff that couldn't be merged.
+			secondhand=thirdhand
 		if len(secondhand):
 			# force merge of remaining symlinks (broken or circular; oh well)
 			self.mergeme(srcroot,destroot,outfile,None,secondhand)
