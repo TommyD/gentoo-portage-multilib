@@ -1,0 +1,72 @@
+#!/usr/bin/python -O
+
+import os
+import sys
+
+def fix_entries(path):
+	if path[-1] != "/":
+		path += "/"
+	ebuild = os.path.basename(os.path.dirname(path))+".ebuild"
+	ebuildfile = open(path+ebuild)
+	orig = ebuildfile.readlines()
+	ebuildfile.close()
+	if "\1" not in orig:
+		return
+	os.system("bunzip2 "+path+"environment.bz2")
+	envfile = open(path+"environment")
+	lines = envfile.readlines()
+	envfile.close()
+	os.system("bzip2 "+path+"environment")
+	env = {}
+	for line in lines:
+		line = " ".join(line.split())
+		values = line.split("=")
+		if len(values) == 1:
+			break
+		key = values[0]
+		value = "=".join(values[1:])
+		if value and value[0] == "$":
+			value = value[1:]
+		if value and value[0] == "'":
+			value = value[1:-1]
+		value = value.replace("\\n","\n")
+		value = value.replace("\\t","\t")
+		env[key] = value
+	for key in ["DEPEND","RDEPEND","PDEPEND"]:
+		if not env.has_key(key):
+			env[key] = ""
+		f = open(path+key, "w")
+		f.write(env[key])
+		f.close()
+	fixed = []
+	x=0
+	while x != len(orig):
+		for key in ["DEPEND","RDEPEND","PDEPEND"]:
+			if orig[x].startswith(key):
+				quotes = orig[x].count('"')
+				while quotes != 2:
+					if quotes > 2:
+						print "broken ebuild "+ebuild
+						sys.exit(1)
+					x += 1
+					quotes += orig[x].count('"')
+				fixed += [key+'="'+env[key]+'"\n']
+				x += 1
+				break
+		if x != len(orig):
+			fixed += orig[x]
+			x += 1
+	ebuildfile = open(path+ebuild,"w")
+	ebuildfile.writelines(fixed)
+	ebuildfile.close()
+
+vardb = "/var/db/pkg/"
+for cat in os.listdir(vardb):
+	if os.path.isdir(vardb+cat):
+		for pkg in os.listdir(vardb+cat):
+			if pkg[0] != "-" and os.path.isdir(vardb+cat+"/"+pkg) and \
+			   os.access(vardb+cat+"/"+pkg+"/environment.bz2",os.F_OK):
+				fix_entries(vardb+cat+"/"+pkg)
+
+import portage
+del portage.mtimedb["updates"]
