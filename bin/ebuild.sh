@@ -623,7 +623,7 @@ debug-print-section() {
 }
 
 # Used by inherit() to locate eclasses
-ECLASSDIR=/usr/portage/eclass
+ECLASSDIR=${PORTDIR}/eclass
 
 # Sources all eclasses in parameters
 inherit() {
