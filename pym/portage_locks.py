@@ -69,7 +69,7 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 				try:
 					os.chown(lockfilename,os.getuid(),portage_data.portage_gid)
 				except:
-					portage.writemsg("Cannot chown a lockfile. This could cause inconvenience later.\n");
+					portage_util.writemsg("Cannot chown a lockfile. This could cause inconvenience later.\n");
 			os.umask(old_mask)
 		else:
 			myfd = os.open(lockfilename, os.O_CREAT|os.O_RDWR,0660)

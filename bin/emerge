@@ -1850,7 +1850,7 @@ class depgraph:
 											mynewargv += [arg]
 									elif arg[0] == "-":
 										myarg = "-"
-										for ch in myarg[1:]:
+										for ch in arg[1:]:
 											if ch != "a":
 												myarg += ch
 										mynewargv += [myarg]

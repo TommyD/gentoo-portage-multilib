@@ -141,7 +141,7 @@ user, then you are a 'rsync user' :).  Rsync users should simply run
 users may find it convenient to run \fBemerge metadata\fR to rebuild the
 cache as portage does at the end of a sync operation.
 .TP 
-.BR "search " (\fB\-s\fR)
+.BR search (\fB\-s\fR)
 Searches for matches of the supplied string in the portage tree.
 The search string is a regular expression.  For example, \fBemerge
 search "^kde"\fR searches for any package that starts with "kde";
@@ -157,7 +157,7 @@ tree will be erased\fR.  Except for in special circumstances,
 this uses \fBrsync\fR to do the update.  See \fBmake.conf\fR(5)'s description
 of PORTDIR_OVERLAY for a method to avoid deletions.
 .TP 
-.BR "unmerge " (\fB\-C\fR)
+.BR unmerge (\fB\-C\fR)
 \fBWARNING: This action can remove important packages!\fR Removes
 all matching packages.  This does no checking of dependencies, so
 it may remove packages necessary for the proper operation of your
@@ -244,7 +244,8 @@ are having problems that this man page does not help resolve.
 .TP 
 .BR "\-\-newuse"
 Tells emerge to include installed packages where USE flags have changed
-since installation.
+since compilation. An asterisk mark where a USE flag has changed since
+the package was compiled.
 .TP 
 .BR "\-\-noconfmem"
 Causes portage to disregard merge records indicating that a config file
