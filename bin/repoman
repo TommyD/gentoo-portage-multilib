@@ -323,7 +323,9 @@ else:
 		myrepofile.close()
 		if myreporootpath == myreporoot[:len(myreporootpath)]:
 			# goofy os x cvs co.
-			myreporoot = myreporoot[len(myreporootpath):]		
+			myreporoot = myreporoot[len(myreporootpath):]
+			while myreporoot and myreporoot[0] == '/':
+				myreporoot = myreporoot[1:]
 	except:
 		err("Error grabbing repository information; exiting.")
 

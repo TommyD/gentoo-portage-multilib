@@ -4818,13 +4818,13 @@ class portdbapi(dbapi):
 		myebuild, mylocation=self.findname2(mycpv)
 
 		if not myebuild:
-			writemsg("!!! aux_get(): ebuild for '%s' does not exist at:\n" % mycpv)
+			writemsg("!!! aux_get(): ebuild for '%(cpv)s' does not exist at:\n" % {"cpv":mycpv})
 			writemsg("!!!            %s\n" % myebuild)
-			raise KeyError, "'%s' at %s" % (mycpv,myebuild)
+			raise KeyError, "'%(cpv)s' at %(path)s" % {"cpv":mycpv,"path":myebuild}
 
+		myManifestPath = string.join(myebuild.split("/")[:-1],"/")+"/Manifest"
 		if "gpg" in self.mysettings.features:
 			try:
-				myManifestPath = string.join(myebuild.split("/")[:-1],"/")+"/Manifest"
 				mys = portage_gpg.fileStats(myManifestPath)
 				if (myManifestPath in self.manifestCache) and \
 				   (self.manifestCache[myManifestPath] == mys):
@@ -4832,24 +4832,29 @@ class portdbapi(dbapi):
 				elif self.manifestVerifier:
 					if not self.manifestVerifier.verify(myManifestPath):
 						# Verification failed the desired level.
-						raise portage_exception.UntrustedSignature, "Untrusted Manifest: %s" % (myManifestPath)
+						raise portage_exception.UntrustedSignature, "Untrusted Manifest: %(manifest)s" % {"manifest":myManifestPath}
 
 				if ("severe" in self.mysettings.features) and \
 				   (mys != portage_gpg.fileStats(myManifestPath)):
-					raise portage_exception.SecurityViolation, "Manifest changed: "+myManifestPath
+					raise portage_exception.SecurityViolation, "Manifest changed: %(manifest)s" % {"manifest":myManifestPath}
 				
 			except portage_exception.InvalidSignature, e:
 				if ("strict" in self.mysettings.features) or \
 				   ("severe" in self.mysettings.features):
 					raise
-				writemsg("!!! INVALID MANIFEST SIGNATURE DETECTED: %s\n" % (myManifestPath))
+				writemsg("!!! INVALID MANIFEST SIGNATURE DETECTED: %(manifest)s\n" % {"manifest":myManifestPath})
 			except portage_exception.MissingSignature, e:
 				if ("severe" in self.mysettings.features):
 					raise
 				if ("strict" in self.mysettings.features):
 					if myManifestPath not in self.manifestMissingCache:
-						writemsg("!!! WARNING: Missing signature in: %s\n" % (myManifestPath))
+						writemsg("!!! WARNING: Missing signature in: %(manifest)s\n" % {"manifest":myManifestPath})
 						self.manifestMissingCache.insert(0,myManifestPath)
+			except (OSError,portage_exception.FileNotFound), e:
+				if ("strict" in self.mysettings.features) or \
+				   ("severe" in self.mysettings.features):
+					raise portage_exception.SecurityViolation, "Error in verification of signatures: %(errormsg)s" % {"errormsg":str(e)}
+				writemsg("!!! Manifest is missing or inaccessable: %(manifest)s\n" % {"manifest":myManifestPath})
 
 		if mylocation not in self.auxdb:
 			self.auxdb[mylocation] = {}
@@ -4860,7 +4865,7 @@ class portdbapi(dbapi):
 		if os.access(myebuild, os.R_OK):
 			emtime=os.stat(myebuild)[ST_MTIME]
 		else:
-			writemsg("!!! aux_get(): ebuild for '%s' does not exist at:\n" % mycpv)
+			writemsg("!!! aux_get(): ebuild for '%(cpv)s' does not exist at:\n" % {"cpv":mycpv})
 			writemsg("!!!            %s\n" % myebuild)
 			raise KeyError
 
@@ -4879,7 +4884,7 @@ class portdbapi(dbapi):
 				                 self.auxdb[mylocation][cat][pkg]["_mtime_"] == emtime
 			except Exception, e:
 				auxdb_is_valid = 0
-				writemsg("auxdb exception: (%s): %s\n" % (mylocation+"::"+cat+"/"+pkg,str(e)))
+				writemsg("auxdb exception: [%(loc)s]: %(exception)s\n" % {"loc":mylocation+"::"+cat+"/"+pkg, "exception":str(e)})
 				if self.auxdb[mylocation][cat].has_key(pkg):
 					self.auxdb[mylocation][cat].del_key(pkg)
 					self.auxdb[mylocation][cat].sync()

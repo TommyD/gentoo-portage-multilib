@@ -49,6 +49,9 @@ class MissingParameter(PortageException):
 	def __str__(self):
 		return repr(self.value)
 
+
+
+
 class InvalidData(PortageException):
 	"""An incorrect formatting was passed instead of the expected one"""
 	def __init__(self,value):
@@ -62,6 +65,9 @@ class InvalidDataType(PortageException):
 		self.value = value[:]
 	def __str__(self):
 		return repr(self.value)
+
+
+
 
 class InvalidLocation(PortageException):
 	"""Data was not found when it was expected to exist or was specified incorrectly"""
@@ -84,12 +90,17 @@ class DirectoryNotFound(InvalidLocation):
 	def __str__(self):
 		return repr(self.value)
 
+
+
 class CommandNotFound(PortageException):
 	"""A required binary was not available or executable"""
 	def __init__(self,value):
 		self.value = value[:]
 	def __str__(self):
 		return repr(self.value)
+
+
+
 
 class SignatureException(PortageException):
 	"""Signature was not present in the checked file"""
