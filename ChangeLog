@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  09 Mar 2005; Marius Mauch <genone@gentoo.org> bin/ebuild-daemon.sh:
+  portageq shouldn't prefix its output as it's used in variables.
+
   08 Mar 2005; Brian Harring <ferringb@gentoo.org> pym/ebuild.py: Revert part of 
   the restrict/portage_restrict changes so use conditionals in restrict work
   again.

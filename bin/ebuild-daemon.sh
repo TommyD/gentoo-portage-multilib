@@ -61,7 +61,7 @@ portageq() {
 		if [ "$line" == "stop_text" ]; then
 			alive=0
 		else
-			echo "portageq: $line"
+			echo "$line"
 		fi
 	done
 	return $e
