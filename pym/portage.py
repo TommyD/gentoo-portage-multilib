@@ -2260,14 +2260,18 @@ class portagetree:
 
 	def dep_bestmatch(self,mydep):
 		"compatibility method"
-		mymatch=best(gvisible(visible(match(mydep,self.dbapi))))
+		#disable keyword-based masking for now
+		#mymatch=best(gvisible(visible(match(mydep,self.dbapi))))
+		mymatch=best(visible(match(mydep,self.dbapi)))
 		if mymatch==None:
 			return ""
 		return mymatch
 
 	def dep_match(self,mydep):
 		"compatibility method"
-		mymatch=gvisible(visible(match(mydep,self.dbapi)))
+		#disable keyword-based masking for now
+		#mymatch=gvisible(visible(match(mydep,self.dbapi)))
+		mymatch=visible(match(mydep,self.dbapi))
 		if mymatch==None:
 			return []
 		return mymatch
@@ -2548,7 +2552,12 @@ class portdbapi(dbapi):
 			doebuild(myebuild,"depend","/")
 		if regen or (not self.auxcache.has_key(mycpv)) or (self.auxcache[mycpv]["mtime"]!=dmtime):
 			#update our internal cache data
-			mycent=open(mydbkey,"r")
+			try: 
+				mycent=open(mydbkey,"r")
+			except IOError,OSError:
+				print "portage: aux_get(): couldn't open cache entry for",mycpv
+				print "(likely caused by syntax error or corruption in the",mycpv,"ebuild.)"
+				sys.exit(1)
 			mylines=mycent.readlines()
 			self.auxcache[mycpv]={"mtime":dmtime}
 			for x in range(0,len(auxdbkeys)):

@@ -1,6 +1,15 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-2.0.7 (26 Jun 2002)
+
+  26 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: add a friendly
+  error handler for aux_get() so that flaky ebuilds don't cause it to trip up
+  with a cryptic traceback; users will get a friendly error message instead.
+  Also, temporarily disable keyword-based masking, since it currently slows
+  down Portage by quite a bit since it causes a much greater set of ebuilds to
+  be cached.
+
 *portage-2.0.6 (25 Jun 2002)
 
   25 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: rewrote the
