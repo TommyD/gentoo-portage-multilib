@@ -167,7 +167,7 @@ must add it first.
 \fBIUSE\fR
 This should be a list of any and all USE flags that are leveraged within
 your build script.  The only USE flags that should not be listed here are
-arch  related flags (see \fBKEYWORDS\fR).
+arch related flags (see \fBKEYWORDS\fR).
 .TP
 \fBDEPEND\fR
 This should contain a list of all packages that are required for the
@@ -232,21 +232,76 @@ with a version of '2*', we can match '2.1', '2.2', '2.2.1', etc... and not match
 version '1.0', '3.0', '4.1', etc...
 .RE
 .TP
-.B USE Variation
+.B Dynamic DEPENDs
 Sometimes programs may depend on different things depending on the USE
-variable.  To vary the packages the program depends on, just use this
-syntax:
-
-DEPEND="media-libs/libsdl
-.br
-	jpeg? ( >=media-libs/jpeg-6b )
-.br
-	tiff? ( >=media-libs/tiff-3.5.5 )
-.br
-	png? ( >=media-libs/libpng-1.2.1 )
-.br
-	X? ( virtual/x11 )"
+variable.  Portage offers a few options to handle this.  Note that when
+using the following syntaxes, each case is considered as 1 Atom in the
+scope it appears.  That means that each Atom by conditionally include
+multiple Atoms and be nested to an infinite depth.
+.RS
 .TP
+.B usevar? ( DEPEND Atom )
+To include the jpeg library when the user has jpeg in \fBUSE\fR, simply use the
+following syntax:
+.br
+.B jpeg? ( media-libs/jpeg)
+.TP
+.B usevar? ( Atom if true ) : ( Atom if false )
+This works much like the tertiary operator found in C.  If a package uses
+GTK2 or GTK1, but not both, then you can handle that like this:
+.br
+.B gtk2? ( =x11-libs/gtk+-2* ) : ( =x11-libs/gtk+-1* )
+.br
+That way the default is the superior GTK2 library.
+.TP
+.B !usevar? ( Atom )
+If you want to include a package only if the user does not have a certain option
+in their \fBUSE\fR variable, then use the following syntax:
+.br
+.B !nophysfs? ( dev-games/physfs )
+.br
+This is often useful for those times when you want to want to add optional support
+for a feature and have it enabled by default.
+.TP
+.B || ( Atom Atom ... )
+When a package can work with a few different packages but a virtual is not 
+appropriate, this syntax can easily be used.
+.br
+.B || (
+.br
+.B 	app-games/unreal-tournament
+.br
+.B 	app-games/unreal-tournament-goty
+.br
+.B )
+.br
+Here we see that unreal-tournament has a normal version and it has a goty version.  
+Since they provide the same base set of files, another package can use either.  
+Adding a virtual is inappropriate due to the small scope of it.
+.br
+Another good example is when a package can be built with multiple video 
+interfaces, but it can only ever have just one.
+.br
+.B || (
+.br
+.B 	sdl? ( media-libs/libsdl )
+.br
+.B 	svga? ( media-libs/svgalib )
+.br
+.B 	opengl? ( virtual/opengl )
+.br
+.B 	ggi? ( media-libs/libggi )
+.br
+.B 	virtual/x11
+.br
+.B )
+.br
+Here only one of the packages will be chosen, and the order of preference is 
+determined by the order in which they appear.  So sdl has the best chance of being 
+chosen, followed by svga, then opengl, then ggi, with a default of X if the user 
+does not specify any of the previous choices.
+.RE
+
 .RE
 .TP
 \fBRDEPEND\fR
@@ -460,7 +515,14 @@ configure \\
 .br
 	--localstatedir=/var/lib \\
 .br
+	\fI${EXTRA_ECONF}\fR \\
+.br
 	\fIconfigure options\fR
+.br
+So you can either pass options to \fBeconf\fR via the command line or
+via the variable \fIEXTRA_ECONF\fR.  If you call \fBeconf\fR yourself, then
+you should just pass the extra arguements to \fBeconf\fR rather than using
+the variable \fIEXTRA_ECONF\fR.
 .TP
 \fBemake\fR \fI[make options]\fR
 This is used as a replacement for make.  Performs
