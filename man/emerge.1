@@ -121,14 +121,15 @@ creates the cache database that portage uses for pre\-parsed lookups of
 package data.
 .TP
 .BR "\-\-prune " (\fB\-P\fR)
-\fBWARNING: This action can remove important packages!\fR Removes
-all but the latest versions of matching packages.  If there are
-multiple SLOTs for a package, it leaves the latest version in each
-SLOT.  This does no checking of dependencies, so it may remove
-packages necessary for the proper operation of your system.  \fBUse\fR
-\-\-clean \fBinstead unless you really know what you're doing\fR.  Its
-arguments can be \fIebuilds\fR, \fIclasses\fR, or \fIdependencies\fR
-\-\- see \fB\-\-clean\fR above for examples.
+\fBWARNING: This action can remove important packages!\fR  Tries 
+to remove all but the last version installed.  Since the command 
+currently doesn't handle multiple versions of the same package 
+properly, beware !  This does not check dependencies, so it may also 
+remove packages necessary for the proper operation of your system.  
+\fBUse\fR \-\-clean \fBinstead unless you really know what you're 
+doing\fR.  Its arguments can be \fIebuilds\fR, \fIclasses\fR, or 
+\fIdependencies\fR \-\- see \fB\-\-clean\fR above for examples.  You 
+have been warned !
 .TP
 .BR \-\-regen
 Causes portage to check and update the dependency cache of all 
