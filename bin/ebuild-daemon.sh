@@ -10,6 +10,8 @@ alias die='diefunc "$FUNCNAME" "$LINENO" "$?"'
 #alias listen='read -u 3 -t 10'
 alias assert='_pipestatus="${PIPESTATUS[*]}"; [[ "${_pipestatus// /}" -eq 0 ]] || diefunc "$FUNCNAME" "$LINENO" "$_pipestatus"'
 
+# use listen/speak for talking to the running portage instance instead of echo'ing to the fd yourself.
+# this allows us to move the open fd's w/out issues down the line.
 listen() {
 	if ! read -u 3 $1; then
 		echo "coms error, read failed: backing out of daemon."
@@ -22,6 +24,8 @@ speak() {
 }
 declare -rf speak
 
+# ensure the other side is still there.  Well, this moreso is for the python side to ensure
+# loading up the intermediate funcs succeeded.
 listen com
 if [ "$com" != "dude?" ]; then
 	echo "serv init coms failed, received $com when expecting 'dude?'"
@@ -39,8 +43,9 @@ if [ ! -z "$SANDBOX_LOG" ]; then
 	declare -rx SANDBOX_LOG="$SANDBOX_LOG" #  #="/tmp/sandbox-${P}-${PORTAGE_SANDBOX_PID}.log"
 	addwrite $SANDBOX_LOG
 fi
-#source_profiles
 
+# portageq hijack- redirects all requests back through the pipes and has the python side execute it.
+# much faster, also avoids the gpg/sandbox being active issues.
 portageq() {
 	local line e alive
 	if [ "${EBUILD_PHASE}" == "depend" ]; then
@@ -73,6 +78,7 @@ done
 speak $re
 unset x re
 	
+# ask the python side to display sandbox complaints.
 request_sandbox_summary() {
 	local line
 	speak "request_sandbox_summary ${SANDBOX_LOG}"
@@ -83,6 +89,8 @@ request_sandbox_summary() {
 	done
 }		
 
+# request the global confcache be transferred to $1 for usage.
+# flips the sandbox vars as needed.
 request_confcache() {
 	if ! hasq confcache $FEATURES || ! hasq sandbox $FEATURES || hasq confcache $RESTRICT; then
 		return 1
@@ -117,6 +125,7 @@ request_confcache() {
 	return 1
 }
 
+# notify python side configure calls are finished.
 update_confcache() {
 	local line
 	if [ "$PORTAGE_CONFCACHE_STATE" != "1" ]; then
@@ -138,11 +147,13 @@ update_confcache() {
 }
 
 DONT_EXPORT_FUNCS="$(declare -F | cut -s -d ' ' -f 3)"
-
 DONT_EXPORT_VARS="${DONT_EXPORT_VARS} alive com PORTAGE_LOGFILE cont"
 
+# depend's speed up.  turn on qa interceptors by default, instead of flipping them on for each depends
+# call.
 export QA_CONTROLLED_EXTERNALLY="yes"
 enable_qa_interceptors
+
 source "/usr/lib/portage/bin/ebuild-functions.sh" || die "failed sourcing ebuild-functions.sh"
 
 export PORTAGE_PRELOADED_ECLASSES=''
@@ -151,7 +162,6 @@ unset_colors
 
 PATH='/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:/usr/lib/portage/bin'
 while [ "$alive" == "1" ]; do
-	#reset com.  we have a time out via listen, so don't let previous commands be rexecuted just cause the read timed out.
 	com=''
 	listen com
 	case $com in
@@ -159,6 +169,7 @@ while [ "$alive" == "1" ]; do
 		# cleanse whitespace.
 		phases="$(echo ${com#process_ebuild})"
 		PORTAGE_SANDBOX_PID="$PPID"
+		# note the (; forks. prevents the initialized ebd env from being polluted by ebuild calls.
 		(
 		if [ "${phases/depend/}" == "$phases" ]; then
 			disable_qa_interceptors
@@ -231,6 +242,8 @@ while [ "$alive" == "1" ]; do
 					}
 				fi
 				ret=$?
+				# if sandbox log exists, then there were complaints from it.
+				# tell python to display the errors, then dump relevant vars for debugging.
 				if [ -n "$SANDBOX_LOG" ] && [ -e "$SANDBOX_LOG" ]; then
 					ret=1
 					echo "sandbox exists- $SANDBOX_LOG"
@@ -251,6 +264,7 @@ while [ "$alive" == "1" ]; do
 			done
 		fi
 		)
+		# post fork.  tell python if it succeeded or not.
 		if [ $? != 0 ]; then
 			echo "phases failed"
 			speak "phases failed"
