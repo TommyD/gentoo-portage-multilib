@@ -2260,7 +2260,6 @@ class portagetree:
 
 	def dep_bestmatch(self,mydep):
 		"compatibility method"
-		#disable keyword-based masking for now
 		#mymatch=best(gvisible(visible(match(mydep,self.dbapi))))
 		mymatch=best(visible(match(mydep,self.dbapi)))
 		if mymatch==None:
@@ -2269,7 +2268,6 @@ class portagetree:
 
 	def dep_match(self,mydep):
 		"compatibility method"
-		#disable keyword-based masking for now
 		#mymatch=gvisible(visible(match(mydep,self.dbapi)))
 		mymatch=visible(match(mydep,self.dbapi))
 		if mymatch==None:
@@ -2530,6 +2528,7 @@ class portdbapi(dbapi):
 		self.auxcache={}
 	
 	def aux_get(self,mycpv,mylist):
+		global OSError,IOError
 		"stub code for returning auxilliary db information, such as SLOT, DEPEND, etc."
 		'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
 		'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or [] if mycpv not found'
