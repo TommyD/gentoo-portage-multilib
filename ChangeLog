@@ -5,6 +5,18 @@
   Export $S and $D in dyn_compile and dyn_install, as our patched
   version of libtool uses these to fixup .la files.
 
+*portage-1.8.20 (15 Apr 2002)
+
+  15 Apr 2002; Jon Nelson <jnelson@gentoo.org>: src/sandbox/Makefile,
+   src/sandbox/problems/Makefile, src/sandbox/problems/sandbox_dev_fd_foo.c, 
+   src/sandbox/sandbox.c:
+   
+  Cleaned up Makefiles somewhat to take advantage of GNU Make,
+  added '/dev/zero' and /dev/fd/' (<- note trailing slash) to the
+  list of items accessible safely from the sandbox.
+  Added sandbox_dev_fd_foo.c to test for /dev/fd/<xx>.
+  The test is almost verbatim from the autoconf test suite.
+
 *portage-1.8.19 (09 Apr 2002)
 
   08 Apr 2002; Geert Bevin <gbevin@gentoo.org>: emerge:
