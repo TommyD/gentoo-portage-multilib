@@ -3,6 +3,20 @@
 
 # History: 
 
+# 05/23/03: jrray@gentoo.org: 
+#
+#	    Skip modules the CPAN thinks are included with perl (closes bug 14679).
+#	    
+#	    Used the CPAN module to discover the real location of Makefile.PL to set
+#	    the ${S} variable in the ebuild, sometimes the location isn't the same as
+#	    ${P}.
+#	    
+#	    Don't assume the filename of the tarball will be ${P}.tar.gz, use the
+#	    real filename out of CPAN.
+#	    
+#	    Some modules' filenames have underscores in unfortunate places.  Change
+#	    all of them to hyphens to avoid that mess.
+#
 # 02/23/03: alain@gentoo.org: removed portage direct-access code, and switched to using the
 #           portageq utility which hides the portage APIs.
 #
@@ -126,13 +140,16 @@ sub portage_dir {
     my $obj  = shift;
     my $file = $obj->cpan_file;
 
+    # remove underscores
+    $file =~ tr/_/-/;
+
     # turn this into a directory name suitable for portage tree
-    return unless ( $file =~ m|.*/(.*)-[^-]+\.| );
+    return undef unless ( $file =~ m|.*/(.*)-[^-]+\.| );
     return $1;
 }
 
 sub create_ebuild {
-    my ( $module, $dir, $file, $prereq_pm, $md5 ) = @_;
+    my ( $module, $dir, $file, $build_dir, $prereq_pm, $md5 ) = @_;
 
     # First, make the directory
     my $fulldir  = File::Spec->catdir( $perldev_overlay, $dir );
@@ -145,11 +162,16 @@ sub create_ebuild {
         warn("Couldn't turn '$file' into an ebuild name\n");
         return;
     }
+
     my ( $modpath, $filename ) = ( $1, $2 );
+
+    # remove underscores
+    $filename =~ tr/_/-/;
+
     my $ebuild = File::Spec->catdir( $fulldir,  "$filename.ebuild" );
     my $digest = File::Spec->catdir( $filesdir, "digest-$filename" );
 
-    my $desc = $module->description;
+    my $desc = $module->description || 'No description available.';
 
     open EBUILD, ">$ebuild" or die "Could not write to '$ebuild': $!";
     print EBUILD <<"HERE";
@@ -160,9 +182,9 @@ sub create_ebuild {
 
 inherit perl-module
 
-S=\${WORKDIR}/\${P}
+S=\${WORKDIR}/$build_dir
 DESCRIPTION="$desc"
-SRC_URI="http://www.cpan.org/modules/by-authors/id/$modpath/\${P}.tar.gz"
+SRC_URI="http://www.cpan.org/modules/by-authors/id/$file"
 HOMEPAGE="http://www.cpan.org/modules/by-authors/id/$modpath/\${P}.readme"
 
 SLOT="0"
@@ -225,6 +247,10 @@ sub install_module {
         printbig "Module already installed for '$module_name'\n";
         return;
     }
+    elsif ( $dir eq 'perl' ) {
+        printbig "Module '$module_name' is part of the base perl install\n";
+        return;
+    }
 
     printbig "Need to create ebuild for '$module_name': $dir\n";
 
@@ -262,7 +288,12 @@ sub install_module {
     my $prereq_pm = $pack->prereq_pm;
     install_module($_, 1) for ( keys %$prereq_pm );
 
-    create_ebuild( $obj, $dir, $file, $prereq_pm, $md5string );
+    # get the build dir from CPAN, this will tell us definitively
+    # what we should set S to in the ebuild
+    # strip off the path element
+    (my $build_dir = $pack->{build_dir}) =~ s|.*/||;
+
+    create_ebuild( $obj, $dir, $file, $build_dir, $prereq_pm, $md5string );
 
     system('/bin/mv', '-f', $localfile, $PORTAGE_DISTDIR);
 
