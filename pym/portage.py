@@ -5603,7 +5603,7 @@ class portdbapi(dbapi):
 			try:
 				myaux=db["/"]["porttree"].dbapi.aux_get(mycpv, ["KEYWORDS"])
 			except (KeyError,IOError,TypeError):
-				return []
+				continue
 			if not myaux[0]:
 				# KEYWORDS=""
 				#print "!!! No KEYWORDS for "+str(mycpv)+" -- Untested Status"

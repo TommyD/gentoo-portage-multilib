@@ -10,20 +10,20 @@
        It is for convenience. Do not mistake this for the actual file.
 
   04 Aug 2004; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Changed the
-	virtual/glibc references to virtual/libc.
+  virtual/glibc references to virtual/libc.
 
   04 Aug 2004; Nicholas Jones <carpaski@gentoo.org> prepman: No longer runs
-	gzip on .keep files.
+  gzip on .keep files.
 
   04 Aug 2004; Nicholas Jones <carpaski@gentoo.org> getbinpkg.py: Added in
-	an active/passive option for FTP connections -- Requires the appending of
-	an asterisk to the HOST portion of the ftp string to use active connections.
+  an active/passive option for FTP connections -- Requires the appending of
+  an asterisk to the HOST portion of the ftp string to use active connections.
 
   04 Aug 2004; Nicholas Jones <carpaski@gentoo.org> make.conf*: Updates for
-	the active-connection ftp option.
+  the active-connection ftp option.
 
   04 Aug 2004; Nicholas Jones <carpaski@gentoo.org> emergehelp.py: Removed
-	the bin/ version and replaced it with a duplicated pym/ version.
+  the bin/ version and replaced it with a duplicated pym/ version.
 
   03 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py: 
   Added check to ensure /var/tmp/portage's permissions were sane. (#56665)
@@ -55,7 +55,7 @@
   due to file.executable's key name being typoed.
 
   03 Aug 2004; Nicholas Jones <carpaski@gentoo.org> portage_dep.py: Enhanced
-	the invalid depend string identification for || (and &&) strings.
+  the invalid depend string identification for || (and &&) strings.
 
 *portage-2.0.51_pre15 (03 Aug 2003): Fixes and Public Readiness
 
