@@ -1578,7 +1578,7 @@ class depgraph:
 					xs[2]="-"+xs[2]
 
 				if self.pkgsettings.has_key("COLUMNWIDTH"):
-					mywidth=int(self.pkgsettings.settings["COLUMNWIDTH"])
+					mywidth=int(self.pkgsettings["COLUMNWIDTH"])
 				else:
 					mywidth=130
 				oldlp=mywidth-30
@@ -2098,12 +2098,39 @@ class graph_display:
 		
 		return summary
 	
-	def format_new_version(self, mydep):
+	def format_cpv(self, mydep):
 		if mydep[0] == "blocks":
 			return red(mydep[2])
 		elif mydep[3] == "nomerge":
 			return darkblue(mydep[2])
 		return darkgreen(mydep[2])
+	
+	def format_name(self, mydep):
+		mysplit = portage.portage_versions.pkgsplit(mydep[2])
+		if mysplit:
+			name = mysplit[0]
+		else:
+			name = mydep[2]
+		
+		if mydep[0] == "blocks":
+			return red(name)
+		elif mydep[3] == "nomerge":
+			return darkblue(name)
+		return darkgreen(name)
+	
+	def format_new_version(self, mydep):
+		mysplit = portage.portage_versions.pkgsplit(mydep[2])
+		if not mysplit:
+			return ""
+		version = mysplit[1]
+		if mysplit[2] != "r0":
+			version += "-"+mysplit[2]
+		
+		if mydep[0] == "blocks":
+			return red("["+version+"]")
+		elif mydep[3] == "nomerge":
+			return darkblue("["+version+"]")
+		return darkgreen("["+version+"]")
 	
 	def format_old_version(self, mydep):
 		dep_type = mydep[0]
@@ -2291,7 +2318,7 @@ class graph_display:
 	
 	def display_flat(self):
 		mygraph = self.graph.clone()
-		funclist = [self.format_summary, self.format_new_version, self.format_old_version]
+		funclist = [self.format_summary, self.format_cpv, self.format_old_version]
 		postfuncs = []
 		if verbosity:
 			funclist += [self.format_flags]
@@ -2323,6 +2350,56 @@ class graph_display:
 			if msg:
 				print msg
 	
+	def display_columns(self):
+		mygraph = self.graph.clone()
+		funclist = [self.format_summary, self.format_name,
+		            self.format_new_version, self.format_old_version]
+		postfuncs = []
+		if verbosity:
+			funclist += [self.format_flags]
+			if verbosity >= 2:
+				funclist += [self.format_metadata]
+			funclist += [self.format_size, self.format_overlay]
+			postfuncs += [self.post_size_msg, self.post_overlay_msg]
+		if "--changelog" in myopts:
+			funclist += [self.format_changelog]
+			postfuncs += [self.post_changelog_msg]
+		
+		myoutput = []
+		mywidths = []
+		for x in range(len(funclist)):
+			mywidths.append(0)
+		
+		while mygraph.get_all_nodes():
+			nextpkg = mygraph.get_leaf_nodes()[0]
+			mygraph.remove_node(nextpkg)
+			nextpkg = nextpkg.split()
+			if nextpkg[3] == "nomerge":
+				continue
+			
+			thisoutput = []
+			for x in range(len(funclist)):
+				func = funclist[x]
+				txt = func(nextpkg)
+				txtw = nc_len(txt)
+				if txt and txtw > mywidths[x]:
+					mywidths[x] = txtw
+				thisoutput.append(txt)
+			myoutput.append(thisoutput)
+		
+		print
+		for output in myoutput:
+			for x in range(len(output)):
+				txt = output[x]
+				print txt,((mywidths[x]-nc_len(txt))*" "),
+			print
+		
+		print
+		for func in postfuncs:
+			msg = func()
+			if msg:
+				print msg
+	
 	def display_tree(self):
 		mygraph = self.graph.clone()
 		
@@ -2342,7 +2419,7 @@ class graph_display:
 			if node not in relevant:
 				mygraph.remove_node(node)
 		
-		funclist = [self.format_new_version, self.format_old_version]
+		funclist = [self.format_cpv, self.format_old_version]
 		postfuncs = []
 		if verbosity:
 			funclist += [self.format_flags]
@@ -3328,6 +3405,8 @@ else:
 			graphdisp = graph_display(mydepgraph.mynewgraph)
 			if "--tree" in myopts:
 				graphdisp.display_tree()
+			elif "--columns" in myopts:
+				graphdisp.display_columns()
 			else:
 				graphdisp.display_flat()
 			mergecount=0
@@ -3362,8 +3441,11 @@ else:
 			graphdisp = graph_display(mydepgraph.mynewgraph)
 			if "--tree" in myopts:
 				graphdisp.display_tree()
+			elif "--columns" in myopts:
+				graphdisp.display_columns()
 			else:
-				graphdisp.display_flat()
+				mydepgraph.display(mydepgraph.altlist())
+				#graphdisp.display_flat()
 	else:
 		if ("--buildpkgonly" in myopts):
 			has_deps = False
