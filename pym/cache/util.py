@@ -10,12 +10,18 @@ def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, 
 	else:
 		noise=verbose_instance
 
-	valid_nodes={}
+	dead_nodes = {}
+	dead_nodes.fromkeys(trg_cache.keys())
 	count=0
+
+	if not trg_cache.autocommits:
+		trg_cache.sync(100)
+
 	for x in valid_nodes_iterable:
 #		print "processing x=",x
 		count+=1
-		valid_nodes[x] = None
+		if dead_nodes.has_key(x):
+			del dead_nodes[x]
 		try:	entry = src_cache[x]
 		except KeyError, e:
 			noise.missing_entry(x)
@@ -47,15 +53,17 @@ def mirror_cache(valid_nodes_iterable, src_cache, trg_cache, eclass_cache=None, 
 			noise.update(x)
 			count = 0
 
+	if not trg_cache.autocommits:
+		trg_cache.commit()
+
 	# ok.  by this time, the trg_cache is up to date, and we have a dict
 	# with a crapload of cpv's.  we now walk the target db, removing stuff if it's in the list.
-	for key in trg_cache.iterkeys():
-		if key not in valid_nodes:
-			try:	del trg_cache[key]
-			except cache_errors.CacheError, ce:
-				noise.exception(ce)
-				del ce
-	valid_nodes.clear()
+	for key in dead_nodes:
+		try:	del trg_cache[key]
+		except cache_errors.CacheError, ce:
+			noise.exception(ce)
+			del ce
+	dead_nodes.clear()
 	del noise			
 
 

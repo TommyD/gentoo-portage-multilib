@@ -29,6 +29,7 @@ class SQLDatabase(template.database):
 	_BaseError = ()
 	_dbClass = None
 
+	autocommits = False
 
 	# boolean indicating if the derived RDBMS class supports replace syntax
 	_supports_replace = False
@@ -40,6 +41,7 @@ class SQLDatabase(template.database):
 		super(SQLDatabase, self).__init__(label, auxdbkeys, **config)
 
 		config.setdefault("host","127.0.0.1")
+		config.setdefault("autocommit", self.autocommits)
 		self._initdb_con(config)
 
 		self.label = self._sfilter(self.label)
@@ -86,7 +88,7 @@ class SQLDatabase(template.database):
 		return "\"%s\"" % s.replace("\\","\\\\").replace("\"","\\\"")
 
 
-	def __getitem__(self, cpv):
+	def _getitem(self, cpv):
 		try:	self.con.execute("SELECT key, value FROM %s NATURAL JOIN %s "
 			"WHERE label=%s AND cpv=%s" % (self.SCHEMA_PACKAGE_NAME, self.SCHEMA_VALUES_NAME,
 			self.label, self._sfilter(cpv)))
@@ -111,16 +113,21 @@ class SQLDatabase(template.database):
 			try:	
 				self.con.execute("DELETE FROM %s WHERE label=%s AND cpv=%s" % \
 				(self.SCHEMA_PACKAGE_NAME, self.label, self._sfilter(cpv)))
-				self.db.commit()
+				if self.autocommits:
+					self.commit()
 			except self._BaseError, e:
 				raise cache_errors.CacheCorruption(self, cpv, e)
 			if self.con.rowcount <= 0:
 				raise KeyError(cpv)
 		except Exception:
-			self.db.rollback()
+			if not self.autocommits:
+				self.db.rollback()
+				# yes, this can roll back a lot more then just the delete.  deal.
 			raise
 
 	def __del__(self):
+		# just to be safe.
+		self.commit()
 		self.db.close()
 
 	def _setitem(self, cpv, values):
@@ -143,11 +150,13 @@ class SQLDatabase(template.database):
 					(self.SCHEMA_VALUES_NAME, str(pkgid)), db_values)
 				except self._BaseError, e:
 					raise cache_errors.CacheCorruption(cpv, e)
-			self.db.commit()
+			if self.autocommits:
+				self.commit()
 
 		except Exception:
-			try:	self.db.rollback()
-			except self._BaseError: pass
+			if not self.autocommits:
+				try:	self.db.rollback()
+				except self._BaseError: pass
 			raise
 
 
@@ -180,6 +189,11 @@ class SQLDatabase(template.database):
 
 
 	def has_key(self, cpv):
+		if not self.autocommits:
+			try:	self.commit()
+			except self._BaseError, e:
+				raise cache_errors.GeneralCacheCorruption(e)
+
 		try:	self.con.execute("SELECT cpv FROM %s WHERE label=%s AND cpv=%s" % \
 				(self.SCHEMA_PACKAGE_NAME, self.label, self._sfilter(cpv)))
 		except self._BaseError, e:
@@ -188,13 +202,21 @@ class SQLDatabase(template.database):
 
 
 	def iterkeys(self):
+		if not self.autocommits:
+			try:	self.commit()
+			except self._BaseError, e:
+				raise cache_errors.GeneralCacheCorruption(e)
+
 		try:	self.con.execute("SELECT cpv FROM %s WHERE label=%s" % 
 				(self.SCHEMA_PACKAGE_NAME, self.label))
 		except self._BaseError, e:
 			raise cache_errors.GeneralCacheCorruption(e)
 #		return [ row[0] for row in self.con.fetchall() ]
 		for x in self.con.fetchall():
-			yield row[0]
+			yield x[0]
+
+	def commit(self):
+		self.db.commit()
 
 	def get_matches(self,match_dict):
 		query_list = []

@@ -7,6 +7,11 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  15 Mar 2005; Brian Harring <ferringb@gentoo.org> pym/cache/*;
+  Cache updates moving _eclasses_ handling up into the template layer, 
+  added delayed sync'ing support (see database.autocommit) which is relevant 
+  for rdbms backends.
+
   13 Mar 2005; Brian Harring <ferringb@gentoo.org> pym/portage_dep.py:
   Addded a traversed cache dict to __traversed per call, the slowdown was 
   pointed out by Thomas de Grenier de Latour (TGL).  56s, to ~6s.  Probably 

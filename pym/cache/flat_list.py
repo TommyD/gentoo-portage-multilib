@@ -1,9 +1,11 @@
-import os, stat
 import fs_template
 import cache_errors
+import os
 
 # store the current key order *here*.
 class database(fs_template.FsBased):
+
+	autocommits = True
 
 	# do not screw with this ordering. _eclasses_ needs to be last
 	auxdbkey_order=('DEPEND', 'RDEPEND', 'SLOT', 'SRC_URI',
@@ -16,13 +18,13 @@ class database(fs_template.FsBased):
 		self._base = os.path.join(self._base, 
 			self.label.lstrip(os.path.sep).rstrip(os.path.sep))
 
-		if len(self._known_keys) > len(self.auxdbkey_order):
+		if len(self._known_keys) > len(self.auxdbkey_order) + 2:
 			raise Exception("less ordered keys then auxdbkeys")
 		if not os.path.exists(self._base):
 			self._ensure_dirs()
 
 
-	def __getitem__(self, cpv):
+	def _getitem(self, cpv):
 		d = {}
 		try:
 			myf = open(os.path.join(self._base, cpv),"r")
@@ -42,21 +44,6 @@ class database(fs_template.FsBased):
 			myf.close()
 			raise cache_errors.CacheCorruption(cpv, e)
 		myf.close()
-		try:
-			e=d["_eclasses_"].rstrip().lstrip().split("\t")
-			# occasionally screwed up fields come in from above.  no clue why, but it's annoying.
-			if e == [""]:
-				e=[]
-			if len(e) % 3 != 0:
-				raise cache_errors.CacheCorruption(cpv, "_eclasses_ field was of invalid len %i" % len(e))
-
-			d["_eclasses_"] = {}
-			for x in range(0,len(e), 3):
-				d["_eclasses_"][e[x + 0]] = (e[x + 1], long(e[x + 2]))
-
-		except IndexError, e:
-#			print "caught exception internally, e=",e
-			raise cache_errors.CacheCorruption(cpv, e)
 		return d
 
 
@@ -76,18 +63,8 @@ class database(fs_template.FsBased):
 		
 
 		for x in self.auxdbkey_order:
-			if x == "_eclasses_":
-				# note no newline. this is intention, don't screw with it.
-				l=[]
-				for k,v in values.get(x,{}).items():
-					l.append("%s\t%s\t%s" % (k, v[0], str(v[1])))
-				myf.write("\t".join(l))
-				myf.write("\n")
-				del l
-			else:
-				myf.write(values.get(x,"")+"\n")
+			myf.write(values.get(x,"")+"\n")
 
-#		myf.writelines( [ values.get(x,"")+"\n" for x in self.auxdbkey_order] )
 		myf.close()
 		self._ensure_access(fp, mtime=values["_mtime_"])
 		#update written.  now we move it.
@@ -128,3 +105,5 @@ class database(fs_template.FsBased):
 				yield p[len_base+1:]
 			dirs.pop(0)
 
+
+	def commit(self):	pass
