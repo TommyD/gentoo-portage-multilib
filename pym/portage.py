@@ -332,7 +332,7 @@ def elog_process(cpv, mysettings):
 		if not msgtype.upper() in mysettings["PORTAGE_LOG_CLASSES"].split() \
 				and not msgtype.lower() in mysettings["PORTAGE_LOG_CLASSES"].split():
 			continue
-		if msgfunction not in EBUILD_PHASES.split():
+		if msgfunction not in portage_const.EBUILD_PHASES.split():
 			print "!!! can't process invalid log file: %s" % f
 			continue
 		if not msgfunction in mylogentries:
@@ -346,7 +346,7 @@ def elog_process(cpv, mysettings):
 
 	# generate a single string with all log messages
 	fulllog = ""
-	for phase in EBUILD_PHASES.split():
+	for phase in portage_const.EBUILD_PHASES.split():
 		if not phase in mylogentries:
 			continue
 		for msgtype,msgcontent in mylogentries[phase]:
