@@ -174,7 +174,14 @@ hasq() {
 }
 
 has_version() {
-	[ "${EBUILD_PHASE}" == "depend" ] && echo "QA Notice: has_version() in global scope: ${CATEGORY}/$PF" >&2
+	if [ "${EBUILD_PHASE}" == "depend" ]; then
+		echo -n "QA Notice: has_version() in global scope: " >&2
+		if [ ${ECLASS_DEPTH} -gt 0 ]; then
+			echo "eclass ${ECLASS}" >&2
+		else
+			echo "${CATEGORY}/${PF}" >&2
+		fi
+	fi
 	# return shell-true/shell-false if exists.
 	# Takes single depend-type atoms.
 	if /usr/lib/portage/bin/portageq 'has_version' "${ROOT}" "$1"; then
@@ -185,51 +192,17 @@ has_version() {
 }
 
 portageq() {
-	[ "${EBUILD_PHASE}" == "depend" ] && echo "QA Notice: portageq in global scope: ${CATEGORY}/$PF" >&2
+	if [ "${EBUILD_PHASE}" == "depend" ]; then
+		echo -n "QA Notice: portageq in global scope: " >&2
+		if [ ${ECLASS_DEPTH} -gt 0 ]; then
+			echo "eclass ${ECLASS}" >&2
+		else
+			echo "${CATEGORY}/${PF}" >&2
+		fi
+	fi
 	/usr/lib/portage/bin/portageq "$@"
 }
 
-
-
-
-# ----------------------------------------------------------------------------
-# ----------------------------------------------------------------------------
-# ----------------------------------------------------------------------------
-
-# QA INTERCEPTORS
-
-# ----
-if [ "${EBUILD_PHASE}" == "depend" ]; then
-# ----
-
-function java-config() {
-	[ "${EBUILD_PHASE}" == "depend" ] && echo "QA Notice: java-config in global scope: ${CATEGORY}/$PF" >&2
-	`type -p java-config || echo "missing.java-config"` "$@"
-}
-
-function python-config() {
-	[ "${EBUILD_PHASE}" == "depend" ] && echo "QA Notice: java-config in global scope: ${CATEGORY}/$PF" >&2
-	`type -p python-config || echo "missing.python-config"` "$@"
-}
-
-function gcc() {
-	[ "${EBUILD_PHASE}" == "depend" ] && echo "QA Notice: gcc in global scope: ${CATEGORY}/$PF" >&2
-	`type -p gcc || echo "missing.gcc"` "$@"
-}
-
-function perl() {
-	[ "${EBUILD_PHASE}" == "depend" ] && echo "QA Notice: perl in global scope: ${CATEGORY}/$PF" >&2
-	`type -p perl || echo "missing.perl"` "$@"
-}
-
-function grep() {
-	[ "${EBUILD_PHASE}" == "depend" ] && echo "QA Notice: grep in global scope: ${CATEGORY}/$PF" >&2
-	`type -p grep || echo "missing.grep"` "$@"
-}
-
-# ----
-fi # EBUILD_PHASE == "depend"
-# ----
 
 # ----------------------------------------------------------------------------
 # ----------------------------------------------------------------------------
@@ -237,7 +210,14 @@ fi # EBUILD_PHASE == "depend"
 
 
 best_version() {
-	[ "${EBUILD_PHASE}" == "depend" ] && echo "QA Notice: best_version() in global scope: ${CATEGORY}/$PF" >&2
+	if [ "${EBUILD_PHASE}" == "depend" ]; then
+		echo -n "QA Notice: best_version() in global scope: " >&2
+		if [ ${ECLASS_DEPTH} -gt 0 ]; then
+			echo "eclass ${ECLASS}" >&2
+		else
+			echo "${CATEGORY}/${PF}" >&2
+		fi
+	fi
 	# returns the best/most-current match.
 	# Takes single depend-type atoms.
 	/usr/lib/portage/bin/portageq 'best_version' "${ROOT}" "$1"
@@ -1484,6 +1464,29 @@ unset E_IUSE E_DEPEND E_RDEPEND E_CDEPEND E_PDEPEND
 declare -r T P PN PV PVR PR A D EBUILD EMERGE_FROM O PPID FILESDIR
 declare -r PORTAGE_TMPDIR
 
+QA_INTERCEPTORS="javac java-config python python-config perl grep egrep fgrep sed gcc g++ cc bash awk nawk gawk pkg-config"
+# level the QA interceptors if we're in depend
+if hasq "depend" "$@"; then
+	for BIN in ${QA_INTERCEPTORS}; do
+		BIN_PATH=`type -pf ${BIN}`
+		if [ "$?" != "0" ]; then
+			BODY="echo \"*** missing command: ${BIN}\" >&2; return 127"
+		else
+			BODY="${BIN_PATH} \"\$@\"; return \$?"
+		fi
+		FUNC_SRC="${BIN}() {
+		echo -n \"QA Notice: ${BIN} in global scope: \" >&2
+		if [ \$ECLASS_DEPTH -gt 0 ]; then
+			echo \"eclass \${ECLASS}\" >&2
+		else
+			echo \"\${CATEGORY}/\${PF}\" >&2
+		fi
+		${BODY}
+		}";
+		eval "$FUNC_SRC" || echo "error creating QA interceptor ${BIN}" >&2
+	done
+	unset src bin_path body
+fi
 
 source ${EBUILD} || die "error sourcing ebuild"
 [ -z "${ERRORMSG}" ] || die "${ERRORMSG}"
@@ -1493,6 +1496,12 @@ hasq nostrip ${RESTRICT} && export DEBUGBUILD=1
 #a reasonable default for $S
 if [ "$S" = "" ]; then
 	export S=${WORKDIR}/${P}
+fi
+
+#wipe the interceptors.  we don't want saved.
+if hasq "depend" "$@"; then
+	unset -f $QA_INTERCEPTORS
+	unset QA_INTERCEPTORS
 fi
 
 #some users have $TMP/$TMPDIR to a custom dir in their home ...

@@ -9,6 +9,14 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  22 Jul 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild.sh: Re-enabled
+  binary QA interceptors, with a minor twist- the QA_INTERCEPTORS is used to 
+  specify what QA interceptors will be defined.  These functions are no longer
+  saved in the ebuild's stored env (exist *only* in depend phase), and have been 
+  expanded to identify if it's the ebuild, or eclass that's triggering the QA 
+  Notice (#54652).  The interceptors behaviour when the binary is missing has 
+  been corrected to correctly output "missing command $bin: args".
+
   21 Jul 2004; Masatomo Nakano <nakano@gentoo.org> bin/emerge: Fixed bug 
   which blocks a package itself with -U option.
 
