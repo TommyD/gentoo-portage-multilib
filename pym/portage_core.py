@@ -307,4 +307,62 @@ class eid:
 				return 1
 		return 0
 
+class eidset:
+	def __init__(self):
+		self.db={"category":{},"catpkg":{},"rep":{}}
+	
+	def add(self,myeid):
+		"add an eid, indexing by category, catpkg and rep"
+		if not myeid.valid:
+			return
+		if not self.db["category"].has_key(myeid.category):
+			self.db["category"][myeid.category]=[]
+		self.db["category"][myeid.category].append(myeid)
+		mykey=myeid.category+"/"+myeid.package
+		if not self.db["catpkg"].has_key(mykey):
+			self.db["catpkg"][mykey]=[]
+		self.db["catpkg"][mykey].append(myeid)
+		self.db["rep"][myeid.rep]=myeid
 
+
+
+"""new dep ideas:
+
+we introduce the concept of "hard deps" and "soft deps".  By default, apps use
+"hard deps".  Hard deps are used to decribe relationships where the ebuild
+depends on a specific version/rev of a package currently installed, and becomes
+intrinsically tied to it.  soft deps specify a dependency on a set of packages.
+As long as one of the set is currently installed, the package will run fine.
+
+Syntax ideas:
+
+=sys-apps/foo-1.0 (hard dep)
+'sys-apps/man (soft dep, depends on any version of man)
+sys-apps/man (hard dep, depends on the specific version of man installed right now)
+'foo/bar (soft dep, requires foo/bar and foo/oni to be installed
+'{foo/bar >=1.0 <2.0} (soft dep using new set syntax, depending on any foo/bar 1.0 or greater, but less than 2.0)
+'{foo/bar 1.*} (same as above)
+'{foo/bar >=1.2 <2.0} (more specific)
+'{foo/bar ~1.0 ~1.3} (any revision of 1.0 or 1.3)
+{foo/bar >=4.0} a *hard* dependency on any ebuild
+Questions: do we need to be able to "*hard*" depend on a specific version *and*
+rev of a package?
+
+Tenative answer: yes.  The hard dependency should depend on whatever rev is installed,
+and if a new rev is installed, the package dependent on it should be rebuilt too.
+
+Do we need to only be able to hard-depend on a specific version of a package?
+
+Tenative answer: no. hard deps are used to link multiple packages into
+a logical whole.  A hard dep is like concrete, forming an amalgam meta-package.
+
+Why we are doing this: By specifying hard and soft deps, we provide the necessary
+info that Portage needs to carefully rebuild/upgrade the system.  We can now track
+how packages *currently* are relying on one another... this is something that we
+aren't doing yet, and is required for a nice, fast "emerge update" implementation.
+
+Question: will this additional informatin allow portage to determine if a particular
+package is currently being depended upon by anything on the running system?
+
+Answer: yes, it will.  Whee!
+"""
