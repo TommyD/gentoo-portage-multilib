@@ -685,7 +685,7 @@ int main(int argc, char** argv)
 						}
 						else
 						{
-							sprintf(pid_string, "%d", getpid());
+							sprintf(pid_string, "%d\n", getpid());
 							if (write(pids_file, pid_string, strlen(pid_string)) != strlen(pid_string))
 							{
 								perror(">>> pids file write");

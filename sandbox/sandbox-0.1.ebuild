@@ -58,7 +58,8 @@ pkg_prerm() {
 	cp -f /usr/lib/portage/bin/ebuild.sh.orig /usr/lib/portage/bin/ebuild.sh
 	# Make the current ebuild use bash instead of sandbox further on
 	rm -f /usr/bin/sandbox
-	echo "#!/bin/bash\n/bin/bash -c \"\$@\"\n" > /usr/bin/sandbox
+	echo '#!/bin/bash' > /usr/bin/sandbox
+	echo '/bin/bash -c "$@"' >> /usr/bin/sandbox
 	chmod 755 /usr/bin/sandbox
 	
 }
