@@ -112,6 +112,7 @@ typedef struct {
 /* glibc modified realpath() functions */
 char *erealpath (const char *name, char *resolved);
 
+static void init_wrappers(void);
 static void *get_dlsym(const char *);
 static void canonicalize(const char *, char *);
 static int check_access(sbcontext_t *, const char *, const char *);
@@ -181,10 +182,9 @@ static int (*true_execve)(const char *, char *const [], char *const []);
  * Initialize the shabang
  */
 
-void _init(void)
+static void init_wrappers(void)
 {
   void *libc_handle;
-  char *tmp_string = NULL;
 
 #ifdef BROKEN_RTLD_NEXT
 //  printf ("RTLD_LAZY");
@@ -220,6 +220,13 @@ void _init(void)
 #endif
 
   true_execve = dlsym(libc_handle, "execve");
+}
+  
+void _init(void)
+{
+  char *tmp_string = NULL;
+
+  init_wrappers();
 
   /* Get the path and name to this library */
   tmp_string = get_sandbox_lib("/");
@@ -714,7 +721,8 @@ static int is_sandbox_pid()
   int current_pid = 0;
   int tmp_pid = 0;
 
-  check_dlsym(fopen);
+  init_wrappers();
+
   pids_stream = true_fopen(PIDS_FILE, "r");
 
   if (NULL == pids_stream) {
@@ -987,6 +995,8 @@ static int check_syscall(sbcontext_t* sbcontext, const char* func, const char* f
   char* debug_log_path = NULL;
   int debug_log_file = 0;
   char buffer[512];
+
+  init_wrappers();
 
   if ('/' == file[0]) {
     absolute_path = (char *)malloc((strlen(file) + 1) * sizeof(char));
