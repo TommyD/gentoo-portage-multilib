@@ -809,7 +809,7 @@ def grab_stacked(basename, locations, handler, incrementals=[], incremental_line
 									del final_dict[y][final_dict[y].index(thing[1:])]
 							else:
 								if thing not in final_dict[y]:
-									final_dict[y].insert(0,thing)
+									final_dict[y].append(thing)
 		elif (stuff == None):
 			if all_must_exist:
 				return None
@@ -1535,7 +1535,7 @@ class config:
 		if os.environ.has_key("PORTAGE_CALLER") and os.environ["PORTAGE_CALLER"] == "repoman":
 			pass
 		else:
-			myvirtdirs.append(myroot+"/var/cache/edb")
+			myvirtdirs.insert(0,myroot+"/var/cache/edb")
 
 		return grab_stacked("virtuals",myvirtdirs,grabdict)
 	
@@ -3074,10 +3074,14 @@ def dep_zapdeps(unreduced,reduced,vardbapi=None,use_binaries=0):
 			return []
 		else:
 			#try to find an installed dep.
-			if vardbapi:
-				mydbapi=vardbapi
-			else:
-				mydbapi=db[root]["vartree"].dbapi
+			### We use fakedb when --update now, so we can't use local vardbapi here.
+			### This should be fixed in the feature.
+			### see bug 45468.
+			##if vardbapi:
+			##	mydbapi=vardbapi
+			##else:
+			##	mydbapi=db[root]["vartree"].dbapi
+			mydbapi=db[root]["vartree"].dbapi
 
 			if db["/"].has_key("porttree"):
 				myportapi=db["/"]["porttree"].dbapi

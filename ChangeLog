@@ -2,6 +2,10 @@
 # Copyright 2000-2004 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  01 Apr 2004; Masatomo Nakano <nakano@gentoo.org> portage.py: Fixed 
+  virtuals in reverse order(jstubbs's patch and my fix).
+  This should close #45468.
+
   20 Mar 2004; Nicholas Jones <carpaski@gentoo.org> portage_db_*: Updated
 	all the db modules to be current and correct and updated the testing code
 	to make sure everything is working properly.
