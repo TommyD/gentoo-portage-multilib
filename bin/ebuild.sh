@@ -85,6 +85,17 @@ check_KV()
 	fi
 }
 
+# adds ".keep" files so that dirs aren't auto-cleaned
+keepdir()
+{
+	dodir $*
+	local x
+	for x in $*
+	do
+		touch ${D}/${x}/.keep
+	done
+}
+
 # the sandbox is disabled by default except when overridden in the relevant stages
 export SANDBOX_ON="0"
 
