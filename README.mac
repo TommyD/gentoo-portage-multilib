@@ -18,6 +18,7 @@ The portage user and group will now be created.
 Now, assuming this source tree is in /Users/drobbins, perform the following:
 
 # ln -s /Users/drobbins/portage /usr/lib/portage
+# cp /usr/lib/portage/pym/*.py /usr/lib/python2.2/site-packages/
 # ln -s /usr/lib/portage/bin/emerge /usr/bin/emerge
 # ln -s /usr/lib/portage/bin/ebuild.sh /usr/sbin/ebuild.sh
 # cp /Users/drobbins/portage/cnf/make.conf.mac /etc/make.conf
