@@ -571,7 +571,7 @@ class config:
 						while x[1:] in mysetting:
 							mysetting.remove(x[1:])
 		#inject into configlist[0] *and* origenv so that our settings tweaks are preserved beyond a self.reset()
-		self[mykey]=string.join(mysetting," "))
+		self[mykey]=string.join(mysetting," ")
 	
 	def populate(self):
 		self.configdict["conf"]=getconfig("/etc/make.conf")
@@ -925,6 +925,11 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 	if mydo=="unmerge": 
 		return unmerge(settings["CATEGORY"],settings["PF"],myroot)
 	
+	if mydo not in ["help","clean","prerm","postrm","preinst","postinst","config","touch","setup",
+	"depend","fetch","digest","unpack","compile","install","rpm","qmerge","merge","package"]:
+		print "!!! Please specify a valid command."
+		return 1
+
 	# if any of these are being called, stop now, handle them and stop now.
 	if mydo in ["help","clean","prerm","postrm","preinst","postinst","config","touch","setup"]:
 		return spawn("/usr/sbin/ebuild.sh "+mydo)
@@ -1034,9 +1039,6 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 			return 0
 		else:
 			return spawn("/usr/sbin/ebuild.sh unpack compile install package")
-	else:
-		print "!!! Please specify a valid command."
-		return 1
 
 def isfifo(x):
 	mymode=os.lstat(x)[ST_MODE]
