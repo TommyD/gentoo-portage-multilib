@@ -2,6 +2,24 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+*portage-2.0.47-r11 (22 Mar 2003): Fixes & Security -- Winding up 2.0 series.
+
+  22 Mar 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: listdir()
+  now is capable of recursive calls and listing only files. Used in new
+  additions to digestgen() and digestcheck() for ebuilds and files/* --
+  listdir(dir,recursive=0,filesonly=0). Digests now must contain all files
+  from files/ and also the ebuild -- non-archives are prefixed with '/'.
+  Full tbz2 fixes are now implemented... They can take a while to perform
+  so status thingies are provided. update_ents() provides a batch-update
+  as it would take rediculous amounts of time otherwise.
+
+  22 Mar 2003; Nicholas Jones <carpaski@gentoo.org> : fixpackages calls
+  portageexit() to save the mtimedb state so it actually works. :)
+
+  22 Mar 2003; Nicholas Jones <carpaski@gentoo.org> emerge: Added
+  'xtermTitle' calls to emergelog to set the title during phases of merging.
+  Added more emergelog calls to provide more specific information.
+
   22 Mar 2003; Nicholas Jones <carpaski@gentoo.org> : Added two scripts to
   aid portage. 'fixdbentries' takes (old, new, path) and does an inteligent
   sed on all the db entries that should be changed. Used by global moves and

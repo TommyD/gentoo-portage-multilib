@@ -6,4 +6,5 @@
 import portage
 
 portage.flushmtimedb("updates")
+portage.portageexit()
 reload(portage)

@@ -163,7 +163,8 @@ if ("--debug" in myopts):
 
 
 def emergelog(mystr):
-	xtermTitle(mystr)
+	if "notitles" not in portage.features:
+		xtermTitle(mystr)
 	try:
 		mylogfile=open("/var/log/emerge.log", "a")
 		mylogfile.write(str(time.time())[:10]+": "+mystr+"\n")
@@ -179,6 +180,7 @@ def emergeexit():
 	any other atexit's we have setup, we need to call them ourself."""
 	portage.portageexit()
 	emergelog(" *** terminating.")
+	xtermTitle(os.environ["TERM"])
 atexit.register(emergeexit)
 
 def countdown(secs=5, doing="Starting"):
@@ -1129,12 +1131,12 @@ class depgraph:
 						continue
 				elif "--buildpkg" in myopts:
 					#create pkg, then merge pkg
-					emergelog(" === Cleaning ("+y+")")
+					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Cleaning ("+y+")")
 					retval=portage.doebuild(y,"clean",myroot,edebug)
 					if retval:
 						sys.exit(1)
 					portage.settings["FEATURES"]=myorigfeat # Put back flags.
-					emergelog(" === Compiling/Packaging ("+y+")")
+					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Compiling/Packaging ("+y+")")
 					retval=portage.doebuild(y,"package",myroot,edebug)
 					if retval:
 						sys.exit(1)
@@ -1142,17 +1144,17 @@ class depgraph:
 					if "--buildpkgonly" not in myopts:
 						portage.db[portage.root]["bintree"].inject(x[2])
 						mytbz2=portage.db[portage.root]["bintree"].getname(x[2])
-						emergelog(" === Merging ("+y+")")
+						emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Merging ("+y+")")
 						retval=portage.pkgmerge(mytbz2,myroot)
 						if retval==None:
 							sys.exit(1)
 				else:
-					emergelog(" === Cleaning ("+y+")")
+					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Cleaning ("+y+")")
 					retval=portage.doebuild(y,"clean",myroot,edebug)
 					if retval:
 						sys.exit(1)
 					portage.settings["FEATURES"]=myorigfeat # Put back flags.
-					emergelog(" === Compiling/Merging ("+y+")")
+					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Compiling/Merging ("+y+")")
 					retval=portage.doebuild(y,"merge",myroot,edebug)
 					if retval:
 						sys.exit(1)
@@ -1160,7 +1162,7 @@ class depgraph:
 			elif x[0]=="binary":
 				#merge the tbz2
 				mytbz2=portage.db[portage.root]["bintree"].getname(x[2])
-				emergelog(" === Merging Binary ("+y+")")
+				emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Merging Binary ("+y+")")
 				retval=portage.pkgmerge(mytbz2,x[1])
 				if retval==None:
 					sys.exit(1)
@@ -1177,11 +1179,11 @@ class depgraph:
 						#we don't have a favorites entry for this package yet; add one
 						myfavdict[myfavkey]=myfavkey
 						print ">>> Recording",myfavkey,"in \"world\" favorites file..."
-						emergelog(" === Updating world file ("+y+")")
+						emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Updating world file ("+y+")")
 						portage.writedict(myfavdict,myroot+"var/cache/edb/world",writekey=0)
 
 				if "noclean" not in portage.features:
-					emergelog(" === Post-Build Cleaning ("+y+")")
+					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Post-Build Cleaning ("+y+")")
 					retval=portage.doebuild(y,"clean",myroot,edebug)
 					if retval:
 						sys.exit(1)

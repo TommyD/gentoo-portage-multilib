@@ -69,18 +69,60 @@ def abssymlink(symlink):
 	return os.path.normpath(mylink)
 
 dircache={}
-def listdir(path):
+def listdir(mypath,recursive=0,filesonly=0):
 	"""List directory contents, using cache. (from dircache module; streamlined by drobbins)
 	Exceptions will be propagated to the caller."""
+	#print "mypath:",mypath
+	mypath=os.path.normpath(mypath)
 	try:
-		cached_mtime, list = dircache[path]
+		cached_mtime, list, ftype = dircache[mypath]
 	except KeyError:
-		cached_mtime, list = -1, []
-	mtime = os.stat(path)[8]
+		cached_mtime, list, ftype = -1, [], []
+	mtime = os.stat(mypath)[ST_MTIME]
 	if mtime != cached_mtime:
-		list = os.listdir(path)
-		dircache[path] = mtime, list
-	return list
+		list = os.listdir(mypath)
+		for file in list:
+			#print "file::",file
+			if os.path.isfile(mypath+"/"+file):
+				#print "file:",file
+				ftype.append(0)
+			elif os.path.isdir(mypath+"/"+file):
+				#print "dir:",file
+				ftype.append(1)
+			else:
+				#print "other:",file
+				ftype.append(2)
+		dircache[mypath] = mtime, list, ftype
+
+	#print "!!!",list
+
+	if not filesonly and not recursive:
+		return list
+
+	if recursive:
+		x=0
+		while x<len(ftype):
+			if ftype[x]==1:
+				#print "010:",mypath+"$"+list[x]
+				ignored=listdir(mypath+"/"+list[x],recursive,filesonly)
+				m,l,f = dircache[mypath+"/"+list[x]]
+				l=l[:]
+				#print "020:",mypath+"/"+list[x]
+				for y in range(0,len(l)):
+					l[y]=list[x]+"/"+l[y]
+					#print "030:",l[y],f[y]
+				list=list+l
+				ftype=ftype+f
+			x=x+1
+	if filesonly:
+		rlist=[]
+		for x in range(0,len(ftype)):
+			if ftype[x]==0:
+				rlist=rlist+[list[x]]
+	else:
+		rlist=list
+			
+	return rlist
 
 prelink_capable=0
 try:
@@ -133,7 +175,6 @@ except ImportError:
 		if calc_prelink and prelink_capable:
 			os.unlink(prelink_tmpfile)
 		return (sum.hexdigest(),size)
-		#return (md5_to_hex(sum.digest()),size)
 
 starttime=long(time.time())
 features=[]
@@ -1140,6 +1181,17 @@ def digestgen(myarchives,overwrite=1):
 		return
 	print ">>> Generating digest file..."
 
+	for x in range(0,len(myarchives)):
+		myarchives[x]=settings["DISTDIR"]+"/"+myarchives[x]
+	myfiles=listdir(settings["FILESDIR"],recursive=1,filesonly=1)
+	for x in range(len(myfiles)-1,-1,-1):
+		if len(myfiles[x])>len("/files/digest-"):
+			if myfiles[x][:len("/files/digest-")]=="/files/digest-":
+				del myfiles[x]
+				continue
+		myfiles[x]="/files/"+myfiles[x]
+	myfiles=myfiles+["/"+settings["PF"]+".ebuild"]
+
 	try:
 		outfile=open(myoutfn,"w")
 	except IOError, e:
@@ -1147,8 +1199,11 @@ def digestgen(myarchives,overwrite=1):
 		print "!!! "+str(e)
 		return
 	
-	for x in myarchives:
-		myfile=settings["DISTDIR"]+"/"+x
+	for x in myfiles+myarchives:
+		if x[0]=="/":
+			myfile=settings["O"]+"/"+x
+		else:
+			myfile=settings["DISTDIR"]+"/"+x
 		mymd5=perform_md5(myfile)
 		mysize=os.stat(myfile)[ST_SIZE]
 		#The [:-1] on the following line is to remove the trailing "L"
@@ -1164,9 +1219,6 @@ def digestgen(myarchives,overwrite=1):
 	
 def digestcheck(myarchives):
 	"Checks md5sums.  Assumes all files have been downloaded."
-	if not myarchives:
-		#No archives required; don't expect a digest
-		return 1
 	digestfn=settings["FILESDIR"]+"/digest-"+settings["PF"]
 	if not os.path.exists(digestfn):
 		if "digest" in features:
@@ -1181,34 +1233,45 @@ def digestcheck(myarchives):
 	myfile=open(digestfn,"r")
 	mylines=myfile.readlines()
 	mydigests={}
+	myfiles=[]
 	for x in mylines:
 		myline=string.split(x)
 		if len(myline)<2:
 			#invalid line
 			continue
 		mydigests[myline[2]]=[myline[1],myline[3]]
-	for x in myarchives:
+		if myline[2][0]=="/":
+			myfiles.append(myline[2])
+	for x in myarchives+myfiles:
 		if not mydigests.has_key(x):
 			if "digest" in features:
-				print ">>> No message digest entry found for archive \""+x+".\""
+				print ">>> No message digest entry found for file \""+x+".\""
 				print ">>> \"digest\" mode enabled; auto-generating new digest..."
 				digestgen(myarchives)
 				return 1
 			else:
-				print ">>> No message digest entry found for archive \""+x+".\""
+				print ">>> No message digest entry found for file \""+x+".\""
 				print "!!! Most likely a temporary problem. Try 'emerge rsync' again later."
 				print "!!! If you are certain of the authenticity of the file then you may type"
 				print "!!! the following to generate a new digest:"
 				print "!!!   ebuild /usr/portage/category/package/package-version.ebuild digest" 
 				return 0
-		mymd5=perform_md5(settings["DISTDIR"]+"/"+x)
+		if x[0]=="/":
+			mymd5=perform_md5(settings["O"]+"/"+x)
+		else:
+			mymd5=perform_md5(settings["DISTDIR"]+"/"+x)
 		if mymd5 != mydigests[x][0]:
 			print
-			print "!!!",x+": message digests do not match!"
-			print "!!!",x,"is corrupt or incomplete."
-			print ">>> our recorded digest:",mydigests[x][0]
-			print ">>>  your file's digest:",mymd5
-			print ">>> Please delete",settings["DISTDIR"]+"/"+x,"and refetch."
+			print red("!!! A file is corrupt or incomplete. (Digests do not match)")
+			print green(">>> our recorded digest:"),mydigests[x][0]
+			print green(">>>  your file's digest:"),mymd5
+			print
+			if x[0]=="/":
+				print ">>> Please ensure you have sync'd properly. Please try '"+bold("emerge sync")+"' and"
+				print ">>> optionally examine the file for corruption. "+bold("A sync will fix most cases.")
+				print red(">>> file: "+settings["O"]+x)
+			else:
+				print ">>> Please delete",settings["DISTDIR"]+"/"+x,"and refetch."
 			print
 			return 0
 		else:
@@ -1456,7 +1519,6 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 			digestgen(checkme,overwrite=1)
 			return 0
 		else:
-		
 			digestgen(checkme,overwrite=0)
 	elif mydo=="digest":
 		#since we are calling "digest" directly, recreate the digest even if it already exists
@@ -2760,6 +2822,8 @@ class vardbapi(dbapi):
 			origpath=self.root+"var/db/pkg/"+mycpv
 			if not os.path.exists(origpath):
 				continue
+			sys.stdout.write("@")
+			sys.stdout.flush()
 			if not os.path.exists(self.root+"var/db/pkg/"+mynewcat):
 				#create the directory
 				os.makedirs(self.root+"var/db/pkg/"+mynewcat)	
@@ -3519,13 +3583,12 @@ class binarytree(packagetree):
 				print "!!! Cannot update readonly binary:",mycpv
 				continue
 			
-			print ">>> Updating data in:",mycpv
+			#print ">>> Updating data in:",mycpv
+			sys.stdout.write("%")
+			sys.stdout.flush()
 			mytmpdir=settings["PORTAGE_TMPDIR"]+"/tbz2"
-			if os.path.exists(mytmpdir):
-				spawn("/bin/rm -Rf "+mytmpdir,free=1)
-			os.makedirs(mytmpdir)
 			mytbz2=xpak.tbz2(tbz2path)
-			mytbz2.decompose(mytmpdir)
+			mytbz2.decompose(mytmpdir, cleanup=1)
 			
 			mycmd='/usr/lib/portage/bin/fixdbentries'
 			mycmd=mycmd+' "'+origcp+'" '
@@ -3536,15 +3599,44 @@ class binarytree(packagetree):
 			catfile=open(mytmpdir+"/CATEGORY", "w")
 			catfile.write(mynewcat+"\n")
 			catfile.close()
-			
-			mytbz2.recompose(mytmpdir)
-			spawn("/bin/rm -Rf "+mytmpdir,free=1)
+			try:
+				os.rename(mytmpdir+"/"+string.split(mycpv,"/")[1]+".ebuild", mytmpdir+"/"+string.split(mynewcpv, "/")[1]+".ebuild")
+			except Exception, e:
+				pass
+				
+			mytbz2.recompose(mytmpdir, cleanup=1)
 			
 			self.dbapi.cpv_remove(mycpv)
 			os.rename(tbz2path,self.getname(mynewcpv))
 			self.dbapi.cpv_inject(mynewcpv)
-			return 1
-	
+		return 1
+
+	def update_ents(self,mybiglist):
+		if not self.populated:
+			self.populate()
+		for mycpv in self.dbapi.cp_all():
+			tbz2path=self.getname(mycpv)
+			if not os.access(tbz2path,os.W_OK):
+				print "!!! Cannot update readonly binary:",mycpv
+				continue
+			#print ">>> Updating binary data:",mycpv
+			sys.stdout.write("*")
+			sys.stdout.flush()
+			mytmpdir=settings["PORTAGE_TMPDIR"]+"/tbz2"
+			mytbz2=xpak.tbz2(tbz2path)
+			mytbz2.decompose(mytmpdir,cleanup=1)
+			for mylist in mybiglist:
+				mylist=string.split(mylist)
+				if mylist[0] != "move":
+					continue
+				mycmd='/usr/lib/portage/bin/fixdbentries'
+				mycmd=mycmd+' "'+mylist[1]+'" '
+				mycmd=mycmd+' "'+mylist[2]+'" '
+				mycmd=mycmd+' "'+mytmpdir+'" '
+				spawn(mycmd,free=1)
+			mytbz2.recompose(mytmpdir,cleanup=1)
+		return 1
+
 	def populate(self):
 		"populates the binarytree"
 		if (not os.path.isdir(self.pkgdir)):
@@ -4510,7 +4602,7 @@ for x in mtimedb.keys():
 		del mtimedb[x]
 
 def do_upgrade(mykey):
-	#now, let's process this file...
+	print "Performing Global Updates:",mykey
 	processed=1
 	#remove stale virtual entries (mappings for packages that no longer exist)
 	myvirts=grabdict("/var/cache/edb/virtuals")
@@ -4530,6 +4622,8 @@ def do_upgrade(mykey):
 			print "portage: Update command \""+myline+"\" invalid; skipping."
 			processed=0
 			continue
+		sys.stdout.write(".")
+		sys.stdout.flush()
 		db["/"]["vartree"].dbapi.move_ent(mysplit)
 		db["/"]["bintree"].move_ent(mysplit)
 		
@@ -4544,6 +4638,10 @@ def do_upgrade(mykey):
 				if myvirts[myvirt][mypos]==mysplit[1]:
 					#update virtual to new name
 					myvirts[myvirt][mypos]=mysplit[2]
+	
+	# We gotta do the brute force updates for these now.
+	db["/"]["bintree"].update_ents(myupd)
+	print
 	
 	if processed:
 		#update our internal mtime since we processed all our directives.
@@ -4611,8 +4709,6 @@ thirdpartymirrors=grabdict(settings["PORTDIR"]+"/profiles/thirdpartymirrors")
 
 #,"porttree":portagetree(root,virts),"bintree":binarytree(root,virts)}
 features=settings["FEATURES"].split()
-if "notitles" in features:
-	notitles()
 
 # Defaults set at the top of perform_checksum.
 if spawn("/usr/sbin/prelink --version > /dev/null 2>&1",free=1) == 0:

@@ -207,21 +207,23 @@ class tbz2:
 		self.indexpos=None
 		self.datapos=None
 		self.scan()
-	
-	def decompose(self,datadir,cleandir=1):
+
+	def decompose(self,datadir,cleanup=1):
 		"""Alias for unpackinfo() --- Complement to recompose() but optionally
 		deletes the destination directory. Extracts the xpak from the tbz2 into
 		the directory provided. Raises IOError if scan() fails.
 		Returns result of upackinfo()."""
 		if not self.scan():
 			raise IOError
-		#if cleandir and os.path.exists(datadir):
-		#	spawn("rm -Rf "+datadir+"/*",free=1)
+		if cleanup and os.path.exists(datadir):
+			os.system("rm -Rf "+datadir+"/*")
+		if not os.path.exists(datadir):
+			os.makedirs(datadir)
 		return self.unpackinfo(datadir)
-	def compose(self,datadir):
+	def compose(self,datadir,cleanup=0):
 		"""Alias for recompose()."""
-		return recompose(datadir)
-	def recompose(self,datadir):
+		return recompose(datadir,cleanup)
+	def recompose(self,datadir,cleanup=0):
 		"""Creates an xpak segment from the datadir provided, truncates the tbz2
 		to the end of regular data if an xpak segment already exists, and adds
 		the new segment to the file with terminating info."""
@@ -235,6 +237,8 @@ class tbz2:
 		myfile.write(xpdata+encodeint(len(xpdata))+"STOP")
 		myfile.flush()
 		myfile.close()
+		if cleanup:
+			os.system("rm -Rf "+datadir)
 		return 1
 
 	def scan(self):
@@ -273,7 +277,7 @@ class tbz2:
 		self.index=a.read(self.indexsize)
 		self.datapos=a.tell()
 		a.close()
-		return 1
+		return 2
 
 	def filelist(self):
 		"""Return an array of each file listed in the index."""
