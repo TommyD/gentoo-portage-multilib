@@ -78,7 +78,7 @@ starttime=int(time.time())
 buildphase=""
 
 #the build phases for which sandbox should be active
-sandboxactive=["unpack","compile","clean","install","help","setup"]
+sandboxactive=["unpack","compile","clean","install","help"]
 #if the exithandler triggers before features has been initialized, then it's safe to assume
 #that the sandbox isn't active.
 features=[]

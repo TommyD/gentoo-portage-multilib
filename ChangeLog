@@ -1,6 +1,12 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  06 Aug 2002; Martin Schlemmer <azarah@gentoo.org> portage.py, ebuild.sh:
+  Remove "setup" from 'sandboxactive' in portage.py, as we are not running
+  pkg_setup() in a sandbox anymore.  Move the restoring of the old env code
+  to be the first thing in ebuild.sh, just to ensure we dont mess anything
+  up when greping/awking during saving it.
+
 *portage-2.0.26 (06 Aug 2002)
 
   06 Aug 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: on unmerge,

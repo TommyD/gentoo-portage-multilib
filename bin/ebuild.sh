@@ -1,22 +1,11 @@
 #!/bin/bash 
 
-# Save the current environment to file.
-esave_ebuild_env() {
-	# turn off globbing.
-	set -f
-	# unset this function, else we get problems on
-	# restore (env stuff do not get saved properly)
-	unset esave_ebuild_env
-	# we do not want to save critical variables
-	set | awk '!/PORTAGE_RESTORE_ENV|PORTAGE_MASTER_PID/ { print $0 }' \
-		> ${T}/saved_ebuild_env_${PORTAGE_MASTER_PID}
-	set +f
-}
-
+# This should be the first thing sourced in this script,
+# else we may set some variables to stale values.
 if [ -n "$T" ]
 then
-	#if $T is defined, then we're not simply calculating dependencies and can backup/restore our env
-	#otherwise, we don't wanna try it.
+	# If $T is defined, then we're not simply calculating dependencies and
+	# can backup/restore our env otherwise, we don't wanna try it.
 	
 	# Save the environment apon exit
 	trap "esave_ebuild_env" EXIT
@@ -29,8 +18,26 @@ then
 		set -f
 		source ${T}/saved_ebuild_env_${PORTAGE_MASTER_PID} &> /dev/null
 		set +f
+		# Do not use from saved environ.
+		unset SANDBOX_ON
 	fi
 fi
+
+# Save the current environment to file.
+esave_ebuild_env() {
+	# turn off globbing.
+	set -f
+	# unset this function, else we get problems on
+	# restore.  Problem is that because we take out
+	# PORTAGE_RESTORE_ENV and PORTAGE_MASTER_PID, this
+	# function gets saved incomplete.
+	unset esave_ebuild_env
+	# we do not want to save critical variables
+	set | awk '!/PORTAGE_RESTORE_ENV|PORTAGE_MASTER_PID/ { print $0 }' \
+		> ${T}/saved_ebuild_env_${PORTAGE_MASTER_PID}
+	set +f
+}
+
 
 if [ -n "$#" ]
 then
