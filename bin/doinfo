@@ -13,9 +13,9 @@ fi
 
 for x in "$@" ; do
 	if [ -e "${x}" ] ; then
-	    	install -m0644 "${x}" "${D}usr/share/info"
-	    	gzip -f -9 "${D}usr/share/info/${x##*/}"
+		install -m0644 "${x}" "${D}usr/share/info"
+		gzip -f -9 "${D}usr/share/info/${x##*/}"
 	else
-	    	echo "doinfo: ${x} does not exist"
+		echo "doinfo: ${x} does not exist"
 	fi
 done

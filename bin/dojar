@@ -48,7 +48,7 @@ for i in $* ; do
 		echo "DESCRIPTION=\"${DESCRIPTION}\"" > "$pf"
 		echo "CLASSPATH=${jardest}${bn}" >> "$pf"
 	fi
-	
+
 	cp "$i" "${D}${jardest}/"
 	chmod 0444 "${D}${jardest}/${bn}"
 done

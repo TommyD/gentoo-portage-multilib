@@ -21,5 +21,5 @@ for x in "$@" ; do
 	else
 		mysrc="${x}"
 	fi
-        install ${INSOPTIONS} "${mysrc}" "${D}${INSDESTTREE}"
+	install ${INSOPTIONS} "${mysrc}" "${D}${INSDESTTREE}"
 done
