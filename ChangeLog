@@ -9,7 +9,10 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
-*portage-2.0.51_pre21 (09 Sep 2004): Fixes and Public Readiness & GPG
+  09 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Possible fix
+  for autouse() that will prevent recursion and locks.
+  
+*portage-2.0.51_pre210 (09 Sep 2004): (pre-pre release for 21)
   
   09 Sep 2004; Nicholas Jones <carpaski@gentoo.org> archive-conf: Added patch
   so that it runs.
