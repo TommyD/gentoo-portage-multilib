@@ -9,6 +9,10 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  26 Aug 2004; Brian Harring <Ferringb@gentoo.org> bin/etc-update: minor 
+  tweak to etc-update to support single quotes in /etc/etc-update.conf
+  bug (#56785).
+
   26 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py, 
   pym/portage_exec.py, bin/ebuild.sh: Removed the PORT_LOGDIR $0 $* | tee 
   hack, and re-implemented it using spawn.  Spawn has been extended so that 
