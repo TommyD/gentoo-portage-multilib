@@ -9,6 +9,14 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  08 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py
+  bin/ebuild.sh: Add check to ensure that install phase has been 
+  ran prior to qmerge phase being attempted.  This can happen 
+  when the user is using ebuild to step through the phases.
+  Corrected bug in listdir where it would return None, rather then 
+  []- all callee's expect a returned list, not None.  Same for ftype,
+  cause's a tb if you just haphazardly rely on cachedir's return.
+
   08 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py: 
   Leave /var/tmp w/out it's own permissions, chowning/chmoding just 
   /var/tmp/portage (#37521).

@@ -633,6 +633,7 @@ dyn_clean() {
 	if ! hasq keepwork $FEATURES; then
 		rm -rf "${BUILDDIR}/.compiled"
 		rm -rf "${BUILDDIR}/.unpacked"
+		rm -rf "${BUILDDIR}/.installed"
 		rm -rf "${BUILDDIR}/build-info"
 		rm -rf "${WORKDIR}"
 	fi
@@ -950,6 +951,7 @@ dyn_install() {
 		find "${D}/" -group portage -print0 | $XARGS -0 -n100 chgrp root
 	fi
 
+	touch "${BUILDDIR}/.installed"
 	echo ">>> Completed installing into ${D}"
 	echo
 	cd ${BUILDDIR}
