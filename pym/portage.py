@@ -1771,7 +1771,24 @@ class packagetree:
 		mypkgdep=self.dep_pkgcat(mypkgdep)
 
 		if (mypkgdep[0]=="="):
-			if self.exists_specific(mypkgdep[1:]):
+			if mypkgdep[-1]=="*":
+				if not isspecific(mypkgdep[1:-1]):
+					return []
+				mycatpkg=catpkgsplit(mypkgdep[1:-1])
+				try:
+					mynewver=mycatpkg[2]
+					mynewsplit=string.split(mycatpkg[2],'.')
+					mynewsplit[-1]=`int(mynewsplit[-1])+1`
+				except:
+					return [] 
+				mynodes=[]
+				cmp1=mycatpkg[1:]
+				cmp2=[mycatpkg[1],string.join(mynewsplit,"."),"r0"]
+				for x in self.getnode(mycatpkg[0]+"/"+mycatpkg[1]):
+					if ((pkgcmp(x[1][1:],cmp1)>=0) and (pkgcmp(x[1][1:],cmp2)<0)):
+						mynodes.append(x[0])
+				return mynodes
+			elif self.exists_specific(mypkgdep[1:]):
 				return [mypkgdep[1:]]
 			else:
 				return []
