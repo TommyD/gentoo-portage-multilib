@@ -954,6 +954,7 @@ class depgraph:
 					myfavorites.append(mykey)
 			elif x[-7:]==".ebuild":
 				mykey=os.path.basename(os.path.abspath(x+"/../.."))+"/"+os.path.basename(x)[:-7]
+				print mykey
 				if not self.create(["ebuild",portage.root,mykey],None,"--onlydeps" not in myopts):
 					return (0,myfavorites)
 				elif not "--oneshot" in myopts:
@@ -1053,8 +1054,9 @@ class depgraph:
 			binpkguseflags=None
 			if x[0]=="!":
 				# if this package is myself, don't append it to block list.
+				print "Myparent",myparent
 				if (myparent):
-					if myparent.split()[2] in portage.portdb.xmatch("list-visible", x[1:]):
+					if myparent.split()[2] in portage.portdb.xmatch("match-all", x[1:]):
 						# myself, so exit.
 						continue
 				# adding block
