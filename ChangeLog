@@ -7,6 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  25 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> portage.py: Converted
+  config.pkeywordsdict from {atom:[keyword]} to {cp:{atom:[keyword]}} to
+  prevent a lot of unnecessary calculation.
+
   24 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> emerge: Added a percentage
   counter to the cache update phase based on patch from #68694
 
