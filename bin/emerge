@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2.2
 import os
 from os.path import walk, splitext, exists, basename, dirname
 import sys
@@ -305,7 +305,10 @@ def getworldlist():
 	worlddict=genericdict(worldlist)
 	#we're effectively upgrading sysdict to contain all new deps from worlddict
 	for x in worlddict.keys():
-		sysdict[x]=worlddict[x]
+		if portage.db[portage.root]["vartree"].hasnode(x):
+		#only add the world node if the package is actually installed, otherwise skip
+		#this prevents the remerging of already unmerged packages when we do a world --update
+			sysdict[x]=worlddict[x]
 	mylist=[]
 	for x in sysdict.keys():
 		mylist.append(sysdict[x])
@@ -579,7 +582,8 @@ class depgraph:
 				myfavkey=mysplit[0]+"/"+mysplit[1]
 				myfavs=portage.grabfile(myroot+"var/cache/edb/world")
 				myfavdict=genericdict(myfavs)
-				if not myfavdict.has_key(myfavkey):
+				#don't record if already in system profile or already recorded
+				if not myfavkey in syslist and myfavdict.has_key(myfavkey):
 					#we don't have a favorites entry for this package yet; add one
 					myfavdict[myfavkey]=myfavkey
 					print
@@ -1071,9 +1075,10 @@ else:
 		print
 	mydepgraph=depgraph(myaction,myopts)
 	favorites=[]
+	syslist=getlist("system")
 	if myaction=="system":
 		print "Calculating system dependencies  ",
-		mydepgraph.syscreate(getlist("system"))
+		mydepgraph.syscreate(syslist)
 		print "\b\b ...done!"
 	elif myaction=="world":
 		print "Calculating world dependencies  ",

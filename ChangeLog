@@ -1,6 +1,23 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-1.8.9 (30 Mar 2002)
+
+  30 Mar 2002; Daniel Robbins <drobbins@gentoo.org> entries in the world 
+  profile will be ignored if at least one version of the package in question
+  isn't already merged.  Prevents "--update world" from remerging packages
+  that have since been unmerged.
+  
+  30 Mar 2002; Daniel Robbins <drobbins@gentoo.org> various: changing all
+  references from /usr/bin/python to /usr/bin/python2.2.
+  
+  30 Mar 2002; Daniel Robbins <drobbins@gentoo.org> db-update.py: moving this
+  script here from FILESDIR.
+  
+  30 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: stuff doesn't
+  get added to the world profile if it is already an essential ("*") package in
+  the system profile.  Keeps things clean and flexible.
+
 *portage-1.8.9_pre38 (30 Mar 2002)
 
   30 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: resolve_key()

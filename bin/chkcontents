@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python2.2
 
 # Very simple program to compare the md5sums of a package as listed
 # in /var/db/pkg/category/package/CONTENTS with the md5sums of the
