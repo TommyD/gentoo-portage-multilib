@@ -2,7 +2,7 @@
 # Copyright 1998-2002 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
 
-VERSION="2.0.30"
+VERSION="2.0.33"
 
 from stat import *
 from commands import *
@@ -2523,7 +2523,7 @@ class vardbapi(dbapi):
 		for mycpv in origmatches:
 			mycpsplit=catpkgsplit(mycpv)
 			mynewcpv=newcp+"-"+mycpsplit[2]
-			mynewcat=mycpsplit[0]
+			mynewcat=newcp.split("/")[0]
 			if mycpsplit[3]!="r0":
 				mynewcpv += "-"+mycpsplit[3]
 			origpath=self.root+"var/db/pkg/"+mycpv
@@ -2536,7 +2536,6 @@ class vardbapi(dbapi):
 			if os.path.exists(newpath):
 				#dest already exists; keep this puppy where it is.
 				continue
-			print "portage: vardbapi: moving",mycpv,"to",mynewcpv
 			os.system("/bin/mv "+origpath+" "+newpath)
 
 	def cp_list(self,mycp):
