@@ -1,12 +1,15 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
-  24 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: Close bug
+*portage-2.0.18 (25 Jul 2002)
+
+  25 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: Close bug
   #5580; pkg_setup() now gets called during all build-related stages.
   
   24 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, emerge: rewrote
   create() function, closing bug #5469.  Also added freeze() and melt() methods
-  to portdbapi to enhance performance.
+  to portdbapi to enhance performance.  create() is now extensively commented
+  and even understandable.
   
   24 Jul 2002; Daniel Robbins <drobbins@gentoo.org> emerge: the "rsync --clean"
   option has been depreciated.  Cleaning is now on by default, closing bug
