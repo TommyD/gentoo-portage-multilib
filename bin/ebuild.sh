@@ -644,33 +644,30 @@ then
 	#abort if there was a parse problem
 	exit 1
 fi
-#this is a little trick to define ${A} if it hasn't been defined yet
-if [ "${A}" = "" ]
+
+if [ "${SRC_URI}" != "" ]
 then
-	if [ "${SRC_URI}" != "" ]
+	rm -f ${T}/archives.orig
+	for x in `cat ${T}/src_uri_new` 
+	do
+		echo `basename $x` >> ${T}/archives.orig
+	done
+	cat ${T}/archives.orig | sort | uniq > ${T}/archives
+	rm ${T}/archives.orig
+	export A=`cat ${T}/archives`
+	rm ${T}/archives
+	if [ "$MAINTAINER" = "yes" ]
 	then
-		rm -f ${T}/archives.orig
-		for x in `cat ${T}/src_uri_new` 
+		for x in `cat ${T}/src_uri_all` 
 		do
 			echo `basename $x` >> ${T}/archives.orig
 		done
 		cat ${T}/archives.orig | sort | uniq > ${T}/archives
 		rm ${T}/archives.orig
-		export A=`cat ${T}/archives`
+		export AA=`cat ${T}/archives`
 		rm ${T}/archives
-		if [ "$MAINTAINER" = "yes" ]
-		then
-			for x in `cat ${T}/src_uri_all` 
-			do
-				echo `basename $x` >> ${T}/archives.orig
-			done
-			cat ${T}/archives.orig | sort | uniq > ${T}/archives
-			rm ${T}/archives.orig
-			export AA=`cat ${T}/archives`
-			rm ${T}/archives
-		else
-			export AA="$A"
-		fi
+	else
+		export AA="$A"
 	fi
 else
 	export A=""

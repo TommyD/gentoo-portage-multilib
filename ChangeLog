@@ -1,6 +1,9 @@
-Portage 1.6.10, released (not yet-- waiting for A= removal) 
+Portage 1.6.10, released 18 Oct 2001 
 ===================================
 
+	*ebuild.sh: A and AA fix; now any A="foo" lines in the ebuild are ignored,
+	allowing ebuilds with them to continue working.
+	
 	*portage.py: remove gnome-apps, gnome-office, gnome-libs, add gnome-extra
 	categories.
 
