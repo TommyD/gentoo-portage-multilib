@@ -3101,7 +3101,10 @@ def dep_wordreduce(mydeplist,mydbapi,mode):
 			else:
 				mydep=mydbapi.match(deplist[mypos])
 			if mydep!=None:
-				deplist[mypos]=(len(mydep)>=1)
+				tmp=(len(mydep)>=1)
+				if deplist[mypos][0]=="!":
+					tmp=not tmp
+				deplist[mypos]=tmp
 			else:
 				#encountered invalid string
 				return None

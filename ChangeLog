@@ -3,6 +3,10 @@
 # $Id$
 
   02 Jan 2004; Masatomo Nakano <nakano@gentoo.org> portage.py: Fixed 
+  a problem that emerge doesn't block package when it's required.
+  It happens in .50_pre*.
+
+  02 Jan 2004; Masatomo Nakano <nakano@gentoo.org> portage.py: Fixed 
   issue with getsize() when --debug.
 
   02 Jan 2004; Masatomo Nakano <nakano@gentoo.org> portage.py: Fixed 
