@@ -1307,6 +1307,7 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 				if not os.path.exists(settings["HOME"]):
 					os.makedirs(settings["HOME"])
 		elif ("userpriv" in features):
+			print "!!! Disabling userpriv from features... Portage UID/GID not valid."
 			del features[features.index("userpriv")]
 	except Exception, e:
 		print "!!! Couldn't empty HOME:",settings["HOME"]
@@ -1380,7 +1381,7 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 
 	try:
 		mystat=os.stat(settings["CCACHE_DIR"])
-		if (mystat[ST_GID]!=portage_gid) or ((mystat[ST_MODE]&02770)!=02770):
+		if (mystat[ST_GID]!=portage_gid) or ((mystat[ST_MODE]&02070)!=02070):
 			print "*** Adjusting ccache permissions for portage user..."
 			os.chown(settings["CCACHE_DIR"],portage_uid,portage_gid)
 			os.chmod(settings["CCACHE_DIR"],02770)

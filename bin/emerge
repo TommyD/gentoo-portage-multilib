@@ -1123,9 +1123,18 @@ class depgraph:
 						if retval==None:
 							sys.exit(1)
 				else:
+					# We need to yank the harmful-to-new-builds settings from features.
+					myorigfeat=portage.settings["FEATURES"]
+					myfeat=myorigfeat.split()
+					while ("keeptemp" in myfeat):
+						del myfeat[myfeat.index("keeptemp")]
+					while ("keepwork" in myfeat):
+						del myfeat[myfeat.index("keepwork")]
+					portage.settings["FEATURES"]=string.join(myfeat)
 					retval=portage.doebuild(y,"clean",myroot,edebug)
 					if retval:
 						sys.exit(1)
+					portage.settings["FEATURES"]=myorigfeat
 					retval=portage.doebuild(y,"merge",myroot,edebug)
 					if retval:
 						sys.exit(1)

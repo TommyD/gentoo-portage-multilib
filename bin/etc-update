@@ -48,8 +48,12 @@ function scan() {
 			   [[ ${opath} != ${rpath} ]]; then
 				MATCHES=0
 				if [[ "${EU_AUTOMERGE}" == "yes" ]]; then
-					diff -Bbua ${rpath}/${rfile} ${rpath}/${rfile:10} | egrep '^[+-]' | egrep -v '^[+-][\t ]*#|^--- |^\+\+\+ ' | egrep -qv '^[-+][\t ]*$'
-					MATCHES=$?
+					if [ ! -e "${rpath}/${rfile}" ] || [ ! -e "${rpath}/${rfile:10}" ]; then
+						MATCHES=0
+					else
+						diff -Bbua ${rpath}/${rfile} ${rpath}/${rfile:10} | egrep '^[+-]' | egrep -v '^[+-][\t ]*#|^--- |^\+\+\+ ' | egrep -qv '^[-+][\t ]*$'
+						MATCHES=$?
+					fi
 				elif [[ -z `diff -Nua ${rpath}/${rfile} ${rpath}/${rfile:10}|
 							  grep "^[+-][^+-]"|grep -v '# .Header:.*'` ]]; then
 					MATCHES=1
