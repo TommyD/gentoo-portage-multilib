@@ -5,33 +5,33 @@
 *portage-2.0.47-r4 (17 Feb 2003): Wicked Fast, BugFree v3, UserPriv
 
   25 Feb 2003; Nicholas Jones <carpaski@gentoo.org> *: Update docs and help
-	to match the deprecation of actions without '--' preceding them.
+  to match the deprecation of actions without '--' preceding them.
 
   25 Feb 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Message
-	updates. Fix secpass for portage user. Set PORTAGE_GID for ebuild.sh to
-	use regardless of GID in use (wheel/portage). Only try and delete things
-	in PORTAGE_TMPDIR if we have perms to do it... see secpass note. Moved the
-	cachedir creation after settings in created so that we can use spawn instead
-	of system for the calls to 'chown/chmod -R'. Fix the note on make.defaults.
-	Fix for the 404 catcher in the fetch code.
+  updates. Fix secpass for portage user. Set PORTAGE_GID for ebuild.sh to
+  use regardless of GID in use (wheel/portage). Only try and delete things
+  in PORTAGE_TMPDIR if we have perms to do it... see secpass note. Moved the
+  cachedir creation after settings in created so that we can use spawn instead
+  of system for the calls to 'chown/chmod -R'. Fix the note on make.defaults.
+  Fix for the 404 catcher in the fetch code.
 
   25 Feb 2003; Nicholas Jones <carpaski@gentoo.org> emerge: Move all actions
-	into '--action' form -- Notify of deprecated usages. Moved the functions
-	from the top of emerge down below the command line parser for readability.
-	Kill FEATURES=noauto if we're running emerge -- it can break things. Make
-	-U imply -u so people aren't confused. --debug now enables all debug
-	variables in portage. Fix wheel/portage group requirements messages. Get
-	the current portage version when doing rsync via the portage tree's files
-	and not the loaded cache so that it is aware of changes immediately instead
-	of the next run. 
+  into '--action' form -- Notify of deprecated usages. Moved the functions
+  from the top of emerge down below the command line parser for readability.
+  Kill FEATURES=noauto if we're running emerge -- it can break things. Make
+  -U imply -u so people aren't confused. --debug now enables all debug
+  variables in portage. Fix wheel/portage group requirements messages. Get
+  the current portage version when doing rsync via the portage tree's files
+  and not the loaded cache so that it is aware of changes immediately instead
+  of the next run. 
 
   25 Feb 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Try to change
-	to good a good path at the start of the ebuild to prevent operations from
-	happening in places like home. After the ebuild's install phase, check to
-	see if any unsafe perm combo's exist and die if they do. Fix permissions
-	on the cachedir as we're changing them to root:portage. &> on environment
-	file prevented it from actually creating the file -- changed to 2>. Change
-	'true' to 'exit 0' to be a bit more explicit about what we're doing.
+  to good a good path at the start of the ebuild to prevent operations from
+  happening in places like home. After the ebuild's install phase, check to
+  see if any unsafe perm combo's exist and die if they do. Fix permissions
+  on the cachedir as we're changing them to root:portage. &> on environment
+  file prevented it from actually creating the file -- changed to 2>. Change
+  'true' to 'exit 0' to be a bit more explicit about what we're doing.
 
   24 Feb 2003; Alain Penders <alain@gentoo.org> repoman: Added nested/sub-shell
   die testing.
