@@ -45,7 +45,10 @@ def install(basename, dirname, recurse=0, prefix=""):
 	if prefix: fullpath = prefix + "/" + fullpath
 	if dirname: fullpath = dirname + "/" + fullpath
 		
-	destdir = D + "usr/share/doc/" + PF + "/html/" + prefix
+	if DOCDESTTREE:
+		destdir = D + "usr/share/doc/" + PF + "/" + DOCDESTTREE + "/" + prefix
+	else:
+		destdir = D + "usr/share/doc/" + PF + "/html/" + prefix
 
 #	print fullpath, destdir
 	
@@ -65,6 +68,7 @@ skip = 0
 files = []
 D=os.environ["D"]
 PF=os.environ["PF"]
+DOCDESTTREE=os.environ["DOCDESTTREE"]
 allowed_exts = [ 'png', 'gif', 'html', 'htm', 'jpg', 'css' ]
 disallowed_dirs = [ 'CVS' ]
 recurse = 0

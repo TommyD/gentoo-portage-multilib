@@ -1,6 +1,10 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  02 Apr 2002; Geert Bevub <gbevin@gentoo.org> emerge: 
+  fixed bad indentation of a part of the code that made unmerging multiple
+  packages behave badly
+
 *portage-1.8.10 (01 Apr 2002)
 
   01 Apr 2002; Daniel Robbins <drobbins@gentoo.org> make.globals: removed USE
