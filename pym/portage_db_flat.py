@@ -29,7 +29,25 @@ class database(portage_db_template.database):
 				raise
 			except:
 				pass
-		
+
+		self.flushCache()
+
+	def __addMcache(self,key,val):
+		del self.__mcache_list[2]
+		self.__mcache_list.insert(0,val)
+		del self.__mcache_keys[2]
+		self.__mcache_keys.insert(0,key)
+        
+	def __delMache(self,key):
+		i = self.__mcache_list.index(key)
+		self.__mcache_list[i] = None
+		self.__mcache_keys[i] = None
+
+	def flushCache(self):
+		portage_db_template.database.flushCache(self)
+		self.__mcache_list = [None,None,None]
+		self.__mcache_keys = [None,None,None]
+
 	def has_key(self,key):
 		if os.path.exists(self.fullpath+key):
 			return 1
@@ -45,9 +63,12 @@ class database(portage_db_template.database):
 		return mykeys
 
 	def get_timestamp(self,key,locking=True):
+		if key in self.__mcache_keys:
+			return self.__mcache_list[self.__mcache_keys.index(key)]
 		lock=portage_locks.lockfile(self.fullpath+key,wantnewlockfile=1)
 		try:		x=os.stat(self.fullpath+key)[stat.ST_MTIME]
 		except OSError:	x=None
+		self.__addMcache(key,x)
 		portage_locks.unlockfile(lock)
 		return x
 

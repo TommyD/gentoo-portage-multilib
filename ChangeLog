@@ -7,6 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  07 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage_db_flat.py: added a
+  mtime cache to revert the the # of stats to 1 for aux_get calls (which calls 
+  get_timestamp).
+
   07 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage_exec.py, sync/rsync.py:
   Bug fixes for selinux.setexec typo, and noisy rsync.  Aside from that, a collection
   of header updates.
