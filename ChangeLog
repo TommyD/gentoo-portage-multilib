@@ -1,6 +1,9 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+  25 Feb 2002; Daniel Robbins <drobbins@gentoo.org> cnf/* : updated ${x} ->
+  ${URI} in $FETCHCOMMAND.
+
   24 Feb 2002; Daniel Robbins <drobbins@gentoo.org> Fixed another fetch bug
   where the download wouldn't cycle to alternate mirrors (it'd get stuck on
   the first download location)
