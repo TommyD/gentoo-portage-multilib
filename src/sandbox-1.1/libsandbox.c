@@ -284,8 +284,8 @@ canonicalize(const char *path, char *resolved_path)
 
 	/* Do not try to resolve an empty path */
 	if ('\0' == path[0]) {
-		errno = EINVAL;
-		return -1;
+		errno = old_errno;
+		return 0;
 	}
 
 	retval = erealpath(path, resolved_path);

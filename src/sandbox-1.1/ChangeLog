@@ -3,7 +3,7 @@
 # $Header$
 
   27 Jul 2003; Martin Schlemmer <azarah@gentoo.org> libsandbox.c :
-  Fix canonicalize() to return NULL if path = "".
+  Fix canonicalize() to ignore calls with path = "".
 
   27 Jul 2003; Martin Schlemmer <azarah@gentoo.org> getcwd.c, libsandbox.c,
   sandbox_futils.c, canonicalize.c :
