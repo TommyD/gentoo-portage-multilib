@@ -1286,7 +1286,8 @@ before_syscall(const char *func, const char *file)
 	sbcontext_t sbcontext;
 
 	if (!strlen(file)) {
-		errno = EINVAL;
+		/* The file/directory does not exist */
+		errno = ENOENT;
 		return 0;
 	}
 
