@@ -180,6 +180,11 @@ files in \fBSRC_URI\fR will not be downloaded from the \fBGENTOO_MIRRORS\fR.
 .br
 .I fetch:
 like \fInomirror\fR but the files will not be fetched via \fBSRC_URI\fR either.
+.TP
+\fBPROVIDE\fR = \fI"virtual/TARGET"\fR
+This variable should only be used when a package provides a virtual target.  For example,
+blackdown-jdk and sun-jdk provide \fIvirtual/jdk\fR.  This allows for packages to depend on
+\fIvirtual/jdk\fR rather than on blackdown or sun specifically.
 .SH "FUNCTIONS"
 .TP
 \fBpkg_setup\fR
