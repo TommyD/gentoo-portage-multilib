@@ -317,14 +317,13 @@ def env_update():
 		outfile.write("setenv "+x+" '"+env[x]+"'\n")
 	outfile.close()
 
-
 def grabfile(myfilename):
 	"""This function grabs the lines in a file, normalizes whitespace and returns lines in a list; if a line
 	begins with a #, it is ignored, as are empty lines"""
 
-	myfile=open(myfilename,"r")
-	if not myfile:
-		#keep it an empty sequence type to be loop friendly
+	try:
+		myfile=open(myfilename,"r")
+	except IOError:
 		return []
 	mylines=myfile.readlines()
 	myfile.close()
@@ -463,41 +462,83 @@ def expand(mystring,dictlist=[]):
 			pos=pos+1
 	return newstring[1:]	
 
+def autouse(myvartree):
+	"returns set of USE variables auto-enabled due to packages being installed"
+	mylines=grabfile(profiledir+"/use.defaults")
+	if not mylines:
+		return ""
+	myusevars=""
+	for x in mylines:
+		mysplit=string.split(x)
+		if len(mysplit)<2:
+			#invalid line
+			continue
+		myuse=mysplit[0]
+		mydep=x[len(mysplit[0]):]
+		#check dependencies; tell depcheck() to ignore settings["USE"] since we are still forming it.
+		myresult=myvartree.depcheck(mydep,lookatuse=0)
+		if myresult[0]==1 and not myresult[1]:
+			#deps satisfied, add USE variable...
+			myusevars=myusevars+" "+myuse
+	return myusevars
+
 class config:
 	def __init__(self):
-		self.origenv=os.environ.copy()
+		self.configdict={}
+		self.configdict["origenv"]=os.environ.copy()
 		self.populated=0
+	
+	def use_regenerate(self):
+		"regenerate USE variable -- dynamically taking into account any new packages installed (auto option)"
+		self.configdict["auto"]={}
+		self.configdict["auto"]["USE"]=autouse(db[root]["vartree"])
+		mykey="USE"
+		mydb=[]
+		for x in self.usevaluelist:
+			if self.configdict.has_key(x):
+				mydb.append(self.configdict[x])
+		self.regenerate(mykey,mydb)
+		
+	def regenerate(self,mykey,myorigdb):
+		"dynamically regenerate a cumulative variable that may have changed"
+		mysetting=[]
+		#copy our myorigdb so we don't modify it.
+		mydb=myorigdb[:]
+		#cycle backwards through the db entries
+		mydb.reverse()
+		for curdb in mydb:
+			if curdb.has_key(mykey):
+				#expand using only the current config file/db entry
+				mysplit=expand(curdb[mykey],curdb).split()
+				for x in mysplit:
+					if x=="-*":
+						# "-*" is a special "minus" var that means "unset all settings".  so USE="-* gnome" will have *just* gnome enabled.
+						mysetting=[]
+					elif x[0]!="-":
+						if not x in mysetting:
+							mysetting.append(x)
+					else:
+						while x[1:] in mysetting:
+							mysetting.remove(x[1:])
+		#inject into configlist[0] *and* origenv so that our settings tweaks are preserved beyond a self.reset()
+		self.hardset(mykey,string.join(mysetting," "))
+	
 	def populate(self):
-		if profiledir and os.path.exists(profiledir+"/make.defaults"):
-			self.configlist=[self.origenv.copy(),getconfig("/etc/make.conf"),getconfig(profiledir+"/make.defaults"),getconfig("/etc/make.globals")]
-		else:
-			self.configlist=[self.origenv.copy(),getconfig("/etc/make.conf"),getconfig("/etc/make.globals")]
+		self.configdict["conf"]=getconfig(root+"etc/make.conf")
+		self.configdict["globals"]=getconfig(root+"etc/make.globals")
+		self.configdict["env"]=self.configdict["origenv"].copy()
+		self.configdict["defaults"]=getconfig(profiledir+"/make.defaults")
+		self.configlist=[self.configdict["env"],self.configdict["conf"],self.configdict["defaults"],self.configdict["globals"]]
 		self.populated=1
+		useorder=self["USE_ORDER"]
+		self.usevaluelist=useorder.split(":")
 		# cumulative Portage variables with "-" support: USE and FEATURES
-		# mycvars specifies the name of the variable and the parts of the config database that should be scanned.
-		mycvars=[["USE",self.configlist[:-1]],["FEATURES",self.configlist]]
+		# use "standard" variable regeneration code to initially set the cumulative FEATURES variable
+		self.regenerate("FEATURES",self.configlist)
+		# use specialized code for regenerating the cumulative and dynamic USE setting.
+		self.use_regenerate()
 		# USE doesn't consult make.globals while FEATURES does.
-		for mycvar in mycvars:
-			mykey=mycvar[0]
-			mydb=mycvar[1]
-			mysetting=[]
-			#cycle backwards through the db entries
-			for pos in range(len(mydb)-1,-1,-1):
-				if mydb[pos].has_key(mykey):
-					#expand using only the current config file/db entry
-					mysplit=expand(mydb[pos][mykey],mydb[pos]).split()
-					for x in mysplit:
-						if x=="-*":
-							# "-*" is a special "minus" var that means "unset all settings".  so USE="-* gnome" will have *just* gnome enabled.
-							mysetting=[]
-						elif x[0]!="-":
-							if not x in mysetting:
-								mysetting.append(x)
-						else:
-							while x[1:] in mysetting:
-								mysetting.remove(x[1:])
-			#inject into configlist[0] *and* origenv so that our settings tweaks are preserved beyond a self.reset()
-			self.hardset(mykey,string.join(mysetting," "))
+	
 	def __getitem__(self,mykey):
 		if not self.populated:
 			self.populate()
@@ -539,14 +580,14 @@ class config:
 		"set a value persistently"
 		if not self.populated:
 			self.populate()
-		self.configlist[0][mykey]=myvalue
-		self.origenv[mykey]=myvalue
+		self.configdict["env"][mykey]=myvalue
+		self.configdict["origenv"][mykey]=myvalue
 
 	def reset(self):
 		if not self.populated:
 			self.populate()
 		"reset environment to original settings"
-		self.configlist[0]=self.origenv.copy()
+		self.configdict["env"]=self.configdict["origenv"].copy()
 	def environ(self):
 		"return our locally-maintained environment"
 		mydict={}
@@ -1462,6 +1503,8 @@ class packagetree:
 				#already in the tree
 				return
 		self.tree[mykey].append([mycatpkg,cps])
+		#new packages mean possible new auto-use settings, so regenerate USE vars
+		settings.use_regenerate()
 	
 	def resolve_key(self,mykey):
 		"generates new key, taking into account virtual keys"
@@ -1540,13 +1583,17 @@ class packagetree:
 			self.load(nodename)
 		return self.tree[nodename]
 	
-	def depcheck(self,depstring):
+	def depcheck(self,depstring,lookatuse=1):
 		"""evaluates a dependency string and returns a 2-node result list
 		[1, None] = ok, no dependencies
 		[1, ["x11-base/foobar","sys-apps/oni"] = dependencies must be satisfied
 		[0, * ] = parse error
 		"""
-		myusesplit=string.split(settings["USE"])
+		if lookatuse:
+			myusesplit=string.split(settings["USE"])
+		else:
+			#we are being run by autouse(), don't consult USE vars yet.
+			myusesplit=[]
 		mysplit=string.split(depstring)
 		#convert parenthesis to sublists
 		mysplit=dep_parenreduce(mysplit)
@@ -1556,7 +1603,7 @@ class packagetree:
 		#up until here, we haven't needed to look at the database tree
 		
 		if mysplit==None:
-			return [0,"Parse Error (parenthesis mismatch or || abuse?)"]
+			return [0,"Parse Error (parenthesis mismatch?)"]
 		elif mysplit==[]:
 			#dependencies were reduced to nothing
 			return [1,[]]
@@ -2853,11 +2900,31 @@ if root!="/":
 if not profiledir:
 	if os.path.exists("/etc/make.profile/make.defaults"):
 		profiledir="/etc/make.profile"
+	else:
+		print "!!! Couldn't find an /etc/make.profile directory; exiting."
+		sys.exit(1)
+#from here on in we can assume that profiledir is set to something valid
+db={}
+virts=getvirtuals("/")
+db["/"]={"virtuals":virts,"vartree":vartree("/",virts)}
+if root!="/":
+	virts=getvirtuals(root)
+	db[root]={"virtuals":virts,"vartree":vartree(root,virts)}
+#We need to create the vartree first, then load our settings, and then set up our other trees
 settings=config()
+#continue setting up other trees
+db["/"]["porttree"]=portagetree("/",virts)
+db["/"]["bintree"]=binarytree("/",virts)
+if root!="/":
+	db["/"]["porttree"]=portagetree(root,virts)
+	db["/"]["bintree"]=binarytree(root,virts)
+
+#,"porttree":portagetree(root,virts),"bintree":binarytree(root,virts)}
 features=settings["FEATURES"].split()
 #getting categories from an external file now
 if os.path.exists(settings["PORTDIR"]+"/profiles/categories"):
 	categories=grabfile(settings["PORTDIR"]+"/profiles/categories")
 else:
 	categories=[]
+
 

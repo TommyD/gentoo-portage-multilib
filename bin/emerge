@@ -29,6 +29,7 @@ actions=["help",
 	"unmerge",
 	"config"]
 options=["--autoclean",
+	"--clean",
 	"--buildpkg",
 	"--debug",
 	"--emptytree",
@@ -270,22 +271,16 @@ class depgraph:
 		self.myaction=myaction
 		self.myopts=myopts
 		virts=portage.getvirtuals("/")
-		self.db={}
-		self.db["/"]={"virtuals":virts,"vartree":portage.vartree("/",virts),"porttree":portage.portagetree("/",virts),"bintree":portage.binarytree("/",virts)}
-		if portage.root!="/":
-			pr=portage.root
-			virts=portage.getvirtuals(pr)
-			self.db[pr]={"virtuals":virts,"vartree":portage.vartree(pr,virts),"porttree":portage.portagetree(pr,virts),"bintree":portage.binarytree(pr,virts)}
 		self.digraph=portage.digraph()
 		self.orderedkeys=[]
 		#the following is so we have an empty vartree (used in emerge update calculations)
-		self.emptytree=portage.vartree("/",virts,self.db["/"]["vartree"])
+		self.emptytree=portage.vartree("/",virts,portage.db["/"]["vartree"])
 		self.emptytree.tree={}
 		if "--emptytree" in myopts:
 			print "Running in empty tree mode"
-			self.db["/"]["vartree"].tree=self.emptytree.tree
-			self.db["/"]["vartree"].populated=1
-			self.db["/"]["vartree"].inject("virtual/glibc-1.0")
+			portage.db["/"]["vartree"].tree=self.emptytree.tree
+			portage.db["/"]["vartree"].populated=1
+			portage.db["/"]["vartree"].inject("virtual/glibc-1.0")
 		self.outdatedpackages=[]
 	def create(self,mybigkey,myparent=None,addme=1):
 		"""creates the actual digraph of packages to merge.  return 1 on success, 0 on failure
@@ -306,22 +301,22 @@ class depgraph:
 			return 1
 		mytype,myroot,mykey=string.split(mybigkey)
 		if "--noreplace" in self.myopts:
-			if self.db[myroot]["vartree"].exists_specific(mykey):
+			if portage.db[myroot]["vartree"].exists_specific(mykey):
 				print "\n>>>",mykey,"already merged in",myroot+", skipping...\n"
 				return 1
 		if mytype=="binary":
-			if not self.db[portage.root]["bintree"].exists_specific(mykey):
+			if not portage.db[portage.root]["bintree"].exists_specific(mykey):
 				print "\n\n!!!",mytype,mykey,"not found (possibly blocked by package.mask)\n"
 				sys.exit(1)
 			mypkgparts=portage.catpkgsplit(mykey)
-			mytbz2=xpak.tbz2(self.db[portage.root]["bintree"].getname(mykey))
+			mytbz2=xpak.tbz2(portage.db[portage.root]["bintree"].getname(mykey))
 			edepend=["",string.join(mytbz2.getelements("RDEPEND")," "),mytbz2.getfile("SLOT",mypkgparts[2])]
 		elif mytype=="ebuild":
-			if not self.db[myroot]["porttree"].exists_specific(mykey):
+			if not portage.db[myroot]["porttree"].exists_specific(mykey):
 				print "\n\n!!!",mytype,mykey,"not found (possibly blocked by package.mask)\n"
 				sys.exit(1)
 				mydep={}
-			myebuild=self.db[myroot]["porttree"].getname(mykey)
+			myebuild=portage.db[myroot]["porttree"].getname(mykey)
 			mydbkey="/var/cache/edb/dep/dep-"+os.path.basename(myebuild)
 			#use the cached info if it is available and more recent than the ebuild itself (mtime)
 			if (not os.path.exists(mydbkey)) or (os.stat(mydbkey)[7]<os.stat(myebuild)[7]):
@@ -353,7 +348,7 @@ class depgraph:
 				if "update"==self.myaction:
 					mycheck=self.emptytree.depcheck(mydep[dep])
 				else:
-					mycheck=self.db[dep]["vartree"].depcheck(mydep[dep])
+					mycheck=portage.db[dep]["vartree"].depcheck(mydep[dep])
 				if mycheck[0]==0:
 					print "!!! depgraph.create() error: string format:",mydep
 					return 0
@@ -375,8 +370,8 @@ class depgraph:
 		mygraph=self.digraph.copy()
 		dolist=["/"]
 		retlist=[]
-		for x in self.db.keys():
-			self.db[x]["merge"]=[]
+		for x in portage.db.keys():
+			portage.db[x]["merge"]=[]
 			if x not in dolist:
 				dolist.append(x)
 		while (not mygraph.empty()):
@@ -386,13 +381,13 @@ class depgraph:
 				sys.exit(1)
 			splitski=string.split(mycurkey)
 			if "update"==self.myaction:
-				if not self.db["/"]["vartree"].exists_specific(splitski[2]):
-					self.db["/"]["merge"].append(splitski)
+				if not portage.db["/"]["vartree"].exists_specific(splitski[2]):
+					portage.db["/"]["merge"].append(splitski)
 			else:
-				self.db[splitski[1]]["merge"].append(splitski)	
+				portage.db[splitski[1]]["merge"].append(splitski)	
 			mygraph.delnode(mycurkey)
 		for x in dolist:
-			for y in self.db[x]["merge"]:
+			for y in portage.db[x]["merge"]:
 				retlist.append(y)
 		return retlist
 
@@ -402,7 +397,7 @@ class depgraph:
 			#or "--rebuild"==self.myaction:
 				self.create(self.match(myline,mykey="update (likely old /var/db/pkg entry)"))
 			else:
-				mycheck=self.db[portage.root]["vartree"].depcheck(myline)
+				mycheck=portage.db[portage.root]["vartree"].depcheck(myline)
 				if mycheck[0]==0:
 					print "\n!!! Warning:",myline,"has an invalid depstring\n"
 					continue
@@ -418,12 +413,12 @@ class depgraph:
 			mydep2=mydep[1:]
 
 		#if self.myaction=="--rebuild":
-		#	myeb=self.db[portage.root]["vartree"].dep_bestmatch(mydep2)
-		#	if not self.db[portage.root]["porttree"].exists_specific(myeb):
+		#	myeb=portage.db[portage.root]["vartree"].dep_bestmatch(mydep2)
+		#	if not portage.db[portage.root]["porttree"].exists_specific(myeb):
 		#		self.outdatedpackages.append(myeb)
 		#		return None
 		#else:
-		myeb=self.db[portage.root]["porttree"].dep_bestmatch(mydep2)
+		myeb=portage.db[portage.root]["porttree"].dep_bestmatch(mydep2)
 		if not myeb:
 			if not mykey:
 				print "\n!!! Warning: couldn't find match for",mydep
@@ -439,7 +434,7 @@ class depgraph:
 			myk="blocks "+myroot+" "+myeb
 		else:
 			if "--usepkg" in self.myopts:
-				mypk=self.db[portage.root]["bintree"].dep_bestmatch(mydep)
+				mypk=portage.db[portage.root]["bintree"].dep_bestmatch(mydep)
 				if myeb==mypk:
 					myk="binary "+portage.root+" "+mypk
 				else:
@@ -455,9 +450,9 @@ class depgraph:
 				addl=""+red("B")+"    "
 				print "["+x[0]+" "+addl+"]",red(x[2])
 			else:
-				if self.db[x[1]]["vartree"].exists_specific(x[2]):
+				if portage.db[x[1]]["vartree"].exists_specific(x[2]):
 					addl="  "+yellow("R")+"  "
-				elif self.db[x[1]]["vartree"].exists_specific_cat(x[2]):
+				elif portage.db[x[1]]["vartree"].exists_specific_cat(x[2]):
 					addl="   "+turquoise("U")+" "
 				else:
 					addl=" "+green("N")+"   "
@@ -480,7 +475,7 @@ class depgraph:
 			print ">>> emerge",x[2],"to",x[1]
 			#the last argument in the portage.doebuild() tells doebuild to *not* do dep checking
 			#(emerge is already handling that)
-			y=self.db[myroot]["porttree"].getname(x[2])
+			y=portage.db[myroot]["porttree"].getname(x[2])
 			if x[0]=="ebuild":
 				if "--fetchonly" in self.myopts:
 					retval=portage.doebuild(y,"fetch",myroot,edebug)
@@ -500,8 +495,8 @@ class depgraph:
 						print "!!! emerge aborting on ",y,"."
 						sys.exit(1)
 					#dynamically update our database	
-					self.db[portage.root]["bintree"].inject(x[2])
-					mytbz2=self.db[portage.root]["bintree"].getname(x[2])
+					portage.db[portage.root]["bintree"].inject(x[2])
+					mytbz2=portage.db[portage.root]["bintree"].getname(x[2])
 					retval=portage.pkgmerge(mytbz2,myroot)
 					if retval==None:
 						print "!!! emerge aborting on ",y,"."
@@ -518,13 +513,13 @@ class depgraph:
 					#dynamically update our database	
 			elif x[0]=="binary":
 				#merge the tbz2
-				mytbz2=self.db[portage.root]["bintree"].getname(x[2])
+				mytbz2=portage.db[portage.root]["bintree"].getname(x[2])
 				retval=portage.pkgmerge(mytbz2,x[1])
 				if retval==None:
 					print "!!! emerge aborting on ",y,"."
 					sys.exit(1)
 				#need to check for errors
-			self.db[x[1]]["vartree"].inject(x[2])
+			portage.db[x[1]]["vartree"].inject(x[2])
 			if "--autoclean" in self.myopts:
 				retval=portage.doebuild(y,"clean",myroot,edebug)
 				if retval:
@@ -1024,10 +1019,10 @@ else:
 			else:
 				mykey=""
 				if "--usepkg" in myopts:
-					mykey=mydepgraph.db[portage.root]["bintree"].dep_bestmatch(mypkg)
+					mykey=portage.db[portage.root]["bintree"].dep_bestmatch(mypkg)
 					mytype="binary"
 				if not mykey:
-					mykey=mydepgraph.db[portage.root]["porttree"].dep_bestmatch(mypkg)
+					mykey=portage.db[portage.root]["porttree"].dep_bestmatch(mypkg)
 					mytype="ebuild"
 					if not mykey:
 						print "!!! Couldn't find match for",mypkg+"; aborting."

@@ -1,6 +1,7 @@
 # Copyright 2002 Daniel Robbins, Gentoo Technologies, Inc.
 # System-wide defaults for the Portage system
 
+USE_ORDER="env:conf:auto:defaults"
 #proxy settings PROXY(both), or HTTP_PROXY/FTP_PROXY
 #PROXY=freebox.gentoo.org:3128
 #HTTP_PROXY=

@@ -1,6 +1,32 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-1.8.9_pre24 (09 Mar 2002)
+
+  09 Mar 2002; Daniel Robbins <drobbins@gentoo.org> emerge: fixed missing
+  "--clean" option so "--clean rsync" should work again.  Also converted emerge
+  to work with our new db layout (db objects are in the portage module now).
+
+  09 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: Added USE
+  ordering, a concept envisioned by Vitaly Kushneriuk.  The idea is to allow
+  customization of how Portage resolves USE variables.  The default is
+  "env:conf:auto:defaults" (set in the USE_ORDER variable -- this default is
+  now in make.globals but as always you should set your custom USE_ORDER in
+  make.conf if desired.)  So, my default, USE settings will be calculated as
+  follows.  The USE variables will be grabbed from the
+  /etc/make.profile/make.defaults file (this is "defaults".) Then, the
+  /etc/make.profile/use.defaults file will be consulted.  This file lists (one
+  per line) a USE variable and a corresponding dependency.  If the dependency
+  is satisfied, the USE variable is auto-enabled and added to our working list
+  (this is "auto").  Then /etc/make.conf is consulted, so that the user has the
+  option of force-enabling (with USE="foo") or force-disabling (with
+  USE="-foo") any USE variables as desired (this is "conf".)  Then, the
+  environment is consulted, allowing easy modifications from the command-line
+  (this is "env").  Also added is the ability for USE settings to be
+  dynamically regenerated in an efficient way as packages are merged.  So,
+  right after xfree is emerged, the "X" use variable can be immediately
+  auto-enabled.  Thanks to Vitaly for providing the vision for this.
+
 *portage-1.8.9_pre23 (08 Mar 2002)
 
   09 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: our portage
