@@ -1,6 +1,13 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+*portage 1.8.9_pre10 (22 Feb 2002)
+
+  22 Feb 2002; Daniel Robbins <drobbins@gentoo.org>: "emerge" didn't like the
+  new portage.py (fixed); A merge database bug (fixed).  Fixing the merge bug
+  should also result in merges happening much faster than before, maybe up to 3
+  times as fast.  We no longer resolve symlinks when testing protection paths.
+
 *portage 1.8.9_pre9 (21 Feb 2002)
 
   21 Feb 2002; Daniel Robbins <drobbins@gentoo.org>: moved entirety of Portage

@@ -219,7 +219,7 @@ def env_update():
 			continue
 		pos=pos+1
 
-	specials={"PATH":[],"CLASSPATH":[],"LDPATH":[],"MANPATH":[],"INFODIR":[],"ROOTPATH":[]}
+	specials={"KDEDIR":[],"PATH":[],"CLASSPATH":[],"LDPATH":[],"MANPATH":[],"INFODIR":[],"ROOTPATH":[]}
 	env={}
 
 	for x in fns:
@@ -731,7 +731,8 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 			print "\n\n!!! Portage had a problem processing this file:"
 			print "!!!",settings["EBUILD"]+"\n"+myso[1]+"\n"+"!!! aborting.\n"
 			return 1
-	
+	if mydo=="depend":
+		return 0
 	# if any of these are being called, stop now.
 	if mydo in ["help","clean","prerm","postrm","preinst","postinst","touch","setup"]:
 		return spawn("/usr/sbin/ebuild.sh "+mydo)
@@ -840,7 +841,7 @@ def isfifo(x):
 
 expandcache={}
 
-def expandpath(mypath):
+def expandpath(realroot,mypath):
 	"""The purpose of this function is to resolve the 'real' path on disk, with all
 	symlinks resolved except for the basename, since we may be installing a symlink
 	and definitely don't want it expanded.  In fact, the file that we want to install
@@ -2158,12 +2159,11 @@ class dblink:
 						continue
 				myppath=""
 				for ppath in self.protect:
-					epath=expandpath(obj)
-					if epath[0:len(ppath)]==ppath:
+					if obj[0:len(ppath)]==ppath:
 						masked=0
 						#config file management
 						for pmpath in self.protectmask:
-							if epath[0:len(pmpath)]==pmpath:
+							if obj[0:len(pmpath)]==pmpath:
 								#skip, it's in the mask
 								masked=1
 								break
@@ -2185,12 +2185,11 @@ class dblink:
 					continue
 				myppath=""
 				for ppath in self.protect:
-					epath=expandpath(obj)
-					if epath[0:len(ppath)]==ppath:
+					if obj[0:len(ppath)]==ppath:
 						masked=0
 						#config file management
 						for pmpath in self.protectmask:
-							if epath[0:len(pmpath)]==pmpath:
+							if obj[0:len(pmpath)]==pmpath:
 								#skip, it's in the mask
 								masked=1
 								break
@@ -2208,12 +2207,11 @@ class dblink:
 					continue
 				myppath=""
 				for ppath in self.protect:
-					epath=expandpath(obj)
-					if epath[0:len(ppath)]==ppath:
+					if obj[0:len(ppath)]==ppath:
 						masked=0
 						#config file management
 						for pmpath in self.protectmask:
-							if epath[0:len(pmpath)]==pmpath:
+							if obj[0:len(pmpath)]==pmpath:
 								#skip, it's in the mask
 								masked=1
 								break
@@ -2339,26 +2337,6 @@ class dblink:
 		env_update()	
 		print ">>>",self.cat+"/"+self.pkg,"merged."
 
-	def isprotected(self,destroot,offset):
-		#we use os.path.realpath() rather than expandpath() because we want full expansion here
-		mytruncpath=os.path.realpath(destroot+offset)
-		mytruncpath=mytruncpath[len(destroot)-1:]+"/"
-		myppath=""
-		for ppath in self.protect:
-			#before matching against a protection path.
-			if mytruncpath[0:len(ppath)]==ppath:
-				myppath=ppath
-				#config file management
-				for pmpath in self.protectmask:
-					#again, dir symlinks are expanded
-					if mytruncpath[0:len(pmpath)]==pmpath:
-						#skip, it's in the mask
-						myppath=""
-						break
-				if not myppath:
-					break	
-		return myppath!=""
-		
 	def mergeme(self,srcroot,destroot,outfile,secondhand,stufftomerge):
 		# this is supposed to merge a list of files.  There will be 2 forms of argument passing.
 		if type(stufftomerge)==types.StringType:
@@ -2367,7 +2345,22 @@ class dblink:
 			offset=stufftomerge
 			# We need mydest defined up here to calc. protection paths.  This is now done once per
 			# directory rather than once per file merge.  This should really help merge performance.
-			myppath=self.isprotected(destroot,offset)
+			mytruncpath="/"+offset+"/"
+			myppath=""
+			for ppath in self.protect:
+				#before matching against a protection path.
+				if mytruncpath[0:len(ppath)]==ppath:
+					myppath=ppath
+					#config file management
+					for pmpath in self.protectmask:
+						#again, dir symlinks are expanded
+						if mytruncpath[0:len(pmpath)]==pmpath:
+						#skip, it's in the mask
+							myppath=""
+							break
+					if not myppath:
+						break	
+			myppath=(myppath!="")
 		else:
 			mergelist=stufftomerge
 			offset=""
@@ -2379,24 +2372,13 @@ class dblink:
 			mymode=mystat[ST_MODE]
 			mymtime=mystat[ST_MTIME]
 			# handy variables; mydest is the target object on the live filesystems;
-			# mysrc is the source object in the temporary install dir; myrealdest
-			# is the "real" final location of the file (minus any $ROOT) offsets.
-			# myrealdest is what gets recorded in CONTENTS.  mydest gets printed
-			# onscreen.
+			# mysrc is the source object in the temporary install dir 
 			try:
 				mydmode=os.lstat(mydest)[ST_MODE]
 			except:
 				#dest file doesn't exist
 				mydmode=None
 			
-			# below, the [len(destroot):] is there to chop off the $ROOT 
-			# (we don't record this in CONTENTS) after the real
-			# target path has been expanded. expandpath() gets the "real"
-			# path, taking any existing symlinks into account but will *not* expand the file itself if *it* is a symlink.  That way, if
-			# the symlinks are unmerged, this object can still be found and unmerged
-			# too, since we record myrealdest in CONTENTS.
-			
-			myrealdest=expandpath(mydest)[len(destroot)-1:]
 			if S_ISLNK(mymode):
 				# we are merging a symbolic link
 				myto=os.readlink(mysrc)
@@ -2420,7 +2402,7 @@ class dblink:
 				# unlinking no longer necessary; "movefile" will overwrite symlinks atomically and correctly
 				if movefile(mysrc,mydest):
 					print ">>>",mydest,"->",myto
-					outfile.write("sym "+myrealdest+" -> "+myto+" "+`mymtime`+"\n")
+					outfile.write("sym "+mydest+" -> "+myto+" "+`mymtime`+"\n")
 				else:
 					print "!!!",mydest,"->",myto
 			elif S_ISDIR(mymode):
@@ -2445,7 +2427,7 @@ class dblink:
 					os.chmod(mydest,mystat[0])
 					os.chown(mydest,mystat[4],mystat[5])
 					print ">>>",mydest+"/"
-				outfile.write("dir "+myrealdest+"\n")
+				outfile.write("dir "+mydest+"\n")
 				# recurse and merge this directory
 				self.mergeme(srcroot,destroot,outfile,secondhand,offset+x+"/")
 			elif S_ISREG(mymode):
@@ -2502,12 +2484,10 @@ class dblink:
 									# we now have pnum set to the official 4-digit config that should be used for the file
 									# we need to install.  Set mydest to this new value.
 									mydest=os.path.normpath(mydestdir+"/._cfg"+string.zfill(pnum,4)+"_"+pmatch)
-								# update myrealdest for writing to CONTENTS
-								myrealdest=mydest[len(destroot)-1:]
 				# whether config protection or not, we merge the new file the same way.  Unless moveme=0 (blocking directory)
 				if moveme and movefile(mysrc,mydest):
 					zing=">>>"
-					outfile.write("obj "+myrealdest+" "+mymd5+" "+`mymtime`+"\n")
+					outfile.write("obj "+mydest+" "+mymd5+" "+`mymtime`+"\n")
 				else:
 					zing="!!!"
 				print zing,mydest
@@ -2520,7 +2500,7 @@ class dblink:
 						zing=">>>"
 						if S_ISFIF(mymode):
 							#we don't record device nodes in CONTENTS, although we do merge them.
-							outfile.write("fif "+myrealdest+"\n")
+							outfile.write("fif "+mydest+"\n")
 					else:
 						zing="!!!"
 				print zing+" "+mydest

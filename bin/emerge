@@ -358,16 +358,11 @@ class depgraph:
 			myebuild=self.db[myroot]["porttree"].getname(mykey)
 			mydbkey="/var/cache/edb/dep/dep-"+os.path.basename(myebuild)
 			#use the cached info if it is available and more recent than the ebuild itself (mtime)
-			if os.path.exists(mydbkey) and os.stat(mydbkey)[7]>=os.stat(myebuild)[7]:
-				#problem does not appear to be here.
-				mydb=open(mydbkey,"r")
-				edepend=eval(mydb.readline())
-				mydb.close()
-			else:
+			if (not os.path.exists(mydbkey)) or (os.stat(mydbkey)[7]<os.stat(myebuild)[7]):
 				edepend=portage.doebuild(myebuild,"depend",myroot,edebug)
-			if edepend==1:
-				print "!!! emerge aborting."
-				sys.exit(1)
+			mydb=open(mydbkey,"r")
+			edepend=eval(mydb.readline())
+			mydb.close()
 		elif mytype=="blocks":
 			edepend=None
 			parenttype,parentroot,parentkey=string.split(myparent)
