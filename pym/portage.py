@@ -7,7 +7,7 @@
 # START OF CONSTANTS -- START OF CONSTANTS -- START OF CONSTANTS -- START OF
 # ===========================================================================
 
-VERSION="2.0.51-cvs"
+VERSION="20040626"
 
 VDB_PATH                = "var/db/pkg"
 PRIVATE_PATH            = "/var/lib/portage"
@@ -6113,6 +6113,8 @@ class dblink:
 		# check for package collisions
 		if "collision-protect" in features:
 			myfilelist = listdir(srcroot, recursive=1, filesonly=1)
+			mysymlinks = filter(os.path.islink, listdir(srcroot, recursive=1))
+
 			stopmerge=False
 			starttime=time.time()
 			i=0
@@ -6142,6 +6144,15 @@ class dblink:
 
 			print green("*")+" checking "+str(len(myfilelist))+" files for package collisions"
 			for f in myfilelist:
+				nocheck = False
+				# listdir isn't intelligent enough to exclude symlinked dirs,
+				# so we have to do it ourself
+				for s in mysymlinks:
+					# the length comparison makes sure that the symlink itself is checked
+					if f[:len(s)] == s and len(f) > len(s):
+						nocheck = True
+				if nocheck:
+					continue
 				i=i+1
 				if i % 1000 == 0:
 					print str(i)+" files checked ..."
