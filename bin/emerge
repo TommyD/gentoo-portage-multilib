@@ -1,5 +1,5 @@
 #!/usr/bin/env python2.2
-import os,sys,portage,xpak,string,re,commands,time,threading
+import os,sys,portage,xpak,string,re,commands,time,threading,grp
 from stat import *
 from output import *
 
@@ -93,9 +93,21 @@ for x in cmdline:
 			myfiles.append(x)
 
 # check if root user is the current user for the actions where emerge needs this
-if os.getuid()!=0 and ("--help" not in myopts) and ("--version" not in myopts) and ("search"!=myaction):
-	print "!!! to be able to perform the requested action, emerge must be run by root."
+secpass=0
+if (os.getuid()==0) or ("--help" in myopts) or ("--version" in myopts):
+	secpass=1
+elif ("--pretend" in myopts) or (myaction=="search"):
+	try:
+		wheelid=grp.getgrnam("wheel")[2]
+		if wheelid in os.getgroups():
+			secpass=1
+	except KeyError:
+		#group "wheel" not defined for some reason
+		pass
+if not secpass:
+	print "emerge: root access required (or wheel group membership for \"--pretend\" and search.)"
 	sys.exit(1)
+	
 # search functionality
 class search:
 	

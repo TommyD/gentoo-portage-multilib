@@ -1,6 +1,18 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-2.0.6 (25 Jun 2002)
+
+  25 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: rewrote the
+  config file code to make things more sane, consistent, and made infinite
+  loops during variable expansion a thing of the past.  This closes bug #3952.
+  
+  25 Jun 2002; Daniel Robbins <drobbins@gentoo.org> emerge, portage.py,
+  ebuild.sh: "emerge --pretend" and "emerge search" now work for the root user
+  as well as any users in the "wheel" group.  emerge will now gracefully exit
+  if "emerge search" is run by someone not in the "wheel" group.  This closes
+  bug #4121.
+  
   25 Jun 2002; Martin Schlemmer <azarah@gentoo.org> bin/{dolib.so,preplib.so}:
   Also change "strip --strip-unneeded" to "strip --strip-debug" for these.
   Look at bugs #2702,#3929,#4027 for more info.
@@ -8,12 +20,8 @@
   25 Jun 2002; Daniel Robbins <drobbins@gentoo.org> emerge: "emerge -u" now
   correctly scans dependencies of packages, even if they are up-to-date, to
   determine if any of their dependencies need updating.  Previously, up-to-date
-  packages were not scanned in this way, which is a bug.
+  packages were not scanned in this way, which was a bug.
   
-  25 Jun 2002; Martin Schlemmer <azarah@gentoo.org> bin/prepallstrip : Change
-  "strip --strip-unneeded" to "strip --strip-debug".  This fixes bug
-  #2702,#3929,#4027.
-
   24 Jun 2002; Daniel Robbins <drobbins@gentoo.org> ebuild.sh: Portage will now
   automatically take advantage of ccache if the >=dev-util/ccache-1.9 ebuild is
   installed.  Removing /var/cache/ccache hole in the sandbox.

@@ -11,6 +11,8 @@ import string,os,types,sys,shlex,shutil,xpak,fcntl,signal,time,missingos
 import thread
 dircache={}
 
+incrementals=["USE","FEATURES","ACCEPT_KEYWORDS","ACCEPT_LICENSE","CONFIG_PROTECT_MASK"]
+
 "this fixes situations where the current directory doesn't exist"
 try:
 	os.getcwd()
@@ -101,6 +103,7 @@ def exithandler(signum,frame):
 	sys.exit(1)
 
 if not os.environ.has_key("DEBUG"):
+	#turn off signal handler to get better tracebacks
 	signal.signal(signal.SIGINT,exithandler)
 
 def tokenize(mystring):
@@ -455,20 +458,19 @@ def getconfig(mycfg,tolerant=0):
 				return None
 			else:
 				return mykeys
-		mykeys[key]=val
+		mykeys[key]=varexpand(val,mykeys)
 	return mykeys
 
 #cache expansions of constant strings
 cexpand={}
-def varexpand(mystring,dictlist=[]):
+def varexpand(mystring,mydict={}):
 	try:
 		return cexpand[" "+mystring]
 	except KeyError:
 		pass
 	"""
-	new variable expansion code.  Removes quotes, handles \n, etc, and
-	will soon use the dictlist to expand ${variable} references.
-	This code will be used by the configfile code, as well as others (parser)
+	new variable expansion code.  Removes quotes, handles \n, etc.
+	This code is used by the configfile code, as well as others (parser)
 	This would be a good bunch of code to port to C.
 	"""
 	numvars=0
@@ -495,7 +497,11 @@ def varexpand(mystring,dictlist=[]):
 			continue
 		if (not insing): 
 			#expansion time
-			if (mystring[pos]=="\\"):
+			if (mystring[pos]=="\n"):
+				#convert newlines to spaces
+				newstring=newstring+" "
+				pos=pos+1
+			elif (mystring[pos]=="\\"):
 				#backslash expansion time
 				if (pos+1>=len(mystring)):
 					newstring=newstring+mystring[pos]
@@ -542,8 +548,9 @@ def varexpand(mystring,dictlist=[]):
 				if len(myvarname)==0:
 					cexpand[mystring]=""
 					return ""
-				newstring=newstring+settings[myvarname] 
 				numvars=numvars+1
+				if mydict.has_key(myvarname):
+					newstring=newstring+mydict[myvarname] 
 			else:
 				newstring=newstring+mystring[pos]
 				pos=pos+1
@@ -553,26 +560,6 @@ def varexpand(mystring,dictlist=[]):
 	if numvars==0:
 		cexpand[mystring]=newstring[1:]
 	return newstring[1:]	
-
-def autouse(myvartree):
-	"returns set of USE variables auto-enabled due to packages being installed"
-	global usedefaults
-	if profiledir==None:
-		return ""
-	myusevars=""
-	for x in usedefaults:
-		mysplit=string.split(x)
-		if len(mysplit)<2:
-			#invalid line
-			continue
-		myuse=mysplit[0]
-		mydep=x[len(mysplit[0]):]
-		#check dependencies; tell depcheck() to ignore settings["USE"] since we are still forming it.
-		myresult=dep_check(mydep,myvartree.dbapi,lookatuse=0)
-		if myresult[0]==1 and not myresult[1]:
-			#deps satisfied, add USE variable...
-			myusevars=myusevars+" "+myuse
-	return myusevars
 
 # returns a tuple.  (version[string], error[string])
 # They are pretty much mutually exclusive.
@@ -606,41 +593,88 @@ def ExtractKernelVersion(base_dir):
 		version = version[1:-1]
 	return (version,None)
 
+
+def autouse(myvartree):
+        "returns set of USE variables auto-enabled due to packages being installed"
+        global usedefaults
+        if profiledir==None:
+                return ""
+        myusevars=""
+        for x in usedefaults:
+                mysplit=string.split(x)
+                if len(mysplit)<2:
+                        #invalid line
+                        continue
+                myuse=mysplit[0]
+                mydep=x[len(mysplit[0]):]
+                #check dependencies; tell depcheck() to ignore settings["USE"] since we are still forming it.
+                myresult=dep_check(mydep,myvartree.dbapi,lookatuse=0)
+                if myresult[0]==1 and not myresult[1]:
+                        #deps satisfied, add USE variable...
+                        myusevars=myusevars+" "+myuse
+        return myusevars
+
 class config:
 	def __init__(self):
+		global incrementals
+		self.configlist=[]
+		origenv=os.environ.copy()
+		self.backupenv={}
+		# back up our incremental variables:
+		global profiledir
 		self.configdict={}
-		self.configdict["origenv"]=os.environ.copy()
-		self.configdict["backupenv"]={}
-		if os.environ.has_key("FEATURES"):
-			self.configdict["backupenv"]["FEATURES"]=os.environ["FEATURES"]
-		if os.environ.has_key("USE"):
-			self.configdict["backupenv"]["USE"]=os.environ["USE"]
-		self.populated=0
+		# configlist will contain: [ globals, (optional) profile, make.conf, backupenv (incrementals), origenv ]
+		self.configlist.append(getconfig("/etc/make.globals"))
+		self.configdict["globals"]=self.configlist[-1]
+		if profiledir:
+			self.configlist.append(getconfig("/etc/make.profile/make.defaults"))
+			self.configdict["defaults"]=self.configlist[-1]
+		self.configlist.append(getconfig("/etc/make.conf"))
+		self.configdict["conf"]=self.configlist[-1]
+		for x in incrementals:
+			if os.environ.has_key(x):
+				self.backupenv[x]=os.environ[x]
+		#auto-use:
+		self.configlist.append({})
+		self.configdict["auto"]=self.configlist[-1]
+		#backup-env (for recording our calculated incremental variables:)
+		self.configlist.append(self.backupenv)
+		self.configlist.append(os.environ.copy())
+		self.configdict["env"]=self.configlist[-1]
+		self.lookuplist=self.configlist[:]
+		self.lookuplist.reverse()
 	
-	def use_regenerate(self):
-		"regenerate USE variable -- dynamically taking into account any new packages installed (auto option)"
-		self.configdict["auto"]={}
-		self.configdict["auto"]["USE"]=autouse(db[root]["vartree"])
-		mykey="USE"
-		mydb=[]
-		for x in self.usevaluelist:
+		useorder=self["USE_ORDER"]
+		if not useorder:
+			#reasonable defaults; this is important as without USE_ORDER, USE will always be "" (nothing set)!
+			useorder="env:conf:auto:defaults"
+		usevaluelist=useorder.split(":")
+		self.uvlist=[]
+		for x in usevaluelist:
 			if self.configdict.has_key(x):
-				mydb.append(self.configdict[x])
-		self.regenerate(mykey,mydb)
-		
-	def regenerate(self,mykey,myorigdb):
-		"dynamically regenerate a cumulative variable that may have changed"
-		if self.configdict["backupenv"].has_key(mykey):
-			self.configdict["env"][mykey]=self.configdict["backupenv"][mykey]
-		mysetting=[]
-		#copy our myorigdb so we don't modify it.
-		mydb=myorigdb[:]
-		#cycle backwards through the db entries
-		mydb.reverse()
-		for curdb in mydb:
-			if curdb.has_key(mykey):
-				#expand using only the current config file/db entry
-				mysplit=varexpand(curdb[mykey],curdb).split()
+				#prepend db to list to get correct order
+				self.uvlist[0:0]=[self.configdict[x]]		
+		self.regenerate()
+	
+	def regenerate(self,useonly=0):
+		global incrementals
+		if useonly:
+			myincrementals=["USE"]
+		else:
+			myincrementals=incrementals
+		for mykey in myincrementals:
+			#globals first, backupenv last
+			if mykey=="USE":
+				mydbs=self.uvlist		
+				self.configdict["auto"]["USE"]=autouse(db[root]["vartree"])
+			else:
+				mydbs=self.configlist[:-1]
+			mysetting=[]
+			for curdb in mydbs:
+				if not curdb.has_key(mykey):
+					continue
+				#variables are already expanded
+				mysplit=curdb[mykey].split()
 				for x in mysplit:
 					if x=="-*":
 						# "-*" is a special "minus" var that means "unset all settings".  so USE="-* gnome" will have *just* gnome enabled.
@@ -651,7 +685,9 @@ class config:
 						if len(colonsplit)==2:
 							print "!!! USE variable syntax \""+x+"\" not supported; treating as \""+colonsplit[0]+"\""
 						remove=colonsplit[0][1:]
-						add=""
+						#preserve the "-foo" just in case we spawn another python process that interprets the USE vars.
+						add=x
+						#that way, they'll still be correct.
 					else:
 						remove=colonsplit[0]
 						add=x
@@ -668,74 +704,39 @@ class config:
 					#now append our new setting
 					if add:
 						mysetting.append(add)
-		
-		self[mykey]=string.join(mysetting," ")
-	
-	def populate(self):
-		self.configdict["conf"]=getconfig("/etc/make.conf")
-		self.configdict["globals"]=getconfig("/etc/make.globals")
-		self.configdict["env"]=self.configdict["origenv"].copy()
-		if not profiledir:
-			self.configdict["defaults"]={}
-		else:
-			self.configdict["defaults"]=getconfig(profiledir+"/make.defaults")
-		self.configlist=[self.configdict["env"],self.configdict["conf"],self.configdict["defaults"],self.configdict["globals"]]
-		self.populated=1
-		useorder=self["USE_ORDER"]
-		if not useorder:
-			#reasonable defaults; this is important as without USE_ORDER, USE will always be "" (nothing set)!
-			useorder="env:conf:auto:defaults"
-		self.usevaluelist=useorder.split(":")
-		# cumulative Portage variables with "-" support: USE and FEATURES
-		# use "standard" variable regeneration code to initially set the cumulative FEATURES variable
-		self.regenerate("FEATURES",self.configlist)
-		# use specialized code for regenerating the cumulative and dynamic USE setting.
-		self.use_regenerate()
-		# USE doesn't consult make.globals while FEATURES does.
+			#store setting in last element of configlist, the original environment:
+			self.configlist[-1][mykey]=string.join(mysetting," ")
+
 	
 	def __getitem__(self,mykey):
-		if not self.populated:
-			self.populate()
-		if mykey=="CONFIG_PROTECT_MASK":
-			#Portage needs to always auto-update these files (so that builds don't die when remerging gcc)
-			returnme="/etc/env.d "
-		else:
-			returnme=""
-		for x in self.configlist:
+		for x in self.lookuplist:
 			if x.has_key(mykey):
-				returnme=returnme+varexpand(x[mykey],self.configlist)
-				#without this break, it concats all settings together -- interesting!
-				break
-		return returnme 	
-	
+				return x[mykey]
+		return ""
+
 	def has_key(self,mykey):
-		if not self.populated:
-			self.populate()
-		for x in self.configlist:
+		for x in self.lookuplist:
 			if x.has_key(mykey):
 				return 1 
 		return 0
+	
 	def keys(self):
-		if not self.populated:
-			self.populate()
 		mykeys=[]
-		for x in self.configlist:
+		for x in self.lookuplist:
 			for y in x.keys():
 				if y not in mykeys:
 					mykeys.append(y)
 		return mykeys
+
 	def __setitem__(self,mykey,myvalue):
 		"set a value; will be thrown away at reset() time"
-		if not self.populated:
-			self.populate()
-		self.configlist[0][mykey]=myvalue
+		self.configdict["env"][mykey]=myvalue
 	
 	def reset(self):
 		"reset environment to original settings"
-		if not self.populated:
-			self.populate()
-		self.configdict["env"]=self.configdict["origenv"].copy()
-		self.use_regenerate()
+		for x in self.backupenv.keys():
+			self.configdict["env"][x]==self.backupenv[x]
+		self.regenerate()
 
 	def environ(self):
 		"return our locally-maintained environment"
@@ -1039,14 +1040,16 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 	if not settings.has_key("BUILD_PREFIX"):
 		print "!!! Error: BUILD_PREFIX not defined."
 		return 1
-	settings["BUILDDIR"]=settings["BUILD_PREFIX"]+"/"+settings["PF"]
-	if not os.path.exists(settings["BUILDDIR"]):
-		os.makedirs(settings["BUILDDIR"])
-	settings["T"]=settings["BUILDDIR"]+"/temp"
-	if not os.path.exists(settings["T"]):
-		os.makedirs(settings["T"])
-	settings["WORKDIR"]=settings["BUILDDIR"]+"/work"
-	settings["D"]=settings["BUILDDIR"]+"/image/"
+	if mydo!="depend":
+		#depend may be run as non-root
+		settings["BUILDDIR"]=settings["BUILD_PREFIX"]+"/"+settings["PF"]
+		if not os.path.exists(settings["BUILDDIR"]):
+			os.makedirs(settings["BUILDDIR"])
+		settings["T"]=settings["BUILDDIR"]+"/temp"
+		if not os.path.exists(settings["T"]):
+			os.makedirs(settings["T"])
+		settings["WORKDIR"]=settings["BUILDDIR"]+"/work"
+		settings["D"]=settings["BUILDDIR"]+"/image/"
 
 	if mydo=="unmerge": 
 		return unmerge(settings["CATEGORY"],settings["PF"],myroot)

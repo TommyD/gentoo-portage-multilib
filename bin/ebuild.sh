@@ -109,7 +109,7 @@ addpredict()
 	export SANDBOX_PREDICT="$SANDBOX_PREDICT:$1"
 }
 
-#Add ccache support if available
+#Add compiler cache support
 if [ -d /usr/bin/ccache ]
 then
 	export PATH="/usr/bin/ccache:${PATH}"
@@ -831,7 +831,7 @@ do
 		dbkey=/var/cache/edb/dep/${CATEGORY}/${PF}
 		if [ ! -d /var/cache/edb/dep/${CATEGORY} ]
 		then
-			install -d /var/cache/edb/dep/${CATEGORY}
+			install -d -g wheel -m2775 /var/cache/edb/dep/${CATEGORY}
 		fi
 		echo `echo "$DEPEND"` > $dbkey
 		echo `echo "$RDEPEND"` >> $dbkey
@@ -843,6 +843,8 @@ do
 		echo `echo "$DESCRIPTION"` >> $dbkey
 		echo `echo "$KEYWORDS"` >> $dbkey
 		set +f
+		#make sure it is writable by our group:
+		chmod g+ws $dbkey
 		exit 0
 		;;
 	*)
