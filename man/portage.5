@@ -124,8 +124,33 @@ not supported by Gentoo anymore.  It contains the name of the profile
 to which users are encouraged to upgrade.
 .TP
 .BR make.defaults
-The profile default settings for Portage.  Format  described in 
-\fBmake.conf\fR(5).
+The profile default settings for Portage.  The general format is described 
+in \fBmake.conf\fR(5).  The \fImake.defaults\fR for your profile defines a 
+few specific variables too:
+
+.PD 0
+.RS
+.TP
+.BR ARCH
+Architecture type (x86/ppc/hppa/etc...).
+.TP
+.B USERLAND = \fI"GNU"\fR
+Support BSD/cygwin/etc...
+.TP
+.B PORTAGE_LIBC = \fI"glibc"\fR
+Support uClibc/BSD libc/etc...
+.TP
+.BR PROFILE_ARCH
+Distinguish machines classes that have the same \fBARCH\fR.  All sparc 
+machines have ARCH=sparc but set this to either 'sparc32' or 'sparc64'.
+.TP
+.BR STAGE1_USE
+Special USE flags which may be need when bootstrapping from stage1 to stage2.
+.TP
+.BR GRP_STAGE23_USE
+Special USE flags used by catalyst for building a stage3 and GRP sets.
+.RE
+.PD 1
 .TP
 .BR packages
 This file serves two purposes.  The first is to mask out specific 
