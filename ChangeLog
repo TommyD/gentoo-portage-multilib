@@ -2,7 +2,55 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
-*portage-2.0.47-r15 (09 Mar 2003): New digests/manifests, touchups.
+  27 Apr 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Fix for
+	listdir() running on a non-existant dir -- returns None. Sets generated
+	files to the portage group -- Manifest & digests. Some coloring additions.
+	Handling of 'strict' features added. TEMPORARY addition of 'manifest' USE
+	flag so this can go mainstream now. Fixes in doebuild() to get unmerge
+	working again for ebuild. Debug code added to findname to help figuring
+	out the seemingly random tracebacks -- suspect is pkgsplit(). Unmasking
+	code for package.mask added in -- works just like mask, and can override
+	specific versions or ranges -- One per line: /etc/portage/package.unmask.
+	Security fix for python cPickle code -- mtimedb could create arbitrary
+	execution of code bug. Global update notices/info.
+
+  27 Apr 2003; Nicholas Jones <carpaski@gentoo.org> cvstree.py: Added in
+	'removed' status checks.
+	
+  27 Apr 2003; Nicholas Jones <carpaski@gentoo.org> repoman: Added in more
+	cvs checks. /space/cvsroot is now complained about.
+
+  27 Apr 2003; Nicholas Jones <carpaski@gentoo.org> emerge: Added in
+	PORTAGE_CALLER support to identify it as a 'do_update()' candidate.
+
+  27 Apr 2003; Nicholas Jones <carpaski@gentoo.org> dodoc: Check sizes to
+	prevent 0 byte files from being added.
+
+  16 Apr 2003; Nicholas Jones <carpaski@gentoo.org> repoman: Added CVS/Root
+	checks to ensure Manifests will be correct. Fixed local use-flag bug.
+	Commented out the no-stable code, as it can't be implemented well as is.
+
+  16 Apr 2003; Nicholas Jones <carpaski@gentoo.org> prepstrip: Fixed a
+	problem where files were not being stripped.
+
+  16 Apr 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Added in
+	a call to 'make -n' when under the --debug flag.
+
+*portage-2.0.48_pre1 (10 Apr 2003): Digests & Repoman
+
+  10 Apr 2003; Nicholas Jones <carpaski@gentoo.org> prepstrip: fix it so
+	that it actually strips and provides reasonable info.
+	
+  10 Apr 2003; Nicholas Jones <carpaski@gentoo.org> repoman: Added short
+	option for pretend. Added pretend capability to the majority of the
+	commit code. Bug fix for local IUSE code. Added in support for removed
+	cvs files.
+	
+  10 Apr 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Changed
+	'manifest' to 'Manifest'. Removed the requirement that Manifests exist --
+	complain about it, but only die if 'strict' is set.
+
+*portage-2.0.47-r15 (09 Apr 2003): New digests/manifests, touchups.
 
   09 Apr 2003; Nicholas Jones <carpaski@gentoo.org> bin/*: Fixes for Cross-
   compiling.
@@ -16,7 +64,7 @@
   09 Apr 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Fixed hole
   in the listdir code that occured on cache expiration in the -r14 changes.
 
-*portage-2.0.47-r14 (09 Mar 2003): 
+*portage-2.0.47-r14 (09 Apr 2003): 
 
   09 Apr 2003; Nicholas Jones <carpaski@gentoo.org> bin/*: Removed DEBUGBUILD
   in favor of FEATURES/RESTRICT settings of nostrip.
@@ -41,7 +89,7 @@
   devs and repoman. Added 'PORTAGE_CALLER' env var to prevent repeated
   running of unnecessary functions.
 
-*portage-2.0.47-r13 (02 Mar 2003): Fixes & Security -- Repoman+Digests
+*portage-2.0.47-r13 (02 Apr 2003): Fixes & Security -- Repoman+Digests
 
   02 Apr 2003; Nicholas Jones <carpaski@gentoo.org> emerge: Added debug to
   the dep selection code in depgraph.

@@ -3,7 +3,10 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-import os,sys,portage,emergehelp,xpak,string,re,commands,time,threading,shutil,traceback,atexit
+import os
+os.environ["PORTAGE_CALLER"]="emerge"
+
+import sys,portage,emergehelp,xpak,string,re,commands,time,threading,shutil,traceback,atexit
 from stat import *
 from output import *
 if (not sys.stdout.isatty()) or (portage.settings["NOCOLOR"] in ["yes","true"]):

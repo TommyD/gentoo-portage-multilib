@@ -4,7 +4,7 @@
 # $Header$
 
 for x in "$@" ; do
-	if [ -e "${x}" ] ; then
+	if [ -s "${x}" ] ; then
 		if [ ! -d "${D}usr/share/doc/${PF}" ] ; then
 			install -d "${D}usr/share/doc/${PF}"
 		fi

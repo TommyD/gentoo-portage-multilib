@@ -1,9 +1,9 @@
 # portage.py -- core Portage functionality 
-# Copyright 1998-2002 Daniel Robbins, Gentoo Technologies, Inc.
+# Copyright 1998-2003 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
 # $Header$
 
-VERSION="2.0.47-r13"
+VERSION="2.0.48_pre4"
 
 from stat import *
 from commands import *
@@ -83,7 +83,10 @@ def listdir(mypath,recursive=0,filesonly=0,ignorecvs=0,ignorelist=[]):
 		cached_mtime, list, ftype = dircache[mypath]
 	else:
 		cached_mtime, list, ftype = -1, [], []
-	mtime = os.stat(mypath)[ST_MTIME]
+	if os.path.isdir(mypath):
+		mtime = os.stat(mypath)[ST_MTIME]
+	else:
+		return None
 	if mtime != cached_mtime:
 		list = os.listdir(mypath)
 		ftype = []
@@ -1196,7 +1199,7 @@ def digestgen(myarchives,overwrite=1,manifestonly=0):
 
 	# portage files -- p(ortagefiles)basedir
 	pbasedir=settings["O"]+"/"
-	manifestfn=pbasedir+"manifest"
+	manifestfn=pbasedir+"Manifest"
 
 	if not manifestonly:
 		if not os.path.isdir(settings["FILESDIR"]):
@@ -1226,11 +1229,16 @@ def digestgen(myarchives,overwrite=1,manifestonly=0):
 			mysize=mydigests[myarchive][1]
 			outfile.write("MD5 "+mymd5+" "+myarchive+" "+str(mysize)+"\n")	
 		outfile.close()
+		try:
+			os.chown(digestfn,os.getuid(),portage_gid)
+			os.chmod(digestfn,0664)
+		except Exception,e:
+			print e
 
 	print green(">>> Generating manifest file...")
 	mypfiles=listdir(pbasedir,recursive=1,filesonly=1,ignorecvs=1)
-	if "manifest" in mypfiles:
-		del mypfiles[mypfiles.index("manifest")]
+	if "Manifest" in mypfiles:
+		del mypfiles[mypfiles.index("Manifest")]
 
 	mydigests=digestCreate(mypfiles, pbasedir)
 	if mydigests==None: # There was a problem, exit with an errorcode.
@@ -1247,6 +1255,11 @@ def digestgen(myarchives,overwrite=1,manifestonly=0):
 		mysize=mydigests[mypfile][1]
 		outfile.write("MD5 "+mymd5+" "+mypfile+" "+str(mysize)+"\n")	
 	outfile.close()
+	try:
+		os.chown(manifestfn,os.getuid(),portage_gid)
+		os.chmod(manifestfn,0664)
+	except Exception,e:
+		print e
 
 	if "cvs" in features:
 		mycvstree=cvstree.getentries(pbasedir, recursive=1)
@@ -1297,11 +1310,12 @@ def digestCheckFiles(myfiles, mydigests, basedir, note=""):
 	"""
 	for x in myfiles:
 		if not mydigests.has_key(x):
-			print "!!! No message digest entry found for file \""+x+".\""
+			print
+			print red("!!! No message digest entry found for file \""+x+".\"")
 			print "!!! Most likely a temporary problem. Try 'emerge rsync' again later."
 			print "!!! If you are certain of the authenticity of the file then you may type"
 			print "!!! the following to generate a new digest:"
-			print "!!!   ebuild /usr/portage/category/package/package-version.ebuild digest" 
+			print "!!!   ebuild /usr/portage/category/package/package-version.ebuild digest"
 			return 0
 		myfile=basedir+"/"+x
 		if not os.path.exists(myfile):
@@ -1312,9 +1326,10 @@ def digestCheckFiles(myfiles, mydigests, basedir, note=""):
 		mymd5=perform_md5(myfile)
 		if mymd5 != mydigests[x][0]:
 			print
-			print red("!!! A file is corrupt or incomplete. (Digests do not match)")
+			print red("!!! File is corrupt or incomplete. (Digests do not match)")
 			print green(">>> our recorded digest:"),mydigests[x][0]
 			print green(">>>  your file's digest:"),mymd5
+			print red("!!! File does not exist:"),myfile
 			print
 			return 0
 		else:
@@ -1331,49 +1346,62 @@ def digestcheck(myfiles,strict=0):
 
 	# portage files -- p(ortagefiles)basedir
 	pbasedir=settings["O"]+"/"
-	manifestfn=pbasedir+"manifest"
+	manifestfn=pbasedir+"Manifest"
 
 	if not (os.path.exists(digestfn) and os.path.exists(manifestfn)):
 		if "digest" in features:
-			print ">>> No package digest/manifest file found."
+			print ">>> No package digest/Manifest file found."
 			print ">>> \"digest\" mode enabled; auto-generating new digest..."
 			return digestgen(myfiles)
 		else:
+			if not os.path.exists(manifestfn):
+				if strict:
+					print red("!!! No package manifest found:"),manifestfn
+					return 0
+				else:
+					print "--- No package manifest found:",manifestfn
 			if not os.path.exists(digestfn):
 				print "!!! No package digest file found:",digestfn
-			if not os.path.exists(manifestfn):
-				print "!!! No package manifest file found:",manifestfn
-			print "!!! Type \"ebuild foo.ebuild digest\" to generate it/them."
-			return 0
+				print "!!! Type \"ebuild foo.ebuild digest\" to generate it."
+				return 0
 
 	mydigests=digestParseFile(digestfn)
 	if mydigests==None:
 		print "!!! Failed to parse digest file:",digestfn
 		return 0
 	mymdigests=digestParseFile(manifestfn)
-	if mymdigests==None:
-		print "!!! Failed to parse manifest file:",manifestfn
-		return 0
-
-	# Check the portage-related files here.
-	mymfiles=listdir(pbasedir,recursive=1,filesonly=1,ignorecvs=1)
-	for x in range(len(mymfiles)-1,-1,-1):
-		if mymfiles[x]=='manifest': # We don't want the manifest in out list.
-			del mymfiles[x]
-			continue
-		if mymfiles[x] not in mymdigests.keys():
-			print "!!! Security Violation: A file exists that is not in the manifest."
-			print "!!! File:",mymfile[x]
+	if "manifest" not in features:
+		# XXX: Remove this when manifests become mainstream.
+		pass
+	elif mymdigests==None:
+			print "!!! Failed to parse manifest file:",manifestfn
 			if strict:
 				return 0
+	else:
+		# Check the portage-related files here.
+		mymfiles=listdir(pbasedir,recursive=1,filesonly=1,ignorecvs=1)
+		for x in range(len(mymfiles)-1,-1,-1):
+			if mymfiles[x]=='Manifest': # We don't want the manifest in out list.
+				del mymfiles[x]
+				continue
+			if mymfiles[x] not in mymdigests.keys():
+				print red("!!! Security Violation: A file exists that is not in the manifest.")
+				print "!!! File:",mymfiles[x]
+				if strict:
+					return 0
 	
-	if not digestCheckFiles(mymfiles, mymdigests, pbasedir, "manifest"):
-		print ">>> Please ensure you have sync'd properly. Please try '"+bold("emerge sync")+"' and"
-		print ">>> optionally examine the file(s) for corruption. "+bold("A sync will fix most cases.")
-		return 0
+		if not digestCheckFiles(mymfiles, mymdigests, pbasedir, "files  "):
+			if strict:
+				print ">>> Please ensure you have sync'd properly. Please try '"+bold("emerge sync")+"' and"
+				print ">>> optionally examine the file(s) for corruption. "+bold("A sync will fix most cases.")
+				print
+				return 0
+			else:
+				print "--- Manifest check failed. 'strict' not enabled; ignoring."
+				print
 	
 	# Just return the status, as it's the last check.
-	return digestCheckFiles(myfiles, mydigests, basedir, "tarballs")
+	return digestCheckFiles(myfiles, mydigests, basedir, "src_uri")
 
 # parse actionmap to spawn ebuild with the appropriate args
 def spawnebuild(mydo,actionmap,debug,alwaysdep=0):
@@ -1387,14 +1415,15 @@ def spawnebuild(mydo,actionmap,debug,alwaysdep=0):
 	mycommand="/usr/sbin/ebuild.sh "
 	return spawn(mycommand + mydo,debug,
 				actionmap[mydo]["args"][0],
-				actionmap[mydo]["args"][1]
-	)
+				actionmap[mydo]["args"][1])
 
 def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 	global settings
 
-	if mydo not in ["help","clean","prerm","postrm","preinst","postinst","config","touch","setup",
-	                "depend","fetch","digest","unpack","compile","install","rpm","qmerge","merge","package"]:
+	if mydo not in ["help","clean","prerm","postrm","preinst","postinst",
+	                "config","touch","setup","depend","fetch","digest",
+	                "unpack","compile","install","rpm","qmerge","merge",
+	                "package","unmerge"]:
 		print "!!! Please specify a valid command."
 		return 1
 	if not os.path.exists(myebuild):
@@ -1622,7 +1651,7 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 		#since we are calling "digest" directly, recreate the digest even if it already exists
 		return (not digestgen(checkme,overwrite=1))
 	
-	if not digestcheck(checkme):
+	if not digestcheck(checkme, ("strict" in features)):
 		return 1
 	
 	#initial dep checks complete; time to process main commands
@@ -3230,8 +3259,18 @@ class portdbapi(dbapi):
 				return myloc
 			except (OSError,IOError):
 				pass
-		# XXX Catch invalid names? XXX #
-		return self.root+"/"+mysplit[0]+"/"+psplit[0]+"/"+mysplit[1]+".ebuild"
+
+		# XXX Why are there errors here? XXX
+		try:
+			myret=self.root+"/"+mysplit[0]+"/"+psplit[0]+"/"+mysplit[1]+".ebuild"
+		except:
+			print "!!! There has been an error. Please report this via IRC or bugs.gentoo.org"
+			print "!!! mycpv:   "+mycpv
+			print "!!! mysplit: "+mysplit
+			print "!!! psplit:  "+psplit
+			print
+			sys.exit(1)
+		return myret
 
 	def aux_get(self,mycpv,mylist,strict=0,metacachedir=None):
 		"stub code for returning auxilliary db information, such as SLOT, DEPEND, etc."
@@ -3588,8 +3627,9 @@ class portdbapi(dbapi):
 					print "visible(): package.mask entry \""+x+"\" is invalid, ignoring..."
 					continue
 				for y in mymatches:
-					while y in newlist:
-						newlist.remove(y)
+					if not (unmaskdict.has_key(mycp) and (y in unmaskdict[mycp])):
+						while y in newlist:
+							newlist.remove(y)
 		if revmaskdict.has_key(mycp):
 			for x in revmaskdict[mycp]:
 				#important: only match against the still-unmasked entries...
@@ -4678,7 +4718,9 @@ mtimedbkeys=[
 ]
 mtimedbfile=root+"var/cache/edb/mtimedb"
 try:
-	mtimedb=cPickle.load(open(mtimedbfile))
+	mypickle=cPickle.Unpickler(open(mtimedbfile))
+	mypickle.find_global=None
+	mtimedb=mypickle.load()
 	if mtimedb.has_key("old"):
 		mtimedb["updates"]=mtimedb["old"]
 		del mtimedb["old"]
@@ -4697,7 +4739,9 @@ for x in mtimedb.keys():
 		del mtimedb[x]
 
 def do_upgrade(mykey):
-	sys.stderr.write("Performing Global Updates: "+mykey+"\n")
+	sys.stderr.write(green("Performing Global Updates: ")+bold(mykey)+"\n")
+	sys.stderr.write("(Could take a couple minutes if you have a lot of binary packages.)\n")
+	sys.stderr.write("  "+bold(".")+"='update pass'  "+bold("*")+"='binary update'  "+bold("@")+"='/var/db update'\n")
 	processed=1
 	#remove stale virtual entries (mappings for packages that no longer exist)
 	myvirts=grabdict("/var/cache/edb/virtuals")
@@ -4747,7 +4791,7 @@ def do_upgrade(mykey):
 	writedict(myvirts,"/var/cache/edb/virtuals")
 
 if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
-	if settings["PORTAGE_CALLER"] not in ["repoman","ebuild"]:
+	if settings["PORTAGE_CALLER"] in ["emerge"]:
 		#only do this if we're root and not running repoman/ebuild digest
 		updpath=os.path.normpath(settings["PORTDIR"]+"/profiles/updates")
 		didupdate=0
@@ -4831,18 +4875,35 @@ else:
 	categories=[]
 
 pkgmasklines=grabfile(settings["PORTDIR"]+"/profiles/package.mask")
+pkgmasklines+=grabfile("/etc/portage/profiles/package.mask")
+
+pkgunmasklines=grabfile("/etc/portage/package.unmask");
+
 if profiledir:
 	pkglines=grabfile(profiledir+"/packages")
 else:
 	pkglines=[]
+
+unmaskdict={}
+for x in pkgunmasklines:
+	mycatpkg=dep_getkey(x)
+	# Get each unmasked ebuild.
+	for y in db["/"]["porttree"].dbapi.xmatch("match-all", x):
+		if not unmaskdict.has_key(mycatpkg):
+			unmaskdict[mycatpkg]=[y]
+		else:
+			unmaskdict[mycatpkg].append(y)
+del pkgunmasklines
+
 maskdict={}
 for x in pkgmasklines:
 	mycatpkg=dep_getkey(x)
-	if not maskdict.has_key(mycatpkg):
-		maskdict[mycatpkg]=[x]
-	else:
+	if maskdict.has_key(mycatpkg):
 		maskdict[mycatpkg].append(x)
+	else:
+		maskdict[mycatpkg]=[x]
 del pkgmasklines
+
 revmaskdict={}
 for x in pkglines:
 	mycatpkg=dep_getkey(x)

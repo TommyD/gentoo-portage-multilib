@@ -86,7 +86,8 @@ def findmissing(entries,recursive=0,basedir=""):
 	for myfile in entries["files"].keys():
 		if "cvs" in entries["files"][myfile]["status"]:
 			if "exists" not in entries["files"][myfile]["status"]:
-				mylist.append(basedir+myfile)
+				if "removed" not in entries["files"][myfile]["status"]:
+					mylist.append(basedir+myfile)
 	if recursive:
 		for mydir in entries["dirs"].keys():
 			mylist+=findmissing(entries["dirs"][mydir],recursive,basedir+mydir)
@@ -108,6 +109,21 @@ def findunadded(entries,recursive=0,basedir=""):
 			mylist+=findunadded(entries["dirs"][mydir],recursive,basedir+mydir)
 	return mylist
 
+def findremoved(entries,recursive=0,basedir=""):
+	"""(entries,recursive=0,basedir="")
+	Recurses the entries tree to find all elements that are in flagged for cvs
+	deletions. Returns a list of paths,	optionally prepended with a basedir."""
+	if basedir and basedir[-1]!="/":
+		basedir=basedir+"/"
+	mylist=[]
+	for myfile in entries["files"].keys():
+		if "removed" in entries["files"][myfile]["status"]:
+			mylist.append(basedir+myfile)
+	if recursive:
+		for mydir in entries["dirs"].keys():
+			mylist+=findremoved(entries["dirs"][mydir],recursive,basedir+mydir)
+	return mylist
+
 def findall(entries, recursive=0, basedir=""):
 	"""(entries,recursive=0,basedir="")
 	Recurses the entries tree to find all new, changed, missing, and unadded
@@ -119,7 +135,8 @@ def findall(entries, recursive=0, basedir=""):
 	mychanged = findchanged(entries,recursive,basedir)
 	mymissing = findmissing(entries,recursive,basedir)
 	myunadded = findunadded(entries,recursive,basedir)
-	return [mynew, mychanged, mymissing, myunadded]
+	myremoved = findremoved(entries,recursive,basedir)
+	return [mynew, mychanged, mymissing, myunadded, myremoved]
 
 def getentries(mydir,recursive=0):
 	"""(basedir,recursive=0)
@@ -168,6 +185,8 @@ def getentries(mydir,recursive=0):
 			entries["files"][mysplit[1]]["flags"]=mysplit[4]
 			entries["files"][mysplit[1]]["tags"]=mysplit[5]
 			entries["files"][mysplit[1]]["status"]=["cvs"]
+			if entries["files"][mysplit[1]]["revision"][0]=="-":
+				entries["files"][mysplit[1]]["status"]+=["removed"]
 	for file in os.listdir(mydir):
 		if file=="CVS":
 			continue

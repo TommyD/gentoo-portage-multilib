@@ -10,6 +10,8 @@
 #
 # $Header$
 
+export PORTAGE_CALLER="etc-update"
+
 function get_config() {
 	item=$1
 

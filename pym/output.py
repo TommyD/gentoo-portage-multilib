@@ -1,4 +1,4 @@
-# Copyright 1998-2002 Daniel Robbins, Gentoo Technologies, Inc.
+# Copyright 1998-2003 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
 # $Header$
 

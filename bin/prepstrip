@@ -14,20 +14,20 @@ else
 	STRIP=strip
 fi
 
-echo -n "strip: "
+echo "strip: "
 for x in "$@"; do # "$@" quotes each element... Plays nice with spaces.
 	if [ -d "${x}" ]; then
 		# We only want files. So make a pass for each directory and call again.
-		find "${x}" -type f \( -perm +0111 -or -regex '\.so$|\.so\.' \) |
+		find "${x}" -type f \( -perm +0111 -or -regex '\.so$|\.so\.' \) -print0 |
 				xargs -0 -r -n500 prepstrip
 	else
 		f=$(file "${x}")
 		if [ -z "${f/*SB executable*/}" ]; then
-			echo -n "${x}"
+			echo "   ${x}"
 			${STRIP} "${x}"
 		fi
 		if [ -z "${f/*SB shared object*/}" ]; then
-			echo -n "${x}"
+			echo "   ${x}"
 			${STRIP} --strip-debug "${x}"
 		fi
 	fi

@@ -38,7 +38,7 @@ modeshelp={
 "commit":"Scan current directory tree for QA issues; if OK, commit via cvs"
 }
 options=["--pretend","--help","--commitmsg","--commitmsgfile"]
-shortoptions={"-m":"--commitmsg","-M":"--commitmsgfile"}
+shortoptions={"-m":"--commitmsg","-M":"--commitmsgfile","-p":"--pretend"}
 optionshelp={
 "--pretend":"Don't actually perform commit or fix steps; just show what would be done.",
 "--help"   :"Show this screen",
@@ -200,8 +200,34 @@ try:
 	myrepofile=open("CVS/Repository")
 	myreporoot=myrepofile.readline()[:-1]
 	myrepofile.close()
+	myrepofile=open("CVS/Root")
+	myreporootpath=string.split(myrepofile.readline()[:-1], ":")[-1]
+	myrepofile.close()
 except:
 	err("Error grabbing repository information; exiting.")
+
+if myreporootpath=="/space/cvsroot":
+	print
+	print
+	print red("You're using the wrong cvsroot. For Manifests to be correct, you must")
+	print red("use the same base cvsroot path that the servers use. Please try the")
+	print red("following script to remedy this:")
+	print
+	print "cd my_cvs_tree"
+	print
+	print "rm -Rf [a-z]*"
+	print "cvs up"
+	print
+	print "find ./ -type f -regex '.*/CVS/Root$' -print0 | xargs -0r sed \\"
+	print "  -i 's:/space/cvsroot$:/home/cvsroot:'"
+	print
+	print red("You must clear and re-update your tree as all header tags will cause")
+	print red("problems in manifests for all rsync and /home/cvsroot users.")
+	print
+	print "You should do this to any other gentoo trees your have as well,"
+	print "excluding the deletions. 'gentoo-src' should be /home/cvsroot."
+	print
+	sys.exit(123)
 
 try: # Determine if we're in PORTDIR... If not tell portage to accomodate.
 	mydir=os.getcwd()
@@ -258,7 +284,7 @@ try:
 	for mypos in range(0,len(mylist)):
 		mysplit=mylist[mypos].split()[0]
 		myuse=string.split(mysplit,":")
-		if myuse==2:
+		if len(myuse)==2:
 			luselist.append(myuse[1])
 except:
 	err("Couldn't read from use.local.desc")
@@ -492,9 +518,10 @@ for x in scanlist:
 				fails["KEYWORDS.invalid"].append(x+"/"+y+".ebuild: %s" % mykey)
 
 	# Check for 'all unstable' or 'all masked' -- ACCEPT_KEYWORDS is stripped
-	if not portage.portdb.xmatch("bestmatch-visible",x):
-	    stats["ebuild.nostable"]+=1
-	    fails["ebuild.nostable"].append(x)
+	# XXX -- Needs to be implemented in dep code. Can't determine ~arch nicely.
+	#if not portage.portdb.xmatch("bestmatch-visible",x):
+	#    stats["ebuild.nostable"]+=1
+	#    fails["ebuild.nostable"].append(x)
 	if not portage.portdb.xmatch("list-visible",x):
 	    stats["ebuild.allmasked"]+=1
 	    fails["ebuild.allmasked"].append(x)
@@ -564,215 +591,234 @@ else:
 		print turquoise("Please fix these important QA issues first.")
 		print green("RepoMan sez:"),"\"Make your QA payment on time and you'll never see the likes of me.\"\n"
 		sys.exit(1)
-	if "--pretend" in myoptions:
-		print
-		retval=os.system("/usr/bin/cvs -qn update")
-		print
-		print "Dry-run cvs update complete."
-		print green("RepoMan sez:"), "\"So, you want to play it safe. Good call.\"\n"
-	else:
 
-		if fails["digest.missing"]:
-			print green("Creating missing digests...")
-		for x in fails["digest.missing"]:
-			xs=string.split(x,"/")
-			del xs[-2]
-			myeb=string.join(xs[:-1],"/")+"/"+xs[-1][7:]
+	if "--pretend" in myoptions:
+		print green("RepoMan sez:"), "\"So, you want to play it safe. Good call.\"\n"
+
+	if fails["digest.missing"]:
+		print green("Creating missing digests...")
+	for x in fails["digest.missing"]:
+		xs=string.split(x,"/")
+		del xs[-2]
+		myeb=string.join(xs[:-1],"/")+"/"+xs[-1][7:]
+		if "--pretend" in myoptions:
+			print "(ebuild "+portage.settings["PORTDIR"]+"/"+myeb+".ebuild digest)"
+		else:
 			os.system("ebuild "+portage.settings["PORTDIR"]+"/"+myeb+".ebuild digest")
 
-		mycvstree=cvstree.getentries("./",recursive=1)
-		if not mycvstree:
-			print "!!! It seems we don't have a cvs tree?"
-			sys.exit(3)
+	mycvstree=cvstree.getentries("./",recursive=1)
+	if not mycvstree:
+		print "!!! It seems we don't have a cvs tree?"
+		sys.exit(3)
 
-		myunadded=cvstree.findunadded(mycvstree,recursive=1,basedir="./")
-		myautoadd=[]
-		if myunadded:
-			for x in range(len(myunadded)-1,-1,-1):
-				xs=string.split(myunadded[x],"/")
-				if xs[-1]=="manifest":
-					# It's a manifest... auto add
-					myautoadd+=[myunadded[x]]
-					del myunadded[x]
-				elif len(xs[-1])>=7:
-					if xs[-1][:7]=="digest-":
-						del xs[-2]
-						myeb=string.join(xs[:-1]+[xs[-1][7:]],"/")+".ebuild"
-						if os.path.exists(myeb):
-							# Ebuild exists for digest... So autoadd it.
-							myautoadd+=[myunadded[x]]
-							del myunadded[x]
+	myunadded=cvstree.findunadded(mycvstree,recursive=1,basedir="./")
+	myautoadd=[]
+	if myunadded:
+		for x in range(len(myunadded)-1,-1,-1):
+			xs=string.split(myunadded[x],"/")
+			if xs[-1]=="Manifest":
+				# It's a manifest... auto add
+				myautoadd+=[myunadded[x]]
+				del myunadded[x]
+			elif len(xs[-1])>=7:
+				if xs[-1][:7]=="digest-":
+					del xs[-2]
+					myeb=string.join(xs[:-1]+[xs[-1][7:]],"/")+".ebuild"
+					if os.path.exists(myeb):
+						# Ebuild exists for digest... So autoadd it.
+						myautoadd+=[myunadded[x]]
+						del myunadded[x]
 		
-		
-		if myautoadd:
-			print ">>> Auto-Adding missing digests..."
+	if myautoadd:
+		print ">>> Auto-Adding missing digests..."
+		if "--pretend" in myoptions:
+			print "(/usr/bin/cvs add "+string.join(myautoadd)+")"
+			retval=0
+		else:
 			retval=os.system("/usr/bin/cvs add "+string.join(myautoadd))
-			if retval:
-				print "!!! Exiting on cvs (shell) error code:",retval
-				sys.exit(retval)
+		if retval:
+			print "!!! Exiting on cvs (shell) error code:",retval
+			sys.exit(retval)
 		
-		
-		if myunadded:
-			print red("!!! The following files are in your cvs tree but are not added to the master")
-			print red("!!! tree. Please remove them from the cvs tree or add them to the master tree.")
-			for x in myunadded:
-				print "   ",x
-			print
-			print
-			sys.exit(1)
+	if myunadded:
+		print red("!!! The following files are in your cvs tree but are not added to the master")
+		print red("!!! tree. Please remove them from the cvs tree or add them to the master tree.")
+		for x in myunadded:
+			print "   ",x
+		print
+		print
+		sys.exit(1)
 
-		mymissing=cvstree.findmissing(mycvstree,recursive=1,basedir="./")
-		if mymissing:
-			print "The following files are obviously missing from your cvs tree"
-			print "and are being fetched so we can continue:"
-			for x in mymissing:
-				print "   ",x
+	mymissing=cvstree.findmissing(mycvstree,recursive=1,basedir="./")
+	if mymissing:
+		print "The following files are obviously missing from your cvs tree"
+		print "and are being fetched so we can continue:"
+		for x in mymissing:
+			print "   ",x
+		if "--pretend" in myoptions:
+			print "(/usr/bin/cvs -q up "+string.join(mymissing)+")"
+			retval=0
+		else:
 			retval=os.system("/usr/bin/cvs -q up "+string.join(mymissing))
-			if retval:
-				print "!!! Exiting on cvs (shell) error code:",retval
-				sys.exit(retval)
-			del mymissing
+		if retval:
+			print "!!! Exiting on cvs (shell) error code:",retval
+			sys.exit(retval)
+		del mymissing
 
-		print "Performing a "+green("cvs -n up")+" with a little magic grep to check for updates."
-		retval=getstatusoutput("/usr/bin/cvs -n up 2>&1 | egrep '^[^\?] .*' | egrep -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'")
+	print "Performing a "+green("cvs -n up")+" with a little magic grep to check for updates."
+	retval=getstatusoutput("/usr/bin/cvs -n up 2>&1 | egrep '^[^\?] .*' | egrep -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'")
 		
-		mylines=string.split(retval[1], "\n")
-		myupdates=[]
-		for x in mylines:
-			if not x:
-				continue
-			if x[0] not in "UPMA": # Updates,Patches,Modified,Added
-				print red("!!! Please fix the following issues reported from cvs: ")+green("(U and P are ok)")
-				print red("!!! Note: This is a pretend/no-modify pass...")
-				print retval[1]
-				print
-				sys.exit(1)
-			elif x[0] in ["U","P"]:
-				myupdates+=[x[2:]]
-		
-		if myupdates:
-			print green("Fetching trivial updates...")
-			retval=os.system("/usr/bin/cvs up "+string.join(myupdates))
-			if retval!=0:
-				print "!!! cvs exited with an error. Terminating."
-				sys.exit(retval)
-		
-		mycvstree=cvstree.getentries("./",recursive=1)
-		mychanged=cvstree.findchanged(mycvstree,recursive=1,basedir="./")
-		mynew=cvstree.findnew(mycvstree,recursive=1,basedir="./")
-		if not (mychanged or mynew):
+	mylines=string.split(retval[1], "\n")
+	myupdates=[]
+	for x in mylines:
+		if not x:
+			continue
+		if x[0] not in "UPMAR": # Updates,Patches,Modified,Added,Removed
+			print red("!!! Please fix the following issues reported from cvs: ")+green("(U and P are ok)")
+			print red("!!! Note: This is a pretend/no-modify pass...")
+			print retval[1]
 			print
-			print green("RepoMan sez:"), "\"Doing nothing is not always good for QA.\"\n"
-			print
-			print "(Didn't find any changed files...)"
-			print
-			sys.exit(0)
-
-		myupdates=mychanged+mynew
-		myheaders=[]
-		mydirty=[]
-		headerstring="'\$(Header|Id)"
-		headerstring+=".*\$'"
-		for myfile in myupdates:
-			myout=getstatusoutput("egrep -q "+headerstring+" "+myfile)
-			if myout[0]==0:
-				myheaders.append(myfile)
-
-		print "*",green(str(len(myupdates))),"files being committed...",green(str(len(myheaders))),"have headers that will change."
-		print "*","Files with headers will cause the manifests to be made and recommited."
-		print "myupdates:",myupdates
-		print "myheaders:",myheaders
-		print
-		unlinkfile=0
-		if not (commitmessage or commitmessagefile):
-			print "Please enter a CVS commit message at the prompt:"
-			try:
-				commitmessage=raw_input(green("> "))
-			except KeyboardInterrupt: 
-				exithandler()
-		if not commitmessagefile:
-			unlinkfile=1
-			commitmessagefile="/tmp/.repoman.msg"
-			mymsg=open(commitmessagefile,"w")
-			mymsg.write(commitmessage)
-			mymsg.close()
-
-		try:
-			mymsg=open(commitmessagefile,"r")
-			commitmessage=mymsg.read()
-			mymsg.close()
-		except Exception,e:
-			print "!!! Failed to open commit message file."
-			print "!!!",e
 			sys.exit(1)
-		print
-		print green("Using commit message:")
-		print green("------------------------------------------------------------------------------")
-		print commitmessage
-		print green("------------------------------------------------------------------------------")
-		print
-
-		retval=os.system("/usr/bin/cvs -q commit -F "+commitmessagefile)
-		if retval:
-			print "!!! Exiting on cvs (shell) error code:",retval
+		elif x[0] in ["U","P"]:
+			myupdates+=[x[2:]]
+	
+	if myupdates:
+		print green("Fetching trivial updates...")
+		if "--pretend" in myoptions:
+			print "(/usr/bin/cvs up "+string.join(myupdates)+")"
+			retval=0
+		else:
+			retval=os.system("/usr/bin/cvs up "+string.join(myupdates))
+		if retval!=0:
+			print "!!! cvs exited with an error. Terminating."
 			sys.exit(retval)
+	
+	mycvstree=cvstree.getentries("./",recursive=1)
+	mychanged=cvstree.findchanged(mycvstree,recursive=1,basedir="./")
+	mynew=cvstree.findnew(mycvstree,recursive=1,basedir="./")
+	myremoved=cvstree.findremoved(mycvstree,recursive=1,basedir="./")
+	if not (mychanged or mynew or myremoved):
+		print
+		print green("RepoMan sez:"), "\"Doing nothing is not always good for QA.\"\n"
+		print
+		print "(Didn't find any changed files...)"
+		print
+		sys.exit(0)
 
-		mychanges=[]
-		if myheaders:
-			mydone=[]
-			if repolevel==3:   # In a package dir
-				portage.settings["O"]="./"
+	myupdates=mychanged+mynew
+	myheaders=[]
+	mydirty=[]
+	headerstring="'\$(Header|Id)"
+	headerstring+=".*\$'"
+	for myfile in myupdates:
+		myout=getstatusoutput("egrep -q "+headerstring+" "+myfile)
+		if myout[0]==0:
+			myheaders.append(myfile)
+
+	print "*",green(str(len(myupdates))),"files being committed...",green(str(len(myheaders))),"have headers that will change."
+	print "*","Files with headers will cause the manifests to be made and recommited."
+	print "myupdates:",myupdates
+	print "myheaders:",myheaders
+	print
+	unlinkfile=0
+	if not (commitmessage or commitmessagefile):
+		print "Please enter a CVS commit message at the prompt:"
+		try:
+			commitmessage=raw_input(green("> "))
+		except KeyboardInterrupt: 
+			exithandler()
+	if not commitmessagefile:
+		unlinkfile=1
+		commitmessagefile="/tmp/.repoman.msg"
+		mymsg=open(commitmessagefile,"w")
+		mymsg.write(commitmessage)
+		mymsg.close()
+
+	try:
+		mymsg=open(commitmessagefile,"r")
+		commitmessage=mymsg.read()
+		mymsg.close()
+	except Exception,e:
+		print "!!! Failed to open commit message file."
+		print "!!!",e
+		sys.exit(1)
+	print
+	print green("Using commit message:")
+	print green("------------------------------------------------------------------------------")
+	print commitmessage
+	print green("------------------------------------------------------------------------------")
+	print
+
+	if "--pretend" in myoptions:
+		print "(/usr/bin/cvs -q commit -F "+commitmessagefile+")"
+		retval=0
+	else:
+		retval=os.system("/usr/bin/cvs -q commit -F "+commitmessagefile)
+	if retval:
+		print "!!! Exiting on cvs (shell) error code:",retval
+		sys.exit(retval)
+
+	mychanges=[]
+	if myheaders or myremoved or mynew:
+		myfiles=myheaders+myremoved+mynew
+		mydone=[]
+		if repolevel==3:   # In a package dir
+			portage.settings["O"]="./"
+			portage.digestgen([],manifestonly=1)
+		elif repolevel==2: # In a category dir
+			for x in myfiles:
+				xs=string.split(x,"/")
+				if xs[0]==".":
+					xs=xs[1:]
+				if xs[0] in mydone:
+					continue
+				mydone.append(xs[0])
+				portage.settings["O"]="./"+xs[0]
 				portage.digestgen([],manifestonly=1)
-			elif repolevel==2: # In a category dir
-				for x in myheaders:
-					xs=string.split(x,"/")
-					if xs[0]==".":
-						xs=xs[1:]
-					if xs[0] in mydone:
-						continue
-					mydone.append(xs[0])
-					portage.settings["O"]="./"+xs[0]
-					portage.digestgen([],manifestonly=1)
-			elif repolevel==1: # repo-cvsroot
-				print green("RepoMan sez:"), "\"You're rather crazy... doing the entire repository.\"\n"
-				for x in myheaders:
-					xs=string.split(x,"/")
-					if xs[0]==".":
-						xs=xs[1:]
-					if string.join(xs[:2],"/") in mydone:
-						continue
-					mydone.append(string.join(xs[:2],"/"))
-					portage.settings["O"]="./"+string.join(xs[:2],"/")
-					portage.digestgen([],manifestonly=1)
-			else:
-				print red("I'm confused... I don't know where I am!")
-				sys.exit(1)
+		elif repolevel==1: # repo-cvsroot
+			print green("RepoMan sez:"), "\"You're rather crazy... doing the entire repository.\"\n"
+			for x in myfiles:
+				xs=string.split(x,"/")
+				if xs[0]==".":
+					xs=xs[1:]
+				if string.join(xs[:2],"/") in mydone:
+					continue
+				mydone.append(string.join(xs[:2],"/"))
+				portage.settings["O"]="./"+string.join(xs[:2],"/")
+				portage.digestgen([],manifestonly=1)
+		else:
+			print red("I'm confused... I don't know where I am!")
+			sys.exit(1)
 
-		mysigs=[]
-		for x in mychanges:
-			print "redigest:",x
+	mysigs=[]
+	for x in mychanges:
+		if "--pretend" in myoptions:
+			print "(/usr/sbin/ebuild "+x+".ebuild digest)"
+		else:
 			os.system("/usr/sbin/ebuild "+x+".ebuild digest")
-			y = string.split(x,"/")
-			if "sign" in portage.features:
-				gpgcmd="gpg -ab --yes "+portage.settings["GPG_OPTIONS"]+" "
-				sigfile=y[:-1]+"/files/digest-"+y[-1]
-				os.system(gpgcmd+sigfile)
-				mysigs+=[sigfile]
-		
+		y = string.split(x,"/")
 		if "sign" in portage.features:
-			if os.system("/usr/bin/cvs -q add "+string.join(mysigs)):
-				print red("!!! Seem to have had a problem adding the signatures...")
+			gpgcmd="gpg -ab --yes "+portage.settings["GPG_OPTIONS"]+" "
+			sigfile=y[:-1]+"/files/digest-"+y[-1]
+			os.system(gpgcmd+sigfile)
+			mysigs+=[sigfile]
+	
+	if "sign" in portage.features:
+		if os.system("/usr/bin/cvs -q add "+string.join(mysigs)):
+			print red("!!! Seem to have had a problem adding the signatures...")
 
+	if "--pretend" in myoptions:
+		print "(/usr/bin/cvs -q commit -F "+commitmessagefile+")"
+	else:
 		retval=os.system("/usr/bin/cvs -q commit -F "+commitmessagefile)
 		if retval:
 			print "!!! Exiting on cvs (shell) error code:",retval
 			sys.exit(retval)
-		
-		if unlinkfile:
-			os.unlink(commitmessagefile)
-		print
-		print "CVS commit complete."
-		print green("RepoMan sez:"), "\"If everyone were like you, I'd be out of business!\"\n"
-	sys.exit(retval)
+	
+	if unlinkfile:
+		os.unlink(commitmessagefile)
+	print
+	print "CVS commit complete."
+	print green("RepoMan sez:"), "\"If everyone were like you, I'd be out of business!\"\n"
 sys.exit(0)
 
