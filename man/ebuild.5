@@ -365,8 +365,7 @@ Useful for creating custom options to pass to a configure script. If
 not in the \fBUSE\fR variable, then the string
 \fI--without-[configure option]\fR will be echoed.  If
 \fIconfigure option\fR is not specified, than \fIUSE item\fR will be
-used instead. You should depend on >=sys-apps/portage-2.0.46-r12 to
-use this feature for the time being. It is a new feature.
+used in its place.
 .RS
 .TP
 .I Example:
@@ -395,17 +394,13 @@ Useful for creating custom options to pass to a configure script. If
 \fI--enable-[configure option]\fR will be echoed.  If \fIUSE item\fR is
 not in the \fBUSE\fR variable, then the string
 \fI--disable-[configure option]\fR will be echoed. If \fIconfigure option\fR
-is not specified, than \fIUSE item\fR will be used instead. You should
-depend on >=sys-apps/portage-2.0.46-r12 to use this feature for the
-time being. It is a new feature.
+is not specified, than \fIUSE item\fR will be used in its place.
 .br
 See \fBuse_with\fR for an example.
 .TP
 \fBhas\fR \fI<item>\fR \fI<item list>\fR
 If \fIitem\fR is in \fIitem list\fR, then \fIitem\fR is echoed and \fBhas\fR
-returns 0.  Otherwise, nothing is echoed and 1 is returned. You should
-depend on >=sys-apps/portage-2.0.46-r12 to use this feature for the
-time being. It is a new feature.
+returns 0.  Otherwise, nothing is echoed and 1 is returned.
 .br
 The \fIitem list\fR is delimited by the \fIIFS\fR variable.  This variable
 has a default value of ' ', or a space.  It is a \fBbash\fR(1) setting.
@@ -414,16 +409,13 @@ has a default value of ' ', or a space.  It is a \fBbash\fR(1) setting.
 Check to see if \fIcategory/package-version\fR is installed on the system.
 The parameter accepts all values that are acceptable in the \fBDEPEND\fR
 variable.  The function returns 0 if \fIcategory/package-version\fR is
-installed, 1 otherwise. You should depend on >=sys-apps/portage-2.0.46-r12
-to use this feature for the time being. It is a new feature.
+installed, 1 otherwise.
 .TP
 \fBbest_version\fR \fI<package name>\fR
 This function will look up \fIpackage name\fR in the database of currently
 installed programs and echo the "best version" of the package that is
 currently installed.  The function returns 0 if there is a package that
-matches \fIpackage name\fR.  Otherwise, the function will return 1. You
-should depend on >=sys-apps/portage-2.0.46-r12 to use this feature for the
-time being. It is a new feature.
+matches \fIpackage name\fR.  Otherwise, the function will return 1.
 .RS
 .TP
 .I Example:
