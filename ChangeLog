@@ -1,9 +1,16 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
-  23 Jul 2002; Phil Bordelon <sunflare@gentoo.org> emerge.1: Updated the
-  man page to match some changes in the latest version of portage, along
-  with some fixes recommended by drobbins.
+  24 Jul 2002: Daniel Robbins <drobbins@gentoo.org> emerge, portage.py: two
+  fixes; first, I removed xcache.p support from portage.py.  The code was
+  designed based on the false theory that directory mtimes are updated whenever
+  an object inside that directory is modified.  That is not the case -- it
+  happens when the directory listing itself changes.  Also fixed overly verbose
+  emerge merging error.
+  
+  23 Jul 2002; Phil Bordelon <sunflare@gentoo.org> emerge.1: Updated the man
+  page to match some changes in the latest version of portage, along with some
+  fixes recommended by drobbins.
 
 *portage-2.0.17 (23 Jul 2002)
 

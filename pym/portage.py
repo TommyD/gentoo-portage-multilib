@@ -2,7 +2,7 @@
 # Copyright 1998-2002 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
 
-VERSION="2.0.16"
+VERSION="2.0.17"
 
 from stat import *
 from commands import *
@@ -2587,32 +2587,6 @@ class portdbapi(dbapi):
 		global mtimedb
 		self.root=settings["PORTDIR"]
 		self.auxcache={}
-		self.xcache={0:{},1:{},2:{}}
-		if os.path.exists("/var/cache/edb/xcache.p"):
-			# Check the mtimes to make sure that the cache is correct
-			for myent,myfile in [["pkgmask",self.root+"/profiles/package.mask"],["pkgs","/etc/make.profile/packages"]]:
-				try:
-					mtimedb["cur"][myent]=os.stat(myfile)[8]
-				except (OSError, IOError):
-					mtimedb["cur"][myent]=0
-				if not mtimedb["old"].has_key(myent):
-					mtimedb["old"][myent]=0
-			newmasks=0
-			for myent in ["pkgmask","pkgs"]:
-				if mtimedb["old"][myent]!=mtimedb["cur"][myent]:
-					newmasks=1
-					break
-			if not newmasks:
-				try:
-					myxfile=open("/var/cache/edb/xcache.p","r")
-					self.xcache=cPickle.load(myxfile)
-					myxfile.close()
-				except:
-					pass
-			else:
-				for myent in ["pkgmask","pkgs"]:
-					#update mtimes since we are starting our xcache from scratch
-					mtimedb["old"][myent]=mtimedb["cur"][myent]
 
 	def aux_get(self,mycpv,mylist,strict=0):
 		"stub code for returning auxilliary db information, such as SLOT, DEPEND, etc."
@@ -2731,35 +2705,6 @@ class portdbapi(dbapi):
 			#create mydep, mykey from origdep
 			mydep=dep_expand(origdep,self)
 			mykey=dep_getkey(mydep)
-			#check and potentially invalidate cache entry if mtime is stale
-			try:
-				curmtime=os.stat(self.root+"/"+mykey)[ST_MTIME]
-			except:
-				return []
-			if self.xcache.has_key(mykey):
-				if self.xcache[mykey]["mtime"]!=curmtime:
-					#invalidate entire cache
-					self.xcache[mykey]={"mtime":curmtime}
-			else:
-				self.xcache[mykey]={"mtime":curmtime}
-		elif not self.xcache.has_key(mykey):
-			try:
-				curmtime=os.stat(self.root+"/"+mykey)[ST_MTIME]
-			except:
-				return []
-			self.xcache[mykey]={"mtime":curmtime}
-		if not mylist:
-			#we did not specify a list, so we are not doing a list query that wouldn't get cached.
-			#...so let's check our cache :)
-			try:
-				if level=="list-visible":
-					#return cached entry based on keyword
-					return self.xcache[mykey][level]
-				elif self.xcache[mykey][level].has_key(mydep):
-					#return cached entry based on dep
-					return self.xcache[mykey][level][mydep]
-			except KeyError:
-				pass
 		if level=="list-visible":
 			#a list of all visible packages, not called directly (just by xmatch())
 			#myval=self.visible(self.cp_list(mykey))
@@ -2785,13 +2730,6 @@ class portdbapi(dbapi):
 		else:
 			print "ERROR: xmatch doesn't handle",level,"query!"
 			raise KeyError
-		if not mylist:
-			if level=="list-visible":
-				self.xcache[mykey][level]=myval
-			else:
-				if not self.xcache[mykey].has_key(level):
-					self.xcache[mykey][level]={}
-				self.xcache[mykey][level][mydep]=myval
 		return myval
 
 	def match(self,mydep):
@@ -3780,21 +3718,6 @@ portdb=portdbapi()
 def store():
 	global uid,wheelgid
 	if secpass:
-		try:
-			myxfn="/var/cache/edb/xcache.p"
-			myxfile=open(myxfn,"w")
-			cPickle.dump(portdb.xcache,myxfile)
-			myxfile.close()
-			try:
-				os.chown(myxfn,uid,wheelgid)
-				try:
-					os.chmod(myxfn,0664)
-				except OSError:
-					pass
-			except OSError:
-				pass
-		except:
-			print "portage: store(): Unable to store xcache"
 		mymfn="/var/cache/edb/mtimes"
 		writeints(mtimedb["old"],mymfn)	
 		try:

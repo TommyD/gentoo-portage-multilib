@@ -657,13 +657,13 @@ class depgraph:
 		#above line used by --fetchonly
 		for x in mylist:
 			myroot=x[1]
-			print ">>> emerge",x[2],"to",x[1]
 			#the last argument in the portage.doebuild() tells doebuild to *not* do dep checking
 			#(emerge is already handling that)
 			y=portage.db[myroot]["porttree"].getname(x[2])
 			if ("--update" in self.myopts) and (portage.db[x[1]]["vartree"].exists_specific(x[2])):
 				#already merged, continue
 				continue
+			print ">>> emerge",x[2],"to",x[1]
 			if x[0]=="ebuild":
 				if "--fetchonly" in self.myopts:
 					retval=portage.doebuild(y,"fetch",myroot,edebug)
