@@ -1386,7 +1386,9 @@ def digestParseFile(myfilename):
 		mydigests[myline[2]]=[myline[1],myline[3]]
 	return mydigests
 
-def digestCheckFiles(myfiles, mydigests, basedir, note=""):
+# XXXX strict was added here to fix a missing name error.
+# XXXX It's used below, but we're not paying attention to how we get it?
+def digestCheckFiles(myfiles, mydigests, basedir, note="", strict=0):
 	"""(fileslist, digestdict, basedir) -- Takes a list of files and a dict
 	of their digests and checks the digests against the indicated files in
 	the basedir given. Returns 1 only if all files exist and match the md5s.
@@ -2975,6 +2977,7 @@ class vardbapi(dbapi):
 		self.matchcache={}
 		#cache for cp_list results
 		self.cpcache={}	
+		self.blockers=None
 
 	def cpv_exists(self,mykey):
 		"Tells us whether an actual ebuild exists on disk (no masking)"
@@ -3100,6 +3103,9 @@ class vardbapi(dbapi):
 			if not mykey in returnme:
 				returnme.append(mykey)
 		return returnme
+
+	def checkblockers(self,origdep):
+		pass
 
 	def match(self,origdep):
 		"caching match function"
@@ -3891,9 +3897,9 @@ class binarytree(packagetree):
 
 	def populate(self, getbinpkgs=0,getbinpkgsonly=0):
 		"populates the binarytree"
-		if (not os.path.isdir(self.pkgdir) and not getbinpkg):
+		if (not os.path.isdir(self.pkgdir) and not getbinpkgs):
 			return 0
-		if (not os.path.isdir(self.pkgdir+"/All") and not getbinpkg):
+		if (not os.path.isdir(self.pkgdir+"/All") and not getbinpkgs):
 			return 0
 
 		if not getbinpkgsonly and os.path.exists(self.pkgdir+"/All"):

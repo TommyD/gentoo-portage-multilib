@@ -26,9 +26,14 @@ for x in "$@" ; do
 		continue
 	fi
 
+  if [ "${x}" == ".keep" ]; then
+		continue
+	fi
+
 	BASE="$OLDBASE"
 	suffix="${x##*.}"
-	if [ "$suffix" = "gz" ] ; then
+		
+	if [ "$suffix" == "gz" ] ; then
 		compressed="gz"
 		realname="${x%.*}"
 		suffix="${realname##*.}"

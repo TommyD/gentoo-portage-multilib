@@ -54,7 +54,7 @@ alias assert='_retval=$?; [ $_retval = 0 ] || diefunc "$FUNCNAME" "$LINENO" "$_r
 
 OCC="$CC"
 OCXX="$CXX"
-if [ "$USERLAND" == "Linux" ]; then
+if [ "$USERLAND" == "GNU" ]; then
 	source /etc/profile.env &>/dev/null
 fi
 [ ! -z "$OCC" ] && export CC="$OCC"
@@ -919,13 +919,19 @@ debug-print-section() {
 }
 
 # Sources all eclasses in parameters
+declare -ix ECLASS_DEPTH=0
 inherit() {
-	if [ ! -z "${INHERITED}" ]; then
-		debug-print "*** Multiple Inheritence"
+	ECLASS_DEPTH=$(($ECLASS_DEPTH + 1))
+	if [ $ECLASS_DEPTH > 1 ]; then
+		debug-print "*** Multiple Inheritence (Level: ${ECLASS_DEPTH})"
 	fi
+
 	local location
+
 	while [ "$1" ]; do
 		location="${ECLASSDIR}/${1}.eclass"
+
+		# PECLASS is used to restore the ECLASS var after recursion.
 		PECLASS="$ECLASS"
 		export ECLASS="$1"
 
@@ -948,14 +954,14 @@ inherit() {
 	
 		#turn off glob expansion
 		set -f
-		unset B_RDEPEND B_DEPEND
-		if [ "${RDEPEND-unset}" != "unset" ]; then
-			export B_RDEPEND="${RDEPEND}"
-		fi
-		if [ "${DEPEND-unset}" != "unset" ]; then
-			export B_DEPEND="${DEPEND}"
-		fi
-		unset DEPEND RDEPEND
+
+		# Retain the old data and restore it later.
+		unset B_DEPEND B_RDEPEND B_CDEPEND B_PDEPEND
+		[ "${DEPEND-unset}"  != "unset" ] && B_DEPEND="${DEPEND}"
+		[ "${RDEPEND-unset}" != "unset" ] && B_RDEPEND="${RDEPEND}"
+		[ "${CDEPEND-unset}" != "unset" ] && B_CDEPEND="${CDEPEND}"
+		[ "${PDEPEND-unset}" != "unset" ] && B_PDEPEND="${PDEPEND}"
+		unset   DEPEND   RDEPEND   CDEPEND   PDEPEND
 		#turn on glob expansion
 		set +f
 		
@@ -964,34 +970,37 @@ inherit() {
 		
 		#turn off glob expansion
 		set -f
-		if [ "${RDEPEND-unset}" != "unset" ]; then
-			export E_RDEPEND="${E_RDEPEND} ${RDEPEND}"
-		fi
-		if [ "${DEPEND-unset}" != "unset" ]; then
-			export E_DEPEND="${E_DEPEND} ${DEPEND}"
-		fi
-		if [ "${B_RDEPEND-unset}" != "unset" ]; then
-			export RDEPEND="${B_RDEPEND}"
-		else
-			unset RDEPEND
-		fi
-		if [ "${B_DEPEND-unset}" != "unset" ]; then
-			export DEPEND="${B_DEPEND}"
-		else
-			unset DEPEND
-		fi
-		#turn on glob expansion
-		set +f
-			
-		ECLASS="$PECLASS"
-		unset PECLASS
 
-		if ! has $1 $INHERITED &>/dev/null; then
-			export INHERITED="$INHERITED $1"
-		fi
+		# If each var has a value, append it to the global variable E_* to
+		# be applied after everything is finished. New incremental behavior.
+		[ "${DEPEND-unset}"  != "unset" ] && export E_DEPEND="${E_DEPEND} ${DEPEND}"
+		[ "${RDEPEND-unset}" != "unset" ] && export E_RDEPEND="${E_RDEPEND} ${RDEPEND}"
+		[ "${CDEPEND-unset}" != "unset" ] && export E_CDEPEND="${E_CDEPEND} ${CDEPEND}"
+		[ "${PDEPEND-unset}" != "unset" ] && export E_PDEPEND="${E_PDEPEND} ${PDEPEND}"
+
+		[ "${B_DEPEND-unset}"  != "unset" ] && DEPEND="${B_DEPEND}"
+		[ "${B_DEPEND-unset}"  != "unset" ] || unset DEPEND
+
+		[ "${B_RDEPEND-unset}" != "unset" ] && RDEPEND="${B_RDEPEND}"
+		[ "${B_RDEPEND-unset}" != "unset" ] || unset RDEPEND
+
+		[ "${B_CDEPEND-unset}" != "unset" ] && CDEPEND="${B_CDEPEND}"
+		[ "${B_CDEPEND-unset}" != "unset" ] || unset CDEPEND
+
+		[ "${B_PDEPEND-unset}" != "unset" ] && PDEPEND="${B_PDEPEND}"
+		[ "${B_PDEPEND-unset}" != "unset" ] || unset PDEPEND
+
+		#turn on glob expansion
+ 		set +f
+		
+		has $1 $INHERITED || export INHERITED="$INHERITED $1"
+
+		export ECLASS="$PECLASS"
+		unset PECLASS
 
 		shift
 	done
+	ECLASS_DEPTH=$(($ECLASS_DEPTH - 1))
 }
 
 # Exports stub functions that call the eclass's functions, thereby making them default.
@@ -1010,13 +1019,15 @@ EXPORT_FUNCTIONS() {
 	done
 }
 
-# adds all parameters to E_DEPEND and E_RDEPEND, which get added to DEPEND and RDEPEND
-# after the ebuild has been processed. This is important to allow users to use DEPEND="foo"
-# without frying dependencies added by an earlier inherit. It also allows RDEPEND to work
-# properly, since a lot of ebuilds assume that an unset RDEPEND gets its value from DEPEND.
-# Without eclasses, this is true. But with them, the eclass may set RDEPEND itself (or at
-# least used to) which would prevent RDEPEND from getting its value from DEPEND. This is
-# a side-effect that made eclasses have unreliable dependencies.
+# adds all parameters to E_DEPEND and E_RDEPEND, which get added to DEPEND
+# and RDEPEND after the ebuild has been processed. This is important to
+# allow users to use DEPEND="foo" without frying dependencies added by an
+# earlier inherit. It also allows RDEPEND to work properly, since a lot
+# of ebuilds assume that an unset RDEPEND gets its value from DEPEND.
+# Without eclasses, this is true. But with them, the eclass may set
+# RDEPEND itself (or at least used to) which would prevent RDEPEND from
+# getting its value from DEPEND. This is a side-effect that made eclasses
+# have unreliable dependencies.
 
 newdepend() {
 	debug-print-function newdepend $*
@@ -1025,17 +1036,52 @@ newdepend() {
 	while [ -n "$1" ]; do
 		case $1 in
 		"/autotools")
-			E_DEPEND="${E_DEPEND} sys-devel/autoconf sys-devel/automake sys-devel/make"
+			do_newdepend DEPEND sys-devel/autoconf sys-devel/automake sys-devel/make
 			;;
 		"/c")
-			E_DEPEND="${E_DEPEND} sys-devel/gcc virtual/glibc"
-			E_RDEPEND="${E_RDEPEND} virtual/glibc"
+			do_newdepend DEPEND sys-devel/gcc virtual/glibc
+			do_newdepend RDEPEND virtual/glibc
 			;;
 		*)
-			E_DEPEND="$E_DEPEND $1"
-			E_RDEPEND="$E_RDEPEND $1"
+			do_newdepend DEPEND $1
 			;;
 		esac
+		shift
+	done
+}
+
+newrdepend() {
+	debug-print-function newrdepend $*
+	do_newdepend RDEPEND $1
+}
+
+newcdepend() {
+	debug-print-function newcdepend $*
+	do_newdepend CDEPEND $1
+}
+
+newpdepend() {
+	debug-print-function newpdepend $*
+	do_newdepend PDEPEND $1
+}
+
+do_newdepend() {
+	# This function does a generic change determining whether we're in an
+	# eclass or not. If we are, we change the E_* variables for deps.
+	debug-print-function do_newdepend $*
+	[ -z "$1" ] && die "do_newdepend without arguments"
+
+	# Grab what we're affecting... Figure out if we're affecting eclasses.
+	[ ${ECLASS_DEPTH} > 0 ] && TARGET="E_$1"
+	[ ${ECLASS_DEPTH} > 0 ] || TARGET="$1"
+	shift # $1 was a variable name.
+
+	while [ -n "$1" ]; do
+		# This bit of evil takes TARGET and uses it to evaluate down to a
+		# variable. This is a sneaky way to make this infinately expandable.
+		# The normal translation of this would look something like this:
+		# E_DEPEND="${E_DEPEND} $1"  ::::::  Cool, huh? :)
+		eval export ${TARGET}=\"\${${TARGET}} $1\"
 		shift
 	done
 }
@@ -1094,9 +1140,13 @@ fi # "$*"!="depend" && "$*"!="clean"
 
 export SANDBOX_ON="1"
 export S=${WORKDIR}/${P}
-unset DEPEND RDEPEND E_RDEPEND E_DEPEND
+
+unset   DEPEND   RDEPEND   CDEPEND   PDEPEND
+unset E_DEPEND E_RDEPEND E_CDEPEND E_PDEPEND
+
 source ${EBUILD} || die "error sourcing ebuild"
 [ -z "${ERRORMSG}" ] || die "${ERRORMSG}"
+
 #a reasonable default for $S
 if [ "$S" = "" ]; then
 	export S=${WORKDIR}/${P}
@@ -1119,21 +1169,23 @@ if [ "${RDEPEND-unset}" == "unset" ]; then
 	export RDEPEND=${DEPEND}
 	debug-print "RDEPEND: not set... Setting to: ${DEPEND}"
 fi
+
 #add in dependency info from eclasses
-RDEPEND="$RDEPEND $E_RDEPEND"
 DEPEND="$DEPEND $E_DEPEND"
+RDEPEND="$RDEPEND $E_RDEPEND"
+CDEPEND="$CDEPEND $E_CDEPEND"
+PDEPEND="$PDEPEND $E_PDEPEND"
+
 set +f
 
-for myarg in $*
-do
+for myarg in $*; do
 	case $myarg in
 	nofetch)
 		pkg_nofetch
 		;;
 	prerm|postrm|preinst|postinst|config)
 		export SANDBOX_ON="0"
-		if [ "$PORTAGE_DEBUG" != "1" ]
-		then
+		if [ "$PORTAGE_DEBUG" != "1" ]; then
 			pkg_${myarg}
 			#Allow non-zero return codes since they can be caused by &&
 		else
@@ -1188,8 +1240,7 @@ do
 		set -f
 		#the extra `echo` commands remove newlines
 		dbkey=${PORTAGE_CACHEDIR}/${CATEGORY}/${PF}
-		if [ ! -d ${PORTAGE_CACHEDIR}/${CATEGORY} ]
-		then
+		if [ ! -d ${PORTAGE_CACHEDIR}/${CATEGORY} ]; then
 			install -d -g ${PORTAGE_GID} -m4775 ${PORTAGE_CACHEDIR}/${CATEGORY}
 		fi
 		# Make it group writable. 666&~002==664

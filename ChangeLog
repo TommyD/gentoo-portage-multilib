@@ -2,11 +2,27 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+*portage-2.0.49_pre13 (22 Jul 2003): Fixes
+  
+  22 Jul 2003; Nicholas Jones <carpaski@gentoo.org> doman: Doesn't gzip
+  .keep files now.
+
+  22 Jul 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: USERLAND
+  fix. ** ECLASS depth tracker and additions to the new depend code. **
+  
+  22 Jul 2003; Nicholas Jones <carpaski@gentoo.org> emerge: Fetch restriction
+  now adds a red F to the pretend output. Made the blockers message better.
+  Added 'local' to rsync excludes to allow the category to be added for admins.
+
+  22 Jul 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Fixed a TB
+  caused by a missing 'strict' reference --- Needs to be fixed better. Fixed
+  a typo in the populate code for bintree/getbinpkg.
+
 *portage-2.0.49_pre11 (16 Jul 2003): GRP, General, VIDEO_CARDS/INPUT_DEVICES
 
   16 Jul 2003; Nicholas Jones <carpaski@gentoo.org> quickpkg: SpanKY's
   friendly edition now included.
-	
+  
   16 Jul 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: USE_EXPAND
   support for expanding bash variables into USE --- VIDEO_CARDS="blah"
   USE="video_cards_blah". Added a notice about fetching metadata so you
@@ -30,11 +46,11 @@
 
   16 Jul 2003; Nicholas Jones <carpaski@gentoo.org> emerge: Added support for
   --getbinpkg and --getbinpkgonly --- GRP complement. Fixes for blocking-
-  not-working	bug
+  not-working  bug
 
   16 Jul 2003; Nicholas Jones <carpaski@gentoo.org> repoman: Patch to detect
   incomplete digests.
-	
+  
   16 Jul 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: ebuild fetch
   now checks md5sums (run from ebuild). Support for getbinpkg.
 
