@@ -3,17 +3,17 @@
 ebuild \- manual page for the ebuild program, a low level interface to the Portage system. 
 .SH "SYNOPSIS"
 .B ebuild
-\fIfile\fR \fIcommand\fR [\fIcommand\fR]...
+.I file command [command]\fR...
 .SH "DESCRIPTION"
 The ebuild program is the heart of the current implementation of the Portage system.  Accepting an ebuild script and one or more commands as arguments, the ebuild program will parse the ebuild script and execute the specified commands.  Commands exist to fetch sources, unpack sources, compile sources, install object files into a temporary directory "image", merge the image to the local filesystem, create a bzipped tarball package out of the image, and more.
 .SH "FILE"
 This must be a valid ebuild script.  For further information read \fBebuild\fR(5).
 .SH "COMMANDS"
 .TP
-\fBcheck\fR 
+.BR check
 Checks to see if all build dependencies are satisfied.
-.TP 
-\fBclean\fR
+.TP
+.BR clean
 Cleans the temporary build directory that Portage has created for this particular
 ebuild file.  The temporary build directory normally contains the extracted source
 files as well as a possible "install image" (all the files that will be merged to the
@@ -27,8 +27,8 @@ the BUILD_PREFIX directory will accumulate some files that you probably don't wa
 Manual cleaning (`rm \-rf /var/tmp/portage/*` will take care of this).  An option in
 make.conf allows you to control whether BUILD_PREFIX gets cleaned automatically or
 gets left as is: AUTOCLEAN="yes" (can be yes, or no).
-.TP 
-\fBfetch\fR
+.TP
+.BR fetch
 Checks to see if all the sources specified in SRC_URI are available in DISTDIR
 (see \fBmake.conf\fR(5) for more information) and have a valid md5
 checksum.  If the sources aren't available, an attempt is made to download them from
@@ -38,8 +38,14 @@ Gentoo Linux mirrors defined by GENTOO_MIRRORS is always considered first.
 If for some reason the current or just\-downloaded sources' md5 digests don't match
 those recorded in files/digest\-[package]\-[version\-rev], a warning is printed and
 ebuild exits with an error code of 1.
-.TP 
-\fBunpack\fR
+.TP
+.BR digest
+Creates a digest file for the package in /usr/portage/[category]/[package]/files/.
+This digest file lists the md5sum's of all the files found in the SRC_URI.  If the
+fetched source of the package is corrupt/bogus in some way, the md5sum will catch
+this.
+.TP
+.BR unpack
 Extracts the sources to a subdirectory in the \fIbuild directory\fR (BUILD_PREFIX) by
 running the \fIsrc_unpack()\fR function in the ebuild file.  If no src_unpack()
 function has been specified, a default src_unpack() function is used that extracts
@@ -52,47 +58,47 @@ Normally, this directory is ${WORKDIR}/${P}, and is defined that way by default,
 it is not often required.  The src_unpack() function is also responsible for making
 the appropriate patches to the sources so that they're ready for compilation.
 .TP
-\fBcompile\fR
+.BR compile
 Compiles the extracted sources by running the the \fIsrc_compile()\fR function
 specified in the ebuild file.  When src_compile() starts, the current working
 directory will be set to ${S}.  When src_compile() completes, the sources should be
 fully compiled.
 .TP
-\fBinstall\fR
+.BR install
 Installs the package to the temporary \fIinstall directory\fR by running the
 \fIsrc_install()\fR function.  When completed, the \fIinstall directory\fR
 (${BUILD_PREFIX}/[package]\-[version\-rev]/image) will contain all the files that
 should either be merged to the local file system or included in a binary package.
-.TP 
-\fBqmerge\fR
+.TP
+.BR qmerge
 This function installs all the files in the \fIinstall directory\fR to the live
 filesystem. The process works as follows: first, the \fIpkg_preinst()\fR function (if
 specified) is run.  Then, the files are merged into the live filesystem, and the
 installed files' md5 digests are recorded in
-\fI/var/db/pkg/[category]/[package]\-[version\-rev]/CONTENTS\fR.  After all the files
+\fI/var/db/pkg/${CATEOGRY}/${PN}\-[version\-rev]/CONTENTS\fR.  After all the files
 have been merged, the \fIpkg_postinst()\fR function (if specified) is executed.
-.TP 
-\fBmerge\fR
+.TP
+.BR merge
 Normally, to merge an ebuild, you need to \fIfetch\fR, \fIunpack\fR, \fIcompile\fR,
 \fIinstall\fR and \fIqmerge\fR.  If you're simply interested in merging the ebuild,
 you can use this command, which will perform all these steps for you, stopping along
 the way if a particular step doesn't complete successfully.
 .TP
-\fBunmerge\fR
+.BR unmerge
 This function first executes the \fIpkg_prerm\fR function (if specified).  Then it
 removes all files from the live filesystem that have a valid md5 checksum and mtime
 in the package contents file.  Any empty directories are recursively removed.  Finally,
 it runs \fIpkg_postrm\fR function (if specified).  It is safe to merge a new version
 of a package first and then unmerge the old one.  In fact, this is the recommended
 package upgrade method.
-.TP 
-\fBpackage\fR
+.TP
+.BR package
 This command is a lot like the \fImerge\fR command, except that after fetching,
 unpacking, compiling and installing, a .tbz2 binary package tarball is created and
 stored in  ${PKGDIR}/All (${PKGDIR} defaults to /usr/portage/packages).  A symbolic
-link is created in ${PKGDIR}/[category] that points to the package in ${PKGDIR}/All.
+link is created in ${PKGDIR}/${CATEGORY} that points to the package in ${PKGDIR}/All.
 .TP
-\fBrpm\fR
+.BR rpm
 Builds a RedHat RPM package from the files in the temporary \fIinstall directory\fR.
 At the moment, the ebuild's dependency information is not incorporated into the RPM.
 .SH "SEE ALSO"
