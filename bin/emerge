@@ -2097,6 +2097,10 @@ def post_emerge(retval=0):
 			else:
 				print " "+green("*")+" Processed",icount,"info files."
 
+	chk_updated_cfg_files()
+	sys.exit(retval)
+
+def chk_updated_cfg_files():
 	if portage.settings["CONFIG_PROTECT"]:
 		#number of directories with some protect files in them
 		procount=0
@@ -2114,7 +2118,6 @@ def post_emerge(retval=0):
 			#print " "+yellow("*")+" Type "+green("emerge --help config")+" to learn how to update config files."
 			print " "+yellow("*")+" Type "+green("emerge --help config")+" to learn how to update config files."
 		print
-	sys.exit(retval)
 
 # general options that should be taken into account before any action
 if "--debug" in myopts:
@@ -2417,6 +2420,8 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 	reload(portage)
 	mybestpv=portage.portdb.xmatch("bestmatch-visible","sys-apps/portage")
 	mypvs=portage.best(portage.db[portage.root]["vartree"].dbapi.match("sys-apps/portage"))
+
+	chk_updated_cfg_files()
 
 	if(mybestpv != mypvs):
 		print
