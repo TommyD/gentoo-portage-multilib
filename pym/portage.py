@@ -62,7 +62,7 @@ try:
 	import sys
 except:
 	print "Failed to import sys! Something is _VERY_ wrong with python."
-	exit(127)
+	raise SystemExit, 127
 
 try:
 	import os,string,types,atexit,signal,fcntl
@@ -85,7 +85,7 @@ except Exception, e:
 	sys.stderr.write("!!! gone wrong. Here is the information we got for this exception:\n")
 	
 	sys.stderr.write("    "+str(e)+"\n\n");
-	exit(127)
+	sys.exit(127)
 except:
 	sys.stderr.write("\n\n")
 	sys.stderr.write("!!! Failed to complete python imports. There are internal modules for\n")
@@ -94,8 +94,7 @@ except:
 
 	sys.stderr.write("!!! You might consider starting python with verbose flags to see what has\n")
 	sys.stderr.write("!!! gone wrong. The exception was non-standard and we were unable to catch it.\n\n")
-	exit(127)
-		
+	sys.exit(127)
 
 try:
 	import cvstree
@@ -113,7 +112,7 @@ except Exception, e:
 	sys.stderr.write("!!! a recovery of portage.\n")
 	
 	sys.stderr.write("    "+str(e)+"\n\n")
-	exit(127)
+	sys.exit(127)
 
 
 # ===========================================================================
