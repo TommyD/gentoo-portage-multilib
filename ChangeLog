@@ -9,6 +9,11 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  18 Jul 2004; Brian Harring <ferringb@gentoo.org> bin/repoman: Corrected 
+  ebuild.allmasked check, so that it checks for an available version across all
+  arches, rather then the last arch processed.  Typo fixed also- bugs #57356 and
+  #57068.
+
   17 Jul 2004; Jason Stubbs <jstubbs@gentoo.org> bin/repoman: Added patch from
   #49126 that makes repoman check that a USE flag from use.local.desc applies
   to the packages that make use of it.
