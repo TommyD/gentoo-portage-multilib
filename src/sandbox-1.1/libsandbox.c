@@ -564,11 +564,11 @@ rename(const char *oldpath, const char *newpath)
 	canonicalize_int(oldpath, old_canonic);
 	canonicalize_int(newpath, new_canonic);
 
-	if FUNCTION_SANDBOX_SAFE
-		("rename", new_canonic) {
+	if (FUNCTION_SANDBOX_SAFE("rename", old_canonic) &&
+			FUNCTION_SANDBOX_SAFE("rename", new_canonic)) {
 		check_dlsym(rename);
 		result = true_rename(oldpath, newpath);
-		}
+	}
 
 	return result;
 }
