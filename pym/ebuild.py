@@ -46,10 +46,13 @@ inactive_ebp_list = []
 active_ebp_list = []
 
 def request_ebuild_processor(ebuild_daemon_path=portage_const.EBUILD_DAEMON_PATH,userpriv=False, \
-	sandbox=portage_exec.sandbox_capable,fakeroot=False,save_file=None):
+	sandbox=None,fakeroot=False,save_file=None):
 	"""request an ebuild_processor instance from the pool, or create a new one
 	  this walks through the requirements, matching a inactive processor if one exists
 	  note fakerooted processors are never reused, do to the nature of fakeroot"""
+
+	if sandbox == None:
+		sandbox = portage_exec.sandbox_capable
 
 	global inactive_ebp_list, active_ebp_list
 	if not fakeroot:
