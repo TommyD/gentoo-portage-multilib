@@ -1,4 +1,4 @@
-.TH "ETC-UPDATE" "1" "Nov 2002" "Portage 2.0.44" "Portage"
+.TH "ETC-UPDATE" "1" "Feb 2003" "Portage 2.0.47" "Portage"
 .SH NAME
 etc-update \- handle configuration file updates
 .SH SYNOPSIS
@@ -12,21 +12,26 @@ configuration file will override an old one,
 will prompt the user for a decision.
 .PP
 .I etc-update
-will check all directories in the \fICONFIG_PROTECT\fR variable.  See \fBmake.conf\fR(5)
-for more information
-.SH OPTIONS 
+will check all directories in the \fICONFIG_PROTECT\fR variable.  All
+config files found in \fICONFIG_PROTECT_MASK\fR will automatically be
+updated for you by \fIetc-update\fR.  See \fBmake.conf\fR(5) for more
+information.
+.SH OPTIONS
 .TP
 None.
-.SH AUTHORS
-Jochem Kossen and Leo Lipelis, 2002: etc-update
-.br
-Karl Trygve Kalleberg <karltk@gentoo.org>, 2002: man page, fixes
 .SH "REPORTING BUGS"
 Please report bugs via http://bugs.gentoo.org/
 .SH "SEE ALSO"
-.BR ebuild (5),
 .BR make.conf (5)
+.SH "FILES"
 .TP
-The \fI/usr/sbin/lintool\fR script. 
+.B /etc/etc-update.conf
+Configuration settings for \fIetc-update\fR are stored here.
+.SH AUTHORS
+Jochem Kossen and Leo Lipelis
+.br
+Karl Trygve Kalleberg <karltk@gentoo.org>
+.br
+Mike Frysinger <vapier@gentoo.org>
 .SH "CVS HEADER"
 $Header$
