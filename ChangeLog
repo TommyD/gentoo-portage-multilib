@@ -1,7 +1,22 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
-*portage-2.0.35 (03 Sep 2002): Gentoo Linux 1.4_rc1 version 
+*portage-2.0.36 (04 Sep 2002): Gentoo Linux 1.4_rc1 version 
+
+  04 Sep 2002; Daniel Robbins <drobbins@gentoo.org> emerge: "--onlydeps" was
+  mostly broken since the most recent emerge code restructure. Now fixed,
+  closing bug #7442.
+  
+  04 Sep 2002: Daniel Robbins <drobbins@gentoo.org> etc-update.conf: added
+  missing etc-update config file.
+  
+  04 Sep 2002: Daniel Robbins <drobbins@gentoo.org> portage.py: removed error
+  detection based on return value for pkg_preinst() and friends when called
+  from merge() and unmerge(), since the value can be unreliable due to the &&
+  shell construct, depmod -a returning a non-zero value, etc. Also fixed
+  env_update() to treat CONFIG_PROTECT and CONFIG_PROTECT_MASK correctly.
+
+*portage-2.0.35 (03 Sep 2002) 
 
   03 Sep 2002: Daniel Robbins <drobbins@gentoo.org> etc-update,
   man/etc-update.1: new program for updating config files.

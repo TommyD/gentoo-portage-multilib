@@ -261,7 +261,7 @@ def env_update():
 			continue
 		pos=pos+1
 
-	specials={"KDEDIRS":[],"PATH":[],"CLASSPATH":[],"LDPATH":[],"MANPATH":[],"INFODIR":[],"ROOTPATH":[]}
+	specials={"KDEDIRS":[],"PATH":[],"CLASSPATH":[],"LDPATH":[],"MANPATH":[],"INFODIR":[],"ROOTPATH":[],"CONFIG_PROTECT":[],"CONFIG_PROTECT_MASK":[]}
 	env={}
 
 	for x in fns:
@@ -320,12 +320,14 @@ def env_update():
 		if len(specials[path])==0:
 			continue
 		outstring="export "+path+"='"
-		for x in specials[path][:-1]:
-			outstring=outstring+x+":"
+		if path in ["CONFIG_PROTECT","CONFIG_PROTECT_MASK"]:
+			for x in specials[path][:-1]:
+				outstring += x+" "
+		else:
+			for x in specials[path][:-1]:
+				outstring=outstring+x+":"
 		outstring=outstring+specials[path][-1]+"'"
 		outfile.write(outstring+"\n")
-		#get it out of the way
-#		del specials[path]
 	
 	#create /etc/profile.env
 	for x in env.keys():
@@ -3186,9 +3188,6 @@ class dblink:
 		#do prerm script
 		if myebuildpath and os.path.exists(myebuildpath):
 			a=doebuild(myebuildpath,"prerm",self.myroot)
-			if a:
-				print "!!! pkg_prerm() script failed; exiting."
-				sys.exit(a)
 
 		mykeys=pkgfiles.keys()
 		mykeys.sort()
@@ -3437,9 +3436,6 @@ class dblink:
 		#do original postrm
 		if myebuildpath and os.path.exists(myebuildpath):
 			a=doebuild(myebuildpath,"postrm",self.myroot)
-			if a:
-				print "!!! pkg_postrm() script failed; exiting."
-				sys.exit(a)
 	
 	def treewalk(self,srcroot,destroot,inforoot,myebuild):
 		# srcroot = ${D}; destroot=where to merge, ie. ${ROOT}, inforoot=root of db entry,
@@ -3467,9 +3463,6 @@ class dblink:
 			a=doebuild(myebuild,"preinst",root)
 		else:
 			a=doebuild(inforoot+"/"+self.pkg+".ebuild","preinst",root)
-		if a:
-			print "!!! pkg_preinst() script failed; exiting."
-			sys.exit(a)
 		# open CONTENTS file (possibly overwriting old one) for recording
 		outfile=open(inforoot+"/CONTENTS","w")
 		# prep for config file management
@@ -3557,9 +3550,6 @@ class dblink:
 			a=doebuild(myebuild,"postinst",root)
 		else:
 			a=doebuild(inforoot+"/"+self.pkg+".ebuild","postinst",root)
-		if a:
-			print "!!! pkg_postinst() script failed; exiting."
-			sys.exit(a)
 		#update environment settings, library paths
 		env_update()	
 		print ">>>",self.cat+"/"+self.pkg,"merged."
