@@ -40,7 +40,7 @@ CXXFLAGS="-O1 -pipe"
 # Default maintainer options
 #FEATURES="digest sandbox noclean noauto buildpkg"
 # Default user options
-FEATURES="ccache"
+FEATURES="distlocks ccache autoaddcvs"
 
 # By default output colored text where possible, set to "true" to output only
 #black&white text

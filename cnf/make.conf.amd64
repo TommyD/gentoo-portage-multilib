@@ -256,13 +256,21 @@ CHOST="x86_64-pc-linux-gnu"
 #                will be applied for digests.
 #  'digest'      autogenerate a digest for packages.
 #  'distcc'      enables distcc support via CC.
+#  'distlocks'   enables distfiles locking using fcntl or hardlinks.
+#                This is enabled by default. Tools exist to help clean the
+#                locks after crashes: /usr/lib/portage/bin/clean_locks.
 #  'fixpackages' allows portage to fix binary packages that are stored in
 #                PKGDIR. This can consume a lot of time. 'fixpackages' is
 #                also a script that can be run at any given time to force
 #                the same actions.
+#  'gpg'         Enables basic verification of Manifest files using gpg.
+#                This features is UNDER DEVELOPMENT and reacts to features
+#                of strict and severe. Heavy use of gpg sigs is coming.
 #  'keeptemp'    prevents the clean phase from deleting the temp files ($T) 
 #                from a merge.
 #  'keepwork'    prevents the clean phase from deleting the WORKDIR.
+#  'maketest'    causes ebuilds to perform testing phases if they are capable
+#                of it. Some packages support this automaticaly via makefiles.
 #  'noauto'      causes ebuild to perform only the action requested and 
 #                not any other required actions like clean.
 #  'noclean'     prevents portage from removing the source and temporary files 
@@ -279,7 +287,7 @@ CHOST="x86_64-pc-linux-gnu"
 #  'usersandbox' enables sandboxing while portage is running under userpriv.
 #                unpack -- for debugging purposes only.
 #FEATURES="sandbox buildpkg ccache distcc userpriv usersandbox notitles noclean noauto cvs keeptemp keepwork autoaddcvs"
-#FEATURES="sandbox ccache distcc autoaddcvs"
+#FEATURES="sandbox ccache distcc distlocks autoaddcvs"
 #
 # CCACHE_SIZE sets the space use limitations for ccache. The default size is
 #     2G, and will be set if not defined otherwise and ccache is in features. 

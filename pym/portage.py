@@ -1459,7 +1459,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 	mymirrors=[]
 	
-	if listonly:
+	if listonly or ("distlocks" not in features):
 		use_locks = 0
 
 	# local mirrors are always added
@@ -1624,7 +1624,10 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				old_umask=os.umask(0002)
 				os.mkdir(mysettings["DISTDIR"]+"/"+locks_in_subdir,0775)
 				if os.stat(mysettings["DISTDIR"]+"/"+locks_in_subdir).st_gid != portage_gid:
-					os.chown(mysettings["DISTDIR"]+"/"+locks_in_subdir,-1,portage_gid)
+					try:
+						os.chown(mysettings["DISTDIR"]+"/"+locks_in_subdir,-1,portage_gid)
+					except:
+						pass
 				os.umask(old_umask)
 
 	

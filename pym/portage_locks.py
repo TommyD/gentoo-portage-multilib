@@ -3,16 +3,33 @@
 # Distributed under the GNU Public License v2
 # $Header$
 
+import atexit
 import errno
 import os
 import stat
+import string
 import time
 import types
 import portage_exception
+import portage_file
 import portage_util
 import portage_data
+from portage_localization import _
 
 HARDLINK_FD = -2
+
+hardlock_path_list = []
+def clean_my_hardlocks():
+	for x in hardlock_path_list:
+		hardlock_cleanup(x)
+def add_hardlock_file_to_cleanup(path):
+	mypath = portage_file.normpath(path)
+	if os.path.isfile(mypath):
+		mypath = os.path.dirname(mypath)
+	if os.path.isdir(mypath):
+		hardlock_path_list = mypath[:]
+
+atexit.register(clean_my_hardlocks)
 
 def lockdir(mydir):
 	return lockfile(mydir,wantnewlockfile=1)
@@ -67,29 +84,31 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 	# we're waiting on lockfile and use a blocking attempt.
 	try:
 		fcntl.lockf(myfd,fcntl.LOCK_EX|fcntl.LOCK_NB)
-	except IOError, ie:
+	except IOError, e:
 		# resource temp unavailable; eg, someone beat us to the lock.
-		if ie.errno == errno.EAGAIN:
-			if type(mypath) == types.IntType:
-				print "waiting for lock on fd %i" % myfd
+		if "errno" in dir(e):
+			if e.errno == errno.EAGAIN:
+				if type(mypath) == types.IntType:
+					print "waiting for lock on fd %i" % myfd
+				else:
+					print "waiting for lock on %s" % lockfilename
+				# try for the exclusive lock now.
+				fcntl.lockf(myfd,fcntl.LOCK_EX)
+			elif e.errno == errno.ENOLCK:
+				# We're not allowed to lock on this FS.
+				os.close(myfd)
+				link_success = False
+				if lockfilename == str(lockfilename):
+					if wantnewlockfile:
+						link_success = hardlink_lockfile(lockfilename)
+				if not link_success:
+					raise
+				myfd = HARDLINK_FD
 			else:
-				print "waiting for lock on %s" % lockfilename
-			# try for the exclusive lock now.
-			fcntl.lockf(myfd,fcntl.LOCK_EX)
+				raise ie
 		else:
 			raise ie
 
-	except OSError, oe:
-		# We're not allowed to lock on this FS.
-		close(myfd)
-		link_success = False
-		if os.errno == errno.EPERM:
-			if lockfilename == str(lockfilename):
-				if wantnewlockfile:
-					link_success = hardlink_lockfile(lockfilename)
-		if not link_success:
-			raise
-		myfd = HARDLINK_FD
 
 	if type(lockfilename) == types.StringType and not os.path.exists(lockfilename):
 		# The file was deleted on us... Keep trying to make one...
@@ -155,10 +174,29 @@ def unlockfile(mytuple):
 
 
 
+def hardlock_name(path):
+	return path+".hardlock-"+os.uname()[1]+"-"+str(os.getpid())
 
+def hardlink_active(lock):
+	if not os.path.exists(lock):
+		return False
+ 	# XXXXXXXXXXXXXXXXXXXXXXXXXX
 
+def hardlink_is_mine(link,lock):
+	try:
+		myhls = os.stat(link)
+		mylfs = os.stat(lock)
+	except:
+		myhls = None
+		mylfs = None
 
-
+	if myhls:
+		if myhls[stat.ST_NLINK] == 2:
+			return True
+		if mylfs:
+			if mylfs[stat.ST_INO] == myhls[stat.ST_INO]:
+				return True
+	return False
 
 def hardlink_lockfile(lockfilename, max_wait=14400):
 	"""Does the NFS, hardlink shuffle to ensure locking on the disk.
@@ -168,8 +206,11 @@ def hardlink_lockfile(lockfilename, max_wait=14400):
 	Otherwise we lather, rise, and repeat.
 	We default to a 4 hour timeout.
 	"""
+	
+	add_hardlock_file_to_cleanup(lockfilename)
+	
 	start_time = time.time()
-	myhardlock = lockfilename+".hard_lockfile."+os.uname()[1]+"-"+str(os.getpid())
+	myhardlock = hardlock_name(lockfilename)
 	reported_waiting = False
 	
 	print "Hardlink lockfile:",myhardlock
@@ -182,14 +223,12 @@ def hardlink_lockfile(lockfilename, max_wait=14400):
 		if not os.path.exists(myhardlock):
 			raise portage_exception.FileNotFound, _("Created lockfile is missing: %(filename)s") % {"filename":myhardlock}
 
-		mystat = None
 		try:
-			os.link(myhardlock, lockfilename)
-			mystat = os.stat(myhardlock)
+			res = os.link(myhardlock, lockfilename)
 		except:
 			pass
-	
-		if mystat and (mystat[stat.ST_NLINK] == 2):
+
+		if hardlink_is_mine(myhardlock, lockfilename):
 			# We have the lock.
 			if reported_waiting:
 				print
@@ -208,11 +247,75 @@ def hardlink_lockfile(lockfilename, max_wait=14400):
 	return False
 
 def unhardlink_lockfile(lockfilename):
-	myhardlock = lockfilename+".hard_lockfile."+os.uname()[1]+"-"+str(os.getpid())
+	myhardlock = hardlock_name(lockfilename)
 	try:
-		if os.path.exists(lockfilename):
-			os.unlink(lockfilename)
 		if os.path.exists(myhardlock):
 			os.unlink(myhardlock)
+		if os.path.exists(lockfilename):
+			os.unlink(lockfilename)
 	except:
 		portage_util.writemsg("Something strange happened to our hardlink locks.\n")
+
+def hardlock_cleanup(path, remove_all_locks=False):
+	mypid  = str(os.getpid())
+	myhost = os.uname()[1]
+	mydl = os.listdir(path)
+
+	results = []
+	mycount = 0
+
+	mylist = {}
+	for x in mydl:
+		if os.path.isfile(path+"/"+x):
+			parts = string.split(x, ".hardlock-")
+			if len(parts) == 2:
+				filename = parts[0]
+				hostpid  = string.split(parts[1],"-")
+				host  = string.join(hostpid[:-1], "-")
+				pid   = hostpid[-1]
+				
+				if not mylist.has_key(filename):
+					mylist[filename] = {}
+				if not mylist[filename].has_key(host):
+					mylist[filename][host] = []
+				mylist[filename][host].append(pid)
+
+				mycount += 1
+
+
+	results.append("Found %(count)s locks" % {"count":mycount})
+	
+	for x in mylist.keys():
+		if mylist[x].has_key(myhost) or remove_all_locks:
+			mylockname = hardlock_name(path+"/"+x)
+			if hardlink_is_mine(mylockname, path+"/"+x) or \
+			   not os.path.exists(path+"/"+x) or \
+				 remove_all_locks:
+				for y in mylist[x].keys():
+					for z in mylist[x][y]:
+						filename = path+"/"+x+".hardlock-"+y+"-"+z
+						if filename == mylockname:
+							continue
+						try:
+							# We're sweeping through, unlinking everyone's locks.
+							os.unlink(filename)
+							results.append(_("Unlinked: ") + filename)
+						except Exception,e:
+							print "Exception",e
+							pass
+				try:
+					os.unlink(path+"/"+x)
+					results.append(_("Unlinked: ") + path+"/"+x)
+					os.unlink(mylockname)
+					results.append(_("Unlinked: ") + mylockname)
+				except Exception,e:
+					pass
+			else:
+				try:
+					os.unlink(mylockname)
+					results.append(_("Unlinked: ") + mylockname)
+				except Exception,e:
+					pass
+
+	return results
+

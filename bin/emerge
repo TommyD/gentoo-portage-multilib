@@ -16,8 +16,26 @@ import portage_util
 import portage_locks
 import portage_exception
 
-spinner = "Gentoo Rocks ("+os.uname()[0]+")"
-spinner = "If you can read this, we're generating the cache"
+
+spinner_msgs = ["Gentoo Rocks ("+os.uname()[0]+")",
+                "Thank you for using Gentoo. :)",
+                "Are you actually trying to read this?",
+                "How many times have you stared at this?",
+                "We are generating the cache right now",
+                "You are paying too much attention.",
+								"A theory is better than its explanation.",
+								"Phasers locked on target, Captain.",
+								"Thrashing is just virtual crashing.",
+								"To be is to program.",
+								"Real Users hate Real Programmers.",
+								"When all else fails, read the instructions.",
+								"Functionality breeds Contempt.",
+								"The future lies ahead.",
+                "3.1415926535897932384626433832795028841971694",
+								"Sometimes insanity is the only alternative.",
+								"Inaccuracy saves a world of explanation.",
+               ]
+spinner = spinner_msgs[int(time.time()*100)%len(spinner_msgs)]
 spinpos = 0
 
 if (not sys.stdout.isatty()) or (portage.settings["NOCOLOR"] in ["yes","true"]):
@@ -567,7 +585,7 @@ def update_spinner(start_pos=None):
 		spinpos = start_pos
 	if sys.stdout.isatty() and not ("--nospinner" in myopts):
 		if(spinpos >= len(spinner)):
-			sys.stdout.write(green(" \b\b\b"+spinner[len(spinner)-1-(spinpos%len(spinner))]))
+			sys.stdout.write(darkgreen(" \b\b\b"+spinner[len(spinner)-1-(spinpos%len(spinner))]))
 		else:
 			sys.stdout.write(green("\b "+spinner[spinpos]))
 

@@ -7,6 +7,27 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+*portage-2.0.51_rc4 (26 Sep 2004): RC + Lock cleanup
+
+  26 Sep 2004; Nicholas Jones <carpaski@gentoo.org> bin/clean_locks: A new
+  tool to aid in the maintainence of hardlock-based locks. It can clean
+  all locks from a directory or just the ones pertinent to the running host.
+
+  26 Sep 2004; Nicholas Jones <carpaski@gentoo.org> emerge: Updated the
+  spinner.
+
+  26 Sep 2004; Nicholas Jones <carpaski@gentoo.org> cnf/*: Added distlocks
+  as a default feature. Added comments on distlocks and maketest and gpg.
+
+  26 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage_locks.py: Lots
+  of changes. Corrected the lockfile code to be an IOError. Added some
+  helper functions to reduce duplication in the hardlink code. Added a
+  callback to a cleanup function registered with atexit to ensure we clean
+  locks up on normal terminations. Fixed the code to actually work on most
+  NFS systems and hopefully have the fallback (INODE test) working on
+  very broken systems. Added a cleanup function that is interfaced through
+  the clean_locks script and the registered atexit call.
+
 *portage-2.0.51_rc3 (26 Sep 2004): And we have another Release Candidate!
 
   26 Sep 2004; Nicholas Jones <carpaski@gentoo.org> emerge: Modified the
