@@ -1080,6 +1080,9 @@ def fetch(myuris, listonly=0):
 						mystat=os.stat(settings["DISTDIR"]+"/"+myfile)
 						# no exception?  file exists. let digestcheck() report
 						# an appropriately for size or md5 errors
+						if myret and (mystat[ST_SIZE]<mydigests[myfile]["size"]):
+							# Fetch failed... Try the next one...
+							continue
 						fetched=2
 						break
 					except (OSError,IOError),e:

@@ -2,8 +2,10 @@
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
   01 Feb 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Adjusted
-	the arch.list code to be a general masking setup. /etc/make.profile/
-	and /etc/portage/ have use.mask files that are concatenated.
+  the arch.list code to be a general masking setup. /etc/make.profile/
+  and /etc/portage/ have use.mask files that are concatenated. On fetch,
+  if downloader reports failure, then check that filesize<digestfilesize
+  and continue onto the next mirror before dying.
 
   27 Jan 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh/portage.py:
   eclass fixups for newdepend issues where newdepend operates on RDEPEND
