@@ -7,6 +7,12 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  07 Nov 2004; Brian Harring <ferringb@gentoo.org> orig_dict_cache.py:
+  Transfer of the cacheddir func out of portage.py, and into it's own module.
+  Current implementation isn't symlink aware, and has other issues (follow_symlinks
+  fex).  This shift of it is intended so replacing it just involves creation and 
+  importation of an alternative caching module.
+
   07 Nov 2004; Brian Harring <ferringb@gentoo.org> portage_exec.py, 
   portage_checksums.py, portage_gpg.py, portage_const.py, portage_util.py,
   portage_locks.py:  Code cleanup, moves, and shifting away from 
