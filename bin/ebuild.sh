@@ -83,6 +83,32 @@ else
 	source /usr/lib/portage/bin/functions.sh &>/dev/null
 fi
 
+# the sandbox is disabled by default except when overridden in the relevant stages
+export SANDBOX_ON="0"
+
+# sandbox support functions; defined prior to profile.bashrc srcing, since the profile might need to add a default exception (/usr/lib64/conftest fex, bug #60147)
+addread()
+{
+	export SANDBOX_READ="$SANDBOX_READ:$1"
+}
+
+addwrite()
+{
+	export SANDBOX_WRITE="$SANDBOX_WRITE:$1"
+}
+
+adddeny()
+{
+	export SANDBOX_DENY="$SANDBOX_DENY:$1"
+}
+
+addpredict()
+{
+	export SANDBOX_PREDICT="$SANDBOX_PREDICT:$1"
+}
+
+
+# source the existing profile.bashrc's.
 save_IFS
 IFS=$'\n'
 for dir in ${PROFILE_PATHS}; do
@@ -91,6 +117,7 @@ for dir in ${PROFILE_PATHS}; do
 	fi
 done
 restore_IFS
+
 
 esyslog() {
 	# Custom version of esyslog() to take care of the "Red Star" bug.
@@ -331,31 +358,6 @@ keepdir()
 		done
 	fi
 }
-
-# the sandbox is disabled by default except when overridden in the relevant stages
-export SANDBOX_ON="0"
-
-# sandbox support functions
-addread()
-{
-	export SANDBOX_READ="$SANDBOX_READ:$1"
-}
-
-addwrite()
-{
-	export SANDBOX_WRITE="$SANDBOX_WRITE:$1"
-}
-
-adddeny()
-{
-	export SANDBOX_DENY="$SANDBOX_DENY:$1"
-}
-
-addpredict()
-{
-	export SANDBOX_PREDICT="$SANDBOX_PREDICT:$1"
-}
-
 
 unpack() {
 	local x
