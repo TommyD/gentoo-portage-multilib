@@ -6312,7 +6312,7 @@ class dblink:
 						# install of destination is blocked by an existing directory with the same name
 						moveme=0
 						print "!!!",mydest
-					elif S_ISREG(mydmode):
+					elif S_ISREG(mydmode) or (S_ISLNK(mydmode) and S_ISREG(os.stat(mydest)[ST_MODE])):
 						cfgprot=0
 						# install of destination is blocked by an existing regular file;
 						# now, config file management may come into play.
