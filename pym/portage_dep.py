@@ -59,7 +59,6 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 	"""Takes a paren_reduce'd array and reduces the use? conditionals out
 	leaving an array with subarrays
 	"""
-	print excludeall
 	# Quick validity checks
 	for x in range(1,len(deparray)):
 		if deparray[x] in ["||","&&"]:
