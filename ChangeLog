@@ -8,6 +8,9 @@
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
 
+  11 Oct 2004; Jason Stubbs; <jstubbs@gentoo.org> emerge: Reverted back to
+  previous command line parsing code as --search options were being mishandled.
+
   11 Oct 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Fix for the
   SHA1 digest slipout and the exec missing/broken binary traceback.
 

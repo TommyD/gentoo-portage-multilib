@@ -141,7 +141,7 @@ params=["selective", "deep", "self", "recurse", "empty"]
 actions=[
 "clean", "config", "depclean",
 "info",   "inject",   "metadata",
-"prune", "regen",  "search",
+"prune", "regen",  "rsync", "search",
 "sync",  "system", "unmerge",  "world",
 ]
 options=[
@@ -216,43 +216,55 @@ for x in tmpcmdline:
 
 # process the options and command arguments
 for x in cmdline:
-	if not x:
-		continue
-	if len(x)>=2 and x[:2]=="--":
-		if x[2:]=="rsync":
-			x="--sync"
-			print
-			print red("*** '--rsync' has been deprecated.")
-			print red("*** Please use '--sync' instead.")
-			print
-		x = x[2:]
-		if "--"+x not in options and x not in actions:
-			print "!!! Error:",x,"is an invalid option."
-			sys.exit(1)
-	
-	if "--"+x in options:
-		myopts.append("--"+x)
-	elif x in actions:
-		if myaction:
-			if myaction not in ["system", "world"]:
-				myaction="--"+myaction
-			print
-			print red("!!!")+green(" Multiple actions requested... Please choose one only.")
-			print red("!!!")+" '"+darkgreen(myaction)+"' "+red("or")+" '"+darkgreen(x)+"'"
-			print
-			sys.exit(1)
-		myaction = x
-	elif x[-1]=="/":
-		# this little conditional helps tab completion
-		myfiles.append(x[:-1])
-	else:
-		myfiles.append(x)
+        if not x:
+                continue
+        if len(x)>=2 and x[0:2]=="--":
+                        if x in options:
+                                myopts.append(x)
+                        elif x[2:] in actions:
+                                if x[2:]=="rsync" or x=="rsync":
+					# "emerge --rsync"
+                                        print
+                                        print red("*** '--rsync' has been deprecated.")
+                                        print red("*** Please use '--sync' instead.")
+                                        print
+                                        x="--sync"
+                                if myaction:
+                                        if myaction not in ["system", "world"]:
+                                                myaction="--"+myaction
+                                        print
+                                        print red("!!!")+green(" Multiple actions requested... Please choose one only.")
+                                        print red("!!!")+" '"+darkgreen(myaction)+"' "+red("or")+" '"+darkgreen(x)+"'"
+                                        print
+                                        sys.exit(1)
+                                myaction=x[2:]
+                        else:
+                                print "!!! Error:",x,"is an invalid option."
+                                sys.exit(1)
+        elif (not myaction) and (x in actions):
+                if x not in ["system", "world"]:
+                        #print red("*** Deprecated use of action '"+x+"'")
+                        if x=="rsync":
+				# "emerge rsync"
+                                print
+                                print red("*** 'rsync' will now install the package rsync.")
+                                print red("*** To sync the tree, please use '--sync' instead.")
+                                print
+                                myfiles.append(x)
+				continue
+                if myaction:
+                        print
+                        print red("!!!")+green(" Multiple actions requested... Please choose one only.")
+                        print red("!!! '")+darkgreen(myaction)+"' "+red("or")+" '"+darkgreen(x)+"'"
+                        print
+                        sys.exit(1)
+                myaction=x
+        elif x[-1]=="/":
+                # this little conditional helps tab completion
+                myfiles.append(x[:-1])
+        else:
+                myfiles.append(x)
 
-if "rsync" in myfiles:
-	print
-	print red("*** 'emerge rsync' will now emerge the rsync package.")
-	print red("*** Please use '--sync' to update the portage tree.")
-	print
 
 if "moo" in myfiles:
 	print """
