@@ -102,7 +102,8 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0):
 					if (head[:-1] in masklist):
 						maskedMatch = True
 
-				if matchall or (matchonMatch and not maskedMatch):
+				if (matchall and (head[:-1] not in masklist)) or \
+				   (matchonMatch and not maskedMatch):
 					# It is set, keep it.
 					if newdeparray: # Error check: if nothing more, then error.
 						rlist += use_reduce(newdeparray, uselist, masklist, matchall)
