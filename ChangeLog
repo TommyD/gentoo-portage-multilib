@@ -9,6 +9,23 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  04 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage_data.py: Added
+	FreeBSD as a BSD-type OS and merged the Darwin branch with them.
+
+  04 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage_contents.py: The
+	parsing portion of a persistent contents file parser that can return the
+	owner of a particular file or directory by parsing (and storing) data from
+	the contents files.
+
+  04 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage_const.py: Added
+	LOCALE_DATA_PATH to the constants for future gettext (internal) support.
+
+  04 Sep 2004; Nicholas Jones <carpaski@gentoo.org> output.py: Fixed the
+	title changes to no clear the icon title.
+
+  04 Sep 2004; Nicholas Jones <carpaski@gentoo.org> prepman: No longer
+	gzip's symlinks -- This needs to gain 'target changed' logic.
+
   01 Sep 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py:
   Cleaned up the imports, cutting down on from blah import *, instead 
   importing only what is strictly needed for backards compatability.

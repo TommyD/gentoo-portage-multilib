@@ -37,7 +37,7 @@ def xtermTitle(mystr):
 	if havecolor and dotitles and os.environ.has_key("TERM"):
 		myt=os.environ["TERM"]
 		if myt in ["xterm","Eterm","aterm","rxvt","screen","kterm"]:
-			sys.stderr.write("\x1b]1;\x07\x1b]2;"+str(mystr)+"\x07")
+			sys.stderr.write("\x1b]2;"+str(mystr)+"\x07")
 			sys.stderr.flush()
 
 def xtermTitleReset():

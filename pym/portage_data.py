@@ -20,11 +20,7 @@ if ostype=="Linux":
 		lchown=missingos.lchown
 
 	os.environ["XARGS"]="xargs -r"
-elif ostype=="Darwin":
-	userland="BSD"
-	lchown=os.chown
-	os.environ["XARGS"]="xargs"	
-elif ostype=="OpenBSD":
+elif ostype in ["Darwin","FreeBSD","OpenBSD"]:
 	userland="BSD"
 	lchown=os.chown
 	os.environ["XARGS"]="xargs"	

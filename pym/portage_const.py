@@ -20,6 +20,7 @@ PORTAGE_BASE_PATH       = "/usr/lib/portage"
 PORTAGE_BIN_PATH        = PORTAGE_BASE_PATH+"/bin"
 PORTAGE_PYM_PATH        = PORTAGE_BASE_PATH+"/pym"
 PROFILE_PATH            = "/etc/make.profile"
+LOCALE_DATA_PATH        = PORTAGE_BASE_PATH+"/locale"
 
 EBUILD_SH_BINARY        = PORTAGE_BIN_PATH+"/ebuild.sh"
 SANDBOX_BINARY          = PORTAGE_BIN_PATH+"/sandbox"

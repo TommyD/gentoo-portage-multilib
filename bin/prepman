@@ -37,7 +37,7 @@ for x in `find "${z}"/ -type d 2>/dev/null` ; do
 				rm -f "${y}"
 			fi
 		else
-			if [ "${y##*.}" != "gz" ] ; then
+			if [ "${y##*.}" != "gz" ] && [ ! -d "${y}" ]; then
 				echo "gzipping man page: ${y##*/}"
 				gzip -f -9 "${y}"
 			fi
