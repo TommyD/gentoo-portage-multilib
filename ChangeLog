@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  27 Mar 2005; Brian Harring <ferringb@gentoo.org> bin/ebuild-functions.sh:
+  Pushed ECONF_SOURCE support forward from stable.  Seems kind of fluffish.
+
   23 Mar 2005; Jason Stubbs <jstubbs@gentoo.org> bin/dispatch-conf:
   Removed the -a argument from all diff usage.
 

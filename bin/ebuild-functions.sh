@@ -71,7 +71,8 @@ use_enable() {
 
 econf() {
 	local ret
-	if [ -x ./configure ]; then
+	ECONF_SOURCE="${ECONF_SOURCE:-.}"
+	if [ -x "${ECONF_SOURCE}/configure" ]; then
 		if hasq autoconfig $FEATURES && ! hasq autoconfig $RESTRICT; then
 			if [ -e /usr/share/gnuconfig/ ]; then
 				local x
@@ -121,7 +122,7 @@ econf() {
 		if request_confcache "${T}/local_cache"; then
 			EECONF_CACHE="--cache-file=${T}/local_cache"
 		fi
-		echo ./configure \
+		echo "${ECONF_SOURCE}/configure" \
 			--prefix=/usr \
 			--host=${CHOST} \
 			--mandir=/usr/share/man \
@@ -133,8 +134,7 @@ econf() {
 			${EECONF_CACHE} \
 			"$@"
 
-		#XXX: This is "${ECONF_SOURCE}/configure" in stable
-		if ! ./configure \
+		if ! "${ECONF_SOURCE}/configure" \
 			--prefix=/usr \
 			--host=${CHOST} \
 			--mandir=/usr/share/man \
