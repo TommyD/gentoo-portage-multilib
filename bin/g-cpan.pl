@@ -3,6 +3,9 @@
 
 # History: 
 
+# 02/23/03: alain@gentoo.org: removed portage direct-access code, and switched to using the
+#           portageq utility which hides the portage APIs.
+#
 # 01/08/03: jrray@gentoo.org: remove dependency on Digest::MD5
 #
 # 01/07/03: jrray@gentoo.org: getting the way subroutines are fed variables
@@ -289,7 +292,8 @@ sub get_globals {
     # let's not beat around the bush here, make.conf isn't the
     # only place these variables can be defined
 
-    eval qx(/usr/bin/python -c 'import portage; print \"\$OVERLAY_DIR=\\\"\"+portage.settings[\"PORTDIR_OVERLAY\"]+\"\\\";\"; print \"\$PORTAGE_DIR=\\\"\"+portage.settings[\"PORTDIR\"]+\"\\\";\"');
+    OVERLAY_DIR=$(/usr/lib/portage/bin/portageq portdir_overlay)
+    PORTAGE_DIR=$(/usr/lib/portage/bin/portageq portdir)
     
     unless ( length $OVERLAY_DIR && -d $OVERLAY_DIR ) {
         $OVERLAY_DIR = "";

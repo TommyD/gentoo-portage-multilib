@@ -11,7 +11,7 @@
 # Comments or questions to tchan@enteract.com
 # Copyright (C) 2001 - Terry Chan.  GNU GPL
 #
-export PKGDIR="`python2.2 -c 'import portage; print portage.settings["PKGDIR"];'`"
+export PKGDIR="$(/usr/lib/portage/bin/portageq pkgdir)"
 
 if [ -z $1 ]; then
   echo "QUICKPKG ver 1.1"

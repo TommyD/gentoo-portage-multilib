@@ -2,6 +2,13 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+  23 Feb 2003; Alain Penders <alain@gentoo.org>: Added bin/portageq tool to
+        provide access to portage internal information without using APIs that
+	are changing.  All tools that currently access portage information by
+	importing portage.py and poking around in it should switch to using
+	this tool instead.
+	Changed some tools in bin/ to use it, so those won't break either.
+
 *portage-2.0.47-r3 (17 Feb 2003): Wicked Fast, BugFree v2, UserPriv
 
   22 Feb 2003; Nicholas Jones <carpaski@gentoo.org> bin/: added dispatch-conf
