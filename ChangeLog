@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  29 Sep 2004; Jason Stubbs <jstubbs@gentoo.org> output.py: Added unicode-rxvt
+  to the list of legal term types. #65762
+
   28 Sep 2004; Jason Stubbs <jstubbs@gentoo.org> etc-update: Added patch to
   use gsed on BSD from bug 60721.
 

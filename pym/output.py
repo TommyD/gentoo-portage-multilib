@@ -36,7 +36,7 @@ def nc_len(mystr):
 def xtermTitle(mystr):
 	if havecolor and dotitles and os.environ.has_key("TERM"):
 		myt=os.environ["TERM"]
-		legal_terms = ["xterm","Eterm","aterm","rxvt","screen","kterm"]
+		legal_terms = ["xterm","Eterm","aterm","rxvt","screen","kterm","rxvt-unicode"]
 		if (myt in legal_terms) or myt.startswith("xterm"):
 			sys.stderr.write("\x1b]2;"+str(mystr)+"\x07")
 			sys.stderr.flush()
