@@ -8,6 +8,7 @@ os.environ["PORTAGE_CALLER"]="emerge"
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 
 import portage
+import random
 
 import emergehelp,xpak,string,re,commands,time,shutil,traceback,atexit,signal,socket,types
 from stat import *
@@ -16,6 +17,7 @@ from output import *
 import portage_util
 import portage_locks
 import portage_exception
+import portage_exec, sync
 from portage_dep import DependencyGraph
 
 spinner_msgs = ["Gentoo Rocks ("+os.uname()[0]+")",
@@ -191,6 +193,7 @@ myaction=None
 myopts=[]
 myfiles=[]
 edebug=0
+verbosity=0
 
 # process short actions
 tmpcmdline=sys.argv[1:]
@@ -200,7 +203,9 @@ for x in tmpcmdline:
 	if x[0:1]=="-"and x[1:2]!="-":
 		for y in x[1:]:
 			if shortmapping.has_key(y):
-				if shortmapping[y] in cmdline:
+				if shortmapping[y]=="--verbose":
+					verbosity += 1
+				elif shortmapping[y] in cmdline:
 					print
 					print "*** Warning: Redundant use of",shortmapping[y]
 				else:
@@ -262,6 +267,8 @@ for x in cmdline:
 	else:
 		myfiles.append(x)
 
+if verbosity:
+	import portage_metadata
 
 if "moo" in myfiles:
 	print """
@@ -284,7 +291,7 @@ if (myaction in ["world", "system"]) and myfiles:
 	sys.exit(1)
 
 for x in myfiles:
-	if (x[-7:] == ".ebuild" or x[-5:] == ".tbz2") and os.path.exists(os.path.abspath(x)):
+	if os.path.exists(os.path.abspath(x)):
 		print "emerging by path implies --oneshot... adding --oneshot to options."
 		print red("\n*** emerging by path is broken and may not always work!!!\n")
 		break
@@ -485,7 +492,7 @@ def getgccversion():
 
 		print >>sys.stderr, gcc_distcc_broken_error 
 
-		gccout = commands.getstatusoutput(gcc_ver_command)
+		gccout = portage_exec.spawn_get_output(gcc_ver_command)
 
 		if gccout[0] != 0:
 			print >>sys.stderr, gcc_not_found_error
@@ -540,7 +547,7 @@ def getportageversion():
 	libclist += portage.vardbapi(portage.root).match("virtual/glibc")
 	libclist  = portage_util.unique_array(libclist)
 	for x in libclist:
-		xs=portage.catpkgsplit(x)
+		xs=portage.portage_dep.catpkgsplit(x)
 		if libcver:
 			libcver+=","+string.join(xs[1:], "-")
 		else:
@@ -724,7 +731,7 @@ class search:
 						full_package=portage.best(portage.portdb.xmatch("match-all",match))
 				else:
 					full_package = match
-					match        = portage.pkgsplit(match)[0]
+					match        = portage.portage_dep.pkgsplit(match)[0]
 
 				if full_package:
 					try:
@@ -769,6 +776,22 @@ class search:
 						print "     ", darkgreen("Homepage:")+"   ",homepage
 						print "     ", darkgreen("Description:"),desc
 						print "     ", darkgreen("License:")+"    ",license
+						if (verbosity):
+							# show herd/maintainers if verbosity>=1 (ie: -vv)
+							metadata_file=portage.settings["PORTDIR"] + "/" + match + "/metadata.xml"
+							if not os.path.exists(metadata_file):
+								print "      " + darkgreen("Metadata:    ") + red("(Missing "+metadata_file+")")
+							else:
+								parser = portage_metadata.make_parser()
+								handler = portage_metadata.Metadata_XML()
+								handler._maintainers = []
+								handler._herds = []
+								parser.setContentHandler(handler)
+								parser.parse( metadata_file )
+								if len(handler._herds) > 0:
+									print "      " + darkgreen("Herd:        ") + ", ".join(handler._herds)
+									if len(handler._maintainers):
+										print "      " + darkgreen("Maintainers: ") + ", ".join(handler._maintainers)
 						print
 		print
 	#
@@ -786,7 +809,7 @@ class search:
 
 	def getVersion(self,full_package,detail):
 		if len(full_package) > 1:
-			package_parts = portage.catpkgsplit(full_package)
+			package_parts = portage.portage_dep.catpkgsplit(full_package)
 			if detail == search.VERSION_RELEASE and package_parts[3] != 'r0':
 				result = package_parts[2]+ "-" + package_parts[3]
 			else:
@@ -954,7 +977,7 @@ class depgraph:
 
 		edepend={}
 		if mytype=="binary":
-			mypkgparts=portage.catpkgsplit(mykey)
+			mypkgparts=portage.portage_dep.catpkgsplit(mykey)
 			tbz2name = string.split(mykey, "/")[1]+".tbz2"
 			if tbz2name in portage.db[portage.root]["bintree"].invalids:
 				sys.stderr.write("\nINVALID PACKAGE (is required to continue): "+str(mykey)+"\n")
@@ -1033,11 +1056,6 @@ class depgraph:
 				if os.path.realpath(portage.db["/"]["porttree"].dbapi.findname(mykey)) != x:
 					print red("\n*** You need to adjust PORTDIR or PORTDIR_OVERLAY to emerge this package.\n")
 					sys.exit(1)
-				if mykey not in portage.db["/"]["porttree"].dbapi.xmatch("match-visible", portage.dep_getkey(mykey)):
-					print red("\n*** You are emerging a masked package. It is MUCH better to use")
-					print red("*** /etc/portage/package.* to accomplish this. See portage(5) man")
-					print red("*** page for details.")
-					countdown(EMERGE_WARNING_DELAY, "Continuing...")
 				if not self.create(["ebuild",portage.root,mykey],None,"--onlydeps" not in myopts):
 					return (0,myfavorites)
 				elif not "--oneshot" in myopts:
@@ -1109,7 +1127,7 @@ class depgraph:
 		if matches:
 			myslot=portage.db["/"]["porttree"].getslot(pkgver)
 			for match in matches:
-				if portage.pkgcmp(portage.catpkgsplit(pkgver)[1:], portage.catpkgsplit(match)[1:]) < 0:
+				if portage.pkgcmp(portage.portage_dep.catpkgsplit(pkgver)[1:], portage.portage_dep.catpkgsplit(match)[1:]) < 0:
 					curslot=portage.db[myroot]["vartree"].getslot(match)
 					if curslot == myslot:
 						return match
@@ -1182,9 +1200,9 @@ class depgraph:
 							print "!!! One of the following masked packages is required to complete your request:"
 							oldcomment = ""
 							for p in alleb:
-								mreasons = portage.getmaskingstatus(p)
+								mreasons = portage.portdb.getmaskingstatus(p)
 								print "- "+p+" (masked by: "+string.join(mreasons, ", ")+")"
-								comment = portage.getmaskingreason(p)
+								comment = portage.portdb.getmaskingreason(p)
 								if comment and comment != oldcomment:
 									print comment
 									oldcomment = comment
@@ -1207,9 +1225,9 @@ class depgraph:
 					print "binpkg:",myeb_pkg
 
 				if myeb and myeb_pkg:
-					myeb_s     = portage.catpkgsplit(myeb)
+					myeb_s     = portage.portage_dep.catpkgsplit(myeb)
 					myeb_s     = [myeb_s[0]+"/"+myeb_s[1], myeb_s[2], myeb_s[3]]
-					myeb_pkg_s = portage.catpkgsplit(myeb_pkg)
+					myeb_pkg_s = portage.portage_dep.catpkgsplit(myeb_pkg)
 					myeb_pkg_s = [myeb_pkg_s[0]+"/"+myeb_pkg_s[1], myeb_pkg_s[2], myeb_pkg_s[3]]
 					
 					if portage.pkgcmp(myeb_s, myeb_pkg_s) == 0: # pkg is same version as ebuild
@@ -1384,7 +1402,7 @@ class depgraph:
 		p=[]
 		totalsize=0
 
-		if "--verbose" in myopts:
+		if verbosity:
 			overlays = string.split(portage.settings['PORTDIR_OVERLAY'])
 		
 		i = 0
@@ -1434,12 +1452,12 @@ class depgraph:
 						mynewslot=portage.db["/"]["bintree"].getslot(x[2])
 					elif x[0] == "ebuild":
 						mynewslot=portage.db["/"]["porttree"].getslot(x[2])
-					myoldlist=portage.db[x[1]]["vartree"].dbapi.match(portage.pkgsplit(x[2])[0])
+					myoldlist=portage.db[x[1]]["vartree"].dbapi.match(portage.portage_dep.pkgsplit(x[2])[0])
 					myinslotlist=filter((lambda p: portage.db[portage.root]["vartree"].getslot(p)==mynewslot),myoldlist)
 					if myinslotlist:
 						myoldbest=portage.best(myinslotlist)
 						addl="   "+fetch
-						if portage.pkgcmp(portage.pkgsplit(x[2]), portage.pkgsplit(myoldbest)) < 0:
+						if portage.pkgcmp(portage.portage_dep.pkgsplit(x[2]), portage.portage_dep.pkgsplit(myoldbest)) < 0:
 							# Downgrade in slot
 							addl+=turquoise("U")+blue("D")
 						else:
@@ -1452,14 +1470,14 @@ class depgraph:
 					if "--changelog" in myopts:
 						changelogs.extend(self.calc_changelog(
 							portage.portdb.findname(x[2]),
-							portage.db["/"]["vartree"].dep_bestmatch('/'.join(portage.catpkgsplit(x[2])[:2])),
+							portage.db["/"]["vartree"].dep_bestmatch('/'.join(portage.portage_dep.catpkgsplit(x[2])[:2])),
 							x[2]
 							))
 				else:
 					addl=" "+green("N")+" "+fetch+"  "
 
 				verboseadd=""
-				if "--verbose" in myopts:
+				if verbosity > 0:
 					# iuse verbose
 					try:
 						if x[0] == "binary":
@@ -1505,6 +1523,27 @@ class depgraph:
 						else:
 							iuse=blue("-"+ebuild_iuse)
 						verboseadd+=iuse+usechange+" "
+					if (verbosity and "--pretend" not in myopts) or \
+						(verbosity > 1 and "--pretend" in myopts):
+						# show herd/maintainers.
+						metadata_file=portage.settings["PORTDIR"] + "/" + portage.portage_dep.pkgsplit(x[2])[0] + "/metadata.xml"
+	        				if not os.path.exists(metadata_file):
+							verboseadd += red("(Missing metadata.xml) ")
+						else:
+							parser = portage_metadata.make_parser()
+							handler = portage_metadata.Metadata_XML()
+							handler._maintainers = []
+							handler._herds = []
+							parser.setContentHandler(handler)
+							parser.parse( metadata_file )
+
+							if len(handler._herds) > 0:
+								verboseadd += "("+ teal("H:" + ", ".join(handler._herds) ) + ")"
+								if len(handler._maintainers) < 1:
+									verboseadd += " (" + teal("M:" + ", ".join(handler._herds) ) + ") "
+								else:
+									verboseadd += " (" + teal("M:" + ", ".join(handler._maintainers) ) + ") "
+
 
 					# size verbose
 					mysize=0
@@ -1532,7 +1571,7 @@ class depgraph:
 					else:
 						verboseadd += "[No ebuild?]"
 
-				xs=portage.pkgsplit(x[2])
+				xs=portage.portage_dep.pkgsplit(x[2])
 				if xs[2]=="r0":
 					xs[2]=""
 				else:
@@ -1548,7 +1587,7 @@ class depgraph:
 				indent=""
 
 				if myoldbest:
-					myoldbest=portage.pkgsplit(myoldbest)[1]+"-"+portage.pkgsplit(myoldbest)[2]
+					myoldbest=portage.portage_dep.pkgsplit(myoldbest)[1]+"-"+portage.portage_dep.pkgsplit(myoldbest)[2]
 					if myoldbest[-3:]=="-r0":
 						myoldbest=myoldbest[:-3]
 					myoldbest=blue("["+myoldbest+"]")
@@ -1582,7 +1621,7 @@ class depgraph:
 				p.append(myprint)
 
 			if ("--tree" not in myopts):
-				mysplit=portage.pkgsplit(x[2])
+				mysplit=portage.portage_dep.pkgsplit(x[2])
 	
 				# XXX mysplit _can_ be None.... Why?
 				if mysplit and (len(mysplit)==3):
@@ -1607,7 +1646,7 @@ class depgraph:
 		for x in p:
 			print x
 
-		if "--verbose" in myopts:
+		if verbosity:
 			print
 			print "Total size of downloads: "+format_size(totalsize)
 			if overlays and display_overlays:
@@ -1624,9 +1663,9 @@ class depgraph:
 				sys.stdout.write(text)
 
 	def calc_changelog(self,ebuildpath,current,next):
-		current = '-'.join(portage.catpkgsplit(current)[1:])
+		current = '-'.join(portage.portage_dep.catpkgsplit(current)[1:])
 		if current.endswith('-r0'): current = current[:-3]
-		next = '-'.join(portage.catpkgsplit(next)[1:])
+		next = '-'.join(portage.portage_dep.catpkgsplit(next)[1:])
 		if next.endswith('-r0'): next = next[:-3]
 		changelogpath = os.path.join(os.path.split(ebuildpath)[0],'ChangeLog')
 		try:
@@ -1674,6 +1713,24 @@ class depgraph:
 	def outdated(self):
 		return self.outdatedpackages
 				
+#retval=portage.doebuild(y,"fetch",myroot,self.pkgsettings,edebug,("--pretend" in myopts),fetchonly=1,fetchall=1)
+	def __fetch(self, pkg_list,fd_pipes={1:1,2:2},fetchall=False,verbosity=0):
+		mysettings = portage.config(clone=self.pkgsettings)
+#		print "passed pkg_list",pkg_list
+		print "kiddie pid is %i" % os.getpid()
+		for x in ('autoaddcvs','cvs'):
+			try:	portage.features.remove(x)
+			except ValueError: pass
+		for x in pkg_list:
+			y=portage.portdb.findname(x[2])
+			print "fetching",y
+			try:
+				ret = portage.doebuild(y,"fetch", x[1], mysettings,False, False, fetchonly=True, fetchall=fetchall,verbosity=verbosity)
+			except Exception,e:
+				ret=1
+			if ret:
+				return False
+
 	def merge(self,mylist):
 		returnme=0
 		mymergelist=[]
@@ -1731,6 +1788,34 @@ class depgraph:
 			del myfeat[myfeat.index("keepwork")]
 
 		self.pkgsettings["FEATURES"]=string.join(myfeat)
+		self.thread = None
+
+		# parallel-fetch should only kick in when not pretending, emerge isn't just fetching, 
+		# and there is more then one node being processed.
+		if "parallel-fetch" in self.pkgsettings["FEATURES"] and not \
+			("--ask" in myopts or "--pretend" in myopts or "--fetchonly" in myopts) and \
+			len(mymergelist) > 1:
+			if "distlocks" not in self.pkgsettings["FEATURES"]:
+				print red("!!!")
+				print red("!!!")+" parallel-fetching would've been enabled, but you lack distlocks"
+				print red("!!!")+" in your features.  so yeah, no go."
+				print red("!!!")+" enable distlocks to use parallel fetching"
+				print red("!!!")
+				import time
+				time.sleep(5)
+			else:
+#				print "mergelist=",mymergelist
+#
+#				self.thread = threading.Thread(target=self.__fetch,args=[mymergelist], \
+#					kwargs={"verbosity":1, "fetchall":("--fetchalluri" in myopts)})
+#				self.thread.setDaemon(False)
+#				portage.exit_callbacks.append(self.thread.join)
+#				self.thread.start()
+				print ">>> parallel fetching is in the house, hizzay"
+				print ">>> represent."
+				portage_exec.spawn_func(self.__fetch,[mymergelist],{"verbosity":1,\
+					"fetchall":("--fetchalluri" in myopts)},returnpid=True,fd_pipes={1:1,2:2})
+#				time.sleep(2)
 
 		mergecount=0
 		for x in mymergelist:
@@ -1760,7 +1845,7 @@ class depgraph:
 						retval=portage.doebuild(y,"fetch",myroot,self.pkgsettings,edebug,("--pretend" in myopts),fetchonly=1,fetchall=1)
 					else:
 						retval=portage.doebuild(y,"fetch",myroot,self.pkgsettings,edebug,("--pretend" in myopts),fetchonly=1)
-					if (retval == None) or retval:
+					if retval:
 						print
 						print "!!! Fetch for",y,"failed, continuing..."
 						print	
@@ -1775,19 +1860,13 @@ class depgraph:
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Clean"
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Cleaning ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
 					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug,cleanup=1)
-					if (retval == None):
-						portage_util.writemsg("Unable to run required binary.\n")
-						sys.exit(127)
 					if retval:
-						sys.exit(retval)
+						sys.exit(1)
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Compile"
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Compiling/Packaging ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
 					retval=portage.doebuild(y,"package",myroot,self.pkgsettings,edebug)
-					if (retval == None):
-						portage_util.writemsg("Unable to run required binary.\n")
-						sys.exit(127)
 					if retval:
-						sys.exit(retval)
+						sys.exit(1)
 					#dynamically update our database
 					if "--buildpkgonly" not in myopts:
 						portage.db[portage.root]["bintree"].inject(x[2])
@@ -1805,19 +1884,13 @@ class depgraph:
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Clean"
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Cleaning ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
 					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug,cleanup=1)
-					if (retval == None):
-						portage_util.writemsg("Unable to run required binary.\n")
-						sys.exit(127)
 					if retval:
-						sys.exit(retval)
+						sys.exit(1)
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Compile"
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Compiling/Merging ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
 					retval=portage.doebuild(y,"merge",myroot,self.pkgsettings,edebug)
-					if (retval == None):
-						portage_util.writemsg("Unable to run required binary.\n")
-						sys.exit(127)
 					if retval:
-						sys.exit(retval)
+						sys.exit(1)
 					#dynamically update our database	
 			elif x[0]=="binary":
 				#merge the tbz2
@@ -1856,23 +1929,20 @@ class depgraph:
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Clean Post"
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Post-Build Cleaning ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
 					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug,cleanup=1)
-					if (retval == None):
-						portage_util.writemsg("Unable to run required binary.\n")
-						sys.exit(127)
 					if retval:
-						sys.exit(retval)
+						sys.exit(1)
 			
 				if ("--pretend" not in myopts) and ("--fetchonly" not in myopts) and ("--fetch-all-uri" not in myopts):
 					# Clean the old package that we have merged over top of it.
 					if self.pkgsettings["AUTOCLEAN"]=="yes":
-						xsplit=portage.pkgsplit(x[2])
+						xsplit=portage.portage_dep.pkgsplit(x[2])
 						emergelog(" >>> AUTOCLEAN: "+xsplit[0])
 						retval=unmerge("clean", [xsplit[0]])
 						if not retval:
 							emergelog(" --- AUTOCLEAN: Nothing unmerged.")
 
 					# Figure out if we need a restart.
-					mysplit=portage.pkgsplit(x[2])
+					mysplit=portage.portage_dep.pkgsplit(x[2])
 					if mysplit[0]=="sys-apps/portage":
 						myver=mysplit[1]+"-"+mysplit[2]
 						if myver[-3:]=='-r0':
@@ -1913,6 +1983,10 @@ class depgraph:
 			# Unsafe for parallel merges
 			del portage.mtimedb["resume"]["mergelist"][0]
 
+		if self.thread:
+			self.thread.join()
+			self.thread=None
+
 		emergelog(" *** Finished. Cleaning up...")
 
 		# We're out of the loop... We're done. Delete the resume data.
@@ -1923,7 +1997,7 @@ class depgraph:
 			if ("--fetchonly" not in myopts) and ("--fetch-all-uri" not in myopts):
 				if (mergecount>0):
 					if retval:
-						portage.env_update()
+						portage.env_update(portage.root)
 
 		#by doing an exit this way, --fetchonly can continue to try to
 		#fetch everything even if a particular download fails.
@@ -2103,7 +2177,7 @@ def unmerge(unmerge_action, unmerge_files):
 			print string.rjust(mytype,12)+":",
 			if pkgmap[x][mytype]:
 				for mypkg in pkgmap[x][mytype]:
-					mysplit=portage.catpkgsplit(mypkg)
+					mysplit=portage.portage_dep.catpkgsplit(mypkg)
 					if mysplit[3]=="r0":
 						myversion=mysplit[2]
 					else:
@@ -2147,7 +2221,7 @@ def unmerge(unmerge_action, unmerge_files):
 			else:
 				emergelog(" >>> unmerge success: "+y)
 	#run ldconfig, etc...
-	portage.env_update()
+	portage.env_update(portage.root)
 	if not numselected:
 		return 0
 	else:
@@ -2216,7 +2290,8 @@ def post_emerge(retval=0):
 				for x in os.listdir(inforoot):
 					if (x[0] == ".") or (x in ["dir","dir.old"]) or (os.path.isdir(inforoot+"/"+x)):
 						continue
-					myso=commands.getstatusoutput("LANG=C LANGUAGE=C /usr/bin/install-info --dir-file="+inforoot+"/dir "+inforoot+"/"+x)[1]
+#					myso=commands.getstatusoutput("LANG=C LANGUAGE=C /usr/bin/install-info --dir-file="+inforoot+"/dir "+inforoot+"/"+x)[1]
+					myso=portage_exec.spawn_get_output("LANG=C LANGUAGE=C /usr/bin/install-info --dir-file="+inforoot+"/dir "+inforoot+"/"+x,spawn_type=portage_exec.spawn_bash)[1]
 					existsstr="already exists, for file `"
 					if myso!="":
 						if re.search(existsstr,myso):
@@ -2250,7 +2325,7 @@ def chk_updated_cfg_files():
 		procount=0
 		for x in string.split(portage.settings["CONFIG_PROTECT"]):
 			if os.path.isdir(x):
-				a=commands.getstatusoutput("cd "+x+"; find . -iname '._cfg????_*'")
+				a=portage_exec.spawn_get_output("cd "+x+"; find . -iname '._cfg????_*'",spawn_type=portage_exec.spawn_bash)
 				if a[0]!=0:
 					print " "+red("*")+" error scanning",x
 				else:
@@ -2281,15 +2356,26 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 		os.makedirs(myportdir,0755)	
 	syncuri=string.rstrip(portage.settings["SYNC"])
 	os.umask(0022)
+
+	sync_verbosity=0
+	if "--quiet" in myopts:
+		sync_verbosity = 1
+	elif "--verbose" in myopts:
+		sync_verbosity = 3
+	else:
+		sync_verbosity = 2
+
+	print "sync_verbosity=",sync_verbosity
+	tmpservertimestampfile = None
+
+	protocol,host_uri = sync.parseSyncUri(syncuri)
+	print "host_uri=",host_uri
+
 	if myaction == "metadata":
 		print "skipping sync"
 		updatecache_flg = True
 		tmpservertimestampfile = None
-	elif syncuri[:8]=="rsync://":
-		if not os.path.exists("/usr/bin/rsync"):
-			print "!!! /usr/bin/rsync does not exist, so rsync support is disabled."
-			print "!!! Type \"emerge net-misc/rsync\" to enable rsync support."
-			sys.exit(1)
+	elif protocol == "rsync":
 		mytimeout=180
 		if portage.settings.has_key("RSYNC_TIMEOUT"):
 			try:
@@ -2298,46 +2384,8 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 				raise # Needed else can't exit
 			except:
 				pass
-		
-		rsync_flags = [
-			"--recursive",    # Recurse directories
-			"--links",        # Consider symlinks
-			"--safe-links",   # Ignore links outside of tree
-			"--perms",        # Preserve permissions
-			"--times",        # Preserive mod times
-			"--compress",     # Compress the data transmitted
-			"--force",        # Force deletion on non-empty dirs
-			"--whole-file",   # Don't do block transfers, only entire files
-			"--delete",       # Delete files that aren't in the master tree
-			"--delete-after", # Delete only after everything else is done
-			"--stats",        # Show final statistics about what was transfered
-      "--timeout="+str(mytimeout), # IO timeout if not done in X seconds
-			"--exclude='/distfiles'",   # Exclude distfiles from consideration
-			"--exclude='/local'",       # Exclude local     from consideration
-			"--exclude='/packages'",    # Exclude packages  from consideration
-		]
 
-		if "--quiet" in myopts:
-			rsync_flags.append("--quiet")    # Shut up a lot
-		else:
-			rsync_flags.append("--progress") # Progress meter for each file
-			
-		if "--verbose" in myopts:
-			rsync_flags.append("--verbose")  # More noise? Not really sure what
-
-		if "--debug" in myopts:
-			rsync_flags.append("--checksum") # Force checksum on all files
-
-		if portage.settings.has_key("RSYNC_EXCLUDEFROM"):
-			if os.path.exists(portage.settings["RSYNC_EXCLUDEFROM"]):
-				rsync_flags.append("--exclude-from="+portage.settings["RSYNC_EXCLUDEFROM"])
-			else:
-				print "!!! RSYNC_EXCLUDEFROM specified, but file does not exist."
-
-		if portage.settings.has_key("RSYNC_RATELIMIT"):
-			rsync_flags.append("--bwlimit="+portage.settings["RSYNC_RATELIMIT"])
-
-		rsynccommand = "/usr/bin/rsync " + string.join(rsync_flags, " ")
+		syncer=sync.rsync.RsyncHost(host_uri)
 
 		servertimestampdir  = portage.settings.depcachedir+"/"
 		servertimestampfile = portage.settings.depcachedir+"/timestamp.chk"
@@ -2345,6 +2393,7 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 		tmpservertimestampfile = portage.settings["PORTAGE_TMPDIR"]+"/timestamp.chk"
 
 		# We only use the backup if a timestamp exists in the portdir.
+
 		content=None
 		if os.path.exists(myportdir+"/metadata/timestamp.chk"):
 			content=portage.grabfile(servertimestampfile)
@@ -2373,50 +2422,39 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 			maxretries=3 #default number of retries
 
 		retries=0
-		hostname, port=re.split("rsync://([^:/]*)(:[0-9]+)?", syncuri)[1:3];
-		if port==None:
-			port=""
 		updatecache_flg=True
 
-		ips=[]
+		ips=syncer.get_ips()
+		if ips == None:
+			ips=[None]
 		while (1):
-			if ips:
-				del ips[0]
-			if ips==[]:
-				try:
-					ips=socket.gethostbyname_ex(hostname)[2]
-				except SystemExit, e:
-					raise # Needed else can't exit
-				except Exception, e:
-					print "Notice:",str(e)
-					dosyncuri=syncuri
-
-			if ips:
-				try:
-					dosyncuri=string.replace(syncuri, "//"+hostname+port+"/", "//"+ips[0]+port+"/", 1)
-				except SystemExit, e:
-					raise # Needed else can't exit
-				except Exception, e:
-					print "Notice:",str(e)
-					dosyncuri=syncuri
-
 			if (retries==0):
 				if "--ask" in myopts:
-					if userquery("Do you want to sync your Portage tree with the mirror at\n" + blue(dosyncuri) + bold("?"))=="No":
+					if userquery("Do you want to sync your Portage tree with the mirror %s at %s\n" \
+						% (host_uri, blue(str(ips[0])))+bold("?"))=="No":
 						print
 						print "Quitting."
 						print
 						sys.exit(0)
-				emergelog(">>> starting rsync with "+dosyncuri)
-				print ">>> starting rsync with "+dosyncuri+"..."
+				emergelog(">>> starting rsync with "+host_uri)
+				print ">>> starting rsync with %s, ip %s..." % (host_uri,ips[0])
 			else:
-				emergelog(">>> Starting retry %d of %d with %s" % (retries,maxretries,dosyncuri))
-				print "\n\n>>> Starting retry %d of %d with %s" % (retries,maxretries,dosyncuri)
+				emergelog(">>> Starting retry %d of %d with %s ip %s" % \
+					(retries,maxretries,host_uri,ips[0]))
+				print "\n\n>>> Starting retry %d of %d with %s" % (retries,maxretries,host_uri)
 
-			print ">>> checking server timestamp ..."
-			mycommand=rsynccommand+" "+dosyncuri+"/metadata/timestamp.chk "+tmpservertimestampdir
-			exitcode=portage.spawn(mycommand,portage.settings,free=1,fd_pipes={1:1,2:2})
-			if (exitcode==0):
+			try:
+				print ">>> syncing..."
+				exitcode=syncer.sync(portage.settings,tmpservertimestampdir, \
+					remote_path=syncer.get_remote_path()+"/metadata/timestamp.chk",
+					verbosity=0, cleanup=False, ip=ips[0])
+				if exitcode==True:
+					exitcode=0
+			except (sync.rsync.RSyncSyntaxError,IOError),e:
+				print e
+				exitcode=1
+
+			if exitcode==0:
 				try:
 					servertimestamp = time.mktime(time.strptime(portage.grabfile(tmpservertimestampfile)[0], "%a, %d %b %Y %H:%M:%S +0000"))
 				except SystemExit, e:
@@ -2442,8 +2480,15 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 					print
 				elif (servertimestamp == 0) or (servertimestamp > mytimestamp):
 					# actual sync
-					mycommand=rsynccommand+" "+dosyncuri+"/ "+myportdir
-					exitcode=portage.spawn(mycommand,portage.settings,free=1,fd_pipes={1:1,2:2})
+					try:
+						exitcode=syncer.sync(portage.settings,portage.settings["PORTDIR"],
+							verbosity=sync_verbosity,
+							excludes=('/distfiles','/local','/packages'),ip=ips[0])
+						if exitcode==True:
+							exitcode=0
+					except (sync.rsync.RSyncSyntaxError,IOError),e:
+						print e
+						exitcode=21
 					if exitcode in [0,1,2,3,4,11,14,20,21]:
 						break
 			elif exitcode in [0,1,2,3,4,11,14,20,21]:
@@ -2461,55 +2506,67 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 				break
 
 		if (exitcode==0):
-			emergelog("=== Sync completed with %s" % dosyncuri)
+			emergelog("=== Sync completed with %s: %s" % (host_uri,ips[0]))
 		elif (exitcode>0):
 			print
-			if exitcode==1:
+			try:
+				exitcode=syncer.sync(portage.settings,portage.settings["PORTDIR"],
+					excludes=("/distfiles","/local","/packages"),verbosity=sync_verbosity,ip=ips[0])
+				if exitcode == True:
+					exitcode=0
+			except sync.rsync.RSyncSyntaxError, rsse:
 				print darkred("!!!")+green(" Rsync has reported that there is a syntax error. Please ensure")
 				print darkred("!!!")+green(" that your SYNC statement is proper.")
-				print darkred("!!!")+green(" SYNC="+portage.settings["SYNC"])
-			elif exitcode==11:
+				print darkred("!!!")+green(" SYNC="+rsse.value)
+			except IOError, ie:
 				print darkred("!!!")+green(" Rsync has reported that there is a File IO error. Normally")
 				print darkred("!!!")+green(" this means your disk is full, but can be caused by corruption")
 				print darkred("!!!")+green(" on the filesystem that contains PORTDIR. Please investigate")
 				print darkred("!!!")+green(" and try again after the problem has been fixed.")
 				print darkred("!!!")+green(" PORTDIR="+portage.settings["PORTDIR"])
-			elif exitcode==20:
+			if exitcode==20:
 				print darkred("!!!")+green(" Rsync was killed before it finished.")
-			else:
+			elif exitcode > 0:
 				print darkred("!!!")+green(" Rsync has not successfully finished. It is recommended that you keep")
 				print darkred("!!!")+green(" trying or that you use the 'emerge-webrsync' option if you are unable")
 				print darkred("!!!")+green(" to use rsync due to firewall or other restrictions. This should be a")
 				print darkred("!!!")+green(" temporary problem unless complications exist with your network")
 				print darkred("!!!")+green(" (and possibly your system's filesystem) configuration.")
-			print
-			sys.exit(exitcode)
-	elif syncuri[:6]=="cvs://":
-		if not os.path.exists("/usr/bin/cvs"):
-			print "!!! /usr/bin/cvs does not exist, so rsync support is disabled."
-			print "!!! Type \"emerge dev-util/cvs\" to enable CVS support."
-			sys.exit(1)
-		cvsroot=syncuri[6:]
-		cvsdir=os.path.dirname(myportdir)
-		if not os.path.exists(myportdir+"/CVS"):
-			#initial checkout
-			print ">>> starting initial cvs checkout with "+syncuri+"..."
-			if not portage.spawn("cd "+cvsdir+"; cvs -d "+cvsroot+" login",portage.settings,free=1):
-				print "!!! cvs login error; exiting."
-				sys.exit(1)
-			if os.path.exists(cvsdir+"/gentoo-x86"):
-				print "!!! existing",cvsdir+"/gentoo-x86 directory; exiting."
-				sys.exit(1)
-			if not portage.spawn("cd "+cvsdir+"; cvs -z0 -d "+cvsroot+" co -P gentoo-x86",portage.settings,free=1):
-				print "!!! cvs checkout error; exiting."
-				sys.exit(1)
-			if cvsdir!=myportdir:
-				portage.movefile(cvsdir,portage.settings["PORTDIR"])
-			sys.exit(0)
-		else:
-			#cvs update
+			if exitcode:
+				print "bailing",exitcode
+				sys.exit(exitcode)
+			else:
+				updatecache_flg=True
+	elif protocol == "cvs":
+		syncer=sync.cvs.CvsHost(host_uri)
+		try:
 			print ">>> starting cvs update with "+syncuri+"..."
-			sys.exit(portage.spawn("cd "+myportdir+"; cvs -z0 -q update -dP",portage.settings,free=1)) 
+			syncer.sync(portage.settings["PORTDIR"],compress=False)
+			print ">>> finished"
+		except sync.cvs.CVSIOError, ce:
+			print red("!!!")+"cvs operation failed-"
+			print str(ce)
+			sys.exit(1)
+	elif protocol == "snapshot":
+		fetcher=portage.get_preferred_fetcher()
+		print 'host_uri=',host_uri
+		if host_uri == None:
+			print ">>> choosing a random mirror from the mirror list"
+			host_uri = portage.thirdpartymirrors["gentoo"][:]
+			random.shuffle(host_uri)
+			host_uri=host_uri[0].replace("distfiles","snapshots")
+			print ">>> using %s" % host_uri
+		if not os.path.exists(portage.settings["PORTAGE_TMPDIR"]+"/snapshots"):
+			os.mkdir(portage.settings["PORTAGE_TMPDIR"]+"/snapshots")
+		syncer=sync.snapshot.SnapshotHost(host_uri,portage.settings["DISTDIR"], \
+			portage.settings["PORTAGE_TMPDIR"]+"/snapshots", fetcher=fetcher)
+		if not syncer.sync(portage.settings["PORTDIR"],verbosity=sync_verbosity):
+			print "!!! snapshot failed"
+			sys.exit(1)
+		if os.path.exists("%s/metadata/timestamp.chk" % portage.settings["PORTAGE_PORTDIR"]):
+			tmpservertimestampfile = "%s/metadata.timestamp.chk" % portage.settings["PORTAGE_PORTDIR"]
+
+		updatecache_flg = True
 	else:
 		print "!!! rsync setting: ",syncuri,"not recognized; exiting."
 		sys.exit(1)
@@ -2531,9 +2588,6 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 		if (os.path.exists(cachedir) and os.path.exists(cachedir+"/app-portage")):
 			# removed old style cache.
 			portage.spawn("rm -Rf "+cachedir+"/*",portage.settings,free=1)
-
-		if os.path.exists(cachedir+"/"+myportdir):
-			portage.spawn("rm -Rf "+cachedir+"/"+myportdir+"/*",portage.settings,free=1)
 
 		# save timestamp.chk for next timestamp check.
 		try:
@@ -2565,24 +2619,9 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 		pcntcount=len(mynodes)/100.0
 		nextupdate=pcntcount
 		current=0
-		for x in mynodes:
-			current += 1
-			if current >= nextupdate:
-				pcnt += 1
-				nextupdate += pcntcount
-				pcntstr = str(pcnt)
-				sys.stdout.write("\b"*(len(pcntstr)+1)+pcntstr+"%")
-				sys.stdout.flush()
-			myxsplit=x.split("/")
-			mymatches=portage.portdb.xmatch("match-all",x)
-			mymatches.sort()
-			for y in mymatches:
-				try:
-					ignored=portage.portdb.aux_get(y,[],metacachedir=myportdir+"/metadata/cache",debug=("cachedebug" in portage.features))
-				except SystemExit, e:
-					raise # Needed else can't exit
-				except Exception, e:
-					print "\nFailed cache update:",y,e
+		# need to add a callback option to regen_keys to take advantage of the happy spinny eye-candy stuff.
+		portage.portdb.regen_keys(src_cache=myportdir+"/metadata/cache",debug=("cachedebug" in portage.features),
+			verbose=False)
 		portage.portdb.porttrees=backup_porttrees
 		sys.stdout.write("\n\n")
 		sys.stdout.flush()
@@ -2604,26 +2643,7 @@ elif myaction=="regen":
 	emergelog(" === regen")
 	#regenerate cache entries
 	print "Regenerating cache entries... "
-	try:
-		os.close(sys.stdin.fileno())
-	except SystemExit, e:
-		raise # Needed else can't exit
-	except:
-		pass
-	sys.stdout.flush()
-	mynodes=portage.portdb.cp_all()
-	for x in mynodes:
-		mymatches=portage.portdb.xmatch("match-all",x)
-		if not "--quiet" in myopts:
-			print "processing",x
-		for y in mymatches:
-			try:
-				foo=portage.portdb.aux_get(y,["DEPEND"],debug=1)
-			except SystemExit, e:
-				# sys.exit is an exception... And consequently, we can't catch it.
-				raise
-			except Exception, e:
-				print "\n  error processing %(cpv)s, continuing... (%(e)s)" % {"cpv":y,"e":str(e)}
+	portage.portdb.regen_keys(debug=1)
 	print "done!"
 # HELP action
 elif "config"==myaction:
@@ -2633,16 +2653,16 @@ elif "config"==myaction:
 	print
 # INFO action
 elif "info"==myaction:
-	unameout=commands.getstatusoutput("uname -mrp")[1]
+	unameout=portage_exec.spawn_get_output("uname -mrp")[1]
 	print getportageversion()
 	print "================================================================="
 	print "System uname: "+unameout
 	if os.path.exists("/etc/gentoo-release"):
-		os.system("cat /etc/gentoo-release")
+		portage_exec.spawn("cat /etc/gentoo-release")
 	else:
 		print "Unknown Host Operating System"
 	
-	output=commands.getstatusoutput("distcc --version")
+	output=portage_exec.spawn_get_output("distcc --version")
 	if not output[0]:
 		print str(string.split(output[1],"\n",1)[0]),
 		if "distcc" in portage.features:
@@ -2650,7 +2670,7 @@ elif "info"==myaction:
 		else:
 			print "[disabled]"
 
-	output=commands.getstatusoutput("ccache -V")
+	output=portage_exec.spawn_get_output("ccache -V")
 	if not output[0]:
 		print str(string.split(output[1],"\n",1)[0]),
 		if "ccache" in portage.features:
@@ -2711,7 +2731,7 @@ elif "inject"==myaction:
 			print "!!! Must be 'category/package-version' with no other symbols."
 			print
 			continue
-		mycps=portage.catpkgsplit(x)
+		mycps=portage.portage_dep.catpkgsplit(x)
 		if (not mycps) or (mycps[0]=="null"):
 			print "!!!",x,"is not a specific cat/pkg-version, skipping..."
 			continue
@@ -2791,7 +2811,7 @@ elif "depclean"==myaction:
 
 	reallist=[]
 	for x in alldeps:
-		myparts=portage.catpkgsplit(string.split(x)[2])
+		myparts=portage.portage_dep.catpkgsplit(string.split(x)[2])
 		if not myparts:
 			sys.stderr.write(
 			  red("!!! There appears to be a problem with the following package:\n")+
@@ -2813,7 +2833,7 @@ elif "depclean"==myaction:
 				cleanlist.append(x)
 
 	for x in syslist+worldlist:
-		myparts = portage.catpkgsplit(x)
+		myparts = portage.portage_dep.catpkgsplit(x)
 		if myparts:
 			if myparts[0][0] in ('<','>','='):
 				myparts[0] = myparts[0][1:]

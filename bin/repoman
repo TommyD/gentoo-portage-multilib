@@ -580,6 +580,7 @@ else:
 		if abs(time() - ct) > (60*60*24*7):
 			# don't trap the exception, we're watching for errno 2 (file not found), anything else is a bug.
 			backup_exists=1
+			os.renam(portage.CACHE_PATH+'/metadata.dtd',portage.CACHE_PATH+'/metadata.dtd.backup')
 		else:
 			must_fetch=0
 
@@ -593,17 +594,18 @@ else:
 		print green("***")+" the local copy of metadata.dtd needs to be refetched, doing that now"
 		print
 		try:
-			if os.path.exists(repoman_settings["DISTDIR"]+'/metadata.dtd'):
-				os.remove(repoman_settings["DISTDIR"]+'/metadata.dtd')
-			val=portage.fetch(['http://www.gentoo.org/dtd/metadata.dtd'],repoman_settings,fetchonly=0, \
-				try_mirrors=0)
-			if val:
+			import transports.bundled_lib
+			fetcher=transports.bundled_lib.BundledConnection()
+
+			val=fetcher.fetch("http://www.gentoo.org/dtd/metadata.dtd",file_name="%s/metadata.dtd" % 
+				portage.CACHE_PATH)
+			del fetcher
+			if not val:
+				print "fetched."
 				if backup_exists:
-					os.remove(portage.CACHE_PATH+'/metadata.dtd')
-				shutil.copy(repoman_settings["DISTDIR"]+'/metadata.dtd',portage.CACHE_PATH+'/metadata.dtd')
+					os.remove(portage.CACHE_PATH+'/metadata.dtd.backup')
 				os.chown(portage.CACHE_PATH+'/metadata.dtd',os.getuid(),portage.portage_gid)
 				os.chmod(portage.CACHE_PATH+'/metadata.dtd',0664)
-
 
 		except SystemExit, e:
 			raise  # Need to propogate this
@@ -612,7 +614,9 @@ else:
 			print red("!!!")+" attempting to fetch 'http://www.gentoo.org/dtd/metadata.dtd', caught"
 			print red("!!!")+" exception '%s' though." % str(e)
 			val=0
-		if not val:
+		if val:
+			if backup_exists:
+				os.rename(portage.CACHE_PATH+'/metadata.dtd.backup',portage.CACHE_PATH+'/metadata.dtd')
 			print red("!!!")+" fetching new metadata.dtd failed, aborting"
 			sys.exit(1)
 	#this can be problematic if xmllint changes their output
@@ -1383,11 +1387,18 @@ else:
 		if repolevel==3:   # In a package dir
 			repoman_settings["O"]="./"
 			portage.digestgen([],repoman_settings,manifestonly=1)
+			failure_count=0
 			if "sign" in portage.features:
-				while(gpgsign(repoman_settings["O"]+"/Manifest")):
+				while(failure_count < 5 and gpgsign(repoman_settings["O"]+"/Manifest")):
 					portage.writemsg("!!! YOU MUST sign the Manifest.\n")
 					portage.writemsg("!!! You can also disable this for the time being by removing FEATURES='sign'")
 				#mysigs+=[sigfile]
+				if failure_count >= 5:
+					portage.writemsg("!!! WARNING\n")
+					portage.writemsg("!!! You've had gpg signing fail %i times, disabling it to ensure the manifest is commited\n")
+					portage.writemsg("!!!\n\n!!! IN OTHER WORDS, THE MANIFEST WASN'T SIGNED!\n")
+					portage.writemsg("!!! Please fix your installation, or contact devs in portage-dev so this can be resolved\n")
+					portage.writemsg("!!!\n")
 		elif repolevel==2: # In a category dir
 			for x in myfiles:
 				xs=string.split(x,"/")

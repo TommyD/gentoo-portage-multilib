@@ -7,6 +7,32 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  07 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py, bin/emerge, 
+  bin/env-update, bin/repoman, cnf/make.conf, pym/ebuild.py, bin/affect-fakeroot-perms.sh:  Merge of the 
+  ebuild-daemon code (ebuild.py), along with massive shifts/cleanup/fixes.  At this
+  point, the env of an ebuild *should* be perfectly preserved, and used.  This deprecates
+  portage.doebuild, in favor of eventually calling an ebuild.py:process_phase.  The 
+  code of doebuild now exists as ebuild.py:__adjust_env.  That code needs cleanup, 
+  and splitting.  Rough stats for the daemonized ebuild processor code is a 33% reduction
+  in run time for a full regen, with the initial framework laid out to allow parallel
+  regens on smp systems.  Aside from making all of the previous refactorings active
+  (sync refactoring in emerge, transports refactoring in portage.py and repoman), this 
+  adds the following-
+  portage.exit_callbacks- append a function to this list, and it'll be exited at shutdown
+  FEATURES="verify-rdepend"- don't trust the packages stated rdepends, ldd the crap out of 
+  the package to verify it.  When severe is on, bail, if unstated rdepends are encountered.
+  FEATURES="prelink"- do prelinking of binaries after merging.
+  FEATURES="userpriv_fakeroot"- run the install phase in userpriv'd fakeroot instance, removing
+  the root requirement for all building phases but setup
+  FEATURES="confcache"- a implementation of stuart's confcache alg, minus the sandbox
+  modifications.
+  FEATURES="parallel-fetch"- bug #1661, fork and fetch while merging.  Requires distlocks to be 
+  enabled, and only kicks in when more then one package is being merged.  This is based on 
+  portage_exec.spawn_func, and depgraph.__fetch.
+  Aside from the feature additions, a large amount of code shifting to break the need for 
+  globals, and try to centralize the code for modularizing (this is the start of it).
+  A large amount of code cleanup in addition.
+
   07 Nov 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild-default-functions.sh:
   Compatability hack to treat USE="selinux" as both a feature, and use.  With the 
   env saving/restoring, it's possible a binpkg is created on a non-selinux system- 

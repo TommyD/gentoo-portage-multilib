@@ -8,4 +8,4 @@ os.environ["PORTAGE_CALLER"] = "env-update"
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 
 import portage
-portage.env_update()
+portage.env_update(portage.root)
