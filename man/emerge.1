@@ -87,17 +87,17 @@ specific version of Mozilla.  This is generally safe to use.
 \fBNote that\fR clean \fBdoes not remove unslotted packages.\fR
 .TP 
 .BR depclean
-Determines all packages installed on the system that have no
-explicit reason for being there.  \fBemerge\fR generates a list
-of packages which it expects to be installed by checking the
-\fBsystem\fR package list and the \fBworld\fR file.  It then
-compares that list to the list of packages which are actually
-installed; the differences are listed as unnecessary packages
-and are suggested for unmerging.  \fBWARNING: Removing some
-packages may cause packages which link to the removed package
-to stop working and complain about missing libraries.\fR
+Determines all packages installed on the system that have no 
+explicit reason for being there.  \fBemerge\fR generates a list 
+of packages which it expects to be installed by checking the 
+\fBsystem\fR package list and the \fBworld\fR file.  It then 
+compares that list to the list of packages which are actually 
+installed; the differences are listed as unnecessary packages 
+and then unmerged after a short timeout.  \fBWARNING: Removing some 
+packages may cause packages which link to the removed package 
+to stop working and complain about missing libraries.\fR 
 Re\-emerge the complaining package to fix this issue.
-\fBNote that changes in USE flags can drastically affect the
+\fBNote that changes in USE flags can drastically affect the 
 output of depclean.\fR
 .TP 
 .BR info
