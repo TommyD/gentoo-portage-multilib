@@ -649,7 +649,7 @@ def new_protect_filename(mydest, newmd5=None):
 			continue
 	prot_num = prot_num + 1
 
-	new_pfile = os.path.normpath(real_dirname+"/._cfg"+prot_num.zfill(4)+"_"+real_filename)
+	new_pfile = os.path.normpath(real_dirname+"/._cfg"+str(prot_num).zfill(4)+"_"+real_filename)
 	old_pfile = os.path.normpath(real_dirname+"/"+last_pfile)
 	if last_pfile and newmd5:
 		if portage_checksum.perform_md5(real_dirname+"/"+last_pfile) == newmd5:
