@@ -13,7 +13,7 @@ os.environ["PORTAGE_CALLER"]="repoman"
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 version="1.2"	
 
-import string,signal,readline,portage,portage_dep,re,cvstree,pickle,tempfile,shutil
+import string,signal,readline,portage,portage_dep,re,cvstree,pickle,tempfile
 from output import *
 from commands import getstatusoutput
 from time import *
@@ -1149,7 +1149,7 @@ else:
 			gpgcmd += " --homedir "+repoman_settings["PORTAGE_GPG_DIR"]
 		rValue = os.system(gpgcmd+" "+filename)
 		if rValue == 0:
-			shutil.move(filename+".asc", filename)
+			os.rename(filename+".asc", filename)
 		return rValue
 
 	mychanges=[]
