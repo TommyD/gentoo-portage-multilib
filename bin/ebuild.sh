@@ -4,12 +4,24 @@
 # Distributed under the terms of the GNU General Public License v2
 $Header$
 
-#!/bin/bash
-# Gentoo Foundation
-# bugs should be thrown at Brian Harring <ferringb@gentoo.org>
-# ancestry (obviously) of this file is the original vanilla ebuild.sh; it's been heavily restructured, and nailed down for env 
-# purposes.  The final code path executed for phases is functionally the same, although env handling is quite different...
-# it's sane for starters.
+# general phase execution path-
+# execute_phases is called, which sets EBUILD_PHASE, and then depending on the phase, 
+# loads or initializes.  Env is init'd for non src based stages if the env isn't found- otherwise
+# it loads the environ via load_environ call.  In cases where env isn't found for phases setup -> merge,
+# it bails (theres no way the env should be missing- exemption is setup phase).
+# 
+# for env filtering for restoration and reloading, note the updates to DONT_EXPORT_(VARS|FUNCS).
+# those vars are basically used to track what shouldn't be saved/restored.  Whitespace seperated,
+# those vars can support posix (think egrep) regex.  They should hold all vars/funcs that are internal
+# ebuild.sh vars.  Basically, filter all vars/funcs that are specific to ebuild.sh, not the ebuild.
+# 
+# after loading the env, user defined pre hooks are executed, dyn_${EBUILD_PHASE} is executed, 
+# and the post hooks are executed.  If the env needs to be flushed to disk, MUST_EXPORT_ENV is set to 
+# "yes", and execute_phases will dump it to ${T}/environment.
+#
+# few notes on general env stuff- if it's not ebuild specific or a user option, it's typically marked
+# readonly.  This limits users, but also helps to ensure that reloaded envs from older portages don't
+# overwrite an internal ebd.sh function that has since changed.
 
 ORIG_VARS=`declare | egrep '^[^[:space:]{}()]+=' | cut -s -d '=' -f 1`
 ORIG_FUNCS=`declare -F | cut -s -d ' ' -f 3`
@@ -20,9 +32,10 @@ COMPLETED_EBUILD_PHASES (TMP|)DIR FEATURES CONFIG_PROTECT.* (P|)WORKDIR (FETCH|R
 ROOTPATH myarg SANDBOX_.* BASH.* EUID PPID SHELLOPTS UID ACCEPT_(KEYWORDS|LICENSE) BUILD(_PREFIX|DIR) T DIRSTACK
 DISPLAY (EBUILD|)_PHASE PORTAGE_.* RC_.* SUDO_.* IFS PATH LD_PRELOAD ret line phases D EMERGE_FROM
 PORT(_LOGDIR|DIR(|_OVERLAY)) ROOT TERM _ done e ENDCOLS PROFILE_.* BRACKET BAD WARN GOOD NORMAL"
-
+# flip this on to enable extra noisy output for debugging.
 #DEBUGGING="yes"
 
+# knock the sandbox vars back to the defaults.
 reset_sandbox() {
 	export SANDBOX_ON="1"
 	export SANDBOX_PREDICT="${SANDBOX_PREDICT:+${SANDBOX_PREDICT}:}/proc/self/maps:/dev/console:/usr/lib/portage/pym:/dev/random"
@@ -121,6 +134,7 @@ gen_filter() {
 	echo -n ')'
 }
 
+# func for beeping and delaying a defined period of time.
 sleepbeep() {
 	if [ ! "$#" -lt 3 ] || [ ! "$#" -gt 0 ]; then
 		echo "sleepbeep requires one arg- number of beeps"
@@ -137,8 +151,8 @@ sleepbeep() {
 	return 0
 }
 
-# basically this runs through the output of export/readonly/declare, properly handling variables w/ values that have newline.
-# nothing to it :)
+# basically this runs through the output of export/readonly/declare, properly handling variables w/ values 
+# that have newline.
 get_vars() {
 	local l
 	if [ "${portage_old_IFS:-unset}" != "unset" ]; then
@@ -153,9 +167,10 @@ get_vars() {
 	restore_IFS
 }
 
+# selectively saves  the environ- specifically removes things that have been marked to not be exported.
+# dump the environ to stdout.
 dump_environ() {
 	local f x;
-	debug-print "dumping env"
 	declare | filter-env -f $(convert_filter ${DONT_EXPORT_FUNCS}) -v $(convert_filter ${DONT_EXPORT_VARS} f x)
 
 	if ! hasq "--no-attributes" "$@"; then
@@ -198,13 +213,13 @@ dump_environ() {
 	fi
 }
 
-#selectively saves  the environ- specifically removes things that have been marked to not be exported.
+# dump environ to $1, optionally piping it through $2 and redirecting $2's output to $1.
 export_environ() {
-#	echo "exporting env for ${EBUILD_PHASE}" >&2
 	local temp_umask
 	if [ "${1:-unset}" == "unset" ]; then
 		die "export_environ requires at least one arguement"
 	fi
+
 	#the spaces on both sides are important- otherwise, the later ${DONT_EXPORT_VARS/ temp_umask /} won't match.
 	#we use spaces on both sides, to ensure we don't remove part of a variable w/ the same name- 
 	# ex: temp_umask_for_some_app == _for_some_app.  
@@ -230,6 +245,7 @@ export_environ() {
 	debug-print "exported."
 }
 
+# reload a saved env, applying usual filters to the env prior to eval'ing it.
 load_environ() {
 	local src e
 	#protect the exterior env to some degree from older saved envs, where *everything* was dumped (no filters applied)
@@ -253,10 +269,10 @@ load_environ() {
 
 	# XXX: note all of the *very careful* handling of bash env dumps through this code, and the fact 
 	# it took 4 months to get it right.  There's a reason you can't just pipe the $(export) to a file.
-	# because of that, I'm stating screw .51 envs.  
 	# They were implemented wrong, as I stated when the export kludge was added.
 	# so we're just dropping the attributes.  .51-r4 should carry a fixed version, .51 -> .51-r3
 	# aren't worth the trouble.  Drop all inline declare's that would be executed.
+	# potentially handle this via filter-env?
 	# ~harring
 	function declare() {
 		:
@@ -279,8 +295,8 @@ load_environ() {
 	return 0
 }
 
+# walk the cascaded profile src'ing it's various bashrcs.
 source_profiles() {
-	#this may belong being stored w/ the ebuild.  Not sure.
 	local dir
 	save_IFS
 	IFS=$'\n'
@@ -295,6 +311,8 @@ source_profiles() {
 	fi
 }
 
+# do all profile, bashrc's, and ebuild sourcing.  Should only be called in setup phase, unless the
+# env is *completely* missing, as it is occasionally for ebuilds during prerm/postrm.
 init_environ() {
 #	echo "initializating environment" >&2
 	OCC="$CC"
@@ -343,7 +361,7 @@ init_environ() {
 	export DIROPTIONS="-m0755"
 	export MOPREFIX=${PN}
 
-#	echo "srcing funcs"
+	# if daemonized, it's already loaded these funcs.
 	if [ "$DAEMONIZED" != "yes" ]; then
 		source "/usr/lib/portage/bin/ebuild-functions.sh" || die "failed sourcing ebuild-functions.sh"
 	fi
@@ -364,6 +382,7 @@ init_environ() {
 		echo "bailing, ebuild not found"
 		die "EBUILD=${EBUILD}; problem is, it doesn't exist.  bye." >&2
 	fi
+
 #	eval "$(cat "${EBUILD}"; echo ; echo 'true')" || die "error sourcing ebuild"
 	source "${EBUILD}"
 	if [ "${EBUILD_PHASE}" != "depend" ]; then
@@ -416,6 +435,8 @@ init_environ() {
 source "/usr/lib/portage/bin/ebuild-default-functions.sh" || die "failed sourcing ebuild-default-functions.sh"
 source "/usr/lib/portage/bin/isolated-functions.sh" || die "failed sourcing stripped down functions.sh"
 
+# general func to call for phase execution.  this handles necessary env loading/dumping, and executing pre/post/dyn
+# calls.
 execute_phases() {
 	local ret
 	for myarg in $*; do
@@ -457,32 +478,6 @@ execute_phases() {
 			einfo "ebuild-daemon calls it correctly, upgrading from vanilla portage to ebd" 
 			einfo "always triggers this though.  Please ignore it."
 			;;
-#			if [ "${SANDBOX_DISABLED="0"}" == "0" ]; then
-#				export SANDBOX_ON="1"
-#			else
-#				export SANDBOX_ON="0"
-#			fi
-#
-#			trap "killparent" INT
-#
-#			init_environ
-#	
-#			trap - INT
-#			unset killparent
-#
-#			if [ "$PORTAGE_DEBUG" != "1" ]; then
-#				dyn_${EBUILD_PHASE}
-#				#Allow non-zero return codes since they can be caused by &&
-#			else
-#				set -x
-#				dyn_${EBUILD_PHASE}
-#				#Allow non-zero return codes since they can be caused by &&
-#				set +x
-#			fi
-#			export SANDBOX_ON="0"
-#			MUST_EXPORT_ENV="no"
-#			unset COMPLETED_EBUILD_PHASES
-#			;;
 		unpack|compile|test|install)
 			if [ "${SANDBOX_DISABLED="0"}" == "0" ]; then
 				export SANDBOX_ON="1"
@@ -574,10 +569,6 @@ execute_phases() {
 
 	
 		help)
-			#pkg_setup needs to be out of the sandbox for tmp file creation;
-			#for example, awking and piping a file in /tmp requires a temp file to be created
-			#in /etc.  If pkg_setup is in the sandbox, both our lilo and apache ebuilds break.
-
 			init_environ
 			export SANDBOX_ON="1"
 
@@ -617,7 +608,6 @@ execute_phases() {
 		depend)
 			SANDBOX_ON="0"
 			MUST_EXPORT_ENV="no"
-#			echo "hidey ho biznitch"
 
 			trap 'killparent' INT
 			if [ -z "$QA_CONTROLLED_EXTERNALLY" ]; then
@@ -691,24 +681,20 @@ f="$(declare | {
 		echo "${l/=*}";
 		read l;
 	done;
-#	echo "bailing at '$l'" >&2
 	unset l
    })"
 
+#update the don't export filters.
 if [ -z "${ORIG_VARS}" ]; then
 	DONT_EXPORT_VARS="${DONT_EXPORT_VARS} ${f}"
 else
-#	echo "f=$f"
-#	echo "prior dont_export_vars='`echo $DONT_EXPORT_VARS`'"
 	DONT_EXPORT_VARS="${DONT_EXPORT_VARS} $(echo "${f}" | egrep -v "^`gen_filter ${ORIG_VARS}`\$")"
-#	echo "after dont_export_vars='`echo $DONT_EXPORT_VARS`'"
 fi
 unset f
                  
 if [ -z "${ORIG_FUNCS}" ]; then
 	DONT_EXPORT_FUNCS="${DONT_EXPORT_FUNCS} $(declare -F | cut -s -d ' ' -f 3)"
 else  
-#	DONT_EXPORT_FUNCS="${DONT_EXPORT_FUNCS} $(declare -F | cut -s -d ' ' -f 3 | egrep -v \"^`gen_filter ${ORIG_FUNCS}`\$\")"
 	DONT_EXPORT_FUNCS="${DONT_EXPORT_FUNCS} $(declare -F | cut -s -d ' ' -f 3 )"
 fi
 set +f
@@ -718,9 +704,8 @@ if [ `id -nu` == "portage" ] ; then
 	export USER=portage
 fi
 set +H -h
+# if we're being src'd for our functions, do nothing.  if called directly, define a few necessary funcs.
 if [ "$*" != "daemonize" ]; then
-#	echo "yo.  whats up?"
-#	echo "ebuild=$EBUILD; non-daemonize"
 
 	if [ "${*/depend}" != "$*" ]; then
 		speak() {
