@@ -1453,7 +1453,7 @@ class config:
 				self.pkeywordsdict = pkgdict
 
 				#package.unmask
-				pkgunmasklines = grabdict_package(USER_CONFIG_PATH+"/package.unmask")
+				pkgunmasklines = grabfile(USER_CONFIG_PATH+"/package.unmask")
 				self.punmaskdict = {}
 				for x in pkgunmasklines:
 					mycatpkg=dep_getkey(x)
@@ -1469,12 +1469,15 @@ class config:
 			#self.categories = grab_stacked("categories", locations, grabfile)
 					
 			#package.mask
-			pkgmasklines = grab_multiple("package.mask", locations, grabdict_package)
-			pkgmasklines = stack_dictlist(pkgmasklines)
+			pkgmasklines = grab_multiple("package.mask", locations, grabfile)
+			pkgmasklines = stack_lists(pkgmasklines, incremental=1)
+			#pkgmasklines = stack_lists(pkgmasklines)
+			#pkgmasklines = unique_array(pkgmasklines.keys())
 			#pkgmasklines = grab_stacked("package.mask", locations, grabdict_package)
 
 			self.pmaskdict = {}
 			for x in pkgmasklines:
+				print x
 				mycatpkg=dep_getkey(x)
 				if self.pmaskdict.has_key(mycatpkg):
 					self.pmaskdict[mycatpkg].append(x)

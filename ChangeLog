@@ -10,6 +10,11 @@
        It is for convenience. Do not mistake this for the actual file.
 
 
+*portage-2.0.51_pre7 (26 Apr 2003): Big cleanups & Ebuild QA Stuff.
+
+  25 Apr 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Fixed masking
+  problems due to the new stacking functions and empty-value stripping.
+
 *portage-2.0.51_pre6 (25 Apr 2003): Big cleanups & Ebuild QA Stuff.
 
   25 Apr 2004; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Dropped selinux
