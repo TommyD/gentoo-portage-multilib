@@ -2531,7 +2531,7 @@ class vardbapi(dbapi):
 				continue
 			if not os.path.exists(self.root+"var/db/pkg/"+mynewcat):
 				#create the directory
-				os.makedirs(self.root+"var/db/pkg"+mynewcat)	
+				os.makedirs(self.root+"var/db/pkg/"+mynewcat)	
 			newpath=self.root+"var/db/pkg/"+mynewcpv
 			if os.path.exists(newpath):
 				#dest already exists; keep this puppy where it is.
