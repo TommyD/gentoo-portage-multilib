@@ -1677,8 +1677,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				fetched=0
 
 			if not can_fetch:
-				if fetch != 2:
-					if fetch == 0:
+				if fetched != 2:
+					if fetched == 0:
 						writemsg("!!! File %s isn't fetched but unable to get it.\n" % myfile)
 					else:
 						writemsg("!!! File %s isn't fully fetched, but unable to complete it\n" % myfile)
@@ -1687,8 +1687,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					continue
 	
 			# check if we can actually write to the directory/existing file.
-			if fetched!=2 and not (os.access(mysettings["DISTDIR"],os.W_OK) and 
-				(os.path.exists(mysettings["DISTDIR"]+"/"+myfile) == os.access(mysettings["DISTDIR"]+"/"+myfile, os.W_OK))):
+			if fetched!=2 and os.path.exists(mysettings["DISTDIR"]+"/"+myfile) != \
+				os.access(mysettings["DISTDIR"]+"/"+myfile, os.W_OK):
 				writemsg(red("***")+" Lack write access to %s, failing fetch\n" % str(mysettings["DISTDIR"]+"/"+myfile))
 				fetched=0
 				break

@@ -9,6 +9,10 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  06 Sep 2004; Brian Harring <ferringb@gentoo.org> portag.epy: Fixed 
+  fetch logic for when DISTDIR isn't writable, but the file is fully 
+  fetched already (#62985).
+
   05 Sep 2004; Brian Harring <ferringb@gentoo.org> portage.py ebuild.sh:
   Added use flag support to RESTRICT; usual syntax.
 
