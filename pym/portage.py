@@ -1,5 +1,5 @@
 # portage.py -- core Portage functionality
-# Copyright 1998-2003 Daniel Robbins, Gentoo Technologies, Inc.
+# Copyright 1998-2004 Gentoo Foundation
 # Distributed under the GNU Public License v2
 # $Header$
 
