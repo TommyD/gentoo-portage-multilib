@@ -2,9 +2,13 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  22 Nov 2003; Daniel Robbins <drobbins@gentoo.org> portage.py: Fixed
+  calls in vartree method to invalidentry().... made them call call
+  self.dbapi.invalidentry() (there were multiple wrong method calls.)
+  
   10 Nov 2003; Nicholas Jones <carpaski@gentoo.org> md5check.py: Checks all
-	digests and SRC_URIs for filenames and associated MD5s. Reports collisions
-	between versions/packages, missing, and extra lines in digests.
+  digests and SRC_URIs for filenames and associated MD5s. Reports collisions
+  between versions/packages, missing, and extra lines in digests.
 
 *portage-2.0.49-r17/18 (10 Nov 2003): Fixes
 

@@ -3568,7 +3568,7 @@ class vartree(packagetree):
 		for x in mydirlist:
 			mypsplit=pkgsplit(x)
 			if not mypsplit:
-				self.invalidentry(self.root+"var/db/pkg/"+mysplit[0]+"/"+x)
+				self.dbapi.invalidentry(self.root+"var/db/pkg/"+mysplit[0]+"/"+x)
 				continue
 			if mypsplit[0]==mysplit[1]:
 				appendme=[mysplit[0]+"/"+x,[mysplit[0],mypsplit[0],mypsplit[1],mypsplit[2]]]
@@ -3596,7 +3596,7 @@ class vartree(packagetree):
 		for x in mydirlist:
 			mypsplit=pkgsplit(x)
 			if not mypsplit:
-				invalidentry(self.root+"var/db/pkg/"+mysplit[0]+"/"+x)
+				self.dbapi.invalidentry(self.root+"var/db/pkg/"+mysplit[0]+"/"+x)
 				continue
 			if mypsplit[0]==mysplit[1]:
 				return 1
