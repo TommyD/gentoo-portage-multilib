@@ -7,16 +7,36 @@ if [ $# -lt 1 ] ; then
 	echo "${0}: at least one argument needed"
 	exit 1
 fi
-if [ ! -d "${D}${INSDESTTREE}" ] ; then
-	install -d "${D}${INSDESTTREE}"
+
+if [ "${1}" == "-r" ] ; then
+	DOINSRECUR=y
+	shift
+else
+	DOINSRECUR=n
 fi
+[ -z "${INSDEPTH}" ] && declare -i INSDEPTH=0
+if [ ${INSDEPTH} -gt 30 ] ; then
+	echo "${0}: sanity check ... 30 directories is too much :("
+	exit 1
+fi
+
+dodir "${INSDESTTREE}"
 
 for x in "$@" ; do
 	if [ -L "$x" ] ; then
 		cp "$x" "${T}"
-		mysrc="${T}"/`/usr/bin/basename "${x}"`
+		mysrc="${T}/$(/usr/bin/basename "${x}")"
 	elif [ -d "$x" ] ; then
-		echo "doins: warning, skipping directory ${x}"
+		if [ "${DOINSRECUR}" == "n" ] ; then
+			continue
+		fi
+
+		mydir="${INSDESTTREE}/$(basename "${x}")"
+		find "${x}" -mindepth 1 -maxdepth 1 -exec \
+			env \
+				INSDESTTREE="${mydir}" \
+				INSDEPTH=$((INSDEPTH+1)) \
+				doins -r {} \;
 		continue
 	else
 		mysrc="${x}"

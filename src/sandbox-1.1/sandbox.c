@@ -36,6 +36,7 @@
 int preload_adaptable = 1;
 int cleaned_up = 0;
 int print_debug = 0;
+int stop_called = 0;
 
 /* Read pids file, and load active pids into an array.  Return number of pids in array */
 int
@@ -170,7 +171,7 @@ cleanup()
 
 	/* Generate sandbox pids-file path */
 	tmp_string = get_sandbox_pids_file();
-	strncpy(sandbox_pids_file, tmp_string, 254);
+	strncpy(sandbox_pids_file, tmp_string, sizeof(sandbox_pids_file)-1);
 	if (tmp_string)
 		free(tmp_string);
 	tmp_string = NULL;
@@ -292,116 +293,75 @@ cleanup()
 void
 stop(int signum)
 {
-	printf("Caught signal %d\r\n", signum);
+	if (stop_called == 0) {
+		stop_called = 1;
+		printf("Caught signal %d in pid %d\r\n", signum, getpid());
 	cleanup();
+	} else {
+		fprintf(stderr, "Pid %d alreadly caught signal and is still cleaning up\n", getpid());
+	}
 }
 
 void
 setenv_sandbox_write(char *home_dir, char *portage_tmp_dir, char *var_tmp_dir,
 										 char *tmp_dir)
 {
-	char sandbox_write_var[1024];
+	char buf[1024];
+	
+	/* bzero out entire buffer then append trailing 0 */
+	memset(buf, 0, sizeof(buf));
 
 	if (!getenv(ENV_SANDBOX_WRITE)) {
-		/* these should go into make.globals later on */
-		strcpy(sandbox_write_var, "");
-		strcat(sandbox_write_var,
-					 "/dev/zero:/dev/fd/:/dev/null:/dev/pts/:/dev/vc/:/dev/tty:/tmp/");
-		strcat(sandbox_write_var, ":");
-		/* NGPT support */
-		strcat(sandbox_write_var, "/dev/shm/ngpt");
-		strcat(sandbox_write_var, ":");
-		strcat(sandbox_write_var, "/var/log/scrollkeeper.log");
-		strcat(sandbox_write_var, ":");
-		strcat(sandbox_write_var, home_dir);
-		strcat(sandbox_write_var, "/.gconfd/lock");
-		strcat(sandbox_write_var, ":");
-		strcat(sandbox_write_var, home_dir);
-		strcat(sandbox_write_var, "/.bash_history");
-		strcat(sandbox_write_var, ":");
-		strcat(sandbox_write_var, "/usr/tmp/conftest");
-		strcat(sandbox_write_var, ":");
-		strcat(sandbox_write_var, "/usr/lib/conftest");
-		strcat(sandbox_write_var, ":");
-		strcat(sandbox_write_var, "/usr/lib32/conftest");
-		strcat(sandbox_write_var, ":");
-		strcat(sandbox_write_var, "/usr/lib64/conftest");
-		strcat(sandbox_write_var, ":");
-		strcat(sandbox_write_var, "/usr/tmp/cf");
-		strcat(sandbox_write_var, ":");
-		strcat(sandbox_write_var, "/usr/lib/cf");
-		strcat(sandbox_write_var, ":");
-		strcat(sandbox_write_var, "/usr/lib32/cf");
-		strcat(sandbox_write_var, ":");
-		strcat(sandbox_write_var, "/usr/lib64/cf");
-		strcat(sandbox_write_var, ":");
+		/* these could go into make.globals later on */
+		snprintf(buf, sizeof(buf),
+			"%s:%s/.gconfd/lock:%s/.bash_history:",		\
+			"/dev/zero:/dev/fd/:/dev/null:/dev/pts/:"	\
+			"/dev/vc/:/dev/tty:/tmp/:"			\
+			"/dev/shm/ngpt:/var/log/scrollkeeper.log:"	\
+			"/usr/tmp/conftest:/usr/lib/conftest:"		\
+			"/usr/lib32/conftest:/usr/lib64/conftest:"	\
+			"/usr/tmp/cf:/usr/lib/cf:/usr/lib32/cf:/usr/lib64/cf",
+			home_dir, home_dir);
+
 		if (NULL == portage_tmp_dir) {
-			strcat(sandbox_write_var, tmp_dir);
-			strcat(sandbox_write_var, ":");
-			strcat(sandbox_write_var, var_tmp_dir);
-			strcat(sandbox_write_var, ":");
-			strcat(sandbox_write_var, "/tmp/");
-			strcat(sandbox_write_var, ":");
-			strcat(sandbox_write_var, "/var/tmp/");
-
-			/* How the heck is this possible?? we just set it above! */
-		} else if (0 == strcmp(sandbox_write_var, "/var/tmp/")) {
-			strcat(sandbox_write_var, portage_tmp_dir);
-			strcat(sandbox_write_var, ":");
-			strcat(sandbox_write_var, tmp_dir);
-			strcat(sandbox_write_var, ":");
-			strcat(sandbox_write_var, "/tmp/");
-
-			/* Still don't think this is possible, am I just stupid or something? */
-		} else if (0 == strcmp(sandbox_write_var, "/tmp/")) {
-			strcat(sandbox_write_var, portage_tmp_dir);
-			strcat(sandbox_write_var, ":");
-			strcat(sandbox_write_var, var_tmp_dir);
-			strcat(sandbox_write_var, ":");
-			strcat(sandbox_write_var, "/var/tmp/");
-
-			/* Amazing, one I think is possible */
+			strncat(buf, tmp_dir, sizeof(buf));
+			strncat(buf, ":", sizeof(buf));
+			strncat(buf, var_tmp_dir, sizeof(buf));
+			strncat(buf, ":/tmp/:/var/tmp/", sizeof(buf));
 		} else {
-			strcat(sandbox_write_var, portage_tmp_dir);
-			strcat(sandbox_write_var, ":");
-			strcat(sandbox_write_var, tmp_dir);
-			strcat(sandbox_write_var, ":");
-			strcat(sandbox_write_var, var_tmp_dir);
-			strcat(sandbox_write_var, ":");
-			strcat(sandbox_write_var, "/tmp/");
-			strcat(sandbox_write_var, ":");
-			strcat(sandbox_write_var, "/var/tmp/");
+			strncat(buf, portage_tmp_dir, sizeof(buf));
+			strncat(buf, ":", sizeof(buf));
+			strncat(buf, tmp_dir, sizeof(buf));
+			strncat(buf, ":", sizeof(buf));
+			strncat(buf, var_tmp_dir, sizeof(buf));
+			strncat(buf, ":/tmp/:/var/tmp/", sizeof(buf));
 		}
-
-		setenv(ENV_SANDBOX_WRITE, sandbox_write_var, 1);
+		buf[sizeof(buf)] = 0;
+		setenv(ENV_SANDBOX_WRITE, buf, 1);
 	}
 }
 
 void
 setenv_sandbox_predict(char *home_dir)
 {
-	char sandbox_predict_var[1024];
+	char buf[1024];
+
+	memset(buf, 0, sizeof(buf));
 
 	if (!getenv(ENV_SANDBOX_PREDICT)) {
 		/* these should go into make.globals later on */
-		strcpy(sandbox_predict_var, "");
-		strcat(sandbox_predict_var, home_dir);
-		strcat(sandbox_predict_var, "/.");
-		strcat(sandbox_predict_var, ":");
-		strcat(sandbox_predict_var, "/usr/lib/python2.0/");
-		strcat(sandbox_predict_var, ":");
-		strcat(sandbox_predict_var, "/usr/lib/python2.1/");
-		strcat(sandbox_predict_var, ":");
-		strcat(sandbox_predict_var, "/usr/lib/python2.2/");
-		strcat(sandbox_predict_var, ":");
-		strcat(sandbox_predict_var, "/usr/lib/python2.3/");
-		strcat(sandbox_predict_var, ":");
-		strcat(sandbox_predict_var, "/usr/lib/python2.4/");
-		strcat(sandbox_predict_var, ":");
-		strcat(sandbox_predict_var, "/usr/lib/python2.5/");
-		strcat(sandbox_predict_var, ":");
-		strcat(sandbox_predict_var, "/usr/lib/python3.0/");
-		setenv(ENV_SANDBOX_PREDICT, sandbox_predict_var, 1);
+		snprintf(buf, sizeof(buf), "%s/.:"	\
+				"/usr/lib/python2.0/:"	\
+				"/usr/lib/python2.1/:"	\
+				"/usr/lib/python2.2/:"	\
+				"/usr/lib/python2.3/:"	\
+				"/usr/lib/python2.4/:"	\
+				"/usr/lib/python2.5/:"	\
+				"/usr/lib/python3.0/:",
+			home_dir);
+
+		buf[sizeof(buf)] = 0;
+		setenv(ENV_SANDBOX_PREDICT, buf, 1);
 	}
 }
 
@@ -410,7 +370,7 @@ print_sandbox_log(char *sandbox_log)
 {
 	int sandbox_log_file = -1;
 	char *beep_count_env = NULL;
-	int i, beep_count = 0;
+	int i, color, beep_count = 0;
 	long len = 0;
 	char *buffer = NULL;
 
@@ -424,10 +384,15 @@ print_sandbox_log(char *sandbox_log)
 	read(sandbox_log_file, buffer, len);
 	file_close(sandbox_log_file);
 
-	printf
-			("\e[31;01m--------------------------- ACCESS VIOLATION SUMMARY ---------------------------\033[0m\n");
-	printf("\e[31;01mLOG FILE = \"%s\"\033[0m\n", sandbox_log);
-	printf("\n");
+	color = ( (getenv("NOCOLOR") != NULL) ? 0 : 1);
+
+	if (color) printf("\e[31;01m");
+	printf("--------------------------- ACCESS VIOLATION SUMMARY ---------------------------");
+	if (color) printf("\033[0m");
+	if (color) printf("\e[31;01m");
+	printf("\nLOG FILE = \"%s\"", sandbox_log);
+	if (color) printf("\033[0m");
+	printf("\n\n");
 	printf("%s", buffer);
 	if (buffer)
 		free(buffer);
@@ -716,7 +681,12 @@ main(int argc, char **argv)
 		 * this, access is denied to /var/tmp, hurtin' ebuilds.
 		 */
 
-		realpath(getenv("PORTAGE_TMPDIR"), portage_tmp_dir);
+		{	char *e;
+			e = getenv("PORTAGE_TMPDIR");
+			if ( e && ( strlen(e) < sizeof(portage_tmp_dir)-1 ) && (strlen(e) > 1) )
+				realpath(e, portage_tmp_dir);
+
+		}
 		realpath("/var/tmp", var_tmp_dir);
 		realpath("/tmp", tmp_dir);
 
@@ -772,28 +742,6 @@ main(int argc, char **argv)
 				strcat(argv_bash[4], argv[i]);
 			}
 		}
-#if 0
-		char *argv_bash[] = {
-			"/bin/bash",
-			"-rcfile",
-			NULL,
-			NULL,
-			NULL,
-			NULL
-		};
-
-		/* adding additional bash arguments */
-		for (i = 1; i < argc; i++) {
-			if (1 == i) {
-				argv_bash[3] = run_str;
-				argv_bash[4] = run_arg;
-				strcpy(argv_bash[4], argv[i]);
-			} else {
-				strcat(argv_bash[4], " ");
-				strcat(argv_bash[4], argv[i]);
-			}
-		}
-#endif
 
 		/* set up the required signal handlers */
 		signal(SIGHUP, &stop);

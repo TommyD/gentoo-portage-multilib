@@ -260,14 +260,14 @@ _init(void)
 
 	/* Get the path and name to this library */
 	tmp_string = get_sandbox_lib("/");
-	strncpy(sandbox_lib, tmp_string, 254);
+	strncpy(sandbox_lib, tmp_string, sizeof(sandbox_lib)-1);
 	if (tmp_string)
 		free(tmp_string);
 	tmp_string = NULL;
 
 	/* Generate sandbox pids-file path */
 	tmp_string = get_sandbox_pids_file();
-	strncpy(sandbox_pids_file, tmp_string, 254);
+	strncpy(sandbox_pids_file, tmp_string, sizeof(sandbox_pids_file)-1);
 	if (tmp_string)
 		free(tmp_string);
 	tmp_string = NULL;

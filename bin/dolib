@@ -7,18 +7,23 @@ if [ -z "${CONF_LIBDIR}" ]; then
 	# we need this to default to lib so that things dont break
 	CONF_LIBDIR="lib"
 fi
+libdir="${D}${DESTTREE}/${CONF_LIBDIR}"
 
 if [ ${#} -lt 1 ] ; then
 	echo "${0}: at least one argument needed"
 	exit 1
 fi
-if [ ! -d "${D}${DESTTREE}/${CONF_LIBDIR}" ] ; then
-	install -d "${D}${DESTTREE}/${CONF_LIBDIR}"
+if [ ! -d "${libdir}" ] ; then
+	install -d "${libdir}"
 fi
 
 for x in "$@" ; do
 	if [ -e "${x}" ] ; then
-		install ${LIBOPTIONS} "${x}" "${D}${DESTTREE}/${CONF_LIBDIR}"
+		if [ ! -L "${x}" ] ; then
+			install ${LIBOPTIONS} "${x}" "${libdir}"
+		else
+			ln -s "$(readlink "${x}")" "${libdir}/${x}"
+		fi
 	else
 		echo "${0}: ${x} does not exist"
 	fi

@@ -357,27 +357,27 @@ unpack() {
 
 		case "${x##*.}" in
 			tar)
-				tar ${tarvars} -xf "${DISTDIR}/${x}" || die "$myfail"
+				tar xf "${DISTDIR}/${x}" ${tarvars} || die "$myfail"
 				;;
 			tgz)
-				tar ${tarvars} -xzf "${DISTDIR}/${x}" || die "$myfail"
+				tar xzf "${DISTDIR}/${x}" ${tarvars} || die "$myfail"
 				;;
 			tbz2)
-				bzip2 -dc "${DISTDIR}/${x}" | tar ${tarvars} -xf - || die "$myfail"
+				bzip2 -dc "${DISTDIR}/${x}" | tar xf - ${tarvars} || die "$myfail"
 				;;
 			ZIP|zip)
 				unzip -qo "${DISTDIR}/${x}" || die "$myfail"
 				;;
 			gz|Z|z)
 				if [ "${y}" == "tar" ]; then
-					tar ${tarvars} -xzf "${DISTDIR}/${x}" || die "$myfail"
+					tar xzf "${DISTDIR}/${x}" ${tarvars} || die "$myfail"
 				else
 					gzip -dc "${DISTDIR}/${x}" > ${x%.*} || die "$myfail"
 				fi
 				;;
 			bz2)
 				if [ "${y}" == "tar" ]; then
-					bzip2 -dc "${DISTDIR}/${x}" | tar ${tarvars} -xf - || die "$myfail"
+					bzip2 -dc "${DISTDIR}/${x}" | tar xf - ${tarvars} || die "$myfail"
 				else
 					bzip2 -dc "${DISTDIR}/${x}" > ${x%.*} || die "$myfail"
 				fi
@@ -390,7 +390,10 @@ unpack() {
 }
 
 econf() {
-	if [ -x ./configure ]; then
+	if [ -z "${ECONF_SOURCE}" ]; then
+		ECONF_SOURCE="."
+	fi
+	if [ -x "${ECONF_SOURCE}/configure" ]; then
 		if hasq autoconfig $FEATURES && ! hasq autoconfig $RESTRICT; then
 			if [ -e /usr/share/gnuconfig/ -a -x /bin/basename ]; then
 				local x
@@ -400,8 +403,13 @@ econf() {
 				done
 			fi
 		fi
+
 		if [ ! -z "${CBUILD}" ]; then
 			EXTRA_ECONF="--build=${CBUILD} ${EXTRA_ECONF}"
+		fi
+
+		if [ ! -z "${CTARGET}" ]; then
+			EXTRA_ECONF="--target=${CTARGET} ${EXTRA_ECONF}"
 		fi
 		
 		# if the profile defines a location to install libs to aside from default, pass it on.
@@ -418,7 +426,7 @@ econf() {
 			EXTRA_ECONF="--libdir=/${CONF_PREFIX}/${CONF_LIBDIR} ${EXTRA_ECONF}"
 		fi
 		
-		echo ./configure \
+		echo "${ECONF_SOURCE}/configure" \
 			--prefix=/usr \
 			--host=${CHOST} \
 			--mandir=/usr/share/man \
@@ -429,7 +437,7 @@ econf() {
 			${EXTRA_ECONF} \
 			"$@"
 
-		./configure \
+		"${ECONF_SOURCE}/configure" \
 			--prefix=/usr \
 			--host=${CHOST} \
 			--mandir=/usr/share/man \
@@ -857,6 +865,7 @@ dyn_compile() {
 	echo "$CDEPEND"        > CDEPEND
 	echo "$CFLAGS"         > CFLAGS
 	echo "$CHOST"          > CHOST
+	echo "$CTARGET"        > CTARGET
 	echo "$CXX"            > CXX
 	echo "$CXXFLAGS"       > CXXFLAGS
 	echo "$DEPEND"         > DEPEND
@@ -989,6 +998,11 @@ dyn_install() {
 		find "${D}/" -group portage -print0 | $XARGS -0 -n100 chgrp wheel
 	else
 		find "${D}/" -group portage -print0 | $XARGS -0 -n100 chgrp root
+	fi
+
+	# Portage regenerates this on the installed system.
+	if [ -f "${D}/usr/share/info/dir.gz" ]; then
+		rm -f "${D}/usr/share/info/dir.gz"
 	fi
 
 	touch "${BUILDDIR}/.installed"

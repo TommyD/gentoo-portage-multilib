@@ -394,7 +394,7 @@ def file_get_lib(baseurl,dest,conn=None):
 	return rc
 
 
-def dir_get_metadata(baseurl,conn=None, chunk_size=3000, verbose=1, usingcache=1, makepickle=None):
+def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=1, makepickle=None):
 	"""(baseurl,conn,chunk_size,verbose) -- 
 	"""
 	if not conn:

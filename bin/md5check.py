@@ -71,11 +71,11 @@ for mycpv in hugelist:
 			continue
 		
 		if mybn not in md5sums.keys():
-			portage.writemsg("Missing md5sum: %s in %s\n" % (mybn, mycpv))
+			portage_util.writemsg("Missing md5sum: %s in %s\n" % (mybn, mycpv))
 		else:
 			if mybn in md5_list.keys():
-				if (md5_list[mybn][0] != md5sums[mybn][0]) or \
-				   (md5_list[mybn][1] != md5sums[mybn][1]):
+				if (md5_list[mybn]["MD5"]  != md5sums[mybn]["MD5"]) or \
+				   (md5_list[mybn]["size"] != md5sums[mybn]["size"]):
 
 					# This associates teh md5 with each file. [md5/size]
 					md5joins = string.split(md5_list[mybn][2],",")

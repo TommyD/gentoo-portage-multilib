@@ -7,11 +7,12 @@ import os,sys
 os.environ["PORTAGE_CALLER"]="emerge"
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 
+import portage
+
 import emergehelp,xpak,string,re,commands,time,shutil,traceback,atexit,signal,socket,types
 from stat import *
 from output import *
 
-import portage
 import portage_util
 import portage_locks
 import portage_exception
@@ -165,6 +166,7 @@ options=[
 ]
 
 shortmapping={
+"1":"--oneshot",
 "a":"--ask",
 "b":"--buildpkg",  "B":"--buildpkgonly",
 "c":"--clean",     "C":"--unmerge",
@@ -359,9 +361,12 @@ if "inject" == myaction:
 	print red("*** using its full name (eg foo/bar-1.0) instead.")
 	print
 
-def emergelog(mystr):
+def emergelog(mystr,short_msg=None):
 	if "notitles" not in portage.features:
-		xtermTitle(mystr)
+		if short_msg:
+			xtermTitle(short_msg)
+		else:
+			xtermTitle(mystr)
 	try:
 		#seems odd opening a file each write...
 		if not os.path.exists("/var/log/emerge.log"):
@@ -393,6 +398,9 @@ def emergeexit():
 atexit.register(emergeexit)
 
 def emergeexitsig(signum, frame):
+	signal.signal(signal.SIGINT, signal.SIG_IGN)
+	portage.portageexit()
+	portage_util.writemsg("\n\nExiting on signal %(signal)s\n" % {"signal":signum})
 	sys.exit(100+signum)
 signal.signal(signal.SIGINT, emergeexitsig)
 
@@ -1735,11 +1743,13 @@ class depgraph:
 						print ">>> This is a system package, let's pack a rescue tarball."
 						#emergelog(">>> This is a system package, let's pack a rescue tarball.")
 					#create pkg, then merge pkg
-					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Cleaning ("+x[pkgindex]+"::"+y+")")
+					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Clean"
+					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Cleaning ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
 					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug,cleanup=1)
 					if retval:
 						sys.exit(1)
-					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Compiling/Packaging ("+x[pkgindex]+"::"+y+")")
+					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Compile"
+					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Compiling/Packaging ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
 					retval=portage.doebuild(y,"package",myroot,self.pkgsettings,edebug)
 					if retval:
 						sys.exit(1)
@@ -1747,7 +1757,8 @@ class depgraph:
 					if "--buildpkgonly" not in myopts:
 						portage.db[portage.root]["bintree"].inject(x[2])
 						mytbz2=portage.db[portage.root]["bintree"].getname(x[2])
-						emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Merging ("+x[pkgindex]+"::"+y+")")
+						short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Merge"
+						emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Merging ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
 
 						self.pkgsettings["EMERGE_FROM"] = "binary"
 						self.pkgsettings.backup_changes("EMERGE_FROM")
@@ -1756,11 +1767,13 @@ class depgraph:
 						if retval==None:
 							sys.exit(1)
 				else:
-					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Cleaning ("+x[pkgindex]+"::"+y+")")
+					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Clean"
+					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Cleaning ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
 					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug,cleanup=1)
 					if retval:
 						sys.exit(1)
-					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Compiling/Merging ("+x[pkgindex]+"::"+y+")")
+					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Compile"
+					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Compiling/Merging ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
 					retval=portage.doebuild(y,"merge",myroot,self.pkgsettings,edebug)
 					if retval:
 						sys.exit(1)
@@ -1769,13 +1782,15 @@ class depgraph:
 				#merge the tbz2
 				mytbz2=portage.db[portage.root]["bintree"].getname(x[2])
 				if portage.db[portage.root]["bintree"].isremote(x[2]):
-					emergelog(" --- ("+str(mergecount)+" of "+str(len(mymergelist))+") Fetching Binary ("+x[pkgindex]+"::"+mytbz2+")")
+					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Fetch"
+					emergelog(" --- ("+str(mergecount)+" of "+str(len(mymergelist))+") Fetching Binary ("+x[pkgindex]+"::"+mytbz2+")", short_msg=short_msg)
 					portage.db[portage.root]["bintree"].gettbz2(x[2])
 
 				if ("--fetchonly" in myopts) or ("--fetch-all-uri" in myopts):
 					continue
 				
-				emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Merging Binary ("+x[pkgindex]+"::"+mytbz2+")")
+				short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Merge Binary"
+				emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Merging Binary ("+x[pkgindex]+"::"+mytbz2+")", short_msg=short_msg)
 				retval=portage.pkgmerge(mytbz2,x[1],self.pkgsettings)
 				if retval==None:
 					sys.exit(1)
@@ -1796,7 +1811,8 @@ class depgraph:
 						portage.writedict(myfavdict,myroot+portage.WORLD_FILE,writekey=0)
 
 				if ("noclean" not in portage.features) and (x[0] != "binary"):
-					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Post-Build Cleaning ("+x[pkgindex]+"::"+y+")")
+					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Clean Post"
+					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Post-Build Cleaning ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
 					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug,cleanup=1)
 					if retval:
 						sys.exit(1)
