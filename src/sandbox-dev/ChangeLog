@@ -2,6 +2,13 @@
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+  16 Dec 2002; J Robert Ray <jrray@gentoo.org> Makefile libsandbox.c :
+
+  Instead of parsing the SANDBOX_* env variables on each syscall, save the
+  result in a global sbcontext pointer and cache the value of the env vars
+  to detect later on if they have changed and need to be re-parsed.  Works
+  around bug 233.
+
   16 Dec 2002; Martin Schlemmer <azarah@gentoo.org> create-localdecls :
 
   Fix memory leak for mips, bug #12236.  Thanks to Torgeir Hansen <torgeir@trenger.ro>

@@ -32,7 +32,7 @@ sandbox_futils.o: sandbox_futils.c sandbox.h
 	$(CC) $(CFLAGS) -Wall -c $(OBJ_DEFINES) sandbox_futils.c
 
 libsandbox.so: libsandbox.o sandbox_futils.o canonicalize.o
-	$(LD) $^ -shared -fPIC -ldl -lc -o $@
+	$(LD) $^ -shared -fPIC -ldl -lc -lpthread -o $@
 
 libsandbox.o: libsandbox.c localdecls.h
 	$(CC) $(CFLAGS) -Wall -c $(OBJ_DEFINES) libsandbox.c
