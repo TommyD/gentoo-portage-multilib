@@ -188,7 +188,7 @@ def help(myaction,myopts,havecolor=1):
 		print "              Note that Portage won't remerge dependencies by default."
 		print 
 		print "       "+green("--nospinner")
-		print "              Disables the spinner irregardless of terminal type."
+		print "              Disables the spinner regardless of terminal type."
 		print
 		print "       "+green("--oneshot")
 		print "              Emerge as normal, but don't add packages to the world profile for"
