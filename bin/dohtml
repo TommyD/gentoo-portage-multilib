@@ -1,6 +1,6 @@
 #!/usr/bin/python2.2
 
-# Copyright 1999-2001 Gentoo Technologies, Inc.
+# Copyright 1999-2002 Gentoo Technologies, Inc.
 # Distributed under the terms of the GNU General Public License, v2 or later
 # Author Karl Trygve Kalleberg <karltk@gentoo.org>
 # $Header$
@@ -20,9 +20,12 @@
 # dohtml -r <list-of-files-and-directories>
 #  - will do as 'dohtml', but recurse into all directories, as long as the 
 #    directory name is not CVS
+# dohtml -A jpe,java [-r] <list-of-files[-and-directories]>
+#  - will do as 'dohtml' but add .jpe,.java (default filter list is
+#    added to your list)
 # dohtml -a png,gif,html,htm [-r] <list-of-files[-and-directories]>
 #  - will do as 'dohtml' but filter on .png,.gif,.html,.htm (default filter 
-#    list is ignored
+#    list is ignored)
 # dohtml -x CVS,SCCS,RCS -r <list-of-files-and-directories>
 #  - will do as 'dohtml -r', but ignore directories named CVS, SCCS, RCS
 #
@@ -69,7 +72,7 @@ files = []
 D=os.environ["D"]
 PF=os.environ["PF"]
 DOCDESTTREE=os.environ["DOCDESTTREE"]
-allowed_exts = [ 'png', 'gif', 'html', 'htm', 'jpg', 'css' ]
+allowed_exts = [ 'png', 'gif', 'html', 'htm', 'jpg', 'css', 'js' ]
 disallowed_dirs = [ 'CVS' ]
 recurse = 0
 
@@ -78,7 +81,11 @@ for i in xrange(1,len(sys.argv)):
 		skip = skip - 1
 		continue
 		
-	if sys.argv[i]	== "-a":
+	if sys.argv[i]	== "-A":
+		allowed_exts = allowed_exts+string.split(sys.argv[i + 1], ',')
+		skip = 1
+		continue
+	elif sys.argv[i]	== "-a":
 		allowed_exts = string.split(sys.argv[i + 1], ',')
 		skip = 1
 		continue
@@ -94,4 +101,4 @@ for i in xrange(1,len(sys.argv)):
 for i in files:
 	basename = os.path.basename(i)
 	dirname  = os.path.dirname(i)
-	install(basename, dirname, recurse)	
+	install(basename, dirname, recurse)

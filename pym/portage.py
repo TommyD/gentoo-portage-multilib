@@ -3199,7 +3199,22 @@ class dblink:
 				print "portage: CONTENTS line",pos,"corrupt!"
 			pos += 1
 		return pkgfiles
-	
+
+	def isprotected(self,obj):
+		"""Checks if obj is in the current protect/mask directories. Returns
+		0 on unprotected/masked, and 1 on protected."""
+		masked=0
+		protected=0
+		for ppath in self.protect:
+			if (len(ppath) > masked) and (obj[0:len(ppath)]==ppath):
+				protected=len(ppath)
+				#config file management
+				for pmpath in self.protectmask:
+					if (len(pmpath) >= protected) and (obj[0:len(pmpath)]==pmpath):
+						#skip, it's in the mask
+						masked=len(pmpath)
+		return (protected > masked)
+
 	def unmerge(self,pkgfiles=None):
 		if not pkgfiles:
 			pkgfiles=self.getcontents()
@@ -3273,20 +3288,7 @@ class dblink:
 					if mydest != pkgfiles[obj][2]:
 						print "--- !destn","sym", obj
 						continue
-				myppath=""
-				for ppath in self.protect:
-					if obj[0:len(ppath)]==ppath:
-						masked=0
-						#config file management
-						for pmpath in self.protectmask:
-							if obj[0:len(pmpath)]==pmpath:
-								#skip, it's in the mask
-								masked=1
-								break
-						if not masked: 
-							myppath=ppath
-							break
-				if myppath:
+				if self.isprotected(obj):
 					print "--- cfgpro sym",obj
 					continue
 				mysyms.append(obj)
@@ -3300,20 +3302,7 @@ class dblink:
 				if mymd5 != string.lower(pkgfiles[obj][2]):
 					print "--- !md5  ","obj", obj
 					continue
-				myppath=""
-				for ppath in self.protect:
-					if obj[0:len(ppath)]==ppath:
-						masked=0
-						#config file management
-						for pmpath in self.protectmask:
-							if obj[0:len(pmpath)]==pmpath:
-								#skip, it's in the mask
-								masked=1
-								break
-						if not masked: 
-							myppath=ppath
-							break
-				if myppath:
+				if self.isprotected(obj):
 					print "--- cfgpro obj",obj
 				else:
 					try:
@@ -3325,20 +3314,7 @@ class dblink:
 				if not S_ISFIFO(lstatobj[ST_MODE]):
 					print "--- !fif  ","fif", obj
 					continue
-				myppath=""
-				for ppath in self.protect:
-					if obj[0:len(ppath)]==ppath:
-						masked=0
-						#config file management
-						for pmpath in self.protectmask:
-							if obj[0:len(pmpath)]==pmpath:
-								#skip, it's in the mask
-								masked=1
-								break
-						if not masked: 
-							myppath=ppath
-							break
-				if myppath:
+				if self.isprotected(obj):
 					print "--- cfgpro fif",obj
 					continue
 				try:
@@ -3590,22 +3566,9 @@ class dblink:
 			offset=stufftomerge
 			# We need mydest defined up here to calc. protection paths.  This is now done once per
 			# directory rather than once per file merge.  This should really help merge performance.
+			# Trailing / ensures that protects/masks with trailing /'s match.
 			mytruncpath="/"+offset+"/"
-			myppath=""
-			for ppath in self.protect:
-				#before matching against a protection path.
-				if mytruncpath[0:len(ppath)]==ppath:
-					myppath=ppath
-					#config file management
-					for pmpath in self.protectmask:
-						#again, dir symlinks are expanded
-						if mytruncpath[0:len(pmpath)]==pmpath:
-						#skip, it's in the mask
-							myppath=""
-							break
-					if not myppath:
-						break	
-			myppath=(myppath!="")
+			myppath=self.isprotected(mytruncpath)
 		else:
 			mergelist=stufftomerge
 			offset=""
@@ -3692,8 +3655,8 @@ class dblink:
 						print "!!!",mydest
 					elif S_ISREG(mydmode):
 						cfgprot=0
-						# install of destination is blocked by an existing regular file; now, config file
-						# management may come into play.
+						# install of destination is blocked by an existing regular file;
+						# now, config file management may come into play.
 						# we only need to tweak mydest if cfg file management is in play.
 						if myppath:
 							# we have a protection path; enable config file management.
@@ -3771,9 +3734,13 @@ class dblink:
 				# whether config protection or not, we merge the new file the same way.  Unless moveme=0 (blocking directory)
 				if moveme:
 					mymtime=movefile(mysrc,mydest,thismtime,mystat)
-					if mymtime!=None:
-						zing=">>>"
-						outfile.write("obj "+myrealdest+" "+mymd5+" "+`mymtime`+"\n")
+				else:
+					# This causes the entry to exist int he CONTENTS, but makes it
+					# obvious that it already existed on the FS.
+					mymtime=0
+				if mymtime!=None:
+					zing=">>>"
+					outfile.write("obj "+myrealdest+" "+mymd5+" "+`mymtime`+"\n")
 				print zing,mydest
 			else:
 				# we are merging a fifo or device node

@@ -1,51 +1,62 @@
 #!/bin/bash
 if [ ${#} -lt 1 ]
 then
-	echo "${0}: at least one argument needed"
+	echo "${0}: at least one argument needed" 1>&2
 	exit 1
 fi
 
-#doman is now FHS compliant:
-#
 # /usr/share/man
 # /usr/X11R6/man
 # /opt/gnome/man
 # /opt/kde/man
 
-myloc=$DESTTREE
-if [ "$myloc" = "" ]
-then
-	myloc=/usr
-fi
-if [ "$myloc" = "/usr" ]
-then
-	myext=/share
-else
-	myext=""
-fi
+BASE="/usr/share"
+OLDBASE="$BASE"
+
 for x in "$@"
 do
-	suf=${x##*.}
-	if [ "$suf" = "gz" ]
-	then
+	[ "$x" == "--"     ] && BASE="/usr/share"
+	[ "$x" == "-kde"   ] && BASE="/opt/kde"
+	[ "$x" == "-gnome" ] && BASE="/opt/gnome"
+	[ "$x" == "-x11"   ] && BASE="/usr/X11R6"
+	if [ "${x:0:1}" == "-" ]; then
+		OLDBASE="$BASE"
+		continue
+	fi
+
+	BASE="$OLDBASE"
+	suffix=${x##*.}
+	if [ "$suffix" = "gz" ]; then
+		compressed="gz"
 		realname=${x%.*}
+		suffix=${realname##*.}
 	else
 		realname=$x
+		compressed=""
 	fi
-	lastcomp=${realname##*.}
-	mandir=man${lastcomp:0:1}
-	if [ -e ${x} ]
-	then
-		if [ ! -d ${D}${myloc}${myext}/man/${mandir} ]
-	    	then
-			install -d ${D}${myloc}${myext}/man/${mandir}
-	    	fi
-	    	install -m0644 ${x} ${D}${myloc}${myext}/man/${mandir}
-			if [ "$suf" != "gz" ]
-			then
-				gzip -f -9 ${D}${myloc}${myext}/man/${mandir}/${x##*/}
+
+	if [ "x" == "${suffix:1:1}" ]; then
+		OLDBASE="$BASE"
+		BASE="/usr/X11R6"
+	fi
+
+	mandir=man${suffix:0:1}
+
+	if $(echo ${mandir} | egrep -q '^man[1-8n]$' -); then
+		if [ -e ${x} ];	then
+			if [ ! -d ${D}${BASE}/man/${mandir} ]; then
+				install -d ${D}${BASE}/man/${mandir}
 			fi
+
+			install -m0644 ${x} ${D}${BASE}/man/${mandir}
+	
+			if [ -z "${compressed}" ]; then
+				gzip -f -9 ${D}${BASE}/man/${mandir}/${x##*/}
+			fi
+		else
+			echo "doman: ${x} does not exist." 1>&2
+		fi
 	else
-	    	echo "doman: ${x} does not exist."
+		echo -e "\adoman: '${x}' is probably not a man page." 1>&2
 	fi
 done
