@@ -29,6 +29,9 @@ class depgraph:
 			self.db[pr]={"virtuals":virts,"vartree":portage.vartree(pr,virts),"porttree":portage.portagetree(pr,virts),"bintree":portage.binarytree(pr,virts)}
 		self.digraph=portage.digraph()
 		self.orderedkeys=[]
+		#the following is so we have an empty vartree (used in emerge update calculations)
+		self.emptytree=portage.vartree("/",virts,self.db["/"]["vartree"])
+		self.emptytree.tree={}
 	def create(self,mybigkey=None,myparent=None,addme=1):
 		"""creates the actual digraph of packges to merge.  return 1 on success, 0 on failure
 		mybigkey = specification of package to merge; myparent = parent package (one depending on me);
@@ -71,7 +74,10 @@ class depgraph:
 		if addme:
 			self.digraph.addnode(mybigkey,myparent)
 		for dep in mydep.keys():
-			mycheck=self.db[dep]["vartree"].depcheck(mydep[dep])
+			if "update" in mymode:
+				mycheck=self.emptytree.depcheck(mydep[dep])
+			else:
+				mycheck=self.db[dep]["vartree"].depcheck(mydep[dep])
 			if mycheck[0]==0:
 				print "!!! depgraph.create() error: string format:",mydep
 				return 0
@@ -102,7 +108,11 @@ class depgraph:
 				print "!!! Error: circular dependencies"
 				sys.exit(1)
 			splitski=string.split(mycurkey)
-			self.db[splitski[1]]["merge"].append(splitski)	
+			if "update" in mymode:
+				if not self.db["/"]["vartree"].exists_specific(splitski[2]):
+					self.db["/"]["merge"].append(splitski)
+			else:
+				self.db[splitski[1]]["merge"].append(splitski)	
 			mygraph.delnode(mycurkey)
 		for x in dolist:
 			for y in self.db[x]["merge"]:
