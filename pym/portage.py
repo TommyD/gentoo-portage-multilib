@@ -3005,6 +3005,7 @@ class portdbapi(dbapi):
 		'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or raise KeyError if error'
 		global auxdbkeys,auxdbkeylen,dbcachedir
 		dmtime=0
+		emtime=0
 		doregen=0
 		doregen2=0
 		mylines=[]
@@ -3016,20 +3017,6 @@ class portdbapi(dbapi):
 		if metacachedir and os.access(metacachedir, os.R_OK):
 			mymdkey=metacachedir+"/"+mycpv
 
-		# first, we take a look at the size of the ebuild/cache entry to ensure we
-		# have a valid data, then we look at the mtime of the ebuild and the
-		# cache entry to see if we need to regenerate our cache entry.
-		try:
-			mydbkeystat=os.stat(mydbkey)
-			if mydbkeystat[ST_SIZE] == 0:
-				doregen=2
-				dmtime=0
-			else:
-				dmtime=mydbkeystat[ST_MTIME]
-		except OSError:
-			doregen=4
-
-		emtime=0
 		#print "statusline1:",doregen,dmtime,emtime,mycpv
 		try:
 			emtime=os.stat(myebuild)[ST_MTIME]
@@ -3037,10 +3024,23 @@ class portdbapi(dbapi):
 			print "!!! Failed to stat ebuild:",myebuild
 			return None
 		
-		if dmtime!=emtime:
-			doregen=doregen+1
+		# first, we take a look at the size of the ebuild/cache entry to ensure we
+		# have a valid data, then we look at the mtime of the ebuild and the
+		# cache entry to see if we need to regenerate our cache entry.
+		try:
+			mydbkeystat=os.stat(mydbkey)
+			if mydbkeystat[ST_SIZE] == 0:
+				doregen=1
+				dmtime=0
+			else:
+				dmtime=mydbkeystat[ST_MTIME]
+				if dmtime!=emtime:
+					doregen=1
+		except OSError:
+			doregen=1
+
 		#print "statusline2:",doregen,dmtime,emtime,mycpv
-		if (doregen>1) or (doregen and not eclass(None, mycpv, dmtime)):
+		if doregen or not eclass(None, mycpv, dmtime):
 			stale=1
 			#print "doregen:",doregen,mycpv
 			if mymdkey and os.access(mymdkey, os.R_OK):
@@ -3062,14 +3062,18 @@ class portdbapi(dbapi):
 					if strict:
 						sys.stderr.write(str(red("\naux_get():")+" (0) Error in",mycpv,"ebuild.\n"))
 						raise KeyError
+
+			doregen2=1
+			dmtime=0
 			try:
+				os.utime(mydbkey,(emtime,emtime))
 				mydbkeystat=os.stat(mydbkey)
 				if mydbkeystat[ST_SIZE] == 0:
 					#print "!!! <-- Size 0 -->"
-					doregen2=1
-					dmtime=0
+					pass
 				else:
 					dmtime=mydbkeystat[ST_MTIME]
+					doregen2=0
 			except OSError:
 				#print "doregen1 failed."
 				pass
@@ -3102,7 +3106,7 @@ class portdbapi(dbapi):
 		if not mylines:
 			print "no mylines"
 			pass
-		elif len(mylines)<len(auxdbkeys) or doregen2:
+		elif doregen2 or len(mylines)<len(auxdbkeys):
 			doregen2=1
 			#print "too few auxdbkeys / invalid generation"
 		elif mylines[auxdbkeys.index("INHERITED")]!="\n":
@@ -3112,10 +3116,8 @@ class portdbapi(dbapi):
 			myeclasses=mylines[auxdbkeys.index("INHERITED")].split()
 			#print "))) 002"
 			for myeclass in myeclasses:
-				#print "PASS ONE:",myeclass
 				myret=eclass(myeclass,mycpv,dmtime)
 				#print "eclass '",myeclass,"':",myret,doregen,doregen2
-				#print myret
 				if myret==None:
 					print red("\n\naux_get():")+' eclass "'+myeclass+'" from',mydbkey,"not found."
 					print "!!! Eclass '"+myeclass+"'not found."
@@ -3142,6 +3144,7 @@ class portdbapi(dbapi):
 					print red("\n\naux_get():")+" (0) Error in",mycpv,"ebuild."
 					raise KeyError
 			try:
+				os.utime(mydbkey,(emtime,emtime))
 				mycent=open(mydbkey,"r")
 			except (IOError, OSError):
 				print red("\n\naux_get():")+" (2) couldn't open cache entry for",mycpv
@@ -3156,8 +3159,8 @@ class portdbapi(dbapi):
 			# due to a stale or regenerated cache entry,
 			# we need to update our internal dictionary....
 			try:
-				mymtime=os.stat(mydbkey)[ST_MTIME]
-				self.auxcache[mycpv]={"mtime": mymtime}
+				# Set the dep entry to the ebuilds mtime.
+				self.auxcache[mycpv]={"mtime": emtime}
 				myeclasses=mylines[auxdbkeys.index("INHERITED")].split()
 			except Exception, e:
 				print red("\n\naux_get():")+" stale entry was not regenerated for"
@@ -3166,7 +3169,7 @@ class portdbapi(dbapi):
 				os.unlink(mydbkey)
 				sys.exit(1)
 			for myeclass in myeclasses:
-				eclass(myeclass,mycpv,mymtime)
+				eclass(myeclass,mycpv,emtime)
 			try:
 				for x in range(0,len(auxdbkeys)):
 					self.auxcache[mycpv][auxdbkeys[x]]=mylines[x][:-1]
@@ -4471,7 +4474,7 @@ thirdpartymirrors=grabdict(settings["PORTDIR"]+"/profiles/thirdpartymirrors")
 features=settings["FEATURES"].split()
 
 # Defaults set at the top of perform_checksum.
-if os.system("/usr/sbin/prelink --version > /dev/null 2>&1") == 0:
+if spawn("/usr/sbin/prelink --version > /dev/null 2>&1") == 0:
 	prelink_capable=1
 
 dbcachedir=settings["PORTAGE_CACHEDIR"]

@@ -167,9 +167,10 @@ elif repolevel==1:
 			if os.path.isdir(startdir+"/"+x+"/"+y):
 				scanlist.append(x+"/"+y)
 elif repolevel==3:
-	if reposplit[-2] not in portage.categories:
+	catdir = reposplit[-2]
+	if catdir not in portage.categories:
 		caterror(catdir)
-	scanlist.append(reposplit[-2]+"/"+reposplit[-1])
+	scanlist.append(catdir+"/"+reposplit[-1])
 
 stats={}
 fails={}

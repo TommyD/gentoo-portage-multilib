@@ -14,7 +14,7 @@ def shorthelp():
 	print "   "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] < "+turquoise("system")+" | "+turquoise("world")+" >"
 	print "   "+turquoise("emerge")+" < "+turquoise("sync")+" | "+turquoise("rsync")+" | "+turquoise("info")+" >"
 	print "   "+turquoise("emerge")+" "+turquoise("--resume")+" ["+green("--pretend")+"]"
-	print "   "+turquoise("emerge")+" "+green("--help")+" "+green("-h")+" [ "+turquoise("system")+" | "+turquoise("config")+" ] "
+	print "   "+turquoise("emerge")+" "+turquoise("--help")+" [ "+green("system")+" | "+green("config")+" | "+green("rsync")+" ] "
 	print bold("Options:")+" "+green("-")+"["+green("bcCdefhikKlnoOpPsSuvV")+"] ["+green("--deep")+"] ["+green("--oneshot")+"] ["+green("--noconfmem")+"]"
 	print bold("Actions:")+" [ clean | depclean | inject | prune | regen | search | unmerge ]"
 	print
@@ -116,8 +116,8 @@ def help(myaction,myopts,havecolor=1):
 		print
 		print "       "+green("unmerge")+" ("+green("-C")+" short option)"
 		print "              "+turquoise("WARNING: This action can remove important packages!")
-		print "              Removes all matching packages without checking for outdated."
-		print "              versions. This thus effectively removes a package "+bold("completely")+" from"
+		print "              Removes all matching packages without checking for outdated"
+		print "              versions, effectively removing a package "+bold("completely")+" from"
 		print "              your system. Specify arguments using the dependency specification"
 		print "              format described in the "+bold("clean")+" action above."
 		print
@@ -239,13 +239,18 @@ def help(myaction,myopts,havecolor=1):
 		print
 		print bold("Usage: ")+turquoise("emerge")+" "+turquoise("sync")
 		print
-		print "       \"emerge sync\" tells emerge to update the Portage tree as specified in"
+		print "       'emerge sync' tells emerge to update the Portage tree as specified in"
 		print "       The SYNC variable found in /etc/make.conf.  By default, SYNC instructs"
-		print "       emerge to perform an rsync-style update with cvs.gentoo.org.  Available"
-		print "       sync methods are rsync and anoncvs.  To use anoncvs rather than rsync,"
-		print "       put 'SYNC=\"cvs://:pserver:cvs.gentoo.org:/home/cvsroot\" in your"
-		print "       /etc/make.conf.  If you haven't used anoncvs before, you'll be prompted"
-		print "       for a password, which for cvs.gentoo.org is empty (just hit enter.)"
+		print "       emerge to perform an rsync-style update with cvs.gentoo.org."
+		#              Available"
+		#print "       sync methods are rsync and anoncvs.  To use anoncvs rather than rsync,"
+		#print "       put 'SYNC=\"cvs://:pserver:cvs.gentoo.org:/home/cvsroot\" in your"
+		#print "       /etc/make.conf.  If you haven't used anoncvs before, you'll be prompted"
+		#print "       for a password, which for cvs.gentoo.org is empty (just hit enter.)"
+		print
+		print "       'emerge-webrsync' exists as a helper app to emerge sync, providing a"
+		print "       method to receive the entire portage tree as a tarball that can be"
+		print "       extracted and used. First time rsyncs would benefit greatly from this."
 		print
 		print "       "+turquoise("WARNING:")
 		print "       If using our rsync server, emerge will clean out all files that do not"
@@ -304,6 +309,9 @@ but didn't want any other changes made without your explicit approval, you'd
 add this to /etc/make.conf:
 
 CONFIG_PROTECT_MASK="/etc/wget /etc/rc.d"
+
+etc-update is also available to aid in the merging of these files. It provides
+a vimdiff interactive merging setup and can auto-merge trivial changes.
 
 """
 		print outstuff
