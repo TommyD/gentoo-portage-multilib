@@ -6998,7 +6998,7 @@ def do_upgrade(mykey):
 	writemsg("\n\n")
 	writemsg(green("Performing Global Updates: ")+bold(mykey)+"\n")
 	writemsg("(Could take a couple of minutes if you have a lot of binary packages.)\n")
-	writemsg("  "+bold(".")+"='update pass'  "+bold("*")+"='binary update'  "+bold("@")+"='/var/db move'\n"+"  "+bold("s")+"='/var/db SLOT move' "+bold("S")+"='binary SLOT move'\n")
+	writemsg("  "+bold(".")+"='update pass'  "+bold("*")+"='binary update'  "+bold("@")+"='/var/db move'\n"+"  "+bold("s")+"='/var/db SLOT move' "+bold("S")+"='binary SLOT move' "+bold("p")+"='update /etc/portage/package.*'\n")
 	processed=1
 	#remove stale virtual entries (mappings for packages that no longer exist)
 	
@@ -7061,6 +7061,8 @@ def do_upgrade(mykey):
 					if key==mysplit[1]:
 						file_contents[x][mypos]=string.replace(line,mysplit[1],mysplit[2])
 						update_files[x]=1
+						sys.stdout.write("p")
+						sys.stdout.flush()
 
 		elif mysplit[0]=="slotmove":
 			db["/"]["vartree"].dbapi.move_slot_ent(mysplit)
