@@ -1,6 +1,15 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-2.0.13 (11 Jul 2002)
+
+  11 Jul 2002; Daniel Robbins <drobbins@gentoo.org> tarball.sh: our tarball
+  script didn't clean the src/sandbox directory before creating our distribution
+  tarball. This resulted in src/sandbox/sandbox (the executable) being distributed,
+  and the "make" in the ebuild thinking everything was up-to-date.  The result?
+  Everyone in the world got a sandbox compiled with gcc 3.1.  This has been
+  fixed, closing bug #4867, #4851.
+  
   10 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: removed some
   bogus code that snuck in.  pkg_setup() is no longer called when installing a
   tbz2.  All tbz2 stuff should be done in pkg_pre/postinst().
@@ -51,7 +60,7 @@
   08 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: check whether
   ebuild actually exists immediately before running pkg_postint() and
   pkg_preinst() from the dblink merge() method.  Also change all PKG_TMPDIR
-  references to PORTAGE_TMPDIR plus suffix, closing bug #4447.
+  references to PORTAGE_TMPDIR plus suffix, closing bug #4447, #4853.
 
 *portage-2.0.11 (07 Jul 2002)
 

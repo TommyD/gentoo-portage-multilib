@@ -1,10 +1,14 @@
 #!/bin/bash
 export PKG="portage"
 export TMP="/tmp"
-export V="2.0.12"
+export V="2.0.13"
 export DEST="${TMP}/${PKG}-${V}"
 rm -rf ${DEST}
 install -d -m0755 ${DEST}
+#get any binaries out of the way
+cd src/sandbox
+make clean
+cd ../..
 for x in bin cnf man pym src 
 do
 	cp -ax $x ${DEST}
