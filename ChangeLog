@@ -1,9 +1,49 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
-  04 Aug 2002; Phil Bordelon <sunflare@lsu.edu> emerge.1: The emerge man
-  page now reflects the fact that emerge sync|rsync always does a --clean
-  now.  Also bumped the release number to 2.0.23.
+*portage-2.0.24 (04 Aug 2002)
+
+  04 Aug 2002; Daniel Robbins <drobbins@gentoo.org> output.py, emerge: rewrote
+  our output.py module (it was weird) and tweaked emerge so that colorization
+  will be disabled if NOCOLOR is set to "yes" or "true" *or* if sys.stdout isn't
+  a tty.  This means that if you pipe things to "less", colorization will get
+  automatically disabled.  Yay!  This closes bug #5714, 
+  
+  04 Aug 2002; Daniel Robbins <drobbins@gentoo.org> ebuild.sh: default
+  src_compile now properly uses "die" instead of "return 1."  This closes bug
+  #2981.
+  
+  04 Aug 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: "=foo/bar-1.0*"
+  now matches "foo/bar-1.0_{alpha|beta|pre|rc}{int}" but not
+  "foo/bar-1.1_{alpha_beta_pre_rc}{int}".  This closes bug #5874; gcc-3.2_pre
+  is now considered a "3.2" rather than a very late "3.1" when doing "*"
+  matching.
+  
+  04 Aug 2002; Daniel Robbins <drobbins@gentoo.org> ebuild.sh: Applied
+  carpaski's patch to allow "unpack" to also handle regular .gz or .bz2 files;
+  in which case the unpacked files are placed directly in ${WORKDIR}.  Closing
+  bug #5867.
+
+  04 Aug 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: tweaked
+  exithandler() to only do its sandbox clean-up if we happen to be the root
+  user.  Closes bug #5859.
+
+  04 Aug 2002; Daniel Robbins <drobbins@gentoo.org> emerge: search now lists
+  masked packages correctly.  Closes bug #5854 (pending QA verification.)
+  
+  04 Aug 2002; Phil Bordelon <sunflare@lsu.edu> emerge.1: The emerge man page
+  now reflects the fact that emerge sync|rsync always does a --clean now.  Also
+  bumped the release number to 2.0.23.
+
+  03 Aug 2002; Martin Schlemmer <azarah@gentoo.org> portage.py, emerge.sh,
+  sandbox.c libsandbox.c: Updated sandbox.c and libsandbox.c to use an internal
+  env variable, $SANDBOX_ACTIVE to determine if sandbox should really be active
+  or not.  With it only checking $SANDBOX_ON, some instances NOT running in a
+  sandbox, but that set SANDBOX_ON while an actual sandbox was running, caused
+  the sandbox to activate for this process.  Added in support for a more phased
+  calls to ebuild.sh again.  This is this time done with support to save the
+  current environment of ebuild.sh to the next call that should handle problems
+  with pkg_setup() setting env variables.  Closes bugs #5853, #5817, #5950.
 
 *portage-2.0.23 (01 Aug 2002)
 

@@ -17,7 +17,7 @@
 	$(CC) $(CFLAGS) $(CPPFLAGS) $< -o $@ $(LIBS) $(LDFLAGS)
         
 CC = gcc
-CFLAGS = -Wall -O2
+CFLAGS = -Wall -O0 -march=i386 -fPIC
 LIBS =
 LDFLAGS =
 

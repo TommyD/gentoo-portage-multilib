@@ -2,6 +2,8 @@
 import os,sys,portage,xpak,string,re,commands,time,threading,shutil
 from stat import *
 from output import *
+if (not sys.stdout.isatty()) or (portage.settings["NOCOLOR"] in ["yes","true"]):
+	nocolor()
 
 spinner="\|/-\|/-"
 spinpos=0
@@ -387,10 +389,10 @@ class search:
 			if re.search(self.searchkey.lower(), package_parts[1].lower()):
 				self.matches["pkg"].append(package)
 			elif self.searchdesc: # DESCRIPTION searching
-				full_package = string.strip(portage.portdb.xmatch("bestmatch-visible",package))
+				full_package = portage.portdb.xmatch("bestmatch-visible",package)
 				if not full_package:
 					#no match found; we don't want to query description
-					continue 
+					full_package=""
 				full_desc = portage.portdb.aux_get(full_package,["DESCRIPTION"])[0]
 				if re.search(self.searchkey.lower(), full_desc.lower()):
 					self.matches["desc"].append(full_package)
@@ -407,14 +409,14 @@ class search:
 		for mtype in self.matches.keys():	
 			for match in self.matches[mtype]:
 				if mtype=="pkg":
-					full_package = string.strip(portage.portdb.xmatch("bestmatch-visible",match))
+					full_package = portage.portdb.xmatch("bestmatch-visible",match)
 					if not full_package:
 						#it's masked; we do filtering here because it's theoretically faster
-						continue
+						full_package=""
 				else:
 					full_package=match
-				desc, homepage = portage.portdb.aux_get(full_package,["DESCRIPTION","HOMEPAGE"])
-				if len(full_package) > 1:
+				if full_package:
+					desc, homepage = portage.portdb.aux_get(full_package,["DESCRIPTION","HOMEPAGE"])
 					print green("*")+"  "+white(match)
 					print "     ", "Latest version Available:",self.getVersion(full_package, search.VERSION_RELEASE)
 					print "     ", self.getInstallationStatus(match)

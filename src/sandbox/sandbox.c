@@ -744,6 +744,14 @@ int main(int argc, char** argv)
 			signal(SIGINT, &stop);
 			signal(SIGQUIT, &stop);
 			signal(SIGTERM, &stop);
+
+			/* this one should NEVER be set in ebuilds, as it is the one
+			 * private thing libsandbox.so use to test if the sandbox
+			 * should be active for this pid, or not.
+			 *
+			 * azarah (3 Aug 2002)
+			 */
+			setenv("SANDBOX_ACTIVE", "armedandready", 1);
 			
 			/* fork to executing bash */
 			if (argc < 2)

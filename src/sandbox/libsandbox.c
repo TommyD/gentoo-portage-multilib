@@ -797,8 +797,18 @@ int check_syscall(sbcontext_t* sbcontext, const char* func, const char* file)
 
 int is_sandbox_on()
 {
+	/* $SANDBOX_ACTIVE is an env variable that should ONLY
+	 * be used internal by sandbox.c and libsanbox.c.  External
+	 * sources should NEVER set it, else the sandbox is enabled
+	 * in some cases when run in parallel with another sandbox,
+	 * but not even in the sandbox shell.
+	 *
+	 * Azarah (3 Aug 2002)
+	 */
 	if (NULL != getenv("SANDBOX_ON") &&
-		0 == strcmp(getenv("SANDBOX_ON"), "1"))
+		0 == strcmp(getenv("SANDBOX_ON"), "1") &&
+		NULL != getenv("SANDBOX_ACTIVE") &&
+		0 == strcmp(getenv("SANDBOX_ACTIVE"), "armedandready"))
 	{
 		return 1;
 	}

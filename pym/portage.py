@@ -2,7 +2,7 @@
 # Copyright 1998-2002 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
 
-VERSION="2.0.17"
+VERSION="2.0.23"
 
 from stat import *
 from commands import *
@@ -78,18 +78,18 @@ starttime=int(time.time())
 buildphase=""
 
 #the build phases for which sandbox should be active
-sandboxactive=["unpack","compile","clean","install"]
+sandboxactive=["unpack","compile","clean","install","help","setup"]
 #if the exithandler triggers before features has been initialized, then it's safe to assume
 #that the sandbox isn't active.
 features=[]
 
 #handle ^C interrupts correctly:
 def exithandler(foo,bar):
-	global features
+	global features,secpass
 	print "!!! Portage interrupted by SIGINT; exiting."
 	#disable sandboxing to prevent problems
-	#only do this if sandbox is in $FEATURES
-	if "sandbox" in features:
+	#only do this if sandbox is in $FEATURES and we are root.
+	if (secpass==2) and ("sandbox" in features):
 		mypid=os.fork()
 		if mypid==0:
 			myargs=[]
@@ -800,16 +800,28 @@ def spawn(mystring,debug=0,free=0):
 	sandbox.  We can't use os.system anymore because it messes up
 	signal handling.  Using spawn allows our Portage signal handler
 	to work."""
+
+	# we use the pid of the python instance to create a temp file
+	# spawnebuild.sh and ebuild.sh uses to save/restore the environment.
+	settings["PORTAGE_MASTER_PID"]=`os.getpid()`
+	
 	mypid=os.fork()
 	if mypid==0:
 		myargs=[]
 		if ("sandbox" in features) and (not free):
 			#only run sandbox for the following phases
-			mycommand="/usr/lib/portage/bin/sandbox"
-			if debug:
-				myargs=["sandbox",mystring]
+			if buildphase in sandboxactive:
+				mycommand="/usr/lib/portage/bin/sandbox"
+				if debug:
+					myargs=["sandbox",mystring]
+				else:
+					myargs=["sandbox",mystring]
 			else:
-				myargs=["sandbox",mystring]
+				mycommand="/bin/bash"
+				if debug:
+					myargs=["bash","-x","-c",mystring]
+				else:
+					myargs=["bash","-c",mystring]
 		else:
 			mycommand="/bin/bash"
 			if debug:
@@ -821,6 +833,7 @@ def spawn(mystring,debug=0,free=0):
 		# *carefully*
 		# report error here
 		os._exit(1)
+		sys.exit(1)
 		return # should never get reached
 	retval=os.waitpid(mypid,0)[1]
 	if (retval & 0xff)==0:
@@ -829,6 +842,32 @@ def spawn(mystring,debug=0,free=0):
 	else:
 		#interrupted by signal
 		return 16
+
+def ebuildsh(mystring,debug=0):
+	"Spawn ebuild.sh, optionally in a sandbox"
+
+	mylist=mystring.split()
+	for x in mylist:
+		global buildphase
+		buildphase=x
+
+		#here we always want to call spawn with free=0,
+		#else the exit handler may not detect things properly
+		retval=spawn("/usr/sbin/ebuild.sh "+x,debug)
+		
+		#reset it again
+		buildphase=""
+
+		#it is a batch call to ebuild.sh, so ebuild.sh should
+		#load the saved environment on next call.
+		settings["PORTAGE_RESTORE_ENV"]="1"
+
+		if retval:
+			settings["PORTAGE_RESTORE_ENV"]="0"
+			return retval
+
+	#reset it again
+	settings["PORTAGE_RESTORE_ENV"]="0"
 
 def fetch(myuris):
 	"fetch files.  Will use digest file if available."
@@ -1086,7 +1125,7 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 
 	# if any of these are being called, handle them and stop now.
 	if mydo in ["help","clean","setup","prerm","postrm","preinst","postinst"]:
-		return spawn("/usr/sbin/ebuild.sh "+mydo,debug)
+		return ebuildsh(mydo,debug)
 	
 	# get possible slot information from the deps file
 	if mydo=="depend":
@@ -1146,12 +1185,12 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 				"rpm":"setup unpack compile install rpm"
 				}
 	if mydo in actionmap.keys():	
-		return spawn("/usr/sbin/ebuild.sh "+actionmap[mydo],debug)
+		return ebuildsh(actionmap[mydo],debug)
 	elif mydo=="qmerge": 
 		#qmerge is specifically not supposed to do a runtime dep check
 		return merge(settings["CATEGORY"],settings["PF"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot)
 	elif mydo=="merge":
-		retval=spawn("/usr/sbin/ebuild.sh setup unpack compile install")
+		retval=ebuildsh("setup unpack compile install")
 		if retval: return retval
 		return merge(settings["CATEGORY"],settings["PF"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot,myebuild=settings["EBUILD"])
 	elif mydo=="package":
@@ -1176,7 +1215,7 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 			print
 			return 0
 		else:
-			return spawn("/usr/sbin/ebuild.sh setup unpack compile install package")
+			return ebuildsh("setup unpack compile install package")
 
 expandcache={}
 
@@ -2240,13 +2279,14 @@ class dbapi:
 					mynewsplit[-1]=`int(mynewsplit[-1])+1`
 					#and increment the last digit of the version by one.
 					#We don't need to worry about _pre and friends because they're not supported with '*' deps.
-					new_v=string.join(mynewsplit,".")
+					new_v=string.join(mynewsplit,".")+"_alpha0"
 					#new_v will be used later in the code when we do our comparisons using pkgcmp()
 				except:
 					#erp, error.
 					return [] 
 				mynodes=[]
 				cmp1=cp_key[1:]
+				cmp1[1]=cmp1[1]+"_alpha0"
 				cmp2=[cp_key[1],new_v,"r0"]
 				for x in mylist:
 					cp_x=catpkgsplit(x)

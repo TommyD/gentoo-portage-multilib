@@ -1,50 +1,39 @@
-# Gentoo Linux Dependency Checking Code
 # Copyright 1998-2002 Daniel Robbins, Gentoo Technologies, Inc.
-# Distributed under the GNU Public License
-import portage;
+# Distributed under the GNU Public License v2
+
+codes={}
+codes["reset"]="\x1b[0m"
+codes["bold"]="\x1b[01m"
+codes["turquoise"]="\x1b[36;01m"
+codes["green"]="\x1b[32;01m"
+codes["yellow"]="\x1b[33;01m"
+codes["red"]="\x1b[31;01m"
+
+def nocolor():
+	"turn off colorization"
+	for x in codes.keys():
+		codes[x]=""
 
 def resetColor():
-	if portage.settings["NOCOLOR"] and (portage.settings["NOCOLOR"]=="true" or portage.settings["NOCOLOR"]=="yes"):
-		return ""
-	return "\x1b[0m"
+	return codes["reset"]
 
-def startColor(color):
-	if portage.settings["NOCOLOR"] and (portage.settings["NOCOLOR"]=="true" or portage.settings["NOCOLOR"]=="yes"):
-		return ""
-	return color
-
-def startBold():
-	return startColor("\x1b[01m");
-
-def startTurquoise():
-	return startColor("\x1b[36;01m");
-
-def startGreen():
-	return startColor("\x1b[32;01m");
-
-def startWhite():
-	return startBold()
-
-def startYellow():
-	return startColor("\x1b[33;01m");
-
-def startRed():
-	return startColor("\x1b[31;01m");
+def ctext(color,text):
+	return codes[ctext]+text+codes["reset"]
 
 def bold(text):
-	return startBold()+text+resetColor()
+	return codes["bold"]+text+codes["reset"]
 
 def turquoise(text):
-	return startTurquoise()+text+resetColor()
+	return codes["turquoise"]+text+codes["reset"]
 
 def green(text):
-	return startGreen()+text+resetColor()
+	return codes["green"]+text+codes["reset"]
 
 def white(text):
-	return startWhite()+text+resetColor()
+	return codes["bold"]+text+codes["reset"]
 
 def yellow(text):
-	return startYellow()+text+resetColor()
+	return codes["yellow"]+text+codes["reset"]
 
 def red(text):
-	return startRed()+text+resetColor()
+	return codes["red"]+text+codes["reset"]

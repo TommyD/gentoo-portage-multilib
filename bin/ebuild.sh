@@ -1,8 +1,36 @@
 #!/bin/bash 
+
+# Save the current environment to file.
+esave_ebuild_env() {
+	# turn off globbing.
+	set -f
+	# we do not want to save critical variables
+	set | awk '!/PORTAGE_RESTORE_ENV|PORTAGE_MASTER_PID/ { print $0 }' \
+		> ${T}/saved_ebuild_env_${PORTAGE_MASTER_PID}
+	set +f
+}
+
+# Save the environment apon exit
+trap "esave_ebuild_env" EXIT
+
+# Calls ebuild.sh with the required arguments, restoring a saved
+# environment if needed.
+if [ "${PORTAGE_RESTORE_ENV}" = "1" ] && \
+   [ -f ${T}/saved_ebuild_env_${PORTAGE_MASTER_PID} ]
+then
+	set -f
+	source ${T}/saved_ebuild_env_${PORTAGE_MASTER_PID} &> /dev/null
+	set +f
+fi
+
 if [ -n "$#" ]
 then
-	ARGS="${*}"	
-fi
+	ARGS="${*}"
+fi  
+
+
+# Do not use SANDBOX_ON from saved env
+#unset SANDBOX_ON
 
 use() {
 	local x xopts flag opts
@@ -49,6 +77,23 @@ elif [ -e /etc/rc.d/config/functions ]
 then
 	source /etc/rc.d/config/functions > /dev/null 2>&1
 fi
+
+
+#The following diefunc() and aliases come from Aron Griffis -- an excellent bash coder -- thanks! 
+
+diefunc() {
+	local funcname="$1" lineno="$2" exitcode="$3"
+	shift 3
+	echo >&2
+	echo "!!! ERROR: The ebuild did not complete successfully." >&2
+	echo "!!! Function $funcname, Line $lineno, Exitcode $exitcode" >&2
+	echo "!!! ${*:-(no error message)}" >&2
+	echo >&2
+	exit 1
+}
+
+alias die='diefunc "$FUNCNAME" "$LINENO" "$?"'
+alias assert='_retval=$?; [ $_retval = 0 ] || diefunc "$FUNCNAME" "$LINENO" "$_retval"'
 
 # don't need to handle the maintainer fine grained settings here
 # anymore since it's initialized by ebuild through the python
@@ -133,21 +178,37 @@ fi
 
 unpack() {
 	local x
+	local y
 	for x in "$@"
 	do
 		echo ">>> Unpacking ${x}"
+		y="$(echo $x | sed 's:.*\.\(tar\)\.[a-z0-9]*:\1:')"
 		case "${x##*.}" in
-		tar)
+		tar) 
 			tar x --no-same-owner -f ${DISTDIR}/${x} || die
 			;;
-		gz|tgz|Z|z) 
+		tgz) 
 			tar xz --no-same-owner -f ${DISTDIR}/${x} || die
 			;;
-		bz2|tbz2)
-			cat ${DISTDIR}/${x} | bzip2 -d | tar x --no-same-owner -f - || die
+		tbz2) 
+			tar xj --no-same-owner -f ${DISTDIR}/${x} || die
 			;;
-		ZIP|zip)
+		ZIP|zip) 
 			unzip ${DISTDIR}/${x} || die
+			;;
+		gz|Z|z) 
+			if [ "${y}" == "tar" ]; then
+				tar xz --no-same-owner -f ${DISTDIR}/${x} || die
+			else
+				gzip -dc ${DISTDIR}/${x} > ${x%.*}
+			fi
+			;;
+		bz2) 
+			if [ "${y}" == "tar" ]; then
+				tar xj --no-same-owner -f ${DISTDIR}/${x} || die
+			else
+				bzip2 -dc ${DISTDIR}/${x} > ${x%.*}
+			fi
 			;;
 		*)
 			echo '!!!'" Error: couldn't unpack ${x}: file format not recognized"
@@ -201,8 +262,8 @@ src_unpack() {
 
 src_compile() { 
         if [ -x ./configure ] ; then
-	        econf || return 1
-		emake || return 1
+	        econf || die "econf failed"
+		emake || die "emake failed"
 	fi
 	return 
 }
@@ -657,22 +718,6 @@ dyn_help() {
 	echo
 }
 
-#The following diefunc() and aliases come from Aron Griffis -- an excellent bash coder -- thanks! 
-
-diefunc() {
-	local funcname="$1" lineno="$2" exitcode="$3"
-	shift 3
-	echo >&2
-	echo "!!! ERROR: The ebuild did not complete successfully." >&2
-	echo "!!! Function $funcname, Line $lineno, Exitcode $exitcode" >&2
-	echo "!!! ${*:-(no error message)}" >&2
-	echo >&2
-	exit 1
-}
-
-alias die='diefunc "$FUNCNAME" "$LINENO" "$?"'
-alias assert='_retval=$?; [ $_retval = 0 ] || diefunc "$FUNCNAME" "$LINENO" "$_retval"'
-
 # --- Former eclass code ---
 
 # debug-print() gets called from many places with verbose status information useful
@@ -822,7 +867,12 @@ do
 		fi
 	    ;;
 	unpack|compile|clean|install)
-		export SANDBOX_ON="1"
+		if [ ${SANDBOX_DISABLED="0"} = "0" ]
+		then
+			export SANDBOX_ON="1"
+		else
+			export SANDBOX_ON="0"
+		fi
 		if [ "$PORTAGE_DEBUG" = "0" ]
 		then
 			dyn_${myarg}
@@ -833,9 +883,25 @@ do
 		fi
 		export SANDBOX_ON="0"
 		;;
-	help|setup)
+	help|clean)
+		export SANDBOX_ON="0"
+		if [ "$PORTAGE_DEBUG" = "0" ]
+		then
+		  dyn_${myarg}
+		else
+		  set -x
+		  dyn_${myarg}
+		  set +x
+		fi
+	    ;;
+	setup)
 		#sandbox is still enabled; no fs access needed
-		export SANDBOX_ON="1"
+		if [ ${SANDBOX_DISABLED="0"} = "0" ]
+		then
+			export SANDBOX_ON="1"
+		else
+			export SANDBOX_ON="0"
+		fi
 	    if [ "$PORTAGE_DEBUG" = "0" ]
 	    then
 	      dyn_${myarg}
