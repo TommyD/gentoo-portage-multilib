@@ -54,3 +54,4 @@ rm -f ${PKG}-${V}/bin/emerge.py ${PKG}-${V}/bin/{pmake,sandbox} ${PKG}-${V}/{bin
 tar cjvf ${TMP}/${PKG}-${V}.tar.bz2 ${PKG}-${V}
 
 scp ${TMP}/${PKG}-${V}.tar.bz2 carpaski@twobit.net:/home/html/gentoo/portage/
+scp ${TMP}/${PKG}-${V}.tar.bz2 carpaski@zarquon.twobit.net:/home/www/localhost/htdocs/gentoo/portage/
