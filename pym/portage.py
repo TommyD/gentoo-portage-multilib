@@ -2,14 +2,13 @@
 # Copyright 1998-2002 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
 
-VERSION="2.0.7"
+VERSION="2.0.8"
 
 from stat import *
 from commands import *
 from select import *
 import string,os,types,sys,shlex,shutil,xpak,fcntl,signal,time,missingos
 import thread
-dircache={}
 
 incrementals=["USE","FEATURES","ACCEPT_KEYWORDS","ACCEPT_LICENSE","CONFIG_PROTECT_MASK"]
 
@@ -22,6 +21,7 @@ except:
 #List directory contents, using cache. (from dircache module; streamlined by drobbins)
 #Exceptions will be propogated to the caller.
 
+dircache={}
 def listdir(path):
 	try:
 		cached_mtime, list = dircache[path]
@@ -1136,9 +1136,6 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 		if retval: return retval
 		return merge(settings["CATEGORY"],settings["PF"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot,myebuild=settings["EBUILD"])
 	elif mydo=="package":
-		retval=spawn("/usr/sbin/ebuild.sh setup")
-		if retval:
-			return retval
 		for x in ["","/"+settings["CATEGORY"],"/All"]:
 			if not os.path.exists(settings["PKGDIR"]+x):
 				os.makedirs(settings["PKGDIR"]+x)
@@ -1160,7 +1157,7 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 			print
 			return 0
 		else:
-			return spawn("/usr/sbin/ebuild.sh unpack compile install package")
+			return spawn("/usr/sbin/ebuild.sh setup unpack compile install package")
 
 expandcache={}
 
@@ -2007,7 +2004,7 @@ def dep_wordreduce(mydeplist,mydbapi):
 			#recurse
 			deplist[mypos]=dep_wordreduce(deplist[mypos],mydbapi)
 		else:
-			mydep=match(deplist[mypos],mydbapi)
+			mydep=mydbapi.match(deplist[mypos])
 			if mydep!=None:
 				deplist[mypos]=(len(mydep)>=1)
 			else:
@@ -2028,7 +2025,6 @@ class packagetree:
 			self.populated=0
 			self.virtual=virtual
 			self.dbapi=None
-
 		
 	def resolve_key(self,mykey):
 		return key_expand(mykey,self.dbapi)
@@ -2054,6 +2050,7 @@ class packagetree:
 
 def best(mymatches):
 	"accepts None arguments; assumes matches are valid."
+	global bestcount
 	if mymatches==None:
 		return "" 
 	if not len(mymatches):
@@ -2160,17 +2157,7 @@ def match(origdep,mydata):
 	elif cp_key==None:
 		if mydep[0]=="!":
 			return []
-#			mynodes=[]
-#			cp_key=mycpv.split("/")
-#			for x in mylist:
-#				cp_x=catpkgsplit(x)
-#				if cp_x==None:
-#					return None
-#				if cp_key[0]==cp_x[0]:
-#					mynodes.append(x)
-#				elif cp_key[1]==cp_x[1]:
-#					mynodes.append(x)
-#			return mynodes
+			#we check ! deps in emerge itself, so always returning [] is correct.
 		mynodes=[]
 		cp_key=mycpv.split("/")
 		for x in mylist:
@@ -2185,68 +2172,6 @@ def match(origdep,mydata):
 		return mynodes
 	else:
 		return None
-
-def visible(mylist):
-	"strip out masked (invisible) entries"
-	if mylist==None:
-		return []
-	newlist=[]
-	for mykey in mylist:
-		cpv=catpkgsplit(mykey)
-		mycp=cpv[0]+"/"+cpv[1]
-		match1=0
-		match2=0
-		if maskdict.has_key(mycp):
-			for x in maskdict[mycp]:
-				mymatches=match(x,mylist)
-				if mymatches==None:
-					return None
-				if mykey in mymatches:
-					match1=1
-					continue
-		if not match1 and revmaskdict.has_key(mycp):
-			for x in revmaskdict[mycp]:
-				mymatches=match(x,mylist)
-				if mymatches==None:
-					return None
-				if mykey not in mymatches:
-					match2=1
-					continue
-		if (not match1) and (not match2):
-			newlist.append(mykey)
-	return newlist
-
-def gvisible(mylist):
-	"strip out group-masked (not in current group) entries"
-	global groups
-	if mylist==None:
-		return []
-	newlist=[]
-	for mycpv in mylist:
-		#we need to update this next line when we have fully integrated the new db api
-		myaux=db["/"]["porttree"].dbapi.aux_get(mycpv, ["KEYWORDS"])
-		if not myaux:
-			#no ACCEPT_KEYWORDS setting defaults to "*" (for backwards compat.)
-			newlist.append(mycpv)
-			continue
-		mygroups=myaux[0].split()
-		if not mygroups:
-			#no KEYWORDS setting defaults to "*"
-			match=1
-		else:
-			match=0
-			for gp in mygroups:
-				if gp=="*":
-					match=1
-					break
-				elif gp=="-*":
-					break
-				elif gp in groups:
-					match=1
-					break
-		if match:
-			newlist.append(mycpv)
-	return newlist
 
 class portagetree:
 	def __init__(self,root="/",virtual=None,clone=None):
@@ -2263,7 +2188,8 @@ class portagetree:
 	def dep_bestmatch(self,mydep):
 		"compatibility method"
 		#mymatch=best(gvisible(visible(match(mydep,self.dbapi))))
-		mymatch=best(visible(match(mydep,self.dbapi)))
+		#mymatch=best(visible(match(mydep,self.dbapi)))
+		mymatch=self.dbapi.xmatch(2,mydep)
 		if mymatch==None:
 			return ""
 		return mymatch
@@ -2271,7 +2197,8 @@ class portagetree:
 	def dep_match(self,mydep):
 		"compatibility method"
 		#mymatch=gvisible(visible(match(mydep,self.dbapi)))
-		mymatch=visible(match(mydep,self.dbapi))
+		#mymatch=visible(match(mydep,self.dbapi))
+		mymatch=self.dbapi.xmatch(1,mydep)
 		if mymatch==None:
 			return []
 		return mymatch
@@ -2344,28 +2271,46 @@ class fakedbapi(dbapi):
 		if not mycpv in self.cpdict[mycp]:
 			self.cpdict[mycp].append(mycpv)
 	
+	def match(self,foo):
+		return match(foo,self)
+cptot=0
 class vardbapi(dbapi):
 	def __init__(self,root):
 		self.root=root
-	
+		#cache for category directory mtimes
+		self.mtdircache={}
+		#cache for dependency checks
+		self.matchcache={}
+		#cache for cp_list results
+		self.cpcache={}	
+
 	def cpv_exists(self,mykey):
 		"Tells us whether an actual ebuild exists on disk (no masking)"
 		return os.path.exists(self.root+"var/db/pkg/"+mykey)
 
 	def cp_list(self,mycp):
 		mysplit=mycp.split("/")
-		returnme=[]
 		try:
-			mydirlist=listdir(self.root+"var/db/pkg/"+mysplit[0])
+			mystat=os.stat(self.root+"var/db/pkg/"+mysplit[0])[ST_MTIME]
+		except OSError:
+			mystat=0
+		if self.cpcache.has_key(mycp):
+			cpc=self.cpcache[mycp]
+			if cpc[0]==mystat:
+				return cpc[1]
+		try:
+			list=listdir(self.root+"var/db/pkg/"+mysplit[0])
 		except OSError:
 			return []
-		for x in mydirlist:
+		returnme=[]
+		for x in list:
 			ps=pkgsplit(x)
 			if not ps:
 				print "!!! Invalid db entry:",self.root+"var/db/pkg/"+mysplit[0]+"/"+x
 				continue
 			if ps[0]==mysplit[1]:
 				returnme.append(mysplit[0]+"/"+x)	
+		self.cpcache[mycp]=[mystat,returnme]
 		return returnme
 
 	def cp_all(self):
@@ -2384,6 +2329,24 @@ class vardbapi(dbapi):
 				if not mykey in returnme:
 					returnme.append(mykey)
 		return returnme
+
+	def match(self,mydep):
+		"caching match function"
+		mykey=dep_getkey(mydep)
+		mycat=mykey.split("/")[0]
+		try:
+			curmtime=os.stat(self.root+"var/db/pkg/"+mycat)
+		except:
+			curmtime=0
+		if self.matchcache.has_key(mydep):
+			if self.mtdircache[mycat]==curmtime:
+				return self.matchcache[mydep]
+		#generate new cache entry
+		mymatch=match(mydep,self)
+		self.mtdircache[mycat]=curmtime
+		self.matchcache[mydep]=mymatch
+		return mymatch
+		
 
 class vartree(packagetree):
 	"this tree will scan a var/db/pkg database located at root (passed to init)"
@@ -2405,7 +2368,8 @@ class vartree(packagetree):
 	
 	def dep_bestmatch(self,mydep):
 		"compatibility method -- all matches, not just visible ones"
-		mymatch=best(match(dep_expand(mydep,self.dbapi),self.dbapi))
+		#mymatch=best(match(dep_expand(mydep,self.dbapi),self.dbapi))
+		mymatch=best(self.dbapi.match(dep_expand(mydep,self.dbapi)))
 		if mymatch==None:
 			return ""
 		else:
@@ -2413,7 +2377,8 @@ class vartree(packagetree):
 			
 	def dep_match(self,mydep):
 		"compatibility method -- we want to see all matches, not just visible ones"
-		mymatch=match(mydep,self.dbapi)
+		#mymatch=match(mydep,self.dbapi)
+		mymatch=self.dbapi.match(mydep)
 		if mymatch==None:
 			return []
 		else:
@@ -2528,7 +2493,8 @@ class portdbapi(dbapi):
 	def __init__(self):
 		self.root=settings["PORTDIR"]
 		self.auxcache={}
-	
+		self.xcache={0:{},1:{},2:{}}
+
 	def aux_get(self,mycpv,mylist):
 		global OSError,IOError
 		"stub code for returning auxilliary db information, such as SLOT, DEPEND, etc."
@@ -2609,7 +2575,195 @@ class portdbapi(dbapi):
 		except OSError,IOError:
 			return []
 		return returnme
+
+	def xmatch(self,level,origdep,mydep=None,mykey=None):
+		"caching match function"
+		if not mydep:
+			mydep=dep_expand(origdep,self)
+			mykey=dep_getkey(mydep)
+		try:
+			curmtime=os.stat(self.root+"/"+mykey)
+		except:
+			curmtime=0
+		if self.xcache[level].has_key(mydep):
+			myxc=self.xcache[level][mydep]
+			if myxc[0]==curmtime:
+				return myxc[1]
+		elif level==2:
+			self.xcache[2][mydep]=[curmtime,best(self.xmatch(level-1,None,mydep,mykey))]
+		elif level==1:
+			self.xcache[1][mydep]=[curmtime,self.visible(self.xmatch(level-1,None,mydep,mykey))]
+			#self.xcache[1][mydep]=[curmtime,self.gvisible(self.visible(self.xmatch(level-1,None,mydep,mykey)))]
+		elif level==0:
+			self.xcache[0][mydep]=[curmtime,self.match2(mydep,mykey)]
+		return self.xcache[level][mydep][1]
+
+	def visible(self,mylist):
+		"strip out masked (invisible) entries"
+		if mylist==None:
+			return []
+		newlist=[]
+		for mykey in mylist:
+			cpv=catpkgsplit(mykey)
+			mycp=cpv[0]+"/"+cpv[1]
+			match1=0
+			match2=0
+			if maskdict.has_key(mycp):
+				for x in maskdict[mycp]:
+					mymatches=self.xmatch(0,x)
+					if mymatches==None:
+						return None
+					if mykey in mymatches:
+						match1=1
+						continue
+			if not match1 and revmaskdict.has_key(mycp):
+				for x in revmaskdict[mycp]:
+					mymatches=self.xmatch(0,x)
+					if mymatches==None:
+						return None
+					if mykey not in mymatches:
+						match2=1
+						continue
+			if (not match1) and (not match2):
+				newlist.append(mykey)
+		return newlist
+
+	def gvisible(self,mylist):
+		"strip out group-masked (not in current group) entries"
+		global groups
+		if mylist==None:
+			return []
+		newlist=[]
+		for mycpv in mylist:
+			#we need to update this next line when we have fully integrated the new db api
+			myaux=db["/"]["porttree"].dbapi.aux_get(mycpv, ["KEYWORDS"])
+			if not myaux:
+				#no ACCEPT_KEYWORDS setting defaults to "*" (for backwards compat.)
+				newlist.append(mycpv)
+				continue
+			mygroups=myaux[0].split()
+			if not mygroups:
+				#no KEYWORDS setting defaults to "*"
+				match=1
+			else:
+				match=0
+				for gp in mygroups:
+					if gp=="*":
+						match=1
+						break
+					elif gp=="-*":
+						break
+					elif gp in groups:
+						match=1
+						break
+			if match:
+				newlist.append(mycpv)
+		return newlist
 		
+	def match2(self,mydep,mykey):
+		mycpv=dep_getcpv(mydep)
+		if isspecific(mycpv):
+			cp_key=catpkgsplit(mycpv)
+			if cp_key==None:
+				return []
+		else:
+			cp_key=None
+		mylist=self.cp_list(mykey)
+		if (mydep[0]=="="):
+			if cp_key==None:
+				return []
+			if mydep[-1]=="*":
+				#example: "=sys-apps/foo-1.0*"
+				try:
+					#now, we grab the version of our dependency...
+					mynewsplit=string.split(cp_key[2],'.')
+					#split it...
+					mynewsplit[-1]=`int(mynewsplit[-1])+1`
+					#and increment the last digit of the version by one.
+					#We don't need to worry about _pre and friends because they're not supported with '*' deps.
+					new_v=string.join(mynewsplit,".")
+					#new_v will be used later in the code when we do our comparisons using pkgcmp()
+				except:
+					#erp, error.
+					return [] 
+				mynodes=[]
+				cmp1=cp_key[1:]
+				cmp2=[cp_key[1],new_v,"r0"]
+				for x in mylist:
+					cp_x=catpkgsplit(x)
+					if cp_x==None:
+						return None
+					#skip entries in our list that do not have matching categories
+					if cp_key[0]!=cp_x[0]:
+						continue
+					# ok, categories match. Continue to next step.	
+					if ((pkgcmp(cp_x[1:],cmp1)>=0) and (pkgcmp(cp_x[1:],cmp2)<0)):
+						# entry is >= the version in specified in our dependency, and <= the version in our dep + 1; add it:
+						mynodes.append(x)
+				return mynodes
+			else:
+				# Does our stripped key appear literally in our list?  If so, we have a match; if not, we don't.
+				if mycpv in mylist:
+					return [mycpv]
+				else:
+					return []
+		elif (mydep[0]==">") or (mydep[0]=="<"):
+			if cp_key==None:
+				return []
+			if (len(mydep)>1) and (mydep[1]=="="):
+				cmpstr=mydep[0:2]
+			else:
+				cmpstr=mydep[0]
+			mynodes=[]
+			for x in mylist:
+				cp_x=catpkgsplit(x)
+				if cp_x==None:
+					return None
+				if cp_key[0]!=cp_x[0]:
+					continue
+				if eval("pkgcmp(cp_x[1:],cp_key[1:])"+cmpstr+"0"):
+					mynodes.append(x)
+			return mynodes
+		elif mydep[0]=="~":
+			if cp_key==None:
+				return []
+			myrev=-1
+			for x in mylist:
+				cp_x=catpkgsplit(x)
+				if cp_x==None:
+					return None
+				if cp_key[0]!=cp_x[0]:
+					continue
+				if cp_key[2]!=cp_x[2]:
+					#if version doesn't match, skip it
+					continue
+				if string.atoi(cp_x[3][1:])>myrev:
+					myrev=string.atoi(cp_x[3][1:])
+					mymatch=x
+			if myrev==-1:
+				return []
+			else:
+				return [mymatch]
+		elif cp_key==None:
+			if mydep[0]=="!":
+				return []
+				#we check ! deps in emerge itself, so always returning [] is correct.
+			mynodes=[]
+			cp_key=mycpv.split("/")
+			for x in mylist:
+				cp_x=catpkgsplit(x)
+				if cp_x==None:
+					return None
+				if cp_key[0]!=cp_x[0]:
+					continue
+				if cp_key[1]!=cp_x[1]:
+					continue
+				mynodes.append(x)
+			return mynodes
+		else:
+			return None
+
+			
 class binarytree(packagetree):
 	"this tree scans for a list of all packages available in PKGDIR"
 	def __init__(self,root="/",virtual=None,clone=None):

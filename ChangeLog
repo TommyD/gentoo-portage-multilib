@@ -1,12 +1,15 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
-*portage-2.0.8 (27 Jun 2002)
+  29 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: new version
+  with highly-optimized dependency calculation caching, particularly for
+  portdbapi.  Includes new three-level caching portdbapi xmatch() method.
+ 
+  27 Jun 2002; Grant Goodyear <g2boojum@gentoo.org> ebuild.sh: Added keepdir()
+  function so that it no longer has to be hardcoded in ebuilds.
 
-  27 Jun 2002; Grant Goodyear <g2boojum@gentoo.org> ebuild.sh: 
-  Added keepdir() function so that it no longer has to be hardcoded
-  in ebuilds.
-  
+*portage-2.0.8 (27 Jun 2002)
+ 
   27 Jun 2002; Daniel Robbins <drobbins@gentoo.org> emerge: in an attempt to
   provide a predictable release of Portage, I'm reverting the "emerge
   --pretend" "fix" in Portage-2.0.6.  It ignores custom USE settings when
