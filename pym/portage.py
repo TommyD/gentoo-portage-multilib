@@ -6113,7 +6113,10 @@ class dblink:
 		# check for package collisions
 		if "collision-protect" in features:
 			myfilelist = listdir(srcroot, recursive=1, filesonly=1)
-			mysymlinks = filter(os.path.islink, listdir(srcroot, recursive=1))
+
+			# the linkcheck only works if we are in srcroot
+			os.chdir(srcroot)
+			mysymlinks = filter(os.path.islink, listdir(srcroot, recursive=1, filesonly=0))
 
 			stopmerge=False
 			starttime=time.time()
