@@ -1011,13 +1011,22 @@ class depgraph:
 				myk=["blocks",myroot,x[1:]]
 			else:
 				#We are not processing a blocker but a normal dependency
+				myeb=None
+				myeb_matches = portage.portdb.xmatch("match-visible",x)
+				if ("--usepkgonly" not in myopts):
+					myeb=portage.best(myeb_matches)
+				
 				myeb_pkg=None
 				if ("--usepkg" in myopts):
-					myeb_pkg=portage.db[portage.root]["bintree"].dep_bestmatch(x)
-				
-				myeb=None
-				if ("--usepkgonly" not in myopts):
-					myeb=portage.portdb.xmatch("bestmatch-visible",x)
+					# Remove any binary package entries that are masked in the portage tree (#55871)
+					# The next line assumes the binarytree has been populated.
+					myeb_pkg_matches=portage.db[portage.root]["bintree"].dbapi.match(x)
+					for idx in range(len(myeb_pkg_matches)-1,-1,-1):
+						if myeb_pkg_matches[idx] not in myeb_matches:
+							del myeb_pkg_matches[idx]
+					myeb_pkg = portage.best(myeb_pkg_matches)
+					if myeb_pkg == '':
+						myeb_pkg = None
 				
 				if (not myeb) and (not myeb_pkg):
 					if not arg:
