@@ -81,6 +81,9 @@ typedef struct {
   int num_write_denied_prefixes;
 } sbcontext_t;
 
+/* glibc modified realpath() functions */
+char *erealpath (const char *name, char *resolved);
+
 static void *get_dlsym(const char *);
 static void canonicalize(const char *, char *);
 static int check_access(sbcontext_t *, const char *, const char *);
@@ -196,7 +199,8 @@ void _init(void)
 
 static void canonicalize(const char *path, char *resolved_path)
 {
-  if(!realpath(path, resolved_path) && (path[0] != '/')) {
+#if 1
+  if(!erealpath(path, resolved_path) && (path[0] != '/')) {
     /* The path could not be canonicalized, append it
      * to the current working directory if it was not
      * an absolute path
@@ -205,6 +209,11 @@ static void canonicalize(const char *path, char *resolved_path)
     strcat(resolved_path, "/");
     strncat(resolved_path, path, MAXPATHLEN - 1);
   }
+#else
+  /* temp solution until I can figure out what
+   * to do with this. */
+  strncpy(resolved_path, path, strlen(path) + 1);
+#endif
 }
 
 static void *get_dlsym(const char *symname)

@@ -2,6 +2,14 @@
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+  19 Aug 2002; Martin Schlemmer <azarah@gentoo.org> :
+
+  The new canonicalize() function in libsandbox.c also resolved symlinks,
+  which caused on cleaning sandbox errors if the symlink pointed to a
+  file in the live root.   Ripped out canonicalize() and realpath() from
+  glibc; removed the symlink stuff, and changed them to ecanonicalize()
+  and erealpath().
+
   18 Aug 2002; Martin Schlemmer <azarah@gentoo.org> :
 
   Ripped out all the wrappers, and implemented those of InstallWatch.
