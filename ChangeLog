@@ -1,6 +1,9 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+	23 Oct 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
+	Possible fix for the aux_get() issues and IUSE.
+
 	22 Oct 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
 	noauto got lost in some weird conflicts of .38, added it back.
 

@@ -2789,13 +2789,15 @@ class portdbapi(dbapi):
 		mysplit=mycpv.split("/")
 		myebuild=self.findname(mycpv)
 	
-		#first, we take a look at the mtime of the ebuild and the cache entry to see if we need
-		#to regenerate our cache entry.
+		# first, we take a look at the size of the ebuild/cache entry to ensure we
+		# have a valid data, then we look at the mtime of the ebuild and the
+		# cache entry to see if we need to regenerate our cache entry.
 		try:
 			mydbkeystat=os.stat(mydbkey)
-			dmtime=mydbkeystat[ST_MTIME]
 			if mydbkeystat[ST_SIZE] == 0:
 				doregen=1
+			else:
+				dmtime=mydbkeystat[ST_MTIME]
 		except OSError:
 			doregen=1
 		if not doregen:
@@ -2881,7 +2883,7 @@ class portdbapi(dbapi):
 					raise KeyError
 			try:
 				mycent=open(mydbkey,"r")
-			except ( IOError, OSError):
+			except (IOError, OSError):
 				print "portage: aux_get(): (2) couldn't open cache entry for",mycpv
 				print "(likely caused by syntax error or corruption in the",mycpv,"ebuild.)"
 				raise KeyError
@@ -2890,12 +2892,17 @@ class portdbapi(dbapi):
 			
 		if stale:
 			#due to a stale or regenerated cache entry, we need to update our internal dictionary....
-			self.auxcache[mycpv]={"mtime":dmtime}
+			try:
+				self.auxcache[mycpv]={"mtime":os.stat(mydbkey)[ST_MTIME]}
+			except:
+				print "portage: aux_get(): stale entry was not regenerated for",mycpv+"; exiting."
+				sys.exit(1)
 			try:
 				for x in range(0,len(auxdbkeys)):
 					self.auxcache[mycpv][auxdbkeys[x]]=mylines[x][:-1]
 			except IndexError:
-				print "portage: aux_get(): error processing",auxdbkeys[x],"for",mycpv+"; exiting."
+				print "portage: aux_get(): error processing",auxdbkeys[x],"for",mycpv+"; expiring the cache entry and exiting."
+				os.unlink(mydbkey)
 				sys.exit(1)
 		#finally, we look at our internal cache entry and return the requested data.
 		returnme=[]
