@@ -3,23 +3,23 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-if has nostrip $FEATURES $RESTRICT ; then
+if [ "${FEATURES//*nostrip*/tree}" == "true" ] || [ "${RESTRICT//*nostrip*/true}" == "true" ] ; then
+	echo "nostrip"
 	exit 0
 fi
 
 if [ ! -z "${CBUILD}" ] && [ "${CBUILD}" != "${CHOST}" ]; then
 	STRIP=${CHOST}-strip
-else:
+else
 	STRIP=strip
 fi
 
 echo -n "strip: "
 for x in "$@"; do # "$@" quotes each element... Plays nice with spaces.
-	if [ -d "${D}${x}" ]; then
+	if [ -d "${x}" ]; then
 		# We only want files. So make a pass for each directory and call again.
-		find "${D}${x}" -type f \( -perm +0111 -or -regex '\.so$|\.so\.' \) |
-				tr '\n' '\001' | sed -r 's:(\d001?)${D}:\1:g' |
-				tr '\001' '\000' | xargs -0 -r -n500 prepstrip
+		find "${x}" -type f \( -perm +0111 -or -regex '\.so$|\.so\.' \) |
+				xargs -0 -r -n500 prepstrip
 	else
 		f=$(file "${x}")
 		if [ -z "${f/*SB executable*/}" ]; then

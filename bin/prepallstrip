@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-if has nostrip $FEATURES $RESTRICT; then
+if [ "${FEATURES//*nostrip*/true}" == "true" ] || [ "${RESTRICT//*nostrip*/true}" == "true" ] ; then
 	exit 0
 fi
 

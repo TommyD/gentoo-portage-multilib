@@ -291,9 +291,6 @@ econf() {
 		if [ ! -z "${CBUILD}" ]; then
 			EXTRA_ECONF="--build=${CBUILD} ${EXTRA_ECONF}"
 		fi
-		if [ ! -z "${CCHOST}" ]; then
-			EXTRA_ECONF="--target=${CCHOST} ${EXTRA_ECONF}"
-		fi
 		./configure \
 		    --prefix=/usr \
 		    --host=${CHOST} \

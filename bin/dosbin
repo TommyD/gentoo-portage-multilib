@@ -11,12 +11,18 @@ if [ ! -d "${D}${DESTTREE}/sbin" ] ; then
 	install -d "${D}${DESTTREE}/sbin"
 fi
 
+if [ ! -z "${CBUILD}" ] && [ "${CBUILD}" != "${CHOST}" ]; then
+	STRIP=${CHOST}-strip
+else
+	STRIP=strip
+fi
+
 for x in "$@" ; do
 	if [ -x "${x}" ] ; then
-		if ! has nostrip $FEATURES $RESTRICT ; then
+		if [ "${FEATURES//*nostrip*/true}" != "true" ] && [ "${RESTRICT//*nostrip*/true}" != "true" ] ; then
 			MYVAL=`file "${x}" | grep "ELF"`
 			if [ "$MYVAL" ] ; then
-				strip "${x}"
+				${STRIP} "${x}"
 			fi
 		fi
 		#if executable, use existing perms

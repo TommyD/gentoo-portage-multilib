@@ -7,14 +7,21 @@ if [ ${#} -lt 1 ] ; then
 	echo "${0}: at least one argument needed"
 	exit 1
 fi
+
+if [ ! -z "${CBUILD}" ] && [ "${CBUILD}" != "${CHOST}" ]; then
+	STRIP=${CHOST}-strip
+else
+	STRIP=strip
+fi
+
 if [ ! -d "${D}${DESTTREE}/lib" ] ; then
 	install -d "${D}${DESTTREE}/lib"
 fi
 
 for x in "$@" ; do
 	if [ -e "${x}" ] ; then
-		if ! has nostrip $FEATURES $RESTRICT ; then
-			strip --strip-debug "${x}"
+		if [ "${FEATURES//*nostrip*/true}" != "true" ] && [ "${RESTRICT//*nostrip*/true}" != "true" ] ; then
+			${STRIP} --strip-debug "${x}"
 		fi
 		install -m0755 "${x}" "${D}${DESTTREE}/lib"
 	else

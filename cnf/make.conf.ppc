@@ -189,6 +189,11 @@ CHOST="powerpc-unknown-linux-gnu"
 #     for parallel makes is CPUs+1.
 #MAKEOPTS="-j2"
 #
+# PORTAGE_NICENESS provides a default increment to emerge's niceness level.
+#     Note: This is an increment. Running emerge in a niced environment will
+#     reduce it further. Default is unset.
+#PORTAGE_NICENESS=3
+#
 # AUTOCLEAN enables portage to automatically clean out older or overlapping
 #     packages from the system after every successful merge. This is the
 #     same as running 'emerge -c' after every merge. Set with: "yes" or "no".

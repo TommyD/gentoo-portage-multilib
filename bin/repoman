@@ -726,6 +726,8 @@ else:
 			elif repolevel==2: # In a category dir
 				for x in myheaders:
 					xs=string.split(x,"/")
+					if xs[0]==".":
+						xs=xs[1:]
 					if xs[0] in mydone:
 						continue
 					mydone.append(xs[0])
@@ -735,6 +737,8 @@ else:
 				print green("RepoMan sez:"), "\"You're rather crazy... doing the entire repository.\"\n"
 				for x in myheaders:
 					xs=string.split(x,"/")
+					if xs[0]==".":
+						xs=xs[1:]
 					if string.join(xs[:2],"/") in mydone:
 						continue
 					mydone.append(string.join(xs[:2],"/"))

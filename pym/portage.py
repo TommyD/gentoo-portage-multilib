@@ -86,6 +86,7 @@ def listdir(mypath,recursive=0,filesonly=0,ignorecvs=0,ignorelist=[]):
 	mtime = os.stat(mypath)[ST_MTIME]
 	if mtime != cached_mtime:
 		list = os.listdir(mypath)
+		ftype = []
 		for x in range(len(list)-1,-1,-1):
 			if list[x] in ignorelist:
 				del list[x]
@@ -1334,12 +1335,15 @@ def digestcheck(myfiles,strict=0):
 
 	if not (os.path.exists(digestfn) and os.path.exists(manifestfn)):
 		if "digest" in features:
-			print ">>> No message digest/manifest file found:",digestfn
+			print ">>> No package digest/manifest file found."
 			print ">>> \"digest\" mode enabled; auto-generating new digest..."
 			return digestgen(myfiles)
 		else:
-			print "!!! No message digest file found:",digestfn
-			print "!!! Type \"ebuild foo.ebuild digest\" to generate a digest."
+			if not os.path.exists(digestfn):
+				print "!!! No package digest file found:",digestfn
+			if not os.path.exists(manifestfn):
+				print "!!! No package manifest file found:",manifestfn
+			print "!!! Type \"ebuild foo.ebuild digest\" to generate it/them."
 			return 0
 
 	mydigests=digestParseFile(digestfn)
