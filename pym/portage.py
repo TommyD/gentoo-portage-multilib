@@ -259,6 +259,9 @@ def env_update():
 	env={}
 
 	for x in fns:
+		# don't process backup files
+		if x[-1]=='~' or x[-4:]==".bak":
+			continue
 		myconfig=getconfig(root+"etc/env.d/"+x)
 		# process PATH, CLASSPATH, LDPATH
 		for myspec in specials.keys():

@@ -1,6 +1,9 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+  1 Feb 2002; G.Bevin <gbevin@gentoo.org> portage.py :
+  make env-update disregard backup files
+  
   1 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge :
   added --pretend support instead of interactively asking to proceed,
   also added a delay before unmerging though to be sure
