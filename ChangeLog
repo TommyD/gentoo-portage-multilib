@@ -1,6 +1,40 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-2.0.41 (20 Oct 2002): Lot O'Bug fix release
+
+  20 Oct 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
+  stickies=[] lists the variables that will be kept/used as sticky vars,
+  not yet implimented. Fixed several relative symlink bugs by adding
+  abssymlink() to portage to determine real/absolute targets. env_update()
+  modified to fix bug 9308 symlinks bug. Bug 8348, request for error messages
+  instead of tracebacks/dies on parse errors, now caught on a per file basis
+  for system config files, includes descriptive messages. Fix for missing
+  profile traceback in new prepend'd-arch code. Typo fixes in symlink code.
+  DISABLED 'KEYWORD="" == available' code, DEFAULT IS MASKED NOW. Major
+  update to masking code, CONFIG_PROTECT can be layered with _MASKs, and
+  update_protect() now sets the self.protect* variables. Condensed and
+  reordered the unmerge code, now checks existance, cfgprotect, then mtimes.
+
+  20 Oct 2002; Nicholas Jones <carpaski@gentoo.org> emerge:
+  Bug 8767: Added 'buildpkg' to FEATURES to specify always-buildpkg.
+  Updated the --version output to display profile and gcc version.
+  Bug 8083: Eliminate spinner when terminal is not a tty. Bug 7688:
+  fixed search vs. searchdesc differences by adding 'cat/pack' split.
+  Bug 9308: Symlinks were being killed by ldconfig, fixed by changing
+  how/when ldconfig was allowed to set symlinks.  rsync command touchups,
+  --delete-after so that a failed rsync won't leave a user
+  without/with-few packages in portage.
+
+  20 Oct 2002; Nicholas Jones <carpaski@gentoo.org> ebuild.sh:
+  Added die to gzip in unpack()
+
+  20 Oct 2002; Nicholas Jones <carpaski@gentoo.org> make.conf*:
+  Added in useful variables and descriptions+warnings of their uses.
+
+  20 Oct 2002; Nicholas Jones <carpaski@gentoo.org> make.globals*:
+  Added in large "do not edit" message.
+
   16 Oct 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
 	Fixed an mtimes issue. --update on a package might yank non-cfgprot
 	files during the clean-phase because they didn't have mtimes updated.

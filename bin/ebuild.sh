@@ -159,7 +159,7 @@ unpack() {
 			if [ "${y}" == "tar" ]; then
 				tar xz --no-same-owner -f ${DISTDIR}/${x} || die "$myfail"
 			else
-				gzip -dc ${DISTDIR}/${x} > ${x%.*}
+				gzip -dc ${DISTDIR}/${x} > ${x%.*} || die "$myfail"
 			fi
 			;;
 		bz2) 

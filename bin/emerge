@@ -296,7 +296,11 @@ for x in cmdline:
 if (myaction in ["world", "system"]) and myfiles:
 	print "emerge: please specify a package class (\"world\" or \"system\") or individual packages, but not both."
 	sys.exit(1)
-			
+
+# Always create packages if FEATURES=buildpkg
+if "buildpkg" in portage.features:
+	if "--buildpkg" not in myopts:
+		myopts.append("--buildpkg")
 
 # Also allow -S to invoke search action (-sS)
 if ("--searchdesc" in myopts) and (not myaction):
@@ -308,7 +312,11 @@ if ("--pretend" in myopts) or (myaction=="search"):
 		print "emerge: wheel group membership required for \"--pretend\" and search."
 		sys.exit(1)
 elif "--version" in myopts:
-	print "Portage " + portage.VERSION
+	try:
+		profilever=string.split(os.readlink("/etc/make.profile"), "/")[-1]
+	except:
+		profilever="unavailable"
+	print "Portage " + portage.VERSION +" (profile "+profilever+", gcc-"+commands.getstatusoutput("/usr/bin/gcc -dumpversion")[1]+")"
 	sys.exit(0)
 elif "--help" in myopts:
 	help()
@@ -355,6 +363,13 @@ for x in sub:
 	if x in myparams:
 		myparams.remove(x)
 
+def update_spinner():
+	global spinner, spinpos
+	if sys.stdout.isatty():
+		sys.stdout.write("\b"+spinner[spinpos])
+		spinpos=(spinpos+1)%8
+		sys.stdout.flush()
+
 # search functionality
 class search:
 	
@@ -375,7 +390,7 @@ class search:
 		
 	def execute(self,searchkey):
 		"""Performs the search for the supplied search key"""
-		global spinner, spinpos, myopts
+		global myopts
 		self.searchkey=searchkey
 		self.packagematches = []
 		if "--searchdesc" in myopts:
@@ -389,9 +404,7 @@ class search:
 			#hack for people who aren't regular expression gurus
 			self.searchkey==".*"
 		for package in portage.portdb.cp_all():
-			sys.stdout.write("\b"+spinner[spinpos])
-			spinpos=(spinpos+1)%8
-			sys.stdout.flush()
+			update_spinner()
 			package_parts=package.split("/")
 			masked=0
 			if re.search(self.searchkey.lower(), package_parts[1].lower()):
@@ -429,6 +442,7 @@ class search:
 		for mtype in self.matches.keys():	
 			for match,masked in self.matches[mtype]:
 				if mtype=="pkg":
+					catpack=match
 					full_package = portage.portdb.xmatch("bestmatch-visible",match)
 					if not full_package:
 						#no match found; we don't want to query description
@@ -436,6 +450,7 @@ class search:
 						full_package=portage.best(portage.portdb.xmatch("match-all",match))
 				else:
 					full_package=match
+					catpack=portage.pkgsplit(match)[0]
 				if full_package:
 					try:
 						desc, homepage = portage.portdb.aux_get(full_package,["DESCRIPTION","HOMEPAGE"])
@@ -447,7 +462,7 @@ class search:
 					else:
 						print green("*")+"  "+white(match)
 					print "     ", "Latest version available:",self.getVersion(full_package, search.VERSION_RELEASE)
-					print "     ", self.getInstallationStatus(match)
+					print "     ", self.getInstallationStatus(catpack)
 					print "     ", "Homepage:",homepage
 					print "     ", "Description:",desc
 					print " "
@@ -557,13 +572,9 @@ class depgraph:
 		if self.digraph.hasnode(jbigkey+" merge") or self.digraph.hasnode(jbigkey+" nomerge"):
 			#this conditional is needed to prevent infinite recursion on already-processed deps
 			return 1
+
+		update_spinner()
 		
-		#update our groovy spinner
-		global spinner, spinpos
-		sys.stdout.write("\b"+spinner[spinpos])
-		spinpos=(spinpos+1)%8
-		sys.stdout.flush()
-	
 		mytype,myroot,mykey=mybigkey
 	
 		#select the correct /var database that we'll be checking against
@@ -1106,7 +1117,7 @@ def unmerge(unmerge_action, unmerge_files):
 			#unmerge...
 			retval=portage.unmerge(mysplit[0],mysplit[1],portage.root)
 	#run ldconfig, etc...
-	portage.env_update()
+	portage.env_update(("clean" == unmerge_action))
 	if not numselected:
 		return 0
 	else:
@@ -1201,9 +1212,9 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 	if syncuri[:8]=="rsync://":
 		if not os.path.exists("/usr/bin/rsync"):
 			print "!!! /usr/bin/rsync does not exist, so rsync support is disabled."
-			print "!!! Type \"emerge net-misc/cvs\" to enable rsync support."
+			print "!!! Type \"emerge net-misc/rsync\" to enable rsync support."
 			sys.exit(1)
-		mycommand="/usr/bin/rsync -rlptDvz --progress --stats --delete --exclude='distfiles/*' --exclude='packages/*' "
+		mycommand="/usr/bin/rsync -rlptDvz --progress --stats --delete-after --exclude='distfiles/*' --exclude='packages/*' "
 		mycommand=mycommand+syncuri+"/* "+myportdir
 		print ">>> starting rsync with "+syncuri+"..."
 	#protect users that did not set a default umask
@@ -1248,9 +1259,7 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 				os.chown(mycatdir,0,portage.wheelgid)
 			mymatches=portage.portdb.xmatch("match-all",x)
 			for y in mymatches:
-				sys.stdout.write("\b"+spinner[spinpos])
-				spinpos=(spinpos+1)%8
-				sys.stdout.flush()
+				update_spinner()
 				curdbkey=portage.settings["PORTAGE_CACHEDIR"]+"/"+y
 				newdbkey=myportdir+"/metadata/cache/"+y
 				mysplit=y.split("/")

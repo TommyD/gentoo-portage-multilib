@@ -24,7 +24,7 @@ except KeyError:
 	pass
 
 incrementals=["USE","FEATURES","ACCEPT_KEYWORDS","ACCEPT_LICENSE","CONFIG_PROTECT_MASK","CONFIG_PROTECT"]
-stickies=["KEYWORDS_ACCEPT","USE","CFLAGS","CXXFLAGS","MAKEOPTS"]
+stickies=["KEYWORDS_ACCEPT","USE","CFLAGS","CXXFLAGS","MAKEOPTS","EXTRA_CONFIGURE"]
 
 def getcwd():
 	"this fixes situations where the current directory doesn't exist"
@@ -35,6 +35,13 @@ def getcwd():
 		return "/"
 getcwd()
 
+def abssymlink(symlink):
+	"This reads symlinks, resolving the relative symlinks, and returning the absolute."
+	mylink=os.readlink(symlink)
+	if mylink[0] != '/':
+		mydir=os.path.dirname(symlink)
+		mylink=mydir+"/"+mylink
+	return os.path.normpath(mylink)
 
 dircache={}
 def listdir(path):
@@ -263,7 +270,7 @@ endversion_keys = ["pre", "p", "alpha", "beta", "rc"]
 
 #parse /etc/env.d and generate /etc/profile.env
 
-def env_update():
+def env_update(makelinks=0):
 	global root
 	if not os.path.exists(root+"etc/env.d"):
 		prevmask=os.umask(0)
@@ -328,9 +335,16 @@ def env_update():
 		for x in specials["LDPATH"]:
 			newld.write(x+"\n")
 		newld.close()
-		#run ldconfig here
+
+	# We can't update links if we haven't cleaned other versions first, as
+	# an older package installed ON TOP of a newer version will cause ldconfig
+	# to overwrite the symlinks we just made. -X means no links. After 'clean'
+	# we can safely create links.
 	print ">>> Regenerating "+root+"etc/ld.so.cache..."
-	getstatusoutput("/sbin/ldconfig -r "+root)
+	if makelinks:
+		getstatusoutput("/sbin/ldconfig -r "+root)
+	else:
+		getstatusoutput("/sbin/ldconfig -X -r "+root)
 	del specials["LDPATH"]
 
 	#create /etc/profile.env for bash support
@@ -669,13 +683,33 @@ class config:
 		global profiledir
 		self.configdict={}
 		# configlist will contain: [ globals, (optional) profile, make.conf, backupenv (incrementals), origenv ]
-		self.configlist.append(getconfig("/etc/make.globals"))
+
+		self.mygcfg=getconfig("/etc/make.globals")
+		if self.mygcfg==None:
+			print "!!! Parse error in /etc/make.globals."
+			print "!!! Incorrect multiline literals can cause this. Do not use them."
+			sys.exit(1)
+		self.configlist.append(self.mygcfg)
 		self.configdict["globals"]=self.configlist[-1]
+
 		if profiledir:
-			self.configlist.append(getconfig("/etc/make.profile/make.defaults"))
+			self.mygcfg=getconfig("/etc/make.profile/make.defaults")
+			if self.mygcfg==None:
+				print "!!! Parse error in /etc/make.defaults. Never modify this file."
+				print "!!! 'emerge sync' may fix this. If it does not then please report"
+				print "!!! this to bugs.gentoo.org and, if possible, a dev on #gentoo (IRC)"
+				sys.exit(1)
+			self.configlist.append(self.mygcfg)
 			self.configdict["defaults"]=self.configlist[-1]
-		self.configlist.append(getconfig("/etc/make.conf"))
+
+		self.mygcfg=getconfig("/etc/make.conf")
+		if self.mygcfg==None:
+			print "!!! Parse error in /etc/make.globals."
+			print "!!! Incorrect multiline literals can cause this. Do not use them."
+			sys.exit(1)
+		self.configlist.append(self.mygcfg)
 		self.configdict["conf"]=self.configlist[-1]
+
 		for x in incrementals:
 			if os.environ.has_key(x):
 				self.backupenv[x]=os.environ[x]
@@ -702,7 +736,7 @@ class config:
 		self.regenerate()
 	
 	def regenerate(self,useonly=0):
-		global incrementals,usesplit
+		global incrementals,usesplit,profiledir
 		if useonly:
 			myincrementals=["USE"]
 		else:
@@ -746,7 +780,7 @@ class config:
 		#cache split-up USE var in a global
 		usesplit=string.split(self.configlist[-1]["USE"])
 		# Pre-Pend ARCH variable to USE settings so '-*' in env doesn't kill arch.
-		if self.configdict["defaults"]["ARCH"] not in usesplit:
+		if (profiledir) and (self.configdict["defaults"]["ARCH"] not in usesplit):
 			usesplit.insert(0,self.configdict["defaults"]["ARCH"])
 	
 	def __getitem__(self,mykey):
@@ -755,6 +789,8 @@ class config:
 		else:
 			suffix=""
 		for x in self.lookuplist:
+			if x == None:
+				print "!!! lookuplist is null."
 			if x.has_key(mykey):
 				return x[mykey]+suffix
 		return suffix
@@ -1241,13 +1277,13 @@ def movefile(src,dest,newmtime=None,sstat=None):
 			real_src = os.readlink(src)
 		except:
 			print "!!! couldn't readlink",src
-			return None 
+			return None
 		try:
 			os.symlink(real_src,dest)
 			if os.readlink(dest)!=real_src:
-				print "WARNING:",dest,"points to",os.readlink(dest),"instead of","real_src!"
+				print "WARNING:",dest,"points to",os.readlink(dest),"instead of",real_src
 		except:
-			print "!!! couldn't symlink",real_src,"->",dest
+			print "!!! couldn't symlink",dest,"->",real_src
 			return None 
 		try:
 			missingos.lchown(dest,sstat[ST_UID],sstat[ST_GID])
@@ -3057,26 +3093,21 @@ class portdbapi(dbapi):
 			except (KeyError,IOError):
 				return []
 			if not myaux[0]:
-				#any aux_get errors will make an ebuild visible (get more accurate errors that way)
-				#no ACCEPT_KEYWORDS setting defaults to "*" (for backwards compat.)
-				newlist.append(mycpv)
+				# KEYWORDS=""
+				#print "!!! No KEYWORDS for "+str(mycpv)+" -- Untested Status"
 				continue
 			mygroups=myaux[0].split()
-			if not mygroups:
-				#no KEYWORDS setting defaults to "*"
-				match=1
-			else:
-				match=0
-				for gp in mygroups:
-					if gp=="*":
-						match=1
-						break
-					elif "-"+gp in groups:
-						match=0
-						break
-					elif gp in groups:
-						match=1
-						break
+			match=0
+			for gp in mygroups:
+				if gp=="*":
+					match=1
+					break
+				elif "-"+gp in groups:
+					match=0
+					break
+				elif gp in groups:
+					match=1
+					break
 			if match:
 				newlist.append(mycpv)
 		return newlist
@@ -3174,7 +3205,12 @@ class dblink:
 			os.rmdir(self.dbdir)
 		except OSError, e:
 			print "!!! Unable to remove db entry for this package."
+			print "!!! It is possible that a directory in this one. Portage will still"
+			print "!!! register this package as installed as long as this directory exists."
+			print "!!! You may delete this directory with 'rm -Rf "+self.dbdir+"'"
 			print "!!! "+str(e)
+			print
+			sys.exit(1)
 	
 	def clearcontents(self):
 		if os.path.exists(self.dbdir+"/CONTENTS"):
@@ -3225,6 +3261,23 @@ class dblink:
 			pos += 1
 		return pkgfiles
 
+	def updateprotect(self):
+		#do some config file management prep
+		self.protect=[]
+		for x in string.split(settings["CONFIG_PROTECT"]):
+			ppath=os.path.normpath(self.myroot+"/"+x)+"/"
+			if os.path.isdir(ppath):
+				self.protect.append(ppath)
+			
+		self.protectmask=[]
+		for x in string.split(settings["CONFIG_PROTECT_MASK"]):
+			ppath=os.path.normpath(self.myroot+"/"+x)+"/"
+			if os.path.isdir(ppath):
+				self.protectmask.append(ppath)
+			#if it doesn't exist, silently skip it
+		print "protected: "+str(self.protect)
+		print "masked: "+str(self.protectmask)
+
 	def isprotected(self,obj):
 		"""Checks if obj is in the current protect/mask directories. Returns
 		0 on unprotected/masked, and 1 on protected."""
@@ -3238,10 +3291,12 @@ class dblink:
 					if (len(pmpath) >= protected) and (obj[0:len(pmpath)]==pmpath):
 						#skip, it's in the mask
 						masked=len(pmpath)
+		#print "** isprotected("+str(obj)+") "+str(protected > masked)
 		return (protected > masked)
 
 	def unmerge(self,pkgfiles=None):
 		if not pkgfiles:
+			print "No package files given... Grabbing a set."
 			pkgfiles=self.getcontents()
 			if not pkgfiles:
 				return
@@ -3260,42 +3315,34 @@ class dblink:
 		mykeys=pkgfiles.keys()
 		mykeys.sort()
 		mykeys.reverse()
-		
-		#do some config file management prep
-		self.protect=[]
-		for x in string.split(settings["CONFIG_PROTECT"]):
-			ppath=os.path.normpath(self.myroot+"/"+x)+"/"
-			if os.path.isdir(ppath):
-				self.protect.append(ppath)
-			
-		self.protectmask=[]
-		for x in string.split(settings["CONFIG_PROTECT_MASK"]):
-			ppath=os.path.normpath(self.myroot+"/"+x)+"/"
-			if os.path.isdir(ppath):
-				self.protectmask.append(ppath)
-			#if it doesn't exist, silently skip it
-	
+
+		self.updateprotect()
+
 		#process symlinks second-to-last, directories last.
 		mydirs=[]
 		mysyms=[]
 		for obj in mykeys:
 			obj=os.path.normpath(obj)
-			if not os.path.islink(obj):
-				#we skip this if we're dealing with a symlink
-				#because os.path.exists() will operate on the
-				#link target rather than the link itself.
-				if not os.path.exists(obj):
-					print "--- !found", pkgfiles[obj][0], obj
+			if not os.path.exists(obj):
+				if not os.path.islink(obj):
+					#we skip this if we're dealing with a symlink
+					#because os.path.exists() will operate on the
+					#link target rather than the link itself.
+					print "--- !found "+str(pkgfiles[obj][0]), obj
 					continue
+			if self.isprotected(obj):
+				print "--- cfgpro "+str(pkgfiles[obj][0]), obj
+				continue
+
 			lstatobj=os.lstat(obj)
-			lmtime=`lstatobj[ST_MTIME]`
+			lmtime=str(lstatobj[ST_MTIME])
 			#next line: we dont rely on mtimes for symlinks anymore.
-			try:
-				if (pkgfiles[obj][0] not in ("dir","fif","dev","sym")) and (lmtime != pkgfiles[obj][1]):
-					print "--- !mtime", pkgfiles[obj][0], obj
-					continue
-			except KeyError:
-					print "--- !error",pkgfiles[obj][0],obj
+			#try:
+			if (pkgfiles[obj][0] not in ("dir","fif","dev","sym")) and (lmtime != pkgfiles[obj][1]):
+				print "--- !mtime", pkgfiles[obj][0], obj
+				continue
+			#except KeyError:
+			#		print "--- !error",pkgfiles[obj][0],obj
 			if pkgfiles[obj][0]=="dir":
 				if not os.path.isdir(obj):
 					print "--- !dir  ","dir", obj
@@ -3305,17 +3352,12 @@ class dblink:
 				if not os.path.islink(obj):
 					print "--- !sym  ","sym", obj
 					continue
-				#if (lmtime != pkgfiles[obj][1]):
-				#	print "--- !mtime sym",obj
-				#	continue
+				myabsdest=abssymlink(obj)
 				mydest=os.readlink(obj)
-				if os.path.exists(os.path.normpath(self.myroot+mydest)):
+				if os.path.exists(myabsdest):
 					if mydest != pkgfiles[obj][2]:
 						print "--- !destn","sym", obj
 						continue
-				if self.isprotected(obj):
-					print "--- cfgpro sym",obj
-					continue
 				mysyms.append(obj)
 			elif pkgfiles[obj][0]=="obj":
 				if not os.path.isfile(obj):
@@ -3327,20 +3369,14 @@ class dblink:
 				if mymd5 != string.lower(pkgfiles[obj][2]):
 					print "--- !md5  ","obj", obj
 					continue
-				if self.isprotected(obj):
-					print "--- cfgpro obj",obj
-				else:
-					try:
-						os.unlink(obj)
-					except (OSError,IOError),e:
-						pass		
-					print "<<<       ","obj",obj
+				try:
+					os.unlink(obj)
+				except (OSError,IOError),e:
+					pass		
+				print "<<<       ","obj",obj
 			elif pkgfiles[obj][0]=="fif":
 				if not S_ISFIFO(lstatobj[ST_MODE]):
 					print "--- !fif  ","fif", obj
-					continue
-				if self.isprotected(obj):
-					print "--- cfgpro fif",obj
 					continue
 				try:
 					os.unlink(obj)
@@ -3369,11 +3405,9 @@ class dblink:
 			pos = 0
 			while pos<len(mysyms):
 				obj=mysyms[pos]
-				try:
-					#target exists; keep it for now.
-					mystat=os.stat(obj)
+				if os.path.exists(obj):
 					pos += 1
-				except:
+				else:
 					#we have a dead symlink; remove it from our list, then from existence
 					del mysyms[pos]
 					#we've made progress!	
@@ -3382,6 +3416,7 @@ class dblink:
 						os.unlink(obj)
 						print "<<<       ","sym",obj
 					except (OSError,IOError),e:
+						print "!!!       ","sym",obj
 						#immutable?
 						pass
 	
@@ -3461,11 +3496,11 @@ class dblink:
 		for x in newworldlist:
 			myworld.write(x+"\n")
 		myworld.close()
-		
+
 		#do original postrm
 		if myebuildpath and os.path.exists(myebuildpath):
 			a=doebuild(myebuildpath,"postrm",self.myroot)
-	
+
 	def treewalk(self,srcroot,destroot,inforoot,myebuild):
 		# srcroot = ${D}; destroot=where to merge, ie. ${ROOT}, inforoot=root of db entry,
 		# secondhand = list of symlinks that have been skipped due to their target not existing (will merge later),
@@ -3494,20 +3529,9 @@ class dblink:
 			a=doebuild(inforoot+"/"+self.pkg+".ebuild","preinst",root)
 		# open CONTENTS file (possibly overwriting old one) for recording
 		outfile=open(inforoot+"/CONTENTS","w")
-		# prep for config file management
-		self.protect=[]
-		# self.protect records any paths in CONFIG_PROTECT that are real directories and exist
-		for x in string.split(settings["CONFIG_PROTECT"]):
-			ppath=os.path.normpath(destroot+"/"+x)+"/"
-			if os.path.isdir(ppath):
-				self.protect.append(ppath)
-		self.protectmask=[]
-		# self.protectmask records any paths in CONFIG_PROTECT_MASK that are real directories and exist
-		for x in string.split(settings["CONFIG_PROTECT_MASK"]):
-			ppath=os.path.normpath(destroot+"/"+x)+"/"
-			if os.path.isdir(ppath):
-				self.protectmask.append(ppath)
-		cfgfiledict={}
+
+		self.updateprotect()
+
 		#if we have a file containing previously-merged config file md5sums, grab it.
 		if os.path.exists(destroot+"/var/cache/edb/config"):
 			cfgfiledict=grabdict(destroot+"/var/cache/edb/config")
@@ -3548,7 +3572,7 @@ class dblink:
 		# copy "info" files (like SLOT, CFLAGS, etc.) into the database
 		for x in listdir(inforoot):
 			self.copyfile(inforoot+"/"+x)
-		
+
 		#write out our collection of md5sums
 		writedict(cfgfiledict,destroot+"/var/cache/edb/config")
 		
@@ -3572,7 +3596,6 @@ class dblink:
 					myvirts[mycatpkg]=[myvkey]
 			writedict(myvirts,destroot+"var/cache/edb/virtuals")
 		
-
 		#do postinst script
 		if myebuild:
 			# if we are merging a new ebuild, use *its* pre/postinst rather than using the one in /var/db/pkg 
@@ -3580,11 +3603,14 @@ class dblink:
 			a=doebuild(myebuild,"postinst",root)
 		else:
 			a=doebuild(inforoot+"/"+self.pkg+".ebuild","postinst",root)
+	
 		#update environment settings, library paths
 		env_update()	
 		print ">>>",self.cat+"/"+self.pkg,"merged."
-
+		
 	def mergeme(self,srcroot,destroot,outfile,secondhand,stufftomerge,cfgfiledict,thismtime):
+		srcroot=os.path.normpath(srcroot)+"/"
+		destroot=os.path.normpath(destroot)+"/"
 		# this is supposed to merge a list of files.  There will be 2 forms of argument passing.
 		if type(stufftomerge)==types.StringType:
 			#A directory is specified.  Figure out protection paths, listdir() it and process it.
@@ -3599,8 +3625,8 @@ class dblink:
 			mergelist=stufftomerge
 			offset=""
 		for x in mergelist:
-			mysrc=srcroot+offset+x
-			mydest=destroot+offset+x
+			mysrc=os.path.normpath(srcroot+offset+x)
+			mydest=os.path.normpath(destroot+offset+x)
 			# myrealdest is mydest without the $ROOT prefix (makes a difference if ROOT!="/")
 			myrealdest="/"+offset+x
 			# stat file once, test using S_* macros many times (faster that way)
@@ -3616,10 +3642,15 @@ class dblink:
 			
 			if S_ISLNK(mymode):
 				# we are merging a symbolic link
+				myabsto=abssymlink(mysrc)
+				if myabsto[0:len(srcroot)]==srcroot:
+					myabsto=myabsto[len(srcroot):]
+					if myabsto[0]!="/":
+						myabsto="/"+myabsto
 				myto=os.readlink(mysrc)
 				# myrealto contains the path of the real file to which this symlink points.
 				# we can simply test for existence of this file to see if the target has been merged yet
-				myrealto=os.path.normpath(os.path.join(destroot,myto))
+				myrealto=os.path.normpath(os.path.join(destroot,myabsto))
 				if mydmode!=None:
 					#destination exists
 					if (not S_ISLNK(mydmode)) and (S_ISDIR(mydmode)):
@@ -3775,7 +3806,7 @@ class dblink:
 					mymtime=thismtime
 					# We need to touch the destination so that on --update the
 					# old package won't yank the file with it. (non-cfgprot related)
-					os.utime(mydest,(thismtime,thismtime))
+					os.utime(myrealdest,(thismtime,thismtime))
 					zing="---"
 				if mymtime!=None:
 					zing=">>>"
