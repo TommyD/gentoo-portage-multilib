@@ -725,7 +725,11 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 	if mydo=="unmerge": 
 		return unmerge(settings["CATEGORY"],settings["PF"],myroot)
 	
-	#initial ebuild.sh bash environment configured
+	# if any of these are being called, stop now, handle them and stop now.
+	if mydo in ["help","clean","prerm","postrm","preinst","postinst","touch","setup"]:
+		return spawn("/usr/sbin/ebuild.sh "+mydo)
+		#initial ebuild.sh bash environment configured
+	
 	mydbkey="/var/cache/edb/dep/dep-"+os.path.basename(settings["EBUILD"])
 	if (not os.path.exists(mydbkey)) or os.stat(mydbkey)[7]<os.stat(settings["EBUILD"])[7]:
 		#cached info stale or non-existent
@@ -736,10 +740,7 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 			return 1
 	if mydo=="depend":
 		return 0
-	# if any of these are being called, stop now.
-	if mydo in ["help","clean","prerm","postrm","preinst","postinst","touch","setup"]:
-		return spawn("/usr/sbin/ebuild.sh "+mydo)
-	
+
 	# obtain the dependency, slot and SRC_URI information from the edb cache file
 	a=open(mydbkey,"r")
 	mydeps=eval(a.readline())
@@ -857,25 +858,15 @@ def expandpath(realroot,mypath):
 	expandcache[join]=os.path.realpath(join)
 	return expandcache[join]
 
-def movefile(src,dest,unlink=1):
+def movefile(src,dest):
 	"""moves a file from src to dest, preserving all permissions and attributes; mtime will
 	be preserved even when moving across filesystems.  Returns true on success and false on
 	failure."""
-	#The next 2 lines avoid writing to the target
-	if os.path.islink(dest):
-		os.unlink(dest)
-	if dest=="/bin/cp":
-		getstatusoutput("/bin/mv /bin/cp /bin/cp.old")
-		a=getstatusoutput("/bin/cp.old -a "+"'"+src+"' /bin/cp")
-		os.unlink("/bin/cp.old")
-	elif dest=="/bin/bash":
-		a=getstatusoutput("rm /bin/bash; /bin/cp -a "+"'"+src+"' '"+dest+"'")
-	else:
-		a=getstatusoutput("/bin/mv -f "+"'"+src+"' '"+dest+"'")	
-	if a[0]==0:
-		return 1
-	else:
-		return 0
+	#The next 2 lines appear to be no longer needed with recent fileutils
+	#if os.path.islink(dest):
+	#	os.unlink(dest)
+	a=getstatusoutput("/bin/mv -f "+"'"+src+"' '"+dest+"'")	
+	return not a[0]
 
 def getmtime(x):
 	 return `os.lstat(x)[-2]`
@@ -2254,7 +2245,7 @@ class dblink:
 			print "!!! pkg_postrm() script failed; exiting."
 			sys.exit(a)
 	
-	def treewalk(self,srcroot,destroot,inforoot,secondhand=[]):
+	def treewalk(self,srcroot,destroot,inforoot):
 		# srcroot = ${D}; destroot=where to merge, ie. ${ROOT}, inforoot=root of db entry,
 		# secondhand = list of symlinks that have been skipped due to their target not existing (will merge later),
 		"this is going to be the new merge code"
@@ -2289,12 +2280,12 @@ class dblink:
 				self.protectmask.append(ppath)
 		# set umask to 0 for merging; back up umask, save old one in prevmask (since this is a global change)
 		prevmask=os.umask(0)
-			
+		secondhand=[]	
 		# we do a first merge; this will recurse through all files in our srcroot but also build up a
 		# "second hand" of symlinks to merge later
 		self.mergeme(srcroot,destroot,outfile,secondhand,"")
 		# now, it's time for dealing our second hand; we'll loop until we can't merge anymore.  The rest are
-		# broken symlinks.
+		# broken symlinks.  We'll merge them too.
 		thirdhand=[]
 		while len(secondhand)!=len(thirdhand):
 			self.mergeme(srcroot,destroot,outfile,thirdhand,secondhand)

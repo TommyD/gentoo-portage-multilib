@@ -601,7 +601,6 @@ if [ "${RDEPEND}" = "" ]
 then
 	export RDEPEND=${DEPEND}
 fi
-
 count=1
 while [ $count -le $# ]
 do
@@ -635,7 +634,7 @@ do
 		fi
 		export SANDBOX_ON="0"
 		;;
-	help|touch|setup|fetch|digest|pkginfo|pkgloc|unmerge|merge|package|rpm)
+	help|touch|setup|pkginfo|pkgloc|unmerge|package|rpm)
 	    if [ "$PORTAGE_DEBUG" = "0" ]
 	    then
 	      dyn_${myarg}
@@ -648,6 +647,7 @@ do
 	depend)
 		#the echo commands remove newlines
 		echo "['`echo $DEPEND`', '`echo $RDEPEND`', '`echo $SLOT`', '`echo $SRC_URI`' ]" > /var/cache/edb/dep/dep-${PF}.ebuild
+		exit 0
 		;;
 	*)
 	    echo "Please specify a valid command."

@@ -636,7 +636,7 @@ if "--debug" in myopts:
 
 # process modes that aren't in the universal emerge interface format first
 # this format is 'emerge --action --option --option [packageset]'
-if ("rsync" in mymode) or ("sync" in mymode):
+if (("rsync" in mymode) or ("sync" in mymode)) and (not myaction or myaction=="--clean"):
 	rclean=0
 	myportdir=portage.settings["PORTDIR"]
 	if myportdir[-1]=="/":
