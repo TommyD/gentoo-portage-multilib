@@ -91,6 +91,7 @@ for x in "$@" ; do
 
 	# they gave us full path
 	if [ -e ${x}/CONTENTS ] ; then
+		x="`readlink -f $x`"
 		pkg="`echo ${x} | cut -d/ -f6`"
 		cat="`echo ${x} | cut -d/ -f5`"
 		do_pkg ${pkg} ${cat}

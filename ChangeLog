@@ -7,6 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  05 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> quickpkg: Fixed bug whereby
+  creating a package from within /var/db/pkg/cat and specifying pkg would
+  create a broken package.
+
   05 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> emerge: Modified output for
   slotted installations. #26139
 
