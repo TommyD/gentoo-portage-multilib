@@ -292,7 +292,7 @@ for x in scanlist:
 			matchmode="match-visible"
 		for mytype,mypos in [["DEPEND",len(missingvars)],["RDEPEND",len(missingvars)+1]]:
 			mykey=mytype+".bad"+suffix
-			mydep=portage.dep_check(myaux[mypos],portage.db["/"]["porttree"].dbapi,use="all",mode=matchmode,usemask=portage.settings.usemask)
+			mydep=portage.dep_check(myaux[mypos],portage.db["/"]["porttree"].dbapi,use="all",mode=matchmode)
 			if mydep[0]==1:
 				if mydep[1]!=[]:
 					#we have some unsolvable deps

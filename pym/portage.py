@@ -1891,7 +1891,7 @@ def dep_parenreduce(mysplit,mypos=0):
 		mypos=mypos+1
 	return mysplit
 
-def dep_opconvert(mysplit,myuse,usemask=[]):
+def dep_opconvert(mysplit,myuse):
 	"Does dependency operator conversion"
 	
 	mypos=0
@@ -1944,13 +1944,13 @@ def dep_opconvert(mysplit,myuse,usemask=[]):
 				if enabled:
 					#choose the first option
 					if type(mysplit[mypos+1])==types.ListType:
-						newsplit.append(dep_opconvert(mysplit[mypos+1],myuse,usemask))
+						newsplit.append(dep_opconvert(mysplit[mypos+1],myuse))
 					else:
 						newsplit.append(mysplit[mypos+1])
 				else:
 					#choose the alternate option
 					if type(mysplit[mypos+1])==types.ListType:
-						newsplit.append(dep_opconvert(mysplit[mypos+3],myuse,usemask))
+						newsplit.append(dep_opconvert(mysplit[mypos+3],myuse))
 					else:
 						newsplit.append(mysplit[mypos+3])
 				mypos += 4
@@ -1958,7 +1958,7 @@ def dep_opconvert(mysplit,myuse,usemask=[]):
 				#normal use mode
 				if enabled:
 					if type(mysplit[mypos+1])==types.ListType:
-						newsplit.append(dep_opconvert(mysplit[mypos+1],myuse,usemask))
+						newsplit.append(dep_opconvert(mysplit[mypos+1],myuse))
 					else:
 						newsplit.append(mysplit[mypos+1])
 				#otherwise, continue.
@@ -2222,7 +2222,7 @@ def dep_expand(mydep,mydb=None):
 		mydep=mydep[1:]
 	return prefix+cpv_expand(mydep,mydb)+postfix
 
-def dep_check(depstring,mydbapi,use="yes",mode=None,usemask=[]):
+def dep_check(depstring,mydbapi,use="yes",mode=None):
 	"""Takes a depend string and parses the condition."""
 	global usesplit
 	if use=="all":
@@ -2238,7 +2238,7 @@ def dep_check(depstring,mydbapi,use="yes",mode=None,usemask=[]):
 	#convert parenthesis to sublists
 	mysplit=dep_parenreduce(mysplit)
 	#mysplit can't be None here, so we don't need to check
-	mysplit=dep_opconvert(mysplit,myusesplit,usemask)
+	mysplit=dep_opconvert(mysplit,myusesplit)
 	#if mysplit==None, then we have a parse error (paren mismatch or misplaced ||)
 	#up until here, we haven't needed to look at the database tree
 	
