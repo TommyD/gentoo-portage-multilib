@@ -2,6 +2,22 @@
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+  06 Apr 2003; Martin Schlemmer <azarah@gentoo.org> libsandbox.c :
+  For some reason sandbox fails with a 'open_wr' if you run 'locale -a' under
+  it (bug #16298).
+  
+  Problem is that for some reason locale fopen's locale.alias with mode "rm".
+
+  -------------------------------------------------------
+  nosferatu root # grep fopen locale.log 
+  fopen("/usr/share/locale/locale.alias", "rm"ACCESS DENIED  open_wr:   /usr/share/locale/locale.alias
+  nosferatu root # 
+  --------------------------------------------------------
+
+  I checked the source of locale, but it have fopen with mode 'r', so
+  not sure where the "rm" mode comes from.  Anyhow, changed the check in
+  before_syscall_open_char() to also see mode "rm" as readonly.
+
   23 Feb 2003; Martin Schlemmer <azarah@gentoo.org> create-localdecls :
 
   Add glibc-2.3 support.

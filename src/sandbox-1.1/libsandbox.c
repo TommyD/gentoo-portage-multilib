@@ -1176,7 +1176,7 @@ static int before_syscall_open_int(const char* func, const char* file, int flags
 
 static int before_syscall_open_char(const char* func, const char* file, const char* mode)
 {
-  if ((strcmp(mode, "r") == 0) || (strcmp(mode, "rb") == 0)) {
+  if ((strcmp(mode, "r") == 0) || (strcmp(mode, "rb") == 0) || (strcmp(mode, "rm") == 0)) {
     return before_syscall("open_rd", file);
   } else {
     return before_syscall("open_wr", file);
