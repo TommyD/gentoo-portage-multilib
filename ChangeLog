@@ -2,6 +2,10 @@
 # Copyright 2001 Gentoo Technologies, Inc.; Distributed under the GPL
 # Written by Daniel Robbins (drobbins@gentoo.org)
 
+  17 Jan 2002; The package chosen by "emerge sys-apps/shadow" now matches that
+  chosen in an emerge update or emerge system.  I forgot to add some "*" dep code
+  to the dep_nomatch() method; this is now fixed.
+
   12 Jan 2002; "emerge sys-apps/bash/" now works. (trailing "/" stripped to make
   tab-completion users happy)  This fixes bug #119
 

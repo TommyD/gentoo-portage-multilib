@@ -1570,18 +1570,36 @@ class packagetree:
 		"""
 		returnme=[]
 		if (mypkgdep[0]=="="):
-			mycp=catpkgsplit(mypkgdep[1:],1)
-			if not mycp:
-				#not a specific pkg, or parse error.  keep silent
-				return []
-			mykey=mycp[0]+"/"+mycp[1]
-			if not self.tree.has_key(mykey):
-				return []
-			x=0
-			while x<len(self.tree[mykey]):
-				if self.tree[mykey][x][0]!=mypkgdep[1:]:
-					returnme.append(self.tree[mykey][x][0])
-				x=x+1
+			if mypkgdep[-1]=="*":
+				if not isspecific(mypkgdep[1:-1]):
+					return []
+				mycatpkg=catpkgsplit(mypkgdep[1:-1])
+				try:
+					mynewver=mycatpkg[2]
+					mynewsplit=string.split(mycatpkg[2],'.')
+					mynewsplit[-1]=`int(mynewsplit[-1])+1`
+				except:
+					return [] 
+				mynodes=[]
+				cmp1=mycatpkg[1:]
+				cmp2=[mycatpkg[1],string.join(mynewsplit,"."),"r0"]
+				for x in self.getnode(mycatpkg[0]+"/"+mycatpkg[1]):
+					if not ((pkgcmp(x[1][1:],cmp1)>=0) and (pkgcmp(x[1][1:],cmp2)<0)):
+						mynodes.append(x[0])
+				return mynodes
+			else:
+				mycp=catpkgsplit(mypkgdep[1:],1)
+				if not mycp:
+					#not a specific pkg, or parse error.  keep silent
+					return []
+				mykey=mycp[0]+"/"+mycp[1]
+				if not self.tree.has_key(mykey):
+					return []
+				x=0
+				while x<len(self.tree[mykey]):
+					if self.tree[mykey][x][0]!=mypkgdep[1:]:
+						returnme.append(self.tree[mykey][x][0])
+					x=x+1
 		elif (mypkgdep[0]==">") or (mypkgdep[0]=="<"):
 			if mypkgdep[1]=="=":
 				cmpstr=mypkgdep[0:2]
@@ -1762,6 +1780,7 @@ class portagetree(packagetree):
 				x=x[1:]
 			matches=self.dep_nomatch(x)
 			for y in matches:
+				print "zapping",y
 				self.zap(y)
 
 	def getdeps(self,pf):
