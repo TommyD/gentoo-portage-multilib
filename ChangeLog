@@ -1,6 +1,10 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  10 Jun 2002; Dan Armak <danarmak@gentoo.org> make.conf:
+  Update the ibiblio mirror path; it is now
+  www.ibiblio.org/pub/Linux/distributions/gentoo.
+
   10 Jun 2002; Martin Schlemmer <azarah@gentoo.org> ebuild.sh : Some users
   have $TMPDIR to a custom dir in thier home ...this will cause sandbox errors
   with some ./configure scripts or libtool, so set it to $T.
