@@ -1,6 +1,8 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-1.9.6 (02 May 2002)
+
   02 May 2002; Daniel Robbins <drobbins@gentoo.org> make.conf: SYNC variable
   correctly set to use our DNS round-robin system (rsync.gentoo.org).
 
