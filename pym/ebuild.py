@@ -896,6 +896,9 @@ class ebuild_handler:
 						mysettings["LOG_PF"]=mysettings["PF"]
 						mysettings["LOG_COUNTER"]=str(db[myroot]["vartree"].dbapi.get_counter_tick_core("/"))
 					mysettings["PORTAGE_LOGFILE"]="%s/%s-%s.log" % (mysettings["PORT_LOGDIR"],mysettings["LOG_COUNTER"],mysettings["LOG_PF"])
+					if os.path.exists(mysettings["PORTAGE_LOGFILE"]):
+						os.chmod(mysettings["PORTAGE_LOGFILE"], 0664)
+						os.chown(mysettings["PORtAGE_LOGFILE"], -1,portage_gid)
 				except ValueError, e:
 					mysettings["PORT_LOGDIR"]=""
 					print "!!! Unable to chown/chmod PORT_LOGDIR. Disabling logging."

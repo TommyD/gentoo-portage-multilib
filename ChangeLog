@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  02 Mar 2005; Brian Harring <ferringb@gentoo.org> pym/ebuild.py: added a 
+  check to force PORTAGE_LOGFILE to have the appropriate owner/perms.
+
   02 Mar 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage_util.py: Added
   missing bsd_chflags import required after forward porting.
 
