@@ -11,7 +11,7 @@
 # **  USE, CONFIG_*, and FEATURES are incremental  **
 # ***************************************************
 
-GENTOO_MIRRORS="http://gentoo.oregonstate.edu http://www.ibiblio.org/pub/Linux/distributions/gentoo"
+GENTOO_MIRRORS="http://gentoo.osuosl.edu http://www.ibiblio.org/pub/Linux/distributions/gentoo"
 SYNC="rsync://rsync.gentoo.org/gentoo-portage"
 # Host-type
 CHOST="sparc-unknown-linux-gnu"
