@@ -30,13 +30,16 @@ def fileStats(filepath):
 
 
 class FileChecker:
-	def __init__(self,keydir=None,keyring=None,requireSignedRing=False,minimumTrust=EXISTS):
+	def __init__(self,keydir=None,keyring=None,requireSignedRing=False,minimumTrust=EXISTS,home=None):
 		self.minimumTrust     = TRUSTED  # Default we require trust. For rings.
 		self.keydir           = None
 		self.keyring          = None
 		self.keyringPath      = None
 		self.keyringStats     = None
 		self.keyringIsTrusted = False
+		if home==None:
+			home=os.environ("HOME")
+		self.home=home
 	
 		if (keydir != None):
 			# Verify that the keydir is valid.
@@ -112,7 +115,7 @@ class FileChecker:
 			command += " '"+sigfile+"'"
 		command += " '"+filename+"'"
 	
-		result,output = portage_exec.spawn_get_output(command,raw_exit_code=True)
+		result,output = portage_exec.spawn_get_output(command,raw_exit_code=True,env={"HOME":self.home})
 		
 		signal = result & 0xff
 		result = (result >> 8)
