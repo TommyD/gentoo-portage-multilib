@@ -72,7 +72,7 @@ try:
 	import portage_versions
 	
 	#assign these to portage's namespace to keep the esearch monkeys happy.
-	portage_versions.catpkgsplit = portage_versions.catpkgsplit
+	catpkgsplit = portage_versions.catpkgsplit
 	pkgsplit = portage_versions.pkgsplit
 
 	# XXX: This needs to get cleaned up.
