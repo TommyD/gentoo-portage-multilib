@@ -1427,7 +1427,7 @@ class config:
 			# XXX: vartree does not use virtuals, does user set matter?
 			temp_vartree = vartree(myroot,self.dirVirtuals,categories=self.categories)
 			# Reduce the provides into a list by CP.
-			myTreeVirtuals = map_dictlist_vals(getCPFromCPV,temp_vartree.get_all_provides())
+			self.treeVirtuals = map_dictlist_vals(getCPFromCPV,temp_vartree.get_all_provides())
 		
 		return self.__getvirtuals_compile()
 
