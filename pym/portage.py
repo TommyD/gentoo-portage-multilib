@@ -66,6 +66,8 @@ import missingos
 #handle ^C interrupts correctly:
 def exithandler(signum,frame):
 	print "!!! Portage interrupted by SIGINT; exiting."
+	# 0=send to *everybody* in process group
+	os.kill(0,signal.SIGKILL)
 	sys.exit(1)
 signal.signal(signal.SIGINT,exithandler)
 
@@ -670,7 +672,11 @@ def spawn(mystring,debug=0,free=0):
 			else:
 				myargs=["bash","-c",mystring]
 		os.execve(mycommand,myargs,settings.environ())
-		return
+		# If the execve fails, we need to report it, and exit
+		# *carefully*
+		# report error here
+		os._exit(1)
+		return # should never get reached
 	retval=os.waitpid(mypid,0)[1]
 	if (retval & 0xff)==0:
 		#return exit code
