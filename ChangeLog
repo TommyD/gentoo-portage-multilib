@@ -1,15 +1,21 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-2.0.46-r9 (14 Jan 2003): portage restart fix
+  15 Jan 2003; Nicholas Jones <carpaski@gentoo.org> emerge: fixed the
+  missing tabs from the cvs diff backport.
+
+*portage-2.0.46-r8 (14 Jan 2003): touchup KV{,ERS} for public stable
+
 *portage-2.0.46-r7 (14 Jan 2003): Backport from cvs and fixes.
   portage-2.0.46* :: EXCUDES ALL PORTIONS RELATING SPECIFICALLY TO USERPRIV
 
   14 Jan 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Persistant
-  KV and KVERS on depend calls. Sandbox violation of do_upgrade()	caught.
+  KV and KVERS on depend calls. Sandbox violation of do_upgrade() caught.
 
   14 Jan 2003; Nicholas Jones <carpaski@gentoo.org> emerge: --buildpkg
   touchups and forward porting of some of 2.0.46-r6. Restart on -r0/proper
-  versions of portage due to VERSION not matching pkgsplit output	fixed.
+  versions of portage due to VERSION not matching pkgsplit output fixed.
 
   14 Jan 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: 20% speedup
   in dep generation by removing all external app calls. Moved KVERS to
