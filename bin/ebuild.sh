@@ -30,13 +30,13 @@ unpack() {
 		echo ">>> Unpacking ${x}"
 		case "${x##*.}" in
 		tar)
-			tar --no-same-owner xf ${DISTDIR}/${x} || die
+			tar x --no-same-owner f ${DISTDIR}/${x} || die
 			;;
 		gz|tgz|Z|z) 
-			tar --no-same-owner xzf ${DISTDIR}/${x} || die
+			tar x --no-same-owner zf ${DISTDIR}/${x} || die
 			;;
 		bz2|tbz2)
-			cat ${DISTDIR}/${x} | bzip2 -d | tar --no-same-owner xf - || die
+			cat ${DISTDIR}/${x} | bzip2 -d | tar x --no-same-owner f - || die
 			;;
 		ZIP|zip)
 			unzip ${DISTDIR}/${x} || die
