@@ -916,7 +916,7 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 		return unmerge(settings["CATEGORY"],settings["PF"],myroot)
 	
 	# if any of these are being called, stop now, handle them and stop now.
-	if mydo in ["help","clean","prerm","postrm","preinst","postinst","touch","setup"]:
+	if mydo in ["help","clean","prerm","postrm","preinst","postinst","config","touch","setup"]:
 		return spawn("/usr/sbin/ebuild.sh "+mydo)
 		#initial ebuild.sh bash environment configured
 	
@@ -1129,11 +1129,12 @@ def movefile(src,dest,newmtime=None,sstat=None):
 			#not on same fs and a regular file
 			try:
 				shutil.copyfile(src,dest)
-				os.chmod(dest, S_IMODE(sstat[ST_MODE]))
 				try:
 					os.chown(dest, sstat[ST_UID], sstat[ST_GID])
 				except:
 					print "!!! couldn't set uid/gid on",dest
+				# do chmod after chown otherwise the sticky bits are reset
+				os.chmod(dest, S_IMODE(sstat[ST_MODE]))
 				if not newmtime:
 					os.utime(dest, (sstat[ST_ATIME], sstat[ST_MTIME]))
 					returnme=sstat[ST_MTIME]
@@ -1147,13 +1148,13 @@ def movefile(src,dest,newmtime=None,sstat=None):
 				return None
 	# destination exists, do our "backup plan"
 	destnew=dest+"#new#"
+	destorig=dest+"#orig#"
 	try:
 		# make a hard link backup
-		os.link(dest,dest+"#orig#")
-		destorig=dest+"#orig#"
+		os.link(dest,destorig)
 	except:
 		#backup failure
-		print "!!! link fail 1 on",dest,"->",dest+"#orig#"
+		print "!!! link fail 1 on",dest,"->",destorig
 		destorig=None
 	#copy destnew file into place
 	if sstat[ST_DEV]==dstat[ST_DEV]:
@@ -1189,7 +1190,13 @@ def movefile(src,dest,newmtime=None,sstat=None):
 				os.unlink(destorig)
 			return None 
 	#destination exists, destnew file is in place on the same filesystem
+	#update ownership on destnew
+	try:
+		os.chown(destnew, sstat[ST_UID], sstat[ST_GID])
+	except:
+		print "!!! couldn't set uid/gid on",dest
 	#update perms on destnew
+	# do chmod after chown otherwise the sticky bits are reset
 	try:
 		os.chmod(destnew, S_IMODE(sstat[ST_MODE]))
 	except:
@@ -1207,11 +1214,6 @@ def movefile(src,dest,newmtime=None,sstat=None):
 		except:
 			print "!!! couldn't set times on",destnew
 		returnme=newmtime
-	#update ownership on destnew
-	try:
-		os.chown(destnew, sstat[ST_UID], sstat[ST_GID])
-	except:
-		print "!!! couldn't set uid/gid on",dest
 	try:
 		os.unlink(dest) # scary!
 	except:
