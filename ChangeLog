@@ -9,8 +9,11 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  05 Jun 2004; Marius Mauch <genone@gentoo.org> bin/ebuild.sh:
+  Fix rpm support by changing rpm to rpmbuild (bug #13508).
+
   05 Jun 2004; Marius Mauch <genone@gentoo.org> bin/regenworld:
-  Added a --help message ro regenworld.
+  Added a --help message ro regenworld (bug #37539).
 
   03 Jun 2004; Jason Stubbs <jstubbs@gentoo.org> portage.py: Fixed bug #52720
   and restored patch for a 35% drop in dep calc time.

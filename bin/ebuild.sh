@@ -1066,7 +1066,7 @@ __END1__
 
 dyn_rpm() {
 	dyn_spec
-	rpm -bb "${PF}.spec" || die "Failed to integrate rpm spec file"
+	rpmbuild -bb "${PF}.spec" || die "Failed to integrate rpm spec file"
 	install -D "/usr/src/redhat/RPMS/i386/${PN}-${PV}-${PR}.i386.rpm" "${RPMDIR}/${CATEGORY}/${PN}-${PV}-${PR}.rpm" || die "Failed to move rpm"
 }
 
