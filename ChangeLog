@@ -1,7 +1,19 @@
-portage 1.6.5 - 31 Aug 2001
+Portage 1.6.6, released 01 Sep 2001
+====================================
 
-emerge - Fixes for handling multiple ebuilds, packages and/or dependencies on
-the command-line.
+	*portage.py
+	Upgraded directory merging over existing objects.  Existing symlinks that
+	point to existing directories will be kept and used as is; directories will
+	be used as-is; any other objects (broken symlinks, files) will be copied
+	to origfilename.backup and a ne directory will be created in its place.
 
-portage.py - An optimization to the digraph class so that the firstzero()
-method finds matches in close to the order that keys were added to the digraph.
+Portage 1.6.5, released 31 Aug 2001
+====================================
+	
+	*emerge 
+	Fixes for handling multiple ebuilds, packages and/or dependencies on
+	the command-line.
+
+	*portage.py 
+	An optimization to the digraph class so that the firstzero() method finds
+	matches in close to the order that keys were added to the digraph.
