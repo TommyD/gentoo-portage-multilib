@@ -815,6 +815,7 @@ def ebuildsh(mystring,debug=0,free=0):
 		#here we always want to call spawn with free=0,
 		#else the exit handler may not detect things properly
 		retval=spawn("/usr/sbin/ebuild.sh "+x,debug)
+		#reset it again
 		buildphase=""
 		if retval: return retval
 
@@ -1014,8 +1015,6 @@ def digestcheck(myarchives):
 # "checkdeps" support has been depreciated.  Relying on emerge to handle it.
 def doebuild(myebuild,mydo,myroot,debug=0):
 	global settings
-	global buildphase
-	buildphase=mydo
 	if not os.path.exists(myebuild):
 		print "!!! doebuild:",myebuild,"not found."
 		return 1
