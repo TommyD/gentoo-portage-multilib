@@ -796,10 +796,6 @@ elif "--help" in myopts:
 		print "              Removes the old versions and revisions of installed packages."
 		print "              The argument format is the same as for the "+bold("clean")+" action."
 		print
-		print "       "+green("update")+" ("+green("-u")+" short option)"
-		print "              Updates packages that are part of the base system profile to the"
-		print "              most recent versions available."
-		print 
 		print "       "+green("search")+" ("+green("-s")+" short option)"
 		print "              searches for matches of the supplied string in the current local"
 		print "              portage tree. The search string is a regular expression."
@@ -872,6 +868,9 @@ elif "--help" in myopts:
 		print "              U = upgrading, R = replacing, B = blocked by an already installed"
 		print "              package."
 		print
+		print "       "+green("--update")+" ("+green("-u")+" short option)"
+		print "              Updates packages to the most recent version available."
+		print 
 		print "       "+green("--usepkg")+" ("+green("-k")+" short option)"
 		print "              tell emerge to use binary packages (from $PKGDIR) if they are"
 		print "              available, thus possibly avoiding some time-consuming compiles."
