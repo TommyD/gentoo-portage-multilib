@@ -969,6 +969,54 @@ def grab_multiple(basename, locations, handler, all_must_exist=0):
 		mylist.append(handler(x+"/"+basename))
 	return mylist
 
+def new_protect_filename(mydest, newmd5=None):
+	"""Resolves a config-protect filename for merging, optionally
+	using the last filename if the md5 matches.
+	(dest,md5) ==> 'string'            --- path_to_target_filename
+	(dest)     ==> ('next', 'highest') --- next_target and most-recent_target
+	"""
+
+	# config protection filename format:
+	# ._cfg0000_foo
+	# 0123456789012
+	prot_num=-1
+	last_pfile=""
+		
+	if (len(mydest) == 0):
+		raise ValueError, "Empty path provided where a filename is required"
+	if (mydest[-1]=="/"): # XXX add better directory checking
+		raise ValueError, "Directory provided but this function requires a filename"
+	if not os.path.exists(mydest):
+		return mydest
+		
+	real_filename = os.path.basename(mydest)
+	real_dirname  = os.path.dirname(mydest)
+	for pfile in listdir(real_dirname):
+		if pfile[0:5] != "._cfg":
+			continue
+		if pfile[10:] != real_filename:
+			continue
+		try:
+			new_prot_num = int(pfile[5:9])
+			if new_prot_num > prot_num:
+				prot_num = new_prot_num
+				last_pfile = pfile
+		except:
+			continue
+	prot_num = prot_num + 1
+
+	new_pfile = os.path.normpath(real_dirname+"/._cfg"+string.zfill(prot_num,4)+"_"+real_filename)
+	old_pfile = os.path.normpath(real_dirname+"/"+last_pfile)
+	if last_pfile and newmd5:
+		if perform_md5(real_dirname+"/"+last_pfile) == newmd5:
+			return old_pfile
+		else:
+			return new_pfile
+	elif newmd5:
+		return new_pfile
+	else:
+		return (new_pfile, old_pfile)
+
 def grabdict(myfilename,juststrings=0,empty=0):
 	"""This function grabs the lines in a file, normalizes whitespace and returns lines in a dictionary"""
 	newdict={}
@@ -6419,55 +6467,6 @@ class dblink:
 			del dircache[self.dbcatdir]
 		print ">>>",self.mycpv,"merged."
 
-
-	def new_protect_filename(self, mydest, newmd5=None):
-		"""Resolves a config-protect filename for merging, optionally
-		using the last filename if the md5 matches.
-		(dest,md5) ==> 'string'            --- path_to_target_filename
-		(dest)     ==> ('next', 'highest') --- next_target and most-recent_target
-		"""
-
-		# config protection filename format:
-		# ._cfg0000_foo
-		# 0123456789012
-		prot_num=-1
-		last_pfile=""
-		
-		if (len(mydest) == 0):
-			raise ValueError, "Empty path provided where a filename is required"
-		if (mydest[-1]=="/"): # XXX add better directory checking
-			raise ValueError, "Directory provided but this function requires a filename"
-		if not os.path.exists(mydest):
-			return mydest
-		
-		real_filename = os.path.basename(mydest)
-		real_dirname  = os.path.dirname(mydest)
-		for pfile in listdir(real_dirname):
-			if pfile[0:5] != "._cfg":
-				continue
-			if pfile[10:] != real_filename:
-				continue
-			try:
-				new_prot_num = int(pfile[5:9])
-				if new_prot_num > prot_num:
-					prot_num = new_prot_num
-					last_pfile = pfile
-			except:
-				continue
-		prot_num = prot_num + 1
-
-		new_pfile = os.path.normpath(real_dirname+"/._cfg"+string.zfill(prot_num,4)+"_"+real_filename)
-		old_pfile = os.path.normpath(real_dirname+"/"+last_pfile)
-		if last_pfile and newmd5:
-			if perform_md5(real_dirname+"/"+last_pfile) == newmd5:
-				return old_pfile
-			else:
-				return new_pfile
-		elif newmd5:
-			return new_pfile
-		else:
-			return (new_pfile, old_pfile)
-		
 	def mergeme(self,srcroot,destroot,outfile,secondhand,stufftomerge,cfgfiledict,thismtime):
 		srcroot=os.path.normpath("///"+srcroot)+"/"
 		destroot=os.path.normpath("///"+destroot)+"/"
@@ -6545,9 +6544,9 @@ class dblink:
 						if self.isprotected(mydest):
 							# Use md5 of the target in ${D} if it exists...
 							if os.path.exists(os.path.normpath(srcroot+myabsto)):
-								mydest = self.new_protect_filename(myrealdest, perform_md5(srcroot+myabsto))
+								mydest = new_protect_filename(myrealdest, perform_md5(srcroot+myabsto))
 							else:
-								mydest = self.new_protect_filename(myrealdest, perform_md5(myabsto))
+								mydest = new_protect_filename(myrealdest, perform_md5(myabsto))
 								
 				# if secondhand==None it means we're operating in "force" mode and should not create a second hand.
 				if (secondhand!=None) and (not os.path.exists(myrealto)):
@@ -6657,7 +6656,7 @@ class dblink:
 									del cfgfiledict[myrealdest][0]
 	
 						if cfgprot:
-							mydest = self.new_protect_filename(myrealdest, mymd5)
+							mydest = new_protect_filename(myrealdest, mymd5)
 
 				# whether config protection or not, we merge the new file the
 				# same way.  Unless moveme=0 (blocking directory)
@@ -7005,6 +7004,16 @@ def do_upgrade(mykey):
 	
 	myvirts=grabdict("/var/cache/edb/virtuals")
 	
+	update_files={}
+	file_contents={}
+	for x in ["package.mask","package.unmask","package.keywords","package.use"]:
+		try:
+			myfile=open("/etc/portage/"+x,"r")
+			file_contents[x] = myfile.readlines()
+			myfile.close()
+		except IOError:
+			continue
+
 	worldlist=grabfile("/"+WORLD_FILE)
 	myupd=grabfile(mykey)
 	db["/"]["bintree"]=binarytree("/",settings["PKGDIR"],virts)
@@ -7042,9 +7051,29 @@ def do_upgrade(mykey):
 						#update virtual to new name
 						myvirts[myvirt][mypos]=mysplit[2]
 
+			#update /etc/portage/packages.*
+			for x in file_contents:
+				for mypos in range(0,len(file_contents[x])):
+					line=file_contents[x][mypos]
+					if line[0]=="#" or string.strip(line)=="":
+						continue
+					key=dep_getkey(line.split()[0])
+					if key==mysplit[1]:
+						file_contents[x][mypos]=string.replace(line,mysplit[1],mysplit[2])
+						update_files[x]=1
+
 		elif mysplit[0]=="slotmove":
 			db["/"]["vartree"].dbapi.move_slot_ent(mysplit)
 			db["/"]["bintree"].move_slot_ent(mysplit,settings["PORTAGE_TMPDIR"]+"/tbz2")
+
+	for x in update_files:
+		cfg_protect_file=new_protect_filename("/etc/portage/"+x)
+		try:
+			myfile=open(cfg_protect_file[0],"w")
+			myfile.writelines(file_contents[x])
+			myfile.close()
+		except IOError:
+			continue
 
 	# We gotta do the brute force updates for these now.
 	if (settings["PORTAGE_CALLER"] in ["fixpackages"]) or \
