@@ -1441,11 +1441,8 @@ def movefile(src,dest,newmtime=None,sstat=None):
 
 	renamefailed=1
 	if sstat[ST_DEV]==dstat[ST_DEV]:
-		print "SAME DEVICE"
 		try:
-			print "RENAME"
 			ret=os.rename(src,dest)
-			print "RET VAL:",ret
 			renamefailed=0
 		except Exception, e:
 			import errno
@@ -1457,7 +1454,6 @@ def movefile(src,dest,newmtime=None,sstat=None):
 			# Invalid cross-device-link 'bind' mounted or actually Cross-Device
 
 	if renamefailed:
-		print "RENAME FAILED"
 		didcopy=0
 		if S_ISREG(sstat[ST_MODE]):
 			try: # For safety copy then move it over.
