@@ -21,13 +21,6 @@ from fileinput import input
 from grp import getgrnam
 from stat import *
 
-if "cvs" not in portage.features:
-	print
-	print
-	print red('!!! You do not have ')+bold('FEATURES="cvs" ')+red("enabled...")
-	print red("!!! ")+bold("Digests may be incorrect!")
-	print
-	sleep(5)
 
 def err(txt):
 	print exename+": "+txt
@@ -314,13 +307,14 @@ if not os.path.isdir("CVS"):
 	else:
 		err("We do not appear to be inside a local repository or a portage tree. Exiting.")
 else:
+	repoman_settings["PORTDIR_OVERLAY"]=""
 	if "cvs" not in portage.features:
 		print
 		print
 		print red('!!! You do not have ')+bold('FEATURES="cvs" ')+red("enabled...")
-		print red("!!! ")+bold("Digests may be incorrect!")
+		print red("!!! ")+bold("Adding \"cvs\" to FEATURES")
 		print
-		sleep(5)
+		os.environ["FEATURES"]=repoman_settings["FEATURES"]+" cvs"
 
 	try:
 		isCvs=True
@@ -371,7 +365,6 @@ if myreporootpath=="/space/cvsroot":
 portdir = repoman_settings["PORTDIR"]
 if portdir[-1] != '/':
 	portdir = portdir + "/"
-	repoman_settings["PORTDIR"] = portdir
 
 try: # Determine if we're in PORTDIR... If not tell portage to accomodate.
 	mydir=os.getcwd()
@@ -386,6 +379,7 @@ try: # Determine if we're in PORTDIR... If not tell portage to accomodate.
 				# mydir == a PORTDIR root... We make PORTDIR = mydir.
 				print darkgreen("setting to:")+" "+bold(mydir)
 				os.environ["PORTDIR"]=mydir
+				portdir=mydir
 				break;
 			else:
 				mydir=os.path.normpath(mydir+"/..")
@@ -396,20 +390,8 @@ except Exception, e:
 	print "!!!",e
 	pass
 
-os.environ["PORTAGE_CALLER"]="repoman"
-os.environ["ACCEPT_KEYWORDS"]="-~"+repoman_settings["ARCH"]
-if isCvs:
-	os.environ["FEATURES"]=repoman_settings["FEATURES"]+" cvs"
-
 reload(portage)
 repoman_settings = portage.config(clone=portage.settings)
-
-repoman_settings.usemask += portage.archlist
-while repoman_settings["ARCH"] in repoman_settings.usemask:
-	del repoman_settings.usemask[repoman_settings.usemask.index(repoman_settings["ARCH"])]
-repoman_settings.regenerate()
-
-
 
 if isCvs:
 	reporoot=None
@@ -441,7 +423,7 @@ else:
 # retreive local USE list
 luselist=[]
 try:
-	mylist=portage.grabfile(repoman_settings["PORTDIR"]+"/profiles/use.local.desc")
+	mylist=portage.grabfile(portdir+"/profiles/use.local.desc")
 	for mypos in range(0,len(mylist)):
 		mysplit=mylist[mypos].split()[0]
 		myuse=string.split(mysplit,":")
@@ -453,7 +435,7 @@ except:
 # setup a uselist from portage
 uselist=[]
 try:
-	uselist=portage.grabfile(repoman_settings["PORTDIR"]+"/profiles/use.desc")
+	uselist=portage.grabfile(portdir+"/profiles/use.desc")
 	for l in range(0,len(uselist)):
 		uselist[l]=string.split(uselist[l])[0]
 except:
@@ -462,13 +444,13 @@ except:
 uselist=uselist+luselist
 
 # retrieve a list of current licenses in portage
-liclist=portage.listdir(repoman_settings["PORTDIR"]+"/licenses")
+liclist=portage.listdir(portdir+"/licenses")
 if not liclist:
 	err("Couldn't find licenses?")
 
 # retrieve list of offical keywords
 try:
-	kwlist=portage.grabfile(repoman_settings["PORTDIR"]+"/profiles/arch.list")
+	kwlist=portage.grabfile(portdir+"/profiles/arch.list")
 except:
 	err("Couldn't read KEYWORDS from arch.list")
 if not kwlist:
@@ -502,7 +484,7 @@ elif repolevel==3:
 	scanlist.append(catdir+"/"+reposplit[-1])
 
 profiles={}
-descfile=repoman_settings["PORTDIR"]+"/profiles/profiles.desc"
+descfile=portdir+"/profiles/profiles.desc"
 if os.path.exists(descfile):
 	for x in portage.grabfile(descfile):
 		if x[0]=="#":
@@ -634,6 +616,7 @@ for x in scanlist:
 					stats["metadata.bad"]+=1
 					fails["metadata.bad"].append(x+"/metadata.xml")
 
+	arch_caches={}
 	for y in ebuildlist:
 		if y not in eadded:
 			#ebuild not added to cvs
@@ -692,30 +675,36 @@ for x in scanlist:
 				else:
 					arches.append([keyword, keyword, [keyword]])
 
-		for mytype,mypos in [["DEPEND",len(missingvars)],["RDEPEND",len(missingvars)+1],["PDEPEND",len(missingvars)+2]]:
+		for keyword,arch,groups in arches:
+			portage.groups=groups
 
-			for keyword,arch,groups in arches:
-				repoman_settings["ARCH"]=arch
-				portage.groups=groups
+			if (profiles.has_key(arch)):
+				profdir=portdir+"/profiles/"+profiles[arch][0]
+			else:
+				profdir=portdir+"/profiles/default-"+arch+"-1.4"
+			portage.profiledir=profdir
+			os.environ["ACCEPT_KEYWORDS"]="-~"+arch
+			if (not os.path.exists(profdir)):
+				raise IOError, "Profile dir does not exist: "+profdir
 
-				if (profiles.has_key(arch)):
-					profdir=repoman_settings["PORTDIR"]+"/profiles/"+profiles[arch][0]
-				else:
-					profdir=repoman_settings["PORTDIR"]+"/profiles/default-"+arch+"-1.4"
-					
-				if (not os.path.exists(profdir)):
-					raise IOError, "Profile dir does not exist: "+profdir
+			if arch_caches.has_key(arch):
+				dep_settings, portage.portdb = arch_caches[arch]
+				portage.do_vartree(dep_settings)
+				dep_settings.regenerate()
+			else:
+				dep_settings=portage.config(config_profile_path=profdir, config_incrementals=portage.incrementals)
+				if isCvs:
+					dep_settings["PORTDIR_OVERLAY"]=""
+				dep_settings["ARCH"]=arch
+				portage.do_vartree(dep_settings)
+				dep_settings.regenerate()
+				portage.portdb=portage.portdbapi(portdir, dep_settings)
+				arch_caches[arch]=[dep_settings, portage.portdb]
 
-				if (os.path.exists(profdir+"/use.mask")):
-					repoman_settings.usemask=portage.grabfile(profdir+"/use.mask")
+			portage.db["/"]["porttree"]=portage.portagetree("/",dep_settings.getvirtuals("/"))
 
-				portage.profiledir=profdir
-				repoman_settings.profiles=[profdir]
-
-				portage.do_vartree(repoman_settings)
-				repoman_settings.regenerate()
-				portage.db["/"]["porttree"]=portage.portagetree("/",portage.virts)
-
+			for mytype,mypos in [["DEPEND",len(missingvars)],["RDEPEND",len(missingvars)+1],["PDEPEND",len(missingvars)+2]]:
+	
 				if not catdir+"/"+y in portage.db["/"]["porttree"].dbapi.xmatch("list-visible",x):
 					#we are testing deps for a masked package; give it some lee-way
 					suffix="masked"
@@ -732,7 +721,7 @@ for x in scanlist:
 				if not myvalue:
 					continue
 				try:
-					mydep=portage.dep_check(myvalue,portage.db["/"]["porttree"].dbapi,repoman_settings,use="all",mode=matchmode)
+					mydep=portage.dep_check(myvalue,portage.db["/"]["porttree"].dbapi,dep_settings,use="all",mode=matchmode)
 				except KeyError, e:
 					stats[mykey]=stats[mykey]+1
 					fails[mykey].append(x+"/"+y+".ebuild: "+keyword+" "+repr(e[0]))
@@ -754,8 +743,8 @@ for x in scanlist:
 						stats[mykey]=stats[mykey]+1
 						fails[mykey].append(x+"/"+y+".ebuild: "+keyword+" "+repr(mydep[1]))
 				else:
-						stats[mykey]=stats[mykey]+1
-						fails[mykey].append(x+"/"+y+".ebuild: "+keyword+" "+repr(mydep[1]))
+					stats[mykey]=stats[mykey]+1
+					fails[mykey].append(x+"/"+y+".ebuild: "+keyword+" "+repr(mydep[1]))
 
 		if not os.system("egrep '\([^)]*\<die\>' "+checkdir+"/"+y+".ebuild >/dev/null 2>&1"):
 			stats["ebuild.nesteddie"]=stats["ebuild.nesteddie"]+1
@@ -943,9 +932,9 @@ else:
 		del xs[-2]
 		myeb=string.join(xs[:-1],"/")+"/"+xs[-1][7:]
 		if "--pretend" in myoptions:
-			print "(ebuild "+repoman_settings["PORTDIR"]+"/"+myeb+".ebuild digest)"
+			print "(ebuild "+portdir+"/"+myeb+".ebuild digest)"
 		else:
-			retval=os.system("ebuild "+repoman_settings["PORTDIR"]+"/"+myeb+".ebuild digest")
+			retval=os.system("ebuild "+portdir+"/"+myeb+".ebuild digest")
 			if retval:
 				print "!!! Exiting on ebuild digest (shell) error code:",retval
 				sys.exit(retval)

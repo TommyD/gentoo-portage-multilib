@@ -2,6 +2,12 @@
 # Copyright 2000-2004 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  06 Mar 2004; Masatomo Nakano <nakano@gentoo.org> repoman, portage.py:
+  Fixed some repoman/portage bugs. repoman shouldn't use /etc/portage/*
+  files. repoman shouldn't use PORTDIR_OVERLAY(#11335). repoman should use
+  each arch profile dir(#43601). portage didn't handle virtual dependency
+  with version (>=virtual/package-1.0) in some places.
+
   05 Mar 2004; Marius Mauch <genone@gentoo.org> tarball.sh, bin/emerge:
   Trivial fix for emerge -pv if the download size is a long.
 

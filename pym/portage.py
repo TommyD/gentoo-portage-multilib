@@ -1220,9 +1220,9 @@ class config:
 
 			# The symlink might not exist or might not be a symlink.
 			try:
-				self.profiles=[abssymlink("/etc/make.profile")]
+				self.profiles=[abssymlink(self.profile_path)]
 			except:
-				self.profiles=["/etc/make.profile"]
+				self.profiles=[self.profile_path]
 
 			mypath = self.profiles[0]
 			while os.path.exists(mypath+"/parent"):
@@ -1237,6 +1237,16 @@ class config:
 					self.profiles.append("/etc/portage/profile")
 
 			self.packages = grab_stacked("packages", self.profiles, grabfile, incremental_lines=1)
+			# revmaskdict
+			self.prevmaskdict={}
+			for x in self.packages:
+				mycatpkg=dep_getkey(x)
+				if not self.prevmaskdict.has_key(mycatpkg):
+					self.prevmaskdict[mycatpkg]=[x]
+				else:
+					self.prevmaskdict[mycatpkg].append(x)
+
+			# get virtuals
 			self.virtuals = self.getvirtuals('/')
 
 			# get profile-masked use flags -- INCREMENTAL Child over parent
@@ -1301,27 +1311,44 @@ class config:
 			self.lookuplist=self.configlist[:]
 			self.lookuplist.reverse()
 
-			locations = [self["PORTDIR"] + "/profiles", "/etc/portage"]
+			if os.environ.has_key("PORTAGE_CALLER") and os.environ["PORTAGE_CALLER"] == "repoman":
+				# repoman shouldn't use local settings.
+				locations = [self["PORTDIR"] + "/profiles"]
+				self.pusedict = {}
+				self.pkeywordsdict = {}
+				self.punmaskdict = {}
+			else:
+				locations = [self["PORTDIR"] + "/profiles", "/etc/portage"]
+
+				# Never set anything in this. It's for non-originals.
+				self.pusedict=grabdict_package("/etc/portage/package.use")
+
+				#package.keywords
+				pkgdict=grabdict_package("/etc/portage/package.keywords")
+				for key in pkgdict.keys():
+					# default to ~arch if no specific keyword is given
+					if not pkgdict[key]:
+						mykeywordlist = []
+						groups = self.configdict["defaults"]["ACCEPT_KEYWORDS"].split()
+						for keyword in groups:
+							if not keyword[0] in "~-":
+								mykeywordlist.append("~"+keyword)
+						pkgdict[key] = mykeywordlist
+				self.pkeywordsdict = pkgdict
+
+				#package.unmask
+				pkgunmasklines = grabdict_package("/etc/portage/package.unmask")
+				self.punmaskdict = {}
+				for x in pkgunmasklines:
+					mycatpkg=dep_getkey(x)
+					if self.punmaskdict.has_key(mycatpkg):
+						self.punmaskdict[mycatpkg].append(x)
+					else:
+						self.punmaskdict[mycatpkg]=[x]
 
 			#getting categories from an external file now
 			self.categories = grab_stacked("categories", locations, grabfile)
-
-			# Never set anything in this. It's for non-originals.
-			self.pusedict=grabdict_package("/etc/portage/package.use")
 					
-			#package.keywords
-			pkgdict=grabdict_package("/etc/portage/package.keywords")
-			for key in pkgdict.keys():
-				# default to ~arch if no specific keyword is given
-				if not pkgdict[key]:
-					mykeywordlist = []
-					groups = self.configdict["defaults"]["ACCEPT_KEYWORDS"].split()
-					for keyword in groups:
-						if not keyword[0] in "~-":
-							mykeywordlist.append("~"+keyword)
-					pkgdict[key] = mykeywordlist
-			self.pkeywordsdict = pkgdict
-
 			#package.mask
 			pkgmasklines = grab_stacked("package.mask", locations, grabdict_package)
 			self.pmaskdict = {}
@@ -1332,25 +1359,6 @@ class config:
 				else:
 					self.pmaskdict[mycatpkg]=[x]
 
-			#package.unmask
-			pkgunmasklines = grabdict_package("/etc/portage/package.unmask")
-			self.punmaskdict = {}
-			for x in pkgunmasklines:
-				mycatpkg=dep_getkey(x)
-				if self.punmaskdict.has_key(mycatpkg):
-					self.punmaskdict[mycatpkg].append(x)
-				else:
-					self.punmaskdict[mycatpkg]=[x]
-
-			# revmaskdict
-			self.prevmaskdict={}
-			for x in self.packages:
-				mycatpkg=dep_getkey(x)
-				if not self.prevmaskdict.has_key(mycatpkg):
-					self.prevmaskdict[mycatpkg]=[x]
-				else:
-					self.prevmaskdict[mycatpkg].append(x)
-				
 		self.lookuplist=self.configlist[:]
 		self.lookuplist.reverse()
 	
@@ -1371,6 +1379,11 @@ class config:
 
 		self.configdict["env"]["PORTAGE_GID"]=str(portage_gid)
 		self.backupenv["PORTAGE_GID"]=str(portage_gid)
+
+		if not self["PORTAGE_CACHEDIR"]:
+			#the auxcache is the only /var/cache/edb/ entry that stays at / even when "root" changes.
+			self["PORTAGE_CACHEDIR"]="/var/cache/edb/dep/"
+			self.backup_changes("PORTAGE_CACHEDIR")
 
 		self.regenerate()
 		if mycpv:
@@ -3029,13 +3042,14 @@ def dep_virtual(mysplit):
 		if type(x)==types.ListType:
 			newsplit.append(dep_virtual(x))
 		else:
-			if virts.has_key(x):
-				if len(virts[x])==1:
-					a=virts[x][0]
+			mykey=dep_getkey(x)
+			if virts.has_key(mykey):
+				if len(virts[mykey])==1:
+					a=string.replace(x, mykey, virts[mykey][0])
 				else:
 					a=['||']
-					for y in virts[x]:
-						a.append(y)
+					for y in virts[mykey]:
+						a.append(string.replace(x, mykey, y))
 				newsplit.append(a)
 			else:
 				newsplit.append(x)
@@ -4499,8 +4513,12 @@ auxdbkeylen=len(auxdbkeys)
 
 class portdbapi(dbapi):
 	"this tree will scan a portage directory located at root (passed to init)"
-	def __init__(self,root):
-		self.mysettings = config(clone=settings)
+	def __init__(self,root,mysettings=None):
+
+		if mysettings:
+			self.mysettings = mysettings
+		else:
+			self.mysettings = config(clone=settings)
 
 		#self.root=settings["PORTDIR"]
 		self.root = root
@@ -6226,11 +6244,6 @@ settings.backup_changes("PORTAGE_MASTER_PID")
 settings["BASH_ENV"]="/etc/portage/bashrc"
 settings.backup_changes("BASH_ENV")
 
-if not settings["PORTAGE_CACHEDIR"]:
-	#the auxcache is the only /var/cache/edb/ entry that stays at / even when "root" changes.
-	settings["PORTAGE_CACHEDIR"]="/var/cache/edb/dep/"
-	settings.backup_changes("PORTAGE_CACHEDIR")
-
 # gets virtual package settings
 def getvirtuals(myroot):
 	global settings
@@ -6274,7 +6287,7 @@ if overlays:
 			writemsg(red("!!! Invalid PORTDIR_OVERLAY (not a dir): "+ov+"\n"))
 			portdb.overlays.remove(ov)
 	settings["PORTDIR_OVERLAY"] = string.join(portdb.overlays)
-	settings.backup_changes("PORTAGE_CACHEDIR")
+	settings.backup_changes("PORTDIR_OVERLAY")
 else:
 	portdb.overlays = []
 del overlays
