@@ -157,6 +157,15 @@ Defines if color should be disabled by default.
 .br
 Defaults to false.
 .TP
+\fBPKG_TMPDIR\fR = \fI[path]\fR
+\fIemerge\fR uses this dir to extract a .tbz2 package before the
+files get merged to the live filesystem.
+.TP
+\fBPKGDIR\fR = \fI[path]\fR
+Defines the location where created .tbz2 binary packages will be stored.
+.br
+Defaults to ${PORTDIR}/packages.
+.TP
 \fBPORT_LOGDIR\fR
 This variable defines the directory in which per-ebuild logs are kept.
 Logs are created only when this is set and writable.
@@ -172,15 +181,6 @@ Defines the location of the temporary build directories.
 .br
 Defaults to /var/tmp.
 .TP
-\fBPKG_TMPDIR\fR = \fI[path]\fR
-\fIemerge\fR uses this dir to extract a .tbz2 package before the
-files get merged to the live filesystem.
-.TP
-\fBPKGDIR\fR = \fI[path]\fR
-Defines the location where created .tbz2 binary packages will be stored.
-.br
-Defaults to ${PORTDIR}/packages.
-.TP 
 \fBPORTDIR\fR = \fI[path]\fR
 Defines the location of your Portage tree.
 .br
