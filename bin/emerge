@@ -1,6 +1,6 @@
 #!/usr/bin/env spython
 import os
-from os.path import walk, splitext
+from os.path import walk, splitext, exists, basename
 import sys
 
 if os.getuid()!=0:
@@ -10,7 +10,7 @@ if os.getuid()!=0:
 import portage
 import xpak
 import string
-from string import strip, find, replace
+from string import strip, find, replace, split
 import commands
 import shutil
 import re
@@ -418,7 +418,7 @@ def post_emerge(retval=0):
 
 #number of ebuilds merged
 merged=0
-opts=["--world","--help","--pretend","--buildpkg","--usepkg","--autoclean","--clean","--debug","--fetchonly","--noreplace","--onlydeps","--verbose","--search"]
+opts=["--world","--help","--pretend","--buildpkg","--usepkg","--autoclean","--clean","--debug","--fetchonly","--noreplace","--onlydeps","--verbose","--search","--unmerge"]
 modes=["rsync","system","update","config"]
 myopts=[]
 mymode=[]
@@ -519,16 +519,36 @@ if "--help" in myopts:
 		print "              installing an unfamiliar package.  In the printout, N = new,"
 		print "              U = upgrading, R = replacing"
 		print
+		print "       \x1b[32;01m--unmerge\x1b[0m"
+		print "              removes an installed package. the arguments can be in two"
+		print "              different formats : /var/db/pkg/category/package-version"
+		print "              or category/package-version."
+		print "              A few examples of the second format:"
+		print "              \x1b[37;01mbinutils\x1b[0m matches"
+		print "                  binutils-2.11.90.0.7 and binutils-2.11.92.0.12.3-r1"
+		print "              \x1b[37;01msys-devel/binutils\x1b[0m matches"
+		print "                  binutils-2.11.90.0.7 and binutils-2.11.92.0.12.3-r1"
+		print "              \x1b[37;01msys-devel/binutils-2.11.90.0.7\x1b[0m matches"
+		print "                  binutils-2.11.90.0.7"
+		print "              \x1b[37;01m>sys-devel/binutils-2.11.90.0.7\x1b[0m matches"
+		print "                  binutils-2.11.92.0.12.3-r1"
+		print "              \x1b[37;01m>=sys-devel/binutils-2.11.90.0.7\x1b[0m matches"
+		print "                  binutils-2.11.90.0.7 and binutils-2.11.92.0.12.3-r1"
+		print "              \x1b[37;01m<sys-devel/binutils-2.11.92.0.12.3-r1\x1b[0m matches"
+		print "                  binutils-2.11.90.0.7"
+		print "              \x1b[37;01m<=sys-devel/binutils-2.11.92.0.12.3-r1\x1b[0m matches"
+		print "                  binutils-2.11.90.0.7 and binutils-2.11.92.0.12.3-r1"
+		print
 		print "       \x1b[32;01m--search\x1b[0m"
 		print "              searches for matches of the supplied string in the current local"
 		print "              portage tree. The search string is a regular expression."
 		print "              A few examples: "
-		print "              emerge --search \"^kde\""
+		print "              \x1b[37;01memerge --search \"^kde\"\x1b[0m"
 		print "                  list all packages starting with kde"
-		print "              emerge --search \"gcc$\""
+		print "              \x1b[37;01memerge --search \"gcc$\"\x1b[0m"
 		print "                  list all packages ending with gcc"
-		print "              emerge --search \"\" or"
-		print "              emerge --search \"*\""
+		print "              \x1b[37;01memerge --search \"\"\x1b[0m or"
+		print "              \x1b[37;01memerge --search \"*\"\x1b[0m"
 		print "                  list all available packages "
 		print
 	elif "rsync" in mymode:
@@ -619,6 +639,74 @@ if "--search" in myopts:
 			searchinstance.output()
 	sys.exit(1)
 
+if "--unmerge" in myopts:
+	if not myfiles:
+		print
+		print "No packages to unmerge have been provided."
+		print
+	else:
+		full_paths={}
+		var_path=portage.root+"var/db/pkg"
+		# process all arguments, verify if they can be resolved to an installed
+		# ebuild file and add the absolute paths of these ebuild to a list
+		for x in myfiles:
+
+			# an absolute path has been given
+			if (x[0]=='/'):
+				path_parts=split(x, '/')
+				if len(path_parts) != 6:
+					print "When providing an absolute path it should be"
+					print "in the following format : "+var_path+"/category/package"
+					print "The path '"+x+"' doesn't respect this."
+					sys.exit(1)
+				elif not os.path.exists(x):
+					print "The path '"+x+"' doesn't exist."
+					sys.exit(1)
+				elif -1 == find(x, var_path):
+					print "The path '"+x+"' didn't commence with '"+var_path+"'."
+					sys.exit(1)
+				else:
+					full_path=strip(x)+"/"+path_parts[5]+".ebuild"
+					if not os.path.exists(full_path):
+						print "The ebuild '"+full_path+"' couldn't be found."
+						print "Your portage installation tree seems to be corrupted."
+					else:
+						full_paths[full_path]=1
+
+			# a category and package name have been given
+			else:
+				localtree=portage.vartree()	
+				mymatches=localtree.dep_match(x)
+				# if no matches were found, try again by added an '=' dep symbol
+				if not mymatches:
+					mymatches=localtree.dep_match("="+x)
+				for package in mymatches:
+					package_parts=split(package, '/')
+					full_path=var_path+"/"+package+"/"+package_parts[1]+".ebuild"
+					if not os.path.exists(full_path):
+						print "The ebuild '"+full_path+"' couldn't be found."
+						print "Your portage installation tree seems to be corrupted."
+					else:
+						full_paths[full_path]=1
+
+		if len(full_paths)==0:
+			print "Couldn't find any matching installed packages."
+		else:
+			# ask user for confirmation
+			print "The following packages are going to be unmerged :"
+			for full_path in full_paths.keys():
+				package_name=os.path.basename(full_path)
+				print "    "+package_name[:-1*len(".ebuild")]
+			answer=raw_input("Do you want to proceed (y/N)?")
+			if len(answer)==0 or string.lower(answer[0]) != "y":
+				print "Unmerging has been aborted."
+			else:
+				for full_path in full_paths.keys():
+					print "Unmerging "+os.path.basename(full_path)+" ..."
+					retval=portage.doebuild(full_path,"unmerge",portage.root,0,edebug)
+
+	sys.exit(1)
+
 if "rsync" in mymode:
 	if not os.path.exists("/usr/bin/rsync"):
 		print "!!! /usr/bin/rsync does not exist, so rsync support is disabled."
@@ -662,6 +750,7 @@ if ("system" in mymode) or ("update" in mymode):
 	else:
 		mydepgraph.merge(mydepgraph.altlist())
 	post_emerge()
+
 mydepgraph=depgraph(mymode,myopts)
 if not myfiles:
 	post_emerge()
