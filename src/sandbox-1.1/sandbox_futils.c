@@ -45,7 +45,7 @@ char *get_sandbox_path(char *argv0)
   }
 
   /* Return just directory */
-  return(dirname(path));
+  return(sb_dirname(path));
 }
 
 char *get_sandbox_lib(char *sb_path)
@@ -90,12 +90,12 @@ char *get_sandbox_log()
 }
 
 /* Obtain base directory name. Do not allow trailing / */
-char *dirname(const char *path)
+char *sb_dirname(const char *path)
 {
   char *ret = NULL;
   char *ptr = NULL;
   int loc = 0, i;
-  int cut_len = 0;
+  int cut_len = -1;
 
   /* don't think NULL will ever be passed, but just in case */
   if (NULL == path) return(strdup("."));
@@ -107,18 +107,18 @@ char *dirname(const char *path)
   }
 
   /* decimal location of pointer */
-  loc = strlen(path)-strlen(ptr);
+  loc = ptr - path;
 
   /* Remove any trailing slash */
   for (i = loc-1; i >= 0; i--) {
     if (path[i] != '/') {
-      cut_len = i;
+      cut_len = i + 1;  /* make cut_len the length of the string to keep */
       break;
     }
   }
   
   /* It could have been just a plain /, return a 1byte 0 filled string */
-  if (0 == cut_len) return(strdup(""));
+  if (-1 == cut_len) return(strdup(""));
 
   /* Allocate memory, and return the directory */
   ret = (char *)malloc((cut_len + 1) * sizeof(char));

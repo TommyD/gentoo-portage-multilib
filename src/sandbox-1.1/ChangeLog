@@ -2,6 +2,13 @@
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+  4 Dec 2002; J Robert Ray <jrray@gentoo.org> sandbox.h sandbox_futils.c :
+  sandbox_futils defined a dirname() function that was masking the same
+  function in glibc and was broken (e.g.: SANDBOX_DIR was being set to
+  '/usr/lib/portage/bi/').  Fixed function to return expected results and
+  renamed it to sb_dirname() to no longer mask the glibc function.  Closes bug
+  11231.
+
   4 Dec 2002; Martin Schlemmer <azarah@gentoo.org> :
 
   Fix a segfault in libsandbox.c if canonicalize() was called with
