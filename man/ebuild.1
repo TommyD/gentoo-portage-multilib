@@ -129,6 +129,19 @@ specified).  It is safe to merge a new version of a package first and
 then unmerge the old one.  In fact, this is the recommended package
 upgrade method.
 .TP
+.BR prerm
+Run package specific actions that need to be executed before the package is
+removed from the filesystem.  See also \fIunmerge\fR.
+.TP
+.BR postrm
+Run package specific actions that need to be executed after the package is
+removed from the filesystem.  See also \fIunmerge\fR.
+.TP
+.BR config
+Run package specific actions needed to be executed after the emerge
+process has completed.  This usually entails configuration file
+setup or other similar setups that the user may wish to run.
+.TP
 .BR package
 This command is a lot like the \fImerge\fR command, except that after
 fetching, unpacking, compiling and installing, a .tbz2 binary package
