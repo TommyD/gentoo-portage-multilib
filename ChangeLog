@@ -1,6 +1,10 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  25 Jun 2002; Martin Schlemmer <azarah@gentoo.org> bin/{dolib.so,preplib.so}:
+  Also change "strip --strip-unneeded" to "strip --strip-debug" for these.
+  Look at bugs #2702,#3929,#4027 for more info.
+
   25 Jun 2002; Daniel Robbins <drobbins@gentoo.org> emerge: "emerge -u" now
   correctly scans dependencies of packages, even if they are up-to-date, to
   determine if any of their dependencies need updating.  Previously, up-to-date

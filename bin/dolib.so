@@ -14,7 +14,7 @@ do
 	then
 	    if [ -z "$DEBUGBUILD" ]
 	    then
-			strip --strip-unneeded ${x}
+			strip --strip-debug ${x}
 	    fi
 	    install -m0755 ${x} ${D}${DESTTREE}/lib
 	else
