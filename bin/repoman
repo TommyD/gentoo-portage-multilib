@@ -713,7 +713,7 @@ for x in scanlist:
 	else:
 		#Only carry out if in package directory or check forced
 		if xmllint_capable:
-			st=getstatusoutput("xmllint --nonet '%s/metadata.xml' --dtdvalid /var/cache/edb/metadata.dtd 2>&1 > /dev/null" % checkdir)
+			st=getstatusoutput("xmllint --nonet '%s/metadata.xml' --dtdvalid '%s/metadata.dtd' 2>&1 > /dev/null" % (checkdir,portage.CACHE_PATH))
 			if st[0] != 0:
 				#skip the first line, since it will be an IO error about not able to fetch the dtd via the web.
 				#this is a superflous error, since we have a local copy of the dtd to use.
