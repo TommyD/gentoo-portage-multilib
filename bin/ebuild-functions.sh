@@ -70,6 +70,7 @@ use_enable() {
 }
 
 econf() {
+	local ret
 	if [ -x ./configure ]; then
 		if hasq autoconfig $FEATURES && ! hasq autoconfig $RESTRICT; then
 			if [ -e /usr/share/gnuconfig/ -a -x /bin/basename ]; then
@@ -124,8 +125,11 @@ econf() {
 			--localstatedir=/var/lib \
 			${EXTRA_ECONF} \
 			${EECONF_CACHE} \
-			"$@" || die "econf failed" 
+			"$@" || die "econf failed"
+		# store the returned exit code.  don't rely on update_confcache returning true.
+		ret=$?
 		update_confcache "${T}/local_cache"
+		return $ret
 	else
 		die "no configure script found"
 	fi
