@@ -12,11 +12,11 @@ merged=0
 params=["selective", "deep", "self", "recurse", "empty"]
 actions=["clean", "config", "help", "info", "prune", "rsync", "search", "sync", "system", "unmerge", "world", "inject", "regen", "depclean"]
 options=["--autoclean", "--deep", "--selective", "--buildpkg", "--debug", "--nodeps", "--emptytree", "--fetchonly", 
-"--noreplace", "--onlydeps", "--pretend", "--usepkg", "--searchdesc", "--verbose", "--update", "--help", "--oneshot", "--version"]
+"--noreplace", "--onlydeps", "--pretend", "--usepkg", "--usepkgonly", "--searchdesc", "--verbose", "--update", "--help", "--oneshot", "--version"]
 
 shortmapping={"a":"--autoclean", "b":"--buildpkg", "c":"clean", "C":"unmerge", "e":"--emptytree", "d":"--debug", "f":"--fetchonly",
-	"h":"--help", "k":"--usepkg", "n":"--noreplace", "o":"--onlydeps", "p":"--pretend", "P":"prune", "s":"search", "S":"--searchdesc",
-	"u":"--update", "v":"--verbose", "V":"--version", "i":"inject"}
+	"h":"--help", "k":"--usepkg", "K":"--usepkgonly", "n":"--noreplace", "o":"--onlydeps", "p":"--pretend", "P":"prune", "s":"search",
+	"S":"--searchdesc",	"u":"--update", "v":"--verbose", "V":"--version", "i":"inject"}
 
 def emergelog(mystr):
 	try:
@@ -355,6 +355,10 @@ if "buildpkg" in portage.features:
 # Also allow -S to invoke search action (-sS)
 if ("--searchdesc" in myopts) and (not myaction):
 		myaction = "search"
+
+# Also allow -K to apply --usepkg
+if ("--usepkgonly" in myopts) and not ("--usepkg" in myopts):
+		myopts.append("--usepkg")
 
 # check if root user is the current user for the actions where emerge needs this
 if ("--pretend" in myopts) or (myaction=="search"):
@@ -743,7 +747,19 @@ class depgraph:
 					return (0,myfavorites)
 				elif not "--oneshot" in myopts:
 					myfavorites.append(mykey)
-		return (1,myfavorites)
+
+		self.missingbins=0
+		if "--usepkgonly" in myopts:
+			for x in self.digraph.dict.keys():
+				xs=string.split(x," ")
+				if (xs[0] != "binary") and (xs[3]=="merge"):
+					if self.missingbins == 0:
+						print
+					self.missingbins+=1
+					print "Missing binary for:",xs[2]
+
+		# We're true here unless we are missing binaries.
+		return (not self.missingbins,myfavorites)
 
 	def select_dep(self,myroot,depstring,myparent=None,arg=None):
 		"given a dependency string, create the appropriate depgraph and return 1 on success and 0 on failure"
@@ -1014,19 +1030,18 @@ class depgraph:
 					print ">>> Recording",myfavkey,"in \"world\" favorites file..."
 					portage.writedict(myfavdict,myroot+"var/cache/edb/world",writekey=0)
 
-			# Clean the old package that we have merged over top of it we autoclean.
-			if portage.settings["AUTOCLEAN"] and (portage.settings["AUTOCLEAN"]=="yes"):
-				xsplit=portage.pkgsplit(x[2])
-				emergelog(" >>> AUTOCLEAN: "+xsplit[0])
-				if not unmerge("clean", [xsplit[0]]):
-					emergelog(" --- AUTOCLEAN: Nothing unmerged.")
-
 			if "--autoclean" in myopts:
 				retval=portage.doebuild(y,"clean",myroot,edebug)
 				if retval:
 					sys.exit(1)
 			
 			if not "--pretend" in myopts:
+				# Clean the old package that we have merged over top of it.
+				if portage.settings["AUTOCLEAN"] and (portage.settings["AUTOCLEAN"]=="yes"):
+					xsplit=portage.pkgsplit(x[2])
+					emergelog(" >>> AUTOCLEAN: "+xsplit[0])
+					if not unmerge("clean", [xsplit[0]]):
+						emergelog(" --- AUTOCLEAN: Nothing unmerged.")
 				emergelog(" ::: completed emerge ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[2]+" to "+x[1])
 
 		#my doing an exit this way, --fetchonly can continue to try to
@@ -1446,7 +1461,7 @@ elif "depclean"==myaction:
 	print red("*** WARNING ***")+" : DEPCLEAN CAN  SERIOUSLY  IMPAIR YOUR SYSTEM. USE CAUTION."
 	print red("*** WARNING ***")+" : (Cancel: CONTROL-C) -- ALWAYS VERIFY ALL PACKAGES IN THE"
 	print red("*** WARNING ***")+" : CANDIDATE LIST FOR  SANITY  BEFORE  ALLOWING DEPCLEAN TO"
-	print red("*** WARNING ***")+" : UNMERGE ANY PACAKGES."
+	print red("*** WARNING ***")+" : UNMERGE ANY PACKAGES."
 	print red("*** WARNING ***")+" :"
 	print red("*** WARNING ***")+" : USE FLAGS MAY HAVE AN EXTREME EFFECT ON THE OUTPUT."
 	print red("*** WARNING ***")+" : SOME LIBRARIES MAY BE USED BY PACKAGES BUT ARE NOT"
