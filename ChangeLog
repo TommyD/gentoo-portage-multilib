@@ -9,6 +9,9 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  17 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage_data.pym:
+  Adding missing imports.
+
   17 Aug 2004; Brian Harring <ferringb@gentoo.org> bin/repoman: Minor 
   tweak to make repoman detect the repolevel correctly in overlays.
   (#60298).

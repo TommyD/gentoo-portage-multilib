@@ -5,6 +5,7 @@
 
 import os,pwd,grp
 from portage_util import writemsg
+from output import green,red
 
 ostype=os.uname()[0]
 
