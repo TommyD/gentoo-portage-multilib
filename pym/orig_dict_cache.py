@@ -2,6 +2,8 @@
 Symlink unaware, so beware of webs of symlinks"""
 
 import portage_util, os, stat
+import portage_file
+
 dircache = {}
 cacheHit = 0
 cacheMiss = 0
@@ -10,7 +12,7 @@ cacheStale = 0
 def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymlinks=True):
 	"""return results from cache, updating cache if its stale/incomplete"""
 	global cacheHit, cacheMiss, cacheStale, dircache
-	mypath=portage_util.normpath(my_original_path)
+	mypath=portage_file.normpath(my_original_path)
 	if dircache.has_key(mypath):
 		cacheHit += 1
 		cached_mtime, list, ftype = dircache[mypath]
