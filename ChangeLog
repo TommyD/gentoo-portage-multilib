@@ -9,6 +9,13 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  26 Jul 2004; Brian Harring <ferringb@gentoo.org> bin/emerge:
+  Removed the `which blah` calls- A) stage1 lacks which, B) which searches
+  $PATH- all sane shells do this already when handed a command not that 
+  isn't absolute path.  These which calls were used in 
+  commands.getstatusoutput() calls, which starts up a shell with
+  the arg passed to the shell, so "`which blar` args" isn't needed.
+
   26 Jul 2004; Brian Harring <ferringb@gentoo.org> bin/repoman:
   Added file.executable check- ebuilds, digests, Manifest, ChangeLog, and
   metadata.xml don't need the executable bit set.  CVS preserves it upon 
