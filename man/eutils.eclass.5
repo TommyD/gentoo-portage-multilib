@@ -8,6 +8,26 @@ are not required in all ebuilds but enough utilize them to have a common
 home.
 .SH "FUNCTIONS"
 .TP
+.BR "cdrom_get_cds " "\fI<cd1 file>\fR \fI[cd2 file]\fR \fI[cd n file]\fR"
+Useful function to help ebuilds that need to read files off of a CD.  This is 
+most commonly used with games.  Just specify a list of files, one per cd, that 
+will be used to detect whether the cd is mounted or not.  This function 
+handles all the messy details of interaction with the user.  Once this 
+function returns, you will have access to the \fICDROM_ROOT\fR variable.  If 
+you want the message to the user to name the CD in a particular way, then 
+export the variable \fICDROM_NAME\fR before calling this function.  If you want 
+to name more than one cd, and you want them to each have a different name, then 
+export the variables \fICDROM_NAME_1\fR, \fICDROM_NAME_2\fR, etc...  For more 
+information on multi-cd support, see \fBcdrom_load_next_cd\fR.
+.TP
+.BR "cdrom_load_next_cd"
+Some packages are so big they come on multiple CDs.  When you're done reading 
+files off a CD and want access to the next one, just call this function.  Again,
+all the messy details of user interaction are taken care of for you.  Once this 
+returns, just read the variable \fICDROM_ROOT\fR for the location of the mounted 
+CD.  Note that you can only go forward in the CD list, so make sure you only 
+call this function when you're done using the current CD.
+.TP
 .BR "draw_line"
 Simple function to draw a line consisting of '=' the same length as $*.  So
 if you run `draw_line 1234 5678` you will get back 9 '=' characters in a line.
@@ -65,6 +85,22 @@ section of the menu that the icon will install to (rather than the default deter
 by \fB${CATEGORY}\fR) then pass a \fItype\fR value (see http://www.freedesktop.org/standards/menu/draft/menu-spec/menu-spec.html
 for valid values).  Finally, if the application needs to start up in a special directory,
 pass the last value as the full \fIpath\fR name.
+.TP
+.BR "unpack_makeself "\fI[makeself archive]\fR \fI[byte offset]\fR"
+Unpack a makeself archive rather than relying on the script to unpack itself.  Useful for when 
+the scripts use old (POSIX) syntax that is no longer supported properly.  If you don't specify 
+a file to unpack, then \fB${A}\fR is used instead.  If you don't specify the offset, then the 
+proper value will be located by searching the makeself script.
+For more information on makeself archives, please visit: http://www.megastep.org/makeself/
+.TP
+.BR "unpack_pdv " "\fI<pdv archive>\fR \fI<sizeof(off_t)>\fR"
+Unpack a pdv archive rather than relying on the binary to unpack itself.  Useful for when 
+the static binary crashes randomly on systems and for when the binary doesn't provide a 
+non-interactive extraction process.  You have to specify the off_t size since I (vapier@gentoo.org) 
+am unaware of a way to extract that information out of the binary executable automatically.  
+The value you pass is the size of the off_t type (in bytes) on the machine that built the 
+pdv archive.  If you don't know the value yourself, try guessing the values 2, 4, or 8.  
+For more information on pdv archives, please visit: http://pdv.sourceforge.net/
 .SH "EPATCH"
 .TP
 .B "ABOUT"
