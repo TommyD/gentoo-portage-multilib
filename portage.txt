@@ -44,8 +44,18 @@ also a fair amount of information that is assembled and made available
 by the import process.  Here's a (probably incomplete) list of those
 items:
 
+    * Define constants: portage version number, a list of variables that 
+      are "incremental" (USE, FEATURES, etc.), and a list of variables that 
+      are "sticky" (KEYWORDS_ACCEPT, USE, ...).
+    * Import a lot of python modules that will be used by portage.  Core
+      python modules are imported first, followed by various portage modules.
+      Along the way, ``catpkgsplit``, ``pkgsplit``, and ``pkgcmp`` from
+      ``portage_versions`` are added to the portage namespace.  
+    * Establish a signal handler to catch SIGCHLD, SIG_DFL, SIGINT, and
+      SIGTERM.
+    * Define a *lot* of functions and classes.
+
     * Define the "VDB" path (traditionally ``/var/db/pkg``)
-    * Set up a signal handler to catch SIGCHLD, SIG_DFL
     * Identify ostype from uname, set some os-related defaults, 
       export USERLAND to the environment
     * Check to make sure user is in the portage group (or root)
