@@ -331,7 +331,7 @@ def getworldlist():
 	worlddict=genericdict(worldlist)
 	#we're effectively upgrading sysdict to contain all new deps from worlddict
 	for x in worlddict.keys():
-		if portage.db[portage.root]["vartree"].hasnode(x):
+		if portage.db[portage.root]["vartree"].hasnode(x) and portage.db[portage.root]["porttree"].hasnode(x):
 		#only add the world node if the package is actually installed, otherwise skip
 		#this prevents the remerging of already unmerged packages when we do a world --update
 			sysdict[x]=worlddict[x]
@@ -923,7 +923,7 @@ if myaction in ["sync","rsync"]:
 			print ">>> starting cvs update with "+syncuri+"..."
 			sys.exit(portage.spawn("cd "+myportdir+"; cvs -q update -dP",free=1)) 
 	else:
-		print "!!!",syncuri,"not recognized; exiting."
+		print "!!! rsync setting: ",syncuri,"not recognized; exiting."
 		sys.exit(1)
 
 elif "--version" in myopts:
