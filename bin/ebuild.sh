@@ -264,7 +264,7 @@ dyn_unpack() {
 		done
 		if [ ${EBUILD} -nt ${WORKDIR} ]
 		then
-			echo ">>> ${x} has been updated; recreating WORKDIR..."
+			echo ">>> ${EBUILD} has been updated; recreating WORKDIR..."
 			newstuff="yes"
 			rm -rf ${WORKDIR}
 		fi
