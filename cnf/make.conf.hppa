@@ -29,7 +29,7 @@
 # But you might want to use hppa1.1-unknown-linux-gnu according to your
 # station.
 #
-CHOST="hppa1.1-unknown-linux-gnu
+CHOST="hppa1.1-unknown-linux-gnu"
 
 # Host and optimization settings 
 # ==============================
