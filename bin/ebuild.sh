@@ -43,6 +43,22 @@ export DIROPTIONS="-m0755"
 export MOPREFIX=${PN}
 export KVERS=`uname -r`
 
+check_KV()
+{
+	if [ x"${KV}" = x ]
+	then
+		eerror ""
+		eerror "Could not determine your kernel version."
+		eerror "Make sure that you have /usr/src/linux symlink."
+		eerror "And that said kernel has been configured."
+		eerror "You can also simply run the following command"
+		eerror "in the kernel referenced by /usr/src/linux:"
+		eerror " make include/linux/version.h"
+		eerror ""
+		die
+	fi
+}
+
 # the sandbox is disabled by default except when overridden in the relevant stages
 export SANDBOX_ON="0"
 
@@ -700,14 +716,6 @@ newdepend() {
 }
 
 # --- functions end, main part begins ---
-
-#grab currently-installed kernel symlink version and set KV
-if [ ! -e /usr/src/linux/Makefile ]
-then
-	KV=""
-else
-	KV=`awk -f /usr/lib/portage/bin/KV_extract.awk /usr/src/linux/Makefile`
-fi
 
 source ${EBUILD} 
 if [ $? -ne 0 ]
