@@ -719,6 +719,7 @@ debug-print-section() {
 declare -ix ECLASS_DEPTH=0
 inherit() {
 	local SAVED_INHERIT_COUNT=0 INHERITED_ALREADY=0
+
 	if [[ $ECLASS_DEPTH < 0 ]] && [ "${EBUILD_PHASE}" == "depend" ]; then
 		echo "QA Notice: ${CATEGORY}/${PF} makes multiple inherit calls: $1" >&2
 		SAVED_INHERIT_COUNT=$ECLASS_DEPTH
@@ -733,7 +734,7 @@ inherit() {
 		debug-print "*** Multiple Inheritence (Level: ${ECLASS_DEPTH})"
 	fi
 
-	local location
+	local location olocation
 	local PECLASS
 
 	local B_IUSE
