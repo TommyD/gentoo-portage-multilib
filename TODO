@@ -10,6 +10,12 @@ Legend:
  '*' Just do it.        '#' Tricky
  '!' Difficult          '@' Restricted in some way
 
+# Repoman needs to ignore all user-set info in /etc/portage
+# It's not relevant to deployed users and will probably be a general gotcha.
+
+# Multiple rsync repos.
+  bug 28796 -- Enable metadata caches for them. 
+
 # STICKIES and related enhancements:
   bug 9379, bug 13616, Aether's config code
 
