@@ -2,6 +2,17 @@
 # Copyright 2000-2004 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  10 Apr 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Includes the
+	deadlock breaks marked with 'XXX:' to indicate where fixes are needed. Added
+	HTTP encoding to PORTAGE_BINHOST with checks and fallbacks. Fallback for
+	dbkey settings spawned from ebuild. Exception handling for db classes in
+	the case of random corruption. jstubb's fix for the dep code to handle
+	empty lists, added a notice about that being rude.
+
+  10 Apr 2004; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Made more QA
+	notices and made them slightly more pretty 'QA Notice:'. Made the depend
+	phase trap less violent -TERM not -KILL.
+
   10 Apr 2004; Masatomo Nakano <nakano@gentoo.org> repoman: Added IUSE missings
   a check(#21544).
 
@@ -22,17 +33,17 @@
 
   09 Apr 2004; Masatomo Nakano <nakano@gentoo.org> emerge, portage.py,
   output.py: Fixed some bugs. See #45164, #24299, #34967.
-	
+  
   01 Apr 2004; Masatomo Nakano <nakano@gentoo.org> portage.py: Fixed 
   virtuals in reverse order(jstubbs's patch and my fix).
   This should close #45468.
 
   20 Mar 2004; Nicholas Jones <carpaski@gentoo.org> portage_db_*: Updated
-	all the db modules to be current and correct and updated the testing code
-	to make sure everything is working properly.
+  all the db modules to be current and correct and updated the testing code
+  to make sure everything is working properly.
 
   20 Mar 2004; Nicholas Jones <carpaski@gentoo.org> ebuild: Fix for traceback
-	and incorrent ROOT variable when using an alternate root and hand-merging.
+  and incorrent ROOT variable when using an alternate root and hand-merging.
 
   20 Mar 2004; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Exported the
   sandbox variables so that they work.

@@ -1116,6 +1116,8 @@ def check_config_instance(test):
 class config:
 	def __init__(self, clone=None, mycpv=None, config_profile_path=None, config_incrementals=None):
 
+		self.already_in_regenerate = 0
+
 		self.locked   = 0
 		self.mycpv    = None
 		self.puse     = []
@@ -1445,6 +1447,13 @@ class config:
 
 	def regenerate(self,useonly=0,use_cache=1):
 		global incrementals,usesplit,profiledir
+		
+		if self.already_in_regenerate:
+			# XXX: THIS REALLY NEEDS TO GET FIXED. autouse() loops.
+			writemsg("!!! Looping in regenerate.\n",1)
+			return
+		else:
+			self.already_in_regenerate = 1
 
 		if useonly:
 			myincrementals=["USE"]
@@ -1519,6 +1528,7 @@ class config:
 
 		self.configlist[-1]["USE"]=string.join(usesplit," ")
 
+		self.already_in_regenerate = 0
 
 	def getvirtuals(self, myroot):
 		myvirts     = {}
@@ -1538,16 +1548,30 @@ class config:
 		return grab_stacked("virtuals",myvirtdirs,grabdict)
 	
 	def __getitem__(self,mykey):
-		if mykey=="CONFIG_PROTECT_MASK":
-			suffix=" /etc/env.d"
-		else:
-			suffix=""
+		match = ''
 		for x in self.lookuplist:
 			if x == None:
 				writemsg("!!! lookuplist is null.\n")
 			elif x.has_key(mykey):
-				return x[mykey]+suffix
-		return suffix
+				match = x[mykey]
+				break
+
+		if match and mykey in ["PORTAGE_BINHOST"]:
+			# These require HTTP Encoding
+			try:
+				import urilib
+				if urllib.unquote(match) != match:
+					writemsg("Note: %s already contains escape codes." % (mykey))
+				else:
+					match = urllib.quote(match)
+			except:
+				writemsg("Failed to fix %s using urllib, attempting to continue.\n"  % (mykey))
+				pass
+			
+		elif mykey == "CONFIG_PROTECT_MASK":
+			match += " /etc/env.d"
+
+		return match
 
 	def has_key(self,mykey):
 		for x in self.lookuplist:
@@ -2145,7 +2169,11 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		writemsg("!!! Error: PF is null '%s'; exiting.\n" % mypv)
 		return 1
 
-	mysettings.reset(use_cache=use_cache)
+	if mydo != "depend":
+		# XXX: We're doing a little hack here to curtain the gvisible locking
+		# XXX: that creates a deadlock... Really need to isolate that.
+		mysettings.reset(use_cache=use_cache)
+		
 	mysettings.setcpv(mycpv,use_cache=use_cache)
 	
 	if mydo not in ["help","clean","prerm","postrm","preinst","postinst",
@@ -2218,7 +2246,12 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 			# XXX: This needs to use a FD for saving the output into a file.
 			# XXX: Set this up through spawn
 			pass
-		mysettings["dbkey"] = dbkey
+		if dbkey:
+			mysettings["dbkey"] = dbkey
+		else:
+			mysettings["dbkey"] = mysettings["PORTAGE_CACHEDIR"]+"/aux_db_key_temp"
+
+			
 		return spawn("/usr/sbin/ebuild.sh depend",mysettings)
 
 	# Build directory creation isn't required for any of these.
@@ -4560,6 +4593,7 @@ auxdbkeylen=len(auxdbkeys)
 class portdbapi(dbapi):
 	"this tree will scan a portage directory located at root (passed to init)"
 	def __init__(self,porttree_root,mysettings=None):
+		self.lock_held = 0;
 
 		if mysettings:
 			self.mysettings = mysettings
@@ -4683,9 +4717,17 @@ class portdbapi(dbapi):
 			self.eclassdb.update_package(mylocation,cat,pkg,metadata["INHERITED"].split())
 			self.auxdb[mylocation][cat][pkg]=metadata
 		else:
-			auxdb_is_valid = self.auxdb[mylocation][cat].has_key(pkg) and \
-			                 self.auxdb[mylocation][cat][pkg].has_key("_mtime_") and \
-			                 self.auxdb[mylocation][cat][pkg]["_mtime_"] == emtime
+
+			try:
+				auxdb_is_valid = self.auxdb[mylocation][cat].has_key(pkg) and \
+				                 self.auxdb[mylocation][cat][pkg].has_key("_mtime_") and \
+				                 self.auxdb[mylocation][cat][pkg]["_mtime_"] == emtime
+			except Exception, e:
+				auxdb_is_valid = 0
+				writemsg("auxdb exception: (%s): %s\n" % (mylocation+"::"+cat+"/"+pkg,str(e)))
+				if self.auxdb[mylocation][cat].has_key(pkg):
+					self.auxdb[mylocation][cat].del_key(pkg)
+
 			writemsg("auxdb is valid: "+str(auxdb_is_valid)+" "+str(pkg)+"\n", 2)
 			if auxdb_is_valid:
 				doregen=0
@@ -4701,7 +4743,15 @@ class portdbapi(dbapi):
 				else:
 					mydbkey = self.cachedir+"/aux_db_key_temp"
 
+				# XXX: Part of the gvisible hack/fix to prevent deadlock
+				# XXX: through doebuild. Need to isolate this somehow...
+				self.mysettings.reset()
+
+				if self.lock_held:
+					raise "Lock is already held by me?"
+				self.lock_held = 1
 				mylock = lockfile(mydbkey,unlinkfile=1)
+				
 
 				myret=doebuild(myebuild,"depend","/",self.mysettings,dbkey=mydbkey)
 				if myret:
@@ -4719,7 +4769,9 @@ class portdbapi(dbapi):
 					writemsg(str(red("\naux_get():")+" (1) Error in "+mycpv+" ebuild.\n"
 					  "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
 					raise KeyError
+
 				unlockfile(mylock)
+				self.lock_held = 0
 
 				mydata = {}
 				for x in range(0,len(mylines)):

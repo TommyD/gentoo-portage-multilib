@@ -7,7 +7,6 @@ export SANDBOX_PREDICT="${SANDBOX_PREDICT}:/proc/self/maps:/dev/console:/usr/lib
 export SANDBOX_WRITE="${SANDBOX_WRITE}:/dev/shm:${PORTAGE_TMPDIR}"
 export SANDBOX_READ="${SANDBOX_READ}:/dev/shm:${PORTAGE_TMPDIR}"
 
-
 if [ "$*" != "depend" ] && [ "$*" != "clean" ] && [ "$*" != "nofetch" ]; then
 	if [ -f "${T}/successful" ]; then
 		rm -f "${T}/successful"
@@ -144,7 +143,7 @@ hasq() {
 }
 
 has_version() {
-	[ "${EBUILD_PHASE}" == "depend" ] && echo "has_version() in global scope: ${CATEGORY}/$PF" >&2
+	[ "${EBUILD_PHASE}" == "depend" ] && echo "QA Notice: has_version() in global scope: ${CATEGORY}/$PF" >&2
 	# return shell-true/shell-false if exists.
 	# Takes single depend-type atoms.
 	if /usr/lib/portage/bin/portageq 'has_version' "${ROOT}" "$1"; then
@@ -155,12 +154,37 @@ has_version() {
 }
 
 portageq() {
-	[ "${EBUILD_PHASE}" == "depend" ] && echo "portageq in global scope: ${CATEGORY}/$PF" >&2
+	[ "${EBUILD_PHASE}" == "depend" ] && echo "QA Notice: portageq in global scope: ${CATEGORY}/$PF" >&2
 	/usr/lib/portage/bin/portageq "$@"
 }
 
+function java-config() {
+	[ "${EBUILD_PHASE}" == "depend" ] && echo "QA Notice: java-config in global scope: ${CATEGORY}/$PF" >&2
+	`type -p which &>/dev/null && which java-config 2>/dev/null || echo "portageq"` "$@"
+}
+
+function python-config() {
+	[ "${EBUILD_PHASE}" == "depend" ] && echo "QA Notice: java-config in global scope: ${CATEGORY}/$PF" >&2
+	`type -p which &>/dev/null && which python-config 2>/dev/null || echo "portageq"` "$@"
+}
+
+function gcc() {
+	[ "${EBUILD_PHASE}" == "depend" ] && echo "QA Notice: gcc in global scope: ${CATEGORY}/$PF" >&2
+	`type -p which &>/dev/null && which gcc 2>/dev/null || echo "gcc"` "$@"
+}
+
+function perl() {
+	[ "${EBUILD_PHASE}" == "depend" ] && echo "QA Notice: perl in global scope: ${CATEGORY}/$PF" >&2
+	`type -p which &>/dev/null && which perl 2>/dev/null || echo "perl"` "$@"
+}
+
+function grep() {
+	[ "${EBUILD_PHASE}" == "depend" ] && echo "QA Notice: grep in global scope: ${CATEGORY}/$PF" >&2
+	`type -p which &>/dev/null && which grep 2>/dev/null || echo "missing grep"` "$@"
+}
+
 best_version() {
-	[ "${EBUILD_PHASE}" == "depend" ] && echo "best_version() in global scope: ${CATEGORY}/$PF" >&2
+	[ "${EBUILD_PHASE}" == "depend" ] && echo "QA Notice: best_version() in global scope: ${CATEGORY}/$PF" >&2
 	# returns the best/most-current match.
 	# Takes single depend-type atoms.
 	/usr/lib/portage/bin/portageq 'best_version' "${ROOT}" "$1"
@@ -1305,7 +1329,7 @@ else
 
 killparent() {
 	trap INT
-	kill -KILL ${PORTAGE_MASTER_PID}
+	kill ${PORTAGE_MASTER_PID}
 }
 trap "killparent" INT
 

@@ -31,7 +31,7 @@ def paren_reduce(mystr,tokenize=1):
 	while mystr:
 		if ("(" not in mystr) and (")" not in mystr):
 			freesec = mystr
-			subsec = []
+			subsec = None
 			tail = ""
 		elif mystr[0] == ")":
 			return mylist,mystr[1:]
@@ -50,7 +50,7 @@ def paren_reduce(mystr,tokenize=1):
 				mylist = mylist + strip_empty(freesec.split(" "))
 			else:
 				mylist = mylist + [freesec]
-		if subsec:
+		if subsec is not None:
 			mylist = mylist + [subsec]
 	return mylist
 
@@ -72,33 +72,31 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0):
 				if head[0] == "!":
 					matchon = 0 # Inverted... match on false
 					head = head[1:]
+				newdeparray = [mydeparray.pop(0)]
+				while isinstance(newdeparray[-1], str) and newdeparray[-1][-1] == "?":
+					if mydeparray:
+						newdeparray.append(mydeparray.pop(0))
+					else:
+						if len(newdeparray) > 1:
+							sys.stderr.write("Note: Nested use flags without parenthesis! (Deprecated)\n")
+							sys.stderr.write("      "+string.join(map(str,[head]+newdeparray))+"\n")
+						raise ValueError, "Conditional with no target."
+				if newdeparray:
+					warned = 0
+					if len(newdeparray[-1]) == 0:
+						sys.stderr.write("Note: Empty target in string. (Deprecated)\n")
+						warned = 1
+					if len(newdeparray) != 1:
+						sys.stderr.write("Note: Nested use flags without parenthesis (Deprecated)\n")
+						warned = 1
+					if warned:
+						sys.stderr.write("  --> "+string.join(map(str,[head]+newdeparray))+"\n")
 				if matchall or \
            (((head[:-1] in uselist) == matchon) and \
             (head[:-1] not in masklist)):
 					# It is set, keep it.
-					if mydeparray: # Error check: if nothing more, then error.
-						newdeparray = mydeparray.pop(0)
-						if type(newdeparray) == types.ListType:
-							rlist = rlist + use_reduce(newdeparray, uselist, masklist, matchall)
-						elif newdeparray[-1] == "?":
-							# This section is for  "a? b? c? target" strings.
-							# It recurses the non-conforming series.
-							newdlist = [newdeparray]
-							while mydeparray:
-								newdlist.append(mydeparray.pop(0))
-								if (type(newdlist[-1]) == types.ListType) or \
-								   (newdlist[-1][-1]!="?"):
-									break
-							rlist = rlist + use_reduce(newdlist, uselist, masklist, matchall)
-							sys.stderr.write("Note: Nested use flags without parenthesis! (Deprecated)\n")
-							sys.stderr.write("      "+string.join(map(str,newdlist))+"\n")
-						else:
-							rlist = rlist + [newdeparray]
-					else:
-						raise ValueError, "Conditional with no target."
-				else:
-					if mydeparray: # Not set, drop it.
-						del mydeparray[0]
+					if newdeparray: # Error check: if nothing more, then error.
+						rlist += use_reduce(newdeparray, uselist, masklist, matchall)
 					else:
 						raise ValueError, "Conditional with no target."
 			else:
