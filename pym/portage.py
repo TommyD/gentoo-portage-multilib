@@ -1576,11 +1576,6 @@ def isspecific(mypkg):
 # return a list containing: [ pkgname, pkgversion(norev), pkgrev ].
 # For foo-1.2-1, this list would be [ "foo", "1.2", "1" ].  For 
 # Mesa-3.0, this list would be [ "Mesa", "3.0", "0" ].
-#if os.path.exists("/var/cache/edb/pkgcache.p"):
-#	myxfile=open("/var/cache/edb/pkgcache.p","r")
-#	pkgcache=cPickle.load(myxfile)
-#	myxfile.close()
-#else:
 pkgcache={}
 
 def pkgsplit(mypkg,silent=1):
@@ -3739,8 +3734,14 @@ if not os.path.exists(root+"var/tmp"):
 	print ">>> "+root+"var/tmp doesn't exist, creating it..."
 	os.mkdir(root+"var",0755)
 	os.mkdir(root+"var/tmp",01777)
+if not os.path.exists("/var/cache/edb"):
+	os.makedirs("/var/cache/edb",0755)
 if not os.path.exists("/var/cache/edb/dep"):
-	os.mkdir("/var/cache/edb/dep",0755)
+	os.makedirs("/var/cache/edb/dep",4755)
+try:
+	os.chown("/var/cache/edb/dep",uid,wheelgid)
+except OSError:
+	pass
 os.umask(022)
 profiledir=None
 if os.path.exists("/etc/make.profile/make.defaults"):
@@ -3780,14 +3781,30 @@ def store():
 	global uid,wheelgid
 	if secpass:
 		try:
-			myxfile=open("/var/cache/edb/xcache.p","w")
+			myxfn="/var/cache/edb/xcache.p"
+			myxfile=open(myxfn,"w")
 			cPickle.dump(portdb.xcache,myxfile)
 			myxfile.close()
+			try:
+				os.chown(myxfn,uid,wheelgid)
+				try:
+					os.chmod(myxfn,0664)
+				except OSError:
+					pass
+			except OSError:
+				pass
 		except:
-			print "portage: store(): Unable to update xcache"
-		writeints(mtimedb["old"],"/var/cache/edb/mtimes")	
-		for x in ["/var/cache/edb/xcache.p","/var/cache/edb/mtimes"]:
-			os.chown(x,uid,wheelgid)
+			print "portage: store(): Unable to store xcache"
+		mymfn="/var/cache/edb/mtimes"
+		writeints(mtimedb["old"],mymfn)	
+		try:
+			os.chown(mymfn,uid,wheelgid)
+			try:
+				os.chmod(mymfn,0664)
+			except OSError:
+				pass
+		except OSError:
+			pass
 			
 atexit.register(store)
 #continue setting up other trees
