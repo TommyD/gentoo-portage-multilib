@@ -2,6 +2,9 @@
 # Copyright 2001 Gentoo Technologies, Inc.; Distributed under the GPL
 # Written by Daniel Robbins (drobbins@gentoo.org)
 
+  21 Dec 2001; man/make.defaults.5, make.conf.5.  Moved make.defaults.5
+  to make.conf.5 and updated contents.
+
 *portage 1.7.8 (21 Dec 2001)
 
   21 Dec 2001; portage.py: ebuild install doesn't throw away the compile
