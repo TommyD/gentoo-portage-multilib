@@ -389,10 +389,13 @@ class search:
 			if re.search(self.searchkey.lower(), package_parts[1].lower()):
 				self.matches["pkg"].append(package)
 			elif self.searchdesc: # DESCRIPTION searching
+				#description searching is a bit broken because we use visible packages rather than
+				#all packages.  But this will work until I have time to rewrite it.
 				full_package = portage.portdb.xmatch("bestmatch-visible",package)
 				if not full_package:
 					#no match found; we don't want to query description
 					full_package=""
+					continue
 				full_desc = portage.portdb.aux_get(full_package,["DESCRIPTION"])[0]
 				if re.search(self.searchkey.lower(), full_desc.lower()):
 					self.matches["desc"].append(full_package)
