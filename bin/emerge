@@ -753,7 +753,12 @@ if "--unmerge" in myopts:
 			# a category and package name have been given
 			else:
 				localtree=portage.vartree(portage.root)	
-				mymatches=localtree.dep_match(x)
+				if x=="ALL":
+					mymatches=[]
+					for y in localtree.getallnodes():
+						mymatches.extend(localtree.dep_match(y))
+				else:
+					mymatches=localtree.dep_match(x)
 				# if no matches were found, try again by adding a '=' dep symbol if no
 				# dep symbols are already present
 				if not mymatches and x[0] not in ('<','>','=','~'):
@@ -768,20 +773,30 @@ if "--unmerge" in myopts:
 								print "The ebuild '"+full_path+"' couldn't be found."
 								print "Your portage installation tree seems to be corrupted."
 							else:
-								full_paths_local[full_path]=1
+								full_paths_local[full_path]=package
 
-			# check for the --safe switch
+			# check for the --all switch
 			if not "--all" in myopts:
 				if len(full_paths_local) > 0:
-					latest=["",0]
+					latest_ebuilds={}
 					# determine the latest installed package
-					for full_path in full_paths_local.keys():
+					full_paths_local_keys=full_paths_local.keys()
+					full_paths_local_keys.sort()
+					previous_package_key=None
+					for full_path in full_paths_local_keys:
+						package_parts=portage.pkgsplit(full_paths_local[full_path])
+						package_key=package_parts[0]
+						if not latest_ebuilds.has_key(package_key):
+							latest_ebuilds[package_key]=["",0]
 						contents_path=dirname(full_path)+"/CONTENTS"
 						contents_mtime=os.stat(contents_path)[8]
-						if contents_mtime > latest[1]:
-							latest=[full_path,contents_mtime]
-					if latest[0]:
-						del full_paths_local[latest[0]]
+						if contents_mtime > latest_ebuilds[package_key][1]:
+							latest_ebuilds[package_key]=[full_path,contents_mtime]
+						if previous_package_key and previous_package_key!=package_key and latest_ebuilds[previous_package_key][0]:
+							del full_paths_local[latest_ebuilds[previous_package_key][0]]
+						previous_package_key=package_key
+					if latest_ebuilds[package_key][0]:
+						del full_paths_local[latest_ebuilds[package_key][0]]
 
 			# add all local paths to the global scope
 			full_paths.update(full_paths_local)
