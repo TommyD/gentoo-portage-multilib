@@ -351,12 +351,6 @@ class depgraph:
 				sys.exit(1)
 				mydep={}
 			myebuild=self.db[myroot]["porttree"].getname(mykey)
-<<<<<<< emerge
-			edepend=portage.doebuild(myebuild,"depend",myroot,1,edebug)
-			if edepend==1:
-				print "!!! emerge aborting."
-				sys.exit(1)
-=======
 			mydbkey="/var/cache/edb/dep/dep-"+os.path.basename(myebuild)
 			#use the cached info if it is available and more recent than the ebuild itself (mtime)
 			if (not os.path.exists(mydbkey)) or (os.stat(mydbkey)[7]<os.stat(myebuild)[7]):
@@ -364,7 +358,6 @@ class depgraph:
 			mydb=open(mydbkey,"r")
 			edepend=eval(mydb.readline())
 			mydb.close()
->>>>>>> 1.51
 		elif mytype=="blocks":
 			edepend=None
 			parenttype,parentroot,parentkey=string.split(myparent)
@@ -1040,7 +1033,7 @@ elif "--clean"==myaction:
 						package_set=package_parts[0]+"-"+package_slot
 					else:
 						package_set=package_parts[0]+"-"+package_parts[1]+"-"+package_slot
-					
+						
 					# create initial latest ebuild information for the current package set if it
 					# doesn't exists yet
 					if not latest_ebuilds.has_key(package_set):
@@ -1058,19 +1051,15 @@ elif "--clean"==myaction:
 						latest_ebuilds[package_set]=[full_path,contents_mtime]
 					else:
 						old_ebuilds[package_set].append(full_path)
-					# if a new package set is being processed, remove the latest version of the previous package set
-					if previous_package_set and previous_package_set!=package_set and latest_ebuilds[previous_package_set][0]:
-						del full_package_paths[latest_ebuilds[previous_package_set][0]]
-						for old_ebuild in old_ebuilds[previous_package_set]:
-							current_version_mapping[old_ebuild]=latest_ebuilds[previous_package_set][0]
 					# update which package set has just been processed
 					previous_package_set=package_set
-					
-				# remove the latest version of the last processed package set
-				if latest_ebuilds[package_set][0]:
-					del full_package_paths[latest_ebuilds[package_set][0]]
-					for old_ebuild in old_ebuilds[package_set]:
-						current_version_mapping[old_ebuild]=latest_ebuilds[package_set][0]
+
+				# go over the package sets and remove the latest ebuild
+				for package_set in latest_ebuilds.keys():
+					if latest_ebuilds[package_set][0]:
+						del full_package_paths[latest_ebuilds[package_set][0]]
+						for old_ebuild in old_ebuilds[package_set]:
+							current_version_mapping[old_ebuild]=latest_ebuilds[package_set][0]
 
 		full_paths=full_ebuild_paths.keys()
 		full_paths.extend(full_package_paths.keys())
