@@ -2,14 +2,24 @@
 # Copyright 2001 Gentoo Technologies, Inc.; Distributed under the GPL
 # Written by Daniel Robbins (drobbins@gentoo.org)
 
+*portage 1.8.6 (23 Jan 2002)
   22 Jan 2002; G.Bevin <gbevin@gentoo.org> : added an additional check for 
   SANDBOX_ON in libsandbox.c to optimize the speed in the execvp function call.
   Also removed error messages being printed when the PATH var isn't set.
+  
+  20 Jan 2002; <karltk@gentoo.org> : added dojar shell command as a java JAR
+  handler
 
   17 Jan 2002; The package chosen by "emerge sys-apps/shadow" now matches that
   chosen in an emerge update or emerge system.  I forgot to add some "*" dep code
   to the dep_nomatch() method; this is now fixed.
 
+*portage 1.8.5 (13 Jan 2002)
+
+  13 Jan 2002; G.Bevin <gbevin@gentoo.org> : added fine grained maintainer
+  settings
+
+*portage 1.8.4 (13 Jan 2002)
   12 Jan 2002; "emerge sys-apps/bash/" now works. (trailing "/" stripped to make
   tab-completion users happy)  This fixes bug #119
 

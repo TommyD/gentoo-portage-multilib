@@ -1778,7 +1778,10 @@ class portagetree(packagetree):
 				x=x[1:]
 			matches=self.dep_nomatch(x)
 			for y in matches:
-				print "zapping",y
+# gbevin@gentoo.org :
+# commented this since I think it's a leftover debug message
+# looks kinda weird to see these messages appearing all of a sudden
+#				print "zapping",y
 				self.zap(y)
 
 	def getdeps(self,pf):
