@@ -1010,7 +1010,7 @@ elif "--help" in myopts:
 		print "              Add a stub entry for a package so that Portage thinks that it's"
 		print "              installed when it really isn't.  Handy if you roll your own"
 		print "              packages.  Example: "
-		print "              "+bold("emerge inject gentoo-sources-2.4.19")
+		print "              "+bold("emerge inject sys-kernel/gentoo-sources-2.4.19")
 		print
 		print turquoise("Options:")
 		print "       "+green("--autoclean")+" ("+green("-a")+" short option)"
