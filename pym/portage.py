@@ -2004,7 +2004,7 @@ class dblink:
 	# backwards compatibility code to be able to unmerge packages that have been
 	# merged with a previous version of portage
 	def makeCompat(self):
-		if not os.path.exists(self.dbdir):
+		if not os.path.exists(self.dbdir+"/"+self.pkg+".ebuild"):
 			mydbdir=self.myroot+"/var/db/pkg/"+self.cat+"/"+self.pkg
 			if os.path.exists(mydbdir) and not os.path.exists(mydbdir+"/SLOT"):
 					self.dbdir=mydbdir

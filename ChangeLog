@@ -1,6 +1,11 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+*portage 1.8.9_pre2 (5 Feb 2002)
+
+  5 Feb 2002; G.Bevin <gbevin@gentoo.org> portage.py :
+  fixed bug in the backward compatibility algorithm
+
 *portage 1.8.9_pre1 (5 Feb 2002)
 
   4 Feb 2002; G.Bevin <gbevin@gentoo.org> ebuild.sh, emerge, portage.py :
