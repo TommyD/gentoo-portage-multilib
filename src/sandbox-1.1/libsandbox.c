@@ -281,6 +281,8 @@ canonicalize(const char *path, char *resolved_path)
 	int old_errno = errno;
 	char *retval;
 
+	*resolved_path = '\0';
+
 	/* If path == NULL, return or we get a segfault */
 	if (NULL == path) {
 		errno = EINVAL;
@@ -1282,6 +1284,11 @@ before_syscall(const char *func, const char *file)
 	int old_errno = errno;
 	int result = 1;
 	sbcontext_t sbcontext;
+
+	if (!strlen(file)) {
+		errno = EINVAL;
+		return 0;
+	}
 
 	init_context(&sbcontext);
 
