@@ -1,5 +1,5 @@
 #!/usr/bin/env python2.2
-# Copyright 1999-2002 Gentoo Technologies, Inc.
+# Copyright 1999-2003 Gentoo Technologies, Inc.
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
@@ -13,8 +13,9 @@ def shorthelp():
 	print "   "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] [ "+turquoise("ebuildfile")+" | "+turquoise("tbz2file")+" | "+turquoise("dependency")+" ] [ ... ]"
 	print "   "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] < "+turquoise("system")+" | "+turquoise("world")+" >"
 	print "   "+turquoise("emerge")+" < "+turquoise("sync")+" | "+turquoise("rsync")+" | "+turquoise("info")+" >"
+	print "   "+turquoise("emerge")+" "+turquoise("--resume")+" ["+green("--pretend")+"]"
 	print "   "+turquoise("emerge")+" "+green("--help")+" "+green("-h")+" [ "+turquoise("system")+" | "+turquoise("config")+" ] "
-	print bold("Options:")+" "+green("-")+"["+green("abcCdefhikKlnoOpPsSuvV")+"] ["+green("--deep")+"] ["+green("--oneshot")+"]"
+	print bold("Options:")+" "+green("-")+"["+green("bcCdefhikKlnoOpPsSuvV")+"] ["+green("--deep")+"] ["+green("--oneshot")+"] ["+green("--noconfmem")+"]"
 	print bold("Actions:")+" [ clean | depclean | inject | prune | regen | search | unmerge ]"
 	print
 
@@ -61,21 +62,6 @@ def help(myaction,myopts,havecolor=1):
 		print "              "+bold("<=sys-devel/binutils-2.11.92.0.12.3-r1")+" matches"
 		print "                  binutils-2.11.90.0.7 and binutils-2.11.92.0.12.3-r1"
 		print
-		print "       "+green("unmerge")+" ("+green("-C")+" short option)"
-		print "              "+turquoise("WARNING: This action can remove important packages!")
-		print "              Removes all matching packages without checking for outdated."
-		print "              versions. This thus effectively removes a package "+bold("completely")+" from"
-		print "              your system. Specify arguments using the dependency specification"
-		print "              format described in the "+bold("clean")+" action above."
-		print
-		print "       "+green("prune")+" ("+green("-P")+" short option)"
-		print "              "+turquoise("WARNING: This action can remove important packages!")
-		print "              Removes all older versions of a package from your system."
-		print "              This action doesn't always verify the possible binary"
-		print "              incompatibility between versions and can thus remove essential"
-		print "              dependencies from your system."
-		print "              The argument format is the same as for the "+bold("clean")+" action."
-		print
 		print "       "+green("depclean")
 		print "              Cleans the system by removing packages that are not associated"
 		print "              with explicitly merged packages. Depclean works by creating the"
@@ -86,6 +72,35 @@ def help(myaction,myopts,havecolor=1):
 		print "              "+turquoise("removing packages that may have been linked against, but due to")
 		print "              "+turquoise("changes in USE flags may no longer be part of the dep tree. Use")
 		print "              "+turquoise("caution when employing this feature.")
+		print
+		print "       "+green("info")
+		print "              Displays important portage variables that will be exported to"
+		print "              ebuild.sh when performing merges. This information is useful"
+		print "              for bug reports and verification of settings. All settings in"
+		print "              make.{conf,globals,defaults} and the environment show up if"
+		print "              run with the '--verbose' flag."
+		print
+		print "       "+green("inject")+" ("+green("-i")+" short option)"
+		print "              Add a stub entry for a package so that Portage thinks that it's"
+		print "              installed when it really isn't.  Handy if you roll your own"
+		print "              packages.  Example: "
+		#NOTE: this next line *needs* the "sys-kernel/"; *please* don't remove it!
+		print "              "+bold("emerge inject sys-kernel/gentoo-sources-2.4.19")
+		print
+		print "       "+green("prune")+" ("+green("-P")+" short option)"
+		print "              "+turquoise("WARNING: This action can remove important packages!")
+		print "              Removes all older versions of a package from your system."
+		print "              This action doesn't always verify the possible binary"
+		print "              incompatibility between versions and can thus remove essential"
+		print "              dependencies from your system."
+		print "              The argument format is the same as for the "+bold("clean")+" action."
+		print
+		print "       "+green("regen")
+		print "              Causes portage to check and update the dependancy cache of all"
+		print "              ebuilds in the portage tree. This is not recommended for rsync"
+		print "              users as it will result in a cache penalty during rsync updates."
+		print "              Rsync users should simply 'rm -Rf /var/cache/edb/dep' and then"
+		print "              'emerge rsync' to regenerate their caches."
 		print
 		print "       "+green("search")+" ("+green("-s")+" short option)"
 		print "              searches for matches of the supplied string in the current local"
@@ -99,22 +114,14 @@ def help(myaction,myopts,havecolor=1):
 		print "              "+bold("emerge search '.*'")
 		print "                  list all available packages "
 		print
-		print "       "+green("inject")+" ("+green("-i")+" short option)"
-		print "              Add a stub entry for a package so that Portage thinks that it's"
-		print "              installed when it really isn't.  Handy if you roll your own"
-		print "              packages.  Example: "
-		#NOTE: this next line *needs* the "sys-kernel/"; *please* don't remove it!
-		print "              "+bold("emerge inject sys-kernel/gentoo-sources-2.4.19")
+		print "       "+green("unmerge")+" ("+green("-C")+" short option)"
+		print "              "+turquoise("WARNING: This action can remove important packages!")
+		print "              Removes all matching packages without checking for outdated."
+		print "              versions. This thus effectively removes a package "+bold("completely")+" from"
+		print "              your system. Specify arguments using the dependency specification"
+		print "              format described in the "+bold("clean")+" action above."
 		print
 		print turquoise("Options:")
-		print "       "+green("--autoclean")+" ("+green("-a")+" short option)"
-		print "              emerge normally cleans out the package-specific temporary"
-		print "              build directory before it starts the building a package.  With"
-		print "              --autoclean, it will also clean the directory *after* the"
-		print "              build completes.  This option is automatically enabled for"
-		print "              normal users, but maintainers can use this option to enable"
-		print "              autocleaning."
-		print
 		print "       "+green("--buildpkg")+" ("+green("-b")+" short option)"
 		print "              tell emerge to build binary packages for all ebuilds processed"
 		print "              (in addition to actually merging the packages.  Useful for"
@@ -127,12 +134,23 @@ def help(myaction,myopts,havecolor=1):
 		print "              must not exist for the desired package as they cannot be used if"
 		print "              they do not exist on the system."
 		print
+		print "       "+green("--changelog")+" ("+green("-l")+" short option)"
+		print "              When pretending, also display the ChangeLog entries for packages"
+		print "              that will be upgraded."
+		print
 		print "       "+green("--debug")+" ("+green("-d")+" short option)"
 		print "              Tell emerge to run the ebuild command in --debug mode. In this"
 		print "              mode, the bash build environment will run with the -x option,"
 		print "              causing it to output verbose debug information print to stdout."
 		print "              --debug is great for finding bash syntax errors."
 		print
+		print "       "+green("--deep")
+		print "              When used in conjunction with --update, this flag forces emerge"
+		print "              to consider the entire dependency tree of packages, instead of"
+		print "              checking only the immediate dependencies of the packages.  As an"
+		print "              example, this catches updates in libraries that are not directly"
+		print "              listed in the dependencies of a package."
+		print 
 		print "       "+green("--emptytree")+" ("+green("-e")+" short option)"
 		print "              Virtually tweaks the tree of installed packages to only contain"
 		print "              glibc, this is great to use together with --pretend. This makes"
@@ -144,6 +162,14 @@ def help(myaction,myopts,havecolor=1):
 		print "              all packages (main package as well as all dependencies.) When"
 		print "              used in combination with --pretend all the SRC_URIs will be"
 		print "              displayed multiple mirrors per line, one line per file."
+		print
+		print "       "+green("--noconfmem")
+		print "              Portage keeps track of files that have been placed into"
+		print "              CONFIG_PROTECT directories, and normally it will not merge the"
+		print "              same file more than once, as that would become annoying. This"
+		print "              can lead to problems when the user wants the file in the case"
+		print "              of accidental deletion. With this option, files will always be"
+		print "              merged to the live fs instead of silently dropped."
 		print
 		print "       "+green("--nodeps")+" ("+green("-O")+" short option)"
 		print "              Merge specified packages, but don't merge any dependencies."
@@ -175,9 +201,11 @@ def help(myaction,myopts,havecolor=1):
 		print "              use flags to be printed out accompanied by a '+' for enabled"
 		print "              and a '-' for disabled flags."
 		print
-		print "       "+green("--changelog")+" ("+green("-l")+" short option)"
-		print "              When pretending, also display the ChangeLog entries for packages"
-		print "              that will be upgraded."
+		print "       "+green("--resume")
+		print "              Resumes the last merge operation. Can be treated just like a"
+		print "              regular merge as --pretend and other options work along side."
+		print "              'emerge --resume' only returns an error on failure. Nothing to"
+		print "              do exits with a message and a success condition."
 		print
 		print "       "+green("--searchdesc")+" ("+green("-S")+" short option)"
 		print "              Matches the search string against the description field as well"
@@ -192,13 +220,6 @@ def help(myaction,myopts,havecolor=1):
 		print "              always be the highest version number due to masking for testing"
 		print "              and development."
 		print
-		print "       "+green("--deep")
-		print "              When used in conjunction with --update, this flag forces emerge"
-		print "              to consider the entire dependency tree of packages, instead of"
-		print "              checking only the immediate dependencies of the packages.  As an"
-		print "              example, this catches updates in libraries that are not directly"
-		print "              listed in the dependencies of a package."
-		print 
 		print "       "+green("--usepkg")+" ("+green("-k")+" short option)"
 		print "              Tell emerge to use binary packages (from $PKGDIR) if they are"
 		print "              available, thus possibly avoiding some time-consuming compiles."
