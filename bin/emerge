@@ -374,6 +374,13 @@ if ("--debug" in myopts):
 	portage.debug=1
 	portage.settings.lock()
 
+CLEAN_DELAY = 5
+EMERGE_WARNING_DELAY = 10
+if portage.settings["CLEAN_DELAY"]:
+	CLEAN_DELAY = string.atoi("0"+portage.settings["CLEAN_DELAY"])
+if portage.settings["EMERGE_WARNING_DELAY"]:
+	EMERGE_WARNING_DELAY = string.atoi("0"+portage.settings["EMERGE_WARNING_DELAY"])
+
 if "inject" == myaction:
 	print
 	print red("*** --inject has been deprecated.")
@@ -2049,7 +2056,8 @@ def unmerge(unmerge_action, unmerge_files):
 					print red("\a\n\n!!! Trying to unmerge package(s) in system profile. '%s'" % (mykey))
 					print yellow("\a!!! This could be damaging to your system.\n")
 					if "--pretend" not in myopts:
-						countdown(10,red("Press Ctrl-C to Stop"))
+						global EMERGE_WARNING_DELAY
+						countdown(EMERGE_WARNING_DELAY,red("Press Ctrl-C to Stop"))
 
 		else:
 			#unmerge_action in ["prune", clean"]
@@ -2127,11 +2135,8 @@ def unmerge(unmerge_action, unmerge_files):
 			return 0
 	#the real unmerging begins, after a short delay....
 	
-	if mysettings["CLEAN_DELAY"]:
-		secs=string.atoi(mysettings["CLEAN_DELAY"])
-	else:
-		secs=5
-	countdown(secs, ">>> Unmerging")
+	global CLEAN_DELAY
+	countdown(CLEAN_DELAY, ">>> Unmerging")
 
 	for x in pkgmap.keys():
 		for y in pkgmap[x]["selected"]:
@@ -2744,7 +2749,7 @@ elif "depclean"==myaction:
 	print red("*** WARNING ***")+" : MISSING LIBRARY."
 	print
 	if ("--pretend" not in myopts) and ("--ask" not in myopts):
-		countdown(10, ">>> Depclean")
+		countdown(EMERGE_WARNING_DELAY, ">>> Depclean")
 		emergelog(" >>> depclean")
 
 	mydepgraph=depgraph(myaction,myopts)
@@ -2790,7 +2795,7 @@ elif "depclean"==myaction:
 				    "!!! Please ensure that blocking/conflicting packages are not merged."+
 						"!!! 'emerge -p "+str(string.split(x)[2])+"\n\n")
 			if ("--pretend" not in myopts) and ("--ask" not in myopts):
-				countdown(15, "*** Continuing")
+				countdown(EMERGE_WARNING_DELAY, "*** Continuing")
 			continue
 			
 		catpack=myparts[0]+"/"+myparts[1]
