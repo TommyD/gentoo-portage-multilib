@@ -7,13 +7,10 @@ emerge \- Command\-line interface to the Portage system
 [\fIoptions\fR] [\fIaction\fR] [\fIebuild\fR | \fItbz2file\fR | \fIclass\fR | \fIdependency\fR] ...
 .TP 
 .BR emerge
-[\fIoptions\fR] [\fIaction\fR] \fBebuildfile\fR
+\fB\-\-sync\fR | \fB\-\-metadata\fR
 .TP 
 .BR emerge
-\fBsync\fR | \fBmetadata\fR
-.TP 
-.BR emerge
-\fI\-\-help \-h\fR [\fBsystem\fR | \fBconfig\fR | \fBsync\fR]
+\fI\-\-help\fR | \fI\-h\fR [\fBsystem\fR | \fBconfig\fR | \fBsync\fR]
 .TP 
 .BR emerge
 \fI\-\-version\fR
@@ -41,6 +38,7 @@ as \fBsys\-apps/portage\fR or \fB=python\-2.2.1\-r2\fR.  \fBemerge\fR
 ignores a trailing slash so that filename completion can be used.
 The \fIebuild\fR may also be an actual filename, such as
 \fB/usr/portage/app\-admin/python/python\-2.2.1\-r2.ebuild\fR.
+WARNING: The implementation of \fBemerge /path/to/ebuild\fR is broken and so this syntax shouldn't be used.
 .TP 
 .BR tbz2file
 A \fItbz2file\fR must be a valid .tbz2 created with \fBebuild
@@ -77,16 +75,16 @@ option if you want to install a tbz2\fR.  The packages are added
 to the \fBworld\fR file at the end, so that they are considered for
 later updating.  
 .TP 
-.BR "clean " (\fB\-c\fR)
+.BR "\-\-clean " (\fB\-c\fR)
 Cleans the system by removing packages that will not effect the
 functionality of the system.  The arguments can be \fIebuilds\fR,
 \fIclasses\fR, or \fIdependencies\fR.  For example, \fBemerge
 clean binutils\fR cleans out old versions of binutils;
-\fBemerge clean net\-www/mozilla\-0.9.9\-r2\fR cleans out that
+\fBemerge \-\-clean net\-www/mozilla\-0.9.9\-r2\fR cleans out that
 specific version of Mozilla.  This is generally safe to use.
-\fBNote that\fR clean \fBdoes not remove unslotted packages.\fR
+\fBNote that\fR \-\-clean \fBdoes not remove unslotted packages.\fR
 .TP 
-.BR depclean
+.BR \-\-depclean
 Determines all packages installed on the system that have no 
 explicit reason for being there.  \fBemerge\fR generates a list 
 of packages which it expects to be installed by checking the 
@@ -98,71 +96,71 @@ packages may cause packages which link to the removed package
 to stop working and complain about missing libraries.\fR 
 Re\-emerge the complaining package to fix this issue.
 \fBNote that changes in USE flags can drastically affect the 
-output of depclean.\fR
+output of \-\-depclean.\fR
 .TP 
-.BR info
+.BR \-\-info
 This is a list of information to include in bug reports which aids
 the developers with fixing any problems you may report.  \fBPlease
 include this information when submitting a bug report.\fR Expanded
 output can be obtained with the \fI\-\-verbose\fR option.
 .TP 
-.BR "inject " (\fB\-i\fR)
+.BR "\-\-inject " (\fB\-i\fR)
 Injecting a package inserts a 'stub' for that package so that Portage
 thinks that it is installed.  It is handy if you need, say, a binary
 version of XFree86 for esoteric hardware, or you just like to roll
 your own packages.  You \fBmust\fR specify a category and particular
 version of a package for injecting.  For example,
-\fBemerge inject sys\-kernel/gentoo\-sources\-2.4.19\fR.
+\fBemerge \-\-inject sys\-kernel/gentoo\-sources\-2.4.19\fR.
 .TP 
-.BR metadata
+.BR \-\-metadata
 Causes portage to process all the metacache files as is normally done
-on the tail end of an rsync update using \fBemerge sync\fR. The processing
-creates the cache database that portage uses for pre-parsed lookups of
+on the tail end of an rsync update using \fBemerge \-\-sync\fR. The processing
+creates the cache database that portage uses for pre\-parsed lookups of
 package data.
 .TP 
-.BR "prune " (\fB\-P\fR)
+.BR "\-\-prune " (\fB\-P\fR)
 \fBWARNING: This action can remove important packages!\fR Removes
 all but the latest versions of matching packages.  If there are
 multiple SLOTs for a package, it leaves the latest version in each
 SLOT.  This does no checking of dependencies, so it may remove
 packages necessary for the proper operation of your system.  \fBUse\fR
-clean \fBinstead unless you really know what you're doing\fR.  Its
+\-\-clean \fBinstead unless you really know what you're doing\fR.  Its
 arguments can be \fIebuilds\fR, \fIclasses\fR, or \fIdependencies\fR
-\-\- see \fBclean\fR above for examples.
+\-\- see \fB\-\-clean\fR above for examples.
 .TP 
-.BR regen
+.BR \-\-regen
 Causes portage to check and update the dependency cache of all 
 ebuilds in the portage tree.  The cache is used to speed up searches
 and the building of dependency trees.  This command is not recommended 
 for rsync users as rsync updates the cache using server\-side caches.  If
 you do not know the differences between a 'rsync user' and some other
 user, then you are a 'rsync user' :).  Rsync users should simply run 
-\fBemerge sync\fR to regenerate the cache. After a portage updated, rsync
-users may find it convenient to run \fBemerge metadata\fR to rebuild the
+\fBemerge \-\-sync\fR to regenerate the cache. After a portage updated, rsync
+users may find it convenient to run \fBemerge \-\-metadata\fR to rebuild the
 cache as portage does at the end of a sync operation.
 .TP 
-.BR search (\fB\-s\fR)
+.BR "\-\-search " (\fB\-s\fR)
 Searches for matches of the supplied string in the portage tree.
-The search string is a regular expression.  For example, \fBemerge
-search "^kde"\fR searches for any package that starts with "kde";
-\fBemerge search "gcc$"\fR searches for any package that ends with
-"gcc"; \fBemerge search "office"\fR searches for any package that
+The \-\-search string is a regular expression.  For example, \fBemerge
+\-\-search "^kde"\fR searches for any package that starts with "kde";
+\fBemerge \-\-search "gcc$"\fR searches for any package that ends with
+"gcc"; \fBemerge \-\-search "office"\fR searches for any package that
 contains the word "office".  If you want to search the package
 descriptions as well, use the \fB\-\-searchdesc\fR option.
 .TP 
-.BR sync
+.BR \-\-sync
 Initiates a portage tree update with one of the rsync.gentoo.org
 mirrors.  \fBNote that any changes you have made to the portage
 tree will be erased\fR.  Except for in special circumstances,
 this uses \fBrsync\fR to do the update.  See \fBmake.conf\fR(5)'s description
 of PORTDIR_OVERLAY for a method to avoid deletions.
 .TP 
-.BR unmerge (\fB\-C\fR)
+.BR "\-\-unmerge " (\fB\-C\fR)
 \fBWARNING: This action can remove important packages!\fR Removes
 all matching packages.  This does no checking of dependencies, so
 it may remove packages necessary for the proper operation of your
 system.  Its arguments can be \fIebuilds\fR, \fIclasses\fR, or
-\fIdependencies\fR \-\- see \fBclean\fR above for examples.
+\fIdependencies\fR \-\- see \fB\-\-clean\fR above for examples.
 .SH "OPTIONS"
 .TP 
 .BR "\-\-ask " (\fB\-a\fR)
@@ -218,7 +216,7 @@ and it enables complete trees to be rebuilt using the latest libraries.
 Instead of doing any package building, just perform fetches for all
 packages (the main package as well as all dependencies.)
 .TP 
-.BR "\-\-fetch-all-uri " (\fB\-f\fR)
+.BR "\-\-fetch\-all\-uri " (\fB\-f\fR)
 Instead of doing any package building, just perform fetches for all
 packages (the main package as well as all dependencies.), grabbing all potential
 files.
@@ -399,7 +397,7 @@ when the previous version emerged was injected (see \fBinject\fR for more info)
 or very outdated (so old that \fBSLOT\fR did not exist).  Either way, a newer version
 of Xfree is availabe for your updating delight.
 .TP 
-.B [ebuild     U ] sys\-devel/distcc\-2.16 [2.13-r1] \-gnome \-gtk +ipv6* (\-selinux)
+.B [ebuild     U ] sys\-devel/distcc\-2.16 [2.13\-r1] \-gnome \-gtk +ipv6* (\-selinux)
 The \-gtk and \-gnome reflect the status of \fBUSE\fR variables when emerging nmap.  Here
 we see that nmap can use the \fBUSE\fR variables gtk and gnome, but that your current
 settings have gtk and gnome disabled.  So optional support for gtk and gnome will
@@ -433,7 +431,8 @@ override those specified in the default locations, letting you
 avoid using some dependencies you may not want to have.  \fBUSE
 flags specified on the command line are NOT remembered\fR.  For
 example, \fBUSE="\-x \-gnome" emerge mc\fR will emerge mc with
-those USE settings.
+those USE settings. If you want those changes to be permanent 
+please use /etc/portage/package.use too.
 .LP 
 If \fBemerge \-\-update system\fR or \fBemerge \-\-update world\fR
 fail with an error message, it may be that an ebuild uses some
@@ -482,7 +481,7 @@ Please report any bugs you encounter through our website:
 .LP 
 \fBhttp://bugs.gentoo.org/\fR
 .LP 
-Please include the output of \fBemerge info\fR when you submit your
+Please include the output of \fBemerge \-\-info\fR when you submit your
 bug report.
 .SH "SEE ALSO"
 .BR "emerge \-\-help",
@@ -526,7 +525,7 @@ functions.  \fBDo not edit this file\fR.
 Contains a list of default packages used to resolve virtual dependencies.
 \fBDo not edit this file\fR.
 .TP 
-\fB/etc/make.profile/package\fR
+\fB/etc/make.profile/packages\fR
 Contains a list of packages used for the base system.  The \fBsystem\fR
 and \fBworld\fR classes consult this file.  \fBDo not edit this file\fR.
 .TP 
@@ -545,5 +544,8 @@ Nicholas Jones <carpaski@gentoo.org>
 Phil Bordelon <phil@thenexusproject.org>
 .br 
 Mike Frysinger <vapier@gentoo.org>
+.br 
+Marius Mauch <genone@gentoo.org>
+.br 
 .SH "CVS HEADER"
 $Id$

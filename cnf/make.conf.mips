@@ -18,7 +18,7 @@
 # Use 'less' to view them:  --> less /usr/portage/profiles/use.desc <--
 #
 # 'ufed' is an ncurses/dialog interface available in portage to make handling
-# useflags for you. 'emerge app-admin/ufed'
+# useflags for you. 'emerge app-portage/ufed'
 #
 # Example:
 #USE="X gtk gnome -alsa"

@@ -7,6 +7,11 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  03 Oct 2004; <genone@gentoo.org> cnf/*, man/emerge.1, man/make.conf.5, 
+  man/portage.5, pym/emergehelp.py:
+  Changed documentation to use --action instead of action (bug #2365). 
+  Also changed ufed references in make.conf to use the correct category.
+
   30 Sep 2004; Nicholas Jones <carpaski@gentoo.org> emerge: Rsync fix part 2
   for the distfiles, local, and packages directory unlinks.
   

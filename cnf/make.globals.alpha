@@ -52,12 +52,12 @@ USE_EXPAND="VIDEO_CARDS INPUT_DEVICES LINGUAS"
 
 # By default wait 5 secs before cleaning a package
 CLEAN_DELAY="5"
-# Set to yes automatically run "emerge clean" after each merge
+# Set to yes automatically run "emerge --clean" after each merge
 # Important, as without this you may experience missing symlinks when
 # downgrading libraries during a batch (world/system) update.
 AUTOCLEAN="yes"
 
-# Number of times 'emerge rsync' will run before giving up.
+# Number of times 'emerge --sync' will run before giving up.
 RSYNC_RETRIES="3"
 # Number of seconds rsync will wait before timing out.
 RSYNC_TIMEOUT="180"
