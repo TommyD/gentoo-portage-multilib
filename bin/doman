@@ -29,8 +29,8 @@ do
 	if [ "$suf" = "gz" ]
 	then
 		realname=${x%.*}
-	else:
-		realname=x
+	else
+		realname=$x
 	fi
 	lastcomp=${realname##*.}
 	mandir=man${lastcomp:0:1}

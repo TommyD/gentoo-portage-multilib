@@ -2081,7 +2081,7 @@ def dep_transform(mydep,oldkey,newkey):
 	else:
 		return origdep
 
-def dep_expand(mydep,mydb):
+def dep_expand(mydep,mydb=None):
 	if not len(mydep):
 		return mydep
 	if mydep[0]=="*":
@@ -2131,7 +2131,8 @@ def dep_check(depstring,mydbapi,use="yes",mode=None):
 	if myeval:
 		return [1,[]]
 	else:
-		mylist=dep_listcleanup(dep_zapdeps(mysplit,mysplit2))
+		mylist=flatten(dep_listcleanup(dep_zapdeps(mysplit,mysplit2)))
+		#remove duplicates
 		mydict={}
 		for x in mylist:
 			mydict[x]=1
@@ -2433,33 +2434,30 @@ class fakedbapi(dbapi):
 
 def counter_tick_core(myroot):
 		"This method will grab the next COUNTER value and record it back to the global file.  Returns new counter value."
-		edbpath=myroot+"var/cache/edb/"
-		cpath=edbpath+"counter"
+		cpath=myroot+"var/cache/edb/counter"
 
 		#We write our new counter value to a new file that gets moved into
 		#place to avoid filesystem corruption on XFS (unexpected reboot.)
-
-		newcpath=edbpath+"counter.new"
 		if os.path.exists(cpath):
 			cfile=open(cpath, "r")
 			try:
 				counter=long(cfile.readline())
 			except ValueError:
-				print "portage: COUNTER was corrupted; resetting to value of 9999"
-				counter=counter=long(9999)
+				counter=long(time.time())
+				print "portage: COUNTER was corrupted; resetting to value of",counter
 			cfile.close()
 		else:
 			counter=long(0)
 		#increment counter
 		counter += 1
 		# update new global counter file
+		newcpath=cpath+".new"
 		newcfile=open(newcpath,"w")
 		newcfile.write(str(counter))
 		newcfile.close()
 		# now move global counter file into place
 		os.rename(newcpath,cpath)
 		return counter
-
 	
 cptot=0
 class vardbapi(dbapi):
@@ -2479,6 +2477,34 @@ class vardbapi(dbapi):
 	def counter_tick(self):
 		return counter_tick_core(self.root)
 
+	def cpv_counter(self,mycpv):
+		"This method will grab the next COUNTER value and record it back to the global file.  Returns new counter value."
+		cpath=self.root+"var/db/pkg/"+mycpv+"/COUNTER"
+
+		#We write our new counter value to a new file that gets moved into
+		#place to avoid filesystem corruption on XFS (unexpected reboot.)
+		corrupted=0
+		if os.path.exists(cpath):
+			cfile=open(cpath, "r")
+			try:
+				counter=long(cfile.readline())
+			except ValueError:
+				print "portage: COUNTER for",mycpv,"was corrupted; resetting to value of 0"
+				counter=long(0)
+				corrupted=1
+			cfile.close()
+		else:
+			counter=long(0)
+		if corrupted:
+			newcpath=cpath+".new"
+			# update new global counter file
+			newcfile=open(newcpath,"w")
+			newcfile.write(str(counter))
+			newcfile.close()
+			# now move global counter file into place
+			os.rename(newcpath,cpath)
+		return counter
+	
 	def cpv_inject(self,mycpv):
 		"injects a real package into our on-disk database; assumes mycpv is valid and doesn't already exist"
 		os.makedirs(self.root+"var/db/pkg/"+mycpv)	
@@ -2690,24 +2716,6 @@ class vartree(packagetree):
 			if mypsplit[0]==mysplit[1]:
 				return 1
 		return 0
-	
-	def gettimeval(self,mycatpkg):
-		"""Get an integer time value that can be used to compare against other catpkgs; the timeval will try to use
-		COUNTER but will also take into account the start time of Portage and use mtimes of CONTENTS files if COUNTER
-		doesn't exist.	The algorithm makes it safe to compare the timeval values of COUNTER-enabled and non-COUNTER
-		db entries.  Assumes mycatpkg exists."""
-		global starttime	
-		rootp=self.root+"var/db/pkg/"+mycatpkg
-		if not os.path.exists(rootp+"/COUNTER"):
-			if not os.path.exists(rootp+"/CONTENTS"):
-				return 0
-			else:
-				return os.stat(rootp+"/CONTENTS")[ST_MTIME]	
-		else:
-			mycounterfile=open(rootp+"/COUNTER","r")
-			mycountervar=string.atoi(string.split(mycounterfile.readline())[0])
-			mycounterfile.close()
-			return starttime+mycountervar
 	
 	def populate(self):
 		self.populated=1

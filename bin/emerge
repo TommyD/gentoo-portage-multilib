@@ -326,7 +326,6 @@ for x in cmdline:
 	elif x[-1]=="/":	
 		# this little conditional helps tab completion
 		myfiles.append(x[:-1])
-	#These next 4 lines fry "emerge prune rsync," so it seems best to add duplicate actions to myfiles if myaction is already set.
 	#elif (myaction) and (x in actions):
 	#	#catch "world system" and "world foo" issues....
 	#	print "emerge: please specify either \""+myaction+"\" or \""+x+"\", but not both."
@@ -396,19 +395,25 @@ class search:
 			spinpos=(spinpos+1)%8
 			sys.stdout.flush()
 			package_parts=package.split("/")
+			masked=0
 			if re.search(self.searchkey.lower(), package_parts[1].lower()):
-				self.matches["pkg"].append(package)
+				if not portage.portdb.xmatch("match-visible",package):
+					masked=1
+				self.matches["pkg"].append([package,masked])
 			elif self.searchdesc: # DESCRIPTION searching
 				#description searching is a bit broken because we use visible packages rather than
 				#all packages.  But this will work until I have time to rewrite it.
 				full_package = portage.portdb.xmatch("bestmatch-visible",package)
 				if not full_package:
 					#no match found; we don't want to query description
-					full_package=""
-					continue
+					full_package=portage.best(portage.portdb.xmatch("match-all",package))
+					if not full_package:
+						continue
+					else:
+						masked=1
 				full_desc = portage.portdb.aux_get(full_package,["DESCRIPTION"])[0]
 				if re.search(self.searchkey.lower(), full_desc.lower()):
-					self.matches["desc"].append(full_package)
+					self.matches["desc"].append([full_package,masked])
 		self.mlen=0
 		for mtype in self.matches.keys():
 			self.matches[mtype].sort()
@@ -420,24 +425,25 @@ class search:
 		print "[ Applications found : "+white(str(self.mlen))+" ]"
 		print " "
 		for mtype in self.matches.keys():	
-			for match in self.matches[mtype]:
+			for match,masked in self.matches[mtype]:
 				if mtype=="pkg":
 					full_package = portage.portdb.xmatch("bestmatch-visible",match)
 					if not full_package:
-						#it's masked; we do filtering here because it's theoretically faster
-						full_package=""
+						#no match found; we don't want to query description
+						masked=1
+						full_package=portage.best(portage.portdb.xmatch("match-all",match))
 				else:
 					full_package=match
 				if full_package:
 					desc, homepage = portage.portdb.aux_get(full_package,["DESCRIPTION","HOMEPAGE"])
-					print green("*")+"  "+white(match)
+					if masked:
+						print green("*")+"  "+white(match)+" "+red("[ Masked ]")
+					else:
+						print green("*")+"  "+white(match)
 					print "     ", "Latest version Available:",self.getVersion(full_package, search.VERSION_RELEASE)
 					print "     ", self.getInstallationStatus(match)
 					print "     ", "Homepage:",homepage
 					print "     ", "Description:",desc
-					print " "
-				else:
-					print green("*")+"  "+white(match)+" "+red("[ Masked ]")
 					print " "
 		
 	#
@@ -447,7 +453,7 @@ class search:
 		installed_package = self.installcache.dep_bestmatch(package)
 		result = ""
 		version = self.getVersion(installed_package,search.VERSION_RELEASE)
-		if len(version) > 1:
+		if len(version) > 0:
 			result = "Latest version Installed: "+version
 		else:
 			result = "Latest version Installed: [ Not Installed ]"
@@ -511,7 +517,6 @@ class depgraph:
 	def __init__(self,myaction,myopts):
 		global olddbapi
 		self.myaction=myaction
-		self.myopts=myopts
 		virts=portage.getvirtuals("/")
 		self.digraph=portage.digraph()
 		self.orderedkeys=[]
@@ -528,13 +533,30 @@ class depgraph:
 			#portage.db["/"]["vartree"].root=None
 			#portage.db["/"]["vartree"].virtual={"virtual/glibc":"sys-libs/glibc"}
 		self.outdatedpackages=[]
+		self.mydbapi={}
+		if "--update" in myopts:
+			#for --update, we want to rebuild an entire empty tree of dependencies, and then we won't merge was is already merged.
+			self.mydbapi["/"]=self.fakedbapi
+		else:
+			self.mydbapi["/"]=portage.db["/"]["vartree"].dbapi
+		if portage.root!="/":
+			if "--update" in myopts:
+				self.mydbapi[portage.root]=self.fakedbapi
+			else:
+				self.mydbapi=portage.db[portage.root]["vartree"].dbapi
+		if "--usepkg" in myopts:
+			portage.db["/"]["bintree"].populate()
 
 	def create(self,mybigkey,myparent=None,addme=1):
 		"""creates the actual digraph of packages to merge.  return 1 on success, 0 on failure
 		mybigkey = specification of package to merge; myparent = parent package (one depending on me);
 		addme = should I be added to the tree? (for the --onlydeps mode)"""
-		#if mybigkey==None:
-		#	return
+	
+		jbigkey=string.join(mybigkey)
+		if self.digraph.hasnode(jbigkey+" merge") or self.digraph.hasnode(jbigkey+" nomerge"):
+			#this conditional is needed to prevent infinite recursion on already-processed deps
+			return 1
+		
 		#update our groovy spinner
 		global spinner, spinpos
 		sys.stdout.write("\b"+spinner[spinpos])
@@ -542,15 +564,11 @@ class depgraph:
 		sys.stdout.flush()
 	
 		mytype,myroot,mykey=mybigkey
-		
+	
 		#select the correct /var database that we'll be checking against
 		vardbapi=portage.db[myroot]["vartree"].dbapi
-		if "--update" in self.myopts:
-			#for --update, we want to rebuild an entire empty tree of dependencies, and then we won't merge was is already merged.
-			mydbapi=self.fakedbapi
-		else:
-			mydbapi=vardbapi
-	
+		
+
 		merging=1
 		#this is where we add the node to the list of packages to merge
 		if addme:
@@ -558,25 +576,25 @@ class depgraph:
 			if mytype=="blocks":
 				#we've encountered a "blocks" node.  We will totally ignore this node and not add it to our digraph if it doesn't
 				#apply to us.
-				if myparent and mydbapi.match(mykey):
+				if myparent and self.mydbapi[myroot].match(mykey):
 					#otherwise, encode parent information where we would normally write "(no)merge" and continue:
 					mybigkey.append(myparent.split()[2])
 					parenttype,parentroot,parentkey,mergeme=string.split(myparent)
-					mykexp=portage.dep_expand(mykey,mydbapi)
-					pakexp=portage.dep_expand(parentkey,mydbapi)
+					mykexp=portage.dep_expand(mykey,self.mydbapi[myroot])
+					pakexp=portage.dep_expand(parentkey,self.mydbapi[myroot])
 					myrealkey=portage.dep_getkey(mykexp)
 					parealkey=portage.dep_getkey(pakexp)
 					if myrealkey!=parealkey:
 						self.digraph.addnode(string.join(mybigkey),myparent)
 					#since our blocks doesn't match any installed packages, it doesn't apply to us and we can ignore it.
 				return 1
-			elif "--emptytree" in self.myopts:
+			elif "--emptytree" in myopts:
 				#if we are in "--emptytree" mode, then we want to merge the package even if it is already installed.
 				mybigkey.append("merge")
 			elif (myaction not in ["system","world"]) and (not myparent):
 				#we're doing a normal merge and processing an item specified on the command-line. 
 				#So we need to check for the --noreplace option.
-				if "--noreplace" in self.myopts:
+				if "--noreplace" in myopts:
 					if not vardbapi.cpv_exists(mykey):
 						#the package isn't on the system, so merge it.
 						mybigkey.append("merge")
@@ -597,7 +615,7 @@ class depgraph:
 			#whatever the case, we need to add the node to our digraph so that children can depend upon it.
 			self.digraph.addnode(string.join(mybigkey),myparent)
 		
-		if "--nodeps" in self.myopts:
+		if "--nodeps" in myopts:
 			#if we are not processing dependencies, then, err... abort here and don't process dependencies :)
 			return 1
 
@@ -625,80 +643,98 @@ class depgraph:
 			#	sys.exit(1)
 			#myebuild=portage.db[myroot]["porttree"].getname(mykey)
 			try:
-				edepend=portage.db[myroot]["porttree"].dbapi.aux_get(mykey,["DEPEND","RDEPEND"])
+				edepend=portage.portdb.aux_get(mykey,["DEPEND","RDEPEND"])
 			except (KeyError,IOError):
 				print "emerge: create(): aux_get() error on",mykey+"; aborting..."
 				sys.exit(1)
-		
 		mydep={}	
+		mp=string.join(mybigkey)
 		if myroot=="/":
 			mydep["/"]=edepend[0]+" "+edepend[1]
+			if self.select_dep("/",edepend[0]+" "+edepend[1],myparent=mp):
+				return 1
 		else:
 			# We can no longer do this: mydep["/"],mydep[myroot]=edepend
 			# edepend now has more than 2 elements.
 			mydep["/"]=edepend[0]
 			mydep[myroot]=edepend[1]
-	
-		#Cycle through all our dependencies by their "root" (root fs where they will be installed):
-		for myroot in mydep.keys():
-
-			mycheck=portage.dep_check(mydep[myroot],mydbapi)
-			if mycheck[0]==0:
-				print "emerge: error merging",mytype,mykey+": invalid dependency in:"
-				print white("\n'"+mydep[myroot]+"'")
-				print ">>> Please report this ebuild error to http://bugs.gentoo.org.\n"
-				return 0
+			if self.select_dep("/",mydep["/"],myparent=mp):
+				if self.select_dep(myroot,mydep[myroot],myparent=mp):
+					return 1
 		
-			#Now, handle unsatisfied dependencies
-			for x in mycheck[1]:
-				if addme:
-					parent=string.join(mybigkey)
-				else:
-					#--onlydeps is specified and addme is off; this means that our parent doesn't exist so set parent to None
-					parent=None
-				# support mutual exclusive deps
-				mydep2=x
-				if mydep2[0]=="!":
-					mydep2=x[1:]
+		return 0
+			
+	def select_files(self,myfiles):
+		"given a list of .tbz2s, .ebuilds and deps, create the appropriate depgraph and return a favorite list"
+		myfavorites=[]
+		for x in myfiles:
+			if x[-5:]==".tbz2":
+				mytbz2=xpak.tbz2(mykey)
+				mykey=mytbz2.getelements("CATEGORY")[0]+"/"+os.path.basename(x)[:-5]
+				if not self.create(["binary",portage.root,mykey],None,"--onlydeps" not in myopts):
+					return myfavorites
+				elif not "--oneshot" in myopts:
+					myfavorites.append(mykey)
+			elif x[-7:]==".ebuild":
+				mykey=os.path.basename(os.path.abspath(mypkg+"/../.."))+"/"+os.path.basename(x)[:-7]
+				if not self.create(["ebuild",portage.root,mykey],None,"--onlydeps" not in myopts):
+					return myfavorites
+				elif not "--oneshot" in myopts:
+					myfavorites.append(mykey)
+			else:
+				mykey=portage.dep_expand(x,portage.portdb)
+				#select needs to return 0 on dep_check failure
+				if not self.select_dep(portage.root,mykey,mymode="arg"):
+					return myfavorites
+				elif not "--oneshot" in myopts:
+					myfavorites.append(mykey)
+		return myfavorites
 
-				if x[0]=="!":
-					#add our blocker; it will be ignored later if necessary (if we are remerging the same pkg, for example)
-					#myk=["blocks",myroot,portage.dep_expand(mydep2,mydbapi)]
-					myk=["blocks",myroot,mydep2]
-				else:
-					#We are not processing a blocker but a normal dependency
-					myeb=portage.db[portage.root]["porttree"].dep_bestmatch(mydep2)
-					if not myeb:
-						if not mykey:
-							print "\n!!! Error: couldn't find match for \""+x+"\""
-						else:
-							print "\n!!! Error: couldn't find match for \""+x+"\" in",mykey
-						print
-						sys.exit(1)
-
-					if "--usepkg" in self.myopts:
-						#If we want to use packages, see if we have a pre-built one...
-						mypk=portage.db[portage.root]["bintree"].dbapi.match(x)
-						if myeb in mypk:
-							#Use it only if it's exactly the version we want.
-							myk=["binary",portage.root,myeb]
-						else:
-							myk=["ebuild",myroot,myeb]
+	def select_dep(self,myroot,depstring,myparent=None,mymode="dep"):
+		"given a dependency string, create the appropriate depgraph and return 1 on success and 0 on failure"
+		if mymode=="dep":
+			#in --update mode, we don't merge anything already
+			mycheck=portage.dep_check(depstring,self.mydbapi[myroot])
+			if not mycheck[0]:
+				return 0
+			mymerge=mycheck[1]
+		else:
+			#we're processing a command-line argument; unconditionally merge it even if it's already merged
+			mymerge=[depstring]
+		for x in mymerge:
+			if x[0]=="!":
+				#add our blocker; it will be ignored later if necessary (if we are remerging the same pkg, for example)
+				myk=["blocks",myroot,x[1:]]
+			else:
+				#We are not processing a blocker but a normal dependency
+				myeb=portage.portdb.xmatch("bestmatch-visible",x)
+				if not myeb:
+					if not myparent:
+						print "\n!!! Error: couldn't find match for \""+x+"\""
+					else:
+						print "\n!!! Error: couldn't find match for \""+x+"\" in",myparent
+					return 0
+				
+				if "--usepkg" in myopts:
+					#If we want to use packages, see if we have a pre-built one...
+					mypk=portage.db["/"]["bintree"].dbapi.match(x)
+					if myeb in mypk:
+						#Use it only if it's exactly the version we want.
+						myk=["binary",myroot,myeb]
 					else:
 						myk=["ebuild",myroot,myeb]
-
-				hacko=myk[:]
-				hacko2=myk[:]
-				hacko.append("merge")
-				hacko2.append("nomerge")
-				
-				if not self.digraph.hasnode(string.join(hacko)):
-					if not self.digraph.hasnode(string.join(hacko2)):
-						#this conditional is needed to prevent infinite recursion on already-processed deps
-						self.create(myk,parent)
-				
+				else:
+					myk=["ebuild",myroot,myeb]
+			if myparent:
+				#we are a dependency, so we want to be unconditionally added
+				self.create(myk,myparent)
+			else:
+				#if mysource is not set, then we are a command-line dependency and should not be added
+				#if --onlydeps is specified.
+				self.create(myk,myparent,"--onlydeps" not in myopts)
 		return 1
-	
+		
+
 	def altlist(self):
 		mygraph=self.digraph.copy()
 		dolist=["/"]
@@ -720,7 +756,7 @@ class depgraph:
 			splitski=string.split(mycurkey)
 			#I'm not sure of the significance of the following lines (vestigal?) so I'm commenting 'em out.
 			#These lines remove already-merged things from our alt-list
-			#if "--update" in self.myopts:
+			#if "--update" in myopts:
 			#	if not portage.db["/"]["vartree"].exists_specific(splitski[2]):
 			#		portage.db["/"]["merge"].append(splitski)
 			#else:
@@ -762,10 +798,10 @@ class depgraph:
 				continue
 			#THIS NEXT BUNCH OF CODE NEEDS TO BE REPLACED TO SUPPORT WORLD ANTI-DEPS
 			#if mydep2[0]=="!":, etc.
-			if "--usepkg" in self.myopts:
+			if "--usepkg" in myopts:
 				mypk=portage.db[portage.root]["bintree"].dep_bestmatch(mydep)
 				if myeb==mypk:
-					myk=["binary ",portage.root,mypk]
+					myk=["binary",portage.root,mypk]
 				else:
 					myk=["ebuild",portage.root,myeb]
 			else:
@@ -793,7 +829,7 @@ class depgraph:
 				print
 				sys.exit(1)
 
-			if "--usepkg" in self.myopts:
+			if "--usepkg" in myopts:
 				mypk=portage.db[portage.root]["bintree"].dep_bestmatch(mydep)
 				if myeb==mypk:
 					myk="binary "+portage.root+" "+mypk
@@ -821,7 +857,7 @@ class depgraph:
 					else:
 						print
 			else:
-				#if ("--update" in self.myopts) and (portage.db[x[1]]["vartree"].exists_specific(x[2])):
+				#if ("--update" in myopts) and (portage.db[x[1]]["vartree"].exists_specific(x[2])):
 				#	print "DEBUG: removing",x[2],"from list"
 				#	#already merged, continue
 				#	continue
@@ -854,19 +890,19 @@ class depgraph:
 			#the last argument in the portage.doebuild() tells doebuild to *not* do dep checking
 			#(emerge is already handling that)
 			y=portage.portdb.findname(x[2])
-			if ("--update" in self.myopts) and (portage.db[x[1]]["vartree"].exists_specific(x[2])):
+			if ("--update" in myopts) and (portage.db[x[1]]["vartree"].exists_specific(x[2])):
 				#already merged, continue
 				continue
 			print ">>> emerge",x[2],"to",x[1]
 			if x[0]=="ebuild":
-				if "--fetchonly" in self.myopts:
+				if "--fetchonly" in myopts:
 					retval=portage.doebuild(y,"fetch",myroot,edebug)
 					if retval:
 						print
 						print "!!! Fetch for",y,"failed, continuing..."
 						print	
 						returnme=1
-				elif "--buildpkg" in self.myopts:
+				elif "--buildpkg" in myopts:
 					#create pkg, then merge pkg
 					retval=portage.doebuild(y,"clean",myroot,edebug)
 					if retval:
@@ -896,7 +932,7 @@ class depgraph:
 					sys.exit(1)
 				#need to check for errors
 			portage.db[x[1]]["vartree"].inject(x[2])
-			if (not "--fetchonly" in self.myopts) and (x[2] in favorites):
+			if (not "--fetchonly" in myopts) and (x[2] in favorites):
 				mysplit=portage.catpkgsplit(x[2])
 				myfavkey=mysplit[0]+"/"+mysplit[1]
 				myfavs=portage.grabfile(myroot+"var/cache/edb/world")
@@ -910,13 +946,13 @@ class depgraph:
 					print ">>> Recording",myfavkey,"in \"world\" favorites file..."
 					print
 					portage.writedict(myfavdict,myroot+"var/cache/edb/world",writekey=0)
-			if "--autoclean" in self.myopts:
+			if "--autoclean" in myopts:
 				retval=portage.doebuild(y,"clean",myroot,edebug)
 				if retval:
 					sys.exit(1)
 		#my doing an exit this way, --fetchonly can continue to try to
 		#fetch everything even if a particular download fails.
-		if "--fetchonly" in self.myopts:
+		if "--fetchonly" in myopts:
 			if returnme:
 				print "\n\n!!! Some fetch errors were encountered.  Please see above for details.\n\n"
 				sys.exit(returnme)
@@ -1008,7 +1044,7 @@ def unmerge(unmerge_action, unmerge_files):
 					myslot=0
 				if not slotmap.has_key(myslot):
 					slotmap[myslot]={}
-				slotmap[myslot][localtree.gettimeval(mypkg)]=mypkg
+				slotmap[myslot][localtree.dbapi.cpv_counter(mypkg)]=mypkg
 			for myslot in slotmap.keys():
 				counterkeys=slotmap[myslot].keys()
 				counterkeys.sort()
@@ -1299,12 +1335,11 @@ elif "inject"==myaction:
 		if (not mycps) or (mycps[0]=="null"):
 			print "!!!",x,"is not a specific cat/pkg-version, skipping..."
 			continue
+		if portage.db["/"]["vartree"].exists_specific(x):
+			print "!!! Not injecting",x+"; Package already exists."
 		else:
-			if portage.db["/"]["vartree"].exists_specific(x):
-				print "!!! Not injecting",x+"; Package already exists."
-			else:
-				portage.db["/"]["vartree"].dbapi.cpv_inject(x)
-				print ">>> Injected",x+"."
+			portage.db["/"]["vartree"].dbapi.cpv_inject(x)
+			print ">>> Injected",x+"."
 elif "unmerge"==myaction or "prune"==myaction or "clean"==myaction:
 	if 1==unmerge(myaction, myfiles):
 		post_emerge()
@@ -1330,27 +1365,7 @@ else:
 			sys.exit(1)
 			#we don't have any files to process; skip this step and exit
 		print "Calculating dependencies  ",
-		for mypkg in myfiles:
-			if mypkg[-5:]==".tbz2":
-				mytype="binary"
-				mytbz2=xpak.tbz2(mypkg)
-				mykey=mytbz2.getelements("CATEGORY")[0]+"/"+os.path.basename(mypkg)[:-5]
-			elif mypkg[-7:]==".ebuild":
-				mytype="ebuild"
-				mykey=os.path.basename(os.path.abspath(mypkg+"/../.."))+"/"+os.path.basename(mypkg)[:-7]
-			else:
-				mykey=portage.db[portage.root]["porttree"].dep_bestmatch(mypkg)
-				mytype="ebuild"
-				if not mykey:
-					print "!!! Couldn't find match for",mypkg+"; aborting."
-					sys.exit(1)
-			#	else:
-			#		print "!!! Error:",x,"is neither an ebuild nor a .tbz2 package."
-			#		sys.exit(1)
-			if not "--oneshot" in myopts:
-				favorites.append(mykey)
-			if not mydepgraph.create([mytype,portage.root,mykey],None,"--onlydeps" not in myopts):
-				sys.exit(1)
+		favorites=mydepgraph.select_files(myfiles)
 		print "\b\b ...done!"
 	if "--pretend" in myopts:
 		mydepgraph.display(mydepgraph.altlist())

@@ -1,15 +1,42 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-2.0.30 (28 Aug 2002)
+
+  28 Aug 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, emerge: rewrote
+  gettimeval() as cpv_counter() and updated it to handle corrupt COUNTER files,
+  closing bug #6763.
+  
+  28 Aug 2002; Daniel Robbins <drobbins@gentoo.org> emerge: "emerge search" now
+  displays information for masked packages if possible, closing bug #6823.
+  
+  28 Aug 2002; Daniel Robbins <drobbins@gentoo.org> emerge: fixed an old gbevin
+  bug where "emerge search" wouldn't show packages whose version string was
+  only one character long, ie. "foo-3". This closes bug #6800.
+  
+  28 Aug 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: added a missing
+  call to flatten() in dep_check(), allowing recursive sublists in dependencies
+  and SRC_URI variables to work; this closes bugs #7104, #7116, #7122.
+  
+  28 Aug 2002; Daniel Robbins <drobbins@gentoo.org> doman: fixed some typos,
+  closing bug #7152.
+  
+  28 Aug 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, emerge: major
+  work to emerge: reworked the internal code organization to make depgraph code
+  easier to understand; unified two code paths so that ebuild/.tbz2 choices
+  when "--usepkg" should now be eternally consistent; tweaked portage.py so
+  that dep_expand()'s dbapi argument is optional. In the process of all this,
+  isolated and fixed bug #4508.
+  
   27 Aug 2002; Martin Schlemmer <azarah@gentoo.org> portage.py: if the dep
-  cache is stale, it is possible that aux_get() will call doebuild(depend)
-  to regenerate it again.  This call will cause $T to be set to "", which
-  will break anything that needs $T to be set to a writable location inside
-  the sandbox, so we need to set $T to a valid value again.
+  cache is stale, it is possible that aux_get() will call doebuild(depend) to
+  regenerate it again.  This call will cause $T to be set to "", which will
+  break anything that needs $T to be set to a writable location inside the
+  sandbox, so we need to set $T to a valid value again.
 
   27 Aug 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: improved error
   handling/detection of bad pkgsplit() and catpkgsplit() calls; should close
-  bug #6803.
+  bug #6803, #6853.
   
   26 Aug 2002; Daniel Robbins <drobbins@gentoo.org> emerge: fix so that "emerge
   prune rsync" doesn't complain that you are trying to rsync and prune at the

@@ -1,7 +1,7 @@
 #!/bin/bash
 export PKG="portage"
 export TMP="/tmp"
-export V="2.0.30_alpha"
+export V="2.0.30"
 export DEST="${TMP}/${PKG}-${V}"
 rm -rf ${DEST}
 install -d -m0755 ${DEST}
