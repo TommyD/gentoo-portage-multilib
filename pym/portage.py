@@ -1856,8 +1856,11 @@ def dep_opconvert(mysplit,myuse):
 			#uses clause, i.e "gnome? ( foo bar )"
 			#this is a quick and dirty hack so that repoman can enable all USE vars:
 			if (len(myuse)==1) and (myuse[0]=="*"):
-				#enable it even if it's ! (for repoman)
-				enabled=1
+				# enable it even if it's ! (for repoman) but kill it if it's
+				# an arch variable that isn't for this arch. XXX Sparc64?
+				if (mysplit[mypos][:-1] not in archkeys) or \
+						(mysplit[mypos][:-1]==settings["ARCH"]):
+					enabled=1
 			else:
 				if mysplit[mypos][0]=="!":
 					myusevar=mysplit[mypos][1:-1]
@@ -4347,3 +4350,9 @@ for x in pkglines:
 		revmaskdict[mycatpkg].append(x)
 del pkglines
 groups=settings["ACCEPT_KEYWORDS"].split()
+
+#get the arch variables
+if os.path.exists(settings["PORTDIR"]+"/profiles/arch.list"):
+	archkeys=grabfile(settings["PORTDIR"]+"/profiles/arch.list")
+else:
+	archkeys=[]

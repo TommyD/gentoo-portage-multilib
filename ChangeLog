@@ -1,6 +1,12 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  27 Jan 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh/portage.py:
+  eclass fixups for newdepend issues where newdepend operates on RDEPEND
+	prior to it being set to default by ebuild.sh. Repoman fix for multi-
+	arch failures by excluding /usr/portage/profiles/arch.list entries from
+	consideration, excluding $ARCH.
+
 *portage-2.0.46-r9 (14 Jan 2003): portage restart fix
   15 Jan 2003; Nicholas Jones <carpaski@gentoo.org> emerge: fixed the
   missing tabs from the cvs diff backport.

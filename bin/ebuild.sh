@@ -913,7 +913,11 @@ inherit() {
 			
 		location="${ECLASSDIR}/${1}.eclass"
 		debug-print "inherit: $1 -> $location"
+		PECLASS="$ECLASS"
+		export ECLASS="$1"
 		source "$location" || die "died sourcing $location in inherit()"
+		ECLASS="$PECLASS"
+		unset PECLASS
 
 		shift
 	done
@@ -924,6 +928,10 @@ inherit() {
 # code will be eval'd:
 # src_unpack() { base_src_unpack; }
 EXPORT_FUNCTIONS() {
+	if [ -n "$ECLASS" ]; then
+		echo "EXPORT_FUNCTIONS without a defined ECLASS" >&2
+		exit 1
+	fi
 	while [ "$1" ]; do
 		debug-print "EXPORT_FUNCTIONS: ${1} -> ${ECLASS}_${1}" 
 		eval "$1() { ${ECLASS}_$1 ; }" > /dev/null
@@ -947,6 +955,9 @@ newdepend() {
 			;;
 		*)
 			DEPEND="$DEPEND $1"
+			if [ -z "$RDEPEND" ] && [ "${RDEPEND-unset}" == "unset" ]; then
+				export RDEPEND="$DEPEND"
+			fi
 			RDEPEND="$RDEPEND $1"
 			;;
 		esac
@@ -976,6 +987,7 @@ set -f
 #if [ -z "`set | grep ^RDEPEND=`" ]; then
 if [ "${RDEPEND-unset}" == "unset" ]; then
 	export RDEPEND=${DEPEND}
+	debug-print "RDEPEND: not set... Setting to: ${DEPEND}"
 fi
 set +f
 
