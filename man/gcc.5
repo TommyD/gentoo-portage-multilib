@@ -1,0 +1,79 @@
+.TH "GCC" "5" "Jun 2003" "Portage 2.0.48" "portage"
+.SH "NAME"
+gcc \- functions to get commonly needed info about gcc
+.SH "DESCRIPTION"
+The \fBgcc\fR eclass contains a suite of functions that are used to
+glean information about the version of gcc that is used to compile.  
+This allows developers to worry about gcc specs rather than figuring
+out how to find the specs in the first place.
+.SH "VARIABLES"
+.TP
+.B WANT_GCC_3 = \fI"[yes|no]"\fR
+In the cases where multiple versions of the gcc compiler are
+installed (say gcc-2.95.3 and gcc-3.2.1), you can specify that
+you want to get information about gcc-3.x when calling the functions
+listed below.
+.SH "FUNCTIONS"
+.TP
+.B gcc-getCC
+Returns the name of the C compiler binary.  Usually 'gcc'.
+.TP
+.B gcc-getCXX
+Returns the name of the C++ compiler binary.  Usually 'g++'.
+.TP
+.B gcc-fullversion
+Returns the version as by `$CC -dumpversion`.
+.br
+GCC \fI2.95.3\fR will return \fI2.95.3\fR
+.br
+GCC \fI3.2.1\fR will return \fI3.2.1\fR
+.TP
+.B gcc-version
+Returns the version, but only the <major>.<minor>.
+.br
+GCC \fI2.95\fR.3 will return \fI2.95\fR
+.br
+GCC \fI3.2\fR.1 will return \fI3.2\fR
+.TP
+.B gcc-major-version
+Returns the Major version.
+.br
+GCC \fI2\fR.95.3 will return \fI2\fR
+.br
+GCC \fI3\fR.2.1 will return \fI3\fR
+.TP
+.B gcc-minor-version
+Returns the Minor version.
+.br
+GCC 2.\fI95\fR.3 will return \fI95\fR
+.br
+GCC 3.\fI2\fR.1 will return \fI2\fR
+.TP
+.B gcc-micro-version
+Returns the Micro version.
+.br
+GCC 2.95.\fI3\fR will return \fI3\fR
+.br
+GCC 3.2.\fI1\fR will return \fI1\fR
+.TP
+.B gcc-libpath
+Returns gcc's internal library path.
+.TP
+.B gcc-libstdcxx-version
+Returns the full version of libstdc++.so.
+.TP
+.B gcc-libstdcxx-major-version
+Returns the Major version of libstdc++.so.
+.TP
+.B gcc2-flags
+Export CFLAGS and CXXFLAGS that are compadible with gcc-2.95.3.
+.SH "REPORTING BUGS"
+Please report bugs via http://bugs.gentoo.org/
+.SH "SEE ALSO"
+.BR ebuild (5)
+.SH "FILES"
+.BR /usr/portage/eclass/gcc.eclass
+.SH "AUTHORS"
+Mike Frysinger <vapier@gentoo.org>
+.SH "CVS HEADER"
+$Header$
