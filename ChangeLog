@@ -1,6 +1,9 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  18 Mar 2002; Geert Bevin <gbevin@gentoo.org>: libsandbox.c: All paths are now
+  checked for multiple slashes anywhere in the path, this closes bug 827
+  
   14 Mar 2002; Daniel Robbins <drobbins@gentoo.org>: output.py: quick fix to
   turn off white color output -- not good for terminals with white background.
   This closes bug #1135.
