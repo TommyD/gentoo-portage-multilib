@@ -23,7 +23,7 @@ def startGreen():
 	return startColor("\x1b[32;01m");
 
 def startWhite():
-	return startColor("\x1b[37;01m");
+	return startBold()
 
 def startYellow():
 	return startColor("\x1b[33;01m");

@@ -1,10 +1,16 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  14 Mar 2002; Daniel Robbins <drobbins@gentoo.org>: output.py: quick fix to
+  turn off white color output -- not good for terminals with white background.
+  This closes bug #1135.
+  
   11 Mar 2002; Daniel Robbins <drobbins@gentoo.org>: Applied karltk's version
   information patch.  Portage.py now contains version information, and this
   info is reported by "emerge --version".  Thanks Karl! :)
-  
+ 
+*portage-1.8.9_pre25 (11 Mar 2002)
+ 
   10 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, emerge: roll
   back portagetree incremental db optimizations to fix an important bug (no
   package.mask calculations being done.)  Emerge will now abort if a dependency
