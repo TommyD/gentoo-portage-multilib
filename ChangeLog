@@ -7,6 +7,11 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  06 Apr 2005; Marius Mauch <genone@gentoo.org> pym/sets/*.py:
+  Added a basic framework for package sets including modules for "system",
+  general filelists (including "world") and "security", the latter currently
+  depending on glsa.py from gentoolkit.
+
   03 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage_dep.py:
   Added shortcut to circular dep "resolution" as per bug 85130. Removed
   the traversed cache dict from __traverse_nodes and made the original
