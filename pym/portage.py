@@ -1723,7 +1723,21 @@ class packagetree:
 			return self.dep_bestmatch(mypkgdep)
 		elif not isspecific(mypkgdep):
 			if not self.hasnode(mypkgdep):
-				return [] 
+				# check if a slash has been provided to
+				# seperate the category from the application
+				if '/' in mypkgdep:
+					return ""
+				# otherwise try to find a matching category
+				else:
+					mypkgdep_withcat = ""
+					for cat in categories:
+						if self.hasnode(cat+"/"+mypkgdep):
+							mypkgdep_withcat = cat+"/"+mypkgdep
+							break
+					if mypkgdep_withcat:
+						mypkgdep = mypkgdep_withcat
+					else:
+						return [] 
 			mynodes=[]
 			for x in self.getnode(mypkgdep)[:]:
 				mynodes.append(x[0])
