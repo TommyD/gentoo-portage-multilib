@@ -67,7 +67,7 @@ try:
 			# Raw data is returned on stdout, errors on stderr.
 			# Non-prelinks are just returned.
 			prelink_tmpfile="/tmp/portage-prelink.tmp"
-			os.system("/usr/sbin/prelink --verify " + filename + " >",prelink_tmpfile," 2> /dev/null")
+			os.system("/usr/sbin/prelink --output-to "+prelink_tmpfile+" -u "+filename+" > "+prelink_tmpfile+" 2> /dev/null")
 			retval = fchksum.fmd5t(prelink_tmpfile)
 			os.unlink(prelink_tmpfile)
 			return retval
@@ -80,7 +80,7 @@ except ImportError:
 			# Create non-prelinked temporary file to md5sum.
 			# Raw data is returned on stdout, errors on stderr.
 			# Non-prelinks are just returned.
-			os.system("/usr/sbin/prelink --verify " + filename + " >",prelink_tmpfile," 2> /dev/null")
+			os.system("/usr/sbin/prelink --output-to "+prelink_tmpfile+" -u "+filename+" > "+prelink_tmpfile+" 2> /dev/null")
 			myfilename=prelink_tmpfile
 
 		f = open(myfilename, 'rb')
@@ -4321,6 +4321,7 @@ if os.system("/usr/sbin/prelink --version > /dev/null 2>&1") == 0:
 	prelink_capable=1
 if prelink_capable and ("prelink" in features):
 	prelink_enabled=1
+prelink_capable=0
 
 dbcachedir=settings["PORTAGE_CACHEDIR"]
 if not dbcachedir:

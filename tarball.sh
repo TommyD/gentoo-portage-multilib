@@ -34,4 +34,5 @@ cd ${DEST}
 find -name CVS -exec rm -rf {} \;
 chown -R root.root ${DEST}
 cd $TMP
+rm -f ${PKG}-${V}/bin/emerge.py
 tar cjvf ${TMP}/${PKG}-${V}.tar.bz2 ${PKG}-${V}

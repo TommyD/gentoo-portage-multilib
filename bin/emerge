@@ -737,6 +737,7 @@ class depgraph:
 				sys.exit(1)
 		mydep={}	
 		mp=string.join(mybigkey)
+
 		if myroot=="/":
 			mydep["/"]=edepend["DEPEND"]+" "+edepend["RDEPEND"]
 			if not self.select_dep("/",mydep["/"],myparent=mp):
@@ -752,7 +753,6 @@ class depgraph:
 		if edepend.has_key("PDEPEND") and edepend["PDEPEND"]:
 			# Post Depend -- Add to the list without a parent, as it depends
 			# on a package being present AND must be built after that package.
-			print "PDEPEND="+edepend["PDEPEND"]
 			if not self.select_dep(myroot,edepend["PDEPEND"]):
 				return 0
 			
@@ -1005,6 +1005,25 @@ class depgraph:
 				else:
 					print "["+x[0]+" "+addl+"]",x[2],myoldbest
 
+			mysplit=portage.pkgsplit(x[2])
+			if not "--emptytree" in myopts:
+				if mysplit[0]=="sys-apps/portage":
+					if mysplit[1]+"-"+mysplit[2]!=portage.VERSION:
+						if mylist.index(x)<len(mylist)-1:
+							print red("*** Portage will stop merging at this point and reload itself,")
+							print red("    recalculate dependancies, and complete the merge.")
+							if not "--update" in myopts:
+								print darkgreen("    You may avoid the remerging of packages by updating portage on its own.")
+							print
+			else:
+				if mysplit[0]=="sys-apps/portage":
+					if mysplit[1]+"-"+mysplit[2]!=portage.VERSION:
+						print red("!!!")+" Please update portage to the above version before proceeding."
+						print "    Failure to do so may result in failed or improper merges."
+						print "    A simple '"+green("emerge -u portage")+"' is sufficient."
+						print
+			del mysplit
+
 	def outdated(self):
 		return self.outdatedpackages
 				
@@ -1095,10 +1114,31 @@ class depgraph:
 						emergelog(" --- AUTOCLEAN: Nothing unmerged.")
 				emergelog(" ::: completed emerge ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[2]+" to "+x[1])
 
+				mysplit=portage.pkgsplit(x[2])
+				if mysplit[0]=="sys-apps/portage":
+					if mysplit[1]+"-"+mysplit[2]!=portage.VERSION:
+						if len(mymergelist) > mergecount:
+							myargv=sys.argv
+							myr=0
+							for myra in range(len(myargv)):
+								print "Considering:",myargv[myr]
+								if myargv[myr][0:len("portage")]=="portage":
+									print "deleted:",myargv[myr]
+									del myargv[myr]
+									myr-=1
+								if myargv[myr][0:len("sys-apps/portage")]=="sys-apps/portage":
+									print "deleted:",myargv[myr]
+									del myargv[myr]
+									myr-=1
+								myr+=1
+							emergelog(" *** RESTARTING emerge via exec() after change of portage version.")
+							os.execv("/usr/lib/portage/bin/emerge", myargv)
+
 		if ("--pretend" not in myopts) and (mergecount>0):
 			portage.env_update()
 
-		#my doing an exit this way, --fetchonly can continue to try to
+
+		#by doing an exit this way, --fetchonly can continue to try to
 		#fetch everything even if a particular download fails.
 		if "--fetchonly" in myopts:
 			if returnme:
