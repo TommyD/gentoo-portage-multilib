@@ -1,6 +1,6 @@
 import fs_template
 import cache_errors
-import os
+import os, stat
 
 # store the current key order *here*.
 class database(fs_template.FsBased):
