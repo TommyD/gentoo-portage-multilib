@@ -3,6 +3,9 @@
 
 *portage-2.0.36 (04 Sep 2002): Gentoo Linux 1.4_rc1 version 
 
+  06 Sep 2002; Mark Guertin <gerk@gentoo.org> cnf/make.globals.ppc :
+  Updated make.globals.ppc to reflect new CFLAGS for 1.4 release
+
   04 Sep 2002; Daniel Robbins <drobbins@gentoo.org> emerge: "--onlydeps" was
   mostly broken since the most recent emerge code restructure. Now fixed,
   closing bug #7442.
