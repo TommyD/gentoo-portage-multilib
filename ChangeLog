@@ -9,6 +9,9 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  27 Jun 2004; Jason Stubbs <jstubbs@gentoo.org> bin/repoman.py:
+  Fixed year (2003 -> 2004) in copyright lines.
+
   27 Jun 2004; Marius Mauch <genone@gentoo.org> pym/portage.py:
   Added a check for symlinked dirs to the collision-protect code so it doesn't
   double-check files in symlinked dirs with wrong pathnames.
