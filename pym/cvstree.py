@@ -1,5 +1,5 @@
 # cvstree.py -- cvs tree utilities
-# Copyright 1998-2003 Gentoo Technologies, Inc.
+# Copyright 1998-2004 Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
 # $Header$
 
