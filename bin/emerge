@@ -708,15 +708,21 @@ def unmerge(unmerge_action, unmerge_files):
 		mymatch=localtree.dep_match(x)
 		if not mymatch and x[0] not in "<>=~":
 			#add a "=" if missing
-			mymatch=localtree.dep_match("="+x)
+			mydep="="+x
+			mymatch=localtree.dep_match(mydep)
+		else:
+			mydep=x
+		mykey=portage.key_expand(portage.dep_getkey(mydep),portage.db["/"]["vartree"].dbapi)
 		if not mymatch:
 			print "\n!!! Couldn't find match for",white(x)
 			continue
-		if not pkgmap.has_key(x):
-			pkgmap[x]={"protected":[], "selected":[], "omitted":[] }
+		if not pkgmap.has_key(mykey):
+			pkgmap[mykey]={"protected":[], "selected":[], "omitted":[] }
 		if unmerge_action=="unmerge":
-				pkgmap[x]["selected"].extend(mymatch)
-				numselected=numselected+len(mymatch)
+				for y in mymatch:
+					if not y in pkgmap[mykey]["selected"]:
+						pkgmap[mykey]["selected"].append(y)
+						numselected=numselected+len(mymatch)
 		else:
 			#unmerge_action in ["prune", clean"]
 			slotmap={}
@@ -735,14 +741,16 @@ def unmerge(unmerge_action, unmerge_files):
 				if not counterkeys:
 					continue
 				counterkeys.sort()
-				pkgmap[x]["protected"].append(slotmap[myslot][counterkeys[-1]])
+				pkgmap[mykey]["protected"].append(slotmap[myslot][counterkeys[-1]])
 				del counterkeys[-1]
 				#be pretty and get them in order of merge:
 			for ckey in counterkeys:
-					pkgmap[x]["selected"].append(slotmap[myslot][ckey])
+					pkgmap[mykey]["selected"].append(slotmap[myslot][ckey])
 					numselected=numselected+1
 				#ok, now the last-merged package is protected, and the rest are selected
-		pkgmap[x]["omitted"].extend(localtree.dep_nomatch(x))
+		for y in localtree.dep_nomatch(mydep):
+			if not y in pkgmap[mykey]["omitted"]:
+				pkgmap[mykey]["omitted"].append(y)
 		
 	if global_unmerge and not numselected:
 		print "\n>>> No outdated packages were found on your system.\n"
@@ -884,11 +892,10 @@ if myaction in ["sync","rsync"]:
 			print "!!! /usr/bin/rsync does not exist, so rsync support is disabled."
 			print "!!! Type \"emerge net-misc/cvs\" to enable rsync support."
 			sys.exit(1)
-		mycommand="/usr/bin/rsync -rlptDvz --stats --progress "
+		mycommand="/usr/bin/rsync -rlptDvz --stats "
 		if rclean:
 			mycommand=mycommand+"--delete --exclude='distfiles/*' --exclude='packages/*' "
 		mycommand=mycommand+syncuri+"/* "+myportdir
-		#rsync://cvs.gentoo.org/gentoo-x86-portage/* "+myportdir
 		print ">>> starting rsync with "+syncuri+"..."
 	#protect users that did not set a default umask
 		sys.exit(portage.spawn(mycommand,free=1))	

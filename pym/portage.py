@@ -2,7 +2,7 @@
 # Copyright 1998-2002 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
 
-VERSION="2.0.1"
+VERSION="2.0.4"
 
 from stat import *
 from commands import *
@@ -10,6 +10,12 @@ from select import *
 import string,os,types,sys,shlex,shutil,xpak,fcntl,signal,time,missingos
 import thread
 dircache={}
+
+"this fixes situations where the current directory doesn't exist"
+try:
+	os.getcwd()
+except:
+	os.chdir("/")
 	
 #List directory contents, using cache. (from dircache module; streamlined by drobbins)
 #Exceptions will be propogated to the caller.
@@ -802,15 +808,6 @@ def ebuildsh(mystring):
 	"Spawn ebuild.sh, optionally in a sandbox"
 	pass
 
-def getmycwd():
-	"this handles situations where the current directory doesn't exist"
-	try:
-		a=os.getcwd()
-	except:
-		os.chdir("/")
-		a=os.getcwd()
-	return a
-
 def fetch(myuris):
 	"fetch files.  Will use digest file if available."
 	if ("mirror" in features) and ("nomirror" in settings["RESTRICT"].split()):
@@ -996,82 +993,6 @@ def digestcheck(myarchives):
 			print ">>> md5 ;-)",x
 	return 1
 
-#(bash_in,bash_out)=os.popen4('bash','t',0)
-#inpoll=poll()
-#outpoll=poll()
-#inpoll.register(bash_out.fileno(),POLLIN)
-#outpoll.register(bash_in.fileno(),POLLOUT)
-
-def dobash(mycommands,mymarkers):
-	if not mycommands:
-		return ""
-	myoutput=""
-	started=0
-	commandpos=0
-	print "START:",commandpos,len(mycommands)
-	while (1):
-		if commandpos<len(mycommands):
-			myresults=outpoll.poll(5)
-			if myresults:
-				for myresult in myresults:
-					fd,emask=myresult
-					if emask & (POLLERR | POLLHUP | POLLNVAL):
-						return myoutput
-					if commandpos>=len(mycommands):
-						continue
-					if emask & POLLOUT:
-						print "ABOUT TO DO",mycommands[commandpos]
-						buf=bash_in.write(mycommands[commandpos]+"\n")
-						commandpos=commandpos+1
-						print "COMMANDPOS:",commandpos,"/",len(mycommands)
-						break
-				if (commandpos>=len(mycommands)) and not mymarkers:
-					break
-		myresults=inpoll.poll(5)
-		if myresults:
-			for myresult in myresults:
-				fd,emask=myresult
-				if emask & (POLLERR | POLLHUP | POLLNVAL):
-					return myoutput
-				if fd==bash_out.fileno():
-					if emask & POLLIN:
-						buf=bash_out.readline()
-						if mymarkers:
-							if not started:
-								if buf[:-1]==mymarkers[0]:
-									started=1
-									continue
-							elif buf[:-1]!=mymarkers[1]:
-								myoutput += buf
-								print "BUF:",buf
-							else:
-								return myoutput
-	return myoutput
-
-def getenvdata():
-	myorig=dobash(["echo =START","set","echo =END"],["=START","=END"])
-	returnme=[]
-	myorig2=myorig.split("\n")
-	for x in myorig2:
-		mysplit=x.split("=")
-		if len(mysplit):
-			returnme.append(mysplit[0])
-	return (myorig2,returnme)
-
-#origenv,origenvlist=getenvdata()
-
-def doebuild2():
-	global origenv,origenvlist
-	print origenv
-	dobash(origenv,None)
-	myenv,myenvlist=getenvdata()
-	mycommands=[]
-	for x in myenvlist:
-		if x not in origenvlist:
-			mycommands.append("unset "+x)
-	dobash(mycommands,None)
-	dobash(["echo foo > /dev/null"],None)
-	
 # "checkdeps" support has been depreciated.  Relying on emerge to handle it.
 def doebuild(myebuild,mydo,myroot,debug=0):
 	global settings
@@ -1085,7 +1006,7 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 	settings["PORTAGE_DEBUG"]=str(debug)
 	#settings["ROOT"]=root
 	settings["ROOT"]=myroot
-	settings["STARTDIR"]=getmycwd()
+	settings["STARTDIR"]=os.getcwd()
 	settings["EBUILD"]=os.path.abspath(myebuild)
 	settings["O"]=os.path.dirname(settings["EBUILD"])
 	category=settings["CATEGORY"]=os.path.basename(os.path.normpath(settings["O"]+"/.."))
@@ -1929,8 +1850,6 @@ def dep_getkey(mydep):
 		mydep=mydep[1:]
 	if mydep[-1]=="*":
 		mydep=mydep[:-1]
-	if len(mydep)<=2:
-		return mydep
 	if mydep[:2] in [ ">=", "<=" ]:
 		mydep=mydep[2:]
 	elif mydep[:1] in "=<>~!":
@@ -1950,8 +1869,6 @@ def dep_getcpv(mydep):
 		mydep=mydep[1:]
 	if mydep[-1]=="*":
 		mydep=mydep[:-1]
-	if len(mydep)<=2:
-		return mydep
 	if mydep[:2] in [ ">=", "<=" ]:
 		mydep=mydep[2:]
 	elif mydep[:1] in "=<>~!":
@@ -2030,8 +1947,6 @@ def dep_expand(mydep,mydb):
 	if mydep[-1]=="*":
 		mydep=mydep[:-1]
 		postfix="*"
-	if len(mydep)<=2:
-		return mydep
 	if mydep[:2] in [ ">=", "<=" ]:
 		prefix=mydep[:2]
 		mydep=mydep[2:]
@@ -2296,6 +2211,38 @@ def visible(mylist):
 			newlist.append(mykey)
 	return newlist
 
+def gvisible(mylist):
+	"strip out group-masked (not in current group) entries"
+	global groups
+	if mylist==None:
+		return []
+	newlist=[]
+	for mycpv in mylist:
+		#we need to update this next line when we have fully integrated the new db api
+		myaux=db["/"]["porttree"].dbapi.aux_get(mycpv, ["KEYWORDS"])
+		if not myaux:
+			#no ACCEPT_KEYWORDS setting defaults to "*" (for backwards compat.)
+			newlist.append(mycpv)
+			continue
+		mygroups=myaux[0].split()
+		if not mygroups:
+			#no KEYWORDS setting defaults to "*"
+			match=1
+		else:
+			match=0
+			for gp in mygroups:
+				if gp=="*":
+					match=1
+					break
+				elif gp=="-*":
+					break
+				elif gp in groups:
+					match=1
+					break
+		if match:
+			newlist.append(mycpv)
+	return newlist
+
 class portagetree:
 	def __init__(self,root="/",virtual=None,clone=None):
 		if clone:
@@ -2310,14 +2257,14 @@ class portagetree:
 
 	def dep_bestmatch(self,mydep):
 		"compatibility method"
-		mymatch=best(visible(match(mydep,self.dbapi)))
+		mymatch=best(gvisible(visible(match(mydep,self.dbapi))))
 		if mymatch==None:
 			return ""
 		return mymatch
 
 	def dep_match(self,mydep):
 		"compatibility method"
-		mymatch=visible(match(mydep,self.dbapi))
+		mymatch=gvisible(visible(match(mydep,self.dbapi)))
 		if mymatch==None:
 			return []
 		return mymatch
@@ -2568,7 +2515,7 @@ class vartree(packagetree):
 		self.populated=1
 
 	
-auxdbkeys=['DEPEND','RDEPEND','SLOT','SRC_URI','RESTRICT','HOMEPAGE','LICENSE','DESCRIPTION']
+auxdbkeys=['DEPEND','RDEPEND','SLOT','SRC_URI','RESTRICT','HOMEPAGE','LICENSE','DESCRIPTION','KEYWORDS']
 class portdbapi(dbapi):
 	"this tree will scan a portage directory located at root (passed to init)"
 	def __init__(self):
@@ -3422,7 +3369,7 @@ def pkgmerge(mytbz2,myroot):
 	os.makedirs(infloc)
 	print ">>> extracting info"
 	xptbz2.unpackinfo(infloc)
-	origdir=getmycwd()
+	origdir=os.getcwd()
 	os.chdir(pkgloc)
 	print ">>> extracting",mypkg
 	notok=spawn("cat "+mytbz2+"| bzip2 -dq | tar xpf -",free=1)
@@ -3543,4 +3490,4 @@ for x in pkglines:
 	else:
 		revmaskdict[mycatpkg].append(x)
 del pkglines
-
+groups=settings["ACCEPT_KEYWORDS"].split()

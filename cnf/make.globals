@@ -2,11 +2,7 @@
 # System-wide defaults for the Portage system
 
 USE_ORDER="env:conf:auto:defaults"
-#proxy settings PROXY(both), or HTTP_PROXY/FTP_PROXY
-#PROXY=freebox.gentoo.org:3128
-#HTTP_PROXY=
-#FTP_PROXY=
-GENTOO_MIRRORS="http://www.ibiblio.org/gentoo"
+GENTOO_MIRRORS="http://www.ibiblio.org/pub/Linux/distributions/gentoo"
 SYNC="rsync://rsync.gentoo.org/gentoo-portage"
 # Host-type
 CHOST=i686-pc-linux-gnu
@@ -32,8 +28,8 @@ CONFIG_PROTECT_MASK="/etc/gconf"
 MAKEOPTS="-j2"
 
 # Fetching command (5 tries, passive ftp for firewall compatibility)
-FETCHCOMMAND='/usr/bin/wget -t 5 --passive-ftp ${URI} -P ${DISTDIR}'
-RESUMECOMMAND='/usr/bin/wget -c -t 5 --passive-ftp ${URI} -P ${DISTDIR}'
+FETCHCOMMAND="/usr/bin/wget -t 5 --passive-ftp \${URI} -P \${DISTDIR}"
+RESUMECOMMAND="/usr/bin/wget -c -t 5 --passive-ftp \${URI} -P \${DISTDIR}"
 
 CFLAGS="-O2 -mcpu=i686 -pipe"
 

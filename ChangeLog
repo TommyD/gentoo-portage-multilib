@@ -1,6 +1,18 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  23 Jun 2002; Daniel Robbins <drobbins@gentoo.org> conf files: removed
+  references to non-functional FTP_PROXY and HTTP_PROXY and added a note about
+  how to use the correct vars (ftp_proxy and http_proxy.)  Closes bug #1664.
+  Also added note about RSYNC_PROXY, closing bug #2332.
+
+  23 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: removed
+  "dependency too short" checks which weren't working and were causing deps
+  like "mc" and "ed" to be rejected as invalid rather than being expanded.
+
+  23 Jun 2002; Daniel Robbins <drobbins@gentoo.org> emerge: upgraded "clean"
+  code to be more robust, consistent. Closes bug #3967.
+
 *portage-2.0.4 (20 Jun 2002)
 
   20 Jun 2002; Daniel Robbins <drobbins@gentoo.org> in the 2.0.4 ebuild itself:

@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if [ -n "$#" ]
+then
+	ARGS="${*}"	
+fi
+
 use() {
 	local x xopts flag opts
 	
@@ -770,10 +775,8 @@ then
 fi
 set +f
 
-count=1
-while [ $count -le $# ]
+for myarg in $ARGS
 do
-	eval "myarg=\${${count}}"
 	case $myarg in
 	prerm|postrm|preinst|postinst|config)
 		if [ "$PORTAGE_DEBUG" = "0" ]
@@ -830,6 +833,7 @@ do
 		echo `echo "$HOMEPAGE"` >> $dbkey
 		echo `echo "$LICENSE"` >> $dbkey
 		echo `echo "$DESCRIPTION"` >> $dbkey
+		echo `echo "$KEYWORDS"` >> $dbkey
 		set +f
 		exit 0
 		;;
@@ -843,6 +847,5 @@ do
 	then
 		exit 1
 	fi
-	count=$(( $count + 1))
 done
 
