@@ -379,7 +379,12 @@ class depgraph:
 		while (not mygraph.empty()):
 			mycurkey=mygraph.firstzero()
 			if not mycurkey:
-				print "!!! Error: circular dependencies"
+				print "!!! Error: circular dependencies:"
+				print
+				for x in mygraph.dict.keys():
+					for y in mygraph.dict[x][1]:
+						print y,"depends on",x
+				print
 				sys.exit(1)
 			splitski=string.split(mycurkey)
 			if "update"==self.myaction:
