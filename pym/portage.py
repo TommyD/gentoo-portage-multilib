@@ -1335,28 +1335,39 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 			os.makedirs(settings["T"])
 		os.chown(settings["T"],portage_uid,portage_gid)
 		os.chmod(settings["T"],06770)
+	except OSError, e:
+		print "!!! File system problem. (ReadOnly? Out of space?)"
+		print "!!! Perhaps: rm -Rf",settings["BUILD_PREFIX"]
+		print "!!!",str(e)
+		return 1
 
+	try:
 		if not os.path.exists(settings["DISTDIR"]):
 			os.makedirs(settings["DISTDIR"])
 		if not os.path.exists(settings["DISTDIR"]+"/cvs-src"):
 			os.makedirs(settings["DISTDIR"]+"/cvs-src")
-		os.chown(settings["DISTDIR"]+"/cvs-src",0,portage_gid)
-		os.chmod(settings["DISTDIR"]+"/cvs-src",06770)
-		spawn("chgrp -R "+str(portage_gid)+" "+settings["DISTDIR"]+"/cvs-src", free=1)
-		spawn("chmod -R g+rw "+settings["DISTDIR"]+"/cvs-src", free=1)
+	except OSError, e:
+		print "!!! File system problem. (ReadOnly? Out of space?)"
+		print "!!!",str(e)
+		return 1
 
+	try:
+		mystat=os.stat(settings["DISTDIR"]+"/cvs-src")
+		if (mystat[ST_GID]!=portage_gid) or ((mystat[ST_MODE]&02770)!=02770):
+			print "*** Adjusting cvs-src permissions for portage user..."
+			os.chown(settings["DISTDIR"]+"/cvs-src",0,portage_gid)
+			os.chmod(settings["DISTDIR"]+"/cvs-src",02770)
+			spawn("chgrp -R "+str(portage_gid)+" "+settings["DISTDIR"]+"/cvs-src", free=1)
+			spawn("chmod -R g+rw "+settings["DISTDIR"]+"/cvs-src", free=1)
+	except:
+		pass
+
+	try:
 		if ("userpriv" in features) and ("ccache" in features):
 			if (not settings.has_key("CCACHE_DIR")) or (settings["CCACHE_DIR"]==""):
 				settings["CCACHE_DIR"]=settings["PORTAGE_TMPDIR"]+"/ccache"
 			if not os.path.exists(settings["CCACHE_DIR"]):
 				os.makedirs(settings["CCACHE_DIR"])
-			mystat=os.stat(settings["CCACHE_DIR"])
-			os.chown(settings["CCACHE_DIR"],portage_uid,portage_gid)
-			os.chmod(settings["CCACHE_DIR"],06770)
-			if mystat[ST_GID]!=portage_gid:
-				spawn("chgrp -R "+str(portage_gid)+" "+settings["CCACHE_DIR"], free=1)
-				spawn("chmod -R g+rw "+settings["CCACHE_DIR"], free=1)
-
 			if not os.path.exists(settings["HOME"]):
 				os.makedirs(settings["HOME"])
 			os.chown(settings["HOME"],portage_uid,portage_gid)
@@ -1366,6 +1377,18 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 		print "!!! Perhaps: rm -Rf",settings["BUILD_PREFIX"]
 		print "!!!",str(e)
 		return 1
+
+	try:
+		mystat=os.stat(settings["CCACHE_DIR"])
+		if (mystat[ST_GID]!=portage_gid) or ((mystat[ST_MODE]&02770)!=02770):
+			print "*** Adjusting ccache permissions for portage user..."
+			os.chown(settings["CCACHE_DIR"],portage_uid,portage_gid)
+			os.chmod(settings["CCACHE_DIR"],02770)
+			if mystat[ST_GID]!=portage_gid:
+				spawn("chown -R "+str(portage_uid)+":"+str(portage_gid)+" "+settings["CCACHE_DIR"], free=1)
+				spawn("chmod -R g+rw "+settings["CCACHE_DIR"], free=1)
+	except:
+		pass
 
 	settings["WORKDIR"]=settings["BUILDDIR"]+"/work"
 	settings["D"]=settings["BUILDDIR"]+"/image/"
