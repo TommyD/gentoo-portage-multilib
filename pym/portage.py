@@ -2914,10 +2914,16 @@ def cpv_expand(mycpv,mydb=None):
 			# "foo" ?
 			myp=mycpv
 		mykey=None
+		matches=[]
 		if mydb:
 			for x in categories:
 				if mydb.cp_list(x+"/"+myp):
-					mykey=x+"/"+myp
+					matches.append(x+"/"+myp)
+		if (len(matches)>1):
+			raise ValueError, matches
+		elif matches:
+			mykey=matches[0]
+
 		if not mykey and type(mydb)!=types.ListType:
 			if virts_p.has_key(myp):
 				mykey=virts_p[myp]

@@ -837,7 +837,16 @@ class depgraph:
 				elif not "--oneshot" in myopts:
 					myfavorites.append(mykey)
 			else:
-				mykey=portage.dep_expand(x,portage.portdb)
+				try: 
+					mykey=portage.dep_expand(x,portage.portdb)
+				except ValueError, errpkgs:
+					print "\n\n!!! The short ebuild name \"" + x + "\" is ambiguous.  Please specify"
+					print "!!! one of the following fully-qualified ebuild names instead:\n"
+					for i in errpkgs[0]:
+						print "    " + green(i)
+					print
+					sys.exit(1)
+
 				# select needs to return 0 on dep_check failure
 
 				if "--debug" in myopts:
