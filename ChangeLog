@@ -2,6 +2,10 @@
   # Gentoo Technologies, Inc.; Distributed under the GPL v2 $Id: ChangeLog,v
   # 1.456 2003/05/29 08:36:16 carpaski Exp $
   
+	10 Jun 2003; Daniel Robbins <drobbins@gentoo.org> ebuild.sh, portage.py,
+	various commands in bin/, cnf/make.conf.mac, cnf/make.globals.mac: 
+	Added preliminary Mac OS X/BSD support.
+
 	06 Jun 2003; Daniel Robbins <drobbins@gentoo.org> ebuild.sh: new eclass
 	dependency implementation to totally isolate eclass dependency tweaks
 	from in-ebuild dependency tweaks. eclasses now absolutely do not touch

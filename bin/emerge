@@ -1541,7 +1541,7 @@ def post_emerge(retval=0):
 		procount=0
 		for x in string.split(portage.settings["CONFIG_PROTECT"]):
 			if os.path.isdir(x):
-				a=commands.getstatusoutput("cd "+x+"; find -iname '._cfg????_*'")
+				a=commands.getstatusoutput("cd "+x+"; find . -iname '._cfg????_*'")
 				if a[0]!=0:
 					print " "+red("*")+" error scanning",x
 				else:

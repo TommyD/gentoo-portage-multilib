@@ -9,7 +9,7 @@ SPATH=$3
 
 grep -FrZl "${VAR}" "${SPATH}" |
 sed "s#${SPATH}[^\d000]\+/CONTENTS\d000##g" |
-xargs -0r sed -i -e "
+$XARGS -0 sed -i -e "
 s#${VAR}\$#${NEW}#g; 
 s#${VAR}\([[:space:]]\)#${NEW}\1#g; 
 s#${VAR}\(-[^a-zA-Z]\)#${NEW}\1#g; 

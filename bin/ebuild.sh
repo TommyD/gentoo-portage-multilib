@@ -55,7 +55,10 @@ alias assert='_retval=$?; [ $_retval = 0 ] || diefunc "$FUNCNAME" "$LINENO" "$_r
 
 OCC="$CC"
 OCXX="$CXX"
-source /etc/profile.env &>/dev/null
+if [ "$USERLAND" = "Linux" ]
+then
+	source /etc/profile.env &>/dev/null
+fi
 [ ! -z "$OCC" ] && export CC="$OCC"
 [ ! -z "$OCXX" ] && export CXX="$OCXX"
 
@@ -69,7 +72,11 @@ if [ -e /etc/init.d/functions.sh ]; then
 	source /etc/init.d/functions.sh  &>/dev/null
 elif [ -e /etc/rc.d/config/functions ];	then
 	source /etc/rc.d/config/functions &>/dev/null
+else
+	#Mac OS X
+	source /usr/lib/portage/bin/functions.sh &>/dev/null
 fi
+
 esyslog() {
 	# Custom version of esyslog() to take care of the "Red Star" bug.
 	# MUST follow functions.sh to override the "" parameter problem.
@@ -247,7 +254,15 @@ unpack() {
 	local x
 	local y
 	local myfail
-	
+	local tarvars
+
+	if [ "$USERLAND" = "BSD" ]
+	then
+		tarvars=""
+	else
+		tarvars="--no-same-owner"	
+	fi	
+
 	for x in $@
 	do
 		myfail="failure unpacking ${x}"
@@ -255,27 +270,27 @@ unpack() {
 		y="$(echo $x | sed 's:.*\.\(tar\)\.[a-zA-Z0-9]*:\1:')"
 		case "${x##*.}" in
 		tar) 
-			tar x --no-same-owner -f ${DISTDIR}/${x} || die "$myfail"
+			tar ${tarvars} -xf ${DISTDIR}/${x} || die "$myfail"
 			;;
 		tgz) 
-			tar xz --no-same-owner -f ${DISTDIR}/${x} || die "$myfail"
+			tar ${tarvars} -xzf ${DISTDIR}/${x} || die "$myfail"
 			;;
 		tbz2) 
-			tar xj --no-same-owner -f ${DISTDIR}/${x} || die "$myfail"
+			bzip2 -dc ${DISTDIR}/${x} | tar ${tarvars} -xf ${DISTDIR}/${x} || die "$myfail"
 			;;
 		ZIP|zip) 
 			unzip -qo ${DISTDIR}/${x} || die "$myfail"
 			;;
 		gz|Z|z) 
 			if [ "${y}" == "tar" ]; then
-				tar xz --no-same-owner -f ${DISTDIR}/${x} || die "$myfail"
+				tar ${tarvars} -xzf ${DISTDIR}/${x} || die "$myfail"
 			else
 				gzip -dc ${DISTDIR}/${x} > ${x%.*} || die "$myfail"
 			fi
 			;;
 		bz2) 
 			if [ "${y}" == "tar" ]; then
-				tar xj --no-same-owner -f ${DISTDIR}/${x} || die "$myfail"
+				bzip2 -dc ${DISTDIR}/${x} | tar ${tarvars} -xf ${DISTDIR}/${x} || die "$myfail"
 			else
 				bzip2 -dc ${DISTDIR}/${x} > ${x%.*} || die "$myfail"
 			fi
@@ -412,27 +427,29 @@ END
 
 dyn_setup()
 {
-	# The next bit is to ease the broken pkg_postrm()'s
-	# some of the gcc ebuilds have that nuke the new
-	# /lib/cpp and /usr/bin/cc wrappers ...
+	if [ "$USERLAND" = "Linux" ]
+	then	
+		# The next bit is to ease the broken pkg_postrm()'s
+		# some of the gcc ebuilds have that nuke the new
+		# /lib/cpp and /usr/bin/cc wrappers ...
 	
-	# Make sure we can have it disabled somehow ....
-	if [ "${DISABLE_GEN_GCC_WRAPPERS}" != "yes" ]
-	then
-		# Create /lib/cpp if missing or a symlink
-		if [ -L /lib/cpp -o ! -e /lib/cpp ]
+		# Make sure we can have it disabled somehow ....
+		if [ "${DISABLE_GEN_GCC_WRAPPERS}" != "yes" ]
 		then
-			[ -L /lib/cpp ] && rm -f /lib/cpp
-			gen_wrapper /lib/cpp cpp
-		fi
-		# Create /usr/bin/cc if missing for a symlink
-		if [ -L /usr/bin/cc -o ! -e /usr/bin/cc ]
-		then
-			[ -L /usr/bin/cc ] && rm -f /usr/bin/cc
-			gen_wrapper /usr/bin/cc gcc
+			# Create /lib/cpp if missing or a symlink
+			if [ -L /lib/cpp -o ! -e /lib/cpp ]
+			then
+				[ -L /lib/cpp ] && rm -f /lib/cpp
+				gen_wrapper /lib/cpp cpp
+			fi
+			# Create /usr/bin/cc if missing for a symlink
+			if [ -L /usr/bin/cc -o ! -e /usr/bin/cc ]
+			then
+				[ -L /usr/bin/cc ] && rm -f /usr/bin/cc
+				gen_wrapper /usr/bin/cc gcc
+			fi
 		fi
 	fi
-
 	pkg_setup || die "pkg_setup function failed; exiting."
 }
 
@@ -499,7 +516,7 @@ dyn_clean() {
 	fi
 
 	if [ -f ${BUILDDIR}/.unpacked ]; then
-		find ${BUILDDIR} -type d ! -regex "^${WORKDIR}" | sort -r | xargs rmdir &>/dev/null
+		find ${BUILDDIR} -type d ! -regex "^${WORKDIR}" | sort -r | $XARGS rmdir &>/dev/null
 	fi
 	true
 }
@@ -786,9 +803,13 @@ dyn_install() {
 		die "There are unsafe files. Portage will not install them."
 	fi
 	
-	find ${D}/ -user  portage -print0 | xargs -0 -r -n100 chown root
-	find ${D}/ -group portage -print0 | xargs -0 -r -n100 chgrp root
-
+	find ${D}/ -user  portage -print0 | $XARGS -0 -n100 chown root
+	if [ "$USERLAND" = "BSD" ]
+	then
+		find ${D}/ -group portage -print0 | $XARGS -0 -n100 chgrp wheel
+	else	
+		find ${D}/ -group portage -print0 | $XARGS -0 -n100 chgrp root 
+	fi
 	echo ">>> Completed installing into ${D}"
 	echo
 	cd ${BUILDDIR}

@@ -218,7 +218,11 @@ if myreporootpath=="/space/cvsroot":
 	print "rm -Rf [a-z]*"
 	print "cvs up"
 	print
-	print "find ./ -type f -regex '.*/CVS/Root$' -print0 | xargs -0r sed \\"
+	if portage.userland=="BSD":
+		print "find ./ -type f -regex '.*/CVS/Root$' -print0 | xargs -0 sed \\"
+	else:
+		print "find ./ -type f -regex '.*/CVS/Root$' -print0 | xargs -0r sed \\"
+	fi
 	print "  -i 's:/space/cvsroot$:/home/cvsroot:'"
 	print
 	print red("You must clear and re-update your tree as all header tags will cause")
