@@ -9,6 +9,11 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  03 Aug 2004; Nicholas Jones <carpaski@gentoo.org> portage_dep.py: Again
+	fixed the || exceptions to understand nested legal || statements.
+
+*portage-2.0.51_pre16 (03 Aug 2004): Fixes and Public Readiness
+
   04 Aug 2004; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Changed the
   virtual/glibc references to virtual/libc.
 
@@ -261,7 +266,7 @@
   10 Jul 2004; Jason Stubbs <jstubbs@gentoo.org> man/portage.5:
   Adjusted documentation for user use.mask to match implementation.
 
-*portage-2.0.51_pre13 (09 Jul 2003): Fixes and Public Readiness
+*portage-2.0.51_pre13 (09 Jul 2004): Fixes and Public Readiness
 
   21 Jun 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Included
   ferringb's logic fix for the repoman code. Fix that prevents vardb from
@@ -327,7 +332,7 @@
   Fixed problem that 'emerge something' would install all depeneded pkgs 
   even if they are already installed.
   
-*portage-2.0.51_pre11 (21 Jun 2003): Fixes
+*portage-2.0.51_pre11 (21 Jun 2004): Fixes
 
   21 Jun 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Disabled the
   URL encoding for BINHOST as it will take a lot of work to get it right.
