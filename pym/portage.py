@@ -1852,9 +1852,8 @@ def digestCreate(myfiles,basedir,oldDigest={}):
 
 	return mydigests
 
-def digestCreateLines(filelist, mydict):
+def digestCreateLines(filelist, mydigests):
 	mylines = []
-	mydigests = copy.deepcopy(mydict)
 	for myarchive in filelist:
 		mysize = mydigests[myarchive]["size"]
 		if len(mydigests[myarchive]) == 0:
