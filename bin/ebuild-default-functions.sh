@@ -446,7 +446,8 @@ dyn_install() {
 		die "There are ${UNSAFE} unsafe files. Portage will not install them."
 	fi
 
-	local file
+	local file s
+
 	find "${D}/" -user  portage -print0 | while read file; do
 		ewarn "file $file was installed with user portage!"
 		s=$(stat_perms $file)
