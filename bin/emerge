@@ -6,7 +6,7 @@
 import os
 os.environ["PORTAGE_CALLER"]="emerge"
 
-import sys,emergehelp,xpak,string,re,commands,time,shutil,traceback,atexit
+import sys,emergehelp,xpak,string,re,commands,time,shutil,traceback,atexit,signal
 from stat import *
 from output import *
 
@@ -216,6 +216,11 @@ def emergeexit():
 	if "notitles" not in portage.features:
 		xtermTitleReset()
 atexit.register(emergeexit)
+
+def emergeexitsig(signum, frame):
+	emergeexit()
+	sys.exit(100+signum)
+signal.signal(signal.SIGINT, emergeexitsig)
 
 def countdown(secs=5, doing="Starting"):
 	if secs:
@@ -1469,8 +1474,17 @@ def unmerge(unmerge_action, unmerge_files):
 					pkgmap[mykey]["selected"].append(slotmap[myslot][ckey])
 					numselected=numselected+1
 				#ok, now the last-merged package is protected, and the rest are selected
+	for x in candidate_catpkgs:
+		if not mymatch and x[0] not in "<>=~":
+			#add a "=" if missing
+			mydep="="+x
+			mymatch=localtree.dep_match(mydep)
+		else:
+			mydep=x
 		for y in localtree.dep_nomatch(mydep):
-			if not y in pkgmap[mykey]["omitted"]:
+			if y not in pkgmap[mykey]["omitted"] and \
+			   y not in pkgmap[mykey]["selected"] and \
+				 y not in pkgmap[mykey]["protected"]:
 				pkgmap[mykey]["omitted"].append(y)
 		
 	if global_unmerge and not numselected:

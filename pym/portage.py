@@ -10,6 +10,7 @@ from commands import *
 from select import *
 from output import *
 from time import sleep
+from random import shuffle
 import string,sys,os
 
 import getbinpkg
@@ -1096,7 +1097,12 @@ def fetch(myuris, listonly=0, fetchonly=0):
 		print ">>> \"mirror\" mode and \"nomirror\" restriction enabled; skipping fetch."
 		return 1
 	global thirdpartymirrors
-	mymirrors=settings["GENTOO_MIRRORS"].split()
+	
+	if ("nomirror" in settings["RESTRICT"].split()):
+		mymirrors=[]
+	else:
+		mymirrors=settings["GENTOO_MIRRORS"].split()
+	
 	fetchcommand=settings["FETCHCOMMAND"]
 	resumecommand=settings["RESUMECOMMAND"]
 	fetchcommand=string.replace(fetchcommand,"${DISTDIR}",settings["DISTDIR"])
@@ -1151,6 +1157,7 @@ def fetch(myuris, listonly=0, fetchonly=0):
 			if eidx != -1:
 				mirrorname = myuri[9:eidx]
 				if thirdpartymirrors.has_key(mirrorname):
+					shuffle(thirdpartymirrors[mirrorname])
 					for locmirr in thirdpartymirrors[mirrorname]:
 						filedict[myfile].append(locmirr+"/"+myuri[eidx+1:])		
 		else:
@@ -1350,13 +1357,13 @@ def digestgen(myarchives,overwrite=1,manifestonly=0):
 		mycvstree=cvstree.getentries(pbasedir, recursive=1)
 		myunaddedfiles=""
 		if not manifestonly and not cvstree.isadded(mycvstree,digestfn):
-			if digestfn[:len(pbasedir)+1]==pbasedir+"/":
-				myunaddedfiles=digestfn[len(pbasedir)+1:]+" "
+			if digestfn[:len(pbasedir)]==pbasedir:
+				myunaddedfiles=digestfn[len(pbasedir):]+" "
 			else:
 				myunaddedfiles=digestfn+" "
-		if not cvstree.isadded(mycvstree,manifestfn):
+		if not cvstree.isadded(mycvstree,manifestfn[len(pbasedir):]):
 			if manifestfn[:len(pbasedir)]==pbasedir:
-				myunaddedfiles=manifestfn[len(pbasedir):]+" "
+				myunaddedfiles+=manifestfn[len(pbasedir):]+" "
 			else:
 				myunaddedfiles+=manifestfn
 		if myunaddedfiles:
@@ -1586,7 +1593,7 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0,fetchonly=0):
 		return myso[0]
 
 	# Build directory creation isn't required for any of these.
-	if mydo not in ["digest","manifest"]:
+	if mydo not in ["fetch","digest","manifest"]:
 		try:
 			if ("nouserpriv" not in string.split(settings["RESTRICT"])):
 				if ("userpriv" in features) and (portage_uid and portage_gid):
@@ -1623,27 +1630,6 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0,fetchonly=0):
 			print "!!! Perhaps: rm -Rf",settings["BUILD_PREFIX"]
 			print "!!!",str(e)
 			return 1
-
-		try:
-			if not os.path.exists(settings["DISTDIR"]):
-				os.makedirs(settings["DISTDIR"])
-			if not os.path.exists(settings["DISTDIR"]+"/cvs-src"):
-				os.makedirs(settings["DISTDIR"]+"/cvs-src")
-		except OSError, e:
-			print "!!! File system problem. (ReadOnly? Out of space?)"
-			print "!!!",str(e)
-			return 1
-
-		try:
-			mystat=os.stat(settings["DISTDIR"]+"/cvs-src")
-			if (mystat[ST_GID]!=portage_gid) or ((mystat[ST_MODE]&02770)!=02770):
-				print "*** Adjusting cvs-src permissions for portage user..."
-				os.chown(settings["DISTDIR"]+"/cvs-src",0,portage_gid)
-				os.chmod(settings["DISTDIR"]+"/cvs-src",02770)
-				spawn("chgrp -R "+str(portage_gid)+" "+settings["DISTDIR"]+"/cvs-src", free=1)
-				spawn("chmod -R g+rw "+settings["DISTDIR"]+"/cvs-src", free=1)
-		except:
-			pass
 
 		try:
 			if ("userpriv" in features) and ("ccache" in features):
@@ -1725,6 +1711,26 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0,fetchonly=0):
 	else:
 		fetchme=newuris
 		checkme=alist
+
+	try:
+		if not os.path.exists(settings["DISTDIR"]):
+			os.makedirs(settings["DISTDIR"])
+		if not os.path.exists(settings["DISTDIR"]+"/cvs-src"):
+			os.makedirs(settings["DISTDIR"]+"/cvs-src")
+	except OSError, e:
+		print "!!! File system problem. Could not create DISTDIR and cvs-src dir."
+		print "!!! Fetching may fail:",str(e)
+
+	try:
+		mystat=os.stat(settings["DISTDIR"]+"/cvs-src")
+		if (mystat[ST_GID]!=portage_gid) or ((mystat[ST_MODE]&02770)!=02770):
+			print "*** Adjusting cvs-src permissions for portage user..."
+			os.chown(settings["DISTDIR"]+"/cvs-src",0,portage_gid)
+			os.chmod(settings["DISTDIR"]+"/cvs-src",02770)
+			spawn("chgrp -R "+str(portage_gid)+" "+settings["DISTDIR"]+"/cvs-src", free=1)
+			spawn("chmod -R g+rw "+settings["DISTDIR"]+"/cvs-src", free=1)
+	except:
+		pass
 
 	if not fetch(fetchme, listonly, fetchonly):
 		return 1
@@ -4327,13 +4333,17 @@ class dblink:
 				newvirts[myvirt]=[]
 				for mykey in myvirts[myvirt]:
 					if mykey == self.cat+"/"+pkgsplit(self.pkg)[0]:
-						if myprovides.has_key(myvirt) and (mykey in myprovides[myvirt]):
-							newvirts[myvirt].append(mykey)
+						if myprovides.has_key(myvirt) and \
+						   (self.cat+"/"+self.pkg in myprovides[myvirt]) and \
+							 (len(myprovides[myvirt]) > 1):
+							if mykey not in newvirts[myvirt]:
+								newvirts[myvirt].append(mykey)
 							sys.stderr.write("--- Leaving virtual '"+mykey+"' from '"+myvirt+"'\n")
 						else:
 							sys.stderr.write("<<< Removing virtual '"+mykey+"' from '"+myvirt+"'\n")
 					else:
-						newvirts[myvirt].append(mykey)
+						if mykey not in newvirts[myvirt]:
+							newvirts[myvirt].append(mykey)
 				if newvirts[myvirt]==[]:
 					del newvirts[myvirt]
 			writedict(newvirts,self.myroot+"var/cache/edb/virtuals")

@@ -725,7 +725,7 @@ dyn_compile() {
 dyn_package() {
 	trap "abort_package" SIGINT SIGQUIT
 	cd ${BUILDDIR}/image
-	tar cpvf - * | bzip2 -f > ../bin.tar.bz2 || die "Failed to create tarball"
+	tar cpvf - ./ | bzip2 -f > ../bin.tar.bz2 || die "Failed to create tarball"
 	cd ..
 	xpak build-info inf.xpak
 	tbz2tool join bin.tar.bz2 inf.xpak ${PF}.tbz2

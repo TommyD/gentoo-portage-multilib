@@ -168,6 +168,18 @@ def help(myaction,myopts,havecolor=1):
 		print "              used in combination with --pretend all the SRC_URIs will be"
 		print "              displayed multiple mirrors per line, one line per file."
 		print
+		print "       "+green("--getbinpkg")+" ("+green("-g")+" short option)"
+		print "              Using the server and location defined in PORTAGE_BINHOST, portage"
+		print "              will download the information from each binary file there and it"
+		print "              will use that information to help build the dependency list. This"
+		print "              option implies '-k'. (Use -gK for binary-only merging.)"
+		print
+		print "       "+green("--getbinpkgonly")+" ("+green("-G")+" short option)"
+		print "              This option is identical to -g, as above, except it will not use"
+		print "              ANY information from the local machine. All binaries will be"
+		print "              downloaded from the remote server without consulting packages"
+		print "              existing in the packages directory."
+		print
 		print "       "+green("--noconfmem")
 		print "              Portage keeps track of files that have been placed into"
 		print "              CONFIG_PROTECT directories, and normally it will not merge the"

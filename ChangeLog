@@ -2,6 +2,18 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+*portage-2.0.49_pre18 (15 Aug 2003): Fixes.
+
+  15 Aug 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Nakano's
+  fix for a glob expansion bug on a tar call.
+  
+  15 Aug 2003; Nicholas Jones <carpaski@gentoo.org> emerge: Nakano's fixes
+  for exiting on a signal and incorrect output for the unmerge screen.
+  
+  15 Aug 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Added in
+  patch to shuffle thirdparty mirrors. Nakano's fixes for digests+fetching
+  bugs/messages/errors. Virtual stripping fix.
+
   15 Aug 2003; Nicholas Jones <carpaski@gentoo.org> *: Fix to emerge -V
   and related output. Typo fixes. Parent thread no longer drops root in
   userpriv. 'autoaddcvs' feature now determines if portage will auto-add
