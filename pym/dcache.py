@@ -29,8 +29,8 @@ class node:
 		self.sfiles=[]
 		self.mtime=-1
 
-	def __del__(self):
-		print "del'ing a node"
+#	def __del__(self):
+#		print "del'ing a node"
 #		del self.dir_node_n
 #		del self.sdirs
 #		del self.sfiles
