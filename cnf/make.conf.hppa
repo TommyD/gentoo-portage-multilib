@@ -63,6 +63,7 @@ CHOST="hppa-unknown-linux-gnu"
 
 # Or this one if you have a hppa2.0
 # Note that -march=2.0 was unstable on some stations.
+# -march=1.0 will create problems too.
 #CFLAGS="-O2 -pipe -mschedule=8000"
 
 

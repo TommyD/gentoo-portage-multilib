@@ -15,7 +15,7 @@ USE_ORDER="env:conf:auto:defaults"
 GENTOO_MIRRORS="http://gentoo.oregonstate.edu http://distro.ibiblio.org/pub/Linux/distributions/gentoo"
 SYNC="rsync://rsync.gentoo.org/gentoo-portage"
 # Host-type
-CHOST=hppa1.0-unknown-linux-gnu
+CHOST=hppa-unknown-linux-gnu
 PORTAGE_TMPDIR=/var/tmp
 
 PORTDIR=/usr/portage
@@ -32,8 +32,8 @@ MAKEOPTS="-j2"
 FETCHCOMMAND="/usr/bin/wget -t 5 --passive-ftp -P \${DISTDIR} \${URI}"
 RESUMECOMMAND="/usr/bin/wget -c -t 5 --passive-ftp -P \${DISTDIR} \${URI}"
 
-CFLAGS="-O2 -march=1.0 -pipe"
-CXXFLAGS=${CFLAGS}
+CFLAGS="-O2 -pipe"
+CXXFLAGS="-O1 -pipe"
 
 # Debug build -- if defined, binaries won't be stripped
 #DEBUGBUILD=true
