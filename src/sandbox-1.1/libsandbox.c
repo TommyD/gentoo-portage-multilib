@@ -736,9 +736,11 @@ execve(const char *filename, char *const argv[], char *const envp[])
 	int old_errno = errno;
 	int result = -1;
 	int count = 0;
+	int env_len = 0;
 	char canonic[SB_PATH_MAX];
-	char *old_envp = NULL;
-	char *new_envp = NULL;
+	char **my_env = NULL;
+	/* We limit the size LD_PRELOAD can be here, but it should be enough */
+	char tmp_str[4096];
 
 	canonicalize_int(filename, canonic);
 
@@ -747,36 +749,54 @@ execve(const char *filename, char *const argv[], char *const envp[])
 		while (envp[count] != NULL) {
 			if (strstr(envp[count], "LD_PRELOAD=") == envp[count]) {
 				if (NULL != strstr(envp[count], sandbox_lib)) {
+					my_env = (char **) envp;
 					break;
 				} else {
+					int i = 0;
 					const int max_envp_len =
 							strlen(envp[count]) + strlen(sandbox_lib) + 1;
 
-					/* Backup envp[count], and set it to our own one which
-					 * contains sandbox_lib */
-					old_envp = envp[count];
-					new_envp = strndupa(old_envp, max_envp_len - 1);
+					/* Fail safe ... */
+					if (max_envp_len > 4096) {
+						fprintf(stderr, "sandbox:  max_envp_len too big!\n");
+						errno = ENOMEM;
+						return result;
+					}
+
+					/* Calculate envp size */
+					my_env = (char **) envp;
+					do
+						env_len += 1;
+					while (*my_env++);
+
+					my_env = (char **) malloc((env_len + 2) * sizeof (char *));
+					if (NULL == my_env) {
+						errno = ENOMEM;
+						return result;
+					}
+					/* Copy envp to my_env */
+					do
+						my_env[i] = envp[i];
+					while (envp[i++]);
+
+					/* Set tmp_str to envp[count] */
+					strncpy(tmp_str, envp[count], max_envp_len - 1);
 
 					/* LD_PRELOAD already have variables other than sandbox_lib,
-					 * thus we have to add sandbox_lib via a white space. */
-					if (0 != strcmp(envp[count], "LD_PRELOAD=")) {
-						strncpy(new_envp + strlen(old_envp), ":",
-										max_envp_len - strlen(new_envp));
-						strncpy(new_envp + strlen(old_envp) + 1, sandbox_lib,
-										max_envp_len - strlen(new_envp));
+					 * thus we have to add sandbox_lib seperated via a whitespace. */
+					if (0 != strncmp(envp[count], "LD_PRELOAD=", max_envp_len - 1)) {
+						strncat(tmp_str, " ", max_envp_len - strlen(tmp_str));
+						strncat(tmp_str, sandbox_lib, max_envp_len - strlen(tmp_str));
 					} else {
-						strncpy(new_envp +
-										strlen(old_envp), sandbox_lib,
-										max_envp_len - strlen(new_envp));
+						strncat(tmp_str, sandbox_lib, max_envp_len - strlen(tmp_str));
 					}
 
 					/* Valid string? */
-					new_envp[max_envp_len] = '\0';
+					tmp_str[max_envp_len] = '\0';
 
-					/* envp[count] = new_envp;
-					 *
-					 * Get rid of the "read-only" warnings */
-					memcpy((void *) &envp[count], &new_envp, sizeof (new_envp));
+					/* Ok, replace my_env[count] with our version that contains
+					 * sandbox_lib ... */
+					my_env[count] = tmp_str;
 
 					break;
 				}
@@ -786,17 +806,14 @@ execve(const char *filename, char *const argv[], char *const envp[])
 
 		errno = old_errno;
 		check_dlsym(execve);
-		result = true_execve(filename, argv, envp);
+		result = true_execve(filename, argv, my_env);
 		old_errno = errno;
 
-		if (old_envp) {
-			/* Restore envp[count] again.
-			 * 
-			 * envp[count] = old_envp; */
-			memcpy((void *) &envp[count], &old_envp, sizeof (old_envp));
-			old_envp = NULL;
+		if (my_env) {
+			free(my_env);
+			my_env = NULL;
 		}
-		}
+	}
 
 	errno = old_errno;
 

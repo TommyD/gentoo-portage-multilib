@@ -2,6 +2,12 @@
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+  28 Feb 2004; Martin Schlemmer <azarah@gentoo.org> libsandbox.c :
+  Besides a small cleanup, redo how we replace LD_PRELOAD in the environ passed
+  to the real execve (in our execve wrapper).  Seems that on some arches (sparc
+  among others) do not allow us to tamper with the readonly copy passed to
+  execve, so pass our own copy of the environment.  Bug #42290.
+
   11 Jan 2004; Nicholas Jones <carpaski@gentoo.org> create-decls:
 	Changed tail to head and added a notice about duration of glibc check.
 
