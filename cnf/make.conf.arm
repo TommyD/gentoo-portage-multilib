@@ -72,8 +72,8 @@ CHOST="armv4l-unknown-linux-gnu"
 # been approved for the stable set. '~arch' is a superset of 'arch' which
 # includes the unstable, in testing, packages. Users of the 'x86' architecture
 # would add '~x86' to ACCEPT_KEYWORDS to enable unstable/testing packages.
-# '~ppc', '~sparc', '~sparc64' are the unstable KEYWORDS for their respective
-# platforms. DO NOT PUT ANYTHING BUT YOUR SPECIFIC ~ARCHITECTURE IN THE LIST.
+# '~ppc', '~sparc' are the unstable KEYWORDS for their respective platforms.
+# DO NOT PUT ANYTHING BUT YOUR SPECIFIC ~ARCHITECTURE IN THE LIST.
 # IF YOU ARE UNSURE OF YOUR ARCH, OR THE IMPLICATIONS, DO NOT MODIFY THIS.
 #
 #ACCEPT_KEYWORDS="~arch"
