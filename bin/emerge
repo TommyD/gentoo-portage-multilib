@@ -994,7 +994,7 @@ if myaction in ["sync","rsync"]:
 			print "!!! /usr/bin/rsync does not exist, so rsync support is disabled."
 			print "!!! Type \"emerge net-misc/cvs\" to enable rsync support."
 			sys.exit(1)
-		mycommand="/usr/bin/rsync -rlptDv --stats --progress "
+		mycommand="/usr/bin/rsync -rlptDvz --stats --progress "
 		if rclean:
 			mycommand=mycommand+"--delete --exclude='distfiles/*' --exclude='packages/*' "
 		mycommand=mycommand+syncuri+"/* "+myportdir
