@@ -16,6 +16,10 @@ import portage_util
 import portage_locks
 import portage_exception
 
+spinner = "Gentoo Rocks ("+os.uname()[0]+")"
+spinner = "If you can read this, we're generating the cache"
+spinpos = 0
+
 if (not sys.stdout.isatty()) or (portage.settings["NOCOLOR"] in ["yes","true"]):
 	nocolor()
 
@@ -76,9 +80,6 @@ portage.portdb.freeze()
 while 'noauto' in portage.features:
 	del portage.features[portage.features.index('noauto')]
 
-
-spinner="\|/-\|/-"
-spinpos=0
 #number of ebuilds merged
 merged=0
 params=["selective", "deep", "self", "recurse", "empty"]
@@ -212,18 +213,18 @@ for x in cmdline:
 if "moo" in myfiles:
 	print """
 
-  Gentoo Linux
+  Gentoo (""" + os.uname()[0] + """)
 
-          (__)
-          (oo)
-    /------\\/
-   / |    ||
-  *  /\\---/\\
-     ~~   ~~
-
-...."Have you mooed today?"...
+ _______________________
+< Have you mooed today? >
+ -----------------------
+        \   ^__^
+         \  (oo)\_______
+            (__)\       )\/\  
+                ||----w |
+                ||     ||
+																															 
 """
-
 
 if (myaction in ["world", "system"]) and myfiles:
 	print "emerge: please specify a package class (\"world\" or \"system\") or individual packages, but not both."
@@ -560,12 +561,18 @@ for x in sub:
 	if x in myparams:
 		myparams.remove(x)
 
-def update_spinner():
+def update_spinner(start_pos=None):
 	global spinner, spinpos
+	if(start_pos != None):
+		spinpos = start_pos
 	if sys.stdout.isatty() and not ("--nospinner" in myopts):
-		sys.stdout.write("\b"+spinner[spinpos])
-		spinpos=(spinpos+1)%8
+		if(spinpos >= len(spinner)):
+			sys.stdout.write(green(" \b\b\b"+spinner[len(spinner)-1-(spinpos%len(spinner))]))
+		else:
+			sys.stdout.write(green("\b "+spinner[spinpos]))
+
 		sys.stdout.flush()
+		spinpos = (spinpos+1) % (2*len(spinner))
 
 # search functionality
 class search:

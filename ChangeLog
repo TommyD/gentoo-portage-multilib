@@ -7,6 +7,17 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+*portage-2.0.51_rc3 (26 Sep 2004): And we another Release Candidate!
+
+  26 Sep 2004; Nicholas Jones <carpaski@gentoo.org> emerge: Modified the
+	spinner.
+	
+  26 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage_db_flat.py: Fixed
+	a lockfile descriptor leak due to duplicated lock calls.
+
+  26 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage_lock.py: Added
+	more cleanup to the lockfile descriptors.
+
 *portage-2.0.51_rc2 (25 Sep 2004): And we another Release Candidate!
 
   25 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage_db_flat.py: Fix

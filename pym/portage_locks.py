@@ -81,6 +81,7 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 
 	except OSError, oe:
 		# We're not allowed to lock on this FS.
+		close(myfd)
 		link_success = False
 		if os.errno == errno.EPERM:
 			if lockfilename == str(lockfilename):
@@ -88,7 +89,6 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 					link_success = hardlink_lockfile(lockfilename)
 		if not link_success:
 			raise
-		close(myfd)
 		myfd = HARDLINK_FD
 
 	if type(lockfilename) == types.StringType and not os.path.exists(lockfilename):
@@ -111,6 +111,8 @@ def unlockfile(mytuple):
 	
 	if type(lockfilename) == types.StringType and not os.path.exists(lockfilename):
 		portage_util.writemsg("lockfile does not exist '%s'\n" % lockfilename,1)
+		if (myfd != None) and type(lockfilename) == types.StringType:
+			os.close(myfd)
 		return False
 
 	try:
@@ -119,12 +121,14 @@ def unlockfile(mytuple):
 			unlinkfile = 1
 		fcntl.lockf(myfd,fcntl.LOCK_UN)
 	except Exception, e:
+		if type(lockfilename) == types.StringType:
+			os.close(myfd)
 		raise IOError, "Failed to unlock file '%s'\n" % lockfilename
 
 	try:
 		# We add the very brief sleep here to force a preemption.
 		# This reduces the likelihood of us deleting the file. XXXX
-		time.sleep(0.001)
+		time.sleep(0.0001)
 		fcntl.lockf(myfd,fcntl.LOCK_EX|fcntl.LOCK_NB)
 		# We won the lock, so there isn't competition for it.
 		# We can safely delete the file.
