@@ -1,6 +1,11 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-2.0.2 (19 Jun 2002)
+
+  19 Jun 2002; Daniel Robbins <drobbins@gentoo.org> make.conf.ppc,
+  make.globals.ppc: integrated these files into our sources.
+  
   19 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: fixed a bug
   where ROOT="" would not get properly converted to ROOT="/".
   
