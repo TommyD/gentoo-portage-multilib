@@ -1,4 +1,4 @@
-#!/usr/bin/env spython
+#!/usr/bin/env python
 import os
 from os.path import walk, splitext, exists, basename, dirname
 import sys
@@ -310,6 +310,9 @@ class depgraph:
 		#the following is so we have an empty vartree (used in emerge update calculations)
 		self.emptytree=portage.vartree("/",virts,self.db["/"]["vartree"])
 		self.emptytree.tree={}
+		#set up directories for the dep cache
+		if not os.path.exists("/var/cache/edb/dep"):
+			os.makedirs("/var/cache/edb/dep",0775)
 		if "--emptytree" in myopts:
 			print "Running in empty tree mode"
 			self.db["/"]["vartree"].tree=self.emptytree.tree
@@ -351,12 +354,24 @@ class depgraph:
 				sys.exit(1)
 				mydep={}
 			myebuild=self.db[myroot]["porttree"].getname(mykey)
-			myattr=commands.getstatusoutput("attr -ql "+myebuild)[1]
-			if string.find(myattr,"DEPEND")!=-1:
-				edepend=eval(commands.getstatusoutput("attr -qg DEPEND "+myebuild)[1])
+			#some test XFS caching code using extended attributes; not as fast since we use the "attr" exe
+			#if "--xfshack" in self.myopts:
+			#	myattr=commands.getstatusoutput("attr -ql "+myebuild)[1]
+			#	if string.find(myattr,"DEPEND")!=-1:
+			#		edepend=eval(commands.getstatusoutput("attr -qg DEPEND "+myebuild)[1])
+			#	else:
+			#		edepend=portage.doebuild(myebuild,"depend",myroot,1,edebug)
+			#		commands.getstatusoutput('attr -qs DEPEND -V"'+`edepend`+'" '+myebuild)
+			mydbkey="/var/cache/edb/dep/dep-"+os.path.basename(myebuild)
+			#use the cached info if it is available and more recent than the ebuild itself (mtime)
+			if os.path.exists(mydbkey) and os.stat(mydbkey)[7]>=os.stat(myebuild)[7]:
+				mydb=open(mydbkey,"r")
+				edepend=eval(mydb.readline())
 			else:
 				edepend=portage.doebuild(myebuild,"depend",myroot,1,edebug)
-				commands.getstatusoutput('attr -qs DEPEND -V"'+`edepend`+'" '+myebuild)
+				mydb=open(mydbkey,"w")
+				mydb.write(`edepend`)
+			mydb.close()
 			if edepend==1:
 				print "!!! emerge aborting."
 				sys.exit(1)
@@ -427,7 +442,7 @@ class depgraph:
 	def syscreate(self,mylines=[]):
 		for myline in mylines:	
 			if "--update"==self.myaction or "--rebuild"==self.myaction:
-				self.create(self.match(myline,mykey="update (likely old /var/db/pkg entry)"))
+				self.create(self.match(myline,mykey=""))
 			else:
 				mycheck=self.db[portage.root]["vartree"].depcheck(myline)
 				if mycheck[0]==0:
@@ -447,21 +462,21 @@ class depgraph:
 		if self.myaction=="--rebuild":
 			myeb=self.db[portage.root]["vartree"].dep_bestmatch(mydep2)
 			if not self.db[portage.root]["porttree"].exists_specific(myeb):
-				self.outdatedpackages.append(myeb)
+				#filter out virtual deps
+				if (not self.db[portage.root]["vartree"].isvirtual(myeb)):
+					self.outdatedpackages.append(myeb)
 				return None
 		else:
 			myeb=self.db[portage.root]["porttree"].dep_bestmatch(mydep2)
 			if not myeb:
-				if not mykey:
+				if mykey=="":
+					pass
+				elif not mykey:
 					print "\n!!! Warning: couldn't find match for",mydep
 				else:
 					print "\n!!! Warning: couldn't find match for",mydep,"in",mykey
 				return None
 
-		# handle filtering of virtual deps for the rebuild action
-		if self.myaction=="--rebuild" and myeb[0:len("virtual")]=="virtual":
-			return None
-		
 		if mydep[0]=="!":
 			myk="blocks "+myroot+" "+myeb
 		else:
@@ -1123,7 +1138,7 @@ elif "--rebuild"==myaction:
 	if not "system" in mymode and not "world" in mymode:
 		print
 		print " "+red("* WARNING:"),green("emerge --rebuild"),"shouldn't be used for regular packages"
-		print " "+red("*"),"it's only intended to be used with",green("system")+", "+green("world")+", and",green("noroot")
+		print " "+red("*"),"it's only intended to be used with",green("system")+" and "+green("world")+"."
 		print
 	else:
 		if "--pretend" in myopts:
@@ -1153,8 +1168,8 @@ elif "--rebuild"==myaction:
 					print " "+yellow("* IMPORTANT:"),len(myoutdated),"packages aren't available anymore; use "+green("--verbose")+" for details."
 				else:
 					print
-					print " "+yellow("* IMPORTANT:"),len(myoutdated),"packages aren't available anymore"
-					print " "+yellow("*")+" Your portage tree doesn't contain the ebuilds anymore that correspond to the"
+					print " "+yellow("* IMPORTANT:"),len(myoutdated),"packages aren't available anymore."
+					print " "+yellow("*")+" Your portage tree no longer contains the ebuilds that correspond to the"
 					print " "+yellow("*")+" following packages. This means that portage is unable to rebuild them."
 					print " "+yellow("*")+" Instead you should upgrade to the latest versions or install possible"
 					print " "+yellow("*")+" alternative packages that provide the same functionalities."
