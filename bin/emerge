@@ -411,7 +411,11 @@ class search:
 						continue
 					else:
 						masked=1
-				full_desc = portage.portdb.aux_get(full_package,["DESCRIPTION"])[0]
+				try:
+					full_desc = portage.portdb.aux_get(full_package,["DESCRIPTION"])[0]
+				except KeyError:
+					print "emerge: search: aux_get() failed, skipping"
+					continue
 				if re.search(self.searchkey.lower(), full_desc.lower()):
 					self.matches["desc"].append([full_package,masked])
 		self.mlen=0
@@ -435,7 +439,11 @@ class search:
 				else:
 					full_package=match
 				if full_package:
-					desc, homepage = portage.portdb.aux_get(full_package,["DESCRIPTION","HOMEPAGE"])
+					try:
+						desc, homepage = portage.portdb.aux_get(full_package,["DESCRIPTION","HOMEPAGE"])
+					except KeyError:
+						print "emerge: search: aux_get() failed, skipping"
+						continue
 					if masked:
 						print green("*")+"  "+white(match)+" "+red("[ Masked ]")
 					else:
