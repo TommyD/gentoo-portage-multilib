@@ -1730,7 +1730,7 @@ def dep_parenreduce(mysplit,mypos=0):
 	return mysplit
 
 def dep_opconvert(mysplit,myuse):
-	"Does dependency operator conversion, such as moving '||' inside a sub-list, etc."
+	"Does dependency operator conversion"
 	mypos=0
 	while mypos<len(mysplit):
 		if type(mysplit[mypos])==types.ListType:
@@ -1753,7 +1753,16 @@ def dep_opconvert(mysplit,myuse):
 				return None
 		elif mysplit[mypos][-1]=="?":
 			#uses clause, i.e "gnome? ( foo bar )"
-			if (mysplit[mypos][:-1]) in myuse:
+			if (mypos+2<len(mysplit)) and (mysplit[mypos+2]==":"):
+				if (mysplit[mypos][:-1]) in myuse:
+					del mysplit[mypos] #del use
+					del mysplit[mypos+1] #del :
+					del mysplit[mypos+1] #del alt
+				else:
+					del mysplit[mypos] #del use
+					del mysplit[mypos] #del first
+					del mysplit[mypos] #del : 
+			elif (mysplit[mypos][:-1]) in myuse:
 				#if the package is installed, just delete the conditional
 				del mysplit[mypos]
 			else:
@@ -1775,7 +1784,7 @@ def dep_eval(deplist):
 				if dep_eval(x)==1:
 					return 1
 			elif x==1:
-				return 1
+					return 1
 		return 0
 	else:
 		for x in deplist:
@@ -1810,7 +1819,7 @@ def dep_zapdeps(unreduced,reduced):
 				else:
 					if reduced[x]==0:
 						returnme.append(unreduced[x])
-				x=x+1
+				x += 1
 			return returnme
 
 def dep_listcleanup(deplist):
@@ -1859,6 +1868,24 @@ def getvirtuals(myroot):
 				continue
 			myvirts[mysplit[0]]=mysplit[1]
 	return myvirts
+
+def dep_getjiggy(mydep):
+	pos=0
+	lastpos=0
+	# first, we fill in spaces where needed (for "()[]" chars)
+	while pos<len(mydep):
+		if (mydep[pos] in "()[]"):
+			if (pos>0) and (mydep[pos-1]!=" "):
+				mydep=mydep[0:pos]+" "+mydep[pos:]
+				pos += 1
+			if (pos+1<len(mydep)) and (mydep[pos+1]!=" "):
+				mydep=mydep[0:pos+1]+" "+mydep[pos+1:]
+				pos += 1
+		pos += 1
+	# next, we split our dependency string into tokens
+	mysplit=mydep.split()
+	# next, we parse our tokens and create a list-based dependency structure
+	return dep_parenreduce(mysplit)
 
 def dep_getkey(mydep):
 	if not len(mydep):
@@ -2543,6 +2570,7 @@ class portdbapi(dbapi):
 				print "(likely caused by syntax error or corruption in the",mycpv,"ebuild.)"
 				sys.exit(1)
 			mylines=mycent.readlines()
+			mycent.close()
 			if len(mylines)!=auxdbkeylen:
 				#old cache entry, needs updating:
 				doebuild(myebuild,"depend","/")
@@ -2552,6 +2580,8 @@ class portdbapi(dbapi):
 					print "portage: aux_get(): couldn't open cache entry for",mycpv
 					print "(likely caused by syntax error or corruption in the",mycpv,"ebuild.)"
 					sys.exit(1)
+				mylines=mycent.readlines()
+				mycent.close()
 			self.auxcache[mycpv]={"mtime":dmtime}
 			for x in range(0,len(auxdbkeys)):
 				self.auxcache[mycpv][auxdbkeys[x]]=mylines[x][:-1]
@@ -2623,6 +2653,9 @@ class portdbapi(dbapi):
 		elif level==0:
 			self.xcache[0][mydep]=[curmtime,self.match2(mydep,mykey)]
 		return self.xcache[level][mydep][1]
+
+	def match(self,mydep):
+		return self.xmatch(2,mydep)
 
 	def visible(self,mylist):
 		"strip out masked (invisible) entries"

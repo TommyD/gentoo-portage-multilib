@@ -1,6 +1,16 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-2.0.9 (01 Jul 2002)
+
+  01 Jul 2002; Daniel Robbins <drobbins@gentoo.org> Added missing .match()
+  method to portdbapi.
+  
+  01 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: Added new
+  operator for dependencies: DEPEND="foo? bar : oni" will use oni if foo isn't
+  set.  Added "||" support back after removing it from my working copy; looks
+  ok.
+  
   29 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, make.globals,
   make.globals.ppc: internalized definitions of BUILDDIR and PKG_TMPDIR in
   order to make things work as expected when one sets PORTAGE_TMPDIR.  The new
@@ -12,7 +22,8 @@
   
   29 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: tweaked the
   aux_get() code to automatically regenerate cache files if they have the
-  incorrect number of entries.
+  incorrect number of entries.  Added an additional fix to this code on 01 Jul
+  2002.
   
   29 Jun 2002; Martin Schlemmer <azarah@gentoo.org> portage.py: merge in some
   of the missing ld.so.preload fixes again.
