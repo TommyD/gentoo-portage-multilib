@@ -4,7 +4,10 @@
 *portage-2.0.4 (20 Jun 2002)
 
   20 Jun 2002; Daniel Robbins <drobbins@gentoo.org> in the 2.0.4 ebuild itself:
-  added back tbz2tool symlink which was mistakenly removed.
+  added back tbz2tool symlink which was mistakenly removed.  Also changed the
+  way we compile portage.py stuff so that we remove the previously compiled
+  files, just in case clock skew cause them to seem more recent than they
+  really are.  Python byte-code compilation moved to pkg_postinst()
 
   20 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: fixed up the
   fetch() code so that invalid digests don't cause a traceback.
