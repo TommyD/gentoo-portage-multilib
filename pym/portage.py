@@ -2719,7 +2719,7 @@ def dep_eval(deplist):
 def dep_zapdeps(unreduced,reduced):
 	"""Takes an unreduced and reduced deplist and removes satisfied dependencies.
 	Returned deplist contains steps that must be taken to satisfy dependencies."""
-	if unreduced==[]:
+	if unreduced==[] or unreduced==['||'] :
 		return None
 	if unreduced[0]=="||":
 		if dep_eval(reduced):

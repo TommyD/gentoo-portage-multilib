@@ -2,6 +2,10 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  29 Dec 2003; Masatomo Nakano <nakano@gentoo.org> portage.py:
+  Fixed bug which emerge stops when no denpendencies exist in || ( ) 
+  by USE flags. This closes #36568.
+
   29 Dec 2003; Masatomo Nakano <nakano@gentoo.org> emerge, portage.py:
   Added an ambiguity package check when emerge. This closes bug #22700.
 
