@@ -61,6 +61,7 @@ CHOST="sparc-unknown-linux-gnu"
 #
 # Decent examples:
 #
+#CFLAGS="-mcpu=supersparc -O3 -pipe"
 #CFLAGS="-mcpu=ultrasparc -O3 -pipe"
 #CFLAGS="-mcpu=v8 -mtune=v9 -O2 -pipe"
 
