@@ -1,14 +1,44 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
-  17 Aug 2002; Daniel Robbins <drobbins@gentoo.org> ebuild.sh: removed 
+*portage-2.0.29 (18 Aug 2002)
+
+  18 Aug 2002; Daniel Robbins <drobbins@gentoo.org> emerge, portage.py,
+  ebuild.sh: making some effort to make output cleaner and less cluttered,
+  particularly with error handling.
+  
+  18 Aug 2002; Daniel Robbins <drobbins@gentoo.org> emerge: updated so that
+  "emerge --inject foo-1.0" fails instead of injecting "null/foo-1.0"; fixed
+  error in help; "emerge --inject" and "emerge" with no specified files or
+  package classes prints out a small warning and exits. Closes bug #6353.
+  
+  18 Aug 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: movefile()
+  didn't like bind mounts due to a peculiar quality -- according to their
+  ST_DEV stat() information, they are on the same filesystem, so rename()
+  should work, but it doesn't. We now fall back to copy if rename() doesn't
+  work. Closes bug #6468.
+  
+  18 Aug 2002; Daniel Robbins <drobbins@gentoo.org> ebuild.sh: made significant
+  enhancements and fixes to ebuild.sh's error-handling code. Errors in
+  src_unpack(), src_compile(), src_install() and others should now be correctly
+  detected. Also downgraded our use() function since we are not implementing
+  extended USE functionality. Closes bug #6393.
+  
+  18 Aug 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: portdb's
+  cp_all() now skips "CVS" directories, closing bug #6662. 
+ 
+  18 Aug 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: aux_get():
+  exception handler to print informative message when encountering wacky cache
+  entries that we just can't fix (for some reason.)
+ 
+  17 Aug 2002; Daniel Robbins <drobbins@gentoo.org> ebuild.sh: removed
   deprecated "ld.so" dependency from Dan Armak's newdepend() function.
   
   17 Aug 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: doebuild()
   running in "depend" mode will set $T to "" to prevent a parent's $T from
   being inherited; this is important when we run custom portage code from
   inside an ebuild (such as pkg_postinst)... it allows dep caching to not
-  break.
+  break. Closes bug #6484.
 
 *portage-2.0.28 (17 Aug 2002)
 

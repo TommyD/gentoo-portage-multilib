@@ -1,7 +1,5 @@
 #!/bin/bash 
 
-# This should be the first thing sourced in this script,
-# else we may set some variables to stale values.
 if [ -n "$T" ]
 then
 	# If $T is defined, then we're not simply calculating dependencies and
@@ -16,7 +14,7 @@ then
 	[ -f ${T}/saved_ebuild_env_${PORTAGE_MASTER_PID} ]
 	then
 		set -f
-		source ${T}/saved_ebuild_env_${PORTAGE_MASTER_PID} &> /dev/null
+		source ${T}/saved_ebuild_env_${PORTAGE_MASTER_PID} > /dev/null 2>&1
 		set +f
 		# Do not use from saved environ.
 		unset SANDBOX_ON
@@ -38,44 +36,13 @@ esave_ebuild_env() {
 	set +f
 }
 
-
-if [ -n "$#" ]
-then
-	ARGS="${*}"
-fi  
-
-
-# Do not use SANDBOX_ON from saved env
-#unset SANDBOX_ON
-
 use() {
-	local x xopts flag opts
-	
-	# Splice off the use flag and space-separate its options
-	flag="${1%%:*}"
-	if [ "$flag" != "$1" ]
-	then
-		opts="${1#*:}"
-		opts="${opts//,/ }"
-	else
-		opts=
-	fi
-	
+	local x
 	for x in $USE
 	do
-		# If there are options specified, make sure all of them are on.
-		if [ "${x%%:*}" == "$flag" ]
+		if [ "$x" = "$1" ]
 		then
-			xopts="${x#*:}"
-			xopts=" ${xopts//,/ } "
-			for i in $opts
-			do
-				if [ "${xopts/ $i /}" == "${xopts}" ]
-				then
-					return 1
-				fi
-			done
-			echo "$1"
+			echo "$x"
 			return 0
 		fi
 	done
@@ -195,40 +162,41 @@ fi
 unpack() {
 	local x
 	local y
+	local myfail
 	for x in "$@"
 	do
+		myfail="failure unpacking ${x}"
 		echo ">>> Unpacking ${x}"
 		y="$(echo $x | sed 's:.*\.\(tar\)\.[a-zA-Z0-9]*:\1:')"
 		case "${x##*.}" in
 		tar) 
-			tar x --no-same-owner -f ${DISTDIR}/${x} || die
+			tar x --no-same-owner -f ${DISTDIR}/${x} || die "$myfail"
 			;;
 		tgz) 
-			tar xz --no-same-owner -f ${DISTDIR}/${x} || die
+			tar xz --no-same-owner -f ${DISTDIR}/${x} || die "$myfail"
 			;;
 		tbz2) 
-			tar xj --no-same-owner -f ${DISTDIR}/${x} || die
+			tar xj --no-same-owner -f ${DISTDIR}/${x} || die "$myfail"
 			;;
 		ZIP|zip) 
-			unzip ${DISTDIR}/${x} || die
+			unzip ${DISTDIR}/${x} || die "$myfail"
 			;;
 		gz|Z|z) 
 			if [ "${y}" == "tar" ]; then
-				tar xz --no-same-owner -f ${DISTDIR}/${x} || die
+				tar xz --no-same-owner -f ${DISTDIR}/${x} || die "$myfail"
 			else
 				gzip -dc ${DISTDIR}/${x} > ${x%.*}
 			fi
 			;;
 		bz2) 
 			if [ "${y}" == "tar" ]; then
-				tar xj --no-same-owner -f ${DISTDIR}/${x} || die
+				tar xj --no-same-owner -f ${DISTDIR}/${x} || die "$myfail"
 			else
-				bzip2 -dc ${DISTDIR}/${x} > ${x%.*}
+				bzip2 -dc ${DISTDIR}/${x} > ${x%.*} || die "$myfail"
 			fi
 			;;
 		*)
-			echo '!!!'" Error: couldn't unpack ${x}: file format not recognized"
-			exit 1
+			die "unpack ${x}: file format not recognized"
 			;;
 		esac
 	done
@@ -243,12 +211,10 @@ econf() {
 	    --datadir=/usr/share \
 	    --sysconfdir=/etc \
 	    --localstatedir=/var/lib \
-	    "$@" || return 1
+	    "$@" || die "econf failed" 
     else
-	return 1
-    fi
-
-    return
+    	die "no configure script fond"
+	fi
 }
 
 einstall() {
@@ -259,12 +225,10 @@ einstall() {
 	    datadir=${D}/usr/share \
 	    sysconfdir=${D}/etc \
 	    localstatedir=${D}/var/lib \
-	    "$@" install || exit 1
+	    "$@" install || die "einstall failed" 
     else
-	exit 1
-    fi
-
-    return
+		die "no Makefile found"
+	fi
 }
 
 pkg_setup()
@@ -273,12 +237,15 @@ pkg_setup()
 }
 
 src_unpack() { 
-	unpack ${A} 
+	if [ "${A}" != "" ]
+	then
+		unpack ${A} || die "unpack failed"
+	fi	
 }
 
 src_compile() { 
-        if [ -x ./configure ] ; then
-	        econf || die "econf failed"
+	if [ -x ./configure ] ; then
+		econf 
 		emake || die "emake failed"
 	fi
 	return 
@@ -322,20 +289,9 @@ try() {
 	fi
 }
 
-dyn_touch() {
-	local x
-	for x in $AA 
-	do
-		if [ -e ${DISTDIR}/${x} ]
-		then	
-			touch ${DISTDIR}/${x}
-		fi
-	done
-}
-
 dyn_setup()
 {
-    pkg_setup 
+    pkg_setup || die "pkg_setup function failed; exiting."
 }
 
 dyn_unpack() {
@@ -374,25 +330,16 @@ dyn_unpack() {
 	install -m0700 -d ${WORKDIR}
 	cd ${WORKDIR}
 	echo ">>> Unpacking source..."
-	src_unpack
+    src_unpack || abort_unpack "fail"
 	echo ">>> Source unpacked."
 	cd ..
     trap SIGINT SIGQUIT
 }
 
 dyn_clean() {
-	if [ -d ${WORKDIR} ]
-	then
-		rm -rf ${WORKDIR} 
-	fi
-	if [ -d ${BUILDDIR}/image ]
-	then
-		rm -rf ${BUILDDIR}/image
-	fi
-	if [ -d ${BUILDDIR}/build-info ]
-	then
-		rm -rf ${BUILDDIR}/build-info
-	fi
+	rm -rf ${WORKDIR} 
+	rm -rf ${BUILDDIR}/image
+	rm -rf ${BUILDDIR}/build-info
 	rm -rf ${BUILDDIR}/.compiled
 }
 
@@ -434,6 +381,7 @@ exeinto() {
 	fi
     fi
 }
+
 docinto() {
     if [ $1 = "/" ]
     then
@@ -501,45 +449,45 @@ libopts() {
     export LIBOPTIONS
 }
 
+abort_handler() {
+    local msg
+	if [ "$2" != "fail" ]
+	then
+		msg="${EBUILD}: ${1} aborted; exiting."
+	else
+		msg="${EBUILD}: ${1} failed; exiting."
+	fi
+	echo 
+	echo "$msg" 
+	echo
+    eval ${3}
+	#unset signal handler
+	trap SIGINT SIGQUIT
+}
+
 abort_compile() {
-    echo 
-    echo '*** Compilation Aborted ***'
-    echo
-    cd ${BUILDDIR} #original dir
-    rm -f .compiled
-    trap SIGINT SIGQUIT
-    exit 1
+	abort_handler "src_compile" $1
+	rm -f ${BUILDDIR}/compiled
+	exit 1
 }
 
 abort_unpack() {
-    echo 
-    echo '*** Unpack Aborted ***'
-    echo
-    cd ${BUILDDIR} #original dir
-    rm -f .unpacked
-    rm -rf work
-    trap SIGINT SIGQUIT
-    exit 1
+	abort_handler "src_unpack" $1
+    rm -f ${BUILDDIR}/.unpacked
+    rm -rf ${BUILDDIR}/work
+	exit 1
 }
 
 abort_package() {
-    echo 
-    echo '*** Packaging Aborted ***'
-    echo
-    cd ${BUILDDIR} #original dir
-    rm -f .packaged
+	abort_handler "dyn_package" $1
+    rm -f ${BUILDDIR}/.packaged
     rm -f ${PKGDIR}/All/${PF}.t*
-    trap SIGINT SIGQUIT
     exit 1
 }
 
-abort_image() {
-    echo 
-    echo '*** Imaging Aborted ***'
-    echo
-    cd ${BUILDDIR} #original dir
-    rm -rf image
-    trap SIGINT SIGQUIT
+abort_install() {
+	abort_handler "src_install" $1
+    rm -rf ${BUILDDIR}/image
     exit 1
 }
 
@@ -548,7 +496,7 @@ dyn_compile() {
     export CFLAGS CXXFLAGS LIBCFLAGS LIBCXXFLAGS
     if [ ${BUILDDIR}/.compiled -nt ${WORKDIR} ]
     then
-		echo ">>> It appears that ${PN} is already compiled.  skipping."
+		echo ">>> It appears that ${PN} is already compiled; skipping."
 		echo ">>> (clean to force compilation)"
 		trap SIGINT SIGQUIT
 		return
@@ -560,14 +508,14 @@ dyn_compile() {
 	#our custom version of libtool uses $S and $D to fix
 	#invalid paths in .la files
 	export S D
-	#some packages uses an alternative to $S to build in, cause
+	#some packages use an alternative to $S to build in, cause
 	#our libtool to create problematic .la files
 	export PWORKDIR="$WORKDIR"
-	#some users have $TMPDIR to a custom dir in thier home ...            
+	#some users have $TMPDIR to a custom dir in theif home ...            
 	#this will cause sandbox errors with some ./configure            
 	#scripts, so set it to $T.
 	export TMPDIR="${T}"
-    src_compile 
+    src_compile || abort_compile "fail" 
 	cd ${BUILDDIR}
     touch .compiled
 	if [ ! -e "build-info" ]
@@ -616,7 +564,7 @@ dyn_package() {
 
 dyn_install() {
     local ROOT
-    trap "abort_image" SIGINT SIGQUIT
+    trap "abort_install" SIGINT SIGQUIT
     rm -rf ${BUILDDIR}/image
     mkdir ${BUILDDIR}/image
     if [ -d ${S} ]
@@ -635,8 +583,8 @@ dyn_install() {
 	#this will cause sandbox errors with some ./configure            
 	#scripts, so set it to $T.
 	export TMPDIR="${T}"
-	src_install
-    prepall
+	src_install || abort_install "fail"
+	prepall
 	cd ${D}
 	echo ">>> Completed installing into ${D}"
     echo
@@ -829,8 +777,8 @@ newdepend() {
 			    DEPEND="${DEPEND} sys-devel/autoconf sys-devel/automake sys-devel/make"
 			    ;;
 		    "/c")
-			    DEPEND="${DEPEND} sys-devel/gcc virtual/glibc"
-			    RDEPEND="${RDEPEND} virtual/glibc"
+			    DEPEND="${DEPEND} sys-devel/gcc virtual/glibc sys-devel/ld.so"
+			    RDEPEND="${RDEPEND} virtual/glibc sys-devel/ld.so"
 			    ;;
 		    *)
 			    DEPEND="$DEPEND $1"
@@ -844,12 +792,7 @@ newdepend() {
 
 # --- functions end, main part begins ---
 export SANDBOX_ON="1"
-source ${EBUILD} 
-if [ $? -ne 0 ]
-then
-	#abort if there was a parse problem
-	exit 1
-fi
+source ${EBUILD} || die "error sourcing ebuild"
 #a reasonable default for $S
 if [ "$S" = "" ]
 then
@@ -872,17 +815,17 @@ then
 fi
 set +f
 
-for myarg in $ARGS
+for myarg in "${*}"
 do
 	case $myarg in
 	prerm|postrm|preinst|postinst|config)
 		export SANDBOX_ON="0"
 		if [ "$PORTAGE_DEBUG" = "0" ]
 		then
-		  pkg_${myarg}
+		  pkg_${myarg} || die "pkg_${myarg} failed"
 		else
 		  set -x
-		  pkg_${myarg}
+		  pkg_${myarg} || die "pkg_${myarg} failed"
 		  set +x
 		fi
 	    ;;
@@ -917,7 +860,7 @@ do
 		  set +x
 		fi
 	    ;;
-	touch|package|rpm)
+	package|rpm)
 		export SANDBOX_ON="0"
 		if [ "$PORTAGE_DEBUG" = "0" ]
 	    then
@@ -957,6 +900,7 @@ do
 	    echo "Please specify a valid command."
 		echo
 		dyn_help
+		exit 1
 		;;
 	esac
 	if [ $? -ne 0 ]

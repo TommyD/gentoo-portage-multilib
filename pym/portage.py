@@ -86,7 +86,6 @@ features=[]
 #handle ^C interrupts correctly:
 def exithandler(foo,bar):
 	global features,secpass
-	print "!!! Portage interrupted by SIGINT; exiting."
 	#disable sandboxing to prevent problems
 	#only do this if sandbox is in $FEATURES and we are root.
 	if (secpass==2) and ("sandbox" in features):
@@ -106,9 +105,7 @@ def exithandler(foo,bar):
 			os._exit(1)
 			sys.exit(1)
 		retval=os.waitpid(mypid,0)[1]
-		print "PORTAGE:  Checking for Sandbox ("+buildphase+")..."
 		if retval==0:
-			print "PORTAGE:  No Sandbox running, deleting /etc/ld.so.preload!"
 			if os.path.exists("/etc/ld.so.preload"):
 				os.unlink("/etc/ld.so.preload")
 	# 0=send to *everybody* in process group
@@ -1329,16 +1326,17 @@ def movefile(src,dest,newmtime=None,sstat=None):
 		print "!!! link fail 1 on",dest,"->",destorig
 		destorig=None
 	#copy destnew file into place
+	trycopy=1
 	if sstat[ST_DEV]==dstat[ST_DEV]:
-		#on the same fs
+		#on the same fs; note that a bind mount of the same filesystem will show up
+		#as the same filesystem, but os.rename won't work, so we need to detect this and
+		#fall back to copy, below...
 		try:
 			os.rename(src,destnew)
+			trycopy=0
 		except:
-			print "!!! rename fail 1 on",src,"->",destnew
-			if destorig:
-				os.unlink(destorig)
-			return None 
-	else:
+			pass
+	if trycopy:
 		#not on same fs
 		try:
 			shutil.copyfile(src,destnew)
@@ -2847,9 +2845,12 @@ class portdbapi(dbapi):
 		if stale:
 			#due to a stale or regenerated cache entry, we need to update our internal dictionary....
 			self.auxcache[mycpv]={"mtime":dmtime}
-			for x in range(0,len(auxdbkeys)):
-				self.auxcache[mycpv][auxdbkeys[x]]=mylines[x][:-1]
-		
+			try:
+				for x in range(0,len(auxdbkeys)):
+					self.auxcache[mycpv][auxdbkeys[x]]=mylines[x][:-1]
+			except IndexError:
+				print "portage: aux_get(): error processing",auxdbkeys[x],"for",mycpv+"; exiting."
+				sys.exit(1)
 		#finally, we look at our internal cache entry and return the requested data.
 		returnme=[]
 		for x in mylist:
@@ -2876,6 +2877,8 @@ class portdbapi(dbapi):
 		for x in categories:
 			try:
 				for y in listdir(self.root+"/"+x):
+					if y=="CVS":
+						continue
 					biglist.append(x+"/"+y)
 			except:
 				#category directory doesn't exist
@@ -2883,6 +2886,8 @@ class portdbapi(dbapi):
 			if self.oroot:
 				try:
 					for y in listdir(self.oroot+"/"+x):
+						if y=="CVS":
+							continue
 						mykey=x+"/"+y
 						if not mykey in biglist:
 							biglist.append(mykey)
@@ -3034,10 +3039,8 @@ class portdbapi(dbapi):
 			#we need to update this next line when we have fully integrated the new db api
 			auxerr=0
 			try:
-				print 'DEBUG: trying aux_get for',mycpv
 				myaux=db["/"]["porttree"].dbapi.aux_get(mycpv, ["KEYWORDS"])
 			except (KeyError,IOError):
-				print "DEBUG: got error"
 				return []
 			if not myaux[0]:
 				#any aux_get errors will make an ebuild visible (get more accurate errors that way)
