@@ -7,6 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  08 Oct 2004; Brian Harring <ferringb@gentoo.org> portage_locks.py: Reverted 
+  to using flock by default- if it fails (unavailable), -then- use lockf, then
+  hardlink.
+
   07 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> portage.py: Updated
   portdbapi.getfetchsizes function for new digestParseFile return values.
 
