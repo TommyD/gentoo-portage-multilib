@@ -120,7 +120,7 @@ if the file was not found at \fIGENTOO_MIRROR\fB\fR.
 .TP
 \fBHOMEPAGE\fR
 Should contain a list of URL's for the sources main sites and other further
-package dependend information.
+package dependent information.
 .TP
 \fBKEYWORDS\fR
 Should contain appropriate list of arches that build is know to work/not work.  By default if you do not know if a
@@ -149,50 +149,82 @@ program to compile.
 \fBRDEPEND\fR
 This should contain a list of all packages that are required for this program to run (aka runtime depend).  If
 this is not set, then it defaults to the value of DEPEND.
-.SH "FUNCTIONS: EBUILD"
+.SH "FUNCTIONS"
 .TP
 \fBpkg_setup\fR
 This function can be used if the package needs specific setup actions or checks to be preformed before anything else.
 .br
-initial working directory of $PORTAGE_TMPDIR
+Initial working directory of $PORTAGE_TMPDIR.
 .TP
 \fBsrc_unpack\fR
 This function is used to unpack all the sources in \fIA\fR to \fIWORKDIR\fR.  If not defined in the \fIebuild
 script\fR it calls \fIunpack ${A}\fR.  Any patches and other pre configure/compile modifications should be done here.
 .br
-initial working directory of $WORKDIR
+Initial working directory of $WORKDIR.
 .TP
 \fBsrc_compile\fR
 All necessary steps for configuration and compilation should be done in here.
 .br
-initial working directory of $S
+Initial working directory of $S.
 .TP
 \fBsrc_install\fR
 Should contain everything required to install the package in the temporary \fIinstall directory\fR.
 .br
-initial working directory of $S
+Initial working directory of $S.
 .TP
 \fBpkg_preinst pkg_postinst\fR
 All modifications required on the live\-filesystem before and after the
 package gets merged should be in here.  
 Also commentary for the user should be listed here as it will be displayed last.
 .br
-initial working directory of $PWD
+Initial working directory of $PWD.
 .TP
 \fBpkg_prerm pkg_postrm\fR
 Like the pkg_*inst functions but for unmerge.
 .br
-initial working directory of $PWD
+Initial working directory of $PWD.
 .TP
 \fBconfig\fR
 This function should contain optional basic configuration steps.
 .br
-initial working directory of $PWD
-.SH "HELPER UNPACK FUNCTIONS"
+Initial working directory of $PWD.
+.SH "HELPER FUNCTIONS: UNPACK"
 .TP
 \fBunpack\fR \fI[list of sources] \fB
 This function uncompresses and/or untars a list of sources into the current directory.
-.SH "HELPER INSTALL FUNCTIONS"
+.SH "HELPER FUNCTIONS: COMPILE"
+.TP
+\fBdopython\fR \fI[commands]\fR
+Performs [commands] with python and returns the result.
+.TP
+\fBdosed\fR \fI "s:orig:change:g" [filename] \fR
+Performs sed (including cp/mv filename) on [filename].
+.TP
+\fBemake\fR
+This is used as a replacement for make.  Performs 'make ${MAKEOPTS}'
+(as set in /etc/make.globals), default is \-j2.
+.TP
+\fBeconf\fR \fI[configure options]\fR
+This is used as a replacement for configure.  Performs:
+.br
+configure \\
+.br
+	--prefix=/usr \\
+.br
+	--host=${CHOST} \\
+.br
+	--mandir=/usr/share/man \\
+.br
+	--infodir=/usr/share/info \\
+.br
+	--datadir=/usr/share \\
+.br
+	--sysconfdir=/etc \\
+.br
+	--localstatedir=/var/lib \\
+.br
+	\fI[configure options]\fR
+.SH "HELPER FUNCTIONS: INSTALL"
 .TP
 \fBdodir\fR \fI[path]\fR
 Creates a directory inside of ${D}.
@@ -236,12 +268,6 @@ Installs jar files into /usr/share/${PN}/lib and adds them to /usr/share/${PN}/c
 Installs locale\-files into \fIDESTDIR\fR/usr/share/locale/[LANG] depending on local\-file's ending.  Creates all
 necessary dirs.
 .TP
-\fBdopython\fR \fI[commands]\fR
-Performs [commands] with python and returns the result.
-.TP
-\fBdosed\fR \fI "s:orig:change:g" [filename] \fR
-Performs sed (including cp/mv filename) on [filename].
-.TP
 \fBfowners fperms\fR \fI[permissions] [files]\fR
 Performs chown (fowners) or chmod (fperms), applying [permissions] to [files].
 .TP
@@ -279,16 +305,6 @@ Files are automatically gzipped.  Creates all necessary dirs.
 \fBnewbin newsbin newlib newlib.so newlib.a newman newinfo newins newexe newdoc\fR \fI[file] [new filename]\fR
 All these functions acct like the do* functions, but they only work with one
 file and the file gets installed as \fI[new filename]\fR.
-.TP
-\fBemake\fR
-This is used as a replacement for make.  Performs 'make ${MAKEOPTS}'
-(as set in /etc/make.globals), default is \-j2.
-.br
-***warning***
-.br
-if you are going to use emake, make sure your build is happy with paralell makes
-(make \-j2). It should be tested thoroughly as paralell makes are notorious
-for failing _sometimes_ but not always.
 .SH "SEE ALSO"
 .BR ebuild (1),
 .BR make.defaults (5),
