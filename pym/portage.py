@@ -1454,9 +1454,18 @@ def movefile(src,dest,newmtime=None,sstat=None):
 		if S_ISLNK(dstat[ST_MODE]):
 			# XXX Possibly preserve symlinks in config protect dirs here...?
 			try:
+				target=os.readlink(src)
+				print "symlink read",
 				os.unlink(dest)
+				print " write",
+				os.symlink(target,dest)
+				print " create",
+				missingos.lchown(dest,sstat[ST_UID],sstat[ST_GID])
+				print " lchown"
+				return os.lstat(dest)
 			except Exception, e:
-				print "!!! Failed to unlink:",dest
+				print "!!! failed to properly create symlink:"
+				print "!!!",dest,"->",target
 				print "!!!",e
 				return None
 
@@ -1485,21 +1494,6 @@ def movefile(src,dest,newmtime=None,sstat=None):
 				print '!!! copy',src,'->',dest,'failed.'
 				print "!!!",e
 				return None
-		elif S_ISLNK(sstat[ST_MODE]):
-			try:
-				target=os.readlink(src)
-				print "symlink read",
-				os.unlink(dest)
-				print " write",
-				os.symlink(target,dest)
-				print " create",
-				missingos.lchown(dest,sstat[ST_UID],sstat[ST_GID])
-				print " lchown"
-			except Exception,e:
-				print "!!! failed to properly create symlink:"
-				print "!!!",dest,"->",target
-				print "!!!",e
-				return None
 		else:
 			#we don't yet handle special, so we need to fall back to /bin/mv
 			a=getstatusoutput("/bin/mv -f "+"'"+src+"' '"+dest+"'")
@@ -1519,13 +1513,10 @@ def movefile(src,dest,newmtime=None,sstat=None):
 			print "!!!",e
 			return None
 
-	if not S_ISLNK(sstat[ST_MODE]):
-		if newmtime:
-			os.utime(dest,(newmtime,newmtime))
-		else:
-			os.utime(dest, (sstat[ST_ATIME], sstat[ST_MTIME]))
-			newmtime=sstat[ST_MTIME]
+	if newmtime:
+		os.utime(dest,(newmtime,newmtime))
 	else:
+		os.utime(dest, (sstat[ST_ATIME], sstat[ST_MTIME]))
 		newmtime=sstat[ST_MTIME]
 	return newmtime
 
