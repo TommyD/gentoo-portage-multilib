@@ -1,6 +1,25 @@
-# TODO list for Portage; the Gentoo Linux ports system 
+# TODO list for Portage; the Gentoo Linux package system 
 # $Id$
 
-* Determine file lock status before starting downloads -- Prevent races.
+#
+# Add your name to the top of any item you are working actively on
+# and then commit. Be sure you have a current copy of this file.
+#
+
+Legend:
+ '*' Enhancement        '#' Tricky Enhancement
+ '!' Complicated        '@' Restricted in some way
+
+
+
+# Determine file lock status before starting downloads -- Prevent races.
+  Patches exist for this. Integrate and find all colliding descriptors.
 
 * Add category support to searches... emerge -s @catgory
+
+@ rsync - track changes based in subtrees to reduce filetree expense.
+  Possible plans:
+	  Use md5's of tree file list + md5 of subtree -- client-side burden.
+		Maintain hash of changes on rsync1 -- Server-side burden. **
+		Implement CVSUP. **
+
