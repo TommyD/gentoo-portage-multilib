@@ -263,13 +263,14 @@ KEYWORDS.
 .TP
 .BR package.keywords
 Per package KEYWORDS.  Useful for mixing unstable packages in with a normally 
-stable machine or vice versa.  This will allow you to override ACCEPT_KEYWORDS.
+stable machine or vice versa.  This will allow you to augment ACCEPT_KEYWORDS 
+for a single package.
 
 .I Format:
 .br
 \- comments begin with #
 .br
-\- one DEPEND atom per line followed by the KEYWORDS
+\- one DEPEND atom per line followed by additional ACCEPT_KEYWORDS 
 
 .I Example:
 .br
@@ -279,7 +280,11 @@ media-libs/libgd ~x86
 .br
 # only use stable mplayer
 .br
-media-video/mplayer x86
+media-video/mplayer -~x86
+.br
+# use a package that is marked -*
+.br
+>=sys-kernel/linux-headers-2.6 -*
 .TP
 .BR package.use
 Per-package USE flags.  Useful for tracking local USE flags or for 
