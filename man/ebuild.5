@@ -388,6 +388,12 @@ All necessary steps for configuration and compilation should be done in here.
 .br
 Initial working directory of $S.
 .TP
+.B src_test
+Run all package specific test cases.  The default is to run 'make check' 
+followed 'make test'.
+.br
+Initial working directory of $S.
+.TP
 .B src_install
 Should contain everything required to install the package in the temporary
 \fIinstall directory\fR.
