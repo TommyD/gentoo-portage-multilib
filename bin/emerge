@@ -1197,7 +1197,7 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 			print "!!! /usr/bin/rsync does not exist, so rsync support is disabled."
 			print "!!! Type \"emerge net-misc/cvs\" to enable rsync support."
 			sys.exit(1)
-		mycommand="/usr/bin/rsync -rlptDvz --stats --delete --exclude='distfiles/*' --exclude='packages/*' "
+		mycommand="/usr/bin/rsync -rlptDvz --progress --stats --delete --exclude='distfiles/*' --exclude='packages/*' "
 		mycommand=mycommand+syncuri+"/* "+myportdir
 		print ">>> starting rsync with "+syncuri+"..."
 	#protect users that did not set a default umask

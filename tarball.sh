@@ -1,7 +1,14 @@
 #!/bin/bash
+
+if [ -z "$1" ]; then
+	echo "You need to have the version specified."
+	echo "e.g.: $0 2.0.39"
+	exit 0
+fi
+
 export PKG="portage"
 export TMP="/tmp"
-export V="2.0.38"
+export V="$1"
 export DEST="${TMP}/${PKG}-${V}"
 rm -rf ${DEST}
 install -d -m0755 ${DEST}
