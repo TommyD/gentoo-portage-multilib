@@ -2111,117 +2111,6 @@ def best(mymatches):
 			p2=catpkgsplit(bestmatch)[1:]
 	return bestmatch		
 
-def match(origdep,mydata):
-	if type(mydata)==types.InstanceType:
-		mydep=dep_expand(origdep,mydata)
-		mylist=mydata.cp_list(dep_getkey(mydep))
-	else:
-		mydep=dep_expand(origdep,None)
-		mylist=mydata
-	mycpv=dep_getcpv(mydep)
-	if isspecific(mycpv):
-		cp_key=catpkgsplit(mycpv)
-		if cp_key==None:
-			return []
-	else:
-		cp_key=None
-	
-	if (mydep[0]=="="):
-		if cp_key==None:
-			return []
-		if mydep[-1]=="*":
-			#example: "=sys-apps/foo-1.0*"
-			try:
-				#now, we grab the version of our dependency...
-				mynewsplit=string.split(cp_key[2],'.')
-				#split it...
-				mynewsplit[-1]=`int(mynewsplit[-1])+1`
-				#and increment the last digit of the version by one.
-				#We don't need to worry about _pre and friends because they're not supported with '*' deps.
-				new_v=string.join(mynewsplit,".")
-				#new_v will be used later in the code when we do our comparisons using pkgcmp()
-			except:
-				#erp, error.
-				return [] 
-			mynodes=[]
-			cmp1=cp_key[1:]
-			cmp2=[cp_key[1],new_v,"r0"]
-			for x in mylist:
-				cp_x=catpkgsplit(x)
-				if cp_x==None:
-					return None
-				#skip entries in our list that do not have matching categories
-				if cp_key[0]!=cp_x[0]:
-					continue
-				# ok, categories match. Continue to next step.	
-				if ((pkgcmp(cp_x[1:],cmp1)>=0) and (pkgcmp(cp_x[1:],cmp2)<0)):
-					# entry is >= the version in specified in our dependency, and <= the version in our dep + 1; add it:
-					mynodes.append(x)
-			return mynodes
-		else:
-			# Does our stripped key appear literally in our list?  If so, we have a match; if not, we don't.
-			if mycpv in mylist:
-				return [mycpv]
-			else:
-				return []
-	elif (mydep[0]==">") or (mydep[0]=="<"):
-		if cp_key==None:
-			return []
-		if (len(mydep)>1) and (mydep[1]=="="):
-			cmpstr=mydep[0:2]
-		else:
-			cmpstr=mydep[0]
-		mynodes=[]
-		for x in mylist:
-			cp_x=catpkgsplit(x)
-			if cp_x==None:
-				return None
-			if cp_key[0]!=cp_x[0]:
-				continue
-			if eval("pkgcmp(cp_x[1:],cp_key[1:])"+cmpstr+"0"):
-				mynodes.append(x)
-		return mynodes
-	elif mydep[0]=="~":
-		if cp_key==None:
-			return []
-		myrev=-1
-		for x in mylist:
-			cp_x=catpkgsplit(x)
-			if cp_x==None:
-				print "cp_x == None",x
-				return None
-			if cp_key[0]!=cp_x[0]:
-				continue
-			if cp_key[2]!=cp_x[2]:
-				#if version doesn't match, skip it
-				continue
-			if string.atoi(cp_x[3][1:])>myrev:
-				myrev=string.atoi(cp_x[3][1:])
-				mymatch=x
-		if myrev==-1:
-			return []
-		else:
-			return [mymatch]
-	elif cp_key==None:
-		if mydep[0]=="!":
-			return []
-			#we check ! deps in emerge itself, so always returning [] is correct.
-		mynodes=[]
-		cp_key=mycpv.split("/")
-		for x in mylist:
-			cp_x=catpkgsplit(x)
-			if cp_x==None:
-				print "cp_x == None",x
-				return None
-			if cp_key[0]!=cp_x[0]:
-				continue
-			if cp_key[1]!=cp_x[1]:
-				continue
-			mynodes.append(x)
-		return mynodes
-	else:
-		return None
-
 class portagetree:
 	def __init__(self,root="/",virtual=None,clone=None):
 		global portdb
@@ -2430,8 +2319,12 @@ class fakedbapi(dbapi):
 		if not mycpv in self.cpdict[mycp]:
 			self.cpdict[mycp].append(mycpv)
 	
-	def match(self,foo):
-		return match(foo,self)
+	def match(self,origdep):
+		mydep=dep_expand(origdep,self)
+		mykey=dep_getkey(mydep)
+		mycat=mykey.split("/")[0]
+		return self.match2(mydep,mykey,self.cp_list(mykey))
+	
 cptot=0
 class vardbapi(dbapi):
 	def __init__(self,root):
@@ -2938,7 +2831,7 @@ class binarytree(packagetree):
 		else:
 			self.root=root
 			self.pkgdir=settings["PKGDIR"]
-			self.dbapi=dbapi()
+			self.dbapi=fakedbapi()
 			self.populated=0
 			self.tree={}
 	
@@ -2957,50 +2850,24 @@ class binarytree(packagetree):
 			mycat=string.strip(mycat)
 			fullpkg=mycat+"/"+mypkg[:-5]
 			mykey=dep_getkey(fullpkg)
-			if not self.tree.has_key(mykey):
-				self.tree[mykey]=[]
-			self.tree[mykey].append(fullpkg)
+			self.dbapi.cpv_inject(fullpkg)
 		self.populated=1
 
 	def inject(self,cpv):
-		mykey=dep_getkey(cpv)
-		if not self.tree.has_key(mykey):
-			self.tree[mykey]=[]
-		if not cpv in self.tree[mykey]:
-			self.tree[mykey].append(cpv)
+		return self.dbapi.cpv_inject(cpv)
 	
 	def exists_specific(self,cpv):
 		if not self.populated:
 			self.populate()
-		mykey=dep_getkey(cpv)
-		if self.tree.has_key(mykey):
-			return (cpv in self.tree[mykey])
-
-	def expand(self,mykey):
-		mysplit=mykey.split("/")
-		if len(mysplit)==2:
-			if virts and virts.has_key(mykey):
-				return virts[mykey]
-			else:
-				return mykey
-		#our key doesn't have a category; add one
-		for x in categories:
-			if self.tree.has_key(x+"/"+mykey):
-				return x+"/"+mykey
-		if virts_p.has_key(mykey):
-			return(virts_p[mykey])
-		return "null/"+mykey
+		return self.dbapi.match(dep_expand("="+cpv,self.dbapi))
 
 	def dep_bestmatch(self,mydep):
 		"compatibility method -- all matches, not just visible ones"
 		if not self.populated:
 			self.populate()
+		mydep=dep_expand(mydep,self.dbapi)
 		mykey=dep_getkey(mydep)
-		mylist=[]
-		mykey=self.expand(mykey)
-		if self.tree.has_key(mykey):
-			mylist=self.tree[mykey]
-		mymatch=best(match(mykey,mylist))
+		mymatch=best(self.dbapi.match2(mydep,mykey,self.dbapi.cp_list(mykey)))
 		if mymatch==None:
 			return ""
 		return mymatch

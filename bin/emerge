@@ -288,11 +288,14 @@ def getlist(mode):
 		pfile=portage.root+"var/cache/edb/world"
 	try:
 		myfile=open(pfile,"r")
+		mylines=myfile.readlines()
+		myfile.close()
 	except OSError:
 		print "!!! Couldn't open "+pfile+"; exiting."
 		sys.exit(1)
-	mylines=myfile.readlines()
-	myfile.close()
+	except IOError:
+		#world file doesn't exist
+		mylines=[]
 	mynewlines=[]
 	for x in mylines:
 		myline=string.join(string.split(x))
@@ -482,10 +485,10 @@ class depgraph:
 
 						if "--usepkg" in self.myopts:
 							#If we want to use packages, see if we have a pre-built one...
-							mypk=portage.db[portage.root]["bintree"].dep_bestmatch(x)
-							if myeb==mypk:
+							mypk=portage.db[portage.root]["bintree"].dbapi.match(x)
+							if myeb in mypk:
 								#Use it only if it's exactly the version we want.
-								myk="binary "+portage.root+" "+mypk
+								myk="binary "+portage.root+" "+myeb
 							else:
 								myk="ebuild "+myroot+" "+myeb
 						else:
@@ -1069,7 +1072,7 @@ elif "--help" in myopts:
 		print bold("Usage: ")+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] [ "+turquoise("ebuildfile")+" | "+turquoise("tbz2file")+" | "+turquoise("dependency")+" ] ..."
 		print "       "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] "+turquoise("system")
 		print "       "+turquoise("emerge")+" [ "+green("--clean")+" "+green("-c")+" ] "+turquoise("sync")+" | "+turquoise("rsync")
-		print "       "+turquoise("emerge")+" "+green("--help")+" "" "+green("-h")+" [ "+turquoise("system")+" | "+turquoise("config")+" | "+turquoise("sync")+" ] "
+		print "       "+turquoise("emerge")+" "+green("--help")+" "" "+green("-h")+" [ "+turquoise("system")+" | "+turquoise("config")+" ] "
 		print
 		print turquoise("Help (this screen):")
 		print "       "+green("--help")+" ("+green("-h")+" short option)"
