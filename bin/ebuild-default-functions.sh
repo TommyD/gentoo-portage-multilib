@@ -385,7 +385,7 @@ dyn_test() {
 function stat_perms() {
 	local f
 	f=$(stat -c '%f' "$1")
-	f=$(printf %o 0x$f)
+	f=$(printf "%o" 0x$f)
 	f="${f:${#f}-4}"
 	echo $f
 }
@@ -460,14 +460,14 @@ dyn_install() {
 			ewarn "file $file was installed with group portage!"
 			s=$(stat_perms "$file")
 			chgrp wheel "$file"
-			chmod "%s" "$file"
+			chmod "$s" "$file"
 		done
 	else
 		find "${D}/" -group portage -print | while read file; do
 			ewarn "file $file was installed with group portage!"
 			s=$(stat_perms "$file")
 			chgrp root "$file"
-			chmod "%s" "$file"
+			chmod "$s" "$file"
 		done
 	fi
 
