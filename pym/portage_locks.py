@@ -179,7 +179,7 @@ def unlockfile(mytuple):
 		# We add the very brief sleep here to force a preemption.
 		# This reduces the likelihood of us deleting the file. XXXX
 		time.sleep(0.0001)
-		fcntl.lockf(myfd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+		locking_method(myfd,fcntl.LOCK_EX|fcntl.LOCK_NB)
 		# We won the lock, so there isn't competition for it.
 		# We can safely delete the file.
 		portage_util.writemsg("Got the lockfile...\n",1)
