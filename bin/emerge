@@ -463,4 +463,4 @@ for mypkg in myfiles:
 		mydepgraph.display(mydepgraph.altlist())
 	else:
 		mydepgraph.merge(mydepgraph.altlist())
-	post_emerge()
+post_emerge()

@@ -1,12 +1,18 @@
 #!/usr/bin/spython
-import string
-import portage
 import sys
+null=open("/dev/null","w")
+sys.stdout=null
+sys.stderr=null
+import portage
+import string
+#the "null" stuff is used to avoid having any Portage warnings pollute the
+#output stream.
 
 myuse=portage.settings["USE"]
 myuse=string.split(myuse)
 for x in myuse:
 	if x==sys.argv[1]:
+		sys.stdout=sys.__stdout__
 		print x
 		sys.exit(0)
 sys.exit(1)
