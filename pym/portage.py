@@ -1,4 +1,4 @@
-# Gentoo Linux Dependency Checking Code
+z# Gentoo Linux Dependency Checking Code
 # Copyright 1998-2000 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License
 
@@ -2018,7 +2018,7 @@ class dblink:
 	def makeDbdirCompat(self):
 		mydbdir=self.myroot+"/var/db/pkg/"+self.cat+"/"+self.pkg
 		if os.path.exists(mydbdir) and not os.path.exists(mydbdir+"/SLOT"):
-				self.dbdir=mydbdir
+			self.dbdir=mydbdir
 
 	# get the ebuild file path of this package
 	def getEbuildCurrent(self):
