@@ -293,7 +293,7 @@ if (myaction in ["world", "system"]) and myfiles:
 	sys.exit(1)
 
 for x in myfiles:
-	if os.path.exists(os.path.abspath(x)):
+	if (x.endswith(".ebuild") or x.endswith(".tbz2")) and os.path.exists(os.path.abspath(x)):
 		print "emerging by path implies --oneshot... adding --oneshot to options."
 		print red("\n*** emerging by path is broken and may not always work!!!\n")
 		break

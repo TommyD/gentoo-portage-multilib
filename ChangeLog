@@ -7,6 +7,11 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  14 Dec 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge pym/portage.py:
+  Fixed emerge so that the "emerge by path" message is only shown when the
+  "path" ends in .ebuild or .tbz2. Fixed the package.keywords bug that caused
+  all packages to become unmasked.
+
   11 Dec 2004; Jason Stubbs <jstubbs@gentoo.org> pym/portage_syntax.py:
   Modified atom.match() to reflect the change of cpv becoming an attribute of
   atom.

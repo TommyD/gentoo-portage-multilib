@@ -4525,12 +4525,12 @@ class portdbapi(dbapi):
 				continue
 			mygroups=myaux[0].split()
 			pgroups=groups[:]
-			match=0
 			cp = dep_getkey(mycpv)
 			if cp in pkgdict:
 				matches = match_to_list(mycpv, pkgdict[cp].keys())
 				for match in matches:
 					pgroups.extend(pkgdict[cp][match])
+			match=0
 			for gp in mygroups:
 				if gp=="*":
 					writemsg("--- WARNING: Package '%s' uses '*' keyword.\n" % mycpv)
