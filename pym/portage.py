@@ -1753,8 +1753,8 @@ class packagetree:
 			for x in self.getnode(mykey):
 				if mycp[2]!=x[1][2]:
 					continue
-				if x[1][3][1:]>myrev:
-					myrev=x[1][3][1:]
+				if string.atoi(x[1][3][1:])>myrev:
+					myrev=string.atoi(x[1][3][1:])
 					mymatch=x[0]
 			if myrev==-1:
 				return ""
@@ -2237,6 +2237,9 @@ class dblink:
 			elif pkgfiles[obj][0]=="sym":
 				if not os.path.islink(obj):
 					print "--- !sym  ","sym", obj
+					continue
+				if (getmtime(obj) != pkgfiles[obj][1]):
+					print "--- !mtime sym",obj
 					continue
 				mydest=os.readlink(obj)
 				if os.path.exists(os.path.normpath(self.myroot+mydest)):

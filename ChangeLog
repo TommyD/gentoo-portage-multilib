@@ -1,8 +1,19 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
-  03 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py :
-  KDEDIR -> KDEDIRS (fixing my typo)
+*portage-1.8.9_pre18 (04 Mar 2002)
+
+  04 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py : Bug fix in
+  dep_bestmatch(); rev comparison now works correctly and dep_bestmatch will
+  properly handle 2-digit revisions in particular.  This closes bug #952.
+  
+  04 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py : Thanks to a
+  bug report by Bruce Locke, the long-standing bug where symlinks with
+  different mtimes would still get unmerged is now fixed.  This allows glibc
+  (of all things) to be unmerged safely.  We needed this fix.  Closes bug #964.
+  
+  03 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py : KDEDIR ->
+  KDEDIRS (fixing my typo)
 
 *portage-1.8.9_pre17 (27 Feb 2002)
 
