@@ -13,7 +13,7 @@ os.environ["PORTAGE_CALLER"]="repoman"
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 version="1.2"	
 
-import string,signal,readline,portage,portage_dep,re,cvstree,pickle,tempfile
+import string,signal,readline,portage,portage_dep,re,cvstree,pickle,tempfile,shutil
 from output import *
 from commands import getstatusoutput
 from time import *
@@ -1141,8 +1141,16 @@ else:
 			sys.exit(retval)
 
 	# Setup the GPG commands
-	gpgcmd = "gpg -ab --yes --homedir "+repoman_settings["PORTAGE_GPG_DIR"]+" "
-	gpgcmd+= "--default-key "+repoman_settings["PORTAGE_GPG_KEY"]+" "
+	def gpgsign(filename):
+		print "in signing function"
+		gpgcmd = "gpg --sign --clearsign --yes "
+		gpgcmd+= "--default-key "+repoman_settings["PORTAGE_GPG_KEY"]
+		if repoman_settings.has_key("PORTAGE_GPG_DIR"):
+			gpgcmd += " --homedir "+repoman_settings["PORTAGE_GPG_DIR"]
+		rValue = os.system(gpgcmd+" "+filename)
+		if rValue == 0:
+			shutil.move(filename+".asc", filename)
+		return rValue
 
 	mychanges=[]
 	mysigs=[]
@@ -1153,8 +1161,10 @@ else:
 			repoman_settings["O"]="./"
 			portage.digestgen([],repoman_settings,manifestonly=1)
 			if "sign" in portage.features:
-				os.system(gpgcmd+repoman_settings["O"]+"/Manifest")
-				mysigs+=[sigfile]
+				while(gpgsign(repoman_settings["O"]+"/Manifest")):
+					portage.writemsg("!!! YOU MUST sign the Manifest.\n")
+					portage.writemsg("!!! You can also disable this for the time being by removing FEATURES='sign'")
+				#mysigs+=[sigfile]
 		elif repolevel==2: # In a category dir
 			for x in myfiles:
 				xs=string.split(x,"/")
@@ -1166,10 +1176,10 @@ else:
 				repoman_settings["O"]="./"+xs[0]
 				portage.digestgen([],repoman_settings,manifestonly=1)
 				if "sign" in portage.features:
-					while(os.system(gpgcmd+repoman_settings["O"]+"/Manifest")):
+					while(gpgsign(repoman_settings["O"]+"/Manifest")):
 						portage.writemsg("!!! YOU MUST sign the Manifest.\n")
 						portage.writemsg("!!! You can also disable this for the time being by removing FEATURES='sign'")
-					mysigs+=[sigfile]
+					#mysigs+=[sigfile]
 		elif repolevel==1: # repo-cvsroot
 			print green("RepoMan sez:"), "\"You're rather crazy... doing the entire repository.\"\n"
 			for x in myfiles:
@@ -1182,8 +1192,10 @@ else:
 				repoman_settings["O"]="./"+string.join(xs[:2],"/")
 				portage.digestgen([],repoman_settings,manifestonly=1)
 				if "sign" in portage.features:
-					os.system(gpgcmd+repoman_settings["O"]+"/Manifest")
-					mysigs+=[sigfile]
+					while(gpgsign(repoman_settings["O"]+"/Manifest")):
+						portage.writemsg("!!! YOU MUST sign the Manifest.\n")
+						portage.writemsg("!!! You can also disable this for the time being by removing FEATURES='sign'")
+					#mysigs+=[sigfile]
 		else:
 			print red("I'm confused... I don't know where I am!")
 			sys.exit(1)

@@ -9,6 +9,10 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  01 June 2004; Marius Mauch <genone@gentoo.org> bin/repoman,bin/regenworld:
+  only messages about broken log entries in regenworld when called with
+  --debug. Fix signing stuff in repoman.
+
 *portage-2.0.51_pre9 (22 May 2003): Speedups and bug fixes
 
   22 May 2004; Nicholas Jones <carpaski@gentoo.org> portage_db_template.py:

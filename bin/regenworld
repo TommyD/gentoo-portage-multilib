@@ -65,7 +65,8 @@ for mykey in biglist:
 	try:
 		mylist=portage.db["/"]["vartree"].dbapi.match(mykey)
 	except KeyError:
-		print "* ignoring broken log entry for %s (likely injected)" % mykey
+		if "--debug" in sys.argv:
+			print "* ignoring broken log entry for %s (likely injected)" % mykey
 	except ValueError, e:
 		print "* %s is an ambigous package name, candidates are:\n%s" % (mykey, e)
 		continue
