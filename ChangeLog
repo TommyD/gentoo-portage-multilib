@@ -1,10 +1,19 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-2.0.10 (07 Jul 2002)
+
+  05 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, repoman: Added
+  new capabilities to repoman -- the ability to detect unsolvable DEPEND and
+  RDEPEND variables, missing DESCRIPTION, LICENSE, KEYWORDS and SLOT.  Fixed
+  repoman so that adding a comment with quotes in it doesn't break things.
+  Added a few tiny extensions to portage.py to support the new repoman
+  features.
+  
   03 Jul 2002; Martin Schlemmer <azarah@gentoo.org> ebuild.sh: some ebuilds
-  like gcc do not use $S to build the package in, and this causes generated
-  .la files (libtool) to contain $WORKDIR in them.  We thus export $WORKDIR
-  in ebuild.sh as well, to go along with fixes to the libtool-portage patch.
+  like gcc do not use $S to build the package in, and this causes generated .la
+  files (libtool) to contain $WORKDIR in them.  We thus export $WORKDIR in
+  ebuild.sh as well, to go along with fixes to the libtool-portage patch.
 
   02 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: pkg_setup() now
   gets called before a tbz2 is installed, and pkg_preinst() and postinst() get

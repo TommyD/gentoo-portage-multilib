@@ -2006,7 +2006,10 @@ def dep_check(depstring,mydbapi,lookatuse=1):
 	[1, ["x11-base/foobar","sys-apps/oni"] = dependencies must be satisfied
 	[0, * ] = parse error
 	"""
-	if lookatuse:
+	if lookatuse==10:
+		#enable everything (for repoman)
+		myusesplit=["*"]
+	elif lookatuse:
 		myusesplit=string.split(settings["USE"])
 	else:
 		#we are being run by autouse(), don't consult USE vars yet.
@@ -2271,6 +2274,10 @@ class portagetree:
 		if cps[3]!="r0":
 			mykey=mykey+"-"+cps[3]
 		return mykey
+
+	def depcheck(self,mycheck,mylookatuse=1):
+		return dep_check(mycheck,self.dbapi,lookatuse=mylookatuse)
+
 
 class dbapi:
 	def __init__(self):
