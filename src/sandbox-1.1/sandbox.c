@@ -798,7 +798,6 @@ main(int argc, char **argv)
 
 		/* Load our PID into PIDs file */
 		success = 1;
-		errno = 0;
 		if (file_exist(sandbox_pids_file, 1) < 0) {
 			success = 0;
 			fprintf(stderr, ">>> %s is not a regular file\n", sandbox_pids_file);
