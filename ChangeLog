@@ -1,12 +1,28 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
-  01 May 2002; Daniel Robbins <drobbins@gentoo.org> ebuild.sh: einstall
-  now accepts arguments, closing bug #2275.  Thanks seemant! :)
+  01 May 2002; Daniel Robbins <drobbins@gentoo.org> emerge: added "inject"
+  capability to artificially satisfy a dep -- for situations when you don't
+  want Portage to do it for you because you've taken care of it already.
   
-  01 May 2002; Daniel Robbins <drobbins@gentoo.org> make.globals: switch
-  SYNC var from cvs.gentoo.org to rsync.gentoo.org, and gentoo-x86-portage
-  to gentoo-portage.
+  01 May 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, emerge: totally
+  rewrote emerge's unmerge code.  The original code (added by Bevin) was a bit
+  too cryptic and "big" for my taste.  Also added two new capabilities to
+  portage.py's vartree: .getslot() and .gettimeval().  getslot() returns the
+  slot value of a cat/pkg-v, if any, and gettimeval() returns a "time value"
+  (based on mtime/COUNTER value) that can be used to determine the order in
+  which packages got merged.  The purpose of these improvements were to revamp
+  the existing Portage code that could only unmerge a db entry if there was a
+  corresponding ebuild file.  This conflicted with the ability to "inject"
+  packages (see above), so it needed to be changed.  Also fixed some bugs along
+  the way.
+  
+  01 May 2002; Daniel Robbins <drobbins@gentoo.org> ebuild.sh: einstall now
+  accepts arguments, closing bug #2275.  Thanks seemant! :)
+  
+  01 May 2002; Daniel Robbins <drobbins@gentoo.org> make.globals: switch SYNC
+  var from cvs.gentoo.org to rsync.gentoo.org, and gentoo-x86-portage to
+  gentoo-portage.
   
   30 Apr 2002; Daniel Robbins <drobbins@gentoo.org> emerge: now checks for
   errors (caused by bad deps) returned by create() and syscreate().
