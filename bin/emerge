@@ -27,7 +27,7 @@ class depgraph:
 			virts=portage.getvirtuals(pr)
 			self.db[pr]={"virtuals":virts,"vartree":portage.vartree(pr,virts),"porttree":portage.portagetree(pr,virts),"bintree":portage.binarytree(pr,virts)}
 		self.digraph=portage.digraph()
-
+		self.orderedkeys=[]
 	def create(self,mybigkey=None,myparent=None,addme=1):
 		"""creates the actual digraph of packges to merge.  return 1 on success, 0 on failure
 		mybigkey = specification of package to merge; myparent = parent package (one depending on me);
@@ -463,6 +463,7 @@ if ("system" in mymode) or ("update" in mymode):
 		mydepgraph.merge(mydepgraph.altlist())
 	post_emerge()
 mydepgraph=depgraph(mymode,myopts)
+print "Calculating dependencies",
 for mypkg in myfiles:
 	if mypkg[-5:]==".tbz2":
 		mytype="binary"
@@ -485,11 +486,10 @@ for mypkg in myfiles:
 #	else:
 #		print "!!! Error:",x,"is neither an ebuild nor a .tbz2 package."
 #		sys.exit(1)
-	print "Calculating dependencies",
 	mydepgraph.create(mytype+" "+portage.root+" "+mykey,None,"--onlydeps" not in myopts)
-	print " done!"
-	if "--pretend" in myopts:
-		mydepgraph.display(mydepgraph.altlist())
-	else:
-		mydepgraph.merge(mydepgraph.altlist())
+print " done!"
+if "--pretend" in myopts:
+	mydepgraph.display(mydepgraph.altlist())
+else:
+	mydepgraph.merge(mydepgraph.altlist())
 post_emerge()
