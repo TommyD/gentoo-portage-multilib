@@ -503,3 +503,38 @@ class DependencyGraph:
 
 		# Return our list.
 		return traversed
+
+def dep_getkey(mydep):
+	if not len(mydep):
+		return mydep
+	if mydep[0]=="*":
+		mydep=mydep[1:]
+	if mydep[-1]=="*":
+		mydep=mydep[:-1]
+	if mydep[0]=="!":
+		mydep=mydep[1:]
+	if mydep[:2] in [ ">=", "<=" ]:
+		mydep=mydep[2:]
+	elif mydep[:1] in "=<>~":
+		mydep=mydep[1:]
+	if isspecific(mydep):
+		mysplit=portage_versions.catpkgsplit(mydep)
+		if not mysplit:
+			return mydep
+		return mysplit[0]+"/"+mysplit[1]
+	else:
+		return mydep
+
+
+iscache={}
+def isspecific(mypkg):
+	"now supports packages with no category"
+	if mypkg in iscache:
+		return iscache[mypkg]
+	mysplit=mypkg.split("/")
+	if not isjustname(mysplit[-1]):
+		iscache[mypkg]=1
+		return 1
+	iscache[mypkg]=0
+	return 0
+

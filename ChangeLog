@@ -7,6 +7,14 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  06 Mar 2005; Brian Harring <ferringb@gentoo.org> bin/emerge, pym/portage_dep.py, 
+  pym/portage_file.py, pym/portage_util.py, pym/portage.py, pym/config.py, 
+  pym/eclass_cache:
+  Broke config class out into it's own module.  Minimal hacks, 3 from portage
+  imports that can't be gutted till reliance on global db is gone.  Aside 
+  from that, shifts of funcs around.
+  Also broke eclass_cache out.
+
   06 Mar 2005; Jason Stubbs <jstubbs@gentoo.org> bin/emerge: Added a check
   to make sure the file exists before working with it, when called with an
   ebuild path. #84102  Fixed the invalid call to isvalidatom() #84144

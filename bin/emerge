@@ -854,7 +854,7 @@ def getlist(mode):
 def genericdict(mylist):
 	mynewdict={}
 	for x in mylist:
-		mynewdict[portage.dep_getkey(x)]=x
+		mynewdict[portage.portage_dep.dep_getkey(x)]=x
 	return mynewdict
 
 olddbapi=None
@@ -1056,7 +1056,7 @@ class depgraph:
 				        if os.path.realpath(ebuild_path) != x:
 				                print red("\n*** You need to adjust PORTDIR or PORTDIR_OVERLAY to emerge this package.\n")
 				                sys.exit(1)
-				        if mykey not in portage.db["/"]["porttree"].dbapi.xmatch("match-visible", portage.dep_getkey(mykey)):
+				        if mykey not in portage.db["/"]["porttree"].dbapi.xmatch("match-visible", portage.portage_dep.dep_getkey(mykey)):
 				                print red("\n*** You are emerging a masked package. It is MUCH better to use")
 				                print red("*** /etc/portage/package.* to accomplish this. See portage(5) man")
 				                print red("*** page for details.")
@@ -2512,7 +2512,7 @@ def unmerge(unmerge_action, unmerge_files):
 	realsyslist = getlist("system")
 	syslist = []
 	for x in realsyslist:
-		mycp = portage.dep_getkey(x)
+		mycp = portage.portage_dep.dep_getkey(x)
 		if mycp in portage.settings.virtuals:
 			syslist.extend(portage.settings.virtuals[mycp])
 		syslist.append(mycp)
@@ -2617,7 +2617,7 @@ def unmerge(unmerge_action, unmerge_files):
 		if not mymatch:
 			print "\n--- Couldn't find " + white(x) + " to "+unmerge_action+"."
 			continue
-		mykey=portage.key_expand(portage.dep_getkey(mymatch[0]),portage.db["/"]["vartree"].dbapi)
+		mykey=portage.key_expand(portage.portage_dep.dep_getkey(mymatch[0]),portage.db["/"]["vartree"].dbapi)
 		if not pkgmap.has_key(mykey):
 			pkgmap[mykey]={"protected":[], "selected":[], "omitted":[] }
 		if unmerge_action=="unmerge":

@@ -58,15 +58,6 @@ def grabfile(myfilename, compat_level=0):
 		newlines.append(myline)
 	return newlines
 
-def map_dictlist_vals(func,myDict):
-	"""Performs a function on each value of each key in a dictlist.
-	Returns a new dictlist."""
-	new_dl = {}
-	for key in myDict.keys():
-		new_dl[key] = []
-		new_dl[key] = map(func,myDict[key])
-	return new_dl
-
 def stack_dictlist(original_dicts, incremental=0, incrementals=[], ignore_none=0):
 	"""Stacks an array of dict-types into one array. Optionally merging or
 	overwriting matching key/value pairs for the dict[key]->list.
@@ -167,6 +158,7 @@ def grabdict(myfilename,juststrings=0,empty=0):
 	return newdict
 
 def grabdict_package(myfilename,juststrings=0):
+	from portage_dep import isvalidatom
 	pkgs=grabdict(myfilename, juststrings, empty=1)
 	for x in pkgs.keys():
 		if not isvalidatom(x):
@@ -175,6 +167,7 @@ def grabdict_package(myfilename,juststrings=0):
 	return pkgs
 
 def grabfile_package(myfilename,compatlevel=0):
+	from portage_dep import isvalidatom
 	pkgs=grabfile(myfilename,compatlevel)
 	for x in range(len(pkgs)-1,-1,-1):
 		pkg = pkgs[x]
@@ -642,3 +635,36 @@ def flatten(mytokens):
 	return newlist
 
 
+def abssymlink(symlink):
+	"""
+	This reads symlinks, resolving the relative symlinks, and returning the absolute.
+	"""
+	mylink=os.readlink(symlink)
+	if mylink[0] != '/':
+		mydir=os.path.dirname(symlink)
+		mylink=mydir+"/"+mylink
+	return os.path.normpath(mylink)
+def match_to_list(mypkg,mylist):
+	"""(pkgname,list)
+	Searches list for entries that matches the package.
+	"""
+	matches=[]
+	for x in mylist:
+		if match_from_list(x,[mypkg]):
+			if x not in matches:
+				matches.append(x)
+	return matches
+
+def best_match_to_list(mypkg,mylist):
+	"""(pkgname,list)
+	Returns the most specific entry (assumed to be the longest one)
+	that matches the package given.
+	"""
+	# XXX Assumption is wrong sometimes.
+	maxlen = 0
+	bestm  = None
+	for x in match_to_list(mypkg,mylist):
+		if len(x) > maxlen:
+			maxlen = len(x)
+			bestm  = x
+	return bestm
