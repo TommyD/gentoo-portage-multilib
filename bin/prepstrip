@@ -23,11 +23,11 @@ for x in "$@"; do # "$@" quotes each element... Plays nice with spaces.
 	else
 		f=$(file "${x}")
 		if [ -z "${f/*SB executable*/}" ]; then
-			echo "   ${x}"
+			echo "   ${x:${#D}:${#x}}"
 			${STRIP} "${x}"
 		fi
 		if [ -z "${f/*SB shared object*/}" ]; then
-			echo "   ${x}"
+			echo "   ${x:${#D}:${#x}}"
 			${STRIP} --strip-debug "${x}"
 		fi
 	fi

@@ -29,19 +29,19 @@
 
 ALLOWED_FLAGS="-O -mcpu -march -pipe -g"
 
-filter-flags () {
+filter-flags() {
 	for x in $1; do
 		export CFLAGS="${CFLAGS/${x}}"
 		export CXXFLAGS="${CXXFLAGS/${x}}"
 	done
 }
 
-append-flags () {
+append-flags() {
 	CFLAGS="${CFLAGS} $1"
 	CXXFLAGS="${CXXFLAGS} $1"
 }
 
-replace-flags () {
+replace-flags() {
 	CFLAGS="${CFLAGS/${1}/${2} }"
 	CXXFLAGS="${CXXFLAGS/${1}/${2} }"
 }

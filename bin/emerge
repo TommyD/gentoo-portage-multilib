@@ -284,6 +284,11 @@ if not "--pretend" in myopts:
 	emergelog(" *** emerge "+myelogstr)
 
 #configure emerge engine parameters
+#
+# self:      include _this_ package regardless of if it is merged.
+# selective: exclude the package if it is merged
+# recurse:   go into the dependencies
+# empty:     pretend nothing is merged
 myparams=["self","recurse"]
 add=[]
 sub=[]
@@ -580,7 +585,7 @@ class depgraph:
 				return 1
 			if not myparent:
 				#command-line specified or part of a world list...
-				if (not "self" in myparams) or (("selective" in myparams) and vardbapi.cpv_exists(mykey)):
+				if ("self" not in myparams) or (("selective" in myparams) and vardbapi.cpv_exists(mykey)):
 					#the package is on the system, so don't merge it.
 					merging=0
 			elif ("selective" in myparams) and vardbapi.cpv_exists(mykey):
@@ -593,11 +598,12 @@ class depgraph:
 		else:
 			mybigkey.append("nomerge")
 			
-		#whatever the case, we need to add the node to our digraph so that children can depend upon it.
+		# whatever the case, we need to add the node to our digraph so
+		# that children can depend upon it.
 		self.digraph.addnode(string.join(mybigkey),myparent)
-		if (not "deep" in myparams) and (not merging):
+		if ("deep" not in myparams) and (not merging):
 			return 1
-		elif not "recurse" in myparams:
+		elif "recurse" not in myparams:
 			return 1
 
 		edepend={}

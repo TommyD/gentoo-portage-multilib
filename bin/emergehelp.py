@@ -13,7 +13,7 @@ def shorthelp():
 	print "   "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] [ "+turquoise("ebuildfile")+" | "+turquoise("tbz2file")+" | "+turquoise("dependency")+" ] [ ... ]"
 	print "   "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] < "+turquoise("system")+" | "+turquoise("world")+" >"
 	print "   "+turquoise("emerge")+" < "+turquoise("sync")+" | "+turquoise("info")+" >"
-	print "   "+turquoise("emerge")+" "+turquoise("--resume")+" ["+green("--pretend")+"]"
+	print "   "+turquoise("emerge")+" "+turquoise("--resume")+" ["+green("--pretend")+" | "+green("--skipfirst")+"]"
 	print "   "+turquoise("emerge")+" "+turquoise("help")+" [ "+green("system")+" | "+green("config")+" | "+green("sync")+" ] "
 	print bold("Options:")+" "+green("-")+"["+green("bcCdDefhikKlnoOpPsSuUvV")+"] ["+green("--oneshot")+"] ["+green("--noconfmem")+"]"
 	print bold("Actions:")+" [ "+green("clean")+" | "+green("depclean")+" | "+green("inject")+" | "+green("prune")+" | "+green("regen")+" | "+green("search")+" | "+green("unmerge")+" ]"
@@ -141,7 +141,8 @@ def help(myaction,myopts,havecolor=1):
 		print "              Tell emerge to run the ebuild command in --debug mode. In this"
 		print "              mode, the bash build environment will run with the -x option,"
 		print "              causing it to output verbose debug information print to stdout."
-		print "              --debug is great for finding bash syntax errors."
+		print "              --debug is great for finding bash syntax errors as providing"
+		print "              very verbose information about the dependency and build process."
 		print
 		print "       "+green("--deep")+" ("+green("-D")+" short option)"
 		print "              When used in conjunction with --update, this flag forces emerge"
@@ -177,7 +178,7 @@ def help(myaction,myopts,havecolor=1):
 		print "       "+green("--noreplace")+" ("+green("-n")+" short option)"
 		print "              Skip the packages specified on the command-line that have"
 		print "              already been installed.  Without this option, any packages,"
-		print "              ebuilds, or deps you specify on on the command-line *will* cause"
+		print "              ebuilds, or deps you specify on the command-line *will* cause"
 		print "              Portage to remerge the package, even if it is already installed."
 		print "              Note that Portage won't remerge dependencies by default."
 		print
@@ -213,6 +214,13 @@ def help(myaction,myopts,havecolor=1):
 		print "                emerge -S html"
 		print "                emerge -S applet"
 		print "                emerge -S 'perl.*module'"
+		print
+		print "       "+green("--skipfirst")
+		print "              This option is only valid in a resume situation. It removes the"
+		print "              first package in the resume list so that a merge may continue in"
+		print "              the presence of an uncorrectable or inconsequential error. This"
+		print "              should only be used in cases where skipping the package will not"
+		print "              result in failed dependencies."
 		print
 		print "       "+green("--update")+" ("+green("-u")+" short option)"
 		print "              Updates packages to the best version available, which may not"

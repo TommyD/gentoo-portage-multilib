@@ -2,6 +2,38 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+*portage-2.0.48_pre6 (12 Apr 2003): General cleanups and fixes.
+
+  12 May 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Additions
+	to better handle overlay ebuilds with regard to metadata cache. aux_get
+	calls findname2() which returns (location,in_overlay) -- findname() is
+	a wrapper for findname2(). Extra debugging fixes for findname() issues.
+
+  12 May 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Code
+	cleanups and a chgrp/chown pass to move all portage-owned files to
+	root ownership -- Two pass to leave specific-group and specific-owner
+	settings alone.
+	
+  12 May 2003; Nicholas Jones <carpaski@gentoo.org> emerge: code cleanups
+	and comment touchups.
+	
+  12 May 2003; Nicholas Jones <carpaski@gentoo.org> emergehelp.py: Updates
+	for --debug, --digest, and --skipfirst.
+
+  12 May 2003; Nicholas Jones <carpaski@gentoo.org> g-cpan.pl: Added more
+	arches to the KEYWORDS. Made it copy files back to distfiles.
+
+  12 May 2003; Nicholas Jones <carpaski@gentoo.org> prepstrip: Removed ${D}
+	from the outputted filenames during stripping.
+	
+	12 May 2003; Nicholas Jones <carpaski@gentoo.org> man/* cnf/*:
+	documentation updates.
+
+*portage-2.0.48_pre5 (29 Apr 2003): Cleanups and polish.
+
+  29 Apr 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Another
+	typo fix.
+
 *portage-2.0.48_pre4 (28 Apr 2003): Cleanups and polish.
 
   28 Apr 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Quick fix

@@ -1,0 +1,5 @@
+# TODO list for Portage; the Gentoo Linux ports system 
+# $Id$
+
+* Determine file lock status before starting downloads -- Prevent races.
+

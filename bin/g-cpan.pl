@@ -167,7 +167,7 @@ HOMEPAGE="http://www.cpan.org/modules/by-authors/id/$modpath/\${P}.readme"
 
 SLOT="0"
 LICENSE="Artistic | GPL-2"
-KEYWORDS="x86 sparc sparc64 ppc alpha"
+KEYWORDS="alpha arm hppa mips ppc sparc x86"
 
 HERE
 
@@ -263,6 +263,7 @@ sub install_module {
     install_module($_, 1) for ( keys %$prereq_pm );
 
     create_ebuild( $obj, $dir, $file, $prereq_pm, $md5string );
+		system("mv -f $localfile $distfiles/")
 
     push @ebuild_list, $dir;
 }

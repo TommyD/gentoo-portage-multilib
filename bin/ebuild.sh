@@ -54,7 +54,7 @@ alias assert='_retval=$?; [ $_retval = 0 ] || diefunc "$FUNCNAME" "$LINENO" "$_r
 
 OCC="$CC"
 OCXX="$CXX"
-source /etc/profile.env > /dev/null 2>&1
+source /etc/profile.env &>/dev/null
 [ ! -z "$OCC" ] && export CC="$OCC"
 [ ! -z "$OCXX" ] && export CXX="$OCXX"
 
@@ -65,9 +65,9 @@ export PATH="/sbin:/usr/sbin:/usr/lib/portage/bin:/bin:/usr/bin:${ROOTPATH}"
 source /usr/lib/portage/bin/extra_functions.sh
 
 if [ -e /etc/init.d/functions.sh ]; then
-	source /etc/init.d/functions.sh > /dev/null 2>&1
+	source /etc/init.d/functions.sh  &>/dev/null
 elif [ -e /etc/rc.d/config/functions ];	then
-	source /etc/rc.d/config/functions > /dev/null 2>&1
+	source /etc/rc.d/config/functions &>/dev/null
 fi
 esyslog() {
 	# Custom version of esyslog() to take care of the "Red Star" bug.
@@ -782,6 +782,9 @@ dyn_install() {
 	if [[ $UNSAFE > 0 ]]; then
 		die "There are unsafe files. Portage will not install them."
 	fi
+	
+	find ${D}/ -user  portage -print0 | xargs -0 -r -n100 chown root
+	find ${D}/ -group portage -print0 | xargs -0 -r -n100 chgrp root
 
 	echo ">>> Completed installing into ${D}"
 	echo

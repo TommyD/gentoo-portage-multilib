@@ -3,7 +3,7 @@
 # Distributed under the GNU Public License v2
 # $Header$
 
-VERSION="2.0.48_pre4"
+VERSION="2.0.48_pre6"
 
 from stat import *
 from commands import *
@@ -3237,9 +3237,12 @@ class portdbapi(dbapi):
 		self.oroot=None
 
 	def findname(self,mycpv):
+		return self.findname2(mycpv)[0]
+
+	def findname2(self,mycpv):
 		"returns file location for this particular package"
 		if not mycpv:
-			return ""
+			return "",0
 		mysplit=mycpv.split("/")
 		if mysplit[0]=="virtual":
 			print "!!! Cannot resolve a virtual package to an ebuild."
@@ -3249,24 +3252,22 @@ class portdbapi(dbapi):
 		psplit=pkgsplit(mysplit[1])
 		if self.oroot:
 			myloc=self.oroot+"/"+mysplit[0]+"/"+psplit[0]+"/"+mysplit[1]+".ebuild"
-			try:
-				os.stat(myloc)
-				return myloc
-			except (OSError,IOError):
-				pass
+			if os.access(myloc, os.R_OK):
+				return myloc,1
 
 		# XXX Why are there errors here? XXX
 		try:
 			myret=self.root+"/"+mysplit[0]+"/"+psplit[0]+"/"+mysplit[1]+".ebuild"
-		except:
+		except Exception, e:
 			print "!!! There has been an error. Please report this via IRC or bugs.gentoo.org"
-			print "!!! mycpv:   "+mycpv
-			print "!!! mysplit: "+mysplit
-			print "!!! psplit:  "+psplit
+			print "!!! mycpv:  ",mycpv
+			print "!!! mysplit:",mysplit
+			print "!!! psplit: ",psplit
+			print "!!! error:  ",e
 			print
 			sys.exit(1)
-		return myret
-
+		return myret,0
+	
 	def aux_get(self,mycpv,mylist,strict=0,metacachedir=None):
 		"stub code for returning auxilliary db information, such as SLOT, DEPEND, etc."
 		'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
@@ -3279,10 +3280,10 @@ class portdbapi(dbapi):
 		mylines=[]
 		stale=0
 		usingmdcache=0
-		myebuild=self.findname(mycpv)
+		myebuild,in_overlay=self.findname2(mycpv)
 		mydbkey=dbcachedir+"/"+mycpv
 		mymdkey=None
-		if metacachedir and os.access(metacachedir, os.R_OK):
+		if not in_overlay and metacachedir and os.access(metacachedir, os.R_OK):
 			mymdkey=metacachedir+"/"+mycpv
 
 		#print "statusline1:",doregen,dmtime,emtime,mycpv
@@ -4124,7 +4125,7 @@ class dblink:
 			
 			# Now we need to cleanup the virtuals table.
 			myvkey=self.cat+"/"+pkgsplit(self.pkg)[0]
-			myvirts=grabdict(destroot+"var/cache/edb/virtuals")
+			myvirts=grabdict(self.myroot+"var/cache/edb/virtuals")
 			for mycatpkg in self.getelements("PROVIDE"):
 				if isspecific(mycatpkg):
 					#convert a specific virtual like dev-lang/python-2.2 to dev-lang/python
@@ -4134,11 +4135,11 @@ class dblink:
 						continue
 					mycatpkg=mysplit[0]+"/"+mysplit[1]
 				if myvirts.has_key(mycatpkg):
-					while (myvkey in myvers[mycatpkg]):
+					while (myvkey in myvirts[mycatpkg]):
 						del myvirts[mycatpkg][myvirts[mycatpkg].index(myvkey)]
 					if not myvirts[mycatpkg]:
 						del myvirts[mycatpkg]
-			writedict(myvirts,destroot+"var/cache/edb/virtuals")
+			writedict(myvirts,self.myroot+"var/cache/edb/virtuals")
 
 		#do original postrm
 		if myebuildpath and os.path.exists(myebuildpath):
