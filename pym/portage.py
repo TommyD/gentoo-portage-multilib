@@ -791,7 +791,7 @@ class config:
 		for x in self.lookuplist:
 			if x == None:
 				print "!!! lookuplist is null."
-			if x.has_key(mykey):
+			elif x.has_key(mykey):
 				return x[mykey]+suffix
 		return suffix
 
@@ -3275,8 +3275,6 @@ class dblink:
 			if os.path.isdir(ppath):
 				self.protectmask.append(ppath)
 			#if it doesn't exist, silently skip it
-		print "protected: "+str(self.protect)
-		print "masked: "+str(self.protectmask)
 
 	def isprotected(self,obj):
 		"""Checks if obj is in the current protect/mask directories. Returns
@@ -3291,7 +3289,6 @@ class dblink:
 					if (len(pmpath) >= protected) and (obj[0:len(pmpath)]==pmpath):
 						#skip, it's in the mask
 						masked=len(pmpath)
-		#print "** isprotected("+str(obj)+") "+str(protected > masked)
 		return (protected > masked)
 
 	def unmerge(self,pkgfiles=None):
