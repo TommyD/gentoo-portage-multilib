@@ -28,6 +28,15 @@
 **  $Header$
 */
 
+/* Uncomment below to enable wrapping of mknod().
+ * This is broken currently. */
+/* #define WRAP_MKNOD */
+
+/* Uncomment below to enable the use of strtok_r().
+ * This is broken currently. */
+/* #define REENTRANT_STRTOK */
+
+
 #define open   xxx_open
 #define open64 xxx_open64
 
@@ -131,7 +140,7 @@ static int(*true_truncate)(const char *, TRUNCATE_T);
 extern int unlink(const char *);
 static int(*true_unlink)(const char *);
 
-#if(GLIBC_MINOR >= 1)
+#if (GLIBC_MINOR >= 1)
 
 extern int creat64(const char *, __mode_t);
 static int(*true_creat64)(const char *, __mode_t);
@@ -181,7 +190,7 @@ void _init(void)
   true_truncate = dlsym(libc_handle, "truncate");
   true_unlink = dlsym(libc_handle, "unlink");
 
-#if(GLIBC_MINOR >= 1)
+#if (GLIBC_MINOR >= 1)
   true_creat64 = dlsym(libc_handle, "creat64");
   true_fopen64 = dlsym(libc_handle, "fopen64");
   true_open64 = dlsym(libc_handle, "open64");
@@ -489,7 +498,7 @@ int unlink(const char *pathname)
   return result;
 }
 
-#if(GLIBC_MINOR >= 1)
+#if (GLIBC_MINOR >= 1)
 
 int creat64(const char *pathname, __mode_t mode)
 {
@@ -588,18 +597,18 @@ int execve(const char *filename, char *const argv [], char *const envp[])
 
     while (envp[count] != NULL) {
       if (strstr(envp[count], "LD_PRELOAD=") == envp[count]) {
-        if (strstr(envp[count], sandbox_lib) != NULL) {
+        if (NULL != strstr(envp[count], sandbox_lib)) {
           break;
         } else {
           /* Backup envp[count], and set it to our own one which
            * contains sandbox_lib */
           old_envp = envp[count];
-          new_envp = (char*)malloc(strlen(old_envp) + strlen(sandbox_lib) + 1);
-          strncpy(new_envp, old_envp, strlen(old_envp));
+          new_envp = (char*)malloc((strlen(old_envp) + strlen(sandbox_lib) + 1) * sizeof(char));
+          strncpy(new_envp, old_envp, strlen(old_envp + 1));
 
           /* LD_PRELOAD already have variables other than sandbox_lib,
            * thus we have to add sandbox_lib via a white space. */
-          if (strcmp(envp[count], "LD_PRELOAD=") != 0) {
+          if (0 != strcmp(envp[count], "LD_PRELOAD=")) {
             strncpy(new_envp + strlen(old_envp), ":", 2);
             strncpy(new_envp + strlen(old_envp) + 1, sandbox_lib,
                     strlen(sandbox_lib) + 1);
@@ -609,9 +618,9 @@ int execve(const char *filename, char *const argv [], char *const envp[])
           }
 
           /* envp[count] = new_envp;
-		   *
-		   * Get rid of the "read-only" warnings */
-		  memcpy((void *)&envp[count], &new_envp, sizeof(new_envp));
+           *
+           * Get rid of the "read-only" warnings */
+           memcpy((void *)&envp[count], &new_envp, sizeof(new_envp));
 
           break;
         }
@@ -622,7 +631,7 @@ int execve(const char *filename, char *const argv [], char *const envp[])
     errno = old_errno;
     check_dlsym(execve);
     result = true_execve(filename, argv, envp);
-	old_errno = errno;
+    old_errno = errno;
 
     if (old_envp) {
       /* Restore envp[count] again.
@@ -635,7 +644,7 @@ int execve(const char *filename, char *const argv [], char *const envp[])
       free(new_envp);
       new_envp = NULL;
     }
-	errno = old_errno;
+    errno = old_errno;
   }
 
   return result;
@@ -708,7 +717,7 @@ static int is_sandbox_pid()
         }
       }
     }
-	if (EOF == fclose(pids_stream)) {
+    if (EOF == fclose(pids_stream)) {
       perror(">>> pids file fclose");
     }
     pids_stream = NULL;
@@ -745,7 +754,9 @@ static void init_env_entries(char*** prefixes_array, int* prefixes_num, char* en
             env);
   } else {
     char* buffer = NULL;
-	char* strtok_buf = NULL;
+#ifdef REENTRANT_STRTOK
+    char** strtok_buf = NULL;
+#endif
     int prefixes_env_length = strlen(prefixes_env);
     int i = 0;
     int num_delimiters = 0;
@@ -759,62 +770,59 @@ static void init_env_entries(char*** prefixes_array, int* prefixes_num, char* en
     }
 
     if (num_delimiters > 0) {
-      buffer = (char*)malloc(sizeof(char)*(prefixes_env_length+1));
-	  strtok_buf = (char*)malloc(sizeof(char)*(prefixes_env_length+1));
-      *prefixes_array = (char**)malloc(sizeof(char*)*(num_delimiters+1));
+      buffer = (char *)malloc((prefixes_env_length + 1) * sizeof(char));
+#ifdef REENTRANT_STRTOK
+      *strtok_buf = (char *)malloc((prefixes_env_length + 1) * sizeof(char));
+#endif
+      *prefixes_array = (char **)malloc((num_delimiters + 1) * sizeof(char *));
 
-      strcpy(buffer, prefixes_env);
+      strncpy(buffer, prefixes_env, prefixes_env_length + 1);
+#ifdef REENTRANT_STRTOK
+      token = strtok_r(buffer, ":", strtok_buf);
+#else
       token = strtok(buffer, ":");
+#endif
+      
 
-      while (NULL != token && strlen(token) > 0) {
-        prefix = (char*)malloc(sizeof(char)*(strlen(token)+1));
-        strcpy(prefix, token);
+      while ((NULL != token) && (strlen(token) > 0)) {
+        prefix = (char *)malloc((strlen(token) + 1) * sizeof(char));
+        strncpy(prefix, token, strlen(token) + 1);
         (*prefixes_array)[(*prefixes_num)++] = filter_path(prefix);
+        
         if (prefix) free(prefix);
-		prefix = NULL;
+        prefix = NULL;
+#ifdef REENTRANT_STRTOK
+        token = strtok_r(NULL, ":", strtok_buf);
+#else
         token = strtok(NULL, ":");
+#endif
       }
+      
       if (buffer) free(buffer);
       buffer = NULL;
-	  if (strtok_buf) free(strtok_buf);
-	  strtok_buf = NULL;
+#ifdef REENTRANT_STRTOK
+      if (strtok_buf) free(strtok_buf);
+      strtok_buf = NULL;
+#endif
     }
     else if (prefixes_env_length > 0) {
-      (*prefixes_array) = (char**)malloc(sizeof(char*));
+      (*prefixes_array) = (char **)malloc(sizeof(char *));
 			
-      prefix = (char*)malloc(sizeof(char)*(prefixes_env_length+1));
-      strcpy(prefix, prefixes_env);
+      prefix = (char *)malloc((prefixes_env_length + 1) * sizeof(char));
+      strncpy(prefix, prefixes_env, prefixes_env_length + 1);
       (*prefixes_array)[(*prefixes_num)++] = filter_path(prefix);
+      
       if (prefix) free(prefix);
       prefix = NULL;
-	}
+    }
   }
 }
 
 static char* filter_path(const char* path)
 {
-  int initial_path_length = strlen(path);
-  char* filtered_path = (char*)malloc(sizeof(char)*(initial_path_length+1));
-  int i = 0;
-  int j = 0;
+  char* filtered_path = (char *)malloc(MAXPATHLEN * sizeof(char));
 
-  for (i = 0, j = 0; i < initial_path_length;) {
-    filtered_path[j] = path[i];
-
-    if ('/' == filtered_path[j]) {
-      while (('/' == path[i]) && (i < initial_path_length)) {
-        i++;
-      }
-    }
-    else
-    {
-      i++;
-    }
-
-    j++;
-  }
-
-  filtered_path[j] = 0;
+  canonicalize(path, filtered_path);
 
   return filtered_path;
 }
@@ -1121,3 +1129,7 @@ static int before_syscall_open_char(const char* func, const char* file, const ch
   }
 }
 
+
+/* 
+ * vim:expandtab noai:cindent ai
+ */
