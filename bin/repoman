@@ -70,6 +70,8 @@ qacats=[
 "digest.unmatch",
 "DEPEND.bad","RDEPEND.bad",
 "DEPEND.badmasked","RDEPEND.badmasked",
+"DEPEND.badindev","RDEPEND.badindev",
+"DEPEND.badmaskedindev","RDEPEND.badmaskedindev",
 "ebuild.syntax","ebuild.output",
 "ebuild.nesteddie","LICENSE.invalid",
 "IUSE.invalid","KEYWORDS.invalid",
@@ -90,6 +92,8 @@ qawarnings=[
 "digest.unmatch",
 "DEPEND.badmasked",
 "RDEPEND.badmasked",
+"DEPEND.badindev","RDEPEND.badindev",
+"DEPEND.badmaskedindev","RDEPEND.badmaskedindev",
 "IUSE.invalid",
 "ebuild.minorsyn",
 "ebuild.badheader",
@@ -123,6 +127,10 @@ qahelp={
 	"RDEPEND.bad":"User-visible ebuilds with bad RDEPEND settings (matched against *visible* ebuilds)",
 	"DEPEND.badmasked":"Masked ebuilds with bad DEPEND settings (matched against *all* ebuilds)",
 	"RDEPEND.badmasked":"Masked ebuilds with RDEPEND settings (matched against *all* ebuilds)",
+	"DEPEND.badindev":"User-visible ebuilds with bad DEPEND settings (matched against *visible* ebuilds) in developing arch",
+	"RDEPEND.badindev":"User-visible ebuilds with bad RDEPEND settings (matched against *visible* ebuilds) in developing arch",
+	"DEPEND.badmaskedindev":"Masked ebuilds with bad DEPEND settings (matched against *all* ebuilds) in developing arch",
+	"RDEPEND.badmaskedindev":"Masked ebuilds with RDEPEND settings (matched against *all* ebuilds) in developing arch",
 	"ebuild.syntax":"Error generating cache entry for ebuild; typically caused by ebuild syntax error",
 	"ebuild.output":"A simple sourcing of the ebuild produces output; this breaks ebuild policy.",
 	"ebuild.nesteddie":"Placing 'die' inside ( ) prints an error, but doesn't stop the ebuild.",
@@ -491,16 +499,27 @@ elif repolevel==3:
 
 profiles={}
 descfile=repoman_settings["PORTDIR"]+"/profiles/profiles.desc"
-if not os.path.exists(descfile):
-	raise IOError, "profile.desc does not exist: "+descfile
-for x in portage.grabfile(descfile):
-	if x[0]=="#":
-		continue
-	arch=string.split(x)
-	if len(arch)!=2:
-		print red("wrong format: \""+x+"\" in "+descfile)
-		continue
-	profiles[arch[0]]=arch[1]
+if os.path.exists(descfile):
+	for x in portage.grabfile(descfile):
+		if x[0]=="#":
+			continue
+		arch=string.split(x)
+		if len(arch)!=3:
+			print "wrong format: \""+red(x)+"\" in "+descfile
+			continue
+		profiles[arch[0]]=[arch[1],arch[2]]
+
+	for x in portage.archlist:
+		if x[0]=="~":
+			continue
+		if not profiles.has_key(x):
+			print yellow("\""+x+"\" doesn't exist in profiles.desc")
+			print yellow("You need to do \"cvs update\" in profiles dir.")
+			print
+else:
+	print yellow("profiles.desc does not exist: "+descfile)
+	print yellow("You need to do \"cvs update\" in profiles dir.")
+	print
 
 stats={}
 fails={}
@@ -666,7 +685,11 @@ for x in scanlist:
 					arch=keyword
 
 				repoman_settings["ARCH"]=arch
-				portage.profiledir=repoman_settings["PORTDIR"]+"/profiles/"+profiles[arch]
+				if (profiles.has_key(arch)):
+					portage.profiledir=repoman_settings["PORTDIR"]+"/profiles/"+profiles[arch][0]
+				else:
+					portage.profiledir=repoman_settings["PORTDIR"]+"/profiles/default-"+arch+"-1.4"
+					
 				if (not os.path.exists(portage.profiledir)):
 					raise IOError, "Profile dir does not exist: "+portage.profiledir
 				
@@ -684,6 +707,9 @@ for x in scanlist:
 				else:
 					suffix=""
 					matchmode="match-visible"
+
+				if profiles.has_key(arch) and profiles[arch][1]=="dev":
+					suffix=suffix+"indev"
 
 				mykey=mytype+".bad"+suffix
 				myvalue=string.join(portage.db["/"]["porttree"].dbapi.aux_get(catdir+"/"+y,[ mytype ]))
