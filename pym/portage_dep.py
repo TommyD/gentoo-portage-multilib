@@ -1,5 +1,5 @@
 # deps.py -- Portage dependency resolution functions
-# Copyright 2003 Gentoo Technologies, Inc.
+# Copyright 2003-2004 Gentoo Foundation
 # Distributed under the GNU Public License v2
 # $Id$
 
