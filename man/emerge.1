@@ -1,4 +1,4 @@
-.TH "emerge" "1" "July 21, 2002" "portage ##VERSION##" ""
+.TH "emerge" "1" "October 24, 2002" "portage ##VERSION##" ""
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -84,11 +84,14 @@ arguments can be \fIebuilds\fR, \fIclasses\fR, or \fIdependencies\fR.  For examp
 clean binutils\fR cleans out old versions of binutils; \fBemerge clean net\-www/mozilla\-0.9.9\-r2\fR
 cleans out that specific version of Mozilla.  This is generally safe to use. \fBNote that\fR clean \fBdoes not remove unslotted packages.\fR
 .TP 
+\fBdepclean\fR
+Determines all packages installed on the system that have to explicit reason for being there. The system packages and world file are used to create a list of all packages expected to be on the system, and the list of installed packages is compared against it. The differences are listed as unnecessary packages and are suggested for unmerge. \fBWARNING:\fR removing some packages may cause packages that had linked to it to stop working and complain about missing libraries. REMERGE the complaining package to fix this issue. Changes in USE flags can drastically affect the output of depclean.
+.TP 
 \fBhelp\fR (\fB\-h\fR)
-Displays help information for emerge.  Adding one of the additional arguments listed above will
-give you more specific help information on that subject.  The internal \fBemerge\fR help
-documentation is updated more frequently than this man page; check it out if you are having
-problems that this man page does not help resolve.
+Displays help information for emerge.  Adding one of the additional arguments listed above will give you more specific help information on that subject.  The internal \fBemerge\fR help documentation is updated more frequently than this man page; check it out if you are having problems that this man page does not help resolve.
+.TP 
+\fBinfo\fR
+This is a listing of information to INCLUDE IN BUG REPORTS to aid in fixing problems you may report. PLEASE include this information when submitting a bug report.
 .TP 
 \fBinject\fR (\fB\-i\fR)
 Injecting a package inserts a 'stub' for that package so that Portage thinks that it is installed.
@@ -111,8 +114,7 @@ for any package that starts with "kde"; \fBemerge search "gcc$"\fR searches for 
 "gcc"; \fBemerge search "office"\fR searches for any package that contains the word "office".  If you want to search the package descriptions as well, use the \fB\-\-searchdesc\fR option.
 .TP 
 \fBsync\fR
-Initiates a portage tree update with one of the rsync.gentoo.org mirrors.  \fBNote that any changes
-you have made to the portage tree will be erased\fR.  Except for in special circumstances, this uses \fBrsync\fR to do the update.
+Initiates a portage tree update with one of the rsync.gentoo.org mirrors.  \fBNote that any changes you have made to the portage tree will be erased\fR.  Except for in special circumstances, this uses \fBrsync\fR to do the update. See make.conf's description of PORTDIR_OVERLAY for a method to avoid deletions.
 .TP 
 \fBunmerge\fR (\fB\-C\fR)
 \fBWARNING: This action can remove important packages!\fR Removes all matching packages.  This does
@@ -194,11 +196,11 @@ avoid using some dependencies you may not want to have.  \fBUSE
 flags specified on the command line are NOT remembered\fR.  For
 example, \fBUSE="\-x \-gnome" emerge mc\fR will emerge mc with
 those USE settings.
-.LP
-If \fBemerge --update system\fR or \fB emerge --update world\fR
+.LP 
+If \fBemerge \-\-update system\fR or \fB emerge \-\-update world\fR
 fail with an error message, it may be that an ebuild uses some
 newer feature not present in this version of \fBemerge\fR.  You
-can use \fBemerge --update portage\fR to upgrade to the lastest
+can use \fBemerge \-\-update portage\fR to upgrade to the lastest
 version, which should support any necessary new features.
 .SH "SEE ALSO"
 \fBebuild(1) ebuild(5) make.defaults(5) make.conf(5)\fR
@@ -250,5 +252,4 @@ Achim Gottinger <achim@gentoo.org>
 .LP 
 Nicholas Jones <carpaski@gentoo.org>
 .LP 
-This man page was last edited by Phil Bordelon
-<sunflare@gentoo.org>.
+Phil Bordelon <sunflare@gentoo.org>.

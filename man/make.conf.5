@@ -1,11 +1,11 @@
-.TH make.conf "5" "December 2001" "portage 1.7.8" 
-.SH NAME
+.TH "make.conf" "5" "October 24, 2002" "Portage 2.0.42" ""
+.SH "NAME"
 ebuild \- manual page for make.defaults
-.SH SYNOPSIS
+.SH "SYNOPSIS"
 .B /etc/make.conf
-.SH DESCRIPTION
+.SH "DESCRIPTION"
 This file contains various variables that are used by Portage.
-Portage will check the currently-defined environment variables
+Portage will check the currently\-defined environment variables
 first for any settings.  If no environment settings are found,
 Portage then checks /etc/make.conf.  If no setting is found
 in /etc/make.conf, Portage checks /etc/make.profile/make.defaults.
@@ -13,94 +13,100 @@ If no setting is found there, the default setting is grabbed
 from /etc/make.globals.  Please note that all user settings
 should be made in the environment or in /etc/make.conf, which
 is intended to be customized by the user.
-.PP
-.SH VARIABLES
+.BR 
+Exceptions are Incremental variables such as USE,CONFIG_PROTECT*, and ACCEPT_KEYWORDS. Incrementals are propagated down from make.defaults to make.globals to make.conf to the environment settings. Clearing these variables requires a clear\-all as in: export USE="\-*"
+.PP 
+.SH "VARIABLES"
 \fBROOT\fR = \fI[path]\fR
 Use root to specify the target root filesystem to be used for
 merging packages or ebuilds.  If unset, ROOT defaults to /.
 Typically, you should set this setting in the environment
 rather than in /etc/make.conf itself.  It's typically used
 for creating new build images.
-.TP
-\fBMAINTAINER\fR = \fI[yes|no]\fR
-If you have and developer cvs access at cvs.gentoo.org
-and \fIMAINTAINER\fR is set to \fI"yes"\fR, the md5 checksum files
-for the sources will be automatically added to the cvs tree.
-This also tweaks various other Portage settings to be more
-maintainer-friendly/appropriate.
-.TP
+.TP 
+\fBFEATURES\fR
+Defines actions portage takes by default. These options should not be changed by anyone but developers and/or maintainers. 'sandbox' is an important part of features and should not be disabled by default.
+.TP 
+\fBNOCOLOR\fR = \fI["true" | "false"]\fR
+Defines if color should be disabled by default. Default is false.
+.TP 
 \fBPROXY HTTP_PROXY FTP_PROXY\fR = \fI[host:port]\fR
 These vars are used if the sources must be downloaded from the
 internet by \fIwget(1)\fR. They are only required if you use a proxy server
 for internet access. Eighter define \fIPROXY\fR or
 \fIPROXY_FTP\fR and \fIPROXY_HTTP\fR
-.TP
+.TP 
 \fBGENTOO_MIRRORS\fR = \fI[url]\fR
 Insert your nearest \fIIBIBLIO\fR mirror here. This location is tried for
 source download before the ones listed in the \fIebuild scripts\fR.
-.TP
+.TP 
 \fBCHOST\fR
 This variable gets passed by the \fIebuild scripts\fR to the \fIconfigure\fR
-step as \fI--host=${CHOST}\fR. So you can force the build-host with that.
-.TP
+step as \fI\-\-host=${CHOST}\fR. So you can force the build\-host with that.
+.TP 
 \fBMAKEOPTS\fR
 Use this variable if you want to use parallel make.  For example, if you
-have a dual-processor system, set this variable to "-j2" or "-j3" for 
-enhanced build performance with many packages.
-.TP
+have a dual\-processor system, set this variable to "\-j2" or "\-j3" for 
+enhanced build performance with many packages. Suggested setting is #CPUs+1
+.TP 
 \fBCFLAGS CXXFLAGS\fR 
 Use these variables to set the desired optimization/CPU instruction settings
 for applications that you compile.  Nearly all ebuild files will take advantage
 of your custom settings, resulting in a Gentoo Linux that is fully customized
-to your specifications.
-.TP
+to your specifications. Please use sane settings as some packages will fail to compile if the optimizations are too extreme.
+.TP 
 \fBDEBUGBUILD\fR
 If defined binaries and libraries don't get stripped before \fImerge\fR
-.TP
+.TP 
 \fBUSE\fR
 This variable contains options that controll the build behaviour of
 several packages.  More information in ebuild(5).
 \fBFETCHCOMMAND\fR
-This variable contains the command used for fetching package-sources from
+This variable contains the command used for fetching package\-sources from
 the internet. 
-.TP
+.TP 
 \fBPORTAGE_TMPDIR\fR = \fI[path]\fR
 Defines the location of the temporary build directories. 
-.TP
+.TP 
 \fBBUILD_PREFIX\fR = \fI[path]\fR
 Defines the location of the package working directory. 
-.TP
+.TP 
 \fBPKG_TMPDIR\fR = \fI[path]\fR
 \fIemerge\fR uses this dir to extract a .tbz2 package before the
 files get merged to the live filesystem.
-.TP
+.TP 
 \fBPORTDIR\fR = \fI[path]\fR
 Defines the location of your Portage tree. Defaults to /usr/portage. 
-.TP
+.TP 
+\fBPORTDIR_OVERLAY\fR=\fI[path]\fR
+Defines a directory in which user made ebuilds may be stored and not overwrite when emerge rsync is run. Default is not defined.
+.TP 
 \fBDISTDIR\fR = \fI[path]\fR
 Defines the location of your local source file repository.  Defaults
 to /usr/portage/distfiles.
-.TP
+.TP 
 \fBPKGDIR\fR = \fI[path]\fR
 Defines the location where created .tbz2 binary packages will be stored.
 Defaults to /usr/portage/packages.
-.TP
+.TP 
 \fBRPMDIR\fR = \fI[path]\fR
 Defines the location where created RPM packages will be stored.
-.TP
-.SH AUTHOR
+.TP 
+.SH "AUTHOR"
 Daniel Robbins <drobbins@gentoo.org>
+.LP 
+Nicholas Jones <carpaski@gentoo.org>
 .SH "SEE ALSO"
 ebuild(1) ebuild(5)
-.TP
+.TP 
 The \fI/usr/sbin/ebuild\fR script. 
 The helper apps in \fI/usr/lib/portage/bin\fR.
-.SH FILES
+.SH "FILES"
 \fB/etc/make.conf\fR 
-Contains variables for the build-process and 
+Contains variables for the build\-process and 
 overwrites those in make.defaults
-.TP
+.TP 
 \fB/etc/make.globals\fR 
-Contains the default variables for the build-process, 
+Contains the default variables for the build\-process, 
 You should edit \fI/etc/make.conf\fR instead.
-.TP
+.TP 

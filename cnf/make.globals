@@ -35,7 +35,7 @@ CXXFLAGS=${CFLAGS}
 #DEBUGBUILD=true
 
 # Default maintainer options
-#FEATURES="digest sandbox noclean noauto"
+#FEATURES="digest sandbox noclean noauto buildpkg"
 # Default user options
 FEATURES="sandbox ccache"
 

@@ -94,6 +94,17 @@ def help():
 		print "              dependencies from your system."
 		print "              The argument format is the same as for the "+bold("clean")+" action."
 		print
+		print "       "+green("depclean")
+		print "              Cleans the system by removing packages that are not associated"
+		print "              with explicitly merged packages. Depclean works by creating the"
+		print "              full dependancy tree from the system list and the world file,"
+		print "              then comparing it to installed packages. Packages installed, but"
+		print "              not associated with an explicit merge are listed as candidates"
+		print "              for unmerging."+turquoise(" WARNING: This can seriously affect your system by")
+		print "              "+turquoise("removing packages that may have been linked against, but due to")
+		print "              "+turquoise("changes in USE flags may no longer be part of the dep tree. Use")
+		print "              "+turquoise("caution when employing this feature.")
+		print
 		print "       "+green("search")+" ("+green("-s")+" short option)"
 		print "              searches for matches of the supplied string in the current local"
 		print "              portage tree. The search string is a regular expression."
@@ -142,7 +153,9 @@ def help():
 		print
 		print "       "+green("--fetchonly")+" ("+green("-f")+" short option)"
 		print "              Instead of doing any package building, just perform fetches for"
-		print "              all packages (main package as well as all dependencies.)"
+		print "              all packages (main package as well as all dependencies.) When"
+		print "              used in combination with --pretend all the SRC_URIs will be"
+		print "              displayed multiple mirrors per line, one line per file."
 		print
 		print "       "+green("--nodeps")
 		print "              Merge specified packages, but don't merge any dependencies."
@@ -158,7 +171,6 @@ def help():
 		print "       "+green("--oneshot")
 		print "              Emerge as normal, but don't add packages to the world profile for"
 		print "              later updating."
-		print
 		print
 		print "       "+green("--onlydeps")+" ("+green("-o")+" short option)"
 		print "              Only merge (or pretend to merge) the dependencies of the"

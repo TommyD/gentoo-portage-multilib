@@ -1,6 +1,11 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+	24 Oct 2002; Nicholas Jones <carpaski@gentoo.org> make.defaults.5:
+	Removed this file. It is horribly out of date and completely
+	wrong to boot. Users shouldn't be modifying the 3 lines in this file
+	anyway. They are obvious if you understand conf and defaults.
+
   24 Oct 2002; Nicholas Jones <carpaski@gentoo.org> emerge:
 	Added missing return statements to select_dep() that caused unmet packages
 	to be ignored.
