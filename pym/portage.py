@@ -2315,7 +2315,7 @@ class dblink:
 
 	def isprotected(self,destroot,offset):
 		mytruncpath=os.path.realpath(destroot+offset)
-		mytruncpath=mytruncpath[len(destroot)-1:]
+		mytruncpath=mytruncpath[len(destroot)-1:]+"/"
 		myppath=""
 		for ppath in self.protect:
 			#the expandpath() means that we will be expanding rootpath first (resolving dir symlinks)
@@ -2399,13 +2399,9 @@ class dblink:
 				# we are merging a directory
 				if mydmode!=None:
 					# destination exists
-					if S_ISDIR(mydmode):
-						if S_ISLNK(mydmode):
-							# a symlink to an existing directory will work for us; keep it:
-							print "---",mydest+"/"
-						else:
-							# a normal directory will work too
-							print "---",mydest+"/"
+					if S_ISLNK(mydmode) or S_ISDIR(mydmode):
+						# a symlink to an existing directory will work for us; keep it:
+						print "---",mydest+"/"
 					else:
 						# a non-directory and non-symlink-to-directory.  Won't work for us.  Move out of the way.
 						movefile(mydest,mydest+".backup")
@@ -2423,7 +2419,7 @@ class dblink:
 					print ">>>",mydest+"/"
 				outfile.write("dir "+myrealdest+"\n")
 				# recurse and merge this directory
-				self.mergeme(srcroot,destroot,outfile,secondhand,myrealdest[1:]+"/")
+				self.mergeme(srcroot,destroot,outfile,secondhand,offset+x+"/")
 			elif S_ISREG(mymode):
 				# we are merging a regular file
 				mymd5=md5(mysrc)

@@ -1,6 +1,10 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+  20 Feb 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: Fixed some
+  major bugs in the new merge/config protect code.  Merging and config
+  protection should now work.
+  
   18 Feb 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, emerge,
   ebuild.sh : Rewrote merge code.  Should merge symlinks only *after* the
   target has been merged (needs testing).  Added lots of comments.  Split
