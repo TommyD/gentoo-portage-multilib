@@ -28,7 +28,8 @@ actions=["help",
 	"world",
 	"unmerge",
 	"config"]
-options=["--autoclean",
+options=["--all",
+	"--autoclean",
 	"--clean",
 	"--buildpkg",
 	"--debug",
@@ -38,19 +39,18 @@ options=["--autoclean",
 	"--noreplace",
 	"--onlydeps",
 	"--pretend",
+	"--safe",
 	"--usepkg",
 	"--verbose",
 	"--update",
-	"--rev",
-	"--slot",
 	"--help",
 	"--oneshot",
 	"--version"]
 
 shortmapping={"a":"--autoclean",
+	"A":"--all",
 	"b":"--buildpkg",
-	"u":"--update",
-	"s":"search",
+	"c":"clean",
 	"e":"--emptytree",
 	"d":"--debug",
 	"f":"--fetchonly",
@@ -59,6 +59,9 @@ shortmapping={"a":"--autoclean",
 	"n":"--noreplace",
 	"o":"--onlydeps",
 	"p":"--pretend",
+	"s":"search",
+	"S":"--safe",
+	"u":"--update",
 	"v":"--verbose",
 	"V":"--version" }
 
@@ -68,16 +71,18 @@ myfiles=[]
 edebug=0
 
 # process short actions and options
-cmdline=sys.argv[1:]
-cmdline.extend(portage.settings["EMERGE_OPTS"].split())
-for x in cmdline:
+tmpcmdline=sys.argv[1:]
+tmpcmdline.extend(portage.settings["EMERGE_OPTS"].split())
+cmdline=[]
+for x in tmpcmdline:
 	if x[0:1]=="-"and x[1:2]!="-":
 		for y in x[1:]:
 			if shortmapping.has_key(y):
 				cmdline.append(shortmapping[y])
 			else:
 				print "!!! Error: -"+y+" is an invalid short action or option."
-		cmdline.remove(x)
+	else:
+		cmdline.append(x)
 
 # process the command arguments
 for x in cmdline:
@@ -120,9 +125,7 @@ class search:
 		This makes successive searches faster."""
 		self.searchkey = searchkey
 		self.treecache = portage.portagetree()
-		self.treecache.populate()
 		self.installcache = portage.vartree()
-		self.installcache.populate()
 		self.re_portagedir = re.compile('/usr/portage/')
 		self.re_description = re.compile('DESCRIPTION="')
 		self.initResults()
@@ -667,6 +670,27 @@ if "noclean" not in portage.features:
 if "--debug" in myopts:
 	edebug=1
 
+def printCleanSummary(previous_package,current_package,kept_packages):
+	if previous_package!=current_package:
+		if previous_package:
+			print
+			print "    Keeping :",
+			if len(kept_packages) > 0:
+				for kept_package in kept_packages.keys():
+					kept_package_parts=portage.catpkgsplit(kept_package)
+					kept_version=kept_package_parts[2]
+					if kept_package_parts[3]!="r0":
+						kept_version = kept_version+"-"+kept_package_parts[3]
+					print green(kept_version),
+			else:
+				print green("none")
+			print
+		kept_packages.clear()
+		if current_package:
+			print white(current_package)
+			print "    Removing:",
+	return
+
 if myaction in ["sync","rsync"]:
 	rclean=0
 	myportdir=portage.settings["PORTDIR"]
@@ -741,6 +765,19 @@ elif "--help" in myopts:
 		print "              emerge to display detailed help."
 		print
 		print turquoise("Actions:")
+		print "       "+green("clean")+" ("+green("-c")+" short option)"
+		print "              Cleans the system by removing outdated packages."
+		print "              The behaviour is customized by setting an environmental variable"
+		print "              CLEANMODE in /etc/make.conf. You can temporarely modify the"
+		print "              behaviour by redefining it immediately before the emerge command."
+		print "              It supports the following settings:"
+		print "              "+bold("oldrevs")
+		print "              remove old revisions of each package (very safe)"
+		print "              "+bold("oldversions")
+		print "              remove old versions of each package (can cause problems)"
+		print "              "+bold("oldslots")
+		print "              remove old binary compatibility slots of each package (very safe)"
+		print
 		print "       "+green("unmerge")+" (no short option)"
 		print "              "+turquoise("WARNING: This option will remove *all* matching packages")
 		print "              Removes an installed package. the arguments can be in several"
@@ -824,7 +861,8 @@ elif "--help" in myopts:
 		print "              ebuilds and tbz2s *would* have been installed if --pretend"
 		print "              weren't used.  Using --pretend is strongly recommended before"
 		print "              installing an unfamiliar package.  In the printout, N = new,"
-		print "              U = upgrading, R = replacing."
+		print "              U = upgrading, R = replacing, B = blocked by an already installed"
+		print "              package."
 		print
 		print "       "+green("--noreplace")+" ("+green("-n")+" short option)"
 		print "              Skip the packages specified on the command-line that have"
@@ -840,6 +878,16 @@ elif "--help" in myopts:
 		print "              PKGDIR=/mnt/cdrom/packages and then use this option to have"
 		print "              emerge \"pull\" binary packages from the CD in order to satisfy" 
 		print "              dependencies."
+		print
+		print "       "+green("--safe")+" ("+green("-S")+" short option)"
+		print "              makes emerge unmerge only remove the packages that are outdated"
+		print "              by checking which versions are old and by keeping only the newest"
+		print "              ones. This is the same as emerge clean and uses the same"
+		print "              CLEANMODE setting."
+		print
+		print "       "+green("--all")+" ("+green("-A")+" short option)"
+		print "              makes emerge clean remove all matches packages without checking"
+		print "              which versions are old and keeping the newest one."
 		print
 		print "       "+green("--verbose")+" ("+green("-v")+" short option)"
 		print "              Tell emerge to run in verbose mode.  Currently, this causes"
@@ -931,84 +979,177 @@ elif "search"==myaction:
 			searchinstance.execute()
 			searchinstance.output()
 
-elif "unmerge"==myaction:
-	if not myfiles:
-		print
-		print "No packages to unmerge have been provided."
-		print
-		sys.exit(1)
+elif "unmerge"==myaction or "clean"==myaction:
 	full_paths={}
 	full_ebuild_paths={}
 	full_package_paths={}
 	current_version_mapping={}
-	#UNCOMPLETE"
-	for x in myfiles:
 	
-	# an absolute path has been given
-		if (x[0]=='/'):
-			path_parts=split(x, '/')
-			if len(path_parts) != 6:
-				print "When providing an absolute path it should be"
-				print "in the following format : "+var_path+"/category/package"
-				print "The path '"+x+"' doesn't respect this."
-				sys.exit(1)
-			elif not os.path.exists(x):
-				print "The path '"+x+"' doesn't exist."
-				sys.exit(1)
-			elif -1 == find(x, var_path):
-				print "The path '"+x+"' didn't commence with '"+var_path+"'."
-				sys.exit(1)
-			else:
-				full_path=strip(x)+"/"+path_parts[5]+".ebuild"
-				if not os.path.exists(full_path):
-					print "The ebuild '"+full_path+"' couldn't be found."
-					print "Your portage installation tree seems to be corrupted."
-				else:
-					full_ebuild_paths[full_path]=path_parts[4]+"/"+path_parts[5]
-
-		# a category and package name have been given
+	var_path=portage.root+"var/db/pkg"
+	# process all arguments, verify if they can be resolved to an installed
+	# ebuild file and add the absolute paths of these ebuild to a list
+	if "clean"==myaction and (not myfiles or "world" in myfiles or "system" in myfiles):
+		if "--all" in myopts and not "--pretend" in myopts:
+			print red("!!!")+" Thanks to the carefulnes of the Gentoo Linux developers, you were preserved"
+			print "from having erased your entire system. "+bold("emerge --all clean")+" can only be used"
+			print "when specifying explicit packages."
+			print
 		else:
-			localtree=portage.vartree(portage.root)	
-			mymatches=localtree.dep_match(x)
-			# if no matches were found, try again by adding a '=' dep symbol if no
-			# dep symbols are already present
-			if not mymatches and x[0] not in ('<','>','=','~'):
-				mymatches=localtree.dep_match("="+x)
-
+			mymatches=[]
+			localtree=portage.vartree()
+			if not myfiles or "world" in myfiles:
+				for y in localtree.getallnodes():
+					mymatches.extend(localtree.dep_match(y))
+			elif "system" in myfiles:
+				for y in getsyslist():
+					mymatches.extend(localtree.dep_match(y))
+	
 			# only loops over the matches if they were found
 			if mymatches:
 				for package in mymatches:
 					full_path=localtree.getebuildpath(package)
+					if os.path.exists(full_path):
+						full_package_paths[full_path]=package
+
+	else:
+		if not myfiles:
+			print
+			print "No packages to unmerge have been provided."
+			print
+			sys.exit(1)
+		for x in myfiles:
+		# an absolute path has been given
+			if (x[0]=='/'):
+				path_parts=split(x, '/')
+				if len(path_parts) != 6:
+					print "When providing an absolute path it should be"
+					print "in the following format : "+var_path+"/category/package"
+					print "The path '"+x+"' doesn't respect this."
+					sys.exit(1)
+				elif not os.path.exists(x):
+					print "The path '"+x+"' doesn't exist."
+					sys.exit(1)
+				elif -1 == find(x, var_path):
+					print "The path '"+x+"' didn't commence with '"+var_path+"'."
+					sys.exit(1)
+				else:
+					full_path=strip(x)+"/"+path_parts[5]+".ebuild"
 					if not os.path.exists(full_path):
 						print "The ebuild '"+full_path+"' couldn't be found."
 						print "Your portage installation tree seems to be corrupted."
 					else:
-						full_package_paths[full_path]=package
+						full_ebuild_paths[full_path]=path_parts[4]+"/"+path_parts[5]
+	
+			# a category and package name have been given
+			else:
+				localtree=portage.vartree(portage.root)	
+				mymatches=localtree.dep_match(x)
+				# if no matches were found, try again by adding a '=' dep symbol if no
+				# dep symbols are already present
+				if not mymatches and x[0] not in ('<','>','=','~'):
+					mymatches=localtree.dep_match("="+x)
+	
+				# only loops over the matches if they were found
+				if mymatches:
+					for package in mymatches:
+						full_path=localtree.getebuildpath(package)
+						if not os.path.exists(full_path):
+							print "The ebuild '"+full_path+"' couldn't be found."
+							print "Your portage installation tree seems to be corrupted."
+						else:
+							full_package_paths[full_path]=package
+
+	if ("clean"==myaction and not "--all" in myopts) or ("unmerge"==myaction and "--safe" in myopts):
+		if len(full_package_paths) > 0:
+			# remove null slots from the oldslots functionality
+			if "oldslots"==portage.settings["CLEANMODE"]:
+				for full_path in full_package_paths.keys():
+					slot_path=dirname(full_path)+"/SLOT"
+					if os.path.exists(slot_path):
+						slot_file=open(slot_path)
+						package_slot=slot_file.readline().strip()
+						slot_file.close()
+						if package_slot=='':
+							del full_package_paths[full_path]
+					else:
+						del full_package_paths[full_path]
+			
+			latest_ebuilds={}
+			old_ebuilds={}
+			# determine the latest installed packages of each cat/pkg key
+			full_paths_keys=full_package_paths.keys()
+			# sort the ebuild paths
+			full_paths_keys.sort()
+			previous_package_set=None
+			for full_path in full_paths_keys:
+				# construct the key that will be used to determine when a new package set
+				# is being processed, the package slot is taken into account for this
+				package_parts=portage.pkgsplit(full_package_paths[full_path])
+				
+				# construct the package slot, even if it was an old package without slot support
+				slot_path=dirname(full_path)+"/SLOT"
+				if os.path.exists(slot_path):
+					slot_file=open(slot_path)
+					package_slot=slot_file.readline().strip()
+					slot_file.close()
+				else:
+					package_slot=""
+					
+				# by default the package sets are specified to remove only old revisions
+				# but by taking slots into account
+				# when the --versions option is specified, all previous versions within the same slot are removed too
+				# when the --slots option is specified, all previous slots are removed too
+				if not portage.settings["CLEANMODE"]:
+					print red("!!!")+" CLEANMODE not set, defaulting to '"+white("oldrevs")+"'"
+					print
+					portage.settings["CLEANMODE"]="oldrevs"
+
+				if "oldslots"==portage.settings["CLEANMODE"]:
+					package_set=package_parts[0]+"-"+package_slot
+				elif "oldversions"==portage.settings["CLEANMODE"]:
+					package_set=package_parts[0]+"-"+package_slot
+				elif "oldrevs"==portage.settings["CLEANMODE"]:
+					package_set=package_parts[0]+"-"+package_parts[1]+"-"+package_slot
+				else:
+					print red("!!!")+" Unknown cleanmode '"+white(portage.settings["CLEANMODE"])+"', can't continue the cleaning operation."
+					sys.exit(1)
+				
+				# create initial latest ebuild information for the current package set if it
+				# doesn't exists yet
+				if not latest_ebuilds.has_key(package_set):
+					latest_ebuilds[package_set]=["",-1,-1]
+				# get the latest modification time of this package version, which should correspond to
+				# the time when it when installed
+				counter_path=dirname(full_path)+"/COUNTER"
+				package_counter=-1;
+				if os.path.exists(counter_path):
+					counter_file=open(counter_path, "r")
+					package_counter=long(counter_file.readline())
+					counter_file.close()
+				contents_path=dirname(full_path)+"/CONTENTS"
+				contents_mtime=os.stat(contents_path)[8]
+				# update the latest modified package version
+				if not old_ebuilds.has_key(package_set):
+					old_ebuilds[package_set]=[]
+				if package_counter > latest_ebuilds[package_set][1] or (package_counter == -1 and latest_ebuilds[package_set][1] == -1 and contents_mtime > latest_ebuilds[package_set][2]):
+					if latest_ebuilds[package_set][0]:
+						old_ebuilds[package_set].append(latest_ebuilds[package_set][0])
+					latest_ebuilds[package_set]=[full_path,package_counter,contents_mtime]
+				else:
+					old_ebuilds[package_set].append(full_path)
+				# update which package set has just been processed
+				previous_package_set=package_set
+				
+			# remove the latest version of the last processed package set
+			for package_set in latest_ebuilds.keys():
+				if latest_ebuilds[package_set][0]:
+					del full_package_paths[latest_ebuilds[package_set][0]]
+					for old_ebuild in old_ebuilds[package_set]:
+						current_version_mapping[old_ebuild]=latest_ebuilds[package_set][0]
 
 	full_paths=full_ebuild_paths.keys()
 	full_paths.extend(full_package_paths.keys())
 	
-	def printCleanSummary(previous_package,current_package,kept_packages):
-		if previous_package!=current_package:
-			if previous_package:
-				print
-				print "    Keeping :",
-				if len(kept_packages) > 0:
-					for kept_package in kept_packages.keys():
-						kept_package_parts=portage.catpkgsplit(kept_package)
-						kept_version=kept_package_parts[2]
-						if kept_package_parts[3]!="r0":
-							kept_version = kept_version+"-"+kept_package_parts[3]
-						print green(kept_version),
-				else:
-					print green("none")
-				print
-			kept_packages.clear()
-			if current_package:
-				print white(current_package)
-				print "    Removing:",
-		return
-
 	if len(full_paths)==0:
 		print "Couldn't find any matching installed packages."
 		sys.exit(1)

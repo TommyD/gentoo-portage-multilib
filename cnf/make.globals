@@ -59,10 +59,8 @@ NOCOLOR="false"
 # By default wait 5 secs before cleaning a package
 CLEAN_DELAY="5"
 
-# This specifies which package cleaning mode will be ran automatically after
-# the merging of new packages, the possible options are
-# false       : don't remove anything automatically
-# oldrevs     : remove old revisions of each package
-# oldversions : remove old versions of each package
-# oldslots    : remove old binary compatibility slots of each package
-AUTO_CLEAN="oldrevs"
+# This specifies what the cleaning behaviour is supposed to be
+# oldrevs     : remove old revisions of each package (very safe)
+# oldversions : remove old versions of each package (can cause problems)
+# oldslots    : remove old binary compatibility slots of each package (very safe)
+CLEANMODE="oldrevs"
