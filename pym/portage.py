@@ -3324,6 +3324,8 @@ class portdbapi(dbapi):
 					mydata["_eclasses_"] = self.eclassdb.get_eclass_data( \
 						mydata["INHERITED"].split() )
 					del mydata["INHERITED"]
+				else:
+					mydata["_eclasses_"] = {}
 
 				self.auxdb[mylocation][mycpv] = mydata
 #				if not self.eclassdb.update_package(mylocation, cat, pkg, mydata.get("INHERITED","").split()):
@@ -3334,7 +3336,7 @@ class portdbapi(dbapi):
 		returnme = []
 		for x in mylist:
 			if x == "INHERITED":
-				returnme.append(mydata.get("_eclasses_",{}).keys())
+				returnme.append(' '.join(mydata.get("_eclasses_",{}).keys()))
 			else:
 				returnme.append(mydata.get(x,""))
 		return returnme

@@ -7,6 +7,11 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  06 Mar 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py: Harring's law 
+  in effect- stupid one line bugs do not rear their head till the delta hits the 
+  repository... :/
+  Fix for the INHERITED auto-determination in portdbapi.aux_get
+
   08 Mar 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py, bin/emerge, 
   cache/*, pym/eclass_cache.py :  Cache refactoring.  Eclass_cache is now just 
   a dict of stacked eclasses, but doesn't track per pkg eclasses.
