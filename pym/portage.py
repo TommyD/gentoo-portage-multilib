@@ -3873,7 +3873,7 @@ class vardbapi(dbapi):
 		if not self.matchcache[mycat].has_key(mydep):
 			mymatch=match_from_list(mydep,self.cp_list(mykey))
 			self.matchcache[mycat][mydep]=mymatch
-		return self.matchcache[mycat][mydep]
+		return self.matchcache[mycat][mydep][:]
 	
 	def aux_get(self, mycpv, wants):
 		global auxdbkeys
