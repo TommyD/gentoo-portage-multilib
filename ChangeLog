@@ -1,9 +1,31 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  28 Sep 2002; Daniel Robbins <drobbins@gentoo.org> ebuild.sh: remove
+  deprecated "ld.so" from newdepend.
+
+*portage-2.0.38 (25 Sep 2002): Bug fix release 
+
+  25 Sep 2002; Daniel Robbins <drobbins@gentoo.org> emerge: now "emerge world"
+  and "emerge system" don't replace packages. This closes bug #8282.
+  
+  21 Sep 2002; Daniel Robbins <drobbins@gentoo.org> portage-2.0.38.ebuild:
+  Added additional perm check for /var/cache/edb/dep dirs and fixed perm
+  settings in the ebuild's pkg_postinst(); this should close bug #7719.
+  
+  21 Sep 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: Added
+  carpaski's patch to add PF to the sandbox's argv[0], closing bug #8141.
+
+  19 Sep 2002; Daniel Robbins <drobbins@gentoo.org> emerge: tweaked emerge so
+  that "--pretend" displays don't show "N" all the time.
+
+  19 Sep 2002; Daniel Robbins <drobbins@gentoo.org> ebuild.sh: tweaked help to
+  not list deprecated options.
+
   25 Sep 2002; Maik Schreiber <blizzy@gentoo.org> cnf/make.globals,
-  cnf/make.globals.ppc: Added /opt/jakarta/tomcat/conf to
-  CONFIG_PROTECT.
+  cnf/make.globals.ppc: Added /opt/jakarta/tomcat/conf to CONFIG_PROTECT. Note
+  by drobbins: this will be removed soon when this gets moved to an /etc/env.d
+  file in the tomcat package.
 
 *portage-2.0.37 (19 Sep 2002): Gentoo Linux 1.4_rc1 version 
 

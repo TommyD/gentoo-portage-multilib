@@ -343,6 +343,8 @@ if "--deep" in myopts:
 	add.extend(["deep"])
 if "--selective" in myopts:
 	add.extend(["selective"])
+if myaction in ["world","system"]:
+	add.extend(["selective"])
 for x in add:
 	if (x not in myparams) and (x not in sub):
 		myparams.append(x)
@@ -842,9 +844,11 @@ class depgraph:
 			else:
 				if x[3]=="nomerge":
 					continue
-				if (not "empty" in myparams) and portage.db[x[1]]["vartree"].exists_specific(x[2]):
+				#we need to use "--emptrytree" testing here rather than "empty" param testing because "empty"
+				#param is used for -u, where you still *do* want to see when something is being upgraded.
+				if (not "--emptytree" in myopts) and portage.db[x[1]]["vartree"].exists_specific(x[2]):
 					addl="  "+yellow("R")+"  "
-				elif (not "empty" in myparams) and portage.db[x[1]]["vartree"].exists_specific_cat(x[2]):
+				elif (not "--emptytree" in myopts) and portage.db[x[1]]["vartree"].exists_specific_cat(x[2]):
 					addl="   "+turquoise("U")+" "
 				else:
 					addl=" "+green("N")+"   "

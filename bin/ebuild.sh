@@ -302,12 +302,12 @@ dyn_unpack() {
 		fi
 	fi
 	install -m0700 -d ${WORKDIR}
-	cd ${WORKDIR}
+	[ -d "$WORKDIR" ] && cd ${WORKDIR}
 	echo ">>> Unpacking source..."
     src_unpack
 	#|| abort_unpack "fail"
 	echo ">>> Source unpacked."
-	cd ..
+	cd $BUILDDIR
     trap SIGINT SIGQUIT
 }
 
@@ -619,7 +619,6 @@ dyn_help() {
 	echo "One or more of the following options can then be specified.  If more"
 	echo "than one option is specified, each will be executed in order."
 	echo
-	echo "  check       : test if all dependencies get resolved"
 	echo "  setup       : execute package specific setup actions"
 	echo "  fetch       : download source archive(s) and patches"
 	echo "  unpack      : unpack/patch sources (auto-fetch if needed)"
@@ -652,7 +651,7 @@ dyn_help() {
 	echo 
 	if [ -n "$USE" ]
 	then
-	    echo "Additionally, support for the following toolkits will be enabled if necessary:"
+	    echo "Additionally, support for the following optional features will be enabled:"
 	    echo 
 	    echo "  ${USE}"
 	fi    
@@ -763,8 +762,8 @@ newdepend() {
 			    DEPEND="${DEPEND} sys-devel/autoconf sys-devel/automake sys-devel/make"
 			    ;;
 		    "/c")
-			    DEPEND="${DEPEND} sys-devel/gcc virtual/glibc sys-devel/ld.so"
-			    RDEPEND="${RDEPEND} virtual/glibc sys-devel/ld.so"
+			    DEPEND="${DEPEND} sys-devel/gcc virtual/glibc"
+			    RDEPEND="${RDEPEND} virtual/glibc"
 			    ;;
 		    *)
 			    DEPEND="$DEPEND $1"
