@@ -6619,7 +6619,7 @@ class dblink:
 					# old package won't yank the file with it. (non-cfgprot related)
 					os.utime(myrealdest,(thismtime,thismtime))
 					zing="---"
-				if self.settings["ARCH"] == "macos" and myrealdest[-2:] == ".a":
+				if self.settings["ARCH"] == "ppc-macos" and myrealdest[-2:] == ".a":
 
 					# XXX kludge, bug #58848; can be killed when portage stops relying on 
 					# md5+mtime, and uses refcounts

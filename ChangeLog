@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  24 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> portage.py:
+  s/macos/ppc-macos/ change.
+
   24 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> portage_locks.py
   portage_db_flat.py: Fixed a couple of race conditions with regard to
   stating files.
