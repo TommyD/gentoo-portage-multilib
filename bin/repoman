@@ -35,7 +35,7 @@ modeshelp={"scan":"Scan current directory tree for QA issues (default)",
 optionshelp={"--pretend":"Don't actually perform commit or fix steps; just show what would be done.",
 "--help":"Show this screen"
 }
-qacats=["digest.stray","digest.missing","ebuild.invalidname","ebuild.namenomatch","changelog.missing","ebuild.notadded","digest.notadded","ebuild.disjointed","digest.disjointed", "DEPEND.bad","RDEPEND.bad","DEPEND.badmasked","RDEPEND.badmasked","ebuild.syntax","ebuild.output"]
+qacats=["digest.stray","digest.missing","ebuild.invalidname","ebuild.namenomatch","changelog.missing","ebuild.notadded","digest.notadded","ebuild.disjointed","digest.disjointed", "DEPEND.bad","RDEPEND.bad","DEPEND.badmasked","RDEPEND.badmasked","ebuild.syntax","ebuild.output","ebuild.nesteddie"]
 qawarnings=["changelog.missing","ebuild.notadded","digest.notadded","DEPEND.badmasked","RDEPEND.badmasked"]
 missingvars=["KEYWORDS","LICENSE","DESCRIPTION","SLOT"]
 allvars=missingvars[:]
@@ -62,7 +62,8 @@ qahelp={
 	"DEPEND.badmasked":"Masked ebuilds with bad DEPEND settings (matched against *all* ebuilds)",
 	"RDEPEND.badmasked":"Masked ebuilds with RDEPEND settings (matched against *all* ebuilds)",
 	"ebuild.syntax":"Error generating cache entry for ebuild; typically caused by ebuild syntax error",
-	"ebuild.output":"A simple sourcing of the ebuild produces output; this breaks ebuild policy."
+	"ebuild.output":"A simple sourcing of the ebuild produces output; this breaks ebuild policy.",
+	"ebuild.nesteddie":"Placing 'die' inside ( ) prints an error, but doesn't stop the ebuild."
 }
 
 def err(txt):
@@ -312,6 +313,9 @@ for x in scanlist:
 			else:
 					stats[mykey]=stats[mykey]+1
 					fails[mykey].append(x+"/"+y+".ebuild: "+repr(mydep[1]))
+		if not os.system("egrep '\([^)]*\<die\>' "+checkdir+"/"+y+".ebuild >/dev/null 2>&1"):
+			stats["ebuild.nesteddie"]=stats["ebuild.nesteddie"]+1
+			fails["ebuild.nesteddie"].append(x+"/"+y+".ebuild")
 
 print
 #dofail will be set to 1 if we have failed in at least one non-warning category
