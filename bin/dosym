@@ -6,6 +6,6 @@
 	fi
     target=${1}
     linkname=${2}
-    ln -sf ${target} ${D}${linkname}
+    ln -snf ${target} ${D}${linkname}
 
 
