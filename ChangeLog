@@ -7,6 +7,13 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  07 Nov 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild-default-functions.sh:
+  Compatability hack to treat USE="selinux" as both a feature, and use.  With the 
+  env saving/restoring, it's possible a binpkg is created on a non-selinux system- 
+  the use vars are preserved and reused, so that systems USE="-selinux", merged on a 
+  selinux system results in preinst's selinux code not being executed.  No labels.
+  That's bad.
+
   07 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portageq.py: 
   Isolated functions from bin/portageq.
 
@@ -27,6 +34,8 @@
   fair amount of protective code, since older env savings were incorrect.  Additionally,
   it properly restores variables attributes- export fex, shopt, etc.  This is the basis
   of the ebuild-daemon.
+  Finally, adds (pre|post) hooks for all relevant ebuild phases.  Required, since 
+  /etc/portage/bashrc is sourced only once.
 
   07 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage_util.py: 
   fixed import issue.

@@ -549,7 +549,7 @@ dyn_preinst() {
 	fi
 
 	# SELinux file labeling (needs to always be last in dyn_preinst)
-	if useq selinux; then
+	if hasq selinux $FEATURES || use selinux; then
 		# only attempt to label if setfiles is executable
 		# and 'context' is available on selinuxfs.
 		if [ -f /selinux/context -a -x /usr/sbin/setfiles ]; then
