@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  03 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> dispatch-conf: Simplified
+  the temp file creation and usage.
+
   03 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> portage.py: Fixed issues
   with PROVIDE calculation by flattening the dep array. #32114
 
