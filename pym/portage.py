@@ -1075,7 +1075,7 @@ def dep_frontend(mytype,myebuild,depstring):
 
 # gets virtual package settings
 def getvirtuals(myroot):
-	if not os.path.exists(profiledir+"/virtuals"):
+	if (not profiledir) or (not os.path.exists(profiledir+"/virtuals")):
 		print ">>>",os.path.normpath(myroot+"/etc/make.profile/virtuals"),"does not exist.  Continuing anyway..."
 		return {}
 	myfile=open(profiledir+"/virtuals")
@@ -1782,6 +1782,23 @@ class dblink:
 					if mydest != pkgfiles[obj][2]:
 						print "--- !destn","sym", obj
 						continue
+				myppath=""
+				for ppath in self.protect:
+					epath=expandpath(obj)
+					if epath[0:len(ppath)]==ppath:
+						masked=0
+						#config file management
+						for pmpath in self.protectmask:
+							if epath[0:len(pmpath)]==pmpath:
+								#skip, it's in the mask
+								masked=1
+								break
+						if not masked: 
+							myppath=ppath
+							break
+				if myppath:
+					print "--- cfg   ","sym",obj
+					continue
 				os.unlink(obj)
 				print "<<<       ","sym",obj
 			elif pkgfiles[obj][0]=="obj":
@@ -1815,11 +1832,45 @@ class dblink:
 				if not isfifo(obj):
 					print "--- !fif  ","fif", obj
 					continue
+				myppath=""
+				for ppath in self.protect:
+					epath=expandpath(obj)
+					if epath[0:len(ppath)]==ppath:
+						masked=0
+						#config file management
+						for pmpath in self.protectmask:
+							if epath[0:len(pmpath)]==pmpath:
+								#skip, it's in the mask
+								masked=1
+								break
+						if not masked: 
+							myppath=ppath
+							break
+				if myppath:
+					print "--- cfg   ","fif",obj
+					continue
 				os.unlink(obj)
 				print "<<<       ","fif",obj
 			elif pkgfiles[obj][0]=="dev":
 				if not isdev(obj):
 					print "--- !dev  ","dev", obj
+					continue
+				myppath=""
+				for ppath in self.protect:
+					epath=expandpath(obj)
+					if epath[0:len(ppath)]==ppath:
+						masked=0
+						#config file management
+						for pmpath in self.protectmask:
+							if epath[0:len(pmpath)]==pmpath:
+								#skip, it's in the mask
+								masked=1
+								break
+						if not masked: 
+							myppath=ppath
+							break
+				if myppath:
+					print "--- cfg   ","fif",obj
 					continue
 				os.unlink(obj)
 				print "<<<       ","dev",obj
