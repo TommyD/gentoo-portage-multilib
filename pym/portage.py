@@ -1750,7 +1750,6 @@ def dep_opconvert(mysplit,myuse):
 	newsplit=[]
 	while mypos<len(mysplit):
 		if type(mysplit[mypos])==types.ListType:
-			#mysplit[mypos]=dep_opconvert(mysplit[mypos],myuse)
 			newsplit.append(dep_opconvert(mysplit[mypos],myuse))
 			mypos += 1
 		elif mysplit[mypos]==")":
@@ -1796,9 +1795,12 @@ def dep_opconvert(mysplit,myuse):
 						newsplit.append(mysplit[mypos+3])
 				mypos += 4
 			else:
-				#normal use mode, and not a list (we checked for that earlier)
+				#normal use mode
 				if enabled:
-					newsplit.append(mysplit[mypos+1])
+					if type(mysplit[mypos+1])==types.ListType:
+						newsplit.append(dep_opconvert(mysplit[mypos+1],myuse))
+					else:
+						newsplit.append(mysplit[mypos+1])
 				#otherwise, continue.
 				mypos += 2
 		else:
