@@ -34,25 +34,6 @@ MAKEOPTS="-j2"
 FETCHCOMMAND='/usr/bin/wget -t 5 --passive-ftp ${URI} -P ${DISTDIR}'
 RESUMECOMMAND='/usr/bin/wget -c -t 5 --passive-ftp ${URI} -P ${DISTDIR}'
 
-# Compile programs with GNOME/SLANG extensions 
-USE="slang readline gpm berkdb gdbm tcpd pam libwww ssl
-     lm_sensors lvm pcmcia-cs alsa
-     nls mitshm
-     esd lcms gif imlib sdl oggvorbis 
-     gnome gtk X qt kde motif opengl mozilla"
-
-# Other stable USE flags
-# 3dnow perl python tcltk java guile ruby mysql postgres ldap odbc ipv6
-# ggi fbcon svga tex bonobo nas qtmt aalib oss arts libg++ pda avi
-# 
-# Other experimental/unstable flags
-# directfb gd ungif gtkhtml socks5 pdflib qt-embedded jfs
-# mta-tls mta-ldap mta-mysql
-#
-# Other build related use flags
-# pic static build bootstrap simpleinit 
-# C Compiler flags
-
 CFLAGS="-O2 -mcpu=i686 -pipe"
 
 # C++ Compiler flags

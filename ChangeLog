@@ -3,7 +3,10 @@
 
 *portage-1.8.10 (01 Apr 2002)
 
-  1 Apr 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: In trying to fix
+  01 Apr 2002; Daniel Robbins <drobbins@gentoo.org> make.globals: removed USE
+  settings from make.globals.
+
+  01 Apr 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: In trying to fix
   the glibc merge bug, we rewrote movefile() and it now runs blazingly fast.  I
   also tweaked the code to remove the need for an ">>> Updating mtimes..."
   stage.  This is all done dynamically now.  *Much* faster.  And hopefully
