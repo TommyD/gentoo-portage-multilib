@@ -13,7 +13,7 @@ os.environ["PORTAGE_CALLER"]="repoman"
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 version="1.2"	
 
-import string,signal,readline,portage,portage_dep,re,cvstree,pickle
+import string,signal,readline,portage,portage_dep,re,cvstree,pickle,tempfile
 from output import *
 from commands import getstatusoutput
 from time import *
@@ -1100,7 +1100,7 @@ else:
 			exithandler()
 	if not commitmessagefile:
 		unlinkfile=1
-		commitmessagefile="/tmp/.repoman.msg"
+		commitmessagefile=tempfile.mkstemp("",".repoman.msg.","/tmp",True)[1]
 		if os.path.exists(commitmessagefile):
 			os.unlink(commitmessagefile)
 		mymsg=open(commitmessagefile,"w")
