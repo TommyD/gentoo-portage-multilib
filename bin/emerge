@@ -975,7 +975,7 @@ class depgraph:
 
 		matches=portage.db[myroot]["vartree"].dbapi.match(pkg)
 		if matches:
-			myslot=portage.db["/"]["porttree"].getslot(pkgver,self.pkgsettings["USE"].split())
+			myslot=portage.db["/"]["porttree"].getslot(pkgver)
 			for match in matches:
 				if portage.pkgcmp(portage.catpkgsplit(pkgver)[1:], portage.catpkgsplit(match)[1:]) < 0:
 					curslot=portage.db[myroot]["vartree"].getslot(match)
@@ -1322,7 +1322,7 @@ class depgraph:
 					if x[0] == "binary":
 						mynewslot=portage.db["/"]["bintree"].getslot(x[2])
 					elif x[0] == "ebuild":
-						mynewslot=portage.db["/"]["porttree"].getslot(x[2],self.pkgsettings["USE"].split())
+						mynewslot=portage.db["/"]["porttree"].getslot(x[2])
 					myoldlist=portage.db[x[1]]["vartree"].dbapi.match(portage.pkgsplit(x[2])[0])
 					myinslotlist=filter((lambda p: portage.db[portage.root]["vartree"].getslot(p)==mynewslot),myoldlist)
 					if myinslotlist:

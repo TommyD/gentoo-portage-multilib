@@ -4338,11 +4338,11 @@ class portagetree:
 	def depcheck(self,mycheck,use="yes",myusesplit=None):
 		return dep_check(mycheck,self.dbapi,use=use,myusesplit=myusesplit)
 
-	def getslot(self,mycatpkg,uselist):
+	def getslot(self,mycatpkg):
 		"Get a slot for a catpkg; assume it exists."
 		myslot = ""
 		try:
-			myslotvar=self.dbapi.aux_get(mycatpkg,["SLOT"])[0]
+			myslot=self.dbapi.aux_get(mycatpkg,["SLOT"])[0]
 		except Exception, e:
 			pass
 		return myslot
@@ -4913,11 +4913,11 @@ class vartree(packagetree):
 		return returnme
 
 	
-	def getslot(self,mycatpkg,uselist=None):
+	def getslot(self,mycatpkg):
 		"Get a slot for a catpkg; assume it exists."
 		myslot = ""
 		try:
-			myslotvar=string.join(grabfile(self.root+VDB_PATH+"/"+mycatpkg+"/SLOT"))
+			myslot=string.join(grabfile(self.root+VDB_PATH+"/"+mycatpkg+"/SLOT"))
 		except Exception, e:
 			pass
 		return myslot
@@ -5810,7 +5810,7 @@ class binarytree(packagetree):
 		getbinpkg.file_get(settings["PORTAGE_BINHOST"]+"/"+tbz2name, mydest, fcmd=settings["RESUMECOMMAND"])
 		return
 
-	def getslot(self,mycatpkg,uselist=None):
+	def getslot(self,mycatpkg):
 		"Get a slot for a catpkg; assume it exists."
 		myslot = ""
 		try:
