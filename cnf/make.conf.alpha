@@ -92,6 +92,12 @@ CXXFLAGS="${CFLAGS}"
 #     upto several hundred megs, or even a few gigs.
 #PKGDIR=${PORTDIR}/packages
 #
+# PORT_LOGDIR is the location where portage will store all the logs it
+#     creates from each individual merge. They are stored as YYMMDD-$PF.log
+#     in the directory specified. This is disabled until you enable it by
+#     providing a directory. Permissions will be modified as needed.
+#PORT_LOGDIR=/var/log/emerge/
+#
 # PORTDIR_OVERLAY is a directory where local ebuilds may be stored without
 #     concern that they will be deleted by rsync updates. Default is not
 #     defined.
