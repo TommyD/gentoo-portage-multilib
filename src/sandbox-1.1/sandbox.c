@@ -238,15 +238,22 @@ void cleanup()
           break;
         }
       }
+
+      file_close(pids_file);
+      pids_file = -1;
+    } else {
+            
+      file_close(pids_file);
+      pids_file = -1;
+
+      /* remove the pidsfile, as this was the last sandbox */
+      unlink(PIDS_FILE);
     }
 
     if (pids_array != NULL) {
       free(pids_array);
       pids_array = NULL;
     }
-
-    file_close(pids_file);
-    pids_file = -1;
   }
 
   if (0 == success) {

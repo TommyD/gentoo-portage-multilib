@@ -2,6 +2,11 @@
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+  31 Aug 2002; Martin Schlemmer <azarah@gentoo.org> :
+
+  Update cleanup() in sandbox.c to remove the PIDSFILE if this is
+  the last sandbox running.
+
   25 Aug 2002; Martin Schlemmer <azarah@gentoo.org> :
 
   Major cleanups to mainly libsandbox.c again.
