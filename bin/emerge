@@ -297,12 +297,6 @@ if ("--debug" in myopts):
 	portage.debug=1
 	portage.settings.lock()
 
-# Python will try to compile the python modules, so we should do
-# it outside of a sandbox first.
-tmpsettings = portage.config(clone=portage.settings)
-portage.spawn("/usr/lib/portage/bin/portageq pkgdir &> /dev/null", tmpsettings, free=1)
-
-
 def emergelog(mystr):
 	if "notitles" not in portage.features:
 		xtermTitle(mystr)

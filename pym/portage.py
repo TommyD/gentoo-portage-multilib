@@ -1830,8 +1830,9 @@ class config:
 		for x in self.keys(): 
 			mydict[x]=self[x]
 		if not mydict.has_key("HOME") and mydict.has_key("BUILD_PREFIX"):
-			writemsg("*** HOME not set. Setting to "+mydict["BUILD_PREFIX"]+"/homedir\n")
-			mydict["HOME"]=mydict["BUILD_PREFIX"]+"/homedir"
+			writemsg("*** HOME not set. Setting to "+mydict["BUILD_PREFIX"]+"\n")
+			mydict["HOME"]=mydict["BUILD_PREFIX"][:]
+
 		return mydict
 
 # XXX fd_pipes should be a way for a process to communicate back.
@@ -2533,12 +2534,11 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		if not os.path.exists(mysettings["T"]):
 			os.makedirs(mysettings["T"])
 		os.chown(mysettings["T"],portage_uid,portage_gid)
-		os.chmod(mysettings["T"],06770)
+		os.chmod(mysettings["T"],02770)
 
 		try:
 			if ("nouserpriv" not in string.split(mysettings["RESTRICT"])):
 				if ("userpriv" in features) and (portage_uid and portage_gid):
-					mysettings["HOME"]=mysettings["BUILD_PREFIX"]+"/homedir"
 					if (secpass==2):
 						if os.path.exists(mysettings["HOME"]):
 							spawn("rm -Rf "+mysettings["HOME"],mysettings, free=1)
@@ -2566,15 +2566,24 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 			return 1
 
 		try:
+			if not os.path.exists(mysettings["HOME"]):
+				os.makedirs(mysettings["HOME"])
+			os.chown(mysettings["HOME"],portage_uid,portage_gid)
+			os.chmod(mysettings["HOME"],02770)
+		except OSError, e:
+			print "!!! File system problem. (ReadOnly? Out of space?)"
+			print "!!! Failed to create fake home directory in BUILDDIR"
+			print "!!!",str(e)
+			return 1
+
+		try:
 			if ("userpriv" in features) and ("ccache" in features):
 				if (not mysettings.has_key("CCACHE_DIR")) or (mysettings["CCACHE_DIR"]==""):
 					mysettings["CCACHE_DIR"]=mysettings["PORTAGE_TMPDIR"]+"/ccache"
 				if not os.path.exists(mysettings["CCACHE_DIR"]):
 					os.makedirs(mysettings["CCACHE_DIR"])
-				if not os.path.exists(mysettings["HOME"]):
-					os.makedirs(mysettings["HOME"])
-				os.chown(mysettings["HOME"],portage_uid,portage_gid)
-				os.chmod(mysettings["HOME"],06770)
+				os.chown(mysettings["CCACHE_DIR"],portage_uid,portage_gid)
+				os.chmod(mysettings["CCACHE_DIR"],02770)
 		except OSError, e:
 			print "!!! File system problem. (ReadOnly? Out of space?)"
 			print "!!! Perhaps: rm -Rf",mysettings["BUILD_PREFIX"]
@@ -2620,7 +2629,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 			if os.access(mysettings["PORT_LOGDIR"]+"/",os.W_OK):
 				try:
 					os.chown(mysettings["BUILD_PREFIX"],portage_uid,portage_gid)
-					os.chmod(mysettings["PORT_LOGDIR"],06770)
+					os.chmod(mysettings["PORT_LOGDIR"],02770)
 					if not mysettings.has_key("LOG_PF") or (mysettings["LOG_PF"] != mysettings["PF"]):
 						mysettings["LOG_PF"]=mysettings["PF"]
 						mysettings["LOG_COUNTER"]=str(db[myroot]["vartree"].dbapi.get_counter_tick_core("/"))
