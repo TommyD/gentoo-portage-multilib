@@ -166,7 +166,7 @@ digest_check() {
 		echo '!!!'" Ebuild fetch to retrieve files."
 		return 1
 	fi	
-	local mycdigest=`grep " ${1}" ${FILESDIR}/digest-${PF} | cut -f2 -d" "`
+	local mycdigest=`grep " ${1} " ${FILESDIR}/digest-${PF} | cut -f2 -d" "`
 	if [ -z "$mycdigest" ]
 	then
 		echo
