@@ -734,12 +734,10 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 		print "!!! Please specify a valid command."
 		return 1
 
-def isdev(x):
-	mymode=os.stat(x)[ST_MODE]
-	return ( S_ISCHR(mymode) or S_ISBLK(mymode))
-
 def isfifo(x):
 	mymode=os.stat(x)[ST_MODE]
+	if S_ISLNK(mymode):
+		return 0
 	return S_ISFIFO(mymode)
 
 expandcache={}
@@ -2065,9 +2063,6 @@ class dblink:
 				os.unlink(obj)
 				print "<<<       ","fif",obj
 			elif pkgfiles[obj][0]=="dev":
-				if not isdev(obj):
-					print "--- !dev  ","dev", obj
-					continue
 				print "---       ","dev",obj
 
 		#remove provides

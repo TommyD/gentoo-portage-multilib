@@ -2,20 +2,23 @@
 # Copyright 2001 Gentoo Technologies, Inc.; Distributed under the GPL
 # Written by Daniel Robbins (drobbins@gentoo.org)
 
+  18 Jan 2002; Slight tweaks spurred by bug #172.  This bug was previously
+  fixed.
+  
   17 Jan 2002; The package chosen by "emerge sys-apps/shadow" now matches that
-  chosen in an emerge update or emerge system.  I forgot to add some "*" dep code
-  to the dep_nomatch() method; this is now fixed.
+  chosen in an emerge update or emerge system.  I forgot to add some "*" dep
+  code to the dep_nomatch() method; this is now fixed.
 
-  12 Jan 2002; "emerge sys-apps/bash/" now works. (trailing "/" stripped to make
-  tab-completion users happy)  This fixes bug #119
+  12 Jan 2002; "emerge sys-apps/bash/" now works. (trailing "/" stripped to
+  make tab-completion users happy)  This fixes bug #119
 
-  12 Jan 2002; Portage should no longer bomb out if the current working directory
-  doesn't exist (has been deleted from underneath).
+  12 Jan 2002; Portage should no longer bomb out if the current working
+  directory doesn't exist (has been deleted from underneath).
   
   12 Jan 2002; added "--world" option for "emerge update".   This tells Portage
-  to update the base system *as well as* upgrade any packages that are currently
-  installed but have new versions available.  This is your standard full system
-  update command.  This fixes bug #122
+  to update the base system *as well as* upgrade any packages that are
+  currently installed but have new versions available.  This is your standard
+  full system update command.  This fixes bug #122
 
   12 Jan 2002; Added an expandpath() cache which speeds up merging 
   dramatically.
