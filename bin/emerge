@@ -1,6 +1,6 @@
 #!/usr/bin/env spython
 import os
-from os.path import walk, splitext, exists, basename
+from os.path import walk, splitext, exists, basename, dirname
 import sys
 
 if os.getuid()!=0:
@@ -418,7 +418,7 @@ def post_emerge(retval=0):
 
 #number of ebuilds merged
 merged=0
-opts=["--world","--help","--pretend","--buildpkg","--usepkg","--autoclean","--clean","--debug","--fetchonly","--noreplace","--onlydeps","--verbose","--search","--unmerge"]
+opts=["--world","--help","--pretend","--buildpkg","--usepkg","--autoclean","--clean","--debug","--fetchonly","--noreplace","--onlydeps","--verbose","--search","--unmerge","--safe"]
 modes=["rsync","system","update","config"]
 myopts=[]
 mymode=[]
@@ -541,6 +541,10 @@ if "--help" in myopts:
 		print "              \x1b[37;01m<=sys-devel/binutils-2.11.92.0.12.3-r1\x1b[0m matches"
 		print "                  binutils-2.11.90.0.7 and binutils-2.11.92.0.12.3-r1"
 		print
+		print "       \x1b[32;01m--safe\x1b[0m"
+		print "              complements the --unmerge option to make sure that the last"
+		print "              installed version of an application will not be unmerged"
+		print
 		print "       \x1b[32;01m--search\x1b[0m"
 		print "              searches for matches of the supplied string in the current local"
 		print "              portage tree. The search string is a regular expression."
@@ -653,6 +657,9 @@ if "--unmerge" in myopts:
 		# ebuild file and add the absolute paths of these ebuild to a list
 		for x in myfiles:
 
+			# collection of full package paths for this particular package
+			full_paths_local={}
+
 			# an absolute path has been given
 			if (x[0]=='/'):
 				path_parts=split(x, '/')
@@ -673,7 +680,7 @@ if "--unmerge" in myopts:
 						print "The ebuild '"+full_path+"' couldn't be found."
 						print "Your portage installation tree seems to be corrupted."
 					else:
-						full_paths[full_path]=1
+						full_paths_local[full_path]=1
 
 			# a category and package name have been given
 			else:
@@ -692,7 +699,23 @@ if "--unmerge" in myopts:
 							print "The ebuild '"+full_path+"' couldn't be found."
 							print "Your portage installation tree seems to be corrupted."
 						else:
-							full_paths[full_path]=1
+							full_paths_local[full_path]=1
+
+			# check for the --safe switch
+			if "--safe" in myopts:
+				if len(full_paths_local) > 0:
+					latest=["",0]
+					# determine the latest installed package
+					for full_path in full_paths_local.keys():
+						contents_path=dirname(full_path)+"/CONTENTS"
+						contents_mtime=os.stat(contents_path)[8]
+						if contents_mtime > latest[1]:
+							latest=[full_path,contents_mtime]
+					if latest[0]:
+						del full_paths_local[latest[0]]
+
+			# add all local paths to the global scope
+			full_paths.update(full_paths_local)
 
 		if len(full_paths)==0:
 			print "Couldn't find any matching installed packages."

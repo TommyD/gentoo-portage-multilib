@@ -1,6 +1,9 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+  1 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge :
+  added --safe switch to complement the --unmerge option
+
   1 Feb 2002; G.Bevin <gbevin@gentoo.org> portage.py :
   rewrote the packagename without category support to also graceously handle
   deps specifiers at the beginning, this shouldn't be used in the ebuilds, but
