@@ -1,6 +1,11 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-2.0.1 (16 Jun 2002)
+
+  16 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, emerge: fixed a
+  virtuals expansion bug that would cause virtuals to be consulted too early.
+
 *portage-2.0 (16 Jun 2002)
 
   16 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, ebuild.sh,

@@ -1882,19 +1882,19 @@ def cpv_getkey(mycpv):
 
 def key_expand(mykey,mydb=None):
 	mysplit=mykey.split("/")
-	if len(mysplit)==2:
-		if virts and virts.has_key(mykey):
-			return virts[mykey]
-		else:
-			return mykey
-	#our key doesn't have a category; add one
-	if mydb:
-		for x in categories:
-			if mydb.cp_list(x+"/"+mykey):
-				return x+"/"+mykey
-	if virts_p.has_key(mykey):
-		return(virts_p[mykey])
-	return "null/"+mykey
+	if len(mysplit)==1:
+		if mydb and type(mydb)==types.InstanceType:
+			for x in categories:
+				if mydb.cp_list(x+"/"+mykey):
+					return x+"/"+mykey
+			if virts_p.has_key(mykey):
+				return(virts_p[mykey])
+		return "null/"+mykey
+	elif mydb:
+		if type(mydb)==types.InstanceType:
+			if (not mydb.cp_list(mykey)) and virts and virts.has_key(mykey):
+				return virts[mykey]
+		return mykey
 
 def cpv_expand(mycpv,mydb=None):
 	myslash=mycpv.split("/")
@@ -1904,8 +1904,11 @@ def cpv_expand(mycpv,mydb=None):
 			mykey=myslash[0]+"/"+mysplit[0]
 		else:
 			mykey=mycpv
-		if virts and virts.has_key(mykey):
-			mykey=virts[mykey]
+		if mydb:
+			if type(mydb)==types.InstanceType:
+				if (not mydb.cp_list(mykey)) and virts and virts.has_key(mykey):
+					mykey=virts[mykey]
+			#we only perform virtual expansion if we are passed a dbapi
 	else:
 		#specific cpv, no category, ie. "foo-1.0"
 		if mysplit:
@@ -1917,9 +1920,10 @@ def cpv_expand(mycpv,mydb=None):
 			for x in categories:
 				if mydb.cp_list(x+"/"+myp):
 					mykey=x+"/"+myp
-		if not mykey:
+		if not mykey and type(mydb)!=types.ListType:
 			if virts_p.has_key(myp):
 				mykey=virts_p(myp)
+			#again, we only perform virtual expansion if we have a dbapi (not a list)				
 		if not mykey:
 			mykey="null/"+myp
 	if mysplit:
@@ -1930,7 +1934,7 @@ def cpv_expand(mycpv,mydb=None):
 	else:
 		return mykey
 
-def dep_expand(mydep,mydb=None):
+def dep_expand(mydep,mydb):
 	if not len(mydep):
 		return mydep
 	if mydep[0]=="*":
@@ -1949,7 +1953,6 @@ def dep_expand(mydep,mydb=None):
 		prefix=mydep[:1]
 		mydep=mydep[1:]
 	return prefix+cpv_expand(mydep,mydb)+postfix
-
 
 
 def dep_check(depstring,mydbapi,lookatuse=1):
@@ -2064,7 +2067,7 @@ def match(origdep,mydata):
 		mydep=dep_expand(origdep,mydata)
 		mylist=mydata.cp_list(dep_getkey(mydep))
 	else:
-		mydep=dep_expand(origdep)
+		mydep=dep_expand(origdep,None)
 		mylist=mydata
 	mycpv=dep_getcpv(mydep)
 	if isspecific(mycpv):
@@ -2244,7 +2247,6 @@ class portagetree:
 
 	def getname(self,pkgname):
 		"returns file location for this particular package"
-		pkgname=self.resolve_specific(pkgname)
 		if not pkgname:
 			return ""
 		mysplit=string.split(pkgname,"/")
@@ -2468,18 +2470,6 @@ class portdbapi(dbapi):
 		if os.path.exists(self.portroot+"/"+cps[0]+"/"+cps[1]+"/"+cps2[1]+".ebuild"):
 			return 1
 		return 0
-
-	def cp_num(self,mykey):
-		"Tells us whether an actual category and package exists on disk (no masking)"
-		ecount=0
-		try:
-			mylist=listdir(self.portroot+"/"+mykey)
-			for x in mylist:
-				if x[-7:]==".ebuild":
-					ecount=ecount+1	
-		except OSError,IOError:
-			return 0
-		return ecount
 
 	def cp_all(self):
 		"returns a list of all keys in our tree"

@@ -1209,7 +1209,6 @@ else:
 			else:
 				mykey=""
 				if "--usepkg" in myopts:
-					print "DEBUG: bestmatching",mypkg
 					mykey=portage.db[portage.root]["bintree"].dep_bestmatch(mypkg)
 					mytype="binary"
 				if not mykey:
