@@ -2153,8 +2153,9 @@ class dblink:
 				ppath=os.path.normpath(myroot+"/"+x)+"/"
 				if os.path.isdir(ppath):
 					self.protect.append(ppath)
-				else:
-					print "!!!",ppath,"not found.  Config file management disabled for this directory."
+			# Don't warn about a missing config file path
+			#	else:
+			#		print "!!!",ppath,"not found.  Config file management disabled for this directory."
 			self.protectmask=[]
 			for x in string.split(settings["CONFIG_PROTECT_MASK"]):
 				ppath=os.path.normpath(myroot+"/"+x)+"/"

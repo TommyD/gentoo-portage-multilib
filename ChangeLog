@@ -4,6 +4,9 @@
 
 *portage 1.8.6-r3 (28 Jan 2002)
 
+  28 Jan 2002; G.Bevin <gbevin@gentoo.org> : disabled warnings about non
+  existant config file paths
+
   28 Jan 2002; G.Bevin <gbevin@gentoo.org> : added verwilst pkgsearch code,
   which was turned into a seperate class and refactored for clarity and
   execution speed
