@@ -2311,11 +2311,19 @@ def ververify(myorigval,silent=1):
 		vercache[myorigval]=0
 		return 0
 	try:
-		foo=string.atoi(ep[0])
+		foo=string.atoi(ep[0][-1])
+		chk=ep[0]
 	except:
-		#this needs to be numeric, i.e. the "1" in "1_alpha"
+		# because it's ok last char is not numeric. example: foo-1.0.0a_pre1
+		chk=ep[0][:-1]
+
+	try:
+		foo=string.atoi(chk)
+	except:
+		#this needs to be numeric or numeric+single letter,
+		#i.e. the "1" in "1_alpha" or "1a_alpha"
 		if not silent:
-			print "!!! Name error in",myorigval+": characters before _ must be numeric"
+			print "!!! Name error in",myorigval+": characters before _ must be numeric or numeric+single letter"
 		vercache[myorigval]=0
 		return 0
 	for mye in endversion_keys:
@@ -4067,11 +4075,11 @@ class portdbapi(dbapi):
 			else:
 				if debug:
 					writemsg("Generating cache entry(0) for: "+str(myebuild)+"\n")
-				myret = doebuild(myebuild,"depend","/",self.mysettings)
+				myret=doebuild(myebuild,"depend","/",self.mysettings)
 				if myret:
 				
 					#depend returned non-zero exit code...
-					writemsg(str(red("\naux_get():")+" (0) Error in "+mycpv+" ebuild. ("+str(ret)+")\n"
+					writemsg(str(red("\naux_get():")+" (0) Error in "+mycpv+" ebuild. ("+str(myret)+")\n"
              "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
 					raise KeyError
 
@@ -4168,9 +4176,10 @@ class portdbapi(dbapi):
 			
 				if debug:
 					writemsg("Generating cache entry(2) for: "+str(myebuild)+"\n")
-				if doebuild(myebuild,"depend","/",self.mysettings):
+				myret=doebuild(myebuild,"depend","/",self.mysettings)
+				if myret:
 					#depend returned non-zero exit code...
-					writemsg(str(red("\naux_get():")+" (2) Error in "+mycpv+" ebuild. ("+str(ret)+")\n"
+					writemsg(str(red("\naux_get():")+" (2) Error in "+mycpv+" ebuild. ("+str(myret)+")\n"
 					  "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
 					raise KeyError
 				try:

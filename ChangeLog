@@ -2,8 +2,15 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  29 Nov 2003; Masatomo Nakano <nakano@gentoo.org> portage.py: Fixed issue with
+	ebuild name rule. Fixed typo with variable name.
+	This closes bug #17172,#34666
+
+  29 Nov 2003; Masatomo Nakano <nakano@gentoo.org> emerge: Fixed issue with 
+	lacking the "setting" argument for pkgmerge()
+
   29 Nov 2003; Masatomo Nakano <nakano@gentoo.org> emerge: fixed rsync bug.
-  	This closes bug #34660.
+	This closes bug #34660.
 
   28 Nov 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Migration
 	to non-global settings started -- class config has new functionality and

@@ -1403,7 +1403,7 @@ class depgraph:
 						mytbz2=portage.db[portage.root]["bintree"].getname(x[2])
 						emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Merging ("+x[pkgindex]+"::"+y+")")
 						self.pkgsettings["EMERGE_FROM"] = "binary"
-						retval=portage.pkgmerge(mytbz2,myroot)
+						retval=portage.pkgmerge(mytbz2,myroot,self.pkgsettings)
 						if retval==None:
 							sys.exit(1)
 				else:
@@ -1425,7 +1425,7 @@ class depgraph:
 				#merge the tbz2
 				mytbz2=portage.db[portage.root]["bintree"].getname(x[2])
 				emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Merging Binary ("+x[pkgindex]+"::"+y+")")
-				retval=portage.pkgmerge(mytbz2,x[1])
+				retval=portage.pkgmerge(mytbz2,x[1],self.pkgsettings)
 				if retval==None:
 					sys.exit(1)
 				#need to check for errors
