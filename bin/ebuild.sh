@@ -180,6 +180,7 @@ econf() {
     if [ -x ./configure ] ; then
 	./configure \
 	    --prefix=/usr \
+	    --host=${CHOST} \
 	    --mandir=/usr/share/man \
 	    --infodir=/usr/share/info \
 	    --datadir=/usr/share \

@@ -2702,7 +2702,7 @@ class vartree(packagetree):
 		self.populated=1
 
 	
-auxdbkeys=['DEPEND','RDEPEND','SLOT','SRC_URI','RESTRICT','HOMEPAGE','LICENSE','DESCRIPTION','KEYWORDS','INHERITED']
+auxdbkeys=['DEPEND','RDEPEND','SLOT','SRC_URI','RESTRICT','HOMEPAGE','LICENSE','DESCRIPTION','KEYWORDS','INHERITED','IUSE']
 auxdbkeylen=len(auxdbkeys)
 class portdbapi(dbapi):
 	"this tree will scan a portage directory located at root (passed to init)"
@@ -2752,7 +2752,10 @@ class portdbapi(dbapi):
 		#first, we take a look at the mtime of the ebuild and the cache entry to see if we need
 		#to regenerate our cache entry.
 		try:
-			dmtime=os.stat(mydbkey)[ST_MTIME]
+			mydbkeystat=os.stat(mydbkey)
+			dmtime=mydbkeystat[ST_MTIME]
+			if mydbkeystat[ST_SIZE] == 0:
+				doregen=1
 		except OSError:
 			doregen=1
 		if not doregen:
