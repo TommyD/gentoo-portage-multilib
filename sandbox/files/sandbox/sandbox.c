@@ -9,23 +9,9 @@
 **  it's very important that the --enable-static-link option is NOT specified
 **	
 **	Copyright (C) 2001 The Leaf, http://www.theleaf.be
+**  Distributed under the terms of the GNU General Public License, v2 or later 
 **	Author : Geert Bevin <gbevin@theleaf.be>
-**
-**	This program is free software; you can redistribute it and/or modify
-**	it under the terms of the GNU General Public License as published by
-**	the Free Software Foundation; either version 2 of the License, or
-**	(at your option) any later version.
-**	
-**	This program is distributed in the hope that it will be useful,
-**	but WITHOUT ANY WARRANTY; without even the implied warranty of
-**	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-**	GNU General Public License for more details.
-**	
-**	You should have received a copy of the GNU General Public License
-**	along with this program; if not, write to the Free Software
-**	
-**	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-**		
+**  $Header$
 */
 
 #define _GNU_SOURCE
@@ -44,9 +30,22 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#define LIB_NAME	"libsandbox.so"
-#define BASHRC_NAME	"sandbox.bashrc"
-#define PIDS_FILE	"/tmp/sandboxpids.tmp"
+#define LIB_NAME		"libsandbox.so"
+#define BASHRC_NAME		"sandbox.bashrc"
+#define PIDS_FILE		"/tmp/sandboxpids.tmp"
+#define LOG_FILE_PREFIX	"/tmp/sandbox-"
+#define LOG_FILE_EXT	".log"
+
+#define ENV_SANDBOX_LOG		"SANDBOX_LOG"
+#define ENV_SANDBOX_DIR		"SANDBOX_DIR"
+#define ENV_SANDBOX_LIB		"SANDBOX_LIB"
+#define ENV_SANDBOX_DENY	"SANDBOX_DENY"
+#define ENV_SANDBOX_READ	"SANDBOX_READ"
+#define ENV_SANDBOX_WRITE	"SANDBOX_WRITE"
+#define ENV_SANDBOX_ON		"SANDBOX_ON"
+#define ENV_SANDBOX_BEEP	"SANDBOX_BEEP"
+
+#define DEFAULT_BEEP_COUNT	3
 
 int	preload_adaptable = 1;
 int cleaned_up = 0;
@@ -329,6 +328,7 @@ int main(int argc, char** argv)
 	char*		tmp_string = NULL;
 	char		full_sandbox_path[255];
 	char		sandbox_log[255];
+	char*		sandbox_log_env;
 	struct stat	sandbox_log_stat;
 	int			sandbox_log_presence = 0;
 	int			sandbox_log_file = -1;
@@ -348,7 +348,7 @@ int main(int argc, char** argv)
 	}
 
 	/* check if a sandbox is already running */
-	if (NULL != getenv("SANDBOX_ON"))
+	if (NULL != getenv(ENV_SANDBOX_ON))
 	{
 		fprintf(stderr, "Not launching a new sandbox instance\nAnother one is already running in this process hierarchy.\n");
 
@@ -572,24 +572,30 @@ int main(int argc, char** argv)
 			argv_bash[2] = sandbox_rc;
 
 			sprintf(pid_string, "%d", getpid());
-			strcpy(sandbox_log, "/tmp/sandbox");
+			strcpy(sandbox_log, LOG_FILE_PREFIX);
+			sandbox_log_env = getenv(ENV_SANDBOX_LOG);
+			if (sandbox_log_env)
+			{
+				strcat(sandbox_log, sandbox_log_env);
+				strcat(sandbox_log, "-");
+			}
 			strcat(sandbox_log, pid_string);
-			strcat(sandbox_log, ".log");
-			setenv("SANDBOX_LOG", sandbox_log, 1);
+			strcat(sandbox_log, LOG_FILE_EXT);
+			setenv(ENV_SANDBOX_LOG, sandbox_log, 1);
 			home_dir = getenv("HOME");
 			portage_tmp_dir = getenv("PORTAGE_TMPDIR");
-			setenv("SANDBOX_DIR", sandbox_dir, 1);
-			setenv("SANDBOX_LIB", sandbox_lib, 1);
+			setenv(ENV_SANDBOX_DIR, sandbox_dir, 1);
+			setenv(ENV_SANDBOX_LIB, sandbox_lib, 1);
 			setenv("LD_PRELOAD", sandbox_lib, 1);
-			if (NULL == getenv("SANDBOX_DENY"))
+			if (NULL == getenv(ENV_SANDBOX_DENY))
 			{
-				setenv("SANDBOX_DENY", "", 1);
+				setenv(ENV_SANDBOX_DENY, "", 1);
 			}
-			if (NULL == getenv("SANDBOX_READ"))
+			if (NULL == getenv(ENV_SANDBOX_READ))
 			{
-				setenv("SANDBOX_READ", "/", 1);
+				setenv(ENV_SANDBOX_READ, "/", 1);
 			}
-			if (NULL == getenv("SANDBOX_WRITE"))
+			if (NULL == getenv(ENV_SANDBOX_WRITE))
 			{
 				strcpy(sandbox_write_var, "/dev/null:/dev/pts/:/dev/tty:/tmp/");
 				/* this is temporary until Hallski finds how to prevent scrollkeeper from writing there during install */
@@ -606,9 +612,9 @@ int main(int argc, char** argv)
 				{
 					strcat(sandbox_write_var, portage_tmp_dir);
 				}
-				setenv("SANDBOX_WRITE", sandbox_write_var, 1);
+				setenv(ENV_SANDBOX_WRITE, sandbox_write_var, 1);
 			}
-			setenv("SANDBOX_ON", "1", 0);
+			setenv(ENV_SANDBOX_ON, "1", 0);
 
 			/* if the portage temp dir was present, cd into it */
 			if (NULL != portage_tmp_dir)
@@ -730,7 +736,8 @@ int main(int argc, char** argv)
 			else
 			{
 				int		i = 0;
-				int		count = 0;
+				char*	beep_count_env = NULL;
+				int		beep_count = 0;
 				int		length = 0;
 				char	buffer[255];
 
@@ -753,11 +760,19 @@ int main(int argc, char** argv)
 					success = 0;
 				}
 				
-				count = 5;
-				for (i = 0; i < count; i++)
+				beep_count_env = getenv(ENV_SANDBOX_BEEP);
+				if (beep_count_env)
+				{
+					beep_count = atoi(beep_count_env);
+				}
+				else
+				{
+					beep_count = DEFAULT_BEEP_COUNT;
+				}
+				for (i = 0; i < beep_count; i++)
 				{
 					fputc('\a', stderr);
-					if (i < count -1)
+					if (i < beep_count -1)
 					{
 						sleep(1);
 					}

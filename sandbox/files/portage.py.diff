@@ -1,5 +1,5 @@
---- portage.py.orig	Tue Dec  4 02:03:34 2001
-+++ portage.py	Tue Dec  4 00:38:46 2001
+--- portage.py.orig	Thu Dec  6 22:24:34 2001
++++ portage.py	Thu Dec  6 23:10:11 2001
 @@ -525,11 +525,14 @@
  	global settings
  	mypid=os.fork()
@@ -18,3 +18,11 @@
  		os.execve(mycommand,myargs,settings.environ())
  		return
  	retval=os.waitpid(mypid,0)[1]
+@@ -559,6 +562,7 @@
+ 	#PEBUILD
+ 	settings["FILESDIR"]=settings["O"]+"/files"
+ 	settings["PF"]=os.path.basename(settings["EBUILD"])[:-7]
++	settings["SANDBOX_LOG"]=settings["PF"]
+ 	mysplit=pkgsplit(settings["PF"],0)
+ 	if mysplit==None:
+ 		print "!!! Error: PF is null; exiting."

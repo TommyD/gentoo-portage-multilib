@@ -16,7 +16,9 @@ src_unpack() {
 
 	mkdir -p ${S}
 	cd ${S}
-	cp ${FILESDIR}/sandbox/* . || die
+	cp ${FILESDIR}/sandbox/*sandbox* . || die
+	cp ${FILESDIR}/sandbox/Makefile . || die
+	
 }
 
 src_compile() {
