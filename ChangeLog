@@ -1,165 +1,197 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
-# Copyright 2001 Gentoo Technologies, Inc.; Distributed under the GPL
-# Written by Daniel Robbins (drobbins@gentoo.org)
+# Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
-  1 Feb 2002; G.Bevin <gbevin@gentoo.org> : added emerge --unmerge support
+  1 Feb 2002; G.Bevin <gbevin@gentoo.org> portage.py :
+  rewrote the packagename without category support to also graceously handle
+  deps specifiers at the beginning, this shouldn't be used in the ebuilds, but
+  are very handy when using emerge --unmerge
 
-  1 Feb 2002; G.Bevin <gbevin@gentoo.org> : added packagename without category
-  support in the portage.py dep_match function
+  1 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge :
+  added emerge --unmerge support
+
+  1 Feb 2002; G.Bevin <gbevin@gentoo.org> portage.py :
+  added packagename without category support in the dep_match function
 
 *portage 1.8.7 (30 Jan 2002)
 
-  30 Jan 2002; G.Bevin <gbevin@gentoo.org> : integrated and slightly adapted
-  Brent Rahn's code to support package names without category
+  30 Jan 2002; G.Bevin <gbevin@gentoo.org> portage.py :
+  integrated and slightly adapted Brent Rahn's code to support package names
+  without category
 
-  30 Jan 2002; G.Bevin <gbevin@gentoo.org> : integrated and fixd Azarah's patch
-  to fix the wrongly generated archive size in the digests
+  30 Jan 2002; G.Bevin <gbevin@gentoo.org> ebuild.sh :
+  integrated and fixed Azarah's patch to fix the wrongly generated archive size
+  in the digests
 
 *portage 1.8.6-r3 (28 Jan 2002)
 
-  28 Jan 2002; G.Bevin <gbevin@gentoo.org> : disabled warnings about non
-  existant config file paths
+  28 Jan 2002; G.Bevin <gbevin@gentoo.org> portage.py :
+  disabled warnings about non existant config file paths
 
-  28 Jan 2002; G.Bevin <gbevin@gentoo.org> : added verwilst pkgsearch code,
-  which was turned into a seperate class and refactored for clarity and
-  execution speed
+  28 Jan 2002; G.Bevin <gbevin@gentoo.org> emerge :
+  added verwilst pkgsearch code, which was turned into a seperate class and
+  refactored for clarity and execution speed
 
-  28 Jan 2002; G.Bevin <gbevin@gentoo.org> : renamed _xxx vars to _prepart
-  in Vitaly's code addition
+  28 Jan 2002; G.Bevin <gbevin@gentoo.org> portage.py :
+  renamed _xxx vars to _prepart in Vitaly's code addition
 
 *portage 1.8.6-r2 (27 Jan 2002)
 
-  24 Jan 2002; Vitaly Kushneriuk <vitaly@gentoo.org>: Fixed version compare code
-  Also added test script to test future versions.
+  24 Jan 2002; Vitaly Kushneriuk <vitaly@gentoo.org> portage.py :
+  Fixed version compare code Also added test script to test future versions.
 
 *portage 1.8.6-r1 (24 Jan 2002)
 
-  24 Jan 2002; <karltk@gentoo.org>: Fixed to typos in dojar
+  24 Jan 2002; Karl Trygve Kalleberg <karltk@gentoo.org> dojar:
+  Fixed typos.
   
 *portage 1.8.6 (23 Jan 2002)
-  22 Jan 2002; G.Bevin <gbevin@gentoo.org> : added an additional check for 
-  SANDBOX_ON in libsandbox.c to optimize the speed in the execvp function call.
-  Also removed error messages being printed when the PATH var isn't set.
-  
-  20 Jan 2002; <karltk@gentoo.org> : added dojar shell command as a java JAR
-  handler
 
-  17 Jan 2002; The package chosen by "emerge sys-apps/shadow" now matches that
-  chosen in an emerge update or emerge system.  I forgot to add some "*" dep code
-  to the dep_nomatch() method; this is now fixed.
+  22 Jan 2002; G.Bevin <gbevin@gentoo.org> libsandbox.c :
+  added an additional check for SANDBOX_ON to optimize the speed in the execvp
+  function call. Also removed error messages being printed when the PATH var
+  isn't set.
+  
+  20 Jan 2002; Karl Trygve Kalleberg <karltk@gentoo.org> dojar :
+  added dojar shell command as a java JAR handler
+
+  17 Jan 2002; Daniel Robbins <drobbins@gentoo.org> :
+  The package chosen by "emerge sys-apps/shadow" now matches that chosen in an
+  emerge update or emerge system.  I forgot to add some "*" dep code to the
+  dep_nomatch() method; this is now fixed.
 
 *portage 1.8.5 (13 Jan 2002)
 
-  13 Jan 2002; G.Bevin <gbevin@gentoo.org> : added fine grained maintainer
-  settings
+  13 Jan 2002; G.Bevin <gbevin@gentoo.org> ebuilds.sh, portage.py:
+  added fine grained maintainer settings
 
 *portage 1.8.4 (13 Jan 2002)
-  12 Jan 2002; "emerge sys-apps/bash/" now works. (trailing "/" stripped to make
+
+  12 Jan 2002; Daniel Robbins <drobbins@gentoo.org> :
+  "emerge sys-apps/bash/" now works. (trailing "/" stripped to make
   tab-completion users happy)  This fixes bug #119
 
-  12 Jan 2002; Portage should no longer bomb out if the current working directory
-  doesn't exist (has been deleted from underneath).
+  12 Jan 2002; Daniel Robbins <drobbins@gentoo.org> :
+  Portage should no longer bomb out if the current working directory doesn't
+  exist (has been deleted from underneath).
   
-  12 Jan 2002; added "--world" option for "emerge update".   This tells Portage
-  to update the base system *as well as* upgrade any packages that are currently
+  12 Jan 2002; Daniel Robbins <drobbins@gentoo.org> :
+  added "--world" option for "emerge update".   This tells Portage to update
+  the base system *as well as* upgrade any packages that are currently
   installed but have new versions available.  This is your standard full system
   update command.  This fixes bug #122
 
-  12 Jan 2002; Added an expandpath() cache which speeds up merging 
-  dramatically.
+  12 Jan 2002; Daniel Robbins <drobbins@gentoo.org> :
+  Added an expandpath() cache which speeds up merging dramatically.
 
 *portage 1.8.3 (11 Jan 2002)
-  11 Jan 2002; Mikael Hallendal (hallski@gentoo.org): added functions econf and
-  einstall. Also made src_compile having a default implementation.
+
+  11 Jan 2002; Mikael Hallendal <hallski@gentoo.org> ebuild.sh:
+  added functions econf and einstall. Also made src_compile having a default
+  implementation.
 
 *portage 1.8.2 (07 Jan 2002)
-  07 Jan 2002; sandbox included in portage
-	
-*portage 1.8.1 (30 Dec 2001)	
-  29 Dec 2001; "emerge update" is now functional!  Although the
-  algorithm really should be sound, it is still considered in testing
-  since we may need to tweak some dependencies.
 
-  27 Dec 2001; Removed objprelink from the default USE variable.
+  07 Jan 2002; G.Bevin <gbevin@gentoo.org> :
+  sandbox included in portage
+	
+*portage 1.8.1 (30 Dec 2001)
+
+  29 Dec 2001; Daniel Robbins <drobbins@gentoo.org> :
+  "emerge update" is now functional!  Although the algorithm really should be
+  sound, it is still considered in testing since we may need to tweak some
+  dependencies.
+
+  27 Dec 2001; Daniel Robbins <drobbins@gentoo.org> :
+  Removed objprelink from the default USE variable.
 
 *portage 1.8.0 (22 Dec 2001)
 
-  22 Dec 2001; I messed up the "transparent .so library" update.  Included
-  is the correct fix, which seems to allow glibc to update on my system
-  without any tricks.  I just merged a new glibc while in X, without using
-  any of glibc's old pkg_postinst/pkg_preinst hacks.
+  22 Dec 2001; Daniel Robbins <drobbins@gentoo.org> :
+  I messed up the "transparent .so library" update.  Included is the correct
+  fix, which seems to allow glibc to update on my system without any tricks.
+  I just merged a new glibc while in X, without using any of glibc's old
+  pkg_postinst/pkg_preinst hacks.
   
-  21 Dec 2001; man/make.defaults.5, make.conf.5.  Moved make.defaults.5
-  to make.conf.5 and updated contents.
+  21 Dec 2001; Daniel Robbins <drobbins@gentoo.org> make.defaults.5, make.conf.5 :
+  Moved make.defaults.5 to make.conf.5 and updated contents.
 
 *portage 1.7.8 (21 Dec 2001)
 
-  21 Dec 2001; portage.py: ebuild install doesn't throw away the compile
-  directory if ebuild has been changed and MAINTAINER is set; we now use
-  mv -f to move files into location on the filesystem, making our library
-  install method even more robust.  It should now be totally safe to 
-  upgrade glibc while in X and playing music with xmms and surfing the
-  Web and compiling 20 applications at once :)
+  21 Dec 2001; Daniel Robbins <drobbins@gentoo.org> portage.py :
+  ebuild install doesn't throw away the compile directory if ebuild has been
+  changed and MAINTAINER is set; we now use mv -f to move files into location
+  on the filesystem, making our library install method even more robust. It
+  should now be totally safe to  upgrade glibc while in X and playing music
+  with xmms and surfing the Web and compiling 20 applications at once :)
 
 * portage 1.7.7 (14 Dec 2001)
 
-  14 Dec 2001; Aron Griffis (agriffis@gentoo.org): portage.py: movefile() now
-  unlink()s the destination file first which solves shared library install
-  problems.
+  14 Dec 2001; Aron Griffis <agriffis@gentoo.org>: portage.py :
+  movefile() now unlink()s the destination file first which solves shared
+  library install problems.
 
 * portage 1.7.6 (13 Dec 2001)
 
-  10 Dec 2001; portage.py: env_update() now generates an /etc/csh.env file
-  in csh shell format.
+  10 Dec 2001; Daniel Robbins <drobbins@gentoo.org> portage.py :
+  env_update() now generates an /etc/csh.env file in csh shell format.
 
 * portage 1.7.5 (13 Dec 2001)
 
-  10 Dec 2001; portage.py: added a little fix so a ~ dep isn't satisfied by
-  a *much* later installed version; i.e. ~media-libs/freetype-1.3.1 satisfied
-  by media-libs/freetype-2.0.5 being installed.
+  10 Dec 2001; Daniel Robbins <drobbins@gentoo.org> portage.py :
+  added a little fix so a ~ dep isn't satisfied by a *much* later installed
+  version; i.e. ~media-libs/freetype-1.3.1 satisfied by
+  media-libs/freetype-2.0.5 being installed.
   
-  30 Nov 2001; ebuild: added a KeyboardInterrupt handler so ^C'ing a running
-  ebuild process doesn't produce a Python traceback.
+  30 Nov 2001; Daniel Robbins <drobbins@gentoo.org> ebuild :
+  added a KeyboardInterrupt handler so ^C'ing a running ebuild process doesn't
+  produce a Python traceback.
 
 * portage 1.7.4 (29 Nov 2001)
 
-  29 Nov 2001; portage.py: removed an unnecessary quirk in the code preventing
-  virtual packages from being in any other category but "virtual".
+  29 Nov 2001; Daniel Robbins <drobbins@gentoo.org> portage.py :
+  removed an unnecessary quirk in the code preventing virtual packages from
+  being in any other category but "virtual".
   
-  25 Nov 2001; emerge's info file detection code has been improved.  
+  25 Nov 2001; Daniel Robbins <drobbins@gentoo.org> emerge :
+  info file detection code has been improved.  
 
 * portage 1.7.3 (20 Nov 2001)
 
-  20 Nov 2001; pdb, pdb.cgi and xpak used /usr/bin/python instead of
-  /usr/bin/spython.  Fixed.
+  20 Nov 2001; Daniel Robbins <drobbins@gentoo.org> pdb, pdb.cgi, xpak :
+  used /usr/bin/python instead of /usr/bin/spython.  Fixed.
 
 * portage 1.7.2 (13 Nov 2001)
 
-  13 Nov 2001; Aron Griffis (agriffis@gentoo.org): emake will now try to build
-  in parallel, and if it fails, will retry in non-parallel mode.
+  13 Nov 2001; Aron Griffis <agriffis@gentoo.org> :
+  emake will now try to build in parallel, and if it fails, will retry in
+  non-parallel mode.
   
-  13 Nov 2001; ebuild.sh: an ebuild that used an archive with a name that was
-  part of another archive would cause Portage to mess up the digest check.  No
-  longer.
+  13 Nov 2001; Daniel Robbins <drobbins@gentoo.org> ebuild.sh :
+  an ebuild that used an archive with a name that was part of another archive
+  would cause Portage to mess up the digest check.  No longer.
 
-  31 Oct 2001; Donny Davies (woodchip@gentoo.org): make.conf, make.globals:
+  31 Oct 2001; Donny Davies <woodchip@gentoo.org> make.conf, make.globals :
   comments about merging the fetch programs before trying to use them.
 
 * portage 1.7.1 (30 Oct 2001)
 
-  30 Oct 2001; portage.py: I accidentally broke "=" deps by being sloppy when
-  I added "*" deps.  Trivial fix applied.
+  30 Oct 2001; Daniel Robbins <drobbins@gentoo.org> portage.py :
+  I accidentally broke "=" deps by being sloppy when I added "*" deps.  Trivial
+  fix applied.
 
 * portage 1.7 (29 Oct 2001)
 
-  29 Oct 2001; portage.py: strange typo fix in the empty() digraph method.
+  29 Oct 2001; Daniel Robbins <drobbins@gentoo.org> portage.py :
+  strange typo fix in the empty() digraph method.
 
 * portage 1.6.12 (29 Oct 2001)
 
-  29 Oct 2001; portage.py: "*" deps now implemented. "=sys/foo-1*" matches the
-  latest 1.x version/rev of sys/foo, but will not match a 2.x version.
+  29 Oct 2001; Daniel Robbins <drobbins@gentoo.org> portage.py :
+  "*" deps now implemented. "=sys/foo-1*" matches the latest 1.x version/rev of
+  sys/foo, but will not match a 2.x version.
 
-  26 Oct 2001; portage.py: various new categories added.
+  26 Oct 2001; Daniel Robbins <drobbins@gentoo.org> portage.py :
+  various new categories added.
 
 Portage 1.6.11, released 18 Oct 2001
 ====================================
