@@ -46,7 +46,7 @@
 #whole enchilada. (generally, I prefer this approach, though for runtime-only systems
 #subpackages make a lot of sense).
 
-VERSION="@portage_version@"
+VERSION="1.9.3"
 
 import string,os
 from stat import *
@@ -727,6 +727,9 @@ def getmycwd():
 
 def fetch(myuris):
 	"fetch files.  Will use digest file if available."
+	if ("mirror" in features) and ("nomirror" in settings["RESTRICT"].split()):
+		print ">>> \"mirror\" mode and \"nomirror\" restriction enabled; skipping fetch."
+		return 1
 	mirrors=settings["GENTOO_MIRRORS"].split()
 	fetchcommand=settings["FETCHCOMMAND"]
 	resumecommand=settings["RESUMECOMMAND"]

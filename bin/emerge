@@ -405,11 +405,7 @@ class depgraph:
 			mydb.close()
 		elif mytype=="blocks":
 			edepend=None
-			print "DEBUG mykey",mykey
-			print "DEBUG myparent",myparent
 			parenttype,parentroot,parentkey=string.split(myparent)
-			print "DEBUG res1", portage.db[myroot]["vartree"].resolve_key(mykey)
-			print "DEBUG res2", portage.db[myroot]["vartree"].resolve_key(parentkey)
 			if portage.isspecific(mykey):
 				if portage.db[myroot]["vartree"].exists_specific(mykey):
 					if portage.db[myroot]["vartree"].resolve_key(mykey) != portage.db[myroot]["vartree"].resolve_key(parentkey):
@@ -418,8 +414,6 @@ class depgraph:
 				if portage.db[myroot]["vartree"].hasnode(mykey):
 					parentsplit=portage.catpkgsplit(parentkey)
 					parentkey=parentsplit[0]+"/"+parentsplit[1]
-					print "DEBUG res1", portage.db[myroot]["vartree"].resolve_key(mykey)
-					print "DEBUG res2", portage.db[myroot]["vartree"].resolve_key(parentkey)
 					if portage.db[myroot]["vartree"].resolve_key(mykey) != portage.db[myroot]["vartree"].resolve_key(parentkey):
 						self.digraph.addnode(mybigkey,myparent)
 					else:
@@ -506,7 +500,6 @@ class depgraph:
 	
 	def match(self,mydep,myroot=portage.root,mykey=None):
 		# support mutual exclusive deps
-		print "DEBUG match",mydep
 		mydep2=mydep
 		if mydep2[0]=="!":
 			mydep2=mydep[1:]
@@ -528,7 +521,6 @@ class depgraph:
 			#return None
 
 		if mydep[0]=="!":
-			print "DEBUG myeb",myeb
 			myk="blocks "+myroot+" "+mydep2
 		else:
 			if "--usepkg" in self.myopts:
@@ -544,7 +536,6 @@ class depgraph:
 	
 	def display(self,mylist):
 		for x in mylist:
-			print "DEBUG:",x
 			if x[0]=="blocks":
 				addl=""+red("B")+"    "
 				myspeckey=portage.db[x[1]]["vartree"].resolve_key(x[2])
@@ -1049,7 +1040,7 @@ if myaction in ["sync","rsync"]:
 			print ">>> starting cvs update with "+syncuri+"..."
 			sys.exit(portage.spawn("cd "+myportdir+"; cvs -q update -dP",free=1)) 
 	else:
-		print "!!! rsync setting: ",syncuri,"not recognized; exiting."
+		print "!!!",syncuri,"not recognized; exiting."
 		sys.exit(1)
 
 elif "--version" in myopts:
@@ -1100,8 +1091,8 @@ elif "--help" in myopts:
 		print "              "+turquoise("WARNING: This action can remove important packages!")
 		print "              Removes all matching packages without checking for outdated."
 		print "              versions. This thus effectively removes a package "+bold("completely")+" from"
-		print "              your system."
-		print "              The argument format is the same as for the "+bold("clean")+" action."
+		print "              your system. Specify arguments using the dependency specification"
+		print "              format described in the "+bold("clean")+" action above."
 		print
 		print "       "+green("prune")+" ("+green("-P")+" short option)"
 		print "              "+turquoise("WARNING: This action can remove important packages!")
@@ -1164,6 +1155,11 @@ elif "--help" in myopts:
 		print "              ebuilds, or deps you specify on on the command-line *will* cause"
 		print "              Portage to remerge the package, even if it is already installed."
 		print "              Note that Portage won't remerge dependencies by default."
+		print
+		print "       "+green("--oneshot")
+		print "              Emerge as normal, but don't add packages to the world profile for"
+		print "              later updating."
+		print
 		print
 		print "       "+green("--onlydeps")+" ("+green("-o")+" short option)"
 		print "              Only merge (or pretend to merge) the dependencies of the"

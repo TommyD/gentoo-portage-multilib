@@ -2,20 +2,15 @@
 
 use() {
 	local x
-	local y
-	for y in $*
+	for x in $USE
 	do
-		for x in $USE
-		do
-			if [ "$x" = "$y" ]
-			then
-				echo "$x"
-			else
-				return 1
-			fi
-		done
+		if [ "$x" = "$1" ]
+		then
+			echo "$x"
+			return 0
+		fi
 	done
-	return 0 
+	return 1
 }
 
 #we need this next line for "die" and "assert"
@@ -712,6 +707,9 @@ if [ $? -ne 0 ]
 then
 	KV=""
 fi
+# get the basename
+KV=${KV##*/}
+# isolate the version number
 KV="${KV/linux-/}"
 
 source ${EBUILD} 
