@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  10 Nov 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild-daemon.sh:
+  Made it much more noisy when a violation is hit.
+
   10 Nov 2004; Brian Harring <ferringb@gentoo.org> 
   bin/affect-fakeroot-perms.sh:  rewrote this script so that it's less 
   likely to piss off fakeroot by spawning multiple instances of a client.

@@ -234,7 +234,15 @@ while [ "$alive" == "1" ]; do
 					ret=1
 					echo "sandbox exists- $SANDBOX_LOG"
 					request_sandbox_summary
-					
+					echo "SANDBOX_ON:=${SANDBOX_ON:-unset}" >&2
+					echo "SANDBOX_DISABLED:=${SANDBOX_DISABLED:-unset}" >&2
+					echo "SANDBOX_READ:=${SANDBOX_READ:-unset}" >&2
+					echo "SANDBOX_WRITE:=${SANDBOX_WRITE:-unset}" >&2
+					echo "SANDBOX_PREDICT:=${SANDBOX_PREDICT:-unset}" >&2
+					echo "SANDBOX_DEBUG:=${SANDBOX_DEBUG:-unset}" >&2
+					echo "SANDBOX_DEBUG_LOG:=${SANDBOX_DEBUG_LOG:-unset}" >&2
+					echo "SANDBOX_LOG:=${SANDBOX_LOG:-unset}" >&2
+					echo "SANDBOX_ARMED:=${SANDBOX_ARMED:-unset}" >&2
 				fi
 				if [ "$ret" != "0" ]; then
 					exit $(($ret))
