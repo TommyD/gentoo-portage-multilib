@@ -144,8 +144,6 @@ CHOST="mips-unknown-linux-gnu"
 #FETCHCOMMAND="/usr/bin/lukemftp -s -a -o \${DISTDIR}/\${FILE} \${URI}"
 #RESUMECOMMAND="/usr/bin/lukemftp -s -a -R -o \${DISTDIR}/\${FILE} \${URI}"
 #
-# Prozilla (turbo downloader)
-#FETCHCOMMAND='/usr/bin/proz --no-getch -s ${URI} -P ${DISTDIR}'
 #
 # Portage uses GENTOO_MIRRORS to specify mirrors to use for source retrieval.
 # The list is a space separated list which is read left to right. If you use
