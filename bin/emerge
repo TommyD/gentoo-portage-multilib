@@ -990,7 +990,7 @@ elif "--clean"==myaction:
 					# when the --versions option is specified, all previous versions within the same slot are removed too
 					# when the --slots option is specified, all previous slots are removed too
 					if "--slots" in myopts:
-						package_set=package_parts[0]
+						package_set=package_parts[0]+"-"+package_slot
 					elif "--versions" in myopts:
 						package_set=package_parts[0]+"-"+package_slot
 					else:
