@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-import os,sys
+import os,sys,platform
 os.environ["PORTAGE_CALLER"]="emerge"
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 
@@ -437,8 +437,7 @@ def getportageversion():
 		libcver="unavailable"
 
 	gccver = getgccversion()
-
-	unameout=os.uname()[2]
+	unameout=platform.uname()[2]+" "+platform.uname()[4]+" "+platform.uname()[5]
 
 	return "Portage " + portage.VERSION +" ("+profilever+", "+gccver+", "+libcver+", "+unameout+")"
 
@@ -743,12 +742,12 @@ class depgraph:
 		self.orderedkeys=[]
 		self.outdatedpackages=[]
 		self.mydbapi={}
-		self.mydbapi["/"]=portage.fakedbapi()
+		self.mydbapi["/"] = portage.fakedbapi()
 		if "empty" not in myparams:
 			for pkg in portage.db["/"]["vartree"].getallcpv():
 				self.mydbapi["/"].cpv_inject(pkg)
-		if portage.root!="/":
-			self.mydbapi[portage.root]=portage.fakedbapi()
+		if portage.root != "/":
+			self.mydbapi[portage.root] = portage.fakedbapi()
 			if "empty" not in myparams:
 				for pkg in portage.db[portage.root]["vartree"].getallcpv():
 					self.mydbapi[portage.root].cpv_inject(pkg)
@@ -876,7 +875,7 @@ class depgraph:
 			mydep[myroot]=edepend["RDEPEND"]
 			if not self.select_dep("/",mydep["/"],myparent=mp,myuse=myuse):
 				return 0
-			elif not self.select_dep(myroot,mydep[myroot],myparent=mp,myuse=myuse):
+			if not self.select_dep(myroot,mydep[myroot],myparent=mp,myuse=myuse):
 				return 0
 
 		if edepend.has_key("PDEPEND") and edepend["PDEPEND"]:
@@ -1619,8 +1618,11 @@ class depgraph:
 			if x[0] in ["ebuild","blocks"]:
 				if (x[0]=="blocks") and ("--fetchonly" not in myopts):
 					raise Exception, "Merging a blocker"
-				elif ("--fetchonly" in myopts):
-					retval=portage.doebuild(y,"fetch",myroot,self.pkgsettings,edebug,("--pretend" in myopts),fetchonly=1)
+				elif ("--fetchonly" in myopts) or ("--fetch-all-uri" in myopts):
+					if ("--fetch-all-uri" in myopts):
+						retval=portage.doebuild(y,"fetch",myroot,self.pkgsettings,edebug,("--pretend" in myopts),fetchonly=1,fetchall=1)
+					else:
+						retval=portage.doebuild(y,"fetch",myroot,self.pkgsettings,edebug,("--pretend" in myopts),fetchonly=1)
 					if retval:
 						print
 						print "!!! Fetch for",y,"failed, continuing..."

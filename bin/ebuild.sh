@@ -43,6 +43,8 @@ if [ -n "$#" ]; then
 	ARGS="${*}"
 fi
 
+declare -rx EBUILD_PHASE="$*"
+
 # Prevent aliases from causing portage to act inappropriately.
 # Make sure it's before everything so we don't mess aliases that follow.
 unalias -a
@@ -1461,10 +1463,8 @@ fi # "$*"!="depend" && "$*"!="clean"
 export SANDBOX_ON="1"
 export S=${WORKDIR}/${P}
 
-unset   IUSE   DEPEND   RDEPEND   CDEPEND   PDEPEND
 unset E_IUSE E_DEPEND E_RDEPEND E_CDEPEND E_PDEPEND
 
-declare -rx EBUILD_PHASE="$*"
 declare -r T P PN PV PVR PR A D EBUILD EMERGE_FROM O PPID FILESDIR
 declare -r PORTAGE_TMPDIR
 

@@ -2546,7 +2546,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	if mydo not in ["fetch","digest","manifest"]:
 		# Should be ok again to set $T, as sandbox does not depend on it
 		mysettings["T"]=mysettings["BUILDDIR"]+"/temp"
-		if cleanup or mydo=="setup":
+		if cleanup or mydo=="clean":
 			if os.path.exists(mysettings["T"]):
 				shutil.rmtree(mysettings["T"])
 		if not os.path.exists(mysettings["T"]):
@@ -3303,10 +3303,18 @@ def dep_opconvert(mysplit,myuse,mysettings):
 				k=mysplit[mypos][:-1]
 				if k[0]=="!":
 					k=k[1:]
-				if (k not in archlist and k not in mysettings.usemask) or \
-							 (k in archlist and k==mysettings["ARCH"] and \
-								mysplit[mypos][0]!="!"):
+				if k not in archlist and k not in mysettings.usemask:
 					enabled=1
+				elif k in archlist:
+					if k==mysettings["ARCH"]:
+						if mysplit[mypos][0]=="!":
+							enabled=0
+						else:
+							enabled=1
+					elif mysplit[mypos][0]=="!":
+						enabled=1
+					else:
+						enabled=0
 				else:
 					enabled=0
 			else:
@@ -4452,14 +4460,14 @@ class bindbapi(fakedbapi):
 cptot=0
 class vardbapi(dbapi):
 	def __init__(self,root):
-		self.root=root
+		self.root       = root[:]
 		#cache for category directory mtimes
-		self.mtdircache={}
+		self.mtdircache = {}
 		#cache for dependency checks
-		self.matchcache={}
+		self.matchcache = {}
 		#cache for cp_list results
-		self.cpcache={}	
-		self.blockers=None
+		self.cpcache    = {}	
+		self.blockers   = None
 
 	def cpv_exists(self,mykey):
 		"Tells us whether an actual ebuild exists on disk (no masking)"
@@ -4635,10 +4643,13 @@ class vardbapi(dbapi):
 
 	def cpv_all(self,use_cache=1):
 		returnme=[]
+		basepath = self.root+VDB_PATH+"/"
 		for x in settings.categories:
-			for y in listdir(self.root+VDB_PATH+"/"+x,EmptyOnError=1):
-				if pkgsplit(y) is not None:
-					returnme += [x+"/"+y]
+			for y in listdir(basepath+x,EmptyOnError=1):
+				subpath = x+"/"+y
+				# -MERGING- should never be a cpv, nor should files.
+				if os.path.isdir(basepath+subpath) and (pkgsplit(y) is not None):
+					returnme += [subpath]
 		return returnme
 
 	def cp_all(self,use_cache=1):
@@ -4707,13 +4718,13 @@ class vartree(packagetree):
 	"this tree will scan a var/db/pkg database located at root (passed to init)"
 	def __init__(self,root="/",virtual=None,clone=None):
 		if clone:
-			self.root=clone.root
-			self.dbapi=clone.dbapi
-			self.populated=1
+			self.root      = clone.root[:]
+			self.dbapi     = copy.deepcopy(clone.dbapi)
+			self.populated = 1
 		else:
-			self.root=root
-			self.dbapi=vardbapi(self.root)
-			self.populated=1
+			self.root      = root[:]
+			self.dbapi     = vardbapi(self.root)
+			self.populated = 1
 
 	def zap(self,mycpv):
 		return
@@ -6317,7 +6328,7 @@ class dblink:
 
 		# XXXX: HACK! PathSpec is very necessary here.
 		if not os.path.exists(destroot+PRIVATE_PATH):
-			os.mkdirs(destroot+PRIVATE_PATH)
+			os.makedirs(destroot+PRIVATE_PATH)
 			os.chown(destroot+PRIVATE_PATH,os.getuid(),portage_gid)
 			os.chmod(destroot+PRIVATE_PATH,02770)
 			dirlist = prefix_array(listdir(destroot+PRIVATE_PATH),destroot+PRIVATE_PATH+"/")

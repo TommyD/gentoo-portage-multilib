@@ -9,6 +9,23 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+*portage-2.0.51_pre13 (09 Jul 2003): Fixes and Public Readiness
+
+  21 Jun 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Included
+  ferringb's logic fix for the repoman code. Fix that prevents vardb from
+  using all files and directories in the vardb as keys instead of only the
+  proper ones. Code touchups.
+
+  21 Jun 2004; Nicholas Jones <carpaski@gentoo.org> prepstrip: Fixes that
+  result in BSD compat and split the regex -- find doesn't do extended.
+
+  21 Jun 2004; Nicholas Jones <carpaski@gentoo.org> emerge: included a uname
+  fix for bsd. Added --fetch-all-uri as a way to get all URIs downloaded for
+  a package regardless of conditionals.
+
+  21 Jun 2004; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Moved the
+  declaration of ebuild_phase toward the top.
+
   09 Jul 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge:
   Fixed incorrect assignment of depgraph.mydbapi[] objects.
 
