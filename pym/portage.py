@@ -1629,12 +1629,9 @@ class config:
 		self.mycpv = mycpv
 		self.pusekey = best_match_to_list(self.mycpv, self.pusedict.keys())
 		if self.pusekey:
-			newpuse = string.join(self.pusedict[self.pusekey])
+			self.puse = string.join(self.pusedict[self.pusekey])
 		else:
-			newpuse = ""
-		if newpuse == self.puse:
-			return
-		self.puse = newpuse
+			self.puse = ""
 		self.configdict["pkg"]["PKGUSE"] = self.puse[:] # For saving to PUSE file
 		self.configdict["pkg"]["USE"]    = self.puse[:] # this gets appended to USE
 		self.reset(keeping_pkg=1,use_cache=use_cache)
