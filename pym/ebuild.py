@@ -332,7 +332,8 @@ class ebuild_handler:
 	# python with a basic bash wrapper that calls back to this.
 	# all credit for the approach goes to him, as stated, this is just an implementation of it.
 	# bugs should be thrown at ferringb.
-	def load_confcache(self,transfer_to,confcache=portage_const.CONFCACHE_FILE,confcache_list=portage_const.CONFCACHE_LIST):
+	def load_confcache(self,transfer_to,confcache=portage_const.CONFCACHE_FILE,
+		confcache_list=portage_const.CONFCACHE_LIST):
 		"""verifys a requested conf cache, removing the global cache if it's stale.
 		The handler should be the only one to call this"""
 		from portage_checksum import perform_md5
@@ -357,9 +358,9 @@ class ebuild_handler:
 				myf=anydbm.open(confcache_list, "r", 0664)
 				for l in myf.keys():
 					# file, md5
-					if perform_md5(l) != myf[l]:
-						print red("***")+" confcache is stale: %s: recorded md5: %s: actual: %s:" % (l,myf[l],perform_md5(l))
-						raise Exception
+					if perform_md5(l,calc_prelink=1) != myf[l]:
+						print red("***")+" confcache is stale: %s: recorded md5: %s: actual: %s:" % (l,myf[l],perform_md5(l,calc_prelink=1))
+						raise Exception("md5 didn't match")
 				myf.close()
 				# verify env now.
 				new_cache=[]
@@ -410,17 +411,17 @@ class ebuild_handler:
 			except SystemExit, e:
 				raise
 			except Exception,e:
-				print "caught exception %s" % str(e)
+				print "caught exception: %s" % str(e)
 				try:	myf.close()
 				except (IOError, OSError):	pass
 				valid=False
 
 		if not valid:
 			print "\nconfcache is invalid\n"
-			try:	os.remove(confcache_list)
-			except: pass
-			try:	os.remove(confcache)
-			except: pass
+			try:		os.remove(confcache_list)
+			except OSError: pass
+			try:		os.remove(confcache)
+			except OSError:	pass
 			self.__ebp.write("empty")
 			valid=0
 		else:
@@ -482,7 +483,7 @@ class ebuild_handler:
 		for x in l:
 			try:
 				if not stat.S_ISDIR(os.stat(x).st_mode) and not myf.has_key(x):
-					myf[x]=str(perform_md5(x))
+					myf[x]=str(perform_md5(x,calc_prelink=1))
 			except (IOError, OSError):
 				# exceptions are only possibly (ignoring anydbm horkage) from os.stat
 				pass

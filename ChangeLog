@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  09 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/ebuild.py: make
+  prelink + confcache play nice (calc_prelink=1).
+
   09 Nov 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild-daemon.sh:
   Added appropriate addwrites for logs for -r3 sandbox, and corrected logging
   for bash v2 systems.
