@@ -800,16 +800,16 @@ def unmerge(unmerge_action, unmerge_files):
 	candidate_packages=candidate_packages.keys()
 	candidate_packages.sort()
 
-	if 0==len(candidate_packages):
+	if global_unmerge and 0==len(removed_versions_mapping):
+		print
+		print "No outdated packages were found on your system."
+		print
+		return 0
+	elif 0==len(candidate_packages):
 		print "Couldn't find any matching installed packages."
 		return 0
 	else:
-		if global_unmerge and 0==len(removed_versions_mapping):
-			print
-			print "No outdated packages were found on your system."
-			print
-			return 0
-		elif "--pretend" in myopts:
+		if "--pretend" in myopts:
 			if global_unmerge:
 				print
 				print "This the overview of outdated packages on your system :"
