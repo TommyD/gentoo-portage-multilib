@@ -2,7 +2,7 @@
 # Distributed under the GNU Public License v2
 # $Header$
 
-import os,sys
+import os,sys,re
 
 havecolor=1
 dotitles=1
@@ -28,6 +28,10 @@ codes["brown"]="\x1b[33;06m"
 
 codes["red"]="\x1b[31;01m"
 codes["darkred"]="\x1b[31;06m"
+
+def nc_len(mystr):
+	tmp = re.sub("\x1b[^m]+m", "", mystr);
+	return len(tmp)
 
 def xtermTitle(mystr):
 	if havecolor and dotitles and os.environ.has_key("TERM"):

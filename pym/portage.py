@@ -6160,6 +6160,8 @@ class dblink:
 
 def cleanup_pkgmerge(mypkg,origdir):
 	shutil.rmtree(settings["PORTAGE_TMPDIR"]+"/portage-pkg/"+mypkg)
+	if os.path.exists(settings["PORTAGE_TMPDIR"]+"/portage/"+mypkg+"/temp/environment"):
+		os.unlink(settings["PORTAGE_TMPDIR"]+"/portage/"+mypkg+"/temp/environment")
 	os.chdir(origdir)
 
 def pkgmerge(mytbz2,myroot,mysettings):
