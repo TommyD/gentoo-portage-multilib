@@ -1053,12 +1053,19 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 	settings["PKG_TMPDIR"]=settings["PORTAGE_TMPDIR"]+"/portage-pkg"
 	#depend may be run as non-root
 	settings["BUILDDIR"]=settings["BUILD_PREFIX"]+"/"+settings["PF"]
-	if not os.path.exists(settings["BUILDDIR"]) and mydo!="depend":
-		os.makedirs(settings["BUILDDIR"])
-	# Should be ok again to set $T, as sandbox do not depend on it
-	settings["T"]=settings["BUILDDIR"]+"/temp"
-	if not os.path.exists(settings["T"]) and mydo!="depend":
-		os.makedirs(settings["T"])
+
+	try:
+		if not os.path.exists(settings["BUILDDIR"]) and mydo!="depend":
+			os.makedirs(settings["BUILDDIR"])
+		# Should be ok again to set $T, as sandbox do not depend on it
+		settings["T"]=settings["BUILDDIR"]+"/temp"
+		if not os.path.exists(settings["T"]) and mydo!="depend":
+			os.makedirs(settings["T"])
+	except OSError, e:
+		print "!!! File system problem. (ReadOnly?)"
+		print "!!!"+str(e)
+		return 1
+
 	settings["WORKDIR"]=settings["BUILDDIR"]+"/work"
 	settings["D"]=settings["BUILDDIR"]+"/image/"
 

@@ -3,6 +3,7 @@
 
 	10 Oct 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
 	Bug 8964 -- Fix for read-only traceback in digestgen()
+	Bug 8949 -- Fix for read-only traceback in doebuild()
 
   10 Oct 2002; Mark Guertin <gerk@gentoo.org> cnf/make.conf.ppc :
   Fixed type in reccomended CFLAGS for generic ppc (was 02, corrected 
