@@ -235,12 +235,15 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError):
 		list = os.listdir(mypath)
 		ftype = []
 		for x in list:
-			pathstat = os.stat(mypath+"/"+x)
-			if S_ISREG(pathstat[ST_MODE]):
-				ftype.append(0)
-			elif S_ISDIR(pathstat[ST_MODE]):
-				ftype.append(1)
-			else:
+			try:
+				pathstat = os.stat(mypath+"/"+x)
+				if S_ISREG(pathstat[ST_MODE]):
+					ftype.append(0)
+				elif S_ISDIR(pathstat[ST_MODE]):
+					ftype.append(1)
+				else:
+					ftype.append(2)
+			except:
 				ftype.append(2)
 		dircache[mypath] = mtime, list, ftype
 
