@@ -1,6 +1,11 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  06 Aug 2002; Dan Armak <danarmak@gentoo.org> ebuild.sh: change debug-print()
+  to exit if $T is not defined, i.e. if emerge is running in dependency detection
+  mode and isn't actually emerging everything. This fixes bug #4932
+  (the "eclass-debug.log is created in /" problem).
+
   06 Aug 2002; Nicholas Jones <carpaski@gentoo.org> ebuild.sh:
   Fixed a case-check problem that prevented tar.Z from being un-tar'd. 
 

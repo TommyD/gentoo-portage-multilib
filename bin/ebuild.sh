@@ -747,6 +747,10 @@ dyn_help() {
 # in the future might use e* from /etc/init.d/functions.sh if i feel like it
 debug-print() {
 
+	# if $T isn't defined, we're in dep calculation mode and 
+	# shouldn't do anything
+	[ -z "$T" ] && return 0
+
 	while [ "$1" ]; do
 	
 		# extra user-configurable targets
@@ -757,7 +761,7 @@ debug-print() {
 		fi
 		
 		# default target
-		[ -d "$BUILD_PREFIX/$P/temp" ] && echo $1 >> ${T}/eclass-debug.log
+		[ -n "$T" ] && echo $1 >> ${T}/eclass-debug.log
 		
 		shift
 	done
