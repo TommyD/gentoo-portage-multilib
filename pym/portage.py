@@ -3,7 +3,7 @@
 # Distributed under the GNU Public License v2
 # $Header$
 
-VERSION="2.0.49-r10"
+VERSION="2.0.49-r13-2"
 
 import sys
 
@@ -14,6 +14,92 @@ def writemsg(mystr,noiselevel=0):
 	if noiselevel <= noiselimit:
 		sys.stderr.write(mystr)
 		sys.stderr.flush()
+
+def lockdir(mydir):
+	return lockfile(mydir,wantnewlockfile=1)
+def unlockdir(mylock):
+	return unlockfile(mylock)
+
+def lockfile(mypath,wantnewlockfile=0):
+	"""Creates all dirs upto, the given dir. Creates a lockfile
+	for the given directory as the file: directoryname+'.portage_lockfile'."""
+	import fcntl
+
+	if not mypath:
+		raise ValueError, "Empty path given"
+
+	if mypath[-1] == '/':
+		mypath = mypath[:-1]
+
+	if type(mypath) == types.IntType:
+		lockfilename    = '[Only fd given]'
+		wantnewlockfile = 0
+		unlinkfile      = 0
+	elif wantnewlockfile:
+		lockfilename = mypath+".portage_lockfile"
+		unlinkfile   = 1
+	else:
+		lockfilename = mypath
+		unlinkfile = 0
+	
+	if type(mypath) == types.StringType:
+		if not os.path.exists(os.path.dirname(mypath)):
+			raise IOError, "Base path does not exist '%s'" % os.path.dirname(mypath)
+		myfd = os.open(lockfilename, os.O_CREAT|os.O_WRONLY,0660)
+
+	elif type(mypath) == types.IntType:
+		myfd = mypath
+
+	else:
+		raise ValueError, "Unknown type passed in '%s': '%s'" % (type(mypath),mypath)
+
+	fcntl.flock(myfd,fcntl.LOCK_EX)
+	if not os.path.exists(lockfilename):
+		# The file was deleted on us... Keep trying to make one...
+		os.close(myfd)
+		writemsg("lockfile recurse",1)
+		lockfilename,myfd,unlinkfile = lockfile(mypath,wantnewlockfile)
+
+	writemsg(str((lockfilename,myfd,unlinkfile)),1)
+	return (lockfilename,myfd,unlinkfile)
+
+def unlockfile(mytuple):
+	import fcntl
+
+	lockfilename,myfd,unlinkfile = mytuple
+	
+	if not os.path.exists(lockfilename):
+		writemsg("lockfile does not exist '%s'\n" % lockfile,1)
+		return None
+
+	try:
+		if myfd == None:
+			myfd = os.open(lockfilename, os.O_WRONLY,0660)
+			unlinkfile = 1
+		fcntl.flock(myfd,fcntl.LOCK_UN)
+	except Exception, e:
+		raise IOError, "Failed to unlock file '%s'\n" % lockfilename
+
+	try:
+		fcntl.flock(myfd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+		# We won the lock, so there isn't competition for it.
+		# We can safely delete the file.
+		writemsg("Got the lockfile...\n",1)
+		if unlinkfile:
+			#writemsg("Unlinking...\n")
+			os.unlink(lockfilename)
+			writemsg("Unlinked lockfile...\n",1)
+		fcntl.flock(myfd,fcntl.LOCK_UN)
+	except Exception, e:
+		# We really don't care... Someone else has the lock.
+		# So it is their problem now.
+		writemsg("Failed to get lock... someone took it.\n",1)
+		writemsg(str(e)+"\n",1)
+		pass
+	os.close(myfd)
+			
+	return 1
+
 
 from stat import *
 from commands import *
@@ -2124,7 +2210,9 @@ pkgcache={}
 
 def pkgsplit(mypkg,silent=1):
 	try:
-		return pkgcache[mypkg]
+		if not pkgcache[mypkg]:
+			return None
+		return pkgcache[mypkg][:]
 	except KeyError:
 		pass
 	myparts=string.split(mypkg,'-')
@@ -2180,7 +2268,7 @@ def pkgsplit(mypkg,silent=1):
 					pkgcache[mypkg]=None
 					return None
 			myval=[string.join(myparts[:-1],"-"),myparts[-1],"r0"]
-			pkgcache[mypkg]=myval
+			pkgcache[mypkg]=myval[:]
 			return myval
 	else:
 		pkgcache[mypkg]=None
@@ -2190,7 +2278,9 @@ catcache={}
 def catpkgsplit(mydata,silent=1):
 	"returns [cat, pkgname, version, rev ]"
 	try:
-		return catcache[mydata]
+		if not catcache[mydata]:
+			return None
+		return catcache[mydata][:]
 	except KeyError:
 		pass
 	mysplit=mydata.split("/")
@@ -3022,7 +3112,18 @@ class dbapi:
 			# now move global counter file into place
 			os.rename(newcpath,cpath)
 		return counter
-	
+
+	def invalidentry(self, mypath):
+		match = re.search(".*/-MERGING-(.*)",mypath)
+		if match:
+			writemsg(red("INCOMPLETE MERGE:")+match[0]+"\n")
+		else:
+			if re.search("portage_lockfile$",mypath):
+				writemsg("Lockfile removed: %s" % mypath)
+				unlockfile((mypath,None,None))
+			else:
+				writemsg("!!! Invalid db entry: %s" % mypath)
+
 
 
 class fakedbapi(dbapi):
@@ -3124,12 +3225,16 @@ class vardbapi(dbapi):
 					counter = 1
 				except Exception, e:
 					writemsg("!!! COUNTER file is missing for "+str(mycpv)+" in /var/db.\n")
-					writemsg("!!! Please run /usr/lib/portage/bin/fix-db.pl or unmerge this exact version.\n")
+					writemsg("!!! Please run /usr/lib/portage/bin/fix-db.pl or\n")
+					writemsg("!!! Please run /usr/lib/portage/bin/fix-db.py or\n")
+					writemsg("!!! unmerge this exact version.\n")
 					writemsg("!!! %s\n" % e)
 					sys.exit(1)
 			else:
 				writemsg("!!! COUNTER file is missing for "+str(mycpv)+" in /var/db.\n")
-				writemsg("!!! Please run /usr/lib/portage/bin/fix-db.pl or remerge the package.\n")
+				writemsg("!!! Please run /usr/lib/portage/bin/fix-db.pl or\n")
+				writemsg("!!! Please run /usr/lib/portage/bin/fix-db.py or\n")
+				writemsg("!!! remerge the package.\n")
 				sys.exit(1)
 		else:
 			counter=long(0)
@@ -3208,7 +3313,7 @@ class vardbapi(dbapi):
 				continue
 			ps=pkgsplit(x)
 			if not ps:
-				print "!!! Invalid db entry:",self.root+"var/db/pkg/"+mysplit[0]+"/"+x
+				self.invalidentry(self.root+"var/db/pkg/"+mysplit[0]+"/"+x)
 				continue
 			if len(mysplit) > 1:
 				if ps[0]==mysplit[1]:
@@ -3229,10 +3334,7 @@ class vardbapi(dbapi):
 		for y in mylist:
 			mysplit=catpkgsplit(y)
 			if not mysplit:
-				if re.search(".*/-MERGING-",y):
-					#writemsg(red("INCOMPLETE MERGE:")+str(y)+"\n")
-					continue
-				print "!!! Invalid db entry:",self.root+"var/db/pkg/"+y
+				self.invalidentry(self.root+"var/db/pkg/"+x)
 				continue
 			mykey=mysplit[0]+"/"+mysplit[1]
 			if not mykey in returnme:
@@ -3364,7 +3466,7 @@ class vartree(packagetree):
 		for x in mylist:
 			b=pkgsplit(x)
 			if not b:
-				print "!!! Invalid db entry:",self.root+"var/db/pkg/"+a[0]+"/"+x
+				self.invalidentry(self.root+"var/db/pkg/"+a[0]+"/"+x)
 				continue
 			if a[1]==b[0]:
 				return 1
@@ -3384,7 +3486,7 @@ class vartree(packagetree):
 		for x in mydirlist:
 			mypsplit=pkgsplit(x)
 			if not mypsplit:
-				print "!!! Invalid db entry:",self.root+"var/db/pkg/"+mysplit[0]+"/"+x
+				self.invalidentry(self.root+"var/db/pkg/"+mysplit[0]+"/"+x)
 				continue
 			if mypsplit[0]==mysplit[1]:
 				appendme=[mysplit[0]+"/"+x,[mysplit[0],mypsplit[0],mypsplit[1],mypsplit[2]]]
@@ -3412,7 +3514,7 @@ class vartree(packagetree):
 		for x in mydirlist:
 			mypsplit=pkgsplit(x)
 			if not mypsplit:
-				print "!!! Invalid db entry:",self.root+"var/db/pkg/"+mysplit[0]+"/"+x
+				invalidentry(self.root+"var/db/pkg/"+mysplit[0]+"/"+x)
 				continue
 			if mypsplit[0]==mysplit[1]:
 				return 1
@@ -5532,86 +5634,3 @@ def pickle_read(filename,default=None,debug=0):
 		writemsg("!!! Failed to load pickle: "+str(e)+"\n",1)
 		data = default
 	return data
-
-
-def lockdir(mydir):
-	return lockfile(mydir,wantnewlockfile=1)
-def unlockdir(mylock):
-	return unlockfile(mylock)
-
-def lockfile(mypath,wantnewlockfile=0):
-	"""Creates all dirs upto, the given dir. Creates a lockfile
-	for the given directory as the file: directoryname+'.portage_lockfile'."""
-	import fcntl
-
-	if not mypath:
-		raise ValueError, "Empty path given"
-
-	if mypath[-1] == '/':
-		mypath = mypath[:-1]
-
-	if type(mypath) == types.IntType:
-		lockfilename    = '[Only fd given]'
-		wantnewlockfile = 0
-		unlinkfile      = 0
-	elif wantnewlockfile:
-		lockfilename = mypath+".portage_lockfile"
-		unlinkfile   = 1
-	else:
-		lockfilename = mypath
-		unlinkfile = 0
-	
-	if type(mypath) == types.StringType:
-		if not os.path.exists(os.path.dirname(mypath)):
-			raise IOError, "Base path does not exist '%s'" % os.path.dirname(mypath)
-		myfd = os.open(lockfilename, os.O_CREAT|os.O_WRONLY,0600)
-
-	elif type(mypath) == types.IntType:
-		myfd = mypath
-
-	else:
-		raise ValueError, "Unknown type passed in '%s': '%s'" % (type(mypath),mypath)
-
-	fcntl.flock(myfd,fcntl.LOCK_EX)
-	if not os.path.exists(lockfilename):
-		# The file was deleted on us... Keep trying to make one...
-		os.close(myfd)
-		writemsg("lockfile recurse",1)
-		lockfilename,myfd,unlinkfile = lockfile(mypath,wantnewlockfile)
-
-	writemsg(str((lockfilename,myfd,unlinkfile)),1)
-	return (lockfilename,myfd,unlinkfile)
-
-def unlockfile(mytuple):
-	import fcntl
-
-	lockfilename,myfd,unlinkfile = mytuple
-	
-	if not os.path.exists(lockfilename):
-		writemsg("lockfile does not exist '%s'\n" % lockfile,1)
-		return None
-
-	try:
-		fcntl.flock(myfd,fcntl.LOCK_UN)
-	except Exception, e:
-		raise IOError, "Failed to unlock file '%s'\n" % lockfilename
-
-	try:
-		fcntl.flock(myfd,fcntl.LOCK_EX|fcntl.LOCK_NB)
-		# We won the lock, so there isn't competition for it.
-		# We can safely delete the file.
-		writemsg("Got the lockfile...\n",1)
-		if unlinkfile:
-			#writemsg("Unlinking...\n")
-			os.unlink(lockfilename)
-			writemsg("Unlinked lockfile...\n",1)
-		fcntl.flock(myfd,fcntl.LOCK_UN)
-	except Exception, e:
-		# We really don't care... Someone else has the lock.
-		# So it is their problem now.
-		writemsg("Failed to get lock... someone took it.\n",1)
-		writemsg(str(e)+"\n",1)
-		pass
-	os.close(myfd)
-			
-	return 1

@@ -47,7 +47,7 @@ fi
 unalias -a
 
 # Unset some variables that break things.
-unset GZIP BZIP BZIP2
+unset GZIP BZIP BZIP2 CDPATH
 
 # We need this next line for "die" and "assert". It expands 
 # It _must_ preceed all the calls to die and assert.
@@ -825,6 +825,7 @@ dyn_install() {
 				make -C ${POLICYDIR} FC=${T}/file_contexts ${T}/file_contexts
 			fi
 
+			addwrite /selinux/context
 			/usr/sbin/setfiles -r ${D} ${T}/file_contexts ${D}
 		fi
 	fi

@@ -143,7 +143,7 @@ if (len(sys.argv) > 1) and (sys.argv[1] == "--fix"):
 	for catpkg in actions.keys():
 		action = actions[catpkg]
 		writemsg("We will now '%s' '%s'..." % (action, catpkg))
-		if action == 
+		#if action == 
 else:
 	#writemsg("Run with '--fix' to attempt automatic correction.")
 	pass
