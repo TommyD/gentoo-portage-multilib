@@ -24,11 +24,8 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ]; then
 			touch "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log" &> /dev/null
 			chmod g+w "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log" &> /dev/null
 			echo "$*" >> "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log"
-			$0 $* 2>&1 | tee -a "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log"
-			if [ "$?" != "0" ]; then
-				rm -f "${T}/successful"
-				exit 1
-			fi
+			{ $0 $* || rm -f "${T}/successful" ; } 2>&1 \
+			  | tee -i -a "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log"
 			if [ -f "${T}/successful" ]; then
 				rm -f "${T}/successful"
 				exit 0
@@ -52,7 +49,7 @@ fi
 unalias -a
 
 # Unset some variables that break things.
-unset GZIP BZIP BZIP2 CDPATH
+unset GZIP BZIP BZIP2 CDPATH GREP_OPTIONS GREP_COLOR
 
 # We need this next line for "die" and "assert". It expands 
 # It _must_ preceed all the calls to die and assert.
@@ -89,7 +86,16 @@ esyslog() {
 	return 0
 }
 
+
 use() {
+	if useq ${1}; then
+		echo "${1}"
+		return 0
+	fi
+	return 1
+}
+
+useq() {
 	local u="${1}"
 	local neg=0
 	if [ "${u:0:1}" == "!" ]; then
@@ -102,21 +108,11 @@ use() {
 			if [ ${neg} -eq 1 ]; then
 				return 1
 			else
-				if [ -r /dev/fd/1 ]; then
-					tty --quiet < /dev/stdout || echo "${x}"
-				else
-					echo "${x}"
-				fi
 				return 0
 			fi
 		fi
 	done
 	if [ ${neg} -eq 1 ]; then
-		if [ -r /dev/fd/1 ]; then
-			tty --quiet < /dev/stdout || echo "${x}"
-		else
-			echo "${x}"
-		fi
 		return 0
 	else
 		return 1
@@ -124,6 +120,14 @@ use() {
 }
 
 has() {
+	if hasq "$@"; then
+		echo "${1}"
+		return 0
+	fi
+	return 1
+}
+
+hasq() {
 	local x
 
 	local me=$1
@@ -133,17 +137,6 @@ has() {
 	# Logging kills all this anyway. Everything becomes a pipe. --NJ
 	for x in "$@"; do
 		if [ "${x}" == "${me}" ]; then
-			if [ -r /proc/self/fd/1 ]; then
-				tty --quiet < /proc/self/fd/1 || echo "${x}"
-			elif [ -r /dev/fd/1 ]; then
-				echo "/dev/fd/1" >&2
-				tty --quiet < /dev/fd/1 || echo "${x}"
-			elif [ -r /dev/stdout ]; then
-				echo "/dev/stdout" >&2
-				tty --quiet < /dev/stdout || echo "${x}"
-			else
-				echo "${x}"
-			fi
 			return 0
 		fi
 	done
@@ -151,6 +144,7 @@ has() {
 }
 
 has_version() {
+	[ "${EBUILD_PHASE}" == "depend" ] && echo "has_version() in global scope: ${CATEGORY}/$PF" >&2
 	# return shell-true/shell-false if exists.
 	# Takes single depend-type atoms.
 	if /usr/lib/portage/bin/portageq 'has_version' "${ROOT}" "$1"; then
@@ -160,7 +154,13 @@ has_version() {
 	fi
 }
 
+portageq() {
+	[ "${EBUILD_PHASE}" == "depend" ] && echo "portageq in global scope: ${CATEGORY}/$PF" >&2
+	/usr/lib/portage/bin/portageq "$@"
+}
+
 best_version() {
+	[ "${EBUILD_PHASE}" == "depend" ] && echo "best_version() in global scope: ${CATEGORY}/$PF" >&2
 	# returns the best/most-current match.
 	# Takes single depend-type atoms.
 	/usr/lib/portage/bin/portageq 'best_version' "${ROOT}" "$1"
@@ -183,7 +183,7 @@ use_with() {
 		UWORD="$1"
 	fi
 	
-	if use $1 &>/dev/null; then
+	if useq $1; then
 		echo "--with-${UWORD}${UW_SUFFIX}"
 		return 0
 	else
@@ -209,7 +209,7 @@ use_enable() {
 		UWORD="$1"
 	fi
 	
-	if use $1 &>/dev/null; then
+	if useq $1; then
 		echo "--enable-${UWORD}${UE_SUFFIX}"
 		return 0
 	else
@@ -1056,6 +1056,7 @@ inherit() {
 	fi
 
 	local location
+	local PECLASS
 
 	while [ "$1" ]; do
 		location="${ECLASSDIR}/${1}.eclass"
@@ -1122,10 +1123,9 @@ inherit() {
 		#turn on glob expansion
  		set +f
 		
-		has $1 $INHERITED || export INHERITED="$INHERITED $1"
+		hasq $1 $INHERITED || export INHERITED="$INHERITED $1"
 
 		export ECLASS="$PECLASS"
-		unset PECLASS
 
 		shift
 	done
@@ -1287,6 +1287,7 @@ export S=${WORKDIR}/${P}
 unset   DEPEND   RDEPEND   CDEPEND   PDEPEND
 unset E_DEPEND E_RDEPEND E_CDEPEND E_PDEPEND
 
+export EBUILD_PHASE="$*"
 source ${EBUILD} || die "error sourcing ebuild"
 [ -z "${ERRORMSG}" ] || die "${ERRORMSG}"
 
@@ -1386,8 +1387,8 @@ for myarg in $*; do
 		# Handled in portage.py now
 		#dbkey=${PORTAGE_CACHEDIR}/${CATEGORY}/${PF}
 
-		if [ ! -d "$(dirname "${dbkey}")" ]; then
-			install -d -g ${PORTAGE_GID} -m2775 "$(dirname "${dbkey}")"
+		if [ ! -d "${dbkey%/*}" ]; then
+			install -d -g ${PORTAGE_GID} -m2775 "${dbkey%/*}"
 		fi
 
 		# Make it group writable. 666&~002==664

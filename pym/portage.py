@@ -37,6 +37,18 @@ def load_mod(name):
 		mod = getattr(mod, comp)
 	return mod
 
+def best_from_dict(key, top_dict, key_order, EmptyOnError=1, FullCopy=1, AllowEmpty=1):
+	for x in key_order:
+		if top_dict.has_key(x) and top_dict[x].has_key(key):
+			if FullCopy:
+				return copy.deepcopy(top_dict[x][key])
+			else:
+				return top_dict[x][key]
+	if EmptyOnError:
+		return ""
+	else:
+		raise KeyError, "Key not found in list; '%s'" % key
+
 def lockdir(mydir):
 	return lockfile(mydir,wantnewlockfile=1)
 def unlockdir(mylock):
@@ -243,9 +255,8 @@ def prefix_array(array,prefix,doblanks=1):
 	return newarray
 
 dircache={}
-def listdir(mypath,recursive=0,filesonly=0,ignorecvs=0,ignorelist=[],EmptyOnError=0):
-	"""List directory contents, using cache.
-	Returns none unless EmptyOnError is non-zero"""
+def cacheddir (mypath, ignorecvs, ignorelist, EmptyOnError):
+
 	if dircache.has_key(mypath):
 		cached_mtime, list, ftype = dircache[mypath]
 	else:
@@ -254,23 +265,40 @@ def listdir(mypath,recursive=0,filesonly=0,ignorecvs=0,ignorelist=[],EmptyOnErro
 		mtime = os.stat(mypath)[ST_MTIME]
 	else:
 		if EmptyOnError:
-			return []
-		return None
+			return [], []
+		return None, None
 	if mtime != cached_mtime:
 		list = os.listdir(mypath)
 		ftype = []
-		for x in range(len(list)-1,-1,-1):
-			if (list[x] in ignorelist) or \
-			   (ignorecvs and (len(list[x]) > 2) and (list[x][:2]==".#")):
-				del list[x]
-				continue
-			if os.path.isfile(mypath+"/"+list[x]):
-				ftype.insert(0,0)
-			elif os.path.isdir(mypath+"/"+list[x]):
-				ftype.insert(0,1)
+		for x in list:
+			if os.path.isfile(mypath+"/"+x):
+				ftype.append(0)
+			elif os.path.isdir(mypath+"/"+x):
+				ftype.append(1)
 			else:
-				ftype.insert(0,2)
+				ftype.append(2)
 		dircache[mypath] = mtime, list, ftype
+
+	ret_list = []
+	ret_ftype = []
+	for x in range(0, len(list)):
+		if not ((list[x] in ignorelist) or \
+			(ignorecvs and (len(list[x]) > 2) and 
+			(list[x][:2]==".#"))):
+				ret_list.append(list[x])
+				ret_ftype.append(ftype[x])
+
+	return ret_list, ret_ftype
+		
+
+def listdir (mypath,
+			 recursive=False,
+			 filesonly=False,
+			 ignorecvs=False,
+			 ignorelist=[],
+			 EmptyOnError=False):
+
+	list, ftype = cacheddir(mypath, ignorecvs, ignorelist, EmptyOnError)
 
 	if not filesonly and not recursive:
 		return list
@@ -281,8 +309,12 @@ def listdir(mypath,recursive=0,filesonly=0,ignorecvs=0,ignorelist=[],EmptyOnErro
 			if ftype[x]==1 and \
 			   not (ignorecvs and (len(list[x])>=3) and (("/"+list[x][-3:])=="/CVS")) and \
 				 not (ignorecvs and (len(list[x])>=4) and (("/"+list[x][-4:])=="/.svn")):
-				ignored=listdir(mypath+"/"+list[x],recursive,filesonly,ignorecvs,ignorelist,EmptyOnError)
-				m,l,f = dircache[mypath+"/"+list[x]]
+
+				l,f = cacheddir(mypath+"/"+list[x],
+								  ignorecvs,
+								  ignorelist,
+								  EmptyOnError)
+								  
 				l=l[:]
 				for y in range(0,len(l)):
 					l[y]=list[x]+"/"+l[y]
@@ -994,22 +1026,29 @@ def varexpand(mystring,mydict={}):
 						continue
 			elif (mystring[pos]=="$") and (mystring[pos-1]!="\\"):
 				pos=pos+1
-				if (pos+1)>=len(mystring):
-					cexpand[mystring]=""
-					return ""
 				if mystring[pos]=="{":
 					pos=pos+1
-					terminus="}"
+					braced=True
 				else:
-					terminus=string.whitespace
+					braced=False
 				myvstart=pos
-				while mystring[pos] not in terminus:
+				validchars=string.ascii_letters+string.digits+"_"
+				while mystring[pos] in validchars:
 					if (pos+1)>=len(mystring):
-						cexpand[mystring]=""
-						return ""
+						if braced:
+							cexpand[mystring]=""
+							return ""
+						else:
+							pos=pos+1
+							break
 					pos=pos+1
 				myvarname=mystring[myvstart:pos]
-				pos=pos+1
+				if braced:
+					if mystring[pos]!="}":
+						cexpand[mystring]=""
+						return ""
+					else:
+						pos=pos+1
 				if len(myvarname)==0:
 					cexpand[mystring]=""
 					return ""
@@ -1032,30 +1071,41 @@ def varexpand(mystring,mydict={}):
 # version is None and error is a string
 #
 def ExtractKernelVersion(base_dir):
-	pathname = os.path.join(base_dir, 'include/linux/version.h')
+	lines = []
+	pathname = os.path.join(base_dir, 'Makefile')
 	try:
-		lines = open(pathname, 'r').readlines()
+		f = open(pathname, 'r')
 	except OSError, details:
 		return (None, str(details))
 	except IOError, details:
 		return (None, str(details))
 
+	try:
+		for i in range(4):
+			lines.append(f.readline())
+	except OSError, details:
+		return (None, str(details))
+	except IOError, details:
+		return (None, str(details))
+		
 	lines = map(string.strip, lines)
 
 	version = ''
 
 	for line in lines:
-		items = string.split(line, ' ', 2)
-		if items[0] == '#define' and \
-			items[1] == 'UTS_RELEASE':
-			version = items[2] # - may be wrapped in quotes
-		break
+		# split on the '=' then remove annoying whitespace
+		items = string.split(line, '=')
+		items = map(string.strip, items)
+		if items[0] == 'VERSION' or \
+			items[0] == 'PATCHLEVEL':
+			version += items[1]
+			version += "."
+		elif items[0] == 'SUBLEVEL':
+			version += items[1]
+		elif items[0] == 'EXTRAVERSION' and \
+			items[-1] != items[0]:
+			version += items[1]
 
-	if version == '':
-		return (None, "Unable to locate UTS_RELEASE in %s" % (pathname))
-
-	if version[0] == '"' and version[-1] == '"':
-		version = version[1:-1]
 	return (version,None)
 
 aumtime=0
@@ -1090,8 +1140,10 @@ class config:
 		if clone:
 			self.incrementals = copy.deepcopy(clone.incrementals)
 			self.profile_path = copy.deepcopy(clone.profile_path)
-			self.configs  = copy.deepcopy(clone.configs)
-			self.defaults = copy.deepcopy(clone.defaults)
+
+			self.module_priority = copy.deepcopy(clone.module_priority)
+			self.modules         = copy.deepcopy(clone.modules)
+
 			self.packages = copy.deepcopy(clone.packages)
 			self.virtuals = copy.deepcopy(clone.virtuals)
 
@@ -1126,8 +1178,12 @@ class config:
 			else:
 				self.incrementals = copy.deepcopy(config_incrementals)
 			
-			self.configs  = {}
-			self.defaults = {
+			self.module_priority    = ["user","default"]
+			self.modules            = {}
+			self.modules["user"]    = getconfig("/etc/portage/modules")
+			if self.modules["user"] == None:
+				self.modules["user"] = {}
+			self.modules["default"] = {
 				"portdbapi.metadbmodule": "portage_db_flat.database",
 				"portdbapi.auxdbmodule":  "portage_db_flat.database",
 				"eclass_cache.dbmodule":  "portage_db_cpickle.database",
@@ -1140,7 +1196,12 @@ class config:
 			self.configdict={}
 			# configlist will contain: [ globals, defaults, conf, pkg, auto, backupenv (incrementals), origenv ]
 
-			self.profiles=[abssymlink("/etc/make.profile")]
+			# The symlink might not exist or might not be a symlink.
+			try:
+				self.profiles=[abssymlink("/etc/make.profile")]
+			except:
+				self.profiles=["/etc/make.profile"]
+
 			mypath = self.profiles[0]
 			while os.path.exists(mypath+"/parent"):
 				mypath = os.path.normpath(os.path.dirname(mypath)+"///"+grabfile(mypath+"/parent")[0])
@@ -1232,6 +1293,10 @@ class config:
 		self.regenerate()
 		if mycpv:
 			self.setcpv(mycpv)
+
+	def load_best_module(self,property_string):
+		best_mod = best_from_dict(property_string,self.modules,self.module_priority)
+		return load_mod(best_mod)
 			
 	def lock(self):
 		self.locked = 1
@@ -1470,6 +1535,10 @@ def spawn(mystring,mysettings,debug=0,free=0,droppriv=0,fd_pipes=None):
 
 	mypid=os.fork()
 	if mypid==0:
+		if fd_pipes:
+			os.dup2(fd_pipes[0], 0) # stdin  -- (Read)/Write
+			os.dup2(fd_pipes[1], 1) # stdout -- Read/(Write)
+			os.dup2(fd_pipes[2], 2) # stderr -- Read/(Write)
 		if droppriv:
 			if portage_gid and portage_uid:
 				#drop root privileges, become the 'portage' user
@@ -3075,23 +3144,23 @@ def cpv_getkey(mycpv):
 	else:
 		return mysplit
 
-def key_expand(mykey,mydb=None):
+def key_expand(mykey,mydb=None,use_cache=1):
 	mysplit=mykey.split("/")
 	if len(mysplit)==1:
 		if mydb and type(mydb)==types.InstanceType:
 			for x in categories:
-				if mydb.cp_list(x+"/"+mykey):
+				if mydb.cp_list(x+"/"+mykey,use_cache=use_cache):
 					return x+"/"+mykey
 			if virts_p.has_key(mykey):
 				return(virts_p[mykey][0])
 		return "null/"+mykey
 	elif mydb:
 		if type(mydb)==types.InstanceType:
-			if (not mydb.cp_list(mykey)) and virts and virts.has_key(mykey):
+			if (not mydb.cp_list(mykey,use_cache=use_cache)) and virts and virts.has_key(mykey):
 				return virts[mykey][0]
 		return mykey
 
-def cpv_expand(mycpv,mydb=None):
+def cpv_expand(mycpv,mydb=None,use_cache=1):
 	myslash=mycpv.split("/")
 	mysplit=pkgsplit(myslash[-1])
 	if len(myslash)>2:
@@ -3105,7 +3174,7 @@ def cpv_expand(mycpv,mydb=None):
 			mykey=mycpv
 		if mydb:
 			if type(mydb)==types.InstanceType:
-				if (not mydb.cp_list(mykey)) and virts and virts.has_key(mykey):
+				if (not mydb.cp_list(mykey,use_cache=use_cache)) and virts and virts.has_key(mykey):
 					mykey=virts[mykey][0]
 			#we only perform virtual expansion if we are passed a dbapi
 	else:
@@ -3119,7 +3188,7 @@ def cpv_expand(mycpv,mydb=None):
 		matches=[]
 		if mydb:
 			for x in categories:
-				if mydb.cp_list(x+"/"+myp):
+				if mydb.cp_list(x+"/"+myp,use_cache=use_cache):
 					matches.append(x+"/"+myp)
 		if (len(matches)>1):
 			raise ValueError, matches
@@ -3162,7 +3231,7 @@ def dep_transform(mydep,oldkey,newkey):
 	else:
 		return origdep
 
-def dep_expand(mydep,mydb=None):
+def dep_expand(mydep,mydb=None,use_cache=1):
 	if not len(mydep):
 		return mydep
 	if mydep[0]=="*":
@@ -3178,7 +3247,7 @@ def dep_expand(mydep,mydb=None):
 	elif mydep[:1] in "=<>~!":
 		prefix=mydep[:1]
 		mydep=mydep[1:]
-	return prefix+cpv_expand(mydep,mydb)+postfix
+	return prefix+cpv_expand(mydep,mydb,use_cache=use_cache)+postfix
 
 def dep_check(depstring,mydbapi,mysettings,use="yes",mode=None,myuse=None):
 	"""Takes a depend string and parses the condition."""
@@ -3639,7 +3708,7 @@ class dbapi:
 	def __init__(self):
 		pass
 	
-	def cp_list(self,cp):
+	def cp_list(self,cp,use_cache=1):
 		return
 
 	def aux_get(self,mycpv,mylist):
@@ -3648,11 +3717,11 @@ class dbapi:
 		'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or [] if mycpv not found'
 		pass
 
-	def match(self,origdep):
+	def match(self,origdep,use_cache=1):
 		mydep=dep_expand(origdep,self)
 		mykey=dep_getkey(mydep)
 		mycat=mykey.split("/")[0]
-		return match_from_list(mydep,self.cp_list(mykey))
+		return match_from_list(mydep,self.cp_list(mykey,use_cache=use_cache))
 
 	def match2(self,mydep,mykey,mylist):
 		writemsg("DEPRECATED: dbapi.match2\n")
@@ -3668,11 +3737,10 @@ class dbapi:
 		"This method will grab the next COUNTER value and record it back to the global file.  Returns new counter value."
 		cpath=myroot+"var/cache/edb/counter"
 		changed=0
-		
 		min_counter = 0
 		if mycpv:
 			mysplit = pkgsplit(mycpv)
-			for x in self.match(mysplit[0]):
+			for x in self.match(mysplit[0],use_cache=0):
 				try:
 					old_counter = long(self.aux_get(x,["COUNTER"])[0])
 					writemsg("COUNTER '%d' '%s'\n" % (old_counter, x),1)
@@ -3750,7 +3818,7 @@ class fakedbapi(dbapi):
 	def cpv_exists(self,mycpv):
 		return self.cpvdict.has_key(mycpv)
 	
-	def cp_list(self,mycp):
+	def cp_list(self,mycp,use_cache=1):
 		if not self.cpdict.has_key(mycp):
 			return []
 		else:
@@ -3828,7 +3896,7 @@ class vardbapi(dbapi):
 			cfile.close()
 		elif os.path.exists(cdir):
 			mys = pkgsplit(mycpv)
-			myl = self.match(mys[0])
+			myl = self.match(mys[0],use_cache=0)
 			print mys,myl
 			if len(myl) == 1:
 				try:
@@ -3875,7 +3943,7 @@ class vardbapi(dbapi):
 	def move_ent(self,mylist):
 		origcp=mylist[1]
 		newcp=mylist[2]
-		origmatches=self.match(origcp)
+		origmatches=self.match(origcp,use_cache=0)
 		if not origmatches:
 			return
 		for mycpv in origmatches:
@@ -3915,7 +3983,7 @@ class vardbapi(dbapi):
 		origslot=mylist[2]
 		newslot=mylist[3]
 
-		origmatches=self.match(pkg)
+		origmatches=self.match(pkg,use_cache=0)
 		if not origmatches:
 			return
 		for mycpv in origmatches:
@@ -3935,7 +4003,7 @@ class vardbapi(dbapi):
 			slotfile.write(newslot+"\n")
 			slotfile.close()
 
-	def cp_list(self,mycp):
+	def cp_list(self,mycp,use_cache=1):
 		mysplit=mycp.split("/")
 		if mysplit[0] == '*':
 			mysplit[0] = mysplit[0][1:]
@@ -3943,7 +4011,7 @@ class vardbapi(dbapi):
 			mystat=os.stat(self.root+VDB_PATH+"/"+mysplit[0])[ST_MTIME]
 		except OSError:
 			mystat=0
-		if self.cpcache.has_key(mycp):
+		if use_cache and self.cpcache.has_key(mycp):
 			cpc=self.cpcache[mycp]
 			if cpc[0]==mystat:
 				return cpc[1]
@@ -3963,19 +4031,22 @@ class vardbapi(dbapi):
 			if len(mysplit) > 1:
 				if ps[0]==mysplit[1]:
 					returnme.append(mysplit[0]+"/"+x)
-		self.cpcache[mycp]=[mystat,returnme]
+		if use_cache:
+			self.cpcache[mycp]=[mystat,returnme]
+		elif self.cpcache.has_key(mycp):
+			del self.cpcache[mycp]
 		return returnme
 
-	def cpv_all(self):
+	def cpv_all(self,use_cache=1):
 		returnme=[]
 		for x in categories:
 			for y in listdir(self.root+VDB_PATH+"/"+x,EmptyOnError=1):
 				returnme += [x+"/"+y]
 		return returnme
 
-	def cp_all(self):
+	def cp_all(self,use_cache=1):
 		returnme=[]
-		mylist = self.cpv_all()
+		mylist = self.cpv_all(use_cache=use_cache)
 		for y in mylist:
 			if y[0] == '*':
 				y = y[1:]
@@ -3991,13 +4062,18 @@ class vardbapi(dbapi):
 	def checkblockers(self,origdep):
 		pass
 
-	def match(self,origdep):
+	def match(self,origdep,use_cache=1):
 		"caching match function"
-		mydep=dep_expand(origdep,self)
+		mydep=dep_expand(origdep,self,use_cache=use_cache)
 		mykey=dep_getkey(mydep)
 		mycat=mykey.split("/")[0]
+		if not use_cache:
+			if self.matchcache.has_key(mycat):
+				del self.mtdircache[mycat]
+				del self.matchcache[mycat]
+			return match_from_list(mydep,self.cp_list(mykey,use_cache=use_cache))
 		try:
-			curmtime=os.stat(self.root+VDB_PATH+"/"+mycat)
+			curmtime=os.stat(self.root+VDB_PATH+"/"+mycat)[ST_MTIME]
 		except:
 			curmtime=0
 
@@ -4006,7 +4082,7 @@ class vardbapi(dbapi):
 			self.mtdircache[mycat]=curmtime
 			self.matchcache[mycat]={}
 		if not self.matchcache[mycat].has_key(mydep):
-			mymatch=match_from_list(mydep,self.cp_list(mykey))
+			mymatch=match_from_list(mydep,self.cp_list(mykey,use_cache=use_cache))
 			self.matchcache[mycat][mydep]=mymatch
 		return self.matchcache[mycat][mydep][:]
 	
@@ -4074,19 +4150,19 @@ class vartree(packagetree):
 					myprovides[mykey]  = [node]
 		return myprovides
 	
-	def dep_bestmatch(self,mydep):
+	def dep_bestmatch(self,mydep,use_cache=1):
 		"compatibility method -- all matches, not just visible ones"
 		#mymatch=best(match(dep_expand(mydep,self.dbapi),self.dbapi))
-		mymatch=best(self.dbapi.match(dep_expand(mydep,self.dbapi)))
+		mymatch=best(self.dbapi.match(dep_expand(mydep,self.dbapi),use_cache=use_cache))
 		if mymatch==None:
 			return ""
 		else:
 			return mymatch
 			
-	def dep_match(self,mydep):
+	def dep_match(self,mydep,use_cache=1):
 		"compatibility method -- we want to see all matches, not just visible ones"
 		#mymatch=match(mydep,self.dbapi)
-		mymatch=self.dbapi.match(mydep)
+		mymatch=self.dbapi.match(mydep,use_cache=use_cache)
 		if mymatch==None:
 			return []
 		else:
@@ -4105,8 +4181,8 @@ class vartree(packagetree):
 		masked package for nodes in this nodes list."""
 		return self.dbapi.cp_all()
 
-	def exists_specific_cat(self,cpv):
-		cpv=key_expand(cpv,self.dbapi)
+	def exists_specific_cat(self,cpv,use_cache=1):
+		cpv=key_expand(cpv,self.dbapi,use_cache=use_cache)
 		a=catpkgsplit(cpv)
 		if not a:
 			return 0
@@ -4124,8 +4200,8 @@ class vartree(packagetree):
 		cat,package=fullpackage.split("/")
 		return self.root+VDB_PATH+"/"+fullpackage+"/"+package+".ebuild"
 
-	def getnode(self,mykey):
-		mykey=key_expand(mykey,self.dbapi)
+	def getnode(self,mykey,use_cache=1):
+		mykey=key_expand(mykey,self.dbapi,use_cache=use_cache)
 		if not mykey:
 			return []
 		mysplit=mykey.split("/")
@@ -4154,9 +4230,9 @@ class vartree(packagetree):
 			pass
 		return ""
 	
-	def hasnode(self,mykey):
+	def hasnode(self,mykey,use_cache):
 		"""Does the particular node (cat/pkg key) exist?"""
-		mykey=key_expand(mykey,self.dbapi)
+		mykey=key_expand(mykey,self.dbapi,use_cache=use_cache)
 		mysplit=mykey.split("/")
 		mydirlist=listdir(self.root+VDB_PATH+"/"+mysplit[0],EmptyOnError=1)
 		for x in mydirlist:
@@ -4178,10 +4254,7 @@ class eclass_cache:
 		self.settings = settings
 		self.cachedir = self.settings["PORTAGE_CACHEDIR"]
 
-		try:
-			self.dbmodule = load_mod(self.settings.configs["eclass_cache.dbmodule"])
-		except:
-			self.dbmodule = load_mod(self.settings.defaults["eclass_cache.dbmodule"])
+		self.dbmodule = self.settings.load_best_module("eclass_cache.dbmodule")
 
 		self.packages = {} # {"PV": {"eclass1": ["location", "_mtime_"]}}
 		self.eclasses = {} # {"Name": ["location","_mtime_"]}
@@ -4270,20 +4343,18 @@ class portdbapi(dbapi):
 		self.root = root
 		
 		self.cachedir = self.mysettings["PORTAGE_CACHEDIR"]
+
+		self.tmpfs = self.mysettings["PORTAGE_TMPFS"]
+		if not os.path.exists(self.tmpfs):
+			self.tmpfs = None
 		
 		self.eclassdb = eclass_cache(self.mysettings)
 
-		self.metadb = {}
-		try:
-			self.metadbmodule = load_mod(self.mysettings.configs["portdbapi.metadbmodule"])
-		except:
-			self.metadbmodule = load_mod(self.mysettings.defaults["portdbapi.metadbmodule"])
+		self.metadb       = {}
+		self.metadbmodule = self.mysettings.load_best_module("portdbapi.metadbmodule")
 		
-		self.auxdb={}
-		try:
-			self.auxdbmodule = load_mod(self.mysettings.configs["portdbapi.auxdbmodule"])
-		except:
-			self.auxdbmodule = load_mod(self.mysettings.defaults["portdbapi.auxdbmodule"])
+		self.auxdb        = {}
+		self.auxdbmodule  = self.mysettings.load_best_module("portdbapi.auxdbmodule")
 
 		#if the portdbapi is "frozen", then we assume that we can cache everything (that no updates to it are happening)
 		self.xcache={}
@@ -4384,10 +4455,15 @@ class portdbapi(dbapi):
 			if doregen or not self.eclassdb.is_current(cat,pkg,self.auxdb[cat][pkg]["INHERITED"].split()):
 				stale=1
 				writemsg("doregen: %s %s\n" % (doregen,mycpv), 2)
-
 				writemsg("Generating cache entry(0) for: "+str(myebuild)+"\n",1)
-				mydbkey = self.cachedir+"/aux_db_key_temp"
+
+				if self.tmpfs:
+					mydbkey = self.tmpfs+"/aux_db_key_temp"
+				else:
+					mydbkey = self.cachedir+"/aux_db_key_temp"
+
 				mylock = lockfile(mydbkey,unlinkfile=1)
+
 				myret=doebuild(myebuild,"depend","/",self.mysettings,dbkey=mydbkey)
 				if myret:
 					unlockfile(mylock)
@@ -4485,7 +4561,7 @@ class portdbapi(dbapi):
 						returnme.append(mye)
 		return returnme
 
-	def cp_list(self,mycp):
+	def cp_list(self,mycp,use_cache=1):
 		mysplit=mycp.split("/")
 		returnme=[]
 		list=listdir(self.root+"/"+mycp,EmptyOnError=1)
@@ -4554,7 +4630,7 @@ class portdbapi(dbapi):
 			self.xcache[level][mydep]=myval
 		return myval
 
-	def match(self,mydep):
+	def match(self,mydep,use_cache=1):
 		return self.xmatch("match-visible",mydep)
 
 	def visible(self,mylist):
@@ -5261,7 +5337,7 @@ class dblink:
 			newworldlist=[]
 			for x in worldlist:
 				if dep_getkey(x)==mykey:
-					matches=db[self.myroot]["vartree"].dbapi.match(x)
+					matches=db[self.myroot]["vartree"].dbapi.match(x,use_cache=0)
 					if not matches:
 						#zap our world entry
 						pass
@@ -5361,6 +5437,7 @@ class dblink:
 
 		# get current counter value (counter_tick also takes care of incrementing it)
 		# XXX Need to make this destroot, but it needs to be initialized first. XXX
+		# XXX bis: leads to some invalidentry() call through cp_all().
 		counter = db["/"]["vartree"].dbapi.counter_tick(self.myroot,self.mycpv)
 		# write local package counter for recording
 		lcfile = open(self.dbtmpdir+"/COUNTER","w")
@@ -5480,6 +5557,10 @@ class dblink:
 	
 		#update environment settings, library paths. DO NOT change symlinks.
 		env_update(makelinks=0)
+		#dircache may break autoclean because it remembers the -MERGING-pkg file
+		global dircache
+		if dircache.has_key(self.dbcatdir):
+			del dircache[self.dbcatdir]
 		print ">>>",self.mycpv,"merged."
 
 
@@ -5900,14 +5981,20 @@ if not os.path.exists(root+"var/tmp"):
 os.umask(022)
 profiledir=None
 if os.path.exists("/etc/make.profile/make.defaults"):
-	profiledir="/etc/make.profile"
+	profiledir = "/etc/make.profile"
 	if os.access("/etc/make.profile/deprecated", os.R_OK):
 		deprecatedfile = open("/etc/make.profile/deprecated", "r")
-		newprofile=deprecatedfile.read()
+		dcontent = deprecatedfile.readlines()
 		deprecatedfile.close()
-		writemsg(red("!!! Your current profile is deprecated and not supported anymore.\n"))
+		newprofile = dcontent[0]
+		writemsg(red("\n!!! Your current profile is deprecated and not supported anymore.\n"))
 		writemsg(red("!!! Please upgrade to the following profile if possible:\n"))
 		writemsg(8*" "+green(newprofile)+"\n")
+		if len(dcontent) > 1:
+			writemsg("To upgrade do the following steps:\n")
+			for myline in dcontent[1:]:
+				writemsg(myline)
+			writemsg("\n\n")
 
 db={}
 
@@ -6131,6 +6218,13 @@ def do_upgrade(mykey):
 def portageexit():
 	global uid,portage_gid,portdb
 	if secpass and not os.environ.has_key("SANDBOX_ACTIVE"):
+		# wait child process death
+		try:
+			while True:
+				os.wait()
+		except OSError:
+			#writemsg(">>> All child process are now dead.")
+			pass
 		if mtimedb:
 		# Store mtimedb
 			mymfn=mtimedbfile

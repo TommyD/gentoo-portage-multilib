@@ -2,6 +2,10 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
+ordertest() {
+	echo "RUNNING FROM EXTRA_FUNCTIONS.SH"
+}
+
 # ============================================================================
 # Extracted from flag-o-matic -- March 10, 2003
 # ============================================================================
@@ -169,6 +173,8 @@ EPATCH_FORCE="no"
 # <azarah@gentoo.org> (10 Nov 2002)
 #
 epatch() {
+	echo "RUNNING FROM extra_functions.sh"
+
 	local PIPE_CMD=""
 	local STDERR_TARGET="${T}/$$.out"
 	local PATCH_TARGET="${T}/$$.patch"

@@ -21,6 +21,43 @@ def normpath(mystr):
 	else:
 		return os.path.normpath(mystr)
 
+def userquery(prompt, responses=None, colours=None):
+	"""Displays a prompt and a set of responses, then waits for a response
+	which is checked against the responses and the first to match is 
+	returned.
+	
+	prompt: a String.
+	responses: a List of Strings.
+	colours: a List of Functions taking and returning a String, used to 
+	process the responses for display. Typically these will be functions 
+	like red() but could be e.g. lambda x: "DisplayString".
+	If responses is omitted, defaults to ["Yes, "No"], [green, red].
+	If only colours is omitted, defaults to [bold, ...].
+
+	Returns a member of the List responses. (If called without optional
+	arguments, returns "Yes" or "No".)
+	KeyboardInterrupt is converted to SystemExit to avoid tracebacks being 
+	printed."""
+	if responses is None:
+		responses, colours = ["Yes", "No"], [green, red]
+	elif colours is None:
+		colours=[bold]
+	colours=(colours*len(responses))[:len(responses)]
+	print bold(prompt),
+	try:
+		while True:
+			response=raw_input("["+string.join([colours[i](responses[i]) for i in range(len(responses))],"/")+"] ")
+			for key in responses:
+				if response.upper()==key[:len(response)].upper():
+					return key
+			for key in responses:
+				if response.upper()==key[:len(response)].upper():
+					return key
+			print "Sorry, response '%s' not understood." % response,
+	except KeyboardInterrupt:
+		print "Interrupted."
+		sys.exit(1)
+
 if portage.settings.has_key("PORTAGE_NICENESS"):
 	try:
 		os.nice(int(portage.settings["PORTAGE_NICENESS"]))
@@ -42,10 +79,13 @@ spinpos=0
 merged=0
 params=["selective", "deep", "self", "recurse", "empty"]
 actions=[
-"clean", "config", "depclean", "help", "info",   "inject",  "prune",
-"regen", "rsync",  "search",   "sync", "system", "unmerge", "world"
+"clean", "config", "depclean",
+"help",  "info",   "inject",   "metadata",
+"prune", "regen",  "rsync",    "search",
+"sync",  "system", "unmerge",  "world",
 ]
 options=[
+"--ask",
 "--buildpkg",     "--buildpkgonly",
 "--changelog",    "--columns",
 "--debug",        "--deep",
@@ -66,6 +106,7 @@ options=[
 ]
 
 shortmapping={
+"a":"--ask",
 "b":"--buildpkg",  "B":"--buildpkgonly",
 "c":"--clean",     "C":"--unmerge",
 "d":"--debug",     "D":"--deep",
@@ -119,9 +160,9 @@ for x in cmdline:
 				myopts.append(x)
 			elif x[2:] in actions:
 				if x[2:]=="rsync":
-					#print
-					#print red("*** --rsync has been deprecated.")
-					#print red("***   Please use '--sync' instead.")
+					print
+					print red("*** 'rsync' has been deprecated.")
+					print red("*** Please use 'sync' instead.")
 					x="--sync"
 				if myaction:
 					if myaction not in ["system", "world"]:
@@ -179,6 +220,10 @@ if ("--searchdesc" in myopts):
 		myopts.append("--search")
 	myaction = "search"
 
+# Always try and fetch binary packages if FEATURES=getbinpkg
+if ("getbinpkg" in portage.features):
+	myopts.append("--getbinpkg")
+
 if ("--getbinpkgonly" in myopts) and not ("--usepkgonly" in myopts):
 	myopts.append("--usepkgonly")
 
@@ -201,6 +246,17 @@ if ("--upgradeonly" in myopts) and not ("--update" in myopts):
 if ("--changelog" in myopts) and not ("--pretend" in myopts):
 	print ">>> --changelog implies --pretend... adding --pretend to options."
 	myopts.append("--pretend")
+
+# Allow -p to remove --ask
+if ("--pretend" in myopts) and ("--ask" in myopts):
+	print ">>> --pretend disables --ask... removing --ask from options."
+	myopts.remove("--ask")
+
+# forbid --ask when not in a terminal
+# note: this breaks `emerge --ask | tee logfile`, but that doesn't work anyway.
+if ("--ask" in myopts) and (not sys.stdout.isatty()):
+	portage.writemsg("!!! \"--ask\" should only be used in a terminal. Exiting.\n")
+	sys.exit(1)
 
 # Set so that configs will be merged regardless of remembered status
 if ("--noconfmem" in myopts):
@@ -239,16 +295,14 @@ def emergelog(mystr):
 		pass
 
 def emergeexit():
-	"""This gets out final log message in before we quit. As it overrides
-	any other atexit's we have setup, we need to call them ourself."""
-	portage.portageexit()
-	emergelog(" *** terminating.")
+	"""This gets out final log message in before we quit."""
+	if "--pretend" not in myopts:
+		emergelog(" *** terminating.")
 	if "notitles" not in portage.features:
 		xtermTitleReset()
 atexit.register(emergeexit)
 
 def emergeexitsig(signum, frame):
-	emergeexit()
 	sys.exit(100+signum)
 signal.signal(signal.SIGINT, emergeexitsig)
 
@@ -527,8 +581,9 @@ class search:
 						masked=1
 						full_package=portage.best(portage.portdb.xmatch("match-all",match))
 				else:
-					full_package=match
-					catpack=portage.pkgsplit(match)[0]
+					full_package = match
+					match        = portage.pkgsplit(match)[0]
+
 				if full_package:
 					try:
 						desc, homepage, license = portage.portdb.aux_get(full_package,["DESCRIPTION","HOMEPAGE","LICENSE"])
@@ -663,8 +718,8 @@ class depgraph:
 		if "--usepkg" in myopts:
 			try:
 				portage.db["/"]["bintree"].populate(("--getbinpkg" in myopts), ("--getbinpkgonly" in myopts))
-			except ValueError, e:
-				sys.stderr.write(red("!!! Failed to get all metadata: "+str(e)+"\n"))
+			except Exception, e:
+				sys.stderr.write(red("!!! Failed to get all metadata:\n")+"    "+str(e)+"\n")
 				sys.exit(1)
 
 	def create(self,mybigkey,myparent=None,addme=1,myuse=None):
@@ -1614,7 +1669,7 @@ def unmerge(unmerge_action, unmerge_files):
 			return 0
 		for x in unmerge_files:
 			arg_parts=x.split('/')
-			if arg_parts[-1][-7:]!=".ebuild":
+			if (x[0] not in [".","/"]) and (arg_parts[-1][-7:] != ".ebuild"):
 				#possible cat/pkg or dep; treat as such
 				candidate_catpkgs.append(x)
 			elif unmerge_action in ["prune","clean"]:
@@ -1626,16 +1681,43 @@ def unmerge(unmerge_action, unmerge_files):
 				if not os.path.exists(x):
 					print "\n!!! The path '"+x+"' doesn't exist.\n"
 					return 0
-				absx=os.path.abspath(x)
-				spabsx=absx.split("/")
-				if (absx[:12]!=(portage.root+portage.VDB_PATH)) or len(spabsx)!=7:
+
+				absx   = os.path.abspath(x)
+				sp_absx = absx.split("/")
+				if sp_absx[-1][-7:] == ".ebuild":
+					del sp_absx[-1]
+					absx = string.join(sp_absx,"/")
+
+				sp_absx_len = len(sp_absx)
+
+				vdb_path = portage.root+portage.VDB_PATH
+				vdb_len  = len(vdb_path)
+				
+				sp_vdb     = vdb_path.split("/")
+				sp_vdb_len = len(sp_vdb)
+
+				if not os.path.exists(absx+"/CONTENTS"):
+					print "!!! Not a valid db dir: "+str(absx)
+					return 0
+
+				if sp_absx_len <= sp_vdb_len:
+					# The Path is shorter... so it can't be inside the vdb.
 					print spabsx
 					print absx
-					print "\n!!!",x,"is not inside "+(portage.root+portage.VDB_PATH)+"; aborting.\n"
+					print "\n!!!",x,"cannot be inside "+(portage.root+portage.VDB_PATH)+"; aborting.\n"
 					return 0
-				candidate_catpkgs.append("="+spabsx[4]+"/"+spabsx[5])
 
-	if "--pretend" in myopts:
+				for idx in range(0,sp_vdb_len):
+					if (idx >= sp_absx_len) or (sp_vdb[idx] != sp_absx[idx]):
+						print sp_absx
+						print absx
+						print "\n!!!",x,"is not inside "+(portage.root+portage.VDB_PATH)+"; aborting.\n"
+						return 0
+				
+				print "="+string.join(sp_absx[sp_vdb_len:],"/")
+				candidate_catpkgs.append("="+string.join(sp_absx[sp_vdb_len:],"/"))
+
+	if ("--pretend" in myopts) or ("--ask" in myopts):
 		print darkgreen("\n>>> These are the packages that I would unmerge:")
 	
 	pkgmap={}
@@ -1734,6 +1816,12 @@ def unmerge(unmerge_action, unmerge_files):
 	if "--pretend" in myopts:
 		#we're done... return
 		return 0
+	if "--ask" in myopts:
+		if userquery("Do you want me to unmerge these packages?")=="No":
+			print
+			print "Quitting."
+			print
+			return 0
 	#the real unmerging begins, after a short delay....
 	
 	if mysettings["CLEAN_DELAY"]:
@@ -1864,12 +1952,12 @@ def post_emerge(retval=0):
 if "--debug" in myopts:
 	edebug=1
 
-if myaction in ["sync","rsync"] and (not "--help" in myopts):
+if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 	if "--pretend" in myopts:
-		print "emerge: the \"sync\" action does not support \"--pretend.\""
+		print "emerge: \"sync\" actions do not support \"--pretend.\""
 		sys.exit(1)
 
-	emergelog(" === rsync")
+	emergelog(" === "+str(myaction))
 	myportdir=portage.settings["PORTDIR"]
 	if myportdir[-1]=="/":
 		myportdir=myportdir[:-1]
@@ -1878,9 +1966,10 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 		os.makedirs(myportdir,0755)	
 	syncuri=string.rstrip(portage.settings["SYNC"])
 	os.umask(0022)
-	if 0:
+	if myaction == "metadata":
 		print "skipping sync"
 		updatecache_flg = True
+		tmpservertimestampfile = None
 	elif syncuri[:8]=="rsync://":
 		if not os.path.exists("/usr/bin/rsync"):
 			print "!!! /usr/bin/rsync does not exist, so rsync support is disabled."
@@ -1892,14 +1981,46 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 				mytimeout=int(portage.settings["RSYNC_TIMEOUT"])
 			except:
 				pass
-		rsynccommand="/usr/bin/rsync -rlptDvz --progress --stats --delete --delete-after --timeout="+str(mytimeout)+" --exclude='distfiles/*' --exclude='local/*' --exclude='packages/*'"
+		
+		rsync_flags = [
+			"--recursive",    # Recurse directories
+			"--links",        # Consider symlinks
+			"--safe-links",   # Ignore links outside of tree
+			"--perms",        # Preserve permissions
+			"--times",        # Preserive mod times
+			"--compress",     # Compress the data transmitted
+			"--force",        # Force deletion on non-empty dirs
+			"--whole-file",   # Don't do block transfers, only entire files
+			"--delete",       # Delete files that aren't in the master tree
+			"--delete-after", # Delete only after everything else is done
+			"--stats",        # Show final statistics about what was transfered
+      "--timeout="+str(mytimeout), # IO timeout if not done in X seconds
+			"--exclude='distfiles/*'",   # Exclude distfiles from consideration
+			"--exclude='local/*'",       # Exclude local     from consideration
+			"--exclude='packages/*'",    # Exclude packages  from consideration
+		]
+
+		if "--quiet" in myopts:
+			rsync_flags.append("--quiet")    # Shut up a lot
+		else:
+			rsync_flags.append("--progress") # Progress meter for each file
+			
+		if "--verbose" in myopts:
+			rsync_flags.append("--verbose")  # More noise? Not really sure what
+
+		if "--debug" in myopts:
+			rsync_flags.append("--checksum") # Force checksum on all files
+
 		if portage.settings.has_key("RSYNC_EXCLUDEFROM"):
 			if os.path.exists(portage.settings["RSYNC_EXCLUDEFROM"]):
-				rsynccommand=rsynccommand+" --exclude-from "+portage.settings["RSYNC_EXCLUDEFROM"]
+				rsync_flags.append("--exclude-from="+portage.settings["RSYNC_EXCLUDEFROM"])
 			else:
 				print "!!! RSYNC_EXCLUDEFROM specified, but file does not exist."
+
 		if portage.settings.has_key("RSYNC_RATELIMIT"):
-			rsynccommand = rsynccommand+ " --bwlimit="+portage.settings["RSYNC_RATELIMIT"]+" "
+			rsync_flags.append("--bwlimit="+portage.settings["RSYNC_RATELIMIT"])
+
+		rsynccommand = "/usr/bin/rsync " + string.join(rsync_flags, " ")
 
 		servertimestampdir  = portage.settings["PORTAGE_CACHEDIR"]+"/"
 		servertimestampfile = portage.settings["PORTAGE_CACHEDIR"]+"/timestamp.chk"
@@ -1954,6 +2075,12 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 					dosyncuri=syncuri
 
 			if (retries==0):
+				if "--ask" in myopts:
+					if userquery("Do you want to sync your Portage tree with the mirror at\n" + blue(dosyncuri) + bold("?"))=="No":
+						print
+						print "Quitting."
+						print
+						sys.exit(0)
 				emergelog(">>> starting rsync with "+dosyncuri)
 				print ">>> starting rsync with "+dosyncuri+"..."
 			else:
@@ -2077,7 +2204,8 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 
 		# save timestamp.chk for next timestamp check.
 		try:
-			portage.movefile(tmpservertimestampfile, servertimestampfile)
+			if tmpservertimestampfile != None:
+				portage.movefile(tmpservertimestampfile, servertimestampfile)
 		except Exception, e:
 			print "!!! Failed to save current timestamp."
 			print "!!!",e
@@ -2089,9 +2217,11 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 		except:
 			pass
 		mynodes=portage.portdb.cp_all()
+		mynodes.sort()
 		for x in mynodes:
 			myxsplit=x.split("/")
 			mymatches=portage.portdb.xmatch("match-all",x)
+			mymatches.sort()
 			for y in mymatches:
 				update_spinner()
 				try:
@@ -2208,6 +2338,12 @@ elif "inject"==myaction:
 		if portage.db["/"]["vartree"].exists_specific(x):
 			print "!!! Not injecting",x+"; Package already exists."
 		else:
+			if "--ask" in myopts:
+				if userquery("Do you want to inject the package %s?" % x)=="No":
+					print
+					print "Quitting."
+					print
+					sys.exit(0)
 			portage.db["/"]["vartree"].dbapi.cpv_inject(x)
 			print ">>> Injected",x+"."
 			emergelog(" === inject: "+x)
@@ -2236,7 +2372,7 @@ elif "depclean"==myaction:
 	print red("*** WARNING ***")+" : MERGING  *** THE PACKAGE THAT COMPLAINS ***  ABOUT THE"
 	print red("*** WARNING ***")+" : MISSING LIBRARY."
 	print
-	if not "--pretend" in myopts:
+	if ("--pretend" not in myopts) and ("--ask" not in myopts):
 		countdown(10, ">>> Depclean")
 		emergelog(" >>> depclean")
 
@@ -2282,7 +2418,7 @@ elif "depclean"==myaction:
 				red("!!! "+str(string.split(x)[2])+"\n\n")+
 				    "!!! Please ensure that blocking/conflicting packages are not merged."+
 						"!!! 'emerge -p "+str(string.split(x)[2])+"\n\n")
-			if "--pretend" not in myopts:
+			if ("--pretend" not in myopts) and ("--ask" not in myopts):
 				countdown(15, "*** Continuing")
 			continue
 			
@@ -2315,7 +2451,7 @@ elif "depclean"==myaction:
 	#print
 
 	if len(cleanlist):
-		unmerge("unmerge", cleanlist)
+		retval=unmerge("unmerge", cleanlist)
 
 	print
 	print "Packages installed:   "+str(len(myvarlist))
@@ -2323,18 +2459,17 @@ elif "depclean"==myaction:
 	print "Packages in system:   "+str(len(syslist))
 	print "Unique package names: "+str(len(reallist))
 	print "Required packages:    "+str(len(alldeps))
-	if "--pretend" in myopts:
+	if ("--pretend" in myopts) or 1!=retval:
 		print "Number to remove:     "+str(len(cleanlist))
 	else:
 		print "Number removed:       "+str(len(cleanlist))
-
-	post_emerge()
+		post_emerge()
 
 # "update", "system", or just process files:
 else:
 	favorites=[]
 	syslist=getlist("system")
-	if ("--pretend" in myopts) and not ("--fetchonly" in myopts):
+	if (("--pretend" in myopts) and not ("--fetchonly" in myopts)) or ("--ask" in myopts):
 		if "--tree" in myopts:
 			print
 			print darkgreen("These are the packages that I would merge, in reverse order:")
@@ -2389,6 +2524,37 @@ else:
 				sys.stderr.write("   "+str(x)+"\n")
 			sys.stderr.write("\nThese are required by '--usepkgonly' -- Terminating.\n\n")
 			sys.exit(1)
+
+	if "--ask" in myopts:
+		if "--resume" in myopts:
+			mydepgraph.display(portage.mtimedb["resume"]["mergelist"])
+			prompt="Do you want me to resume merging these packages?"
+		else:
+			mydepgraph.display(mydepgraph.altlist())
+			mergecount=0
+			for x in mydepgraph.altlist():
+				if x[3]!="nomerge":
+					mergecount+=1
+			if mergecount==0:
+				if portage.settings["AUTOCLEAN"] and "yes"==portage.settings["AUTOCLEAN"]:
+					prompt="Nothing to merge; do you want me to auto-clean packages?"
+				else:
+					print
+					print "Nothing to merge; quitting."
+					print
+					sys.exit(0)
+			elif "--fetchonly" in myopts:
+				prompt="Do you want me to fetch the source files for these packages?"
+			else:
+				prompt="Do you want me to merge these packages?"
+		print
+		if userquery(prompt)=="No":
+			print
+			print "Quitting."
+			print
+			sys.exit(0)
+		# Don't ask again (e.g. when auto-cleaning packages after merge)
+		myopts.remove("--ask")
 
 	if ("--pretend" in myopts) and ("--fetchonly" not in myopts):
 		if ("--resume" in myopts):

@@ -4,7 +4,7 @@
 # $Id$
 
 from output import *
-import htmllib,HTMLParser,string,formatter,sys,os,xpak,time,tempfile,cPickle
+import htmllib,HTMLParser,string,formatter,sys,os,xpak,time,tempfile,cPickle,base64
 
 try:
 	import ftplib
@@ -94,6 +94,18 @@ def create_conn(baseurl,conn=None):
 		password = None
 	del userpass
 
+	http_headers = {}
+	http_params = {}
+	if username and password:
+		http_headers = {
+			"Authorization": "Basic %s" %
+			  string.replace(
+			    base64.encodestring("%s:%s" % (username, password)),
+			    "\012",
+			    ""
+			  ),
+		}
+
 	if not conn:
 		if protocol == "https":
 			conn = httplib.HTTPSConnection(host)
@@ -111,7 +123,7 @@ def create_conn(baseurl,conn=None):
 		else:
 			raise NotImplementedError, "%s is not a supported protocol." % protocol
 
-	return (conn,protocol,address)
+	return (conn,protocol,address, http_params, http_headers)
 
 def make_ftp_request(conn, address, rest=None, dest=None):
 	"""(conn,address,rest) --- uses the conn object to request the data
@@ -248,18 +260,19 @@ def dir_get_list(baseurl,conn=None):
 	else:
 		keepconnection = 1
 
-	conn,protocol,address = create_conn(baseurl, conn)
+	conn,protocol,address,params,headers = create_conn(baseurl, conn)
 
+	listing = None
 	if protocol in ["http","https"]:
-		headers = {}
-		params  = {}
-		page,rc,msg = make_http_request(conn, address, params, headers)
-
+		page,rc,msg = make_http_request(conn,address,params,headers)
+		
 		if page:
 			parser = ParseLinks()
 			parser.feed(page)
 			del page
 			listing = parser.get_anchors()
+		else:
+			raise Exception, "Unable to get listing: %s" % (rc,msg)
 	elif protocol in ["ftp"]:
 		if address[-1] == '/':
 			olddir = conn.pwd()
@@ -287,11 +300,10 @@ def file_get_metadata(baseurl,conn=None, chunk_size=3000):
 	else:
 		keepconnection = 1
 
-	conn,protocol,address = create_conn(baseurl, conn)
+	conn,protocol,address,params,headers = create_conn(baseurl, conn)
 
 	if protocol in ["http","https"]:
-		headers = {"Range": "bytes=-"+str(chunk_size)}
-		params  = {}
+		headers["Range"] = "bytes=-"+str(chunk_size)
 		data,rc,msg = make_http_request(conn, address, params, headers)
 	elif protocol in ["ftp"]:
 		data,rc,msg = make_ftp_request(conn, address, -chunk_size)
@@ -360,11 +372,11 @@ def file_get_lib(baseurl,dest,conn=None):
 	else:
 		keepconnection = 1
 
-	conn,protocol,address = create_conn(baseurl, conn)
+	conn,protocol,address,params,headers = create_conn(baseurl, conn)
 
 	sys.stderr.write("Fetching '"+str(os.path.basename(address)+"'\n"))
 	if protocol in ["http","https"]:
-		data,rc,msg = make_http_request(conn, address, dest=dest)
+		data,rc,msg = make_http_request(conn, address, params, headers, dest=dest)
 	elif protocol in ["ftp"]:
 		data,rc,msg = make_ftp_request(conn, address, dest=dest)
 	else:
@@ -387,7 +399,7 @@ def dir_get_metadata(baseurl,conn=None, chunk_size=3000, verbose=1, usingcache=1
 	if makepickle == None:
 		makepickle = "/var/cache/edb/metadata.idx.most_recent"
 
-	conn,protocol,address = create_conn(baseurl, conn)
+	conn,protocol,address,params,headers = create_conn(baseurl, conn)
 
 	filedict = {}
 

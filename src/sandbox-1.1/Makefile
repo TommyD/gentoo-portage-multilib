@@ -30,13 +30,13 @@ sandbox: sandbox.o sandbox_futils.o getcwd.c
 sandbox.o: sandbox.c sandbox.h
 	$(CC) $(CFLAGS) -Wall -c sandbox.c
 
-sandbox_futils.o: sandbox_futils.c sandbox.h
+sandbox_futils.o: localdecls.h sandbox_futils.c sandbox.h
 	$(CC) $(CFLAGS) -Wall -c $(OBJ_DEFINES) sandbox_futils.c
 
 libsandbox.so: libsandbox.o sandbox_futils.o
 	$(CC) $^ -shared -fPIC -ldl -lc -o $@ -nostdlib -lgcc
 
-libsandbox.o: libsandbox.c localdecls.h canonicalize.c getcwd.c
+libsandbox.o: localdecls.h libsandbox.c canonicalize.c getcwd.c
 	$(CC) $(CFLAGS) -Wall -c $(OBJ_DEFINES) libsandbox.c
 
 localdecls.h: create-localdecls libctest.c
