@@ -2021,7 +2021,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 				mysettings["PORT_LOGDIR"]=""
 
 		if mydo=="unmerge":
-			return unmerge(mysettings["CATEGORY"],mysettings["PF"],myroot)
+			return unmerge(mysettings["CATEGORY"],mysettings["PF"],myroot,mysettings)
 
 	# if any of these are being called, handle them -- running them out of the sandbox -- and stop now.
 	if mydo in ["help","clean","setup"]:

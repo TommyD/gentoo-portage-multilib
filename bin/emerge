@@ -1648,7 +1648,11 @@ def unmerge(unmerge_action, unmerge_files):
 	numselected=0
 	for x in candidate_catpkgs:
 		#cycle through all our candidate deps and determine what will and will not get unmerged
-		mymatch=localtree.dep_match(x)
+		try:
+			mymatch=localtree.dep_match(x)
+		except KeyError:
+			mymatch=None
+
 		if not mymatch and x[0] not in "<>=~":
 			#add a "=" if missing
 			mymatch=localtree.dep_match("="+x)
