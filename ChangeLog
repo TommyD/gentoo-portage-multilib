@@ -2,6 +2,10 @@
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
   1 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge :
+  added --pretend support instead of interactively asking to proceed,
+  also added a delay before unmerging though to be sure
+
+  1 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge :
   added --safe switch to complement the --unmerge option
 
   1 Feb 2002; G.Bevin <gbevin@gentoo.org> portage.py :

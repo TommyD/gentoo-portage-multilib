@@ -14,6 +14,7 @@ from string import strip, find, replace, split
 import commands
 import shutil
 import re
+import time
 
 # search functionality
 class search:
@@ -627,11 +628,6 @@ CONFIG_PROTECT_MASK="/etc/wget /etc/rc.d"
 		print outstuff
 	sys.exit(1)
 
-if "--pretend" in myopts:
-		print
-		print "These are the packages that I would merge, in order."
-		print
-
 if "--search" in myopts:
 	if not myfiles:
 		print
@@ -720,20 +716,40 @@ if "--unmerge" in myopts:
 		if len(full_paths)==0:
 			print "Couldn't find any matching installed packages."
 		else:
-			# ask user for confirmation
-			print "The following packages are going to be unmerged :"
+			if "--pretend" in myopts:
+				print
+				print "The are the packages that I would unmerge :"
+				print
+			else:
+				print
+				print "The following packages are going to be unmerged :"
+				print
 			for full_path in full_paths.keys():
 				package_parts=split(full_path, "/")
 				print "    "+package_parts[4]+"/"+package_parts[5]
-			answer=raw_input("Do you want to proceed (y/N)?")
-			if len(answer)==0 or string.lower(answer[0]) != "y":
-				print "Unmerging has been aborted."
+			if "--pretend" in myopts:
+				print
 			else:
+				secs=5
+				print
+				print "Waiting",secs,"seconds to make sure that you want these"
+				print "packages to be removed ..."
+				while secs > 0:
+					sys.stdout.write(str(secs)+" ")	
+					sys.stdout.flush()
+					time.sleep(1)
+					secs = secs-1
+				print secs
 				for full_path in full_paths.keys():
 					print "Unmerging "+os.path.basename(full_path)+" ..."
 					retval=portage.doebuild(full_path,"unmerge",portage.root,0,edebug)
 
 	sys.exit(1)
+
+if "--pretend" in myopts:
+		print
+		print "These are the packages that I would merge, in order."
+		print
 
 if "rsync" in mymode:
 	if not os.path.exists("/usr/bin/rsync"):
