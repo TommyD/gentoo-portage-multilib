@@ -2,7 +2,7 @@
 # Copyright 1998-2002 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
 
-VERSION="2.0.34"
+VERSION="2.0.39-pre1"
 
 from stat import *
 from commands import *
@@ -260,7 +260,7 @@ def env_update():
 		if len(fns[pos])<=2:
 			del fns[pos]
 			continue
-		if not ((fns[pos][0] in string.digits) and (fns[pos][1] in string.digits)):
+		if (fns[pos][0] not in string.digits) or (fns[pos][1] not in string.digits):
 			del fns[pos]
 			continue
 		pos=pos+1
@@ -935,7 +935,14 @@ def digestgen(myarchives,overwrite=1):
 	if (not overwrite) and os.path.exists(myoutfn2):
 		return
 	print ">>> Generating digest file..."
-	outfile=open(myoutfn,"w")
+
+	try:
+		outfile=open(myoutfn,"w")
+	except IOError, e:
+		print "!!! Filesystem error skipping generation. (Read-Only?)"
+		print "!!! "+str(e)
+		return
+	
 	for x in myarchives:
 		myfile=settings["DISTDIR"]+"/"+x
 		mymd5=perform_md5(myfile)
