@@ -210,7 +210,7 @@ class digraph:
 
 	def empty(self):
 		if len(self.dict)==0:
-			return 1
+			return 0
 		return 0
 
 	def hasnode(self,mynode):
@@ -1351,7 +1351,23 @@ class packagetree:
 				return 1
 		elif mypkgdep[0]=="=":
 			# =cat/pkg-v
-			return self.exists_specific(mypkgdep[1:])
+			if mypkgdep[-1]=="*":
+				if not isspecific(mypkgdep[1:-1]):
+					return None
+				mycatpkg=catpkgsplit(mypkgdep[1:-1])
+				try:
+					mynewver=mycatpkg[2]
+					mynewsplit=string.split(mycatpkg[2],'.')
+					mynewsplit[-1]=`int(mynewsplit[-1])+1`
+				except:
+					return None
+				cmp1=mycatpkg[1:]
+				cmp2=[mycatpkg[1],string.join(mynewsplit,"."),"r0"]
+				for x in self.getnode(mycatpkg[0]+"/"+mycatpkg[1]):
+					if (pkgcmp(x[1][1:],cmp1)>=0) and (pkgcmp(x[1][1:],cmp2)<0):
+						return 1
+			else:
+				return self.exists_specific(mypkgdep[1:])
 		elif (mypkgdep[0]=="<") or (mypkgdep[0]==">"):
 			# >=cat/pkg-v or <=,>,<
 			if mypkgdep[1]=="=":
@@ -1403,10 +1419,31 @@ class packagetree:
 		dep, since there is no good match for a ! dep.
 		"""
 		if (mypkgdep[0]=="="):
-			if self.exists_specific(mypkgdep[1:]):
-				return mypkgdep[1:]
+			if mypkgdep[-1]=="*":
+				if not isspecific(mypkgdep[1:-1]):
+					return ""
+				mycatpkg=catpkgsplit(mypkgdep[1:-1])
+				try:
+					mynewver=mycatpkg[2]
+					mynewsplit=string.split(mycatpkg[2],'.')
+					mynewsplit[-1]=`int(mynewsplit[-1])+1`
+				except:
+					return "" 
+				mynodes=[]
+				cmp1=mycatpkg[1:]
+				cmp2=[mycatpkg[1],string.join(mynewsplit,"."),"r0"]
+				for x in self.getnode(mycatpkg[0]+"/"+mycatpkg[1]):
+					if (pkgcmp(x[1][1:],cmp1)>=0) and (pkgcmp(x[1][1:],cmp2)<0):
+						mynodes.append(x)
+				if len(mynodes)==0:
+					return ""
+				bestmatch=mynodes[0]
+				for x in mynodes[1:]:
+					if pkgcmp(x[1][1:],bestmatch[1][1:])>0:
+						bestmatch=x
+				return bestmatch[0]		
 			else:
-				return ""
+				return self.exists_specific(mypkgdep[1:])
 		elif (mypkgdep[0]==">") or (mypkgdep[0]=="<"):
 			if mypkgdep[1]=="=":
 				cmpstr=mypkgdep[0:2]

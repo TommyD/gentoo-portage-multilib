@@ -1,3 +1,14 @@
+# ChangeLog for Portage; the Gentoo Linux ports system 
+# Copyright 2001 Gentoo Technologies, Inc.; Distributed under the GPL
+# Written by Daniel Robbins (drobbins@gentoo.org)
+
+* portage 1.6.12 (29 Oct 2001)
+
+  29 Oct 2001; portage.py: "*" deps now implemented. "=sys/foo-1*" matches the
+  latest 1.x version/rev of sys/foo, but will not match a 2.x version.
+
+  26 Oct 2001; portage.py: various new categories added.
+
 Portage 1.6.11, released 18 Oct 2001
 ====================================
 
