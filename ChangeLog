@@ -9,6 +9,9 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  09 May 2004; Jason Stubbs <jstubbs@gentoo.org> pym/portage_dep.py:
+  fixed bug in use_reduce that caused returned list to be flattened.
+
   30 Apr 2004; Marius Mauch <genone@gentoo.org> bin/ebuild.sh:
   modified ebuild.sh error message on seemants and roger55s request.
 
