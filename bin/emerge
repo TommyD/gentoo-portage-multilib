@@ -317,7 +317,10 @@ def getworldlist():
 		#actually installed -- this prevents the remerging of already unmerged packages when we do a world --update;
 		#actually available -- this prevents emerge from bombing out due to no match being found (we want a silent ignore)
 		if portage.db[portage.root]["porttree"].dep_match(x):
-			if portage.db[portage.root]["vartree"].dep_match(x) or ("--emptytree" in myopts):
+			if "--emptytree" in myopts:
+				if portage.match(x,olddbapi):
+					sysdict[x]=worlddict[x]
+			elif portage.db[portage.root]["vartree"].dep_match(x):
 				#note: when implementing the "anti-dep" world profile entry feature, we will need to test for "!" deps and
 				#*not* call dep_match() on those, as dep_match() doesn't expect ! deps (since nothing matches a !)
 				sysdict[x]=worlddict[x]
@@ -326,20 +329,20 @@ def getworldlist():
 		mylist.append(sysdict[x])
 	return mylist
 
+olddbapi=None
 class depgraph:
 
 	def __init__(self,myaction,myopts):
+		global olddbapi
 		self.myaction=myaction
 		self.myopts=myopts
 		virts=portage.getvirtuals("/")
 		self.digraph=portage.digraph()
 		self.orderedkeys=[]
 		#the following is so we have an empty vartree (used in emerge update calculations)
-		#self.emptytree=portage.vartree("/",virts,portage.db["/"]["vartree"])
-		#self.emptytree.tree={}
-		#self.emptytree.root=None
 		self.fakedbapi=portage.fakedbapi()
 		if "--emptytree" in myopts:
+			olddbapi=portage.db["/"]["vartree"].dbapi
 			portage.db["/"]["vartree"].dbapi=self.fakedbapi
 			portage.db["/"]["vartree"].dbapi.cpv_inject("sys-libs/glibc-1.0")
 			portage.db["/"]["vartree"].populated=1
