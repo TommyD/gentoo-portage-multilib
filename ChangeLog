@@ -2,6 +2,31 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+*portage-2.0.47-r14 (09 Mar 2003): 
+
+  09 Apr 2003; Nicholas Jones <carpaski@gentoo.org> bin/*: Removed DEBUGBUILD
+  in favor of FEATURES/RESTRICT settings of nostrip.
+  
+  09 Apr 2003; Nicholas Jones <carpaski@gentoo.org> ebuild: Removed root
+  restriction so that digests can be made as non-root.
+  
+  09 Apr 2003; Nicholas Jones <carpaski@gentoo.org> emerge: Added niceness
+  
+  09 Apr 2003; Nicholas Jones <carpaski@gentoo.org> repoman: Added the
+  nostable/allmasked check in. Small cleanups. Move to 'manifests' instead
+  of enhanced digests. Added filters on $Id and $Header. Fixed commitmsg
+  and added short options.
+  
+  09 Apr 2003; Nicholas Jones <carpaski@gentoo.org> cvstree.py: More features
+  added. pathdata() provides dir or file info. isadded() gives cvs status.
+  
+  09 Apr 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: listdir()
+  enhancements. Debug removal. Broke up the digest creation functions to
+  make them a little more generic. Added manifest code into the digest
+  calls. Moved code in doebuild() around to allow for non-root calls for
+  devs and repoman. Added 'PORTAGE_CALLER' env var to prevent repeated
+  running of unnecessary functions.
+
 *portage-2.0.47-r13 (02 Mar 2003): Fixes & Security -- Repoman+Digests
 
   02 Apr 2003; Nicholas Jones <carpaski@gentoo.org> emerge: Added debug to
