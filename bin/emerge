@@ -764,11 +764,13 @@ class depgraph:
 					myk=["ebuild",myroot,myeb]
 			if myparent:
 				#we are a dependency, so we want to be unconditionally added
-				self.create(myk,myparent)
+				if not self.create(myk,myparent):
+					return 0
 			else:
 				#if mysource is not set, then we are a command-line dependency and should not be added
 				#if --onlydeps is specified.
-				self.create(myk,myparent,"--onlydeps" not in myopts)
+				if not self.create(myk,myparent,"--onlydeps" not in myopts):
+					return 0
 		return 1
 		
 
