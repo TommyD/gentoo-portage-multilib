@@ -4282,8 +4282,6 @@ os.umask(022)
 profiledir=None
 if os.path.exists("/etc/make.profile/make.defaults"):
 	profiledir="/etc/make.profile"
-else:
-	print ">>> Note: /etc/make.profile/make.defaults isn't available; an 'emerge sync' will probably fix this."
 #from here on in we can assume that profiledir is set to something valid
 db={}
 

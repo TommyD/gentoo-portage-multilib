@@ -2,6 +2,10 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+  26 Feb 2003; Jared Hudson <jhhudso@gentoo.org> pym/portage.py : Removed
+  warning about /etc/make.profile being missing that showed up when you
+  ran any portage program, such as env-update.
+	
 *portage-2.0.47-r6 (26 Feb 2003): Drop deprecated warnings for new syntax.
 
   26 Feb 2003; Alain Penders <alain@gentoo.org> emerge: Drop deprecated
