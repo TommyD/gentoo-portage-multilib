@@ -665,6 +665,10 @@ for x in scanlist:
 			continue
 		for pos in range(0,len(missingvars)):
 			if portage.db["/"]["porttree"].dbapi.aux_get(catdir+"/"+y, [ missingvars[pos] ] )[0]=="":
+				if missingvars[pos]=="IUSE":
+					# We should rewrite here later. See #21544
+					if not os.system("egrep '^IUSE=' "+repodir+"/"+x+"/"+y+".ebuild > /dev/null 2>&1"):
+						continue
 				myqakey=missingvars[pos]+".missing"
 				stats[myqakey]=stats[myqakey]+1
 				fails[myqakey].append(x+"/"+y+".ebuild")
