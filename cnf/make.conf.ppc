@@ -14,8 +14,8 @@
 # The available list of use flags with descriptions is in your portage tree.
 # Use 'less' to view them:  --> less /usr/portage/profiles/use.desc <--
 #
-# Also if you emerge ufed (and use it), it is a nice interface that will 
-# set these for you in this conf file
+# 'ufed' is an ncurses/dialog interface available in portage to make handling
+# useflags for you. 'emerge app-admin/ufed'
 #
 # Example:
 #USE="X gtk gnome -alsa"
