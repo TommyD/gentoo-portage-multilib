@@ -9,6 +9,12 @@
 
 *portage-2.0.51_rc5 (26 Sep 2004): RC + Lock cleanup, Happy RC #1
 
+  26 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage_data.py: Fixed
+	the BSD lchown issues.
+
+  26 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Added the
+	selinux secure dirs patch.
+
   26 Sep 2004; Nicholas Jones <carpaski@gentoo.org> emerge: Modified the
   spinner again, --nospinner provides a basic ticker of one '.' per 100,
   normal spinner is the twirly one, and the FEATURES=candy spinner is a

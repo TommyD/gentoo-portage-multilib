@@ -6263,13 +6263,21 @@ class dblink:
 							sys.exit(1)
 						print "bak",mydest,mydest+".backup"
 						#now create our directory
-						os.mkdir(mydest)
+						if selinux_enabled:
+							sid = selinux.get_sid(mysrc)
+							selinux.secure_mkdir(mydest,sid)
+						else:
+							os.mkdir(mydest)
 						os.chmod(mydest,mystat[0])
 						lchown(mydest,mystat[4],mystat[5])
 						print ">>>",mydest+"/"
 				else:
 					#destination doesn't exist
-					os.mkdir(mydest)
+					if selinux_enabled:
+						sid = selinux.get_sid(mysrc)
+						selinux.secure_mkdir(mydest,sid)
+					else:
+						os.mkdir(mydest)
 					os.chmod(mydest,mystat[0])
 					lchown(mydest,mystat[4],mystat[5])
 					print ">>>",mydest+"/"

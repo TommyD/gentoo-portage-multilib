@@ -9,24 +9,28 @@ from output import green,red
 
 ostype=os.uname()[0]
 
+lchown = None
 if ostype=="Linux":
 	userland="GNU"
-
-	if "lchown" in dir(os):
-		# Included in python-2.3
-		lchown=os.lchown
-	else:
-		import missingos
-		lchown=missingos.lchown
-
 	os.environ["XARGS"]="xargs -r"
 elif ostype in ["Darwin","FreeBSD","OpenBSD"]:
+	if ostype == "Darwin":
+		lchown=os.chown
 	userland="BSD"
-	lchown=os.chown
 	os.environ["XARGS"]="xargs"	
 else:
 	writemsg(red("Operating system")+" \""+ostype+"\" "+red("currently unsupported. Exiting.")+"\n")
 	sys.exit(1)
+
+if not lchown:
+	if "lchown" in dir(os):
+		# Included in python-2.3
+		lchown = os.lchown
+	else:
+		import missingos
+		lchown = missingos.lchown
+
+
 	
 os.environ["USERLAND"]=userland
 
