@@ -1110,7 +1110,7 @@ else:
 		if not x:
 			continue
 		if x[0] not in "UPMAR": # Updates,Patches,Modified,Added,Removed
-			print red("!!! Please fix the following issues reported from cvs: ")+green("(U and P are ok)")
+			print red("!!! Please fix the following issues reported from cvs: ")+green("(U,P,M,A,R are ok)")
 			print red("!!! Note: This is a pretend/no-modify pass...")
 			print retval[1]
 			print

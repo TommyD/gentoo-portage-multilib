@@ -9,9 +9,49 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
-  02 Aug 2004; Masatomo Nakano <nakano@gentoo.org> bin/emerge: Added code
-  to skip directory in info dir. (#59138)
+*portage-2.0.51_pre14 (02 Aug 2003): Fixes and Public Readiness
+
+  02 Aug 2004; Nicholas Jones <carpaski@gentoo.org> do*: Added exit calls
+	on failures and changed the install to use short options for BSD compat.
 	
+  02 Aug 2004; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: unset
+	GLOBIGNORE added. Echo out the confingure command from econf. Moved the
+	maketest code to dyn_preinst so it didn't force-run maketest. Added a
+	patch for keyword expansion (requires portage-2.0.51 for use).
+
+  02 Aug 2004; Nicholas Jones <carpaski@gentoo.org> emerge: --fetch-all-uri
+	added to force all URIs to be downloaded (works like features=cvs). libc
+	version printing enhancements. Fixed the binary package selection in an
+	alt ROOT. Headers and libtool added to info. --ask removed on a resume.
+	
+  02 Aug 2004; Nicholas Jones <carpaski@gentoo.org> prepstrip: Change ewarn
+	to echos to stderr with beeps.
+	
+  02 Aug 2004; Nicholas Jones <carpaski@gentoo.org> repoman: Added to the
+	OK message output for issues that fail.
+
+  02 Aug 2004; Nicholas Jones <carpaski@gentoo.org> make.conf: Typo correction
+	patch added.
+	
+  02 Aug 2004; Nicholas Jones <carpaski@gentoo.org> output.py: Added kterm
+	to the titlebar terminals.
+
+  02 Aug 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Added a message
+	regarding the location of the virtuals file (move to /etc/portage/profiles).
+	Added a invalid-mirror message and a missing URI message for fetching. Added
+	the selinux sandbox patch. Removed the old dep_opconvert call as all ?:
+	syntax is gone.
+
+  02 Aug 2004; Nicholas Jones <carpaski@gentoo.org> portage_dep.py: Fixed the
+	use_reduce code to properly handle negative requirements on masked flags.
+	
+  02 Aug 2004; Nicholas Jones <carpaski@gentoo.org> tbz2tool.c: Made all the
+	comments to C style.
+
+  02 Aug 2004; Nicholas Jones <carpaski@gentoo.org> libsandbox: Code from
+	Seth Robertson that tracked down all adjuct flags for read operations that
+	did not invoke a write operation.
+
   01 Aug 2004; Masatomo Nakano <nakano@gentoo.org> bin/emerge: Added
   message about ._cfg* files after emerge sync.
 

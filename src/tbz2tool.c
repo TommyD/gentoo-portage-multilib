@@ -36,16 +36,16 @@ void writefileto(FILE *src, FILE *dest, int endpos) {
 	int pos=ftell(src);
 	int thiscount;
 	while (pos < endpos) {
-		//thiscount=how much to read
+		/* thiscount=how much to read */
 		thiscount=endpos-pos;
 		if (thiscount>BUFLEN)
 			thiscount=BUFLEN;
 		thiscount=fread(mybuf, 1, thiscount , src);
-		//thiscount=how much we actually did read
+		/* thiscount=how much we actually did read */
 		if (thiscount==0)
-			//eof -- shouldn't happen
+			/* eof -- shouldn't happen */
 			break;
-		//update internal position counter
+		/* update internal position counter */
 		pos+=thiscount;
 		fwrite(mybuf, 1, thiscount, dest);
 	}
@@ -66,23 +66,23 @@ int main(int argc, char **argv) {
 		goto memalloc;
 	}
 	
-	//JOIN MODE
+	/* JOIN MODE */
 	if (!(strcmp(argv[1],"join"))) {
 	
-		//check if datafile exists
+		/* check if datafile exists */
 		if (!(exists(argv[2]))) {
 			printf("%s: %s doesn't exist\n",myname,argv[2]);
 			free(mystat);
 			goto error;
 		}
 		
-		//check if dbfile exists
+		/* check if dbfile exists */
 		if (!(exists(argv[3]))) {
 			printf("%s: %s doesn't exist\n",myname,argv[3]);
 			free(mystat);
 			goto error;
 		}
-		//create end buffer for later use
+		/* create end buffer for later use */
 		endbuf[0]=((mystat->st_size) & 0xff000000) >> 24;
 		endbuf[1]=((mystat->st_size) & 0x00ff0000) >> 16;
 		endbuf[2]=((mystat->st_size) & 0x0000ff00) >> 8;
@@ -92,11 +92,11 @@ int main(int argc, char **argv) {
 		endbuf[6]='O';
 		endbuf[7]='P';
 	
-		//if outfile exists, unlink first (safer)
+		/* if outfile exists, unlink first (safer) */
 		if (exists(argv[4])) 
 			unlink(argv[4]);
 		
-		//open datafile for reading
+		/* open datafile for reading */
 		if ((datafile=fopen(argv[2],"r"))==NULL) {
 			free(mybuf);
 			free(mystat);
@@ -104,7 +104,7 @@ int main(int argc, char **argv) {
 			goto error;
 		}
 		
-		//open dbfile for reading
+		/* open dbfile for reading */
 		if ((dbfile=fopen(argv[3],"r"))==NULL) {
 			fclose(datafile);
 			free(mybuf);
@@ -113,7 +113,7 @@ int main(int argc, char **argv) {
 			goto error;
 		}
 	
-		//open outfile for writing
+		/* open outfile for writing */
 		if ((outfile=fopen(argv[4],"a"))==NULL) {
 			fclose(dbfile);
 			fclose(datafile);
@@ -133,29 +133,29 @@ int main(int argc, char **argv) {
 		free(mystat);
 		exit(0);	
 	
-	//SPLIT MODE
+	/* SPLIT MODE */
 	} else if (!(strcmp(argv[1],"split"))) {
 	
-		//check if infile exists
+		/* check if infile exists */
 		if (!(exists(argv[2]))) {
 			printf("%s: %s doesn't exist\n",myname,argv[2]);
 			free(mystat);
 			goto error;
 		}
 		
-		//store infile size for later use
+		/* store infile size for later use */
 
 		insize=mystat->st_size;
 		
-		//if datafile exists, unlink first (safer)
+		/* if datafile exists, unlink first (safer) */
 		if (exists(argv[3])) 
 			unlink(argv[3]);
 		
-		//if dbfile exists, unlink first (safer)
+		/* if dbfile exists, unlink first (safer) */
 		if (exists(argv[4])) 
 			unlink(argv[4]);
 	
-		//open infile for reading
+		/* open infile for reading */
 		if ((infile=fopen(argv[2],"r"))==NULL) {
 			free(mybuf);
 			free(mystat);
@@ -163,10 +163,10 @@ int main(int argc, char **argv) {
 			goto error;
 		}
 		
-		//read in end buffer
+		/* read in end buffer */
 		fseek(infile,-8,SEEK_END);	
 		fread(endbuf,1,8,infile);
-		//quick end buffer read and verification
+		/* quick end buffer read and verification */
 		if ( (endbuf[4]!='S') || (endbuf[5]!='T') || (endbuf[6]!='O') || (endbuf[7]!='P') )	{
 			fclose(infile);
 			free(mybuf);
@@ -181,7 +181,7 @@ int main(int argc, char **argv) {
 		seekto=seekto+endbuf[2]*256;
 		seekto=seekto+endbuf[3];
 		
-		//open datafile for writing
+		/* open datafile for writing */
 		if ((datafile=fopen(argv[3],"a"))==NULL) {
 			fclose(infile);
 			free(mybuf);
@@ -190,7 +190,7 @@ int main(int argc, char **argv) {
 			goto error;
 		}
 	
-		//open dbfile for writing
+		/* open dbfile for writing */
 		if ((dbfile=fopen(argv[4],"a"))==NULL) {
 			fclose(datafile);
 			fclose(infile);

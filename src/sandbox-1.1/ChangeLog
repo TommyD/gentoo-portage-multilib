@@ -2,15 +2,19 @@
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+  02 Aug 2004; Nicholas Jones <carpaski@gentoo.org> libsandbox.c: Code from
+  Seth Robertson that tracked down all adjuct flags for read operations that
+  do not invoke a write operation.
+
   04 Apr 2004; Nicholas Jones <carpaski@gentoo.org> libsandbox.c, sandbox.c:
-	Another fix from jstubbs regarding a free() on a stack variable for the
-	environment -- tracking now prevents extraneous free()'s segfault.
-	
+  Another fix from jstubbs regarding a free() on a stack variable for the
+  environment -- tracking now prevents extraneous free()'s segfault.
+  
   04 Apr 2004; Nicholas Jones <carpaski@gentoo.org> libsandbox.c, sandbox.c:
-	J. Stubbs tracked down a new bug where mkdir was failing to the patch on
-	the lstat in mkdir... it now only returns 0 or -1 as documented for mkdir.
-	Also remove the errno = ESUCCESS settings as documentation points out that
-	a library isn't allowed to do that.
+  J. Stubbs tracked down a new bug where mkdir was failing to the patch on
+  the lstat in mkdir... it now only returns 0 or -1 as documented for mkdir.
+  Also remove the errno = ESUCCESS settings as documentation points out that
+  a library isn't allowed to do that.
 
   04 Apr 2004; Nicholas Jones <carpaski@gentoo.org> libsandbox.c: Added a
   file_security_check() function to check random potential exploits on files
@@ -36,11 +40,11 @@
   execve, so pass our own copy of the environment.  Bug #42290.
 
   11 Jan 2004; Nicholas Jones <carpaski@gentoo.org> create-decls:
-	Changed tail to head and added a notice about duration of glibc check.
+  Changed tail to head and added a notice about duration of glibc check.
 
   21 Dec 2003; Nicholas Jones <carpaski@gentoo.org> create-decls:
-	Changed the glibc subversion check to use /usr/bin/* instead of /bin/sh
-	as there isn't a guarentee that it is dynamic.
+  Changed the glibc subversion check to use /usr/bin/* instead of /bin/sh
+  as there isn't a guarentee that it is dynamic.
 
   02 Nov 2003; Martin Schlemmer <azarah@gentoo.org> libsandbox.c :
   If 'file' passed to before_syscall(const char *func, const char *file) is

@@ -90,7 +90,8 @@ options=[
 "--changelog",    "--columns",
 "--debug",        "--deep",
 "--digest",
-"--emptytree",    "--fetchonly",
+"--emptytree",
+"--fetchonly",    "--fetch-all-uri",
 "--getbinpkg",    "--getbinpkgonly",
 "--help",         "--noconfmem",
 "--newuse",
@@ -450,7 +451,10 @@ def getportageversion():
 	except:
 		profilever="unavailable"
 	libcver=[]
-	for x in portage.vardbapi(portage.root).match("virtual/glibc"):
+	libclist  = portage.vardbapi(portage.root).match("virtual/libc")
+	libclist += portage.vardbapi(portage.root).match("virtual/glibc")
+	libclist  = portage.unique_array(libclist)
+	for x in libclist:
 		xs=portage.catpkgsplit(x)
 		if libcver:
 			libcver+=","+string.join(xs[1:], "-")
@@ -1042,7 +1046,8 @@ class depgraph:
 				myeb_pkg=None
 				if ("--usepkg" in myopts):
 					# The next line assumes the binarytree has been populated.
-					myeb_pkg_matches=portage.db[portage.root]["bintree"].dbapi.match(x)
+					# XXX: Need to work out how we use the binary tree with roots.
+					myeb_pkg_matches=portage.db["/"]["bintree"].dbapi.match(x)
 					if ("--usepkgonly" not in myopts):
 						# Remove any binary package entries that are masked in the portage tree (#55871)
 						for idx in range(len(myeb_pkg_matches)-1,-1,-1):
@@ -2478,10 +2483,14 @@ elif "info"==myaction:
 	ac_vers = string.join(portage.db["/"]["vartree"].dbapi.match("sys-devel/autoconf"), ",")
 	am_vers = string.join(portage.db["/"]["vartree"].dbapi.match("sys-devel/automake"), ",")
 	binutils_vers = string.join(portage.db["/"]["vartree"].dbapi.match("sys-devel/binutils"), ",")
+	header_vers = string.join(portage.db["/"]["vartree"].dbapi.match("virtual/os-headers"), ",")
+	libtool_vers = string.join(portage.db["/"]["vartree"].dbapi.match("sys-devel/libtool"), ",")
 
 	print "Autoconf: " + ac_vers
 	print "Automake: " + am_vers
 	print "Binutils: " + binutils_vers
+	print "Headers:  " + header_vers
+	print "Libtools: " + libtool_vers
 	
 	if "--verbose" in myopts:
 		myvars=portage.settings.keys()
@@ -2671,8 +2680,12 @@ else:
 
 	if ("--resume" in myopts) and portage.mtimedb.has_key("resume"):
 		myresumeopts=portage.mtimedb["resume"]["myopts"][:]
-		if "--skipfirst" in myresumeopts:
+
+		while "--skipfirst" in myresumeopts:
 			myresumeopts.remove("--skipfirst")
+		while "--ask" in myresumeopts:
+			myresumeopts.remove("--ask")
+			
 		for myopt in myopts:
 			if myopt not in myresumeopts:
 				myresumeopts.append(myopt)

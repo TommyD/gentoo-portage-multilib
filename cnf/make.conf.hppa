@@ -165,7 +165,7 @@ CHOST="hppa-unknown-linux-gnu"
 #FETCHCOMMAND='/usr/bin/proz --no-getch -s ${URI} -P ${DISTDIR}'
 #
 # Portage uses GENTOO_MIRRORS to specify mirrors to use for source retrieval.
-# The list is a space seperated list which is read left to right. If you use
+# The list is a space separated list which is read left to right. If you use
 # another mirror we highly recommend leaving the default mirror at the end of
 # the list so that portage will fall back to it if the files cannot be found
 # on your specified mirror. We _HIGHLY_ recommend that you change this setting
@@ -173,7 +173,7 @@ CHOST="hppa-unknown-linux-gnu"
 #GENTOO_MIRRORS="<your_mirror_here> http://gentoo.osuosl.org http://www.ibiblio.org/pub/Linux/distributions/gentoo"
 #
 # Portage uses PORTAGE_BINHOST to specify mirrors for prebuilt-binary packages.
-# The list is a single extry specifying the full address of the directory
+# The list is a single entry specifying the full address of the directory
 # serving the tbz2's for your system. Running emerge with either '--getbinpkg'
 # or '--getbinpkgonly' will cause portage to retrieve the metadata from all
 # packages in the directory specified, and use that data to determine what will
@@ -185,7 +185,7 @@ CHOST="hppa-unknown-linux-gnu"
 # Synchronizing Portage
 # =====================
 #
-# Each of these settings effects how Gentoo synchronizes your Portage tree.
+# Each of these settings affects how Gentoo synchronizes your Portage tree.
 # Synchronization is handled by rsync and these settings allow some control
 # over how it is done.
 #
@@ -263,12 +263,12 @@ CHOST="hppa-unknown-linux-gnu"
 #                from a merge.
 #  'keepwork'    prevents the clean phase from deleting the WORKDIR.
 #  'noauto'      causes ebuild to perform only the action requested and 
-#                not any other required actions like clean or
+#                not any other required actions like clean.
 #  'noclean'     prevents portage from removing the source and temporary files 
 #                after a merge -- for debugging purposes only. 
 #  'nostrip'     prevents stripping of binaries.
 #  'notitles'    disables xterm titlebar updates (which contain status info). 
-#  'sandbox'     enable sandbox-ing when running emerge and ebuild
+#  'sandbox'     enable sandbox-ing when running emerge and ebuild.
 #  'strict'      causes portage to react strongly to conditions that
 #                have the potential to be dangerous -- like missing or
 #                incorrect Manifest files.
@@ -285,14 +285,14 @@ CHOST="hppa-unknown-linux-gnu"
 #     user's environment, for userpriv it sets: ${PORTAGE_TMPDIR}/ccache
 #     (/var/tmp/ccache), and for regular use the default is /root/.ccache.
 #     Sizes are specified with 'G' 'M' or 'K'.
-#     '4G' for 4 gigabytes, '4096M' for 4 gigabytes, etc... Default is 2G
-#CCACHE_SIZE="2G"
+#     '2G' for 2 gigabytes, '2048M' for 2048 megabytes (same as 2G).
+#CCACHE_SIZE="512M"
 #
 # DISTCC_DIR sets the temporary space used by distcc.
 #DISTCC_DIR="${PORTAGE_TMPDIR}/.distcc"
 #
 # RSYNC_EXCLUDEFROM is a file that portage will pass to rsync when it updates
-#     the portage tree. Specific chucks of the tree may be excluded from
+#     the portage tree. Specific chunks of the tree may be excluded from
 #     consideration. This may cause dependency failures if you are not careful.
 #     The file format is one pattern per line, blanks and ';' or '#' lines are
 #     comments. See 'man rsync' for more details on the exclude-from format.

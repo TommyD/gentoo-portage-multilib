@@ -67,10 +67,10 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0):
 		if type(head) == types.ListType:
 			rlist = rlist + [use_reduce(head, uselist, masklist, matchall)]
 		else:
-			matchon = 1 # Match on true
+			matchon = True # Match on true
 			if head[-1] == "?": # Use reduce next group on fail.
 				if head[0] == "!":
-					matchon = 0 # Inverted... match on false
+					matchon = False # Inverted... match on false
 					head = head[1:]
 				newdeparray = [mydeparray.pop(0)]
 				while isinstance(newdeparray[-1], str) and newdeparray[-1][-1] == "?":
@@ -91,9 +91,18 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0):
 						warned = 1
 					if warned:
 						sys.stderr.write("  --> "+string.join(map(str,[head]+newdeparray))+"\n")
-				if matchall or \
-           (((head[:-1] in uselist) == matchon) and \
-            (head[:-1] not in masklist)):
+
+				# Is it a match based on use?
+				matchonMatch = ((head[:-1] in uselist) == matchon)
+				# We only exclude positive matches. Negative matches are allowed.
+				# !ppc64? ( tcp? ( sys-apps/tcp-wrappers) )
+				# So we only exclude positive/true matches that are masked.
+				maskedMatch = False
+				if matchonMatch and (matchon == True):
+					if (head[:-1] in masklist):
+						maskedMatch = True
+
+				if matchall or (matchonMatch and not maskedMatch):
 					# It is set, keep it.
 					if newdeparray: # Error check: if nothing more, then error.
 						rlist += use_reduce(newdeparray, uselist, masklist, matchall)

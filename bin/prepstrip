@@ -35,13 +35,13 @@ for x in "$@"; do # "$@" quotes each element... Plays nice with spaces.
 				if [ $? = 0 ]; then
 					echo "	${x:${#D}:${#x}} will contain runtime text relocations"
 					if [ "${FEATURES//*strict*/true}" == "true" ] ; then
-						ewarn "Text relocations require a lot of extra work to be preformed by the"
-						ewarn "dynamic linker which will cause serious performance impact on IA-32"
-						ewarn "and might not function properly on other architectures hppa for example."
-						ewarn "If you are a programmer please take a closer look at this package and"
-						ewarn "consider writing a patch which addresses this problem."
+						echo -e "\aText relocations require a lot of extra work to be preformed by the"
+						echo -e "\adynamic linker which will cause serious performance impact on IA-32"
+						echo -e "\aand might not function properly on other architectures hppa for example."
+						echo -e "\aIf you are a programmer please take a closer look at this package and"
+						echo -e "\aconsider writing a patch which addresses this problem."
 						exit 1
-					fi
+					fi >&2
 				fi
 			fi
 		fi

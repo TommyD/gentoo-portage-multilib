@@ -57,7 +57,7 @@ if [ "$USERLAND" == "BSD" ]; then
 fi
 
 # Unset some variables that break things.
-unset GZIP BZIP BZIP2 CDPATH GREP_OPTIONS GREP_COLOR
+unset GZIP BZIP BZIP2 CDPATH GREP_OPTIONS GREP_COLOR GLOBIGNORE
 
 # We need this next line for "die" and "assert". It expands 
 # It _must_ preceed all the calls to die and assert.
@@ -410,6 +410,17 @@ econf() {
 		if [ ! -z "${CBUILD}" ]; then
 			EXTRA_ECONF="--build=${CBUILD} ${EXTRA_ECONF}"
 		fi
+		echo ./configure \
+		    --prefix=/usr \
+		    --host=${CHOST} \
+		    --mandir=/usr/share/man \
+		    --infodir=/usr/share/info \
+		    --datadir=/usr/share \
+		    --sysconfdir=/etc \
+		    --localstatedir=/var/lib \
+				${EXTRA_ECONF} \
+		    "$@"
+
 		./configure \
 		    --prefix=/usr \
 		    --host=${CHOST} \
@@ -480,16 +491,6 @@ src_compile() {
 
 src_test() 
 { 
-	if hasq maketest $RESTRICT; then
-		ewarn "Skipping make test/check due to ebuild restriction."
-		echo ">>> Test phase [explicitly disabled]: ${CATEGORY}/${PF}"
-		return
-	fi
-	if ! hasq maketest $FEATURES; then
-		echo ">>> Test phase [not enabled]: ${CATEGORY}/${PF}"
-		return
-	fi
-
 	addpredict /
 	if make check -n &> /dev/null; then
 		echo ">>> Test phase [check]: ${CATEGORY}/${PF}"
@@ -887,7 +888,16 @@ dyn_package() {
 dyn_test() {
 	trap "abort_test" SIGINT SIGQUIT
 	cd "${S}"
-	src_test
+
+	if hasq maketest $RESTRICT; then
+		ewarn "Skipping make test/check due to ebuild restriction."
+		echo ">>> Test phase [explicitly disabled]: ${CATEGORY}/${PF}"
+	elif ! hasq maketest $FEATURES; then
+		echo ">>> Test phase [not enabled]: ${CATEGORY}/${PF}"
+	else
+		src_test
+	fi
+
 	cd "${BUILDDIR}"
 	touch .tested || die "Failed to 'touch .tested' in ${BUILDDIR}"
 	trap SIGINT SIGQUIT
@@ -1490,6 +1500,13 @@ fi
 
 source ${EBUILD} || die "error sourcing ebuild"
 [ -z "${ERRORMSG}" ] || die "${ERRORMSG}"
+
+# Expand KEYWORDS
+# We need to turn off pathname expansion for -* in KEYWORDS and
+# we need to escape ~ to avoid tilde expansion
+set -f
+KEYWORDS="`eval echo ${KEYWORDS//~/\\~}`"
+set +f
 
 hasq nostrip ${RESTRICT} && export DEBUGBUILD=1
 

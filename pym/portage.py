@@ -1852,6 +1852,11 @@ class config:
 					self.treeVirtuals[x] = unique_array(self.treeVirtuals[x])
 			user_profile_dir = myroot+USER_CONFIG_PATH
 
+		if os.path.exists("/etc/portage/virtuals"):
+			writemsg("\n\n*** /etc/portage/virtuals should be moved to /etc/portage/profile/virtuals\n")
+			writemsg("*** Please correct this by merging or moving the file. (Deprecation notice)\n\n")
+			time.sleep(1)
+			
 		self.dirVirtuals = grab_multiple("virtuals", myvirtdirs, grabdict)
 		self.dirVirtuals.reverse()
 		self.userVirtuals = {}
@@ -2094,6 +2099,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			eidx = myuri.find("/", 9)
 			if eidx != -1:
 				mirrorname = myuri[9:eidx]
+
 				# Try user-defined mirrors first
 				if custommirrors.has_key(mirrorname):
 					for cmirr in custommirrors[mirrorname]:
@@ -2114,17 +2120,33 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						time.sleep(10)
 						
 					for locmirr in thirdpartymirrors[mirrorname]:
-						filedict[myfile].append(locmirr+"/"+myuri[eidx+1:])		
+						filedict[myfile].append(locmirr+"/"+myuri[eidx+1:])
+      
+        
+				if not filedict[myfile]:
+					writemsg("No known mirror by the name: %s\n" % (mirrorname))
+			else:
+				writemsg("Invalid mirror definition in SRC_URI:\n")
+				writemsg("  %s\n" % (myuri))
 		else:
 				filedict[myfile].append(myuri)
+
+	missingSourceHost = False
+	for myfile in filedict.keys(): # Gives a list, not just the first one
+		if not filedict[myfile]:
+			writemsg("Warning: No mirrors available for file '%s'\n" % (myfile))
+			missingSourceHost = True
+	if missingSourceHost:
+		return 0
+	del missingSourceHost
 
 	if use_locks and locks_in_subdir:
 		if os.path.exists(mysettings["DISTDIR"]+"/"+locks_in_subdir):
 			if not os.access(mysettings["DISTDIR"]+"/"+locks_in_subdir,os.W_OK):
-				writemsg("!!! Lack write access to write to %s.  Aborting.\n" % mysettings["DISTDIR"]+"/"+locks_in_subdir)
+				writemsg("!!! No write access to write to %s.  Aborting.\n" % mysettings["DISTDIR"]+"/"+locks_in_subdir)
 				return 0
 		elif not os.access(mysettings["DISTDIR"]+"/",os.W_OK):
-			writemsg("!!! Lack write access to write to %s.  Aborting\n" % mysettings["DISTDIR"]+"/")
+			writemsg("!!! No write access to write to %s.  Aborting\n" % mysettings["DISTDIR"]+"/")
 			return 0
 		else:
 			old_umask=os.umask(0002)
@@ -2132,7 +2154,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			os.chown(mysettings["DISTDIR"]+"/"+locks_in_subdir,os.getuid(),portage_gid)
 			os.umask(old_umask)
 
-		
 	for myfile in filedict.keys():
 		if listonly:
 			fetched=0
@@ -2526,9 +2547,19 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0):
 				return retval
 	# spawn ebuild.sh
 	mycommand = EBUILD_SH_BINARY + " "
-	return spawn(mycommand + mydo,mysettings,debug,
+	if selinux_enabled and ("sesandbox" in features) and (mydo in ["unpack","compile","test","install"]):
+		con=selinux.getcontext()
+		con=string.replace(con,mysettings["PORTAGE_T"],mysettings["PORTAGE_SANDBOX_T"])
+		selinux.setexec(con)
+		retval=spawn(mycommand + mydo,mysettings,debug,
 				actionmap[mydo]["args"][0],
 				actionmap[mydo]["args"][1])
+		selinux.setexec(None)
+	else:
+		retval=spawn(mycommand + mydo,mysettings,debug,
+				actionmap[mydo]["args"][0],
+				actionmap[mydo]["args"][1])
+	return retval
 
 def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,cleanup=0,dbkey=None,use_cache=1):
 	global db
@@ -3471,6 +3502,8 @@ def dep_opconvert(mysplit,myuse,mysettings):
 def dep_virtual(mysplit):
 	"Does virtual dependency conversion"
 
+
+
 	newsplit=[]
 	for x in mysplit:
 		if type(x)==types.ListType:
@@ -3815,15 +3848,13 @@ def dep_check(depstring,mydbapi,mysettings,use="yes",mode=None,myuse=None,use_ca
 	#convert parenthesis to sublists
 	mysplit = portage_dep.paren_reduce(depstring)
 
-	# XXX -- This is waiting for the "a? b : c" deps to be removed.
-	mysplit=dep_opconvert(mysplit,myusesplit,mysettings)
-	#if mysettings:
-	#	mymasks = mysettings.usemask+archlist
-	#	while mysettings["ARCH"] in mymasks:
-	#		del mymasks[mymasks.index(mysettings["ARCH"])]
-	#	mysplit = portage_dep.use_reduce(mysplit,myusesplit,masklist=mymasks)
-	#else:
-	#	mysplit = portage_dep.use_reduce(mysplit,myusesplit)
+	if mysettings:
+		mymasks = mysettings.usemask+archlist
+		while mysettings["ARCH"] in mymasks:
+			del mymasks[mymasks.index(mysettings["ARCH"])]
+		mysplit = portage_dep.use_reduce(mysplit,myusesplit,masklist=mymasks)
+	else:
+		mysplit = portage_dep.use_reduce(mysplit,myusesplit)
 
 	#convert virtual dependencies to normal packages.
 	mysplit=dep_virtual(mysplit)

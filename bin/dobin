@@ -9,16 +9,20 @@ if [ ${#} -lt 1 ] ; then
 fi
 
 if [ ! -d "${D}${DESTTREE}/bin" ] ; then
-	install -d "${D}${DESTTREE}/bin"
+	install -d "${D}${DESTTREE}/bin" || exit 2
 fi
 
 for x in "$@" ; do
 	if [ -x "${x}" ] ; then
 		#if executable, use existing perms
-		install "${x}" "${D}${DESTTREE}/bin"
+		install "${x}" "${D}${DESTTREE}/bin" || exit 3
 	else
 		#otherwise, use reasonable defaults
 		echo ">>> dobin: making ${x} executable..."
-		install -m0755 --owner=root --group=root "${x}" "${D}${DESTTREE}/bin"
+		if [ "$USERLAND" == "GNU" ]; then
+			install -m0755 -o root -g root  "${x}" "${D}${DESTTREE}/bin" || exit 4
+		else
+			install -m0755 -o root -g wheel "${x}" "${D}${DESTTREE}/bin" || exit 4
+		fi
 	fi
 done
