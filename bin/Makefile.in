@@ -1,14 +1,12 @@
 PORTAGE_BASEDIR = @PORTAGE_BASE@
 INSTALL		= @INSTALL@
-INSTALL_script 	= @INSTALL_PROGRAM@ -D
+INSTALL_script 	= @INSTALL_PROGRAM@ -D -o 0 -g portage -m 755
 
 all:
 install:
-	$(INSTALL) -d -m 644 $(DESTDIR)/$(PORTAGE_BASEDIR)/bin
+	$(INSTALL) -d -m 755 -o 0-g portage $(DESTDIR)/$(PORTAGE_BASEDIR)/bin
 	find . -type f -maxdepth 1 -exec $(INSTALL_script) {} $(DESTDIR)/$(PORTAGE_BASEDIR)/bin/{} \;
-
-DISTFILES := $(shell find . -type f -maxdepth 1 | egrep -v '(^| )(CVS|\.svn)( |$)' \
-	| sed -e 's:^\./::')
+	rm $(DESTDIR)/$(PORTAGE_BASEDIR)/bin/Makefile*
 
 distdir:
 	find . -type f -maxdepth 1 -exec $(INSTALL_script) {} $(distdir)/{} \;
