@@ -622,6 +622,9 @@ def expandpath(mypath):
 
 def movefile(src,dest,unlink=1):
 	"""moves a file from src to dest, preserving all permissions and attributes."""
+	if os.path.islink(dest):
+		#remove dest first to avoid writing to target
+		os.unlink(dest)
 	if dest=="/bin/cp":
 		getstatusoutput("/bin/mv /bin/cp /bin/cp.old")
 		a=getstatusoutput("/bin/cp.old -a "+"'"+src+"' /bin/cp")
