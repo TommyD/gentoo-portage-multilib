@@ -199,12 +199,22 @@ def prefix_array(array,prefix,doblanks=1):
 def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelist=[], EmptyOnError=False, 
 	followSymlinks=True):
 
-	list, ftype = cacheddir(mypath, ignorecvs, ignorelist, EmptyOnError,followSymlinks=followSymlinks)
+	list, ftype = cacheddir(mypath, EmptyOnError,followSymlinks=followSymlinks)
 
 	if list is None:
 		list=[]
 	if ftype is None:
 		ftype=[]
+
+	if ignorecvs or len(ignorelist):
+		for x in range(0,len(list)):
+			#we're working with first level entries, no os.path.basename requirement
+			if (ignorecvs and (list[x] in ('CVS','.svn') or list[x].startswith(".#"))) and not \
+				b in ignorelist:
+				list.pop(x)
+				ftype.pop(x)
+				continue
+			x += 1
 
 	if not filesonly and not recursive:
 		return list
@@ -212,9 +222,10 @@ def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelis
 	if recursive:
 		x=0
 		while x<len(ftype):
-			if ftype[x]==1 and not (ignorecvs and os.path.basename(list[x]) in ('CVS','.svn')):
-				l,f = cacheddir(mypath+"/"+list[x], ignorecvs, ignorelist, EmptyOnError,
-					followSymlinks=followSymlinks)
+			b=os.path.basename(list[x])
+			if ftype[x]==1 and not (ignorecvs and (b in ('CVS','.svn') or b.startswith(".#"))) and not \
+				(b in ignorelist):
+				l,f = cacheddir(mypath+"/"+list[x],EmptyOnError,followSymlinks=followSymlinks)
 								  
 				l=l[:]
 				for y in range(0,len(l)):
