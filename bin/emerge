@@ -708,22 +708,8 @@ class depgraph:
 				# we've encountered a "blocks" node.  We will totally ignore this
 				# node and not add it to our digraph if it doesn't apply to us.
 				if myparent and (self.mydbapi[myroot].match(mykey) or vardbapi.match(mykey)):
-					# otherwise, encode parent information where we would normally
-					# write "(no)merge" and continue:
-					mypsplit=string.split(myparent)
-					parenttype=mypsplit[0]
-					parentroot=mypsplit[1]
-					parentkey=mypsplit[2]
-					mergeme=mypsplit[-1]
-					mykexp=portage.dep_expand(mykey,self.mydbapi[myroot])
-					pakexp=portage.dep_expand(parentkey,self.mydbapi[myroot])
-					myrealkey=portage.dep_getkey(mykexp)
-					parealkey=portage.dep_getkey(pakexp)
-					if myrealkey!=parealkey:
-						mybigkey.append(myparent.split()[2])
-						self.digraph.addnode(string.join(mybigkey),myparent)
-					# since our blocks doesn't match any installed packages,
-					# it doesn't apply to us and we can ignore it.
+					mybigkey.append(myparent.split()[2])
+					self.digraph.addnode(string.join(mybigkey),myparent)
 				return 1
 			if not myparent:
 				# command-line specified or part of a world list...
@@ -1888,7 +1874,7 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 				mytimeout=int(portage.settings["RSYNC_TIMEOUT"])
 			except:
 				pass
-		rsynccommand="/usr/bin/rsync -rlptDvz --progress --stats --delete --delete-after --timeout="+str(mytimeout)+" --exclude='distfiles/*' --exclude='local/*' --exclude='packages/*' "
+		rsynccommand="/usr/bin/rsync -rlptDvz --progress --stats --delete --delete-after --timeout="+str(mytimeout)+" --exclude='distfiles/*' --exclude='local/*' --exclude='packages/*' --exclude='metadata/local/*'"
 		if portage.settings.has_key("RSYNC_EXCLUDEFROM"):
 			if os.path.exists(portage.settings["RSYNC_EXCLUDEFROM"]):
 				rsynccommand=rsynccommand+" --exclude-from "+portage.settings["RSYNC_EXCLUDEFROM"]
@@ -1899,7 +1885,10 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 
 		servertimestampdir=portage.settings["PORTAGE_TMPDIR"]+"/sync/"
 
-		content=portage.grabfile(myportdir+"/metadata/timestamp.chk")
+		content=portage.grabfile(myportdir+"/metadata/local/timestamp.chk")
+		if (not content):
+			content=portage.grabfile(myportdir+"/metadata/timestamp.chk")
+
 		if (content):
 			mytimestamp=time.mktime(time.strptime(content[0], "%a, %d %b %Y %H:%M:%S +0000"))
 		else:
@@ -2083,6 +2072,18 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 		portage.spawn("chmod -R g+rw "+portage.dbcachedir, portage.settings, free=1)
 		sys.stdout.write("\b\b  ...done!\n\n")
 		sys.stdout.flush()
+
+	# store timestamp.chk for checking timestamp in next time.
+	try:
+		if not os.path.isdir(myportdir+"/metadata/local"):
+			os.mkdir(myportdir+"/metadata/local")
+		myfile=open(myportdir+"/metadata/local/timestamp.chk","w")
+		for x in portage.grabfile(myportdir+"/metadata/timestamp.chk"):
+			myfile.write(x+"\n")
+		myfile.close()
+	except Exception, e:
+		print "!!! Failed to store current timestamp."
+		print "!!!",e
 
 	portage.portageexit()
 	reload(portage)

@@ -2,6 +2,22 @@
 # Copyright 2000-2004 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  19 Jan 2004; Masatomo Nakano <nakano@gentoo.org> emerge: Improved
+  timestamp check of rsync. This should close #37403.
+
+  19 Jan 2004; Masatomo Nakano <nakano@gentoo.org> portage.py: Improved
+  regeneration ld.so.cache. This should close #37858.
+
+  19 Jan 2004; Masatomo Nakano <nakano@gentoo.org> emerge: Fixed bug which
+  emerge doesn't block same package but different version.
+  (example: DEPEND="!<cat/pkg-1.0.0" in cat/pkg-1.0.0.ebuild)
+
+  19 Jan 2004; Masatomo Nakano <nakano@gentoo.org> portage.py:
+  Modified cpv_expand() to check package.mask. This should close #38592.
+
+  19 Jan 2004; Masatomo Nakano <nakano@gentoo.org> portage.py: Escaped
+  regualar expression for replace entry in fixdbentries().
+
   18 Jan 2004; Masatomo Nakano <nakano@gentoo.org> portage.py:
   Fixed AUTOCLEAN delay problem in .50pre* by TGL's patch. This close 
   #38189. Fixed unmerge failture bug when 'ebuild foo-1.0.0 unmerge'.
