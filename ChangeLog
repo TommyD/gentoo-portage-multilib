@@ -7,6 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  08 Mar 2005; Marius Mauch <genone@gentoo.org> pym/portage.py:
+  reverting broken patch for fakedbapi.cp_all(): it returned a nested list 
+  instead of a simple list and was weird at best.
+
   06 Mar 2005; Brian Harring <ferringb@gentoo.org> autogen.sh:
   used for autogenerating auto* crap after a checkout.
 

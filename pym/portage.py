@@ -2458,7 +2458,9 @@ class fakedbapi(dbapi):
 
 	def cp_all(self):
 		returnme=[]
-		return [y for y in [x for x in self.cpdict.values()]]
+		for x in self.cpdict.keys():
+			returnme.extend(self.cpdict[x])
+		return returnme
 
 	def cpv_inject(self,mycpv):
 		"""Adds a cpv from the list of available packages."""
