@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  07 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage_util.py: 
+  fixed import issue.
+
   07 Nov 2004; Brian Harring <ferringb@gentoo.org> portage_dep.py: code
   transfer out of portage.py.  Functions are still in portage.py at this point, 
   removed shortly.  Closes a few bugs with paren_reduce not returning a list, 
