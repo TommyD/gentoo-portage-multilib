@@ -51,7 +51,7 @@ char *get_sandbox_path(char *argv0);
 char *get_sandbox_lib(char *sb_path);
 char *get_sandbox_rc(char *sb_path);
 char *get_sandbox_log();
-char *dirname(const char *path);
+char *sb_dirname(const char *path);
 int file_getmode(char *mode);
 long file_tell(int fp);
 int file_lock(int fd, int lock, char *filename);
