@@ -719,7 +719,8 @@ if "--unmerge" in myopts:
 		print "No packages to unmerge have been provided."
 		print
 	else:
-		full_paths={}
+		full_ebuild_paths={}
+		full_package_paths={}
 		non_slot_packages=[]
 		
 		var_path=portage.root+"var/db/pkg"
@@ -761,7 +762,7 @@ if "--unmerge" in myopts:
 						print "Your portage installation tree seems to be corrupted."
 					else:
 						path_parts=split(full_path, "/")
-						full_paths[full_path]=path_parts[4]+"/"+package_pf
+						full_ebuild_paths[full_path]=path_parts[4]+"/"+package_pf
 
 			# a category and package name have been given
 			else:
@@ -786,22 +787,22 @@ if "--unmerge" in myopts:
 								print "The ebuild '"+full_path+"' couldn't be found."
 								print "Your portage installation tree seems to be corrupted."
 							else:
-								full_paths[full_path]=package
+								full_package_paths[full_path]=package
 
 		# if the --all switch was not specified, remove the latest version of each package set
 		# to make sure that the system stays running
 		if not "--all" in myopts:
-			if len(full_paths) > 1:
+			if len(full_package_paths) > 0:
 				latest_ebuilds={}
 				# determine the latest installed packages of each cat/pkg key
-				full_paths_keys=full_paths.keys()
+				full_paths_keys=full_package_paths.keys()
 				# sort the ebuild paths
 				full_paths_keys.sort()
 				previous_package_set=None
 				for full_path in full_paths_keys:
 					# construct the key that will be used to determine when a new package set
 					# is being processed, the package slot is taken into account for this
-					package_parts=portage.pkgsplit(full_paths[full_path])
+					package_parts=portage.pkgsplit(full_package_paths[full_path])
 					slot_path=dirname(full_path)+"/SLOT"
 					if os.path.exists(slot_path):
 						slot_file=open(slot_path)
@@ -824,13 +825,13 @@ if "--unmerge" in myopts:
 						latest_ebuilds[package_set]=[full_path,contents_mtime]
 					# if a new package set is being processed, remove the latest version of the previous package set
 					if previous_package_set and previous_package_set!=package_set and latest_ebuilds[previous_package_set][0]:
-						del full_paths[latest_ebuilds[previous_package_set][0]]
+						del full_package_paths[latest_ebuilds[previous_package_set][0]]
 					# update which package set has just been processed
 					previous_package_set=package_set
 					
 				# remove the latest version of the last processed package set
 				if latest_ebuilds[package_set][0]:
-					del full_paths[latest_ebuilds[package_set][0]]
+					del full_package_paths[latest_ebuilds[package_set][0]]
 
 		if len(non_slot_packages)>0:
 			if "--verbose" not in myopts:
@@ -846,6 +847,9 @@ if "--unmerge" in myopts:
 				for non_slot_package in non_slot_packages:
 					print "    "+non_slot_package
 			
+		full_paths=full_ebuild_paths.keys()
+		full_paths.extend(full_package_paths.keys())
+		
 		if len(full_paths)==0:
 			print "Couldn't find any matching installed packages."
 		else:
@@ -857,11 +861,10 @@ if "--unmerge" in myopts:
 				print
 				print "The following packages are going to be unmerged :"
 				print
-			sorted_paths=full_paths.keys()
 			# this makes revisions come before slot versions
 			# and therefor unmerges the older packages first
-			sorted_paths.sort()
-			for full_path in sorted_paths:
+			full_paths.sort()
+			for full_path in full_paths:
 				path_parts=split(full_path, "/")
 				print "    "+path_parts[4]+"/"+path_parts[5]
 			if "--pretend" in myopts:
@@ -877,7 +880,7 @@ if "--unmerge" in myopts:
 					time.sleep(1)
 					secs = secs-1
 				print secs
-				for full_path in sorted_paths:
+				for full_path in full_paths:
 					print "Unmerging "+os.path.basename(full_path)+" ..."
 					retval=portage.doebuild(full_path,"unmerge",portage.root,0,edebug)
 
