@@ -2,6 +2,9 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  01 Dec 2003; Masatomo Nakano <nakano@gentoo.org> emerge: Fixed bug which 
+	always remakes info dir file.
+
   29 Nov 2003; Masatomo Nakano <nakano@gentoo.org> portage.py: Fixed issue with
 	ebuild name rule. Fixed typo with variable name.
 	This closes bug #17172,#34666

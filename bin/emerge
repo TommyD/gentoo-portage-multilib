@@ -1685,7 +1685,7 @@ def post_emerge(retval=0):
 	infodirs.extend(string.split(portage.settings["INFODIR"], ":"))
 
 	if os.path.exists("/usr/bin/install-info"):
-		regen=0
+		regen_infodirs=[]
 		for z in infodirs:
 			if z=='':
 				continue
@@ -1702,25 +1702,21 @@ def post_emerge(retval=0):
 					if portage.mtimedb["info"][inforoot]==infomtime:
 						pass
 					else:
-						portage.mtimedb["info"][inforoot]=0
-						regen+=1
+						portage.mtimedb["info"][inforoot]=infomtime
+						regen_infodirs.append(inforoot)
 				else:
-					regen+=1
+					regen_infodirs.append(inforoot)
 
-		if not regen:
+		if not regen_infodirs:
 			print " "+green("*")+" GNU info directory index is up-to-date."
 		else:
 			print " "+green("*")+" Regenerating GNU info directory index..."
 
 			icount=0
 			badcount=0
-			for z in infodirs:
-				if z=='':
+			for inforoot in regen_infodirs:
+				if inforoot=='':
 					continue
-				inforoot=root+z
-				if portage.mtimedb["info"].has_key(inforoot):
-					if portage.mtimedb["info"][inforoot]!=0:
-						continue
 				try:
 					os.rename(inforoot+"/dir",inforoot+"/dir.old")
 				except:
