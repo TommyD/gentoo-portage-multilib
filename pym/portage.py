@@ -5256,7 +5256,7 @@ class portdbapi(dbapi):
 		
 		failures = {}
 		for x in myfiles:
-			if x not in mysums:
+			if not mysums or x not in mysums:
 				ok     = False
 				reason = "digest missing"
 			else:
