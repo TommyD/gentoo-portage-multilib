@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  29 Oct 2004; Brian Harring <ferringb@gentoo.org> emerge: Close stdin after 
+  the spawn fork for rsync, not in global scope.  #68946
+
   29 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> emerge: Fixed issue where
   emerge adds package to world when --onlydeps is specified. #69260
   Fixed issue where emerge was adding packages to world when --uprade is
