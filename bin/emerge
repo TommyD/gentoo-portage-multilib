@@ -649,14 +649,11 @@ class depgraph:
 				edepend["CDEPEND"]=string.join(string.split(edepend["CDEPEND"])," ")
 				edepend["SLOT"]   =string.strip(edepend["SLOT"])
 			else:
-				print "Is Remote?"
 				if portage.db[portage.root]["bintree"].isremote(mykey):
-					print " -- Yep"
 					# Get the tbz2
 					if not portage.db[portage.root]["bintree"].remotepkgs.has_key(mykey):
 						sys.stderr.write("\nThere are no packages available to satisfy "+str(mykey)+"\n\n")
 						sys.exit(1)
-					print "gettbz2:",mykey
 					portage.db[portage.root]["bintree"].gettbz2(mykey)
 				mytbz2=xpak.tbz2(portage.db[portage.root]["bintree"].getname(mykey))
 				edepend["DEPEND"] =""

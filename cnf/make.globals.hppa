@@ -47,6 +47,9 @@ FEATURES="ccache"
 #black&white text
 NOCOLOR="false"
 
+PORTAGE_BINHOST_CHUNKSIZE="3000"
+USE_EXPAND="VIDEO_CARDS INPUT_DEVICES"
+
 # By default wait 5 secs before cleaning a package
 CLEAN_DELAY="5"
 # Set to yes automatically run "emerge clean" after each merge

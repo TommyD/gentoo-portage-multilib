@@ -2,6 +2,22 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+*portage-2.0.49_pre11 (16 Jul 2003): GRP, General, VIDEO_CARDS/INPUT_DEVICES
+
+  16 Jul 2003; Nicholas Jones <carpaski@gentoo.org> quickpkg: SpanKY's
+  friendly edition now included.
+	
+  16 Jul 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: USE_EXPAND
+  support for expanding bash variables into USE --- VIDEO_CARDS="blah"
+  USE="video_cards_blah". Added a notice about fetching metadata so you
+  can see that it's happening.
+
+  16 Jul 2003; Nicholas Jones <carpaski@gentoo.org> make.globals*: Added
+  default CHUNKSIZE for binhosts. Added defaults for USE_EXPAND which is
+  used to expand variables into USE from the give names.
+
+  16 Jul 2003; Nicholas Jones <carpaski@gentoo.org> *: Debug removal.
+
 *portage-2.0.49_pre10 (16 Jul 2003): GRP and General Fixes
 
   16 Jul 2003; Nicholas Jones <carpaski@gentoo.org> *:
