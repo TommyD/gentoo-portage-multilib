@@ -2,7 +2,7 @@
 # ebuild.py; Ebuild classes/abstraction of phase processing, and communicating with a ebuild-daemon.sh instance
 # Copyright 2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-$Header$
+#$Header$
 
 
 import os,sys,traceback

@@ -1,7 +1,7 @@
 # snapshot.py; provides the capability of fetching a portage tree snapshot, and syncing a tree with it.
 # Copyright 2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-$Header$
+#$Header$
 
 import os
 import time

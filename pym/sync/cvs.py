@@ -1,7 +1,7 @@
 # cvs.py; provides cvs sync capabilities, encapsulates the necessary cvs binary calls
 # Copyright 2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-$Header$
+#$Header$
 
 import os,portage_exec,stat
 #import sync

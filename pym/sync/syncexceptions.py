@@ -1,7 +1,7 @@
 # syncexceptions.py: base sync exception class. not used currently (should be though)
 # Copyright 2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-$Header$
+#$Header$
 
 class SyncException(Exception):
 	"""base sync exception"""
