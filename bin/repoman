@@ -799,12 +799,13 @@ for x in scanlist:
 
 		baddepsyntax = False
 		catpkg = catdir+"/"+y
-		for mytype in ["DEPEND","RDEPEND","PDEPEND"]:
+		for mytype in ["DEPEND","RDEPEND","PDEPEND","LICENSE"]:
 			mydepstr = string.join(portage.db["/"]["porttree"].dbapi.aux_get(catpkg, [mytype]))
-			if (string.find(mydepstr, " ?") <> -1):
+			if (string.find(mydepstr, " ?") != -1):
 				stats[mytype+".syntax"] += 1
 				fails[mytype+".syntax"].append(catpkg+".ebuild "+mytype+": '?' preceded by space")
-				baddepsyntax = True
+				if mytype != "LICENSE":
+					baddepsyntax = True
 			try:
 				# Missing closing parenthesis will result in a ValueError
 				mydeplist=portage_dep.paren_reduce(mydepstr)
@@ -814,7 +815,8 @@ for x in scanlist:
 			except ValueError:
 				stats[mytype+".syntax"] += 1
 				fails[mytype+".syntax"].append(catpkg+".ebuild "+mytype+": Mismatched parenthesis")
-				baddepsyntax = True
+				if mytype != "LICENSE":
+					baddepsyntax = True
 
 		if not baddepsyntax:
 			for keyword,arch,groups in arches:
@@ -906,9 +908,11 @@ for x in scanlist:
 			stats["IUSE.invalid"]=stats["IUSE.invalid"]+1
 			fails["IUSE.invalid"].append(x+"/"+y+".ebuild: %s" % myuse[mypos])	
 		#license checks
-		myuse=string.split(portage.db["/"]["porttree"].dbapi.aux_get(catdir+"/"+y,["LICENSE"])[0])
+		myuse=portage.db["/"]["porttree"].dbapi.aux_get(catdir+"/"+y,["LICENSE"])[0]
+		myuse=portage_dep.use_reduce(portage_dep.paren_reduce(myuse), matchall=1)
+		myuse=portage.flatten(myuse)
 		for mypos in range(0,len(myuse)):
-			if not myuse[mypos] in liclist and myuse[mypos] != "|":
+			if not myuse[mypos] in liclist:
 				stats["LICENSE.invalid"]=stats["LICENSE.invalid"]+1
 				fails["LICENSE.invalid"].append(x+"/"+y+".ebuild: %s" % myuse[mypos])
 		#keyword checks

@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  04 Oct 2004; <jstubbs@gentoo.org> bin/repoman: Added repoman check
+  for DEPEND-syntax following LICENSEs.
+
   03 Oct 2004; <genone@gentoo.org> pym/emergehelp.py:
   Add --metadata documentation to --help output.
 
