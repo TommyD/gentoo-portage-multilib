@@ -2069,7 +2069,11 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	
 	ebuild_path = os.path.abspath(myebuild)
 	pkg_dir     = os.path.dirname(ebuild_path)
-	cat         = os.path.basename(os.path.normpath(pkg_dir+"/.."))
+
+	if mysettings.configdict["pkg"].has_key("CATEGORY"):
+		cat = mysettings.configdict["pkg"]["CATEGORY"]
+	else:
+		cat         = os.path.basename(os.path.normpath(pkg_dir+"/.."))
 	mypv        = os.path.basename(ebuild_path)[:-7]
 	mycpv       = cat+"/"+mypv
 
@@ -2983,13 +2987,13 @@ def dep_zapdeps(unreduced,reduced):
 	"""Takes an unreduced and reduced deplist and removes satisfied dependencies.
 	Returned deplist contains steps that must be taken to satisfy dependencies."""
 	if unreduced==[] or unreduced==['||'] :
-		return None
+		return []
 	if unreduced[0]=="||":
 		if dep_eval(reduced):
-			#deps satisfied, return None
-			return None
+			#deps satisfied, return empty list.
+			return []
 		else:
-			#try to find an installed dep
+			#try to find an installed dep.
 			mydbapi=db[root]["vartree"].dbapi
 			if db["/"].has_key("porttree"):
 				myportapi=db["/"]["porttree"].dbapi
@@ -3001,62 +3005,63 @@ def dep_zapdeps(unreduced,reduced):
 				if (type(reduced[x])==types.ListType):
 					candidate.append(dep_zapdeps(unreduced[x], reduced[x]))
 				else:
-					candidate.append(unreduced[x])
+					if (reduced[x]==False):
+						candidate.append([unreduced[x]])
+					else:
+						candidate.append([])
 				x+=1
 
-			#use already installed and no-masked pkg
+			#use installed and no-masked package(s) in portage.
 			for x in candidate:
-				if (type(x)==types.ListType):
-					match=1
-					for y in x:
-						if not mydbapi.match(y):
+				match=1
+				for pkg in x:
+					if not mydbapi.match(pkg):
+						match=0
+						break
+					if myportapi:
+						if not myportapi.match(pkg):
 							match=0
-						if myportapi and not myportapi.match(y):
-							match=0
-					if match:
-						return x
-				elif mydbapi.match(x) and myportapi and myportapi.match(x):
+							break
+				if match:
 					return x
 
-			#use no-masked pkg
+			#use no-masked package(s) in portage tree
 			if myportapi:
 				for x in candidate:
-					if (type(x)==types.ListType):
-						match=1
-						for y in x:
-							if not myportapi.match(y):
-								match=0
-						if match:
-							return x
-					elif myportapi.match(x):
+					match=1
+					for pkg in x:
+						if not myportapi.match(pkg):
+							match=0
+							break
+					if match:
 						return x
 
 			#none of the no-masked pkg, use the first one
 			return candidate[0]
 	else:
 		if dep_eval(reduced):
-			#deps satisfied, return None
-			return None
+			#deps satisfied, return empty list.
+			return []
 		else:
 			returnme=[]
 			x=0
 			while x<len(reduced):
 				if type(reduced[x])==types.ListType:
-					myresult=dep_zapdeps(unreduced[x],reduced[x])
-					if myresult:
-						returnme.append(myresult)
+					returnme+=dep_zapdeps(unreduced[x],reduced[x])
 				else:
-					if reduced[x]==0:
+					if reduced[x]==False:
 						returnme.append(unreduced[x])
 				x += 1
-			if len(returnme)==1 and type(returnme[0])==types.ListType:
-				# case [[cat/pkg]]
-				return returnme[0]
-			else:
-				return returnme
+			return returnme
 
 def dep_listcleanup(deplist):
 	"remove unnecessary clutter from deplists.  Remove multiple list levels, empty lists"
+
+	#
+	# This function is obsoleted.
+	# dep_zapdeps function was cleaned up, so doesn't need this function.
+	# 
+
 	newlist=[]
 	if (len(deplist)==1):
 		#remove multiple-depth lists
@@ -3299,7 +3304,7 @@ def dep_check(depstring,mydbapi,mysettings,use="yes",mode=None,myuse=None,use_ca
 	if myeval:
 		return [1,[]]
 	else:
-		mylist=flatten(dep_listcleanup(dep_zapdeps(mysplit,mysplit2)))
+		mylist=flatten(dep_zapdeps(mysplit,mysplit2))
 		#remove duplicates
 		mydict={}
 		for x in mylist:
