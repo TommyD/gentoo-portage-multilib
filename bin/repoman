@@ -55,52 +55,7 @@ optionshelp={
 "--verbose":"Displays every package name while checking",
 "--xmlparse":"Forces the metadata.xml parse check to be carried out"
 }
-qacats=[
-"digest.stray","digest.missing",
-"ebuild.invalidname","ebuild.namenomatch",
-"changelog.missing",
-"changelog.notadded","ebuild.notadded","digest.notadded",
-"ebuild.disjointed","digest.disjointed", "file.executable","file.size",
-"digest.unmatch",
-"DEPEND.bad","RDEPEND.bad","PDEPEND.bad",
-"DEPEND.badmasked","RDEPEND.badmasked","PDEPEND.badmasked",
-"DEPEND.badindev","RDEPEND.badindev","PDEPEND.badindev",
-"DEPEND.badmaskedindev","RDEPEND.badmaskedindev","PDEPEND.badmaskedindev",
-"DEPEND.syntax","RDEPEND.syntax","PDEPEND.syntax",
-"ebuild.syntax","ebuild.output","variable.readonly",
-"ebuild.nesteddie","LICENSE.invalid",
-"IUSE.invalid","KEYWORDS.invalid",
-"ebuild.nostable","ebuild.allmasked",
-"ebuild.majorsyn", "ebuild.minorsyn",
-"ebuild.badheader", "metadata.missing",
-"metadata.bad"
-]
-qawarnings=[
-"changelog.missing",
-"changelog.notadded",
-"ebuild.notadded",
-"ebuild.nostable",
-"ebuild.allmasked",
-"digest.notadded",
-"digest.disjointed",
-"digest.missing",
-"digest.unmatch",
-"DEPEND.badmasked","RDEPEND.badmasked","PDEPEND.badmasked",
-"DEPEND.badindev","RDEPEND.badindev","PDEPEND.badindev",
-"DEPEND.badmaskedindev","RDEPEND.badmaskedindev","PDEPEND.badmaskedindev",
-"IUSE.invalid",
-"ebuild.minorsyn",
-"ebuild.badheader",
-"metadata.missing",
-"metadata.bad"
-]
-missingvars=["KEYWORDS","LICENSE","DESCRIPTION","SLOT","IUSE"]
-allvars=portage.auxdbkeys
-commitmessage=None
-commitmessagefile=None
-for x in missingvars:
-	qacats.append(x+".missing")
-	qawarnings.append(x+".missing")
+
 qahelp={
 	"digest.stray":"Digest files that do not have a corresponding ebuild",
 	"digest.missing":"Digest files that are missing (ebuild exists, digest doesn't)",
@@ -150,6 +105,37 @@ qahelp={
 	"metadata.missing":"Missing metadata.xml files",
 	"metadata.bad":"Bad metadata.xml files"
 }
+
+qacats = qahelp.keys()
+
+qawarnings=[
+"changelog.missing",
+"changelog.notadded",
+"ebuild.notadded",
+"ebuild.nostable",
+"ebuild.allmasked",
+"digest.notadded",
+"digest.disjointed",
+"digest.missing",
+"digest.unmatch",
+"DEPEND.badmasked","RDEPEND.badmasked","PDEPEND.badmasked",
+"DEPEND.badindev","RDEPEND.badindev","PDEPEND.badindev",
+"DEPEND.badmaskedindev","RDEPEND.badmaskedindev","PDEPEND.badmaskedindev",
+"IUSE.invalid",
+"ebuild.minorsyn",
+"ebuild.badheader",
+"metadata.missing",
+"metadata.bad"
+]
+
+missingvars=["KEYWORDS","LICENSE","DESCRIPTION","SLOT","IUSE"]
+allvars=portage.auxdbkeys
+commitmessage=None
+commitmessagefile=None
+for x in missingvars:
+	qacats.append(x+".missing")
+	qawarnings.append(x+".missing")
+
 
 def err(txt):
 	print exename+": "+txt

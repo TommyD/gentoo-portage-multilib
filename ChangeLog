@@ -9,6 +9,10 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  03 Aug 2004; Brian Harring <ferringb@gentoo.org> bin/repoman: reworked 
+  the qacats definition so that the type of bug that borked emerge help is 
+  no longer possible.
+
   03 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py, 
   bin/emerge: Corrected emerge --fetch-all-uri issues, now works.  Basically,
   FEATURES="cvs" emerge -f blar == emerge --fetch-all-uri blar.  The fetch
@@ -24,7 +28,7 @@
 
   03 Aug 2004; Brian Harring <ferringb@gentoo.org> bin/repoman: Corrected the
   borkage I introduced into repoman's help option- it was throwing a traceback
-  due to file.executable's description being typoed.
+  due to file.executable's key name being typoed.
 
   03 Aug 2004; Nicholas Jones <carpaski@gentoo.org> portage_dep.py: Enhanced
 	the invalid depend string identification for || (and &&) strings.
