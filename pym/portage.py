@@ -2947,7 +2947,11 @@ def key_expand(mykey,mydb=None):
 def cpv_expand(mycpv,mydb=None):
 	myslash=mycpv.split("/")
 	mysplit=pkgsplit(myslash[-1])
-	if len(myslash)==2:
+	if len(myslash)>2:
+		# this is illegal case.
+		mysplit=[]
+		mykey=mycpv
+	elif len(myslash)==2:
 		if mysplit:
 			mykey=myslash[0]+"/"+mysplit[0]
 		else:
