@@ -2,6 +2,8 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+*portage-2.0.47-r3 (17 Feb 2003): Wicked Fast, BugFree v2, UserPriv
+
   22 Feb 2003; Nicholas Jones <carpaski@gentoo.org> bin/: added dispatch-conf
 	and db-fix.pl to the bins. Looking at dispatch-conf to replace etc-update
 	written by Jeremy Wohl (bug 14079). db-fix.pl is a rescue tool that Blizzy
