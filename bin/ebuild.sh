@@ -118,7 +118,7 @@ einstall() {
 	    datadir=${D}/usr/share \
 	    sysconfdir=${D}/etc \
 	    localstatedir=${D}/var/lib \
-	    install || exit 1
+	    "$@" install || exit 1
     else
 	exit 1
     fi

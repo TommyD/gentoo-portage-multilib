@@ -1,6 +1,18 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  01 May 2002; Daniel Robbins <drobbins@gentoo.org> ebuild.sh: einstall
+  now accepts arguments, closing bug #2275.  Thanks seemant! :)
+  
+  01 May 2002; Daniel Robbins <drobbins@gentoo.org> make.globals: switch
+  SYNC var from cvs.gentoo.org to rsync.gentoo.org, and gentoo-x86-portage
+  to gentoo-portage.
+  
+  30 Apr 2002; Daniel Robbins <drobbins@gentoo.org> emerge: now checks for
+  errors (caused by bad deps) returned by create() and syscreate().
+
+*portage-1.9.5 (29 Apr 2002)
+
   29 Apr 2002; Daniel Robbins <drobbins@gentoo.org> ebuild.sh: added jnelson's
   KV_extract.awk script which extracts the kernel version from the actual
   kernel sources Makefile, making our KV setting much more robust!  Thanks Jon

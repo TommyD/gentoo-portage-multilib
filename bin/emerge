@@ -487,7 +487,8 @@ class depgraph:
 		for myline in mylines:	
 			if "--update" in self.myopts:
 			#or "--rebuild"==self.myaction:
-				self.create(self.match(myline,mykey="update (likely old /var/db/pkg entry)"))
+				if not self.create(self.match(myline,mykey="update (likely old /var/db/pkg entry)")):
+					return 0
 			else:
 				mycheck=portage.db[portage.root]["vartree"].depcheck(myline)
 				if mycheck[0]==0:
@@ -496,7 +497,9 @@ class depgraph:
 				if mycheck[1]==None:
 					continue
 				for x in mycheck[1]:
-					self.create(self.match(myline,mykey="syscreate1"))
+					if not self.create(self.match(myline,mykey="syscreate1")):
+						return 0
+		return 1
 	
 	def match(self,mydep,myroot=portage.root,mykey=None):
 		# support mutual exclusive deps
@@ -1289,11 +1292,13 @@ else:
 	syslist=getlist("system")
 	if myaction=="system":
 		print "Calculating system dependencies  ",
-		mydepgraph.syscreate(syslist)
+		if not mydepgraph.syscreate(syslist):
+			sys.exit(1)
 		print "\b\b ...done!"
 	elif myaction=="world":
 		print "Calculating world dependencies  ",
-		mydepgraph.syscreate(getworldlist())
+		if not mydepgraph.syscreate(getworldlist()):
+			sys.exit(1)
 		print "\b\b ...done!"
 	else:
 		if not myfiles:
@@ -1324,7 +1329,8 @@ else:
 			#		sys.exit(1)
 			if not "--oneshot" in myopts:
 				favorites.append(mykey)
-			mydepgraph.create(mytype+" "+portage.root+" "+mykey,None,"--onlydeps" not in myopts)
+			if not mydepgraph.create(mytype+" "+portage.root+" "+mykey,None,"--onlydeps" not in myopts):
+				sys.exit(1)
 		print "\b\b ...done!"
 	if "--pretend" in myopts:
 		mydepgraph.display(mydepgraph.altlist())
