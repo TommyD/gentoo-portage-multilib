@@ -862,9 +862,11 @@ class depgraph:
 		# Adjust pkgsettings with any virtuals this package provides.
 		if mytype=="binary":
 			self.pkgsettings.setinst(mykey,portage.db["/"]["bintree"].dbapi)
-		else:
+		elif merging:
 			self.pkgsettings.setinst(mykey,portage.db[myroot]["porttree"].dbapi)
-		
+		else:
+			self.pkgsettings.setinst(mykey,portage.db[myroot]["vartree"].dbapi)
+
 		# whatever the case, we need to add the node to our digraph so
 		# that children can depend upon it.
 		self.digraph.addnode(string.join(mybigkey),myparent)

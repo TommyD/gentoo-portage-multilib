@@ -9,6 +9,12 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  08 Aug 2004; Brian Harring <ferringb@gentoo.org> bin/emerge: Fixed a 
+  traceback issue, an ebuild is no longer in the tree, but is installed 
+  and needs to be used in the depgraph- the problem was, emerge 
+  assumed the ebuild was in porttree's db, when vartree should be used 
+  if the package is known to be installed.
+
   08 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py:
   Killed a couple of corner cases for non-root fetch and lockfile calls.
 
