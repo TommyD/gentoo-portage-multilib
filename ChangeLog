@@ -12,7 +12,8 @@
 	code for package.mask added in -- works just like mask, and can override
 	specific versions or ranges -- One per line: /etc/portage/package.unmask.
 	Security fix for python cPickle code -- mtimedb could create arbitrary
-	execution of code bug. Global update notices/info.
+	execution of code bug. Global update notices/info. Fixes for loops over
+	listdir() that depended upon raised errors to determine code flow.
 
   27 Apr 2003; Nicholas Jones <carpaski@gentoo.org> cvstree.py: Added in
 	'removed' status checks.

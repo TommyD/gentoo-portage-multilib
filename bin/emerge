@@ -1093,7 +1093,8 @@ class depgraph:
 			for x in mylist:
 				if x[0]=="blocks":
 					print "\n!!! Error: the "+x[2]+" package conflicts with this package and both can't be installed on the same system together."
-					sys.exit(1)
+					if ("--pretend" not in myopts):
+						sys.exit(1)
 
 		if ("--resume" in myopts):
 			# We're resuming.

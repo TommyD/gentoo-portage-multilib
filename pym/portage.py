@@ -2983,6 +2983,8 @@ class vardbapi(dbapi):
 			list=listdir(self.root+"var/db/pkg/"+mysplit[0])
 		except OSError:
 			return []
+		if (list==None):
+			return []
 		returnme=[]
 		for x in list:
 			ps=pkgsplit(x)
@@ -3532,18 +3534,22 @@ class portdbapi(dbapi):
 		mysplit=mycp.split("/")
 		returnme=[]
 		try:
-			for x in listdir(self.root+"/"+mycp):
-				if x[-7:]==".ebuild":
-					returnme.append(mysplit[0]+"/"+x[:-7])	
+			list=listdir(self.root+"/"+mycp)
+			if list:
+				for x in list:
+					if x[-7:]==".ebuild":
+						returnme.append(mysplit[0]+"/"+x[:-7])	
 		except (OSError,IOError),e:
 			pass
 		if self.oroot:
 			try:
-				for x in listdir(self.oroot+"/"+mycp):
-					if x[-7:]==".ebuild":
-						mycp=mysplit[0]+"/"+x[:-7]
-						if not mycp in returnme:
-							returnme.append(mycp)
+				list=listdir(self.oroot+"/"+mycp)
+				if list:
+					for x in list:
+						if x[-7:]==".ebuild":
+							mycp=mysplit[0]+"/"+x[:-7]
+							if not mycp in returnme:
+								returnme.append(mycp)
 			except (OSError,IOError),e:
 				pass
 		return returnme
@@ -4068,11 +4074,12 @@ class dblink:
 			pos = 0
 			while pos<len(mydirs):
 				obj=mydirs[pos]
-				if listdir(obj):
+				objld=listdir(obj)
+				if len(objld)>0:
 					#we won't remove this directory (yet), continue
 						pos += 1
 						continue
-				else:
+				elif (objld != None):
 					#zappo time
 					del mydirs[pos]
 					#we've made progress!
