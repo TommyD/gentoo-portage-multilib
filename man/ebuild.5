@@ -700,6 +700,18 @@ Creates all necessary dirs.
 \fBdosbin\fR \fI<binary> [list of more binaries]\fR
 Installs a \fIbinary\fR or a list of binaries into \fIDESTTREE\fR/sbin.
 Creates all necessary dirs.
+.TP
+\fBdoinitd\fR \fI<init.d script> [list of more init.d scripts]\fR
+Install Gentoo \fIinit.d scripts\fR.  They will be installed into the 
+correct location for Gentoo init.d scripts (/etc/init.d/).
+.TP
+\fBdoconfd\fR \fI<conf.d file> [list of more conf.d file]\fR
+Install Gentoo \fIconf.d files\fR.  They will be installed into the 
+correct location for Gentoo conf.d files (/etc/conf.d/).
+.TP
+\fBdoenvd\fR \fI<env.d entry> [list of more env.d entries]\fR
+Install Gentoo \fIenv.d entries\fR.  They will be installed into the 
+correct location for Gentoo env.d entries (/etc/env.d/).
 
 .PD 0
 .TP
@@ -792,6 +804,12 @@ Files are automatically gzipped.  Creates all necessary dirs.
 \fBnewbin\fR \fI<old file> <new filename>\fR
 .TP
 \fBnewsbin\fR \fI<old file> <new filename>\fR
+.TP
+\fBnewinitd\fR \fI<old file> <new filename>\fR
+.TP
+\fBnewconfd\fR \fI<old file> <new filename>\fR
+.TP
+\fBnewenvd\fR \fI<old file> <new filename>\fR
 .TP
 \fBnewlib\fR \fI<old file> <new filename>\fR
 .TP
