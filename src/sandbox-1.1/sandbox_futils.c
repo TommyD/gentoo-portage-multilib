@@ -23,6 +23,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <grp.h>
 
 #include "sandbox.h"
 
@@ -96,7 +97,6 @@ get_sandbox_log()
 
 	strcpy(path, LOG_FILE_PREFIX);
 
-
 	/* THIS CHUNK BREAK THINGS BY DOING THIS:
 	 * SANDBOX_LOG=/tmp/sandbox-app-admin/superadduser-1.0.7-11063.log
 	 */
@@ -106,7 +106,6 @@ get_sandbox_log()
 		strcat(path, sandbox_log_env);
 		strcat(path, "-");
 	}
-
 
 	strcat(path, pid_string);
 	strcat(path, LOG_FILE_EXT);
@@ -289,21 +288,38 @@ file_open(char *filename, char *mode, int perm_specified, ...)
 	char error[250];
 	va_list ap;
 	int perm;
+	char *group = NULL;
+	struct group *group_struct;
 
 	if (perm_specified) {
 		va_start(ap, perm_specified);
 		perm = va_arg(ap, int);
+		group = va_arg(ap, char *);
 		va_end(ap);
 	}
-	if (perm_specified) {
-		fd = open(filename, file_getmode(mode), perm);
-	} else {
-		fd = open(filename, file_getmode(mode));
-	}
+	fd = open(filename, file_getmode(mode));
 	if (-1 == fd) {
 		snprintf(error, 249, ">>> %s file mode: %s open", filename, mode);
 		perror(error);
 		return (fd);
+	}
+	if (perm_specified) {
+		if (fchmod(fd, 0664) && (0 == getuid())) {
+			snprintf(error, 249, ">>> Could not set mode: %s", filename);
+			perror(error);
+		}
+	}
+	if (NULL != group) {
+		group_struct = getgrnam(group);
+		if (NULL == group) {
+			snprintf(error, 249, ">>> Could not get grp number: %s", group);
+			perror(error);
+		} else {
+			if (fchown(fd, -1, group_struct->gr_gid) && (0 == getuid())) {
+				snprintf(error, 249, ">>> Could not set group: %s", filename);
+				perror(error);
+			}
+		}
 	}
 	/* Only lock the file if opening succeeded */
 	if (-1 != fd) {
