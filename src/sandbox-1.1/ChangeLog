@@ -3,7 +3,7 @@
 # $Header$
 
   09 Jan 2003; J Robert Ray <jrray@gentoo.org> sandbox.c : Don't segfault if
-  $HOME isn't set, set $HOME to "/" instead.
+  $HOME isn't set, set $HOME to "/" instead.  Fixes bug 10868.
 
   16 Dec 2002; Martin Schlemmer <azarah@gentoo.org> create-localdecls :
 
