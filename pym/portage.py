@@ -5681,6 +5681,7 @@ class dblink:
 	
 		self.myroot=myroot
 		self.updateprotect()
+		self.contentscache=[]
 
 	def lockdb(self):
 		if self.lock_num == 0:
@@ -5733,6 +5734,8 @@ class dblink:
 	def getcontents(self):
 		if not os.path.exists(self.dbdir+"/CONTENTS"):
 			return None
+		if self.contentscache != []:
+			return self.contentscache
 		pkgfiles={}
 		myc=open(self.dbdir+"/CONTENTS","r")
 		mylines=myc.readlines()
@@ -5777,6 +5780,7 @@ class dblink:
 			except (KeyError,IndexError):
 				print "portage: CONTENTS line",pos,"corrupt!"
 			pos += 1
+		self.contentscache=pkgfiles
 		return pkgfiles
 
 	def updateprotect(self):
@@ -6041,6 +6045,17 @@ class dblink:
 
 		self.unlockdb()
 
+	def isowner(self,filename,destroot):
+		""" check if filename is a new file or belongs to this package
+		(for this or a previous version)"""
+		destfile = os.path.normpath(destroot+"/"+filename)
+		if not os.path.exists(destfile):
+			return True
+		if self.getcontents() and filename in self.getcontents().keys():
+			return True
+		
+		return False
+
 	def treewalk(self,srcroot,destroot,inforoot,myebuild,cleanup=0):
 		global db
 		# srcroot  = ${D};
@@ -6054,6 +6069,69 @@ class dblink:
 
 		# This blocks until we can get the dirs to ourselves.
 		self.lockdb()
+
+		# check for package collisions
+		if "collision-protect" in features:
+			myfilelist = listdir(srcroot, recursive=1, filesonly=1)
+			stopmerge=False
+			starttime=time.time()
+			i=0
+
+			otherpkg=[]
+			otherversions=[]
+			mypkglist=[]
+
+			# this is a ugly hack to get the other versions of the same package,
+			# feel free to improve
+			if os.path.exists(self.myroot+"var/db/pkg/"+self.cat):
+				for mydir in os.listdir(self.myroot+"var/db/pkg/"+self.cat):
+					if os.path.isdir(mydir):
+						otherpkg.append(self.cat+"/"+mydir.split("/")[-1])
+			for p in otherpkg:
+				# the new package doesn't have a category, this can create problems
+				# if there are packages with the same name in different categories
+				if catpkgsplit(p)[0] == self.cat and catpkgsplit(p)[1] == pkgsplit(self.pkg)[0]:
+					otherversions.append(p.split("/")[1])
+
+			if self.pkg in otherversions:
+				otherversions.remove(self.pkg)	# we already checked this package
+
+			for v in otherversions:
+				# should we check for same SLOT here ?
+				mypkglist.append(dblink(self.cat,v,destroot,self.settings))
+
+			print green("*")+" checking "+str(len(myfilelist))+" files for package collisions"
+			for f in myfilelist:
+				i=i+1
+				if i % 1000 == 0:
+					print str(i)+" files checked ..."
+				if f[0] != "/":
+					f="/"+f
+				isowned = False
+				for ver in [self]+mypkglist:
+					if (ver.isowner(f, destroot) or ver.isprotected(f)):
+						isowned = True
+						break
+				if not isowned:
+					print "existing file "+f+" is not owned by this package"
+					stopmerge=True
+			print green("*")+" spend "+str(time.time()-starttime)+" seconds checking for file collisions"
+			if stopmerge:
+				print red("*")+" This package is blocked because it wants to overwrite"
+				print red("*")+" files belonging to other packages (see messages above)."
+				print red("*")+" If you have no clue what this is all about report it "
+				print red("*")+" as a bug for this package on http://bugs.gentoo.org"
+				print
+				print red("package "+self.cat+"/"+self.pkg+" NOT merged")
+				print
+				# Why is the package already merged here db-wise? Shouldn't be the case
+				# only unmerge if it ia new package and has no contents
+				if not self.getcontents():
+					self.unmerge()
+					self.delete()
+				self.unlockdb()
+				sys.exit(1)
+			
 
 		# get old contents info for later unmerging
 		oldcontents = self.getcontents()
