@@ -12,7 +12,7 @@
 # ***************************************************
 
 USE_ORDER="env:conf:auto:defaults"
-GENTOO_MIRRORS="http://gentoo.oregonstate.edu/ http://www.ibiblio.org/pub/Linux/distributions/gentoo"
+GENTOO_MIRRORS="http://gentoo.oregonstate.edu http://www.ibiblio.org/pub/Linux/distributions/gentoo"
 SYNC="rsync://rsync.gentoo.org/gentoo-portage"
 # Host-type
 CHOST="powerpc-unknown-linux-gnu"

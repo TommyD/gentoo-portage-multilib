@@ -18,6 +18,7 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ]; then
 			chmod g+rwxs ${PORT_LOGDIR} &> /dev/null
 			touch "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log" &> /dev/null
 			chmod g+w "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log" &> /dev/null
+			echo "$*" >> "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log"
 			$0 $* 2>&1 | tee -a "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log"
 			if [ "$?" != "0" ]; then
 				rm -f ${T}/successful
@@ -627,7 +628,7 @@ abort_handler() {
 
 abort_compile() {
 	abort_handler "src_compile" $1
-	rm -f ${BUILDDIR}/compiled
+	rm -f ${BUILDDIR}/.compiled
 	exit 1
 }
 
@@ -666,6 +667,12 @@ dyn_compile() {
 		echo -ne "\a"; sleep 0.25 ;	echo -ne "\a"; sleep 0.25
 		sleep 3
 	fi
+
+	cd ${BUILDDIR}
+	if [ ! -e "build-info" ];	then
+		mkdir build-info
+	fi
+	cp ${EBUILD} build-info/${PF}.ebuild
 	
 	if [ ${BUILDDIR}/.compiled -nt ${WORKDIR} ]
 	then
@@ -674,9 +681,9 @@ dyn_compile() {
 		trap SIGINT SIGQUIT
 		return
 	fi
-	if [ -d ${S} ]
+	if [ -d "${S}" ]
 		then
-		cd ${S}
+		cd "${S}"
 	fi
 	#our custom version of libtool uses $S and $D to fix
 	#invalid paths in .la files
@@ -693,10 +700,6 @@ dyn_compile() {
 	#|| abort_compile "fail" 
 	cd ${BUILDDIR}
 	touch .compiled
-	if [ ! -e "build-info" ]
-	then
-		mkdir build-info
-	fi
 	cd build-info
 	echo "$CFLAGS"   > CFLAGS
 	echo "$CXXFLAGS" > CXXFLAGS
@@ -747,9 +750,9 @@ dyn_install() {
 	trap "abort_install" SIGINT SIGQUIT
 	rm -rf ${BUILDDIR}/image
 	mkdir ${BUILDDIR}/image
-	if [ -d ${S} ]
+	if [ -d "${S}" ]
 	then
-		cd ${S}
+		cd "${S}"
 	fi
 	echo
 	echo ">>> Install ${PF} into ${D} category ${CATEGORY}"
@@ -1019,9 +1022,7 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ]; then
 				PATH="$(echo ${PATH} | sed 's/:[^:]*distcc[^:]*:/:/;s/^[^:]*distcc[^:]*://;s/:[^:]*distcc[^:]*$//')"
 			fi
 			export PATH="/usr/lib/distcc/bin:${PATH}"
-			[ -z "${DISTCC_HOSTS}" ] && DISTCC_HOSTS="localhost"
 			[ ! -z "${DISTCC_LOG}" ] && addwrite "$(dirname ${DISTCC_LOG})"
-			export DISTCC_HOSTS
 		elif which distcc &>/dev/null; then
 			export CC="distcc $CC"
 			export CXX="distcc $CXX"

@@ -199,7 +199,7 @@ def emergeexit():
 	any other atexit's we have setup, we need to call them ourself."""
 	portage.portageexit()
 	emergelog(" *** terminating.")
-	xtermTitle(os.environ["TERM"])
+	xtermTitleReset()
 atexit.register(emergeexit)
 
 def countdown(secs=5, doing="Starting"):

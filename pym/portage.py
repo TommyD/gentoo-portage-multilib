@@ -1634,7 +1634,7 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0,fetchonly=0):
 				print "!!! Cannot create log... No write access / Does not exist"
 				print "!!! PORT_LOGDIR:",settings["PORT_LOGDIR"]
 				settings["PORT_LOGDIR"]=""
-	
+
 	# if any of these are being called, handle them -- running them out of the sandbox -- and stop now.
 	if mydo in ["help","clean","setup","prerm","postrm","preinst","postinst","config"]:
 		return spawn("/usr/sbin/ebuild.sh "+mydo,debug,free=1)
@@ -1695,7 +1695,7 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0,fetchonly=0):
 			    "rpm": {"dep":"install", "args":(0,0)},         # sandbox  / root
     	"package": {"dep":"install", "args":(0,0)},         # sandbox  / root
 	}
-
+	
 	if mydo in actionmap.keys():	
 		if mydo=="package":
 			for x in ["","/"+settings["CATEGORY"],"/All"]:
@@ -2998,7 +2998,7 @@ class vardbapi(dbapi):
 		mycmd=mycmd+' "'+newcp+'" '
 		mycmd=mycmd+' "'+self.root+"var/db/pkg/"+'" '
 		spawn(mycmd,free=1)
-		
+	
 	def cp_list(self,mycp):
 		mysplit=mycp.split("/")
 		try:
@@ -3010,6 +3010,7 @@ class vardbapi(dbapi):
 			if cpc[0]==mystat:
 				return cpc[1]
 		list=listdir(self.root+"var/db/pkg/"+mysplit[0])
+
 		if (list==None):
 			return []
 		returnme=[]
@@ -3023,18 +3024,24 @@ class vardbapi(dbapi):
 		self.cpcache[mycp]=[mystat,returnme]
 		return returnme
 
-	def cp_all(self):
+	def cpv_all(self):
 		returnme=[]
 		for x in categories:
-			mylist=listdir(self.root+"var/db/pkg/"+x,EmptyOnError=1)
-			for y in mylist:
-				mysplit=pkgsplit(y)
-				if not mysplit:
-					print "!!! Invalid db entry:",self.root+"var/db/pkg/"+x+"/"+y
-					continue
-				mykey=x+"/"+mysplit[0]
-				if not mykey in returnme:
-					returnme.append(mykey)
+			for y in listdir(self.root+"var/db/pkg/"+x,EmptyOnError=1):
+				returnme += [x+"/"+y]
+		return returnme
+
+	def cp_all(self):
+		returnme=[]
+		mylist = self.cpv_all()
+		for y in mylist:
+			mysplit=catpkgsplit(y)
+			if not mysplit:
+				print "!!! Invalid db entry:",self.root+"var/db/pkg/"+y
+				continue
+			mykey=mysplit[0]+"/"+mysplit[1]
+			if not mykey in returnme:
+				returnme.append(mykey)
 		return returnme
 
 	def match(self,origdep):
@@ -3068,11 +3075,37 @@ class vartree(packagetree):
 			self.dbapi=vardbapi(self.root)
 			self.populated=1
 
-	def zap(self,foo):
+	def zap(self,mycpv):
 		return
 
-	def inject(self,foo):
+	def inject(self,mycpv):
 		return
+		
+	def get_provide(self,mycpv):
+		myprovides=[]
+		try:
+			mylines = grabfile(self.root+"var/db/pkg/"+mycpv+"/PROVIDE")
+			if mylines:
+				for myprovide in string.split(string.join(mylines)):
+					mys = catpkgsplit(myprovide)
+					if not mys:
+						mys = string.split(myprovide, "/")
+					myprovides += [mys[0] + "/" + mys[1]]
+			return myprovides
+		except Exception, e:
+			print "mylines:",mylines
+			print e
+			return []
+
+	def get_all_provides(self):
+		myprovides = {}
+		for node in self.getallcpv():
+			for mykey in self.get_provide(node):
+				if myprovides.has_key(mykey):
+					myprovides[mykey] += [node]
+				else:
+					myprovides[mykey]  = [node]
+		return myprovides
 	
 	def dep_bestmatch(self,mydep):
 		"compatibility method -- all matches, not just visible ones"
@@ -3095,6 +3128,11 @@ class vartree(packagetree):
 	def exists_specific(self,cpv):
 		return self.dbapi.cpv_exists(cpv)
 
+	def getallcpv(self):
+		"""temporary function, probably to be renamed --- Gets a list of all
+		category/package-versions installed on the system."""
+		return self.dbapi.cpv_all()
+	
 	def getallnodes(self):
 		"""new behavior: these are all *unmasked* nodes.  There may or may not be available
 		masked package for nodes in this nodes list."""
@@ -3279,11 +3317,12 @@ class portdbapi(dbapi):
 
 	def findname2(self,mycpv):
 		"returns file location for this particular package"
+		ignoringerrors=1
 		if not mycpv:
 			return "",0
 		mysplit=mycpv.split("/")
 		if mysplit[0]=="virtual":
-			print "!!! Cannot resolve a virtual package to an ebuild."
+			print "!!! Cannot resolve a virtual package name to an ebuild."
 			print "!!! This is a bug, please report it. ("+mycpv+")"
 			sys.exit(1)
 		
@@ -3297,13 +3336,15 @@ class portdbapi(dbapi):
 		try:
 			myret=self.root+"/"+mysplit[0]+"/"+psplit[0]+"/"+mysplit[1]+".ebuild"
 		except Exception, e:
-			print "!!! There has been an error. Please report this via IRC or bugs.gentoo.org"
-			print "!!! mycpv:  ",mycpv
-			print "!!! mysplit:",mysplit
-			print "!!! psplit: ",psplit
-			print "!!! error:  ",e
-			print
-			sys.exit(1)
+			if not ignoringerrors:
+				print "!!! There has been an error. Please report this via IRC or bugs.gentoo.org"
+				print "!!! mycpv:  ",mycpv
+				print "!!! mysplit:",mysplit
+				print "!!! psplit: ",psplit
+				print "!!! error:  ",e
+				print
+				sys.exit(1)
+			return ""
 		return myret,0
 	
 	def aux_get(self,mycpv,mylist,strict=0,metacachedir=None):
@@ -4123,18 +4164,7 @@ class dblink:
 
 		#remove self from vartree database so that our own virtual gets zapped if we're the last node
 		db[self.myroot]["vartree"].zap(self.cat+"/"+self.pkg)
-		#remove stale virtual entries (mappings for packages that no longer exist)
-		newvirts={}
-		myvirts=grabdict(self.myroot+"var/cache/edb/virtuals")
-		for myvirt in myvirts.keys():
-			newvirts[myvirt]=[]
-			for mykey in myvirts[myvirt]:
-				if db[self.myroot]["vartree"].hasnode(mykey):
-					newvirts[myvirt].append(mykey)
-			if newvirts[myvirt]==[]:
-				del newvirts[myvirt]
-		writedict(newvirts,self.myroot+"var/cache/edb/virtuals")
-	
+
 		# New code to remove stuff from the world and virtuals files when unmerged.
 		if trimworld:
 			worldlist=grabfile(self.myroot+"var/cache/edb/world")
@@ -4160,25 +4190,26 @@ class dblink:
 			for x in newworldlist:
 				myworld.write(x+"\n")
 			myworld.close()
-			
-			# Now we need to cleanup the virtuals table.
-			myvkey=self.cat+"/"+pkgsplit(self.pkg)[0]
-			myvirts=grabdict(self.myroot+"var/cache/edb/virtuals")
-			for mycatpkg in self.getelements("PROVIDE"):
-				if isspecific(mycatpkg):
-					#convert a specific virtual like dev-lang/python-2.2 to dev-lang/python
-					mysplit=catpkgsplit(mycatpkg)
-					if not mysplit:
-						print "unmerge(): skipping invalid PROVIDE entry:",mycatpkg
-						continue
-					mycatpkg=mysplit[0]+"/"+mysplit[1]
-				if myvirts.has_key(mycatpkg):
-					while (myvkey in myvirts[mycatpkg]):
-						del myvirts[mycatpkg][myvirts[mycatpkg].index(myvkey)]
-					if not myvirts[mycatpkg]:
-						del myvirts[mycatpkg]
-			writedict(myvirts,self.myroot+"var/cache/edb/virtuals")
 
+			#remove stale virtual entries (mappings for packages that no longer exist)
+			newvirts={}
+			myvirts=grabdict(self.myroot+"var/cache/edb/virtuals")
+			myprovides=db[self.myroot]["vartree"].get_all_provides()
+			for myvirt in myvirts.keys():
+				newvirts[myvirt]=[]
+				for mykey in myvirts[myvirt]:
+					if mykey == self.cat+"/"+pkgsplit(self.pkg)[0]:
+						if mykey in myprovides[myvirt]:
+							newvirts[myvirt].append(mykey)
+							sys.stderr.write("--- Leaving virtual '"+mykey+"' from '"+myvirt+"'\n")
+						else:
+							sys.stderr.write("<<< Removing virtual '"+mykey+"' from '"+myvirt+"'\n")
+					else:
+						newvirts[myvirt].append(mykey)
+				if newvirts[myvirt]==[]:
+					del newvirts[myvirt]
+			writedict(newvirts,self.myroot+"var/cache/edb/virtuals")
+	
 		#do original postrm
 		if myebuildpath and os.path.exists(myebuildpath):
 			a=doebuild(myebuildpath,"postrm",self.myroot)
@@ -4883,7 +4914,8 @@ if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
 		if didupdate:
 			#make sure our internal databases are consistent; recreate our virts and vartree
 			do_vartree()
-			if do_upgrade_packagesmessage:
+			if do_upgrade_packagesmessage and \
+				 listdir(settings["PKGDIR"]+"/All/",EmptyOnError=1):
 				sys.stderr.write("\n\n\n ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the")
 				sys.stderr.write("\n    tbz2's in the packages directory. "+bold("Note: This can take a very long time."))
 				sys.stderr.write("\n"); sys.stderr.flush()

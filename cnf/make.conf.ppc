@@ -178,7 +178,42 @@ CHOST="powerpc-unknown-linux-gnu"
 # the list so that portage will fall back to it if the files cannot be found
 # on your specified mirror. We _HIGHLY_ recommend that you change this setting
 # to a nearby mirror by merging and using the 'mirrorselect' tool.
-#GENTOO_MIRRORS="<your_mirror_here> http://gentoo.oregonstate.edu/ http://www.ibiblio.org/pub/Linux/distributions/gentoo"
+#GENTOO_MIRRORS="<your_mirror_here> http://gentoo.oregonstate.edu http://www.ibiblio.org/pub/Linux/distributions/gentoo"
+
+# Synchronizing Portage
+# =====================
+#
+# Each of these settings effects how Gentoo synchronizes your Portage tree.
+# Synchronization is handled by rsync and these settings allow some control
+# over how it is done.
+#
+#
+# SYNC is the server used by rsync to retrieve a localized rsync mirror
+#     rotation. This allows you to select servers that are geographically
+#     close to you, yet still distribute the load over a number of servers.
+#     Please do not single out specific rsync mirrors. Doing so places undue
+#     stress on particular mirrors.  Instead you may use one of the following
+#     continent specific rotations:
+#
+#   Default:       "rsync://rsync.gentoo.org/gentoo-portage"
+#   North America: "rsync://rsync.namerica.gentoo.org/gentoo-portage"
+#   South America: "rsync://rsync.samerica.gentoo.org/gentoo-portage"
+#   Europe:        "rsync://rsync.europe.gentoo.org/gentoo-portage"
+#   Asia:          "rsync://rsync.asia.gentoo.org/gentoo-portage"
+#   Australia:     "rsync://rsync.au.gentoo.org/gentoo-portage"
+#SYNC="rsync://rsync.gentoo.org/gentoo-portage"
+#
+# RSYNC_RETRIES sets the number of times portage will attempt to retrieve
+#     a current portage tree before it exits with an error. This allows
+#     for a more successful retrieval without user intervention most times.
+#RSYNC_RETRIES="3"
+#
+# RSYNC_TIMEOUT sets the length of time rsync will wait before it times out
+#     on a connection. Most users will benefit from this setting as it will
+#     reduce the amount of 'dead air' they experience when they run across
+#     the occasional, unreachable mirror. Dialup users might want to set this
+#     value up around the 300 second mark.
+#RSYNC_TIMEOUT=180
 
 # Advanced Features
 # =================
@@ -212,6 +247,10 @@ CHOST="powerpc-unknown-linux-gnu"
 #                don't set this unless you're ready for it. 
 #  'digest'      autogenerate a digest for packages.
 #  'distcc'      enables distcc support via CC.
+#  'fixpackages' allows portage to fix binary packages that are stored in
+#                PKGDIR. This can consume a lot of time. 'fixpackages' is
+#                also a script that can be run at any given time to force
+#                the same actions.
 #  'keeptemp'    prevents the clean phase from deleting the temp files ($T) 
 #                from a merge.
 #  'keepwork'    prevents the clean phase from deleting the WORKDIR.
@@ -222,12 +261,14 @@ CHOST="powerpc-unknown-linux-gnu"
 #  'nostrip'     prevents stripping of binaries.
 #  'notitles'    disables xterm titlebar updates (which contain status info). 
 #  'sandbox'     enable sandbox-ing when running emerge and ebuild
-#     'userpriv' allows portage to drop root privleges while it is compiling
+#  'strict'      causes portage to react strongly to conditions that
+#                have the potential to be dangerous -- like missing or
+#                incorrect Manifest files.
+#  'userpriv'    allows portage to drop root privleges while it is compiling
 #                as a security measure, and as a side effect this can remove 
 #                sandbox access violations for users. 
 #  'usersandbox' enables sandboxing while portage is running under userpriv.
 #                unpack -- for debugging purposes only.
-
 #FEATURES="sandbox buildpkg ccache distcc userpriv usersandbox notitles noclean noauto cvs keeptemp keepwork"
 #
 # CCACHE_SIZE sets the space use limitations for ccache. The default size is
@@ -237,18 +278,6 @@ CHOST="powerpc-unknown-linux-gnu"
 #     Sizes are specified with 'G' 'M' or 'K'.
 #     '4G' for 4 gigabytes, '4096M' for 4 gigabytes, etc... Default is 2G
 #CCACHE_SIZE="2G"
-#
-# RSYNC_RETRIES sets the number of times portage will attempt to retrieve
-#     a current portage tree before it exits with an error. This allows
-#     for a more successful retrieval without user intervention most times.
-#RSYNC_RETRIES="3"
-#
-# RSYNC_TIMEOUT sets the length of time rsync will wait before it times out
-#     on a connection. Most users will benefit from this setting as it will
-#     reduce the amount of 'dead air' they experience when they run across
-#     the occasional, unreachable mirror. Dialup users might want to set this
-#     value up around the 300 second mark.
-#RSYNC_TIMEOUT=180
 #
 # RSYNC_EXCLUDEFROM is a file that portage will pass to rsync when it updates
 #     the portage tree. Specific chucks of the tree may be excluded from

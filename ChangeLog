@@ -1,37 +1,63 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
-# $Header$
+# $Id$
 
-*portage-2.0.48 (20 Apr 2003): Cleanups Release.
+*portage-2.0.48-r1 (29 May 2003): Touchups.
+
+  29 May 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Quick fixes
+	to a couple of rare bugs. Added some quoting to $S. Removed the DISTCC
+	hosts variable. Moved build-info's creation around so that it actually
+	works for non-portage-compiled merges.
+	
+  29 May 2003; Nicholas Jones <carpaski@gentoo.org> repoman: Quick fix for
+	the files-dir-not-added lack of notification. Added in a fix for a possible
+	security problem with the repoman commit messages and symlink-attacks.
+	
+  29 May 2003; Nicholas Jones <carpaski@gentoo.org> cnf/*: Added in a diff
+	from 'Danny' that contained a SYNC cleanup and expanded explanation. :)
+	
+  29 May 2003; Nicholas Jones <carpaski@gentoo.org> output.py: Fixed the
+	TitleBar and unset TERM issues.
+	
+  29 May 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Added new
+	functions to aid in determining virtuals. cpv_all() added to dbapi -- it
+	displays all versions instead of just package names -- cp_all() now calls
+	this function to gain it's data. get_provide() and get_all_provides() added
+	to collect PROVIDE info from vartree packages. getallcpv() added to vartree
+	to reference the dbapi call. Always set ignoring errors on findname now.
+	Cleaned up the virtuals-trimming code. Don't mention the fixpackages script
+	if the user doesn't have any packages.
+
+*portage-2.0.48 (20 May 2003): Cleanups Release.
 
   20 May 2003; Nicholas Jones <carpaski@gentoo.org> emerge: Tiny cleanups.
-	Fixed the profile information in emerge -V for symlinks that have a
-	trailing '/' in them. Fix 'emerge -s' filesize lookups to use a new
-	function finddigest() from dbapi.
+  Fixed the profile information in emerge -V for symlinks that have a
+  trailing '/' in them. Fix 'emerge -s' filesize lookups to use a new
+  function finddigest() from dbapi.
 
   20 May 2003; Nicholas Jones <carpaski@gentoo.org> emergehelp.py: Updated.
 
   20 May 2003; Nicholas Jones <carpaski@gentoo.org> etc-update: Small
-	fixups for pager issues. Made the nothing-to-do exit message 'happier'.
+  fixups for pager issues. Made the nothing-to-do exit message 'happier'.
 
   20 May 2003; Nicholas Jones <carpaski@gentoo.org> extra-functions.sh:
-	Beat the debian-utils requirement out of the functions. Prefers them,
-	but falls back to already-existing tools otherwise.
+  Beat the debian-utils requirement out of the functions. Prefers them,
+  but falls back to already-existing tools otherwise.
 
   20 May 2003; Nicholas Jones <carpaski@gentoo.org> fixpackages: 75%
-	overhaul to match the new handling of update code.
+  overhaul to match the new handling of update code.
 
   20 May 2003; Nicholas Jones <carpaski@gentoo.org> quickpkg: Understands
-	"--help" as an option now.
+  "--help" as an option now.
 
   20 May 2003; Nicholas Jones <carpaski@gentoo.org> man/*: Simple updates.
 
   20 May 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: fetch()
-	now calculates md5sums when doing a fetchonly. finddigest() added for
-	finding digests -- gets overlay digests if existing. Binary packages
-	are	only updated when explicitly requested via fixpackages as a command
-	or a FEATURES setting. Clear the dircache after portage initializes	to
-	reduce memory consumption.
+  now calculates md5sums when doing a fetchonly. finddigest() added for
+  finding digests -- gets overlay digests if existing. Binary packages
+  are  only updated when explicitly requested via fixpackages as a command
+  or a FEATURES setting. Clear the dircache after portage initializes  to
+  reduce memory consumption.
 
 *portage-2.0.48_pre6 (12 Apr 2003): General cleanups and fixes.
 

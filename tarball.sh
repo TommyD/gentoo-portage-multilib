@@ -13,7 +13,7 @@ export PKG="portage"
 export TMP="/tmp"
 export V="$1"
 export DEST="${TMP}/${PKG}-${V}"
-export PREVEB="2.0.48_pre5"
+export PREVEB="2.0.48"
 rm -rf ${DEST}
 install -d -m0755 ${DEST}
 #get any binaries out of the way
