@@ -1,6 +1,9 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  15 Dec 2002; Mark Guertin <gerk@gentoo.org> cnf.make.conf.ppc:
+  updated incorrect CFLAG option and appended -mabi=altivec info
+
   15 Dec 2002; Nicholas Jones <carpaski@gentoo.org> portage.py: Counter
 	fixups. More prelink code -- Prelink may have to ignore mtimes...
 

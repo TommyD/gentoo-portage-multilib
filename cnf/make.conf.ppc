@@ -48,7 +48,7 @@ CHOST="powerpc-unknown-linux-gnu"
 # -maltivec enables optional (still limited) altivec support and should be used
 # only for G4 processors,  on GCC 3.2 or newer.  It also requires that you have
 # the alitvec option compiled into your kernel to take full advantage of this
-# feature.
+# feature.  Note: you should also include -mabi=altivec flag.
 #
 # Long term testing has shown that -O3 opts are unreliable on G4's but work
 # on G3 series processors. Use on a G4 at your own risk =)
@@ -104,7 +104,7 @@ CXXFLAGS="${CFLAGS}"
 # platforms. DO NOT PUT ANYTHING BUT YOUR SPECIFIC ~ARCHITECTURE IN THE LIST.
 # IF YOU ARE UNSURE OF YOUR ARCH, OR THE IMPLICATIONS, DO NOT MODIFY THIS.
 #
-#ACCEPT_KEYWORDS="~arch"
+#ACCEPT_KEYWORDS="~ppc"
 
 # Portage Directories
 # ===================
