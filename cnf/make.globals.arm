@@ -15,7 +15,7 @@
 GENTOO_MIRRORS="http://gentoo.osuosl.org http://distro.ibiblio.org/pub/Linux/distributions/gentoo"
 SYNC="rsync://rsync.gentoo.org/gentoo-portage"
 # Host-type
-CHOST=armv4l-unknown-linux-gnu
+CHOST=arm-unknown-linux-gnu
 PORTAGE_TMPDIR=/var/tmp
 
 PORTDIR=/usr/portage
