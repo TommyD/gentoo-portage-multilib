@@ -2007,7 +2007,7 @@ def cpv_expand(mycpv,mydb=None):
 					mykey=x+"/"+myp
 		if not mykey and type(mydb)!=types.ListType:
 			if virts_p.has_key(myp):
-				mykey=virts_p(myp)
+				mykey=virts_p[myp]
 			#again, we only perform virtual expansion if we have a dbapi (not a list)				
 		if not mykey:
 			mykey="null/"+myp
@@ -2117,7 +2117,7 @@ class packagetree:
 		mykey=dep_getkey(mypkgdep)
 		nolist=self.dbapi.cp_list(mykey)
 		mymatch=match(mypkgdep,self.dbapi)
-		if not match:
+		if not mymatch:
 			return nolist
 		for x in mymatch:
 			if x in nolist:

@@ -1,6 +1,10 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  20 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: fixed two typos
+  pointed out by stroke and g2boojum.  These fix unmerge and some aspect of
+  virtuals handling, which was previously causing a traceback.
+  
   19 Jun 2002; Daniel Robbins <drobbins@gentoo.org> emerge: emerge -eup world
   now will ignore world entries if it isn't really installed locally; in 2.0.1,
   --emptytree would auto-enable all world entries, leading to inconsistent
