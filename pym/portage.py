@@ -4168,7 +4168,7 @@ def flushmtimedb(record):
 
 #grab mtimes for eclasses and upgrades
 mtimedb={}
-mtimedbkeys=["updates","eclass","packages","version","starttime"]
+mtimedbkeys=["updates","eclass","packages","info","version","starttime"]
 mtimedbfile=root+"var/cache/edb/mtimedb"
 try:
 	mtimedb=cPickle.load(open(mtimedbfile))
