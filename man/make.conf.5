@@ -109,7 +109,9 @@ later.  Done at generation times and only works when \fIcvs\fR is also in
 Binary packages will be created for all packages that are merged.
 .TP
 .B ccache
-Enable portage support for the ccache package.
+Enable portage support for the ccache package.  If the ccache dir is not 
+present in the user's environment, then portage will default to 
+${PORTAGE_TMPDIR}/ccache (with \fIuserpriv\fR) and to /root/.ccache otherwise.
 .TP
 .B cvs
 A feature for developers that causes portage to enable all USE flags in SRC_URI
