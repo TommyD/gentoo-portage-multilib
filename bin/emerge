@@ -968,6 +968,13 @@ class depgraph:
 					if alleb:
 						if "--usepkgonly" not in myopts:
 							print "\n!!! "+red("all ebuilds that could satisfy ")+green(xinfo)+red(" have been masked.")
+							print "!!! "+red("possible candidates are:")
+							for p in alleb:
+								try:
+									mreasons = portage.getmaskingstatus(p)
+									print "- "+p+" (masked by: "+string.join(mreasons, ", ")+")"
+								except:
+									pass
 							if myparent:
 								print     "!!!    "+red(xfrom)
 						else:
@@ -1818,6 +1825,8 @@ def unmerge(unmerge_action, unmerge_files):
 		return 0
 	if "--ask" in myopts:
 		if userquery("Do you want me to unmerge these packages?")=="No":
+			# enter pretend mode for correct formatting of results
+			__main__.myopts+=["--pretend"]
 			print
 			print "Quitting."
 			print
@@ -2210,6 +2219,8 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 			print "!!! Failed to save current timestamp."
 			print "!!!",e
 
+		portage.portdb.eclassdb.update_eclasses()
+
 		try:
 			os.umask(002)
 			os.chown(cachedir, os.getuid(), portage.portage_gid)
@@ -2451,7 +2462,7 @@ elif "depclean"==myaction:
 	#print
 
 	if len(cleanlist):
-		retval=unmerge("unmerge", cleanlist)
+		unmerge("unmerge", cleanlist)
 
 	print
 	print "Packages installed:   "+str(len(myvarlist))
@@ -2459,7 +2470,7 @@ elif "depclean"==myaction:
 	print "Packages in system:   "+str(len(syslist))
 	print "Unique package names: "+str(len(reallist))
 	print "Required packages:    "+str(len(alldeps))
-	if ("--pretend" in myopts) or 1!=retval:
+	if "--pretend" in myopts:
 		print "Number to remove:     "+str(len(cleanlist))
 	else:
 		print "Number removed:       "+str(len(cleanlist))

@@ -163,6 +163,14 @@ it may remove packages necessary for the proper operation of your
 system.  Its arguments can be \fIebuilds\fR, \fIclasses\fR, or
 \fIdependencies\fR \-\- see \fBclean\fR above for examples.
 .SH "OPTIONS"
+.TP
+.BR "\-\-ask " (\fB\-a\fR)
+Before performing the merge, display what ebuilds and tbz2s will
+be installed, in the same format as when using \fB\-\-pretend\fR; then
+ask whether to continue with the merge or abort. Using \fB\-\-ask\fR is
+more efficient than using \fB\-\-pretend\fR and then executing the same
+command without \fB\-\-pretend\fR, as dependencies will only need to be
+calculated once.
 .TP 
 .BR "\-\-buildpkg " (\fB\-b\fR)
 Tells emerge to build binary packages for all ebuilds processed in

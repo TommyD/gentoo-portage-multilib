@@ -1,65 +1,78 @@
 #!/usr/bin/python
-# Copyright 1999-2003 Gentoo Technologies, Inc.
-# Distributed under the terms of the GNU General Public License v2
-# $Header$
 
 import sys
-sys.path = ["/usr/lib/portage/pym"]+sys.path
+sys.path.insert(0, "/usr/lib/portage/pym")
 
-import portage,commands,string
+import portage, string, re
 
-def getlist(mode):
-	if mode=="system":
-		if portage.profiledir:
-			pfile=portage.profiledir+"/packages"
-		else:
-			print "!!! No profile directory; system mode unavailable."
-			sys.exit(1)
-	elif mode=="world":
-		pfile="/var/cache/edb/world"
-	try:
-		myfile=open(pfile,"r")
-		mylines=myfile.readlines()
-		myfile.close()
-	except OSError:
-		print "!!! Couldn't open "+pfile+"; exiting."
-		sys.exit(1)
-	except IOError:
-		#world file doesn't exist
-		mylines=[]
-	mynewlines=[]
-	for x in mylines:
-		myline=string.join(string.split(x))
-		if not len(myline):
-			continue
-		elif myline[0]=="#":
-			continue
-		elif mode=="system":
-			if myline[0]!="*":
-				continue
-			myline=myline[1:]
-		mynewlines.append(myline.strip())
-	return mynewlines
+__candidatematcher__ = re.compile("^[0-9]+: \\*\\*\\* emerge ")
+__noncandidatematcher__ = re.compile(" sync( |$)| clean( |$)| search( |$)|--oneshot| unmerge( |$)")
 
-biglist=string.split(commands.getstatusoutput("/usr/lib/portage/bin/regenworld.sh")[1])
-worldlist=portage.grabfile("/var/cache/edb/world")
-osyslist=getlist("system")
-syslist=[]
-for mykey in osyslist:
-	print "candidate:",mykey
+def issyspkg(pkgline):
+	return (pkgline[0] == "*")
+
+def iscandidate(logline):
+	return (__candidatematcher__.match(logline) \
+				and not __noncandidatematcher__.search(logline))
+
+def getpkginfo(logline):
+	logline = re.sub("^[0-9]+: \\*\\*\\* emerge ", "", logline)
+	logline = logline.strip()
+	logline = re.sub("(\\S+\\.(ebuild|tbz2))|(--\\S+)|inject ", "", logline)
+	return logline.strip()
+
+__uniqlist__ = []
+def isunwanted(pkgline):
+	if pkgline in ["world", "system", "depclean", "info", "regen", ""]:
+		return False
+	elif pkgline in __uniqlist__:
+		return False
+	elif not re.search("^[a-zA-Z<>=~]", pkgline):
+		return False
+	else:
+		__uniqlist__.append(pkgline)
+		return True
+
+worldlist = portage.grabfile("/var/cache/edb/world")
+syslist = portage.grabfile(portage.profiledir+"/packages")
+syslist = filter(issyspkg, syslist)
+
+logfile = portage.grabfile("/var/log/emerge.log")
+biglist = filter(iscandidate, logfile)
+biglist = map(getpkginfo, biglist)
+tmplist = []
+for l in biglist:
+	tmplist += l.split()
+biglist = filter(isunwanted, tmplist)
+#for p in biglist:
+#	print p
+#sys.exit(0)
+
+# resolving virtuals
+realsyslist = []
+for mykey in syslist:
+	# drop the asterix
+	mykey = mykey[1:]
+	#print "candidate:",mykey
 	mylist=portage.db["/"]["vartree"].dbapi.match(mykey)
 	if mylist:
 		mykey=portage.cpv_getkey(mylist[0])
-		if mykey not in syslist:
-			syslist.append(mykey)
+		if mykey not in realsyslist:
+			realsyslist.append(mykey)
 
 for mykey in biglist:
 	#print "checking:",mykey
-	mylist=portage.db["/"]["vartree"].dbapi.match(mykey)
+	try:
+		mylist=portage.db["/"]["vartree"].dbapi.match(mykey)
+	except KeyError:
+		print "* ignoring broken log entry for %s (likely injected)" % mykey
+	except ValueError, e:
+		print "* %s is an ambigous package name, candidates are:\n%s" % (mykey, e)
+		continue
 	if mylist:
 		#print "mylist:",mylist
 		myfavkey=portage.cpv_getkey(mylist[0])
-		if (myfavkey not in syslist) and (myfavkey not in worldlist):
+		if (myfavkey not in realsyslist) and (myfavkey not in worldlist):
 			print "add to world:",myfavkey
 			worldlist.append(myfavkey)
 

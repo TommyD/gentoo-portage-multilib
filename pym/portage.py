@@ -3331,6 +3331,69 @@ def dep_wordreduce(mydeplist,mydbapi,mode):
 		mypos=mypos+1
 	return deplist
 
+def getmaskingstatus(mycpv):
+	mysplit = catpkgsplit(mycpv)
+	if not mysplit:
+		raise ValueError("invalid CPV: %s" % mycpv)
+	if not portdb.cpv_exists(mycpv):
+		raise KeyError("CPV %s does not exist" % mycpv)
+	rValue = []
+	
+	# profile checking
+	if profiledir:
+		syslist = []
+		for l in grabfile(profiledir+"/packages"):
+			if l[0] == "*":
+				syslist.append(l[1:])
+			else:
+				syslist.append(l)
+		for pkg in syslist:
+			if pkg.find(mysplit[0]+"/"+mysplit[1]) >= 0 and not match_to_list(mycpv, [pkg]):
+				rValue.append("profile")
+	
+	# package.mask checking
+	pmask_global = grabfile(settings["PORTDIR"]+"/profiles/package.mask")
+	pmask_local = grabfile("/etc/portage/package.mask")
+	punmask_local = grabfile("/etc/portage/package.unmask")
+	mymatch = match_to_list(mycpv, pmask_global + pmask_local)
+	if mymatch:
+		if not match_to_list(mycpv, punmask_local):
+			rValue.append("package.mask")
+	
+	# keywords checking
+	mykeywords = portdb.aux_get(mycpv, ["KEYWORDS"])[0].split()
+	myAK = settings["ACCEPT_KEYWORDS"].split()
+	myarch = settings["ARCH"]
+	myPK = grabfile("/etc/portage/package.keywords")
+	pkeywords = {}
+	for l in myPK:
+		parts = l.split()
+		if match_to_list(mycpv, [parts[0]]):
+			if len(parts) > 1:
+				for k in parts:
+					if k[0] == "-" and k[1:] in myAK:
+						myAK.remove(k[1:])
+					elif k[0] != "-":
+						myAK.append(k)
+			else:
+				myAK.append("~"+myarch)
+	
+	kmask = "missing "
+	for k in mykeywords:
+		if k in myAK:
+			kmask = None
+			break
+		elif k[0] == "~" and k[1:] == myarch:
+			kmask = "~"
+		elif k[0] == "-" and k[1:] == myarch:
+			kmask = "-"
+		elif k == "-*":
+			kmask = "-* "
+
+	if kmask:
+		rValue.append(kmask+"keyword")
+	return rValue
+
 def fixdbentries(old_value, new_value, dbdir):
 	"""python replacement for the fixdbentries script, replaces old_value 
 	with new_value for package names in files in dbdir."""
