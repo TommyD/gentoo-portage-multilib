@@ -144,7 +144,7 @@ class ebuild_processor:
 			spawn_func = portage_exec.spawn_fakeroot
 			args.append(save_file)
 		else:
-			spawn_func = portage_exec.spawn_exec
+			spawn_func = portage_exec.spawn
 
 		self.pid = spawn_func(self.ebd+" daemonize", fd_pipes={0:0, 1:1, 2:2, 3:cread, 4:dwrite},
 			returnpid=True,env=env, *args, **spawn_opts)[0]
