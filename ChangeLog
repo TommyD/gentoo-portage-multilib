@@ -1,6 +1,9 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  17 Jun 2002; Daniel Robbins <drobbins@gentoo.org> sandbox.c: added
+  /var/cache/ccache to sandbox "write ok" list, closing bug #3028.
+
 *portage-2.0.1 (16 Jun 2002)
 
   16 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, emerge: fixed a
