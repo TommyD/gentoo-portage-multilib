@@ -7,6 +7,12 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  07 Nov 2004; Brian Harring <ferringb@gentoo.org> portage_db_template.py,
+  portage_db_flat.py: Addition of get_timestamp, way of requesting -just- the
+  mtime.  Useful for speeding up checking if an entry is stale, if the mtime 
+  differs, no need to read the file in- you know it's stale already.  Cuts down
+  on a few syscalls.
+
   07 Nov 2004; Brian Harring <ferringb@gentoo.org> sync/__init__.py, 
   sync/parseuri.py, sync/cvs.py, sync/rsync.py, sync/snapshot.py, 
   bin/emerge-webrsync: Rewrite of Marius Mauch's (genone) sync refactoring code.  

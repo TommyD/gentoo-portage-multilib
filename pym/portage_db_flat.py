@@ -44,12 +44,20 @@ class database(portage_db_template.database):
 				mykeys += [x]
 		return mykeys
 
+	def get_timestamp(self,key,locking=True):
+		lock=portage_locks.lockfile(self.fullpath+key,wantnewlockfile=1)
+		try:		x=os.stat(self.fullpath+key)[stat.ST_MTIME]
+		except OSError:	x=None
+		portage_locks.unlockfile(lock)
+		return x
+
 	def get_values(self,key):
 		if not key:
 			raise KeyError, "key is not set to a valid value"
 
 		mylock = portage_locks.lockfile(self.fullpath+key, wantnewlockfile=1)
 		if self.has_key(key):
+			self.get_timestamp(key,locking=False)
 			mtime = os.stat(self.fullpath+key)[stat.ST_MTIME]
 			myf = open(self.fullpath+key)
 			myl = myf.readlines()

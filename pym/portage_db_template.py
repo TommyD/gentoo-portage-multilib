@@ -61,6 +61,15 @@ class database:
 		self.__cacheArray = [None, None, None]
 		self.__cacheKeyArray = [None, None, None]
 
+	def get_timestamp(self,key):
+		if key in self.__cacheKeyArray:
+			return self.__cacheArray[self.__cacheKeyArray.index(key)]["_mtime_"]
+		try:
+			d = self.__getitem__(key)
+			return d["_mtime_"]
+		except KeyError:
+			return None
+
 	def __getitem__(self,key):
 		if key in self.__cacheKeyArray:
 			i = self.__cacheKeyArray.index(key)
