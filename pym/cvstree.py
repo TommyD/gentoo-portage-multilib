@@ -1,6 +1,7 @@
 # cvstree.py -- cvs tree utilities
 # Copyright 1998-2003 Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
+# Author: Nicholas Jones <carpaski@gentoo.org>
 # $Header$
 
 import string,os,time,sys

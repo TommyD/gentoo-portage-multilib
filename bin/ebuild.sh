@@ -645,7 +645,13 @@ abort_install() {
 
 dyn_compile() {
 	trap "abort_compile" SIGINT SIGQUIT
-	export CFLAGS CXXFLAGS LIBCFLAGS LIBCXXFLAGS
+	[ "${CFLAGS-unset}"      != "unset" ] && export CFLAGS
+	[ "${CXXFLAGS-unset}"    != "unset" ] && export CXXFLAGS
+	[ "${LIBCFLAGS-unset}"   != "unset" ] && export LIBCFLAGS
+	[ "${LIBCXXFLAGS-unset}" != "unset" ] && export LIBCXXFLAGS
+	[ "${LDFLAGS-unset}"     != "unset" ] && export LDFLAGS
+	[ "${ASFLAGS-unset}"     != "unset" ] && export ASFLAGS
+
 	if has noauto $FEATURES &>/dev/null && [ ! -f ${BUILDDIR}/.unpacked ]; then
 		echo
 		echo "!!! We apparently haven't unpacked... This is probably not what you"
@@ -708,7 +714,7 @@ dyn_compile() {
 	echo "$RDEPEND"  > RDEPEND
 	echo "$SLOT"     > SLOT
 	echo "$USE"      > USE
-	set | bzip2 -9 - > environment.bzip2
+	set | bzip2 -9 - > environment.bz2
 	cp ${EBUILD} ${PF}.ebuild
 	if has nostrip $FEATURES $RESTRICT; then
 		touch DEBUGBUILD

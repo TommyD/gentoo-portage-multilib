@@ -1,3 +1,6 @@
+#
+#
+#
 # $Header$
 
 # The format for a tbz2/xpak:
@@ -93,18 +96,27 @@ def xsplit(infile):
 	myfile=open(infile,"r")
 	mydat=myfile.read()
 	myfile.close()
-	if mydat[0:8]!="XPAKPACK":
+	
+	splits = xsplit_mem(mydat)
+	if not splits:
 		return
-	if mydat[-8:]!="XPAKSTOP":
-		return
-	indexsize=decodeint(mydat[8:12])
-	datasize=decodeint(mydat[12:16])
+	
 	myfile=open(infile+".index","w")
-	myfile.write(mydat[16:indexsize+16])
+	myfile.write(splits[0])
 	myfile.close()
 	myfile=open(infile+".dat","w")
-	myfile.write(mydat[indexsize+16:-8])
+	myfile.write(splits[1])
 	myfile.close()
+	return
+
+def xsplit_mem(mydat):
+	if mydat[0:8]!="XPAKPACK":
+		return None
+	if mydat[-8:]!="XPAKSTOP":
+		return None
+	indexsize=decodeint(mydat[8:12])
+	datasize=decodeint(mydat[12:16])
+	return (mydat[16:indexsize+16], mydat[indexsize+16:-8])
 
 def getindex(infile):
 	"""(infile) -- grabs the index segment from the infile and returns it."""
@@ -135,10 +147,10 @@ def getboth(infile):
 
 def listindex(myindex):
 	"""Print to the terminal the filenames listed in the indexglob passed in."""
-	for x in getindex(myindex):
+	for x in getindex_mem(myindex):
 		print x
 
-def getindex(myindex):
+def getindex_mem(myindex):
 	"""Returns the filenames listed in the indexglob passed in."""
 	myindexlen=len(myindex)
 	startpos=0
@@ -286,7 +298,7 @@ class tbz2:
 		"""Return an array of each file listed in the index."""
 		if not self.scan():
 			return None
-		return getindex(self.index)
+		return getindex_mem(self.index)
 
 	def getfile(self,myfile,mydefault=None):
 		"""Finds 'myfile' in the data segment and returns it."""

@@ -6,9 +6,11 @@
 import os
 os.environ["PORTAGE_CALLER"]="emerge"
 
-import sys,portage,emergehelp,xpak,string,re,commands,time,threading,shutil,traceback,atexit
+import sys,emergehelp,xpak,string,re,commands,time,shutil,traceback,atexit
 from stat import *
 from output import *
+
+import portage
 if (not sys.stdout.isatty()) or (portage.settings["NOCOLOR"] in ["yes","true"]):
 	nocolor()
 
@@ -18,6 +20,14 @@ if portage.settings.has_key("PORTAGE_NICENESS"):
 	except Exception,e:
 		print "!!! Failed to change nice value to '"+str(portage.settings["NICE"])+"'"
 		print "!!!",e
+
+#Freeze the portdbapi for enhanced performance:
+portage.portdb.freeze()
+
+# Kill noauto as it will break merges otherwise.
+while 'noauto' in portage.features:
+	del portage.features[portage.features.index('noauto')]
+
 
 spinner="\|/-\|/-"
 spinpos=0
@@ -34,6 +44,7 @@ options=[
 "--debug",        "--deep",
 "--digest",
 "--emptytree",    "--fetchonly",
+"--getbinpkg",    "--getbinpkgonly",
 "--help",         "--noconfmem",
 "--nodeps",       "--noreplace",
 "--nospinner",    "--oneshot",
@@ -52,6 +63,7 @@ shortmapping={
 "d":"--debug",     "D":"--deep",
 "e":"--emptytree",
 "f":"--fetchonly",
+"g":"--getbinpkg", "G":"--getbinpkgonly",
 "h":"--help",
 "i":"--inject",
 "k":"--usepkg",    "K":"--usepkgonly",
@@ -70,12 +82,9 @@ myopts=[]
 myfiles=[]
 edebug=0
 
-#Freeze the portdbapi for enhanced performance:
-portage.portdb.freeze()
-
 # process short actions and options
 tmpcmdline=sys.argv[1:]
-tmpcmdline.extend(portage.settings["EMERGE_OPTS"].split())
+#tmpcmdline.extend(portage.settings["EMERGE_OPTS"].split())
 cmdline=[]
 for x in tmpcmdline:
 	if x[0:1]=="-"and x[1:2]!="-":
@@ -143,10 +152,6 @@ if (myaction in ["world", "system"]) and myfiles:
 	print "emerge: please specify a package class (\"world\" or \"system\") or individual packages, but not both."
 	sys.exit(1)
 
-# Kill noauto as it will break merges otherwise.
-while 'noauto' in portage.features:
-	del portage.features[portage.features.index('noauto')]
-
 # Always create packages if FEATURES=buildpkg
 # Imply --buildpkg if --buildpkgonly
 if ("buildpkg" in portage.features) or ("--buildpkgonly" in myopts):
@@ -156,6 +161,15 @@ if ("buildpkg" in portage.features) or ("--buildpkgonly" in myopts):
 # Also allow -S to invoke search action (-sS)
 if ("--searchdesc" in myopts) and (not myaction):
 	myaction = "search"
+
+if ("--getbinpkgonly" in myopts) and not ("--usepkgonly" in myopts):
+	myopts.append("--usepkgonly")
+
+if ("--getbinpkgonly" in myopts) and not ("--getbinpkg" in myopts):
+	myopts.append("--getbinpkg")
+
+if ("--getbinpkg" in myopts) and not ("--usepkg" in myopts):
+	myopts.append("--usepkg")
 
 # Also allow -K to apply --usepkg/-k
 if ("--usepkgonly" in myopts) and not ("--usepkg" in myopts):
@@ -199,7 +213,8 @@ def emergeexit():
 	any other atexit's we have setup, we need to call them ourself."""
 	portage.portageexit()
 	emergelog(" *** terminating.")
-	xtermTitleReset()
+	if "notitles" not in portage.features:
+		xtermTitleReset()
 atexit.register(emergeexit)
 
 def countdown(secs=5, doing="Starting"):
@@ -522,6 +537,7 @@ class depgraph:
 
 	def __init__(self,myaction,myopts):
 		global olddbapi
+		self.missingbins=[]
 		self.myaction=myaction
 		self.virts=portage.getvirtuals("/")
 		self.digraph=portage.digraph()
@@ -543,7 +559,11 @@ class depgraph:
 				self.mydbapi[portage.root]=portage.db[portage.root]["vartree"].dbapi
 			
 		if "--usepkg" in myopts:
-			portage.db["/"]["bintree"].populate()
+			try:
+				portage.db["/"]["bintree"].populate(("--getbinpkg" in myopts), ("--getbinpkgonly" in myopts))
+			except Exception, e:
+				sys.stderr.write(red("!!! Failed to get all metadata: "+str(e)+"\n"))
+				sys.exit(1)
 
 	def create(self,mybigkey,myparent=None,addme=1):
 		"""creates the actual digraph of packages to merge.  return 1 on success, 0 on failure
@@ -564,18 +584,20 @@ class depgraph:
 		
 		mytype,myroot,mykey=mybigkey
 	
-		#select the correct /var database that we'll be checking against
+		# select the correct /var database that we'll be checking against
 		vardbapi=portage.db[myroot]["vartree"].dbapi
 
 		merging=1
-		#this is where we add the node to the list of packages to merge
+		# this is where we add the node to the list of packages to merge
 		if addme:
-			#if the package is already on the system, we add a "nomerge" directive, otherwise we add a "merge" directive.
+			# if the package is already on the system, we add a "nomerge"
+			# directive, otherwise we add a "merge" directive.
 			if mytype=="blocks":
-				#we've encountered a "blocks" node.  We will totally ignore this node and not add it to our digraph if it doesn't
-				#apply to us.
-				if myparent and self.mydbapi[myroot].match(mykey):
-					#otherwise, encode parent information where we would normally write "(no)merge" and continue:
+				# we've encountered a "blocks" node.  We will totally ignore this
+				# node and not add it to our digraph if it doesn't apply to us.
+				if myparent and (self.mydbapi[myroot].match(mykey) or vardbapi.match(mykey)):
+					# otherwise, encode parent information where we would normally
+					# write "(no)merge" and continue:
 					parenttype,parentroot,parentkey,mergeme=string.split(myparent)
 					mykexp=portage.dep_expand(mykey,self.mydbapi[myroot])
 					pakexp=portage.dep_expand(parentkey,self.mydbapi[myroot])
@@ -584,12 +606,13 @@ class depgraph:
 					if myrealkey!=parealkey:
 						mybigkey.append(myparent.split()[2])
 						self.digraph.addnode(string.join(mybigkey),myparent)
-					#since our blocks doesn't match any installed packages, it doesn't apply to us and we can ignore it.
+					# since our blocks doesn't match any installed packages,
+					# it doesn't apply to us and we can ignore it.
 				return 1
 			if not myparent:
-				#command-line specified or part of a world list...
+				# command-line specified or part of a world list...
 				if ("self" not in myparams) or (("selective" in myparams) and vardbapi.cpv_exists(mykey)):
-					#the package is on the system, so don't merge it.
+					# the package is on the system, so don't merge it.
 					merging=0
 			elif ("selective" in myparams) and vardbapi.cpv_exists(mykey):
 				merging=0
@@ -612,15 +635,32 @@ class depgraph:
 		edepend={}
 		if mytype=="binary":
 			mypkgparts=portage.catpkgsplit(mykey)
-			mytbz2=xpak.tbz2(portage.db[portage.root]["bintree"].getname(mykey))
-			#edepend=["",string.join(mytbz2.getelements("RDEPEND")," "),mytbz2.getfile("SLOT",mypkgparts[2])]
-			# We're doing this like this for clairity.
-			edepend["DEPEND"] =""
-			edepend["RDEPEND"]=string.join(mytbz2.getelements("RDEPEND")," ")
-			edepend["PDEPEND"]=string.join(mytbz2.getelements("PDEPEND")," ")
-			edepend["CDEPEND"]=string.join(mytbz2.getelements("CDEPEND")," ")
-			edepend["REBUILD"]=string.join(mytbz2.getelements("REBUILD")," ")
-			edepend["SLOT"]   =mytbz2.getfile("SLOT",mypkgparts[2])
+			if portage.db[portage.root]["bintree"].isremote(mykey) and ("--pretend" in myopts):
+				# It's remote, and we have the info already. In pretend,
+				# we don't want to be downloading the tbz2's.
+				if not portage.db[portage.root]["bintree"].remotepkgs.has_key(mykey):
+					sys.stderr.write("\nThere are no packages available to satisfy "+str(mykey)+"\n\n")
+					sys.exit(1)
+				edepend = portage.db[portage.root]["bintree"].remotepkgs[mykey]
+				edepend["DEPEND"] =""
+				edepend["RDEPEND"]=string.join(string.split(edepend["RDEPEND"])," ")
+				edepend["PDEPEND"]=string.join(string.split(edepend["PDEPEND"])," ")
+				edepend["CDEPEND"]=string.join(string.split(edepend["CDEPEND"])," ")
+				edepend["SLOT"]   =string.strip(edepend["SLOT"])
+			else:
+				if portage.db[portage.root]["bintree"].isremote(mykey):
+					# Get the tbz2
+					if not portage.db[portage.root]["bintree"].remotepkgs.has_key(mykey):
+						sys.stderr.write("\nThere are no packages available to satisfy "+str(mykey)+"\n\n")
+						sys.exit(1)
+					portage.db[portage.root]["bintree"].gettbz2(mykey)
+				mytbz2=xpak.tbz2(portage.db[portage.root]["bintree"].getname(mykey))
+				edepend["DEPEND"] =""
+				edepend["RDEPEND"]=string.join(mytbz2.getelements("RDEPEND")," ")
+				edepend["PDEPEND"]=string.join(mytbz2.getelements("PDEPEND")," ")
+				edepend["CDEPEND"]=string.join(mytbz2.getelements("CDEPEND")," ")
+				edepend["REBUILD"]=string.join(mytbz2.getelements("REBUILD")," ")
+				edepend["SLOT"]   =mytbz2.getfile("SLOT",mypkgparts[2])
 		elif mytype=="ebuild":
 			try:
 				#edepend=portage.portdb.aux_get(mykey,["DEPEND","RDEPEND"])
@@ -680,7 +720,7 @@ class depgraph:
 					myfavorites.append(mykey)
 			else:
 				mykey=portage.dep_expand(x,portage.portdb)
-				#select needs to return 0 on dep_check failure
+				# select needs to return 0 on dep_check failure
 				try:
 					self.mysd=self.select_dep(portage.root,mykey,arg=x)
 				except Exception, e:
@@ -880,6 +920,11 @@ class depgraph:
 				mypk=portage.db[portage.root]["bintree"].dep_bestmatch(mydep)
 				if myeb==mypk:
 					myk=["binary",portage.root,mypk]
+				elif "--usepkgonly" in myopts:
+					self.missingbins += [myeb]
+					myk=["binary",portage.root,mypk]
+					#print "mypk:",mypk
+					#print "myeb:",myeb
 				else:
 					myk=["ebuild",portage.root,myeb]
 			else:
@@ -925,6 +970,7 @@ class depgraph:
 	def display(self,mylist):
 		changelogs=[]
 		for x in mylist:
+			#print x
 			if x[0]=="blocks":
 				addl=""+red("B")+"    "
 				resolved=portage.db[x[1]]["vartree"].resolve_key(x[2])
@@ -1227,7 +1273,7 @@ class depgraph:
 						emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Updating world file ("+y+")")
 						portage.writedict(myfavdict,myroot+"var/cache/edb/world",writekey=0)
 
-				if "noclean" not in portage.features:
+				if ("noclean" not in portage.features) and (x[0] != "binary"):
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Post-Build Cleaning ("+y+")")
 					retval=portage.doebuild(y,"clean",myroot,edebug)
 					if retval:
@@ -1642,7 +1688,7 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 			if os.path.exists(cvsdir+"/gentoo-x86"):
 				print "!!! existing",cvsdir+"/gentoo-x86 directory; exiting."
 				sys.exit(1)
-			if not portage.spawn("cd "+cvsdir+"; cvs -z3 -d "+cvsroot+" co gentoo-x86",free=1):
+			if not portage.spawn("cd "+cvsdir+"; cvs -z0 -d "+cvsroot+" co gentoo-x86",free=1):
 				print "!!! cvs checkout error; exiting."
 				sys.exit(1)
 			if cvsdir!=myportdir:
@@ -1651,7 +1697,7 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 		else:
 			#cvs update
 			print ">>> starting cvs update with "+syncuri+"..."
-			sys.exit(portage.spawn("cd "+myportdir+"; cvs -z3 -q update -dP",free=1)) 
+			sys.exit(portage.spawn("cd "+myportdir+"; cvs -z0 -q update -dP",free=1)) 
 	else:
 		print "!!! rsync setting: ",syncuri,"not recognized; exiting."
 		sys.exit(1)
@@ -1811,6 +1857,13 @@ elif "depclean"==myaction:
 		sys.exit(1)
 	print "\b\b ... done!"
 
+	if ("--usepkgonly" in myopts) and mydepgraph.missingbins:
+		sys.stderr.write(red("The following binaries are not available for merging...\n"))
+		for x in mydepgraph.missingbins:
+			sys.stderr.write("   "+str(x)+"\n")
+		sys.stderr.write("\nThese are required by '--usepkgonly' -- Terminating.\n\n")
+		sys.exit(1)
+
 	alldeps=mydepgraph.digraph.allnodes()
 	myvarlist=portage.vardbapi(portage.root).cp_all()
 
@@ -1916,6 +1969,15 @@ else:
 				print "\n!!! Error calculating dependencies. Please correct."
 				sys.exit(1)
 			print "\b\b ...done!"
+
+			if ("--usepkgonly" in myopts) and mydepgraph.missingbins:
+				sys.stderr.write(red("The following binaries are not available for merging...\n"))
+
+		if mydepgraph.missingbins:
+			for x in mydepgraph.missingbins:
+				sys.stderr.write("   "+str(x)+"\n")
+			sys.stderr.write("\nThese are required by '--usepkgonly' -- Terminating.\n\n")
+			sys.exit(1)
 
 	if ("--pretend" in myopts) and ("--fetchonly" not in myopts):
 		if ("--resume" in myopts):

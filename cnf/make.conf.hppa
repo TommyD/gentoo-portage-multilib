@@ -152,6 +152,16 @@ CHOST="hppa1.1-unknown-linux-gnu"
 # on your specified mirror. We _HIGHLY_ recommend that you change this setting
 # to a nearby mirror by merging and using the 'mirrorselect' tool.
 #GENTOO_MIRRORS="<your_mirror_here> http://gentoo.oregonstate.edu http://www.ibiblio.org/pub/Linux/distributions/gentoo"
+#
+# Portage uses PORTAGE_BINHOST to specify mirrors for prebuilt-binary packages.
+# The list is a single extry specifying the full address of the directory
+# serving the tbz2's for your system. Running emerge with either '--getbinpkg'
+# or '--getbinpkgonly' will cause portage to retrieve the metadata from all
+# packages in the directory specified, and use that data to determine what will
+# be downloaded and merged. '-g' or '-gK' are the recommend parameters. Please
+# consult the man pages and 'emerge --help' for more information.
+#PORTAGE_BINHOST="ftp://login:pass@grp.mirror.site/pub/grp/i686/athlon-xp/"
+#PORTAGE_BINHOST="http://grp.mirror.site/gentoo/grp/1.4/i686/athlon-xp/"
 
 # Synchronizing Portage
 # =====================

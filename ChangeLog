@@ -2,6 +2,27 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+*portage-2.0.49_pre9 (16 Jul 2003): GRP and General Fixes
+
+  16 Jul 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: add
+	LDFLAGS and ASFLAGS. Exports are only done if vars are already set.
+
+  16 Jul 2003; Nicholas Jones <carpaski@gentoo.org> emerge: Added support for
+	--getbinpkg and --getbinpkgonly --- GRP complement. Fixes for blocking-
+	not-working	bug
+
+  16 Jul 2003; Nicholas Jones <carpaski@gentoo.org> repoman: Patch to detect
+	incomplete digests.
+	
+  16 Jul 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: ebuild fetch
+	now checks md5sums (run from ebuild). Support for getbinpkg.
+
+  16 Jul 2003; Nicholas Jones <carpaski@gentoo.org> xpak.py: Added more in-
+	memory operations support.
+
+  16 Jul 2003; Nicholas Jones <carpaski@gentoo.org> getbinpkg.py: Supporting
+	code for binary package retrieval.
+
 *portage-2.0.48-r2 (29 Jun 2003): Fixes and Multiple Overlays
 
   29 Jun 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Fixed the

@@ -3,13 +3,16 @@
 # Distributed under the GNU Public License v2
 # $Header$
 
-VERSION="2.0.48_pre6"
+VERSION="2.0.49"
 
 from stat import *
 from commands import *
 from select import *
 from output import *
+from time import sleep
 import string,sys,os
+
+import getbinpkg
 
 ostype=os.uname()[0]
 if ostype=="Linux":
@@ -1047,6 +1050,7 @@ def spawn(mystring,debug=0,free=0,droppriv=0):
 		if droppriv and portage_gid and portage_uid:
 			#drop root privileges, become the 'portage' user
 			os.setgid(portage_gid)
+			os.setgroups([portage_gid])
 			os.setuid(portage_uid)
 			os.umask(002)
 		else:
@@ -1494,13 +1498,13 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0,fetchonly=0):
 	                "config","touch","setup","depend","fetch","digest",
 	                "unpack","compile","install","rpm","qmerge","merge",
 	                "package","unmerge", "manifest"]:
-		print "!!! Please specify a valid command."
+		sys.stderr.write("!!! doebuild: Please specify a valid command.\n");
 		return 1
 	if not os.path.exists(myebuild):
-		print "!!! doebuild:",myebuild,"not found."
+		sys.stderr.write("!!! doebuild: "+str(myebuild)+" not found for "+str(mydo)+"\n")
 		return 1
 	if myebuild[-7:]!=".ebuild":
-		print "!!! doebuild: ",myebuild,"does not appear to be an ebuild file."
+		sys.stderr.write("!!! doebuild: "+str(myebuild)+" does not appear to be an ebuild file.\n")
 		return 1
 
 	settings.reset()
@@ -1709,9 +1713,6 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0,fetchonly=0):
 	if not fetch(fetchme, listonly, fetchonly):
 		return 1
 
-	if mydo=="fetch":
-		return 0
-
 	if "digest" in features:
 		#generate digest if it doesn't exist.
 		if mydo=="digest":
@@ -1727,6 +1728,9 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0,fetchonly=0):
 	if not digestcheck(checkme, ("strict" in features)):
 		return 1
 	
+	if mydo=="fetch":
+		return 0
+
 	#initial dep checks complete; time to process main commands
 
 	nosandbox=(("userpriv" in features) and ("usersandbox" not in features))
@@ -3291,7 +3295,7 @@ def eclass(myeclass=None,mycpv=None,mymtime=None):
 	if myeclass != None:
 		if not mtimedb["eclass"].has_key(myeclass):
 			# Eclass doesn't exist.
-			print "!!! eclass '"+myeclass+"' in '"+myeclass+"' does not exist:"
+			print "!!! eclass '"+myeclass+"' in '"+str(mycpv)+"' does not exist:"
 			raise KeyError
 		else:
 			if (mycpv!=None) and (mymtime!=None):
@@ -3790,12 +3794,14 @@ class binarytree(packagetree):
 			self.dbapi=clone.dbapi
 			self.populated=clone.populated
 			self.tree=clone.tree
+			self.remotepkgs=clone.remotepkgs
 		else:
 			self.root=root
 			self.pkgdir=settings["PKGDIR"]
 			self.dbapi=fakedbapi()
 			self.populated=0
 			self.tree={}
+			self.remotepkgs={}
 
 	def move_ent(self,mylist):
 		if not self.populated:
@@ -3816,7 +3822,7 @@ class binarytree(packagetree):
 				sys.stderr.write("!!! "+mycpv+" -> "+mynewcpv+"\n")
 				continue
 			tbz2path=self.getname(mycpv)
-			if not os.access(tbz2path,os.W_OK):
+			if os.path.exists(tbz2path) and not os.access(tbz2path,os.W_OK):
 				sys.stderr.write("!!! Cannot update readonly binary: "+mycpv+"\n")
 				continue
 			
@@ -3853,7 +3859,7 @@ class binarytree(packagetree):
 			self.populate()
 		for mycpv in self.dbapi.cp_all():
 			tbz2path=self.getname(mycpv)
-			if not os.access(tbz2path,os.W_OK):
+			if os.path.exists(tbz2path) and not os.access(tbz2path,os.W_OK):
 				sys.stderr.write("!!! Cannot update readonly binary: "+mycpv+"\n")
 				continue
 			#print ">>> Updating binary data:",mycpv
@@ -3874,29 +3880,60 @@ class binarytree(packagetree):
 			mytbz2.recompose(mytmpdir,cleanup=1)
 		return 1
 
-	def populate(self):
+	def populate(self, getbinpkgs=0,getbinpkgsonly=0):
 		"populates the binarytree"
-		if (not os.path.isdir(self.pkgdir)):
+		if (not os.path.isdir(self.pkgdir) and not getbinpkg):
 			return 0
-		if (not os.path.isdir(self.pkgdir+"/All")):
+		if (not os.path.isdir(self.pkgdir+"/All") and not getbinpkg):
 			return 0
-		for mypkg in listdir(self.pkgdir+"/All"):
-			if mypkg[-5:]!=".tbz2":
-				continue
-			mytbz2=xpak.tbz2(self.pkgdir+"/All/"+mypkg)
-			mycat=mytbz2.getfile("CATEGORY")
-			if not mycat:
-				#old-style or corrupt package
-				sys.stderr.write("!!! Invalid binary package: "+mypkg+"\n")
-				continue
-			mycat=string.strip(mycat)
-			fullpkg=mycat+"/"+mypkg[:-5]
-			mykey=dep_getkey(fullpkg)
+
+		if not getbinpkgsonly and os.path.exists(self.pkgdir+"/All"):
+			for mypkg in listdir(self.pkgdir+"/All"):
+				if mypkg[-5:]!=".tbz2":
+					continue
+				mytbz2=xpak.tbz2(self.pkgdir+"/All/"+mypkg)
+				mycat=mytbz2.getfile("CATEGORY")
+				if not mycat:
+					#old-style or corrupt package
+					sys.stderr.write("!!! Invalid binary package: "+mypkg+"\n")
+					continue
+				mycat=string.strip(mycat)
+				fullpkg=mycat+"/"+mypkg[:-5]
+				mykey=dep_getkey(fullpkg)
+				try:
+					# invalid tbz2's can hurt things.
+					self.dbapi.cpv_inject(fullpkg)
+				except:
+					continue
+
+		if getbinpkgs and settings["PORTAGE_BINHOST"] and not self.remotepkgs:
 			try:
-				# invalid tbz2's can hurt things.
-				self.dbapi.cpv_inject(fullpkg)
+				chunk_size = long(settings["PORTAGE_BINHOST_CHUNKSIZE"])
+				if chunk_size < 8:
+					chunk_size = 8
 			except:
-				continue
+				chunk_size = 8
+
+			self.remotepkgs = getbinpkg.dir_get_metadata(settings["PORTAGE_BINHOST"], chunk_size=chunk_size)
+
+			for mypkg in self.remotepkgs.keys():
+				if not self.remotepkgs[mypkg].has_key("CATEGORY"):
+					#old-style or corrupt package
+					sys.stderr.write("!!! Invalid remote binary package: "+mypkg+"\n")
+					del self.remotepkgs[mypkg]
+					continue
+				mycat=string.strip(self.remotepkgs[mypkg]["CATEGORY"])
+				fullpkg=mycat+"/"+mypkg[:-5]
+				mykey=dep_getkey(fullpkg)
+				try:
+					# invalid tbz2's can hurt things.
+					#print "cpv_inject("+str(fullpkg)+")"
+					self.dbapi.cpv_inject(fullpkg)
+					#print "  -- Injected"
+				except:
+					sys.stderr.write("!!! Failed to inject remote binary package:"+str(fullpkg)+"\n")
+					del self.remotepkgs[mypkg]
+					continue
 		self.populated=1
 
 	def inject(self,cpv):
@@ -3925,6 +3962,25 @@ class binarytree(packagetree):
 			return self.pkgdir+"/All/"+self.resolve_specific(pkgname)+".tbz2"
 		else:
 			return self.pkgdir+"/All/"+mysplit[1]+".tbz2"
+
+	def isremote(self,pkgname):
+		"Returns true if the package is kept remotely."
+		remote = (not os.path.exists(self.getname(pkgname))) and self.remotepkgs.has_key(pkgname);
+		return remote
+	
+	def gettbz2(self,pkgname):
+		"fetches the package from a remote site, if necessary."
+		print "Fetching '"+str(pkgname)+"'"
+		mysplit=string.split(pkgname,"/")
+		if not self.isremote(pkgname):
+			return
+		mysplit=string.split(pkgname,"/")
+		try:
+			os.makedirs(settings["PKGDIR"]+"/All/", 0775)
+		except:
+			pass
+		getbinpkg.file_get(settings["PORTAGE_BINHOST"]+"/"+mysplit[1]+".tbz2", settings["PKGDIR"]+"/All/"+mysplit[1]+".tbz2")
+		return
 
 class dblink:
 	"this class provides an interface to the standard text package database"
@@ -4926,6 +4982,7 @@ def do_upgrade(mykey):
 		myworld.write(x+"\n")
 	myworld.close()
 	writedict(myvirts,"/var/cache/edb/virtuals")
+	print ""
 
 
 def portageexit():
@@ -5028,7 +5085,7 @@ else:
 	categories=[]
 
 pkgmasklines=grabfile(settings["PORTDIR"]+"/profiles/package.mask")
-pkgmasklines+=grabfile("/etc/portage/profiles/package.mask")
+pkgmasklines+=grabfile("/etc/portage/package.mask")
 
 pkgunmasklines=grabfile("/etc/portage/package.unmask");
 
@@ -5069,3 +5126,4 @@ groups=settings["ACCEPT_KEYWORDS"].split()
 
 # Clear the cache that we probably won't need anymore.
 dircache={}
+
