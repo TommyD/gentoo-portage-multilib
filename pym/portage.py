@@ -3,7 +3,7 @@
 # Distributed under the GNU Public License v2
 # $Header$
 
-VERSION="2.0.50_pre10"
+VERSION="2.0.50_pre15"
 
 import sys,string,os,re,types,shlex,shutil,xpak,fcntl,signal
 import time,cPickle,atexit,grp,traceback,commands,pwd,cvstree,copy
@@ -5307,7 +5307,7 @@ class dblink:
 					if not matches:
 						#zap our world entry
 						pass
-					elif (len(matches)==1) and (matches[0]==mycpv):
+					elif (len(matches)==1) and (matches[0]==self.mycpv):
 						#zap our world entry
 						pass
 					else:
