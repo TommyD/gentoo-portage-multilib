@@ -625,11 +625,7 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 		settings["PVR"]=mysplit[1]
 	else:
 		settings["PVR"]=mysplit[1]+"-"+mysplit[2]
-	myslot=slotgrab(myebuild)
-	if myslot:
-		settings["SLOT"]=myslot
-	else:
-		settings["SLOT"]=settings["PV"]
+	settings["SLOT"]=settings["PV"]
 	if settings.has_key("PATH"):
 		mysplit=string.split(settings["PATH"],":")
 	else:
@@ -662,9 +658,18 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 		print "!!! aborting."
 		print
 		return 1
+	# obtain the dependency and slot information from the deps file
 	a=open(settings["T"]+"/deps","r")
+	counter=0
 	mydeps=a.readlines()
+	# remove trailing lines
+	for mydeps_entry in mydeps:
+		mydeps[counter]=mydeps_entry.strip()
+		counter=counter+1
 	a.close()
+	# get possible slot information from the deps file
+	if mydeps[2]!="":
+		settings["SLOT"]=mydeps[2]
 	if checkdeps:
 		if mydo=="depend":
 			return mydeps
@@ -1910,10 +1915,6 @@ class portagetree(packagetree):
 				x=x[1:]
 			matches=self.dep_nomatch(x)
 			for y in matches:
-# gbevin@gentoo.org :
-# commented this since I think it's a leftover debug message
-# looks kinda weird to see these messages appearing all of a sudden
-#				print "zapping",y
 				self.zap(y)
 
 	def getdeps(self,pf):
@@ -1995,10 +1996,12 @@ class dblink:
 		self.pkg=pkg
 		self.slot=slot
 		pkg_parts=pkgsplit(pkg)
+		# handle packages that don't contain version information
 		if pkg_parts:
 			pkg_slot=pkg_parts[0]
 		else:
 			pkg_slot=pkg
+		# only add the slot version number of it's not empty and not 0
 		if slot != "" and slot != "0":
 			pkg_slot = pkg_slot+"-"+slot
 		self.dbdir=myroot+"/var/db/pkg/"+cat+"/"+pkg_slot
@@ -2015,7 +2018,7 @@ class dblink:
 	def getEbuildCurrent(self):
 		return self.dbdir+"/"+self.pkg+".ebuild"
 
-	# get the ebuild file path of the package that is currently installed
+	# get the ebuild file path of the package that is installed
 	def getEbuildInstalled(self):
 		installedversion=self.getfile("PF").strip()
 		installedebuild=self.dbdir+"/"+installedversion+".ebuild"
@@ -2588,26 +2591,6 @@ def depgrab(myfilename,depmark):
 			pos=pos+1
 	return string.join(string.split(depstring)," ")
 
-def slotgrab(myfilename):
-	"""
-	Will grab the binary slot string from an ebuild file
-	"""
-	slotmark="SLOT"
-	slotstring=None
-	myfile=open(myfilename,"r")
-	mylines=myfile.readlines()
-	myfile.close()
-	pos=0
-	while (pos<len(mylines)):
-		if mylines[pos][0:len(slotmark)+1]==slotmark+"=":
-			slotparts=string.split(mylines[pos][len(slotmark):],'"')
-			if len(slotparts)==3:
-				slotstring=slotparts[1]
-			break
-		else:
-			pos=pos+1
-	return slotstring
-
 def cleanup_pkgmerge(mypkg,origdir):
 	shutil.rmtree(settings["PKG_TMPDIR"]+"/"+mypkg)
 	os.chdir(origdir)
@@ -2626,16 +2609,8 @@ def pkgmerge(mytbz2,myroot):
 	if not mycat:
 		print "!!! CATEGORY info missing from info chunk, aborting..."
 		return None
-	myslot=xptbz2.getfile("SLOT")
-	if not myslot:
-		# binary package created on a portage version that didn't support slots yet
-		# setting the slot number to the package version
-		mypkgparts=pkgsplit(mypkg)
-		myslot=mypkgparts[1]
-	else:
-		# strip newline
-		myslot=myslot[:-1]
-	mycat=string.strip(mycat)
+	mypkgparts=pkgsplit(mypkg)
+	myslot=xptbz2.getfile("SLOT",mypkgparts[1])
 	mycatpkg=mycat+"/"+mypkg
 
 	tmploc=settings["PKG_TMPDIR"]

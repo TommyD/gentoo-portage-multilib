@@ -219,7 +219,7 @@ class depgraph:
 		self.emptytree=portage.vartree("/",virts,self.db["/"]["vartree"])
 		self.emptytree.tree={}
 	def create(self,mybigkey,myparent=None,addme=1):
-		"""creates the actual digraph of packges to merge.  return 1 on success, 0 on failure
+		"""creates the actual digraph of packages to merge.  return 1 on success, 0 on failure
 		mybigkey = specification of package to merge; myparent = parent package (one depending on me);
 		addme = should I be added to the tree? (for the --onlydeps mode)"""
 		if mybigkey==None:
@@ -242,8 +242,9 @@ class depgraph:
 			if not self.db[portage.root]["bintree"].exists_specific(mykey):
 				print "\n\n!!!",mytype,mykey,"not found (possibly blocked by package.mask)\n"
 				sys.exit(1)
+			mypkgparts=portage.catpkgsplit(mykey)
 			mytbz2=xpak.tbz2(self.db[portage.root]["bintree"].getname(mykey))
-			edepend=["",string.join(mytbz2.getelements("RDEPEND")," ")]
+			edepend=["",string.join(mytbz2.getelements("RDEPEND")," "),mytbz2.getfile("SLOT",mypkgparts[2])]
 		elif mytype=="ebuild":
 			if not self.db[myroot]["porttree"].exists_specific(mykey):
 				print "\n\n!!!",mytype,mykey,"not found (possibly blocked by package.mask)\n"
@@ -262,7 +263,7 @@ class depgraph:
 			# only add blocking deps that aren't from the same package that is installing
 			if mykeyparts[0]!=parentkeyparts[0] or mykeyparts[1]!=parentkeyparts[1]:
 				self.digraph.addnode(mybigkey,myparent)
-
+		
 		if edepend:
 			mydep={}	
 			if myroot=="/":

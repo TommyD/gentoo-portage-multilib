@@ -803,6 +803,7 @@ do
 	depend)
 		echo $DEPEND > ${T}/deps
 		echo $RDEPEND >> ${T}/deps
+		echo $SLOT >> ${T}/deps
 		echo $SRC_URI > ${T}/src_uri
 		;;
 	*)

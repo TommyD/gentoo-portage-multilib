@@ -1,6 +1,21 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+  7 Feb 2002; G.Bevin <gbevin@gentoo.org> xpack.py :
+  added additional argument to tbz2.getfile() which allows default content to
+  be provided when the requested file couldn't be found in the tbz2 archive
+
+  7 Feb 2002; G.Bevin <gbevin@gentoo.org> ebuild.sh :
+  added SLOT information as the third entry in the temporary deps file that is
+  generated during ebuild depend,
+  
+  7 Feb 2002; G.Bevin <gbevin@gentoo.org> portage.py :
+  obtain SLOT information from the deps file instead of using the slotgrab()
+  function, removed slotgrab() function, updated some comments
+
+  7 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge :
+  added SLOT information to the generated edepend var for binary packages
+
 *portage 1.8.9_pre5 (6 Feb 2002)
 
   6 Feb 2002; G.Bevin <gbevin@gentoo.org> portage.py :

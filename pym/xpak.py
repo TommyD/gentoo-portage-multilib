@@ -177,12 +177,12 @@ class tbz2:
 		self.index=a.read(self.indexsize)
 		self.datapos=a.tell()
 		a.close()
-	def getfile(self,myfile):
+	def getfile(self,myfile,mydefault=None):
 		if self.index=="":
 			self.scan()
 		myresult=searchindex(self.index,myfile)
 		if not myresult:
-			return None
+			return mydefault
 		a=open(self.file,"r")
 		a.seek(self.datapos+myresult[0],0)
 		myreturn=a.read(myresult[1])
