@@ -25,11 +25,11 @@
 # Host Setting
 # ============
 #
-# The generic HOST setting on hppa is hppa-unknown-linux-gnu.  
-# But you might want to use hppa1.1-unknown-linux-gnu something else acordingly to your cpu.
+# The generic CHOST value for hppa is hppa-unknown-linux-gnu.
+# But you might want to use hppa1.1-unknown-linux-gnu according to your
+# station.
 #
-#CHOST="hppa1.1-unknown-linux-gnu"
-
+CHOST="hppa1.1-unknown-linux-gnu
 
 # Host and optimization settings 
 # ==============================
@@ -41,16 +41,22 @@
 # package (and in some cases the libraries it uses) at default optimizations
 # before reporting errors to developers.
 #
-# -mcpu=<cpu-type> means optimize code for the particular type of CPU.
-#                  On hppa there is no -march= option in gcc-3.
+# -march=<cpu-type> means to take full advantage of the ABI and instructions
+# for the particular CPU; this will break compatibility with older CPUs (for
+# example, -march=2.0 code will not run on a regular hppa1.1 station)
 #
-# CPU types supported in gcc-3.2 or higher: 1.0 1.1 and 2.0
+# -mschedule=cpu-type create schedule code according to the constraints for the machine
+# cpu-type.  The choices for cpu-type are 700 7100, 7100LC, 7200, and 8000.
+# Use 'cat /proc/cpuinfo' to know the right schedule for your hppa.
+# Note that you must use 7100LC for 7300LC.
 #
-# WARNING : -O3 seems to be broken and make gcc segfault. Use it a at your own risc.
+# Architectures types supported in gcc-3.2 and higher: 1.0, 1.1 and 2.0
+# Note that 64bit userspace is not yet implemented.
 #
 # Decent examples:
 #
-#CFLAGS="-march=1.1 -O2 -pipe -mschedule=7100LC "
+#CFLAGS="-march=1.1 -O3 -pipe -mschedule=7100LC"
+
 
 # If you set a CFLAGS above, then this line will set your default C++ flags to
 # the same settings.
@@ -64,13 +70,13 @@
 # on the platform they are set for. A special form has been added that
 # indicates packages and revisions that are expected to work, but have not yet
 # been approved for the stable set. '~arch' is a superset of 'arch' which
-# includes the unstable, in testing, packages. Users of the 'x86' architecture
-# would add '~x86' to ACCEPT_KEYWORDS to enable unstable/testing packages.
-# '~ppc', '~sparc', '~sparc64', '~hppa' are the unstable KEYWORDS for their respective
+# includes the unstable, in testing, packages. Users of the 'hppa' architecture
+# would add '~hppa' to ACCEPT_KEYWORDS to enable unstable/testing packages.
+# '~ppc', '~sparc', '~sparc64' are the unstable KEYWORDS for their respective
 # platforms. DO NOT PUT ANYTHING BUT YOUR SPECIFIC ~ARCHITECTURE IN THE LIST.
 # IF YOU ARE UNSURE OF YOUR ARCH, OR THE IMPLICATIONS, DO NOT MODIFY THIS.
 #
-#ACCEPT_KEYWORDS="~hppa"
+#ACCEPT_KEYWORDS="~arch"
 
 # Portage Directories
 # ===================
@@ -129,7 +135,7 @@
 #RESUMECOMMAND="/usr/bin/wget -c -t 5 --passive-ftp \${URI} -P \${DISTDIR}"
 #
 # Using wget, ratelimiting downloads
-#FETCHCOMMAND="/usr/bin/wget -t 5 --passive-ftp \${URI} -P \${DISTDIR}"
+#FETCHCOMMAND="/usr/bin/wget -t 5 --passive-ftp --limit-rate=200k \${URI} -P \${DISTDIR}"
 #RESUMECOMMAND="/usr/bin/wget -c -t 5 --passive-ftp --limit-rate=200k \${URI} -P \${DISTDIR}"
 #
 # Lukemftp (BSD ftp):
