@@ -797,6 +797,7 @@ def ExtractKernelVersion(base_dir):
 
 	version = ''
 
+	#XXX: The following code relies on the ordering of vars within the Makefile
 	for line in lines:
 		# split on the '=' then remove annoying whitespace
 		items = string.split(line, '=')
@@ -810,6 +811,22 @@ def ExtractKernelVersion(base_dir):
 		elif items[0] == 'EXTRAVERSION' and \
 			items[-1] != items[0]:
 			version += items[1]
+
+	# Grab a list of files named localversion* and sort them
+	localversions = os.listdir(base_dir)
+	for x in range(len(localversions)-1,-1,-1):
+		if localversions[x][:12] != "localversion":
+			del localversions[x]
+	localversions.sort()
+
+	# Append the contents of each to the version string, stripping ALL whitespace
+	for lv in localversions:
+		version += string.join(string.split(string.join(grabfile(lv))), "")
+
+	# Check the .config for a CONFIG_LOCALVERSION and append that too, also stripping whitespace
+	kernelconfig = getconfig(base_dir+"/.config")
+	if kernelconfig.has_key("CONFIG_LOCALVERSION"):
+		version += string.join(string.split(kernelconfig["CONFIG_LOCALVERSION"]), "")
 
 	return (version,None)
 
@@ -2806,8 +2823,8 @@ def ververify(myorigval,silent=1):
 	if myval[-1][-1] in string.lowercase:
 		try:
 			foo=int(myval[-1][:-1])
-			return 1
 			vercache[myorigval]=1
+			return 1
 			# 1a, 2.0b, etc.
 		except SystemExit, e:
 			raise

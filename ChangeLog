@@ -7,6 +7,17 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  31 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> g-cpan.pl: Applied fix
+  for case-less matching of packages names. #69464
+
+  31 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> portage.py: Updated
+  ExtractKernelVersion() to support 2.6.9's new localversion. #67804
+  Reordered a cache update and a return statement so that the cache is
+  actually updated in ververify. #69523
+
+  31 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> bin/ebuild: Added missing
+  portage_util import.
+
   29 Oct 2004; Brian Harring <ferringb@gentoo.org> emerge: Close stdin after 
   the spawn fork for rsync, not in global scope.  #68946
 

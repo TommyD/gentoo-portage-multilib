@@ -36,7 +36,7 @@ if "merge" in pargs:
 	print "Disabling noauto in features... merge disables it. (qmerge doesn't)"
 	os.environ["FEATURES"] = os.environ.get("FEATURES", "") + " -noauto"
 
-import portage
+import portage, portage_util
 
 for x in pargs[1:]:
 	try:

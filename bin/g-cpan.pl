@@ -5,6 +5,10 @@
 
 # History: 
 
+# 10/29/04: rac@gentoo.org:
+#
+#           attempt to recognize lowercased packages in dev-perl in portage_dir
+#
 # 05/23/03: jrray@gentoo.org: 
 #
 #	    Skip modules the CPAN thinks are included with perl (closes bug 14679).
@@ -155,7 +159,16 @@ sub portage_dir {
 
     # turn this into a directory name suitable for portage tree
     return undef unless ( $file =~ m|.*/(.*)-[^-]+\.| );
-    return $1;
+
+    my $rv = $1;
+
+    # not sure if calling ebuild_exists here is acceptable or not, but
+    # we want to see if the ebuild exists, and if not, maybe
+    # lowercasing it would be better.
+
+    $rv = lc( $rv ) if !ebuild_exists( $rv ) && ebuild_exists( lc( $rv ) );
+
+    return $rv;
 }
 
 sub create_ebuild {
