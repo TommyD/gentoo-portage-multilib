@@ -13,7 +13,7 @@
 # TODO
 #  dialog menus
 #
-import os, sys, string, re, commands
+import os, shutil, sys, string, re, commands
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 
 from stat import *
@@ -45,7 +45,7 @@ class dispatch:
         count = 0
 
         if os.path.exists(LOG_CHANGES_TO):
-            os.rename(LOG_CHANGES_TO, LOG_CHANGES_TO + '.old')
+            shutil.move(LOG_CHANGES_TO, LOG_CHANGES_TO + '.old')
 
         self.options = dispatch_conf.read_config(MANDATORY_OPTS)
 
@@ -166,7 +166,7 @@ class dispatch:
                     merged = '/tmp/dispatch-conf.merged.%i' % (os.getpid (),)
 ##                     print
                     os.system (MERGE % (merged, conf ['current'], newconf))
-                    os.rename (merged, mrgconf)
+                    shutil.move (merged, mrgconf)
                     mystat = os.lstat(conf['new'])
                     os.chmod(mrgconf, mystat[ST_MODE])
                     os.chown(mrgconf, mystat[ST_UID], mystat[ST_GID])
@@ -200,7 +200,7 @@ class dispatch:
         the diff of what changed into the LOG_CHANGES_TO file."""
         os.system((DIFF_CONTENTS % (curconf, newconf)) + '>>' + LOG_CHANGES_TO)
         try:
-            os.rename (newconf, curconf)
+            shutil.move (newconf, curconf)
         except (IOError, os.error), why:
             print >> sys.stderr, 'dispatch-conf: Error renaming %s to %s: %s; fatal' % \
                   (newconf, curconf, str(why))
