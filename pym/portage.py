@@ -22,9 +22,9 @@ try:
 	if (not secpass) and (wheelgid in os.getgroups()):
 		secpass=1
 except KeyError:
-	print "portage initialization: your system doesn't have a 'wheel' group."
-	print "Please fix this as it is a normal system requirement. 'wheel' is GID 10"
-	print "'emerge baselayout' and an 'etc-update' should remedy this problem."
+	sys.stderr.write("portage initialization: your system doesn't have a 'wheel' group.\n")
+	sys.stderr.write("Please fix this as it is a normal system requirement. 'wheel' is GID 10\n")
+	sys.stderr.write("'emerge baselayout' and an 'etc-update' should remedy this problem.\n")
 	pass
 
 #Discover the uid and gid of the portage user/group
@@ -36,17 +36,24 @@ try:
 except KeyError:
 	portage_uid=0
 	portage_gid=wheelgid
-	print
-	print   red("portage: 'portage' user or group missing. Please update baselayout")
-	print   red("         and merge portage user(250) and group(250) into your passwd")
-	print   red("         and group files. Non-root compilation is disabled until then.")
-	print       "         Also note that non-root/wheel users will need to be added to"
-	print       "         the portage group to do portage commands."
-	print
-	print       "         For the defaults, line 1 goes into passwd, and 2 into group."
-	print green("         portage:x:250:250:portage:/var/tmp/portage:/bin/false")
-	print green("         portage::250:portage")
-	print
+	sys.stderr.write("\n")
+	sys.stderr.write(  red("portage: 'portage' user or group missing. Please update baselayout\n"))
+	sys.stderr.write(  red("         and merge portage user(250) and group(250) into your passwd\n"))
+	sys.stderr.write(  red("         and group files. Non-root compilation is disabled until then.\n"))
+	sys.stderr.write(      "         Also note that non-root/wheel users will need to be added to\n")
+	sys.stderr.write(      "         the portage group to do portage commands.\n")
+	sys.stderr.write("\n")
+	sys.stderr.write(      "         For the defaults, line 1 goes into passwd, and 2 into group.\n")
+	sys.stderr.write(green("         portage:x:250:250:portage:/var/tmp/portage:/bin/false\n"))
+	sys.stderr.write(green("         portage::250:portage\n"))
+	sys.stderr.write("\n")
+
+if (uid!=0) and (portage_gid not in os.getgroups()):
+	sys.stderr.write("\n")
+	sys.stderr.write(red("*** You are not in the portage group. You may experience cache problems\n"))
+	sys.stderr.write(red("*** due to permissions preventing the creation of the on-disk cache.\n"))
+	sys.stderr.write(red("*** Please add this user to the portage group if you wish to use portage.\n"))
+	sys.stderr.write("\n")
 
 incrementals=["USE","FEATURES","ACCEPT_KEYWORDS","ACCEPT_LICENSE","CONFIG_PROTECT_MASK","CONFIG_PROTECT","PRELINK_PATH","PRELINK_PATH_MASK"]
 stickies=["KEYWORDS_ACCEPT","USE","CFLAGS","CXXFLAGS","MAKEOPTS","EXTRA_ECONF","EXTRA_EMAKE"]
@@ -829,9 +836,9 @@ class config:
 
 		self.mygcfg=getconfig("/etc/make.globals")
 		if self.mygcfg==None:
-			print "!!! Parse error in /etc/make.globals. NEVER EDIT THIS FILE."
-			print "!!! Incorrect multiline literals can cause this. Do not use them."
-			print "!!! Errors in this file should be reported on bugs.gentoo.org."
+			sys.stderr.write("!!! Parse error in /etc/make.globals. NEVER EDIT THIS FILE.\n")
+			sys.stderr.write("!!! Incorrect multiline literals can cause this. Do not use them.\n")
+			sys.stderr.write("!!! Errors in this file should be reported on bugs.gentoo.org.\n")
 			sys.exit(1)
 		self.configlist.append(self.mygcfg)
 		self.configdict["globals"]=self.configlist[-1]
@@ -839,9 +846,9 @@ class config:
 		if profiledir:
 			self.mygcfg=getconfig("/etc/make.profile/make.defaults")
 			if self.mygcfg==None:
-				print "!!! Parse error in /etc/make.defaults. Never modify this file."
-				print "!!! 'emerge sync' may fix this. If it does not then please report"
-				print "!!! this to bugs.gentoo.org and, if possible, a dev on #gentoo (IRC)"
+				sys.stderr.write("!!! Parse error in /etc/make.defaults. Never modify this file.\n")
+				sys.stderr.write("!!! 'emerge sync' may fix this. If it does not then please report\n")
+				sys.stderr.write("!!! this to bugs.gentoo.org and, if possible, a dev on #gentoo (IRC)\n")
 				sys.exit(1)
 			self.configlist.append(self.mygcfg)
 			self.configdict["defaults"]=self.configlist[-1]
@@ -943,7 +950,7 @@ class config:
 			suffix=""
 		for x in self.lookuplist:
 			if x == None:
-				print "!!! lookuplist is null."
+				sys.stderr.write("!!! lookuplist is null.\n")
 			elif x.has_key(mykey):
 				return x[mykey]+suffix
 		return suffix
@@ -979,7 +986,7 @@ class config:
 		for x in self.keys(): 
 			mydict[x]=self[x]
 		if not mydict.has_key("HOME") and mydict.has_key("BUILD_PREFIX"):
-			print "*** HOME not set. Setting to",mydict["BUILD_PREFIX"]
+			sys.stderr.write("*** HOME not set. Setting to "+mydict["BUILD_PREFIX"]+"\n")
 			mydict["HOME"]=mydict["BUILD_PREFIX"]
 		return mydict
 	
@@ -1179,16 +1186,16 @@ def digestgen(myarchives,overwrite=1):
 	myoutfn2=settings["FILESDIR"]+"/digest-"+settings["PF"]
 	if (not overwrite) and os.path.exists(myoutfn2):
 		return
-	print ">>> Generating digest file..."
+	print green(">>> Generating digest file...")
 
 	myfiles=listdir(settings["FILESDIR"],recursive=1,filesonly=1,ignorecvs=1)
 	for x in range(len(myfiles)-1,-1,-1):
-		if len(myfiles[x])>len("/files/digest-"):
-			if myfiles[x][:len("/files/digest-")]=="/files/digest-":
+		if len(myfiles[x])>len("digest-"):
+			if myfiles[x][:len("digest-")]=="digest-":
 				del myfiles[x]
 				continue
-		if len(myfiles[x])>len("/files/.digest-"):
-			if myfiles[x][:len("/files/.digest-")]=="/files/.digest-":
+		if len(myfiles[x])>len(".digest-"):
+			if myfiles[x][:len(".digest-")]==".digest-":
 				del myfiles[x]
 				continue
 		myfiles[x]="/files/"+myfiles[x]
@@ -1216,9 +1223,10 @@ def digestgen(myarchives,overwrite=1):
 		print "!!! Failed to move digest."
 		sys.exit(1)
 	if "cvs" in features:
-		print ">>> Auto-adding digest file to CVS..."
+		print blue(">>> Auto-adding digest file to CVS...")
 		spawn("cd "+settings["FILESDIR"]+"; cvs add digest-"+settings["PF"],free=1)
-	print ">>> Computed message digests."
+	print darkgreen(">>> Computed message digests.")
+	print
 	
 def digestcheck(myarchives):
 	"Checks md5sums.  Assumes all files have been downloaded."
@@ -1271,12 +1279,13 @@ def digestcheck(myarchives):
 			print red("!!! A file is corrupt or incomplete. (Digests do not match)")
 			print green(">>> our recorded digest:"),mydigests[x][0]
 			print green(">>>  your file's digest:"),mymd5
-			print
 			if x[0]=="/":
+				print red(">>> file: "+settings["O"]+x)
+				print
 				print ">>> Please ensure you have sync'd properly. Please try '"+bold("emerge sync")+"' and"
 				print ">>> optionally examine the file for corruption. "+bold("A sync will fix most cases.")
-				print red(">>> file: "+settings["O"]+x)
 			else:
+				print
 				print ">>> Please delete",settings["DISTDIR"]+"/"+x,"and refetch."
 			print
 			return 0
@@ -2828,8 +2837,8 @@ class vardbapi(dbapi):
 			origpath=self.root+"var/db/pkg/"+mycpv
 			if not os.path.exists(origpath):
 				continue
-			sys.stdout.write("@")
-			sys.stdout.flush()
+			sys.stderr.write("@")
+			sys.stderr.flush()
 			if not os.path.exists(self.root+"var/db/pkg/"+mynewcat):
 				#create the directory
 				os.makedirs(self.root+"var/db/pkg/"+mynewcat)	
@@ -3581,12 +3590,12 @@ class binarytree(packagetree):
 			if mycpsplit[3]!="r0":
 				mynewcpv += "-"+mycpsplit[3]
 			if os.path.exists(self.getname(mynewcpv)):
-				print "!!! Cannot update binary: Destination exists."
-				print "!!!",mycpv,"->",mynewcpv
+				sys.stderr.write("!!! Cannot update binary: Destination exists.\n")
+				sys.stderr.write("!!! "+mycpv+" -> "+mynewcpv+"\n")
 				continue
 			tbz2path=self.getname(mycpv)
 			if not os.access(tbz2path,os.W_OK):
-				print "!!! Cannot update readonly binary:",mycpv
+				sys.stderr.write("!!! Cannot update readonly binary: "+mycpv+"\n")
 				continue
 			
 			#print ">>> Updating data in:",mycpv
@@ -3623,11 +3632,11 @@ class binarytree(packagetree):
 		for mycpv in self.dbapi.cp_all():
 			tbz2path=self.getname(mycpv)
 			if not os.access(tbz2path,os.W_OK):
-				print "!!! Cannot update readonly binary:",mycpv
+				sys.stderr.write("!!! Cannot update readonly binary: "+mycpv+"\n")
 				continue
 			#print ">>> Updating binary data:",mycpv
-			sys.stdout.write("*")
-			sys.stdout.flush()
+			sys.stderr.write("*")
+			sys.stderr.flush()
 			mytmpdir=settings["PORTAGE_TMPDIR"]+"/tbz2"
 			mytbz2=xpak.tbz2(tbz2path)
 			mytbz2.decompose(mytmpdir,cleanup=1)
@@ -3656,7 +3665,7 @@ class binarytree(packagetree):
 			mycat=mytbz2.getfile("CATEGORY")
 			if not mycat:
 				#old-style or corrupt package
-				print "!!! Invalid binary package:",mypkg
+				sys.stderr.write("!!! Invalid binary package: "+mypkg+"\n")
 				continue
 			mycat=string.strip(mycat)
 			fullpkg=mycat+"/"+mypkg[:-5]
@@ -4483,23 +4492,21 @@ else:
 	root="/"
 if root != "/":
 	if not os.path.exists(root[:-1]):
-		print "!!! Error: ROOT",root,"does not exist.  Please correct this."
-		print "!!! Exiting."
-		print
+		sys.stderr.write("!!! Error: ROOT "+root+" does not exist.  Please correct this.\n")
+		sys.stderr.write("!!! Exiting.\n\n")
 		sys.exit(1)
 	elif not os.path.isdir(root[:-1]):
-		print "!!! Error: ROOT",root[:-1],"is not a directory.	Please correct this."
-		print "!!! Exiting."
-		print
+		sys.stderr.write("!!! Error: ROOT "+root[:-1]+" is not a directory. Please correct this.\n")
+		sys.stderr.write("!!! Exiting.\n\n")
 		sys.exit(1)
 
 #create tmp and var/tmp if they don't exist; read config
 os.umask(0)
 if not os.path.exists(root+"tmp"):
-	print ">>> "+root+"tmp doesn't exist, creating it..."
+	sys.stderr.write(">>> "+root+"tmp doesn't exist, creating it...\n")
 	os.mkdir(root+"tmp",01777)
 if not os.path.exists(root+"var/tmp"):
-	print ">>> "+root+"var/tmp doesn't exist, creating it..."
+	sys.stderr.write(">>> "+root+"var/tmp doesn't exist, creating it...\n")
 	try:
 		os.mkdir(root+"var",0755)
 	except (OSError,IOError):
@@ -4507,7 +4514,7 @@ if not os.path.exists(root+"var/tmp"):
 	try:
 		os.mkdir(root+"var/tmp",01777)
 	except:
-		print "portage: couldn't create /var/tmp; exiting."
+		sys.stderr.write("portage: couldn't create /var/tmp; exiting.\n")
 		sys.exit(1)
 
 os.umask(022)
@@ -4553,10 +4560,10 @@ if not os.environ.has_key("SANDBOX_ACTIVE"):
 	for cachedir in cachedirs:
 		if not os.path.exists(cachedir):
 			os.makedirs(cachedir,0755)
-			print ">>>",cachedir,"doesn't exist, creating it..."
+			sys.stderr.write(">>> "+cachedir+" doesn't exist, creating it...\n")
 		if not os.path.exists(cachedir+"/dep"):
 			os.makedirs(cachedir+"/dep",2755)
-			print ">>>",cachedir+"/dep","doesn't exist, creating it..."
+			sys.stderr.write(">>> "+cachedir+"/dep","doesn't exist, creating it...\n")
 		try:
 			os.chown(cachedir,uid,portage_gid)
 			os.chmod(cachedir,0775)
@@ -4578,7 +4585,7 @@ def flushmtimedb(record):
 			del mtimedb[record]
 			#print "mtimedb["+record+"] is cleared."
 		else:
-			print "Invalid or unset record '"+record+"' in mtimedb."
+			sys.stderr.write("Invalid or unset record '"+record+"' in mtimedb.\n")
 
 #grab mtimes for eclasses and upgrades
 mtimedb={}
@@ -4604,11 +4611,11 @@ if mtimedb.has_key("version") and mtimedb["version"]!=VERSION:
 
 for x in mtimedb.keys():
 	if x not in mtimedbkeys:
-		print "Deleting invalid mtimedb key: "+str(x)
+		sys.stderr.write("Deleting invalid mtimedb key: "+str(x)+"\n")
 		del mtimedb[x]
 
 def do_upgrade(mykey):
-	print "Performing Global Updates:",mykey
+	sys.stderr.write("Performing Global Updates: "+mykey+"\n")
 	processed=1
 	#remove stale virtual entries (mappings for packages that no longer exist)
 	myvirts=grabdict("/var/cache/edb/virtuals")
@@ -4621,11 +4628,11 @@ def do_upgrade(mykey):
 		if not len(mysplit):
 			continue
 		if mysplit[0]!="move":
-			print "portage: Update type \""+mysplit[0]+"\" not recognized."
+			sys.stderr.write("portage: Update type \""+mysplit[0]+"\" not recognized.\n")
 			processed=0
 			continue
 		if len(mysplit)!=3:
-			print "portage: Update command \""+myline+"\" invalid; skipping."
+			sys.stderr.write("portage: Update command \""+myline+"\" invalid; skipping.\n")
 			processed=0
 			continue
 		sys.stdout.write(".")
@@ -4647,7 +4654,6 @@ def do_upgrade(mykey):
 	
 	# We gotta do the brute force updates for these now.
 	db["/"]["bintree"].update_ents(myupd)
-	print
 	
 	if processed:
 		#update our internal mtime since we processed all our directives.
@@ -4659,26 +4665,27 @@ def do_upgrade(mykey):
 	writedict(myvirts,"/var/cache/edb/virtuals")
 
 if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
-	#only do this if we're root
-	updpath=os.path.normpath(settings["PORTDIR"]+"/profiles/updates")
-	didupdate=0
-	if not mtimedb.has_key("updates"):
-		mtimedb["updates"]={}
-	try:
-		for myfile in listdir(updpath):
-			mykey=updpath+"/"+myfile
-			if not os.path.isfile(mykey):
-				continue
-			if (not mtimedb["updates"].has_key(mykey)) or \
-				 (mtimedb["updates"][mykey] != os.stat(mykey)[ST_MTIME]):
-				didupdate=1
-				do_upgrade(mykey)
-	except OSError:
-		#directory doesn't exist
-		pass
-	if didupdate:
-		#make sure our internal databases are consistent; recreate our virts and vartree
-		do_vartree()
+	if not os.environ.has_key("REPOMAN"):
+		#only do this if we're root and not running repoman
+		updpath=os.path.normpath(settings["PORTDIR"]+"/profiles/updates")
+		didupdate=0
+		if not mtimedb.has_key("updates"):
+			mtimedb["updates"]={}
+		try:
+			for myfile in listdir(updpath):
+				mykey=updpath+"/"+myfile
+				if not os.path.isfile(mykey):
+					continue
+				if (not mtimedb["updates"].has_key(mykey)) or \
+					 (mtimedb["updates"][mykey] != os.stat(mykey)[ST_MTIME]):
+					didupdate=1
+					do_upgrade(mykey)
+		except OSError:
+			#directory doesn't exist
+			pass
+		if didupdate:
+			#make sure our internal databases are consistent; recreate our virts and vartree
+			do_vartree()
 
 #the new standardized db names:
 portdb=portdbapi()
@@ -4686,7 +4693,8 @@ if settings["PORTDIR_OVERLAY"]:
 	if os.path.isdir(settings["PORTDIR_OVERLAY"]):
 		portdb.oroot=settings["PORTDIR_OVERLAY"]
 	else:
-		print "portage: init: PORTDIR_OVERLAY points to",settings["PORTDIR_OVERLAY"],"which isn't a directory. Exiting."
+		sys.stderr.write("!!! PORTDIR_OVERLAY points to "+settings["PORTDIR_OVERLAY"]+"\n")
+		sys.stderr.write("!!! which isn't a directory... Exiting.\n")
 		sys.exit(1)
 
 def portageexit():
@@ -4726,12 +4734,12 @@ if not dbcachedir:
 	dbcachedir="/var/cache/edb/dep/"
 	settings["PORTAGE_CACHEDIR"]=dbcachedir
 if not os.path.exists(settings["PORTAGE_TMPDIR"]):
-	print "portage: the directory specified in your PORTAGE_TMPDIR variable, \""+settings["PORTAGE_TMPDIR"]+",\""
-	print "does not exist.  Please create this directory or correct your PORTAGE_TMPDIR setting."
+	sys.stderr.write("portage: the directory specified in your PORTAGE_TMPDIR variable, \""+settings["PORTAGE_TMPDIR"]+",\"\n")
+	sys.stderr.write("does not exist.  Please create this directory or correct your PORTAGE_TMPDIR setting.\n")
 	sys.exit(1)
 if not os.path.isdir(settings["PORTAGE_TMPDIR"]):
-	print "portage: the directory specified in your PORTAGE_TMPDIR variable, \""+settings["PORTAGE_TMPDIR"]+",\""
-	print "is not a directory.  Please correct your PORTAGE_TMPDIR setting."
+	sys.stderr.write("portage: the directory specified in your PORTAGE_TMPDIR variable, \""+settings["PORTAGE_TMPDIR"]+",\"\n")
+	sys.stderr.write("is not a directory.  Please correct your PORTAGE_TMPDIR setting.\n")
 	sys.exit(1)
 
 #getting categories from an external file now

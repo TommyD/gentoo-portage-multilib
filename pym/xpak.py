@@ -244,7 +244,10 @@ class tbz2:
 	def scan(self):
 		"""Scans the tbz2 to locate the xpak segment and setup internal values.
 		This function is called by relevant functions already."""
-		mystat=os.lstat(self.file)
+		try:
+			mystat=os.stat(self.file)
+		except:
+			return 0
 		if self.filestat:
 			changed=0
 			for x in [ST_SIZE, ST_MTIME, ST_CTIME]:

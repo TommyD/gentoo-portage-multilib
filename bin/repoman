@@ -1,15 +1,15 @@
 #!/usr/bin/python2.2
 # Copyright 1999-2003 Gentoo Technologies, Inc.
 # Distributed under the terms of the GNU General Public License v2
-# Author: Daniel Robbins <drobbins@gentoo.org>
 # $Header$
 
-# Next to do: dep syntax checking in ebuilds, mask files
+# Next to do: dep syntax checking in mask files
 # Then, check to make sure deps are satisfiable (to avoid "can't find match for" problems)
 # that last one is tricky because multiple profiles need to be checked.
 
-import os,sys,string,signal,readline,portage,re,commands
+import os,sys,string,signal,readline,portage,re
 from output import *
+from commands import getstatusoutput
 
 exename=os.path.basename(sys.argv[0])	
 version="1.2"	
@@ -148,7 +148,10 @@ if len(sys.argv)>1:
 			else:
 				err("Please specify either \""+mymode+"\" or \""+sys.argv[x]+"\", but not both.")
 		elif sys.argv[x] in options:
-			if (sys.argv[x]=="--msg") and (len(sys.argv)>=(x+1)):
+			if (sys.argv[x]=="--commitmsg") and (len(sys.argv)>=(x+1)):
+				commitmessage=sys.argv[x+1]
+				x=x+1
+			elif (sys.argv[x]=="--commitmsgfile") and (len(sys.argv)>=(x+1)):
 				commitmessage=sys.argv[x+1]
 				x=x+1
 			elif sys.argv[x] not in myoptions:
@@ -183,7 +186,6 @@ try: # Determine if we're in PORTDIR... If not tell portage to accomodate.
 				# mydir == a PORTDIR root... We make PORTDIR = mydir.
 				print darkgreen("setting to:")+" "+bold(mydir)
 				os.environ["PORTDIR"]=mydir
-				reload(portage)
 				break;
 			else:
 				mydir=os.path.normpath(mydir+"/..")
@@ -193,6 +195,8 @@ except Exception, e:
 	print "!!! Error when determining valid(ity of) PORTDIR:"
 	print "!!!",e
 	pass
+os.environ["REPOMAN"]="running"
+reload(portage)
 
 reporoot=None
 for x in REPOROOTS:
@@ -221,8 +225,9 @@ try:
 	mylist=portage.grabfile(portage.settings["PORTDIR"]+"/profiles/use.local.desc")
 	for mypos in range(0,len(mylist)):
 		mysplit=mylist[mypos].split()[0]
-		#myuse=string.split(mysplit,":")
-		luselist.append(mysplit)
+		myuse=string.split(mysplit,":")
+		if myuse==2:
+			luselist.append(myuse[1])
 except:
 	err("Couldn't read from use.local.desc")
 
@@ -477,6 +482,93 @@ for x in qacats:
 		for y in fails[x]:
 			print "   "+y
 print
+
+
+def grouplist(mylist,seperator="/"):
+	"""(list,seperator="/") -- Takes a list of elements; groups them into
+	same initial element categories. Returns a dict of {base:[sublist]}
+	From: ["blah/foo","spork/spatula","blah/weee/splat"]
+	To:   {"blah":["foo","weee/splat"], "spork":["spatula"]}"""
+	mygroups={}
+	for x in mylist:
+		xs=string.split(x,seperator)
+		if xs[0] not in mygroups.keys():
+			mygroups[xs[0]]=[string.join(xs[1:],seperator)]
+		else:
+			mygroups[xs[0]]+=[string.join(xs[1:],seperator)]
+	return mygroups
+
+def doall(myheaders,basepath=""):
+	mychanges=[]
+	mydirs=grouplist(myheaders)
+	for x in mydirs.keys():
+		if x not in portage.categories:
+			print "!!! Changes in a non-category directory being ignored."
+			print "!!! Dir:",x
+		else:
+			os.chdir(x)
+			for y in docatdir(mydirs[x],x):
+				mychanges+=[x+"/"+y]
+			os.chdir("..")
+	return mychanges
+
+def docatdir(myheaders,basepath=""):
+	mychanges=[]
+	mydirs=grouplist(myheaders)
+	#print mydirs
+	for x in mydirs.keys():
+		if os.path.isdir(x):
+			os.chdir(x)                           # Change into package dir
+			mydirchanges=[]
+			#print "mydirs:",mydirs
+			for myfile in mydirs[x]:
+				#print "**myfile:",myfile
+				mydirchanges+=dopkgdir([myfile],basepath+x)
+			for y in mydirchanges:
+				mychanges+=[x+"/"+y]
+			os.chdir("..")                        # Leave package dir
+		else:
+			print red("!!! File exists in a category dir, but outside a package.")
+			print red("!!! File:"),bold(basepath+x)
+	return mychanges
+
+def dopkgdir(myheaders, basepath=""):
+	mychanges=[]
+	#print myheaders
+	for x in myheaders:
+		xs=x.split("/")
+		if len(xs)==1:     # It's an ebuild, we hope.
+			if xs[0][-len(".ebuild"):]==".ebuild":
+				if x[:-len(".ebuild")] not in mychanges:
+					mychanges.append(x[:-len(".ebuild")])
+			else:
+				print red("!!! File is not an ebuild but is in package root.")
+				print red("!!! File:"),bold(basepath+x)
+		else:
+			# It should be in files/
+			if xs[0]=="files":
+				if (len(xs[1])>4) and xs[0][-4:]==".asc":
+					print "!!! Why does an ascii signature have headers...?"
+					print "!!! File:",basepath+x
+				elif (len(xs[1])>7) and xs[1][:7]=="digest-":
+					print "!!! Why does a digest have headers...?"
+					print "!!! File:",basepath+x
+				else:
+					# All ebuilds because files/ changed
+					for eb in portage.listdir(".", filesonly=1):
+						#print "eblist:",eb
+						if len(eb)>7 and eb[-len(".ebuild"):]==".ebuild":
+							mychanges.append(eb[:-len(".ebuild")])
+						elif eb=="ChangeLog":
+							continue
+						else:
+							print red("!!! File is not an ebuild but is in package root.")
+							print red("!!! File:"),bold(eb)
+			else:
+				print red("!!! File exists outside of files directory.")
+				print red("!!! File:"),bold(basepath+x)
+	return mychanges
+
 if mymode!="commit":
 	if dofull:
 		print bold("Note: type \"repoman full\" for a complete listing.")
@@ -498,27 +590,73 @@ else:
 		print "Dry-run cvs update complete."
 		print green("RepoMan sez:"), "\"So, you want to play it safe. Good call.\"\n"
 	else:
-		print "Checking the tree..."
-		ret=getstatusoutput("/usr/bin/cvs status | egrep '^File:.*Status:' | egrep -v 'File: digest-|Up-to-date|Locally Modified'")
-		if ret[0]:
+		print "Checking in the tree:",reporoot
+		mystatus=getstatusoutput('/usr/bin/cvs status 2>/dev/null | egrep "Status:|Repository revision:" | tr "\n" "\001" | sed \'s#File:[^\d001]*Status: \([^\d001]\+\)[^/]*[^ ]*/'+reporoot+'/\([^\d001]\+\),v#\\1 -=- \\2#g\' | tr "\001" "\n" | egrep -v \'^[:space:]*$\'')
+		mylines=string.split(mystatus[1], "\n")
+		if mystatus[0]:
+			#print mylines
 			print red("Failed to check the tree.")
-			print ret[1]
-			sys.exit(ret[0])
-		if ret[1]:
-			print red("Some files are not up to date! Digests will be wrong")
-			print red("for all packages in which these files are involved.")
-			print green("/usr/bin/cvs status")
-			print
-			print green("RepoMan sez:"), "\"Ah ha! Thought you could sneak in a dirty commit, didn't you?\"\n"
-			sys.exit(1)
-		usedfile=0
+			sys.exit(mystatus[0])
+		myupdates=[]
+		myheaders=[]
+		mydirty=[]
+		for line in mylines:
+			if not line:
+				continue
+			mysplit=string.split(line," -=- ")
+			#print portage.settings["PORTDIR"],mysplit
+			if mysplit[0][:5]=="Needs" or mysplit[0][:5]=="Entry":
+				mydirty.append(mysplit[1])
+
+			elif mysplit[0]=="Up-to-date":
+				#print ".",
+				continue
+			else:
+				if len(mysplit)<2:
+					if repolevel!=3:
+						print "!!! There is a package that has not been added yet. Please add and commit"
+						print "!!! it from it's directory."
+						try:
+							print "!!! See:",bold(string.split(mysplit[0],"\t")[0])
+						except:
+							pass
+						sys.exit(1)
+					myout=[0]
+					mysplit=[0,string.split(string.split(mysplit[0],"\t")[1]," ")[1]]
+				else:
+					myout=getstatusoutput("egrep -q '\$Header$|\$Id$' "+mysplit[1])
+				if myout[0]==0:
+					myheaders.append(mysplit[1])
+				myupdates.append(mysplit[1])
+			#print line
+
+		for x in myupdates:
+			for y in mydirty:
+				#print "dirties:",x,y
+				if re.match(os.path.dirname(x),os.path.dirname(y)):
+					print red("Some files are not up to date! Digests will be wrong")
+					print red("for all packages in which these files are involved.")
+					print green("/usr/bin/cvs status")
+					print
+					print green("RepoMan sez:"), "\"Ah ha! Thought you could sneak in a dirty commit, didn't you?\"\n"
+					print
+					for z in mydirty:
+						print "Dirty:",z
+					sys.exit(1)
+		print "*",green(str(len(myupdates))),"files being committed...",green(str(len(myheaders))),"have headers that will change."
+		print
+		print myupdates
+		print myheaders
+		print "*","Files that have headers will be re-digested and the digests recommited."
+		print
+		unlinkfile=0
 		if not (commitmessage or commitmessagefile):
 			print "Please enter a CVS commit message at the prompt:"
 			try:
 				mycomment=raw_input(green("> "))
 			except KeyboardInterrupt: 
 				exithandler()
-			#backslash any single quotes
+			# backslash any single quotes
 			commitmessagefile="/tmp/.repoman.msg"
 			mymsg=open(commitmessagefile,"w")
 			mymsg.write(mycomment)
@@ -543,12 +681,59 @@ else:
 		print mycomment
 		print green("------------------------------------------------------------------------------")
 		print
+		#retval=0
 		retval=os.system("/usr/bin/cvs -q commit -F "+commitmessagefile)
+		if retval:
+			print "!!! Exiting on cvs (shell) error code:",retval
+			sys.exit(retval)
+		mychanges=[]
+		#print myheaders
+		if myheaders:
+			if repolevel==3:   # In a package dir
+				mychanges=dopkgdir(myheaders)
+			elif repolevel==2: # In a category dir
+				mychanges=docatdir(myheaders)
+			elif repolevel==1: # repo-cvsroot
+				print green("RepoMan sez:"), "\"You're rather crazy to do the entire repository.\"\n"
+				mychanges=doall(myheaders)
+			else:
+				print red("I'm confused... I don't know where I am!")
+				sys.exit(1)
+
+		mysigs=[]
+		for x in mychanges:
+			#print "redigest:",x
+			os.system("/usr/sbin/ebuild "+x+".ebuild digest")
+			y = string.split(x,"/")
+			if "sign" in portage.features:
+				gpgcmd="gpg -ab --yes "+portage.settings["GPG_OPTIONS"]+" "
+				sigfile=y[:-1]+"/files/digest-"+y[-1]
+				os.system(gpgcmd+sigfile)
+				mysigs+=[sigfile]
+		
+		if "sign" in portage.features:
+			if os.system("/usr/bin/cvs -q add "+string.join(mysigs)):
+				print red("!!! Seem to have had a problem adding the signatures...")
+		retval=os.system("/usr/bin/cvs -q commit -F "+commitmessagefile)
+		if retval:
+			print "!!! Exiting on cvs (shell) error code:",retval
+			sys.exit(retval)
+		
+		#print "myheaders:",myheaders
+		#print "mychanges:",mychanges
 		if unlinkfile:
 			os.unlink(commitmessagefile)
 		print
-		print "Cvs commit complete."
+		print "CVS commit complete."
 		print green("RepoMan sez:"), "\"If everyone were like you, I'd be out of business!\"\n"
 	sys.exit(retval)
 sys.exit(0)
+
+
+
+
+
+
+
+
 

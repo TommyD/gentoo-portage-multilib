@@ -22,6 +22,7 @@ options=[
 "--buildpkg",     "--buildpkgonly",
 "--changelog",    "--columns",
 "--debug",        "--deep",
+"--digest",
 "--emptytree",    "--fetchonly",
 "--help",         "--noconfmem",
 "--nodeps",       "--noreplace",
@@ -990,7 +991,7 @@ class depgraph:
 			if mysplit and (len(mysplit)==3):
 				if "--emptytree" not in myopts:
 					if mysplit[0]=="sys-apps/portage":
-						if mysplit[1]+"-"+mysplit[2]!=portage.VERSION:
+						if mysplit[1]+mysplit[2]!=portage.VERSION:
 							if mylist.index(x)<len(mylist)-1:
 								print red("*** Portage will stop merging at this point and reload itself,")
 								print red("    recalculate dependancies, and complete the merge.")
@@ -999,7 +1000,7 @@ class depgraph:
 								print
 				else:
 					if mysplit[0]=="sys-apps/portage" and ("--emptytree" in myopts):
-						if mysplit[1]+"-"+mysplit[2]!=portage.VERSION:
+						if mysplit[1]+mysplit[2]!=portage.VERSION:
 							print red("***")+" Please update portage to the above version before proceeding."
 							print "    Failure to do so may result in failed or improper merges."
 							print "    A simple '"+green("emerge -u portage")+"' is sufficient."
@@ -1890,6 +1891,11 @@ else:
 			portage.mtimedb["resume"]={}
 			portage.mtimedb["resume"]["myopts"]=myopts
 			portage.mtimedb["resume"]["favorites"]=favorites
+			if ("--digest" in myopts) and not ("--fetchonly" in myopts):
+				for pkgline in mydepgraph.altlist():
+					if pkgline[0]=="ebuild" and pkgline[3]=="merge":
+						y=portage.portdb.findname(pkgline[2])
+						retval=portage.doebuild(y,"digest",portage.root,edebug,("--pretend" in myopts))
 			mydepgraph.merge(mydepgraph.altlist())
 
 		if portage.mtimedb.has_key("resume"):

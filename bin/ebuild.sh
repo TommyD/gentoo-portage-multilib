@@ -20,6 +20,7 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ]; then
 			chmod g+w "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log" &> /dev/null
 			$0 $* 2>&1 | tee -a "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log"
 			if [ "$?" != "0" ]; then
+				rm -f ${T}/successful
 				exit 1
 			fi
 			if [ -f ${T}/successful ]; then

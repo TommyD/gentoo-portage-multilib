@@ -74,6 +74,48 @@ def mass_best_version(argv):
 		sys.exit(1)
 
 
+def best_visible(argv):
+	"""<root> [<category/package>]+
+	Returns category/package-version (without .ebuild).
+	"""
+	if (len(argv) < 2):
+		print "ERROR: insufficient parameters!"
+		sys.exit(2)
+	try:
+		mylist=portage.db[argv[0]]["porttree"].dbapi.match(argv[1])
+		print portage.best(mylist)
+	except KeyError:
+		sys.exit(1)
+
+
+def mass_best_visible(argv):
+	"""<root> [<category/package>]+
+	Returns category/package-version (without .ebuild).
+	"""
+	if (len(argv) < 2):
+		print "ERROR: insufficient parameters!"
+		sys.exit(2)
+	try:
+		for pack in argv[1:]:
+			mylist=portage.db[argv[0]]["porttree"].dbapi.match(pack)
+			print pack+":"+portage.best(mylist)
+	except KeyError:
+		sys.exit(1)
+
+
+def all_best_visible(argv):
+	"""<root>
+	Returns all best_visible packages (without .ebuild).
+	"""
+	if (len(argv) < 1):
+		print "ERROR: insufficient parameters!"
+	
+	#print portage.db[argv[0]]["porttree"].dbapi.cp_all()
+	for pkg in portage.db[argv[0]]["porttree"].dbapi.cp_all():
+		mybest=portage.best(portage.db[argv[0]]["porttree"].dbapi.match(pkg))
+		if mybest:
+			print mybest
+
 def match(argv):
 	"""<root> <category/package>
 	Returns \n seperated list of category/package-version
