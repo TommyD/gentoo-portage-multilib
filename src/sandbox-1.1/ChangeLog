@@ -2,6 +2,34 @@
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+  22 Jun 2003; Martin Schlemmer <azarah@gentoo.org> libsandbox.c, canonicalize.c
+  create-localdecls :
+  When checking path names of files accessed, we need to canonicalize it, else
+  it may be a symlink in a 'write allowed' directory pointing to a file in a
+  directory we should not have write access to.
+
+  With something like coreutils-5.0, we have two problems:
+  1)  One of the tests checks if getcwd() can return a path longer than
+      PATH_MAX.  This test then tries to create a dir which even while
+      created local (mkdir("conftest2")), it ends up being resolved with
+      a name that is much larger than PATH_MAX.  The problem now is that
+      canonicalize() have undefined behaviour when the path was too long
+      (returned wrongly truncated paths, etc), and pass the wrong path to
+      before_syscall() (causing the bogus sandbox violations).
+  2)  The ecanonicalize() function we used, along with the canonicalize()
+      function did not support longer than PATH_MAX.  This is partly a
+      cause for 1), but the error checking (rather lack of it) of calls
+      to erealpath() in canonicalize() was the prime reason for 1).
+
+  As we do not use this canonicalized name to call the function, we resolve this
+  by fixing canonicalize() to do better error checking, and ecanonicalize() as
+  well as all functions in libsandbox.c to use a PATH_MAX of 'PATH_MAX * 2'.
+  While they will resolve paths properly now, and can check if a write/read is
+  allowed, the functions called from the sandboxed environment will still work
+  as expected.
+
+  This should resolve bug #21766.
+
   06 Apr 2003; Martin Schlemmer <azarah@gentoo.org> libsandbox.c :
   For some reason sandbox fails with a 'open_wr' if you run 'locale -a' under
   it (bug #16298).

@@ -92,6 +92,20 @@ if test "$VERSION" = 'libc.so.6' ; then
 	esac
 fi
 
+echo '
+#ifdef PATH_MAX
+# define SB_PATH_MAX PATH_MAX * 2
+# if (SB_PATH_MAX >= INT_MAX)
+#  undef SB_PATH_MAX
+#  define SB_PATH_MAX PATH_MAX + 25
+#  if (SB_PATH_MAX >= INT_MAX)
+#   error PATH_MAX too big!
+#  endif
+# endif
+#else
+# error PATH_MAX not defined!
+#endif' >> $OUTFILE
+
 echo >> $OUTFILE
 echo '#endif' >> $OUTFILE
 echo

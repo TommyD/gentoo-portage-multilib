@@ -29,6 +29,8 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <stddef.h>
+
+#include "localdecls.h"
                      
 #ifndef __set_errno
 # define __set_errno(val) errno = (val)
@@ -38,8 +40,8 @@
    does not contain any `.', `..' components nor any repeated path
    separators ('/') or symlinks.  All path components must exist.  If
    RESOLVED is null, the result is malloc'd; otherwise, if the
-   canonical name is PATH_MAX chars or more, returns null with `errno'
-   set to ENAMETOOLONG; if the name fits in fewer than PATH_MAX chars,
+   canonical name is SB_PATH_MAX chars or more, returns null with `errno'
+   set to ENAMETOOLONG; if the name fits in fewer than SB_PATH_MAX chars,
    returns the name in RESOLVED.  If the name cannot be resolved and
    RESOLVED is non-NULL, it contains the path of the first component
    that cannot be resolved.  If the path can be resolved, RESOLVED
@@ -78,8 +80,8 @@ ecanonicalize (const char *name, char *resolved)
       return NULL;
     }
 
-#ifdef PATH_MAX
-  path_max = PATH_MAX;
+#ifdef SB_PATH_MAX
+  path_max = SB_PATH_MAX;
 #else
   path_max = pathconf (name, _PC_PATH_MAX);
   if (path_max <= 0)

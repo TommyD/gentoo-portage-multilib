@@ -37,7 +37,7 @@ libsandbox.so: libsandbox.o sandbox_futils.o canonicalize.o
 libsandbox.o: libsandbox.c localdecls.h
 	$(CC) $(CFLAGS) -Wall -c $(OBJ_DEFINES) libsandbox.c
 
-canonicalize.o: canonicalize.c
+canonicalize.o: canonicalize.c localdecls.h
 	$(CC) $(CFLAGS) -Wall -c $(OBJ_DEFINES) canonicalize.c
 
 localdecls.h: create-localdecls libctest.c
