@@ -1,13 +1,18 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
-  25 Jun 2002; Martin Schlemmer <azarah@gentoo.org> bin/prepallstrip :
-  Change "strip --strip-unneeded" to "strip --strip-debug".  This fixes
-  bug #2702,#3929,#4027.
+  25 Jun 2002; Daniel Robbins <drobbins@gentoo.org> emerge: "emerge -u" now
+  correctly scans dependencies of packages, even if they are up-to-date, to
+  determine if any of their dependencies need updating.  Previously, up-to-date
+  packages were not scanned in this way, which is a bug.
+  
+  25 Jun 2002; Martin Schlemmer <azarah@gentoo.org> bin/prepallstrip : Change
+  "strip --strip-unneeded" to "strip --strip-debug".  This fixes bug
+  #2702,#3929,#4027.
 
-  24 Jun 2002; Daniel Robbins <drobbins@gentoo.org> ebuild.sh: Portage will
-  now automatically take advantage of ccache if the >=dev-util/ccache-1.9
-  ebuild is installed.  Removing /var/cache/ccache hole in the sandbox.
+  24 Jun 2002; Daniel Robbins <drobbins@gentoo.org> ebuild.sh: Portage will now
+  automatically take advantage of ccache if the >=dev-util/ccache-1.9 ebuild is
+  installed.  Removing /var/cache/ccache hole in the sandbox.
 
 *portage-2.0.5 (24 Jun 2002)
 
