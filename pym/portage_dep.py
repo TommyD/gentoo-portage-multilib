@@ -462,6 +462,10 @@ class DependencyGraph:
 		if not depth:
 			depth = len(self.graph)
 		traversed = []  # The list of nodes to be returned
+		# constant lookup if a relation is in traversed.
+		# check into if traversed can just be a dict instead.
+		# is dependant on if the returned list is a set, or a sequence.
+		trav_cache_dict = {} 
 
 		# This function _needs_ to be fast, so we use a stack
 		# based implementation rather than recursive calls.
@@ -484,8 +488,9 @@ class DependencyGraph:
 			else:
 				relation = graph[node][path][index]
 				# Add the relation to our list if necessary...
-				if relation not in traversed:
+				if relation not in trav_cache_dict:
 					traversed.append(relation)
+					trav_cache_dict[relation] = None
 					# ...and then check if we can go deeper
 					if depth != 1:
 						# Add state to the stack.
@@ -501,6 +506,7 @@ class DependencyGraph:
 			# Move onto the next relation.
 			index += 1
 
+		trav_cache_dict.clear()
 		# Return our list.
 		return traversed
 

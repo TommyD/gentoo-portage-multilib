@@ -7,6 +7,12 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  13 Mar 2005; Brian Harring <ferringb@gentoo.org> pym/portage_dep.py:
+  Addded a traversed cache dict to __traversed per call, the slowdown was 
+  pointed out by Thomas de Grenier de Latour (TGL).  56s, to ~6s.  Probably 
+  should be using a dict for traversed, but is dependant on whether the returned
+  list is order, or can be random.
+
   10 Mar 2005; Marius Mauch <genone@gentoo.org> pym/portage.py:
   fix breakage wrt portage_const.EBUILD_PHASES
 
