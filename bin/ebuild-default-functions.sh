@@ -460,8 +460,8 @@ dyn_install() {
 	done
 
 	find "${D}/" -group portage -print | while read file; do
-		# Too annoying - uncommenting this as it's a regression
-		ewarn "file $file was installed with group portage!"
+		# Too annoying - uncommenting this as it's a regression - it's not, commenting again
+		#ewarn "file $file was installed with group portage!"
 		s=$(stat_perms "$file")
 		if [ "$USERLAND" == "BSD" ]; then
 			chgrp wheel "$file"
