@@ -271,7 +271,7 @@ for x in scanlist:
 			stats["ebuild.namenomatch"]=stats["ebuild.namenomatch"]+1
 			fails["ebuild.namenomatch"].append(x+"/"+y+".ebuild")
 		try:
-			myaux=portage.db["/"]["porttree"].dbapi.aux_get(catdir+"/"+y,allvars,strict=1)	
+			myaux=portage.db["/"]["porttree"].dbapi.aux_get(catdir+"/"+y,allvars,strict=1)
 		except KeyError:
 			stats["ebuild.syntax"]=stats["ebuild.syntax"]+1
 			fails["ebuild.syntax"].append(x+"/"+y+".ebuild")

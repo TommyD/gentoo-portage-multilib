@@ -3014,7 +3014,7 @@ class portdbapi(dbapi):
 		try:
 			emtime=os.stat(myebuild)[ST_MTIME]
 		except:
-			return None
+			raise KeyError
 		
 		# first, we take a look at the size of the ebuild/cache entry to ensure we
 		# have a valid data, then we look at the mtime of the ebuild and the
@@ -4282,6 +4282,8 @@ os.umask(022)
 profiledir=None
 if os.path.exists("/etc/make.profile/make.defaults"):
 	profiledir="/etc/make.profile"
+else:
+	print ">>> Note: /etc/make.profile/make.defaults isn't available; an 'emerge sync' will probably fix this."
 #from here on in we can assume that profiledir is set to something valid
 db={}
 

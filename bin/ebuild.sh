@@ -987,8 +987,8 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ]; then
 			if [ -z "${PATH/*distcc*/}" ]; then
 				# Remove the other reference.
 				PATH="$(echo ${PATH} | sed 's/:[^:]*distcc[^:]*:/:/;s/^[^:]*distcc[^:]*://;s/:[^:]*distcc[^:]*$//')"
-				export PATH="/usr/lib/distcc/bin:${PATH}"
 			fi
+			export PATH="/usr/lib/distcc/bin:${PATH}"
 			[ -z "${DISTCC_HOSTS}" ] && DISTCC_HOSTS="localhost"
 			[ ! -z "${DISTCC_LOG}" ] && addwrite "$(dirname ${DISTCC_LOG})"
 			export DISTCC_HOSTS

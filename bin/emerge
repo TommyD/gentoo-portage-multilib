@@ -1673,7 +1673,7 @@ elif "unmerge"==myaction or "prune"==myaction or "clean"==myaction:
 	
 elif "depclean"==myaction:
 	# Kill packages that aren't explicitly merged or are required as a
-	# dependancy of another package. World file is explicit.
+	# dependency of another package. World file is explicit.
 
 	print
 	print red("*** WARNING ***")+" : DEPCLEAN CAN  SERIOUSLY  IMPAIR YOUR SYSTEM. USE CAUTION."

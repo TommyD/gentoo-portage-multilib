@@ -65,7 +65,7 @@ def help(myaction,myopts,havecolor=1):
 		print "       "+green("depclean")
 		print "              Cleans the system by removing packages that are not associated"
 		print "              with explicitly merged packages. Depclean works by creating the"
-		print "              full dependancy tree from the system list and the world file,"
+		print "              full dependency tree from the system list and the world file,"
 		print "              then comparing it to installed packages. Packages installed, but"
 		print "              not associated with an explicit merge are listed as candidates"
 		print "              for unmerging."+turquoise(" WARNING: This can seriously affect your system by")
@@ -96,7 +96,7 @@ def help(myaction,myopts,havecolor=1):
 		print "              The argument format is the same as for the "+bold("clean")+" action."
 		print
 		print "       "+green("regen")
-		print "              Causes portage to check and update the dependancy cache of all"
+		print "              Causes portage to check and update the dependency cache of all"
 		print "              ebuilds in the portage tree. This is not recommended for rsync"
 		print "              users as rsync updates the cache using server-side caches."
 		print "              Rsync users should simply 'emerge sync' to regenerate."
@@ -235,7 +235,7 @@ def help(myaction,myopts,havecolor=1):
 		print "       "+green("--usepkgonly")+" ("+green("-K")+" short option)"
 		print "              Like --usepkg above, except this only allows the use of binary"
 		print "              packages, and it will abort the emerge if the package is not"
-		print "              available at the time of dependancy calculation."
+		print "              available at the time of dependency calculation."
 		print
 		print "       "+green("--verbose")+" ("+green("-v")+" short option)"
 		print "              Tell emerge to run in verbose mode."
