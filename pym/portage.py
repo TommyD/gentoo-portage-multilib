@@ -3816,20 +3816,28 @@ if not os.path.exists(root+"var/tmp"):
 	print ">>> "+root+"var/tmp doesn't exist, creating it..."
 	os.mkdir(root+"var",0755)
 	os.mkdir(root+"var/tmp",01777)
-if not os.path.exists("/var/cache/edb"):
-	os.makedirs("/var/cache/edb",0755)
-if not os.path.exists("/var/cache/edb/dep"):
-	os.makedirs("/var/cache/edb/dep",2755)
-try:
-	os.chown("/var/cache/edb",uid,wheelgid)
-	os.chmod("/var/cache/edb",0775)
-except OSError:
-	pass
-try:
-	os.chown("/var/cache/edb/dep",uid,wheelgid)
-	os.chmod("/var/cache/edb/dep",02775)
-except OSError:
-	pass
+
+cachedirs=["/var/cache/edb"]
+if root!="/":
+	cachedirs.append(root+"var/cache/edb")
+for cachedir in cachedirs:
+	if not os.path.exists(cachedir):
+		os.makedirs(cachedir,0755)
+		print ">>>",cachedir,"doesn't exist, creating it..."
+	if not os.path.exists(cachedir+"/dep"):
+		os.makedirs(cachedir+"/dep",2755)
+		print ">>>",cachedir+"/dep","doesn't exist, creating it..."
+	try:
+		os.chown(cachedir,uid,wheelgid)
+		os.chmod(cachedir,0775)
+	except OSError:
+		pass
+	try:
+		os.chown(cachedir+"/dep",uid,wheelgid)
+		os.chmod(cachedir+"/dep",02775)
+	except OSError:
+		pass
+	
 os.umask(022)
 profiledir=None
 if os.path.exists("/etc/make.profile/make.defaults"):
@@ -3861,7 +3869,7 @@ else:
 settings=config()
 #grab mtimes
 mtimedb={"cur":{}}
-mtimedb["old"]=grabints("/var/cache/edb/mtimes")
+mtimedb["old"]=grabints(root+"var/cache/edb/mtimes")
 #the new standardized db names:
 portdb=portdbapi()
 if settings["PORTDIR_OVERLAY"]:
@@ -3875,7 +3883,7 @@ if settings["PORTDIR_OVERLAY"]:
 def store():
 	global uid,wheelgid
 	if secpass:
-		mymfn="/var/cache/edb/mtimes"
+		mymfn=root+"var/cache/edb/mtimes"
 		writeints(mtimedb["old"],mymfn)	
 		try:
 			os.chown(mymfn,uid,wheelgid)
@@ -3899,6 +3907,7 @@ thirdpartymirrors=grabdict(settings["PORTDIR"]+"/profiles/thirdpartymirrors")
 features=settings["FEATURES"].split()
 dbcachedir=settings["PORTAGE_CACHEDIR"]
 if not dbcachedir:
+	#the auxcache is the only /var/cache/edb/ entry that stays at / even when "root" changes.
 	dbcachedir="/var/cache/edb/dep/"
 	settings["PORTAGE_CACHEDIR"]=dbcachedir
 #create PORTAGE_TMPDIR if it doesn't exist.
