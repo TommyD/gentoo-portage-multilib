@@ -36,7 +36,7 @@ def isunwanted(pkgline):
 		return True
 
 # show a little description if we have arguments
-if sys.argv[1] in ["-h", "--help"]:
+if len(sys.argv) >= 2 and sys.argv[1] in ["-h", "--help"]:
 	print "This script regenerates the portage world file by checking the portage"
 	print "logfile for all actions that you've done in the past. It ignores any"
 	print "arguments except --help. It is recommended that you make a backup of"
