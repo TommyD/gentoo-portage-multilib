@@ -448,7 +448,7 @@ dyn_install() {
 
 	local file s
 
-	find "${D}/" -user  portage -print0 | while read file; do
+	find "${D}/" -user  portage -print | while read file; do
 		ewarn "file $file was installed with user portage!"
 		s=$(stat_perms $file)
 		chown root "$file"
@@ -456,14 +456,14 @@ dyn_install() {
 	done
 
 	if [ "$USERLAND" == "BSD" ]; then
-		find "${D}/" -group portage -print0 | while read file; do
+		find "${D}/" -group portage -print | while read file; do
 			ewarn "file $file was installed with group portage!"
 			s=$(stat_perms "$file")
 			chgrp wheel "$file"
 			chmod "%s" "$file"
 		done
 	else
-		find "${D}/" -group portage -print0 | while read file; do
+		find "${D}/" -group portage -print | while read file; do
 			ewarn "file $file was installed with group portage!"
 			s=$(stat_perms "$file")
 			chgrp root "$file"
