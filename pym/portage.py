@@ -3857,7 +3857,7 @@ def dep_check(depstring,mydbapi,mysettings,use="yes",mode=None,myuse=None,use_ca
 		mysplit = portage_dep.use_reduce(mysplit,myusesplit,masklist=mymasks)
 	else:
 		mysplit = portage_dep.use_reduce(mysplit,myusesplit)
-
+	
 	#convert virtual dependencies to normal packages.
 	mysplit=dep_virtual(mysplit)
 	#if mysplit==None, then we have a parse error (paren mismatch or misplaced ||)
