@@ -68,7 +68,7 @@ my @ebuild_list;
 # Set up global paths
 my $TMP_DEV_PERL_DIR = '/var/tmp/db/dev-perl';
 my $MAKECONF         = '/etc/make.conf';
-my ( $OVERLAY_DIR, $PORTAGE_DIR, $PORTAGE_DEV_PERL ) = get_globals();
+my ( $OVERLAY_DIR, $PORTAGE_DIR, $PORTAGE_DEV_PERL, $PORTAGE_DISTDIR ) = get_globals();
 
 #this should never find the dir, but just to be safe
 unless ( -d $tmp_overlay_dir ) {
@@ -263,7 +263,8 @@ sub install_module {
     install_module($_, 1) for ( keys %$prereq_pm );
 
     create_ebuild( $obj, $dir, $file, $prereq_pm, $md5string );
-		system("mv -f $localfile $distfiles/")
+
+    system('/bin/mv', '-f', $localfile, $PORTAGE_DISTDIR);
 
     push @ebuild_list, $dir;
 }
@@ -288,15 +289,18 @@ sub emerge_module {
 
 sub get_globals {
 
-    my ( $OVERLAY_DIR, $PORTAGE_DIR, $PORTAGE_DEV_PERL );
+    my ( $OVERLAY_DIR, $PORTAGE_DIR, $PORTAGE_DEV_PERL, $PORTAGE_DISTDIR );
 
     # let's not beat around the bush here, make.conf isn't the
     # only place these variables can be defined
 
     $OVERLAY_DIR=qx(/usr/lib/portage/bin/portageq portdir_overlay);
     $PORTAGE_DIR=qx(/usr/lib/portage/bin/portageq portdir);
-		chomp $OVERLAY_DIR;
-		chomp $PORTAGE_DIR;
+    $PORTAGE_DISTDIR=qx(/usr/lib/portage/bin/portageq distdir);
+
+    chomp $OVERLAY_DIR;
+    chomp $PORTAGE_DIR;
+    chomp $PORTAGE_DISTDIR;
     
     unless ( length $OVERLAY_DIR && -d $OVERLAY_DIR ) {
         $OVERLAY_DIR = "";
@@ -306,10 +310,14 @@ sub get_globals {
         $PORTAGE_DIR = "/usr/portage";
     }
 
+    unless ( length $PORTAGE_DISTDIR && -d $PORTAGE_DISTDIR ) {
+        $PORTAGE_DISTDIR = "/usr/portage/distfiles";
+    }
+
     # Finally, set the dev-perl dir explicitly
     $PORTAGE_DEV_PERL = "$PORTAGE_DIR/dev-perl";
 
-    return ( $OVERLAY_DIR, $PORTAGE_DIR, $PORTAGE_DEV_PERL );
+    return ( $OVERLAY_DIR, $PORTAGE_DIR, $PORTAGE_DEV_PERL, $PORTAGE_DISTDIR );
 
 }
 
