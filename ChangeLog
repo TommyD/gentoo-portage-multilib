@@ -5,6 +5,12 @@
   doebuild() so that our rsync mirror will contain full digests and not just
   partial digests for x86.
 
+  12 Oct 2002; Nicholas Jones <carpaski@gentoo.org> emerge:
+	Added --progress to rsync. This puts the file progress meters
+	back on. Users have requested this, and it's not detrimental.
+	Just creates a lot of output, as the man page says: "It gives
+	bored users something to look at."
+
   12 Oct 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
   Bug 6361 -- Added checking on directories to ensure that we can
               write to them before we try and traceback. Also added
