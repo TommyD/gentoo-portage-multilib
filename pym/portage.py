@@ -295,6 +295,7 @@ def env_update():
 	getstatusoutput("/sbin/ldconfig -r "+root)
 	del specials["LDPATH"]
 
+	#create /etc/profile.env for bash support
 	outfile=open(root+"/etc/profile.env","w")
 
 	for path in specials.keys():
@@ -306,7 +307,7 @@ def env_update():
 		outstring=outstring+specials[path][-1]+"'"
 		outfile.write(outstring+"\n")
 		#get it out of the way
-		del specials[path]
+#		del specials[path]
 	
 	#create /etc/profile.env
 	for x in env.keys():
@@ -315,7 +316,26 @@ def env_update():
 		outfile.write("export "+x+"='"+env[x]+"'\n")
 	outfile.close()
 	
-	#need to add cshrc support
+	#creat /etc/csh.env for (t)csh support
+	outfile=open(root+"/etc/csh.env","w")
+	
+	for path in specials.keys():
+		if len(specials[path])==0:
+			continue
+		outstring="setenv "+path+" '"
+		for x in specials[path][:-1]:
+			outstring=outstring+x+":"
+		outstring=outstring+specials[path][-1]+"'"
+		outfile.write(outstring+"\n")
+		#get it out of the way
+		del specials[path]
+	
+	#create /etc/csh.env
+	for x in env.keys():
+		if type(env[x])!=types.StringType:
+			continue
+		outfile.write("setenv "+x+" '"+env[x]+"'\n")
+	outfile.close()
 
 
 def grabfile(myfilename):
