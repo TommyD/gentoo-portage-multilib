@@ -1727,10 +1727,9 @@ class config:
 
 		return mydict
 
-# XXX fd_pipes should be a way for a process to communicate back.
 # XXX This would be to replace getstatusoutput completely.
 # XXX Issue: cannot block execution. Deadlock condition.
-def spawn(mystring,mysettings,debug=0,free=0,droppriv=0,fd_pipes=None):
+def spawn(mystring,mysettings,debug=0,free=0,droppriv=0,fd_pipes=None,returnpid=False,logfile=None):
 	"""spawn a subprocess with optional sandbox protection, 
 	depending on whether sandbox is enabled.  The "free" argument,
 	when set to 1, will disable sandboxing.  This allows us to 
@@ -1740,6 +1739,24 @@ def spawn(mystring,mysettings,debug=0,free=0,droppriv=0,fd_pipes=None):
 	to work."""
 
 	check_config_instance(mysettings)
+
+	mypid=[]
+
+	if logfile:
+		pr,pw=os.pipe()
+		mypid.extend(spawn("tee -i -a '%s'" % logfile, mysettings, debug=debug, free=1,returnpid=True,fd_pipes={0:pr,1:1}))
+		retval=os.waitpid(mypid[-1],os.WNOHANG)[1]
+		if retval!=0:
+			# he's dead jim.
+			if (retval & 0xff)==0:
+				return (retval >> 8) # return exit code
+			else:
+				return ((retval & 0xff) << 8) # interrupted by signal
+		if not fd_pipes:
+			fd_pipes={}
+			fd_pipes[0] = 0
+		fd_pipes[1]=pw
+		fd_pipes[2]=pw
 
 	droppriv=(droppriv and ("userpriv" in features) and \
 	         ("nouserpriv" not in string.split(mysettings["RESTRICT"])))
@@ -1755,12 +1772,46 @@ def spawn(mystring,mysettings,debug=0,free=0,droppriv=0,fd_pipes=None):
 		else:
 			myargs=["["+mysettings["PF"]+"] bash","-c",mystring]
 
-	mypid=os.fork()
-	if mypid==0:
-		if fd_pipes:
-			os.dup2(fd_pipes[0], 0) # stdin  -- (Read)/Write
-			os.dup2(fd_pipes[1], 1) # stdout -- Read/(Write)
-			os.dup2(fd_pipes[2], 2) # stderr -- Read/(Write)
+	mypid.append(os.fork())
+	if mypid[-1]==0:
+		# this may look ugly, but basically it moves file descriptors around as needed 
+		# to ensure no handles get stomped on by another in the final dup2 calls.
+		trg_fd=[]
+		if type(fd_pipes)==types.DictType:
+			src_fd=[]
+			k=fd_pipes.keys()
+			k.sort()
+			for x in k:
+				trg_fd.append(x)
+				src_fd.append(fd_pipes[x])
+			for x in range(0,len(trg_fd)):
+				if trg_fd[x] == src_fd[x]:
+					continue
+				if trg_fd[x] in src_fd[x+1:]:
+					new=os.dup2(trg_fd[x], max(src_fd) + 1)
+					os.close(trg_fd[x])
+					try:
+						while True:
+							src_fd[s.index(trg_fd[x])]=new
+					except: pass
+			for x in range(0,len(trg_fd)):
+				if trg_fd[x] != src_fd[x]:
+					os.dup2(src_fd[x], trg_fd[x])
+		else:
+			trg_fd=[0,1,2]
+		try:
+			import resource
+			max_limit=resource.getrlimit(RLIMIT_NOFILE)
+		except:
+			# hokay, no resource module.  running on windows, or a borked python.
+			# sane default instead
+			max_limit=256
+		for x in range(0,max_limit):
+			if x not in trg_fd:
+				try:
+					os.close(x)
+				except: pass
+
 		if droppriv:
 			if portage_gid and portage_uid:
 				#drop root privileges, become the 'portage' user
@@ -1786,11 +1837,31 @@ def spawn(mystring,mysettings,debug=0,free=0,droppriv=0,fd_pipes=None):
 		sys.exit(1)
 		return # should never get reached
 
-	retval=os.waitpid(mypid,0)[1]
-	if (retval & 0xff)==0:
-		return (retval >> 8) # return exit code
-	else:
-		return ((retval & 0xff) << 8) # interrupted by signal
+	if logfile:
+		os.close(pr)
+		os.close(pw)
+
+	if returnpid:
+		return mypid
+
+	while len(mypid):
+		retval=os.waitpid(mypid[-1],0)[1]
+		if retval != 0:
+			for x in mypid[0:-1]:
+				os.kill(x,signal.SIGTERM)
+				if os.waitpid(x,os.WNOHANG)[0] == 0:
+					# feisty bugger, still alive.
+					os.kill(x,signal.SIGKILL)
+				os.waitpid(x,0)
+			
+			# at this point we've killed all other kid pids generated via this call. return now.
+			if (retval & 0xff)==0:
+				return (retval >> 8) # return exit code
+			else:
+				return ((retval & 0xff) << 8) # interrupted by signal
+		else:
+			mypid.pop(-1)
+	return 0
 
 def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",use_locks=1, try_mirrors=1):
 	"fetch files.  Will use digest file if available."
@@ -2388,11 +2459,11 @@ def digestcheck(myfiles, mysettings, strict=0):
 	return digestCheckFiles(myfiles, mydigests, basedir, "src_uri", strict)
 
 # parse actionmap to spawn ebuild with the appropriate args
-def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0):
+def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0,logfile=None):
 	if alwaysdep or ("noauto" not in features):
 		# process dependency first
 		if "dep" in actionmap[mydo].keys():
-			retval=spawnebuild(actionmap[mydo]["dep"],actionmap,mysettings,debug,alwaysdep)
+			retval=spawnebuild(actionmap[mydo]["dep"],actionmap,mysettings,debug,alwaysdep=alwaysdep,logfile=logfile)
 			if retval:
 				return retval
 	# spawn ebuild.sh
@@ -2401,14 +2472,14 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0):
 		con=selinux.getcontext()
 		con=string.replace(con,mysettings["PORTAGE_T"],mysettings["PORTAGE_SANDBOX_T"])
 		selinux.setexec(con)
-		retval=spawn(mycommand + mydo,mysettings,debug,
-				actionmap[mydo]["args"][0],
-				actionmap[mydo]["args"][1])
+		retval=spawn(mycommand + mydo,mysettings,debug=debug,
+				free=actionmap[mydo]["args"][0],
+				droppriv=actionmap[mydo]["args"][1],logfile=logfile)
 		selinux.setexec(None)
 	else:
-		retval=spawn(mycommand + mydo,mysettings,debug,
-				actionmap[mydo]["args"][0],
-				actionmap[mydo]["args"][1])
+		retval=spawn(mycommand + mydo,mysettings, debug=debug,
+				free=actionmap[mydo]["args"][0],
+				droppriv=actionmap[mydo]["args"][1],logfile=logfile)
 	return retval
 
 def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,cleanup=0,dbkey=None,use_cache=1,fetchall=0):
@@ -2533,6 +2604,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	except:
 		pass
 
+	logfile=None
 	# Build directory creation isn't required for any of these.
 	if mydo not in ["fetch","digest","manifest"]:
 
@@ -2649,6 +2721,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 					if not mysettings.has_key("LOG_PF") or (mysettings["LOG_PF"] != mysettings["PF"]):
 						mysettings["LOG_PF"]=mysettings["PF"]
 						mysettings["LOG_COUNTER"]=str(db[myroot]["vartree"].dbapi.get_counter_tick_core("/"))
+					logfile="%s/%s-%s.log" % (mysettings["PORT_LOGDIR"],mysettings["LOG_COUNTER"],mysettings["LOG_PF"])
 				except ValueError, e:
 					mysettings["PORT_LOGDIR"]=""
 					print "!!! Unable to chown/chmod PORT_LOGDIR. Disabling logging."
@@ -2662,11 +2735,13 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 			return unmerge(mysettings["CATEGORY"],mysettings["PF"],myroot,mysettings)
 
 	# if any of these are being called, handle them -- running them out of the sandbox -- and stop now.
+	if mydo=="clean":
+		logfile=None
 	if mydo in ["help","clean","setup"]:
-		return spawn(EBUILD_SH_BINARY+" "+mydo,mysettings,debug,free=1)
+		return spawn(EBUILD_SH_BINARY+" "+mydo,mysettings,debug=debug,free=1,logfile=logfile)
 	elif mydo in ["prerm","postrm","preinst","postinst","config"]:
 		mysettings.load_infodir(pkg_dir)
-		return spawn(EBUILD_SH_BINARY+" "+mydo,mysettings,debug,free=1)
+		return spawn(EBUILD_SH_BINARY+" "+mydo,mysettings,debug=debug,free=1,logfile=logfile)
 	
 	try: 
 		mysettings["SLOT"], mysettings["RESTRICT"] = db["/"]["porttree"].dbapi.aux_get(mycpv,["SLOT","RESTRICT"])
@@ -2749,7 +2824,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 				if not os.path.exists(mysettings["PKGDIR"]+x):
 					os.makedirs(mysettings["PKGDIR"]+x)
 		# REBUILD CODE FOR TBZ2 --- XXXX
-		return spawnebuild(mydo,actionmap,mysettings,debug)
+		return spawnebuild(mydo,actionmap,mysettings,debug,logfile=logfile)
 	elif mydo=="qmerge": 
 		#check to ensure install was run.  this *only* pops up when users forget it and are using ebuild
 		if not os.path.exists(mysettings["BUILDDIR"]+"/.installed"):
@@ -2758,7 +2833,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		#qmerge is specifically not supposed to do a runtime dep check
 		return merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["D"],mysettings["BUILDDIR"]+"/build-info",myroot,mysettings)
 	elif mydo=="merge":
-		retval=spawnebuild("install",actionmap,mysettings,debug,1)
+		retval=spawnebuild("install",actionmap,mysettings,debug,alwaysdep=1,logfile=logfile)
 		if retval:
 			return retval
 		return merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["D"],mysettings["BUILDDIR"]+"/build-info",myroot,mysettings,myebuild=mysettings["EBUILD"])

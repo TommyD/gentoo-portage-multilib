@@ -11,7 +11,7 @@ from portage_const import BASH_BINARY,SANDBOX_BINARY,SANDBOX_PIDS_FILE
 # XXX fd_pipes should be a way for a process to communicate back.
 # XXX This would be to replace getstatusoutput completely.
 # XXX Issue: cannot block execution. Deadlock condition.
-def spawn(mystring,debug=0,free=0,droppriv=0,fd_pipes=None):
+def spawn(mystring,debug=0,free=0,droppriv=0,fd_pipes=None,returndpid=False):
 	"""spawn a subprocess with optional sandbox protection, 
 	depending on whether sandbox is enabled.  The "free" argument,
 	when set to 1, will disable sandboxing.  This allows us to 
@@ -28,10 +28,43 @@ def spawn(mystring,debug=0,free=0,droppriv=0,fd_pipes=None):
 
 	mypid=os.fork()
 	if mypid==0:
-		if fd_pipes:
-			os.dup2(fd_pipes[0], 0) # stdin  -- (Read)/Write
-			os.dup2(fd_pipes[1], 1) # stdout -- Read/(Write)
-			os.dup2(fd_pipes[2], 2) # stderr -- Read/(Write)
+		# this may look ugly, but basically it moves file descriptors around to ensure no 
+		# handles that are needed are accidentally closed during the final dup2 calls.
+		trg_fd=[]
+		if type(fd_pipes)==types.DictType:
+			src_fd=[]
+			k=fd_pipes.keys()
+			k.sort()
+			for x in k:
+				trg_fd.append(x)
+				src_fd.append(fd_pipes[x])
+			for x in range(0,len(trg_fd)):
+				if trg_fd[x] == src_fd[x]:
+					continue
+				if trg_fd[x] in src_fd[x+1:]:
+					new=os.dup2(trg_fd[x],max(src_fd) + 1)
+					os.close(trg_fd[x])
+					try:
+						while True: 
+							src_fd[s.index(trg_fd[x])]=new
+					except: pass
+			for x in range(0,len(trg_fd)):
+				if trg_fd[x] != src_fd[x]:
+					os.dup2(src_fd[x], trg_fd[x])
+		else:
+			trg_fd=[0,1,2]
+		try:
+			import resource
+			max_limit=resource.getrlimit(RLIMIT_NOFILE)
+		except:
+			# hokay, no resource module.
+			max_limit=256
+		for x in range(0,max_limit):
+			if x not in trg_fd:
+				try: 
+					os.close(x)
+				except:
+					pass
 		if droppriv:
 			if portage_data.portage_gid and portage_data.portage_uid:
 				#drop root privileges, become the 'portage' user
@@ -56,7 +89,8 @@ def spawn(mystring,debug=0,free=0,droppriv=0,fd_pipes=None):
 		os._exit(1)
 		sys.exit(1)
 		return # should never get reached
-
+	if returnpid:
+		return [mypid]
 	retval=os.waitpid(mypid,0)[1]
 	if (retval & 0xff)==0:
 		return (retval >> 8) # return exit code

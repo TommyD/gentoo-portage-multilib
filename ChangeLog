@@ -9,6 +9,14 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  26 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py, 
+  pym/portage_exec.py, bin/ebuild.sh: Removed the PORT_LOGDIR $0 $* | tee 
+  hack, and re-implemented it using spawn.  Spawn has been extended so that 
+  fd_pipes can receive a dict of fd # -> fd, and optionally be nonblocking 
+  via returnpid.  portage.spawn has support for a logfile optional arg- if 
+  specified, spawn logs stdout/stderr via tee -i -a to the specified file.
+  Note portage_exec.spawn doesn't currently support this option.
+
   25 Aug 2004; <genone@gentoo.org> pym/portage.py, +pym/portage_checksum.py, 
   pym/portage_gpg.py, -pym/portage_md5.py:
   renamed portage_md5 to portage_checksum which includes support for sha1.
