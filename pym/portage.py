@@ -82,17 +82,17 @@ def exithandler(foo,bar):
 	"""Handles ^C interupts in a sane manner"""
 	global features,secpass
 	#remove temp sandbox files
-	if (secpass==2) and ("sandbox" in features):
-		mypid=os.fork()
-		if mypid==0:
-			myargs=[]
-			mycommand="/usr/lib/portage/bin/testsandbox.sh"
-			myargs=["testsandbox.sh","0"]
-			myenv={}
-			os.execve(mycommand,myargs,myenv)
-			os._exit(1)
-			sys.exit(1)
-		retval=os.waitpid(mypid,0)[1]
+#	if (secpass==2) and ("sandbox" in features):
+#		mypid=os.fork()
+#		if mypid==0:
+#			myargs=[]
+#			mycommand="/usr/lib/portage/bin/testsandbox.sh"
+#			myargs=["testsandbox.sh","0"]
+#			myenv={}
+#			os.execve(mycommand,myargs,myenv)
+#			os._exit(1)
+#			sys.exit(1)
+#		retval=os.waitpid(mypid,0)[1]
 #		if retval==0:
 #			if os.path.exists("/tmp/sandboxpids.tmp"):
 #				os.unlink("/tmp/sandboxpids.tmp")

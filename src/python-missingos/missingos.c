@@ -51,7 +51,7 @@ missingos_lchown(PyObject *self, PyObject *args) {
 static char missingos_mknod__doc__[] =
 "mknod(path, type, major, minor [, mode=0600 ]) -> None\n\
 Create a special file. Mode fixed at 0600.\
-Note that for type 'p' major and minor are ignored.
+Note that for type 'p' major and minor are ignored.\
 ";
 
 static PyObject *

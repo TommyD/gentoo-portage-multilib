@@ -1,6 +1,11 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  15 Oct 2002; Martin Schlemmer <azarah@gentoo.org> portage.py, missingos.c:
+  Remove testsandbox.sh, and comment code in portage.py that still
+  used it to no real use.  Add another '\' to the 'missingos_mknod__doc__'
+  string in src/python-missingos/missingos.c to fix failure with gcc-3.3.
+
   15 Oct 2002; Nicholas Jones <carpaski@gentoo.org> portage.py, emerge:
   emerge depclean -- Removes all packages that are not explicitly or
                      dependancy merged.
