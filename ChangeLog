@@ -1,6 +1,11 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  08 May 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: An empty
+  USE_ORDER (due to an out-of-date /etc/make.globals) would cause USE to always
+  be empty.  I added a reasonable default USE_ORDER if USE_ORDER is not found
+  in any of the config files, fixing this problem.
+  
   06 May 2002; Daniel Robbins <drobbins@gentoo.org> emerge: post bug #1841
   cleanups; converted from .hasnode() to .dep_match() (correct) in
   getworldlist().

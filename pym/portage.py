@@ -662,6 +662,9 @@ class config:
 		self.configlist=[self.configdict["env"],self.configdict["conf"],self.configdict["defaults"],self.configdict["globals"]]
 		self.populated=1
 		useorder=self["USE_ORDER"]
+		if not useorder:
+			#reasonable defaults; this is important as without USE_ORDER, USE will always be "" (nothing set)!
+			useorder="env:conf:auto:defaults"
 		self.usevaluelist=useorder.split(":")
 		# cumulative Portage variables with "-" support: USE and FEATURES
 		# use "standard" variable regeneration code to initially set the cumulative FEATURES variable
