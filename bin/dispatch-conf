@@ -13,7 +13,8 @@
 #
 
 from stat import *
-import os, shutil, sys, string, re, commands
+from random import *
+import os, shutil, sys, string, re, commands, atexit
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 
 import portage, dispatch_conf
@@ -23,6 +24,31 @@ DIFF_CONTENTS        = 'diff -Nau %s %s'
 DIFF_CVS_INTERP      = 'diff -Nau %s %s | grep "^[+-][^+-]" | grep -v "# .Header:.*"'
 DIFF_WSCOMMENTS      = 'diff -Nau %s %s | grep "^[+-][^+-]" | grep -v "^[-+]#" | grep -v "^[-+][:space:]*$"'
 MERGE                = 'sdiff --suppress-common-lines --output=%s %s %s'
+
+# We need a secure scratch dir and python does silly verbose errors on the use of tempnam
+SCRATCH_DIR = None
+while SCRATCH_DIR is None:
+    try:
+        mydir = "/var/lib/portage/dispatch-conf."
+        for x in range(0,8):
+            if int(random() * 3) == 0:
+                mydir += chr(int(65+random()*26.0))
+            elif int(random() * 2) == 0:
+                mydir += chr(int(97+random()*26.0))
+            else:
+                mydir += chr(int(48+random()*10.0))
+        if os.path.exists(mydir):
+            continue
+        os.mkdir(mydir)
+        SCRATCH_DIR = mydir
+    except OSError, e:
+        if e.errno != 17:
+            raise
+
+# Ensure the scratch dir is deleted
+def cleanup(mydir=SCRATCH_DIR):
+    shutil.rmtree(SCRATCH_DIR)
+atexit.register(cleanup)
 
 LOG_CHANGES_TO = '/tmp/dispatch-conf.changes'
 
@@ -154,7 +180,7 @@ class dispatch:
                 elif c == 'n':
                     break
                 elif c == 'm':
-                    merged = '/tmp/dispatch-conf.merged.%i' % (os.getpid (),)
+                    merged = SCRATCH_DIR+"/"+os.path.basename(conf['current'])
                     print
                     os.system (MERGE % (merged, conf ['current'], newconf))
                     shutil.move (merged, mrgconf)
