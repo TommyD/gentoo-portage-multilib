@@ -62,6 +62,9 @@ myopts=[]
 myfiles=[]
 edebug=0
 
+#Freeze the portdbapi for enhanced performance:
+portage.portdb.freeze()
+
 # process short actions and options
 tmpcmdline=sys.argv[1:]
 tmpcmdline.extend(portage.settings["EMERGE_OPTS"].split())
@@ -357,13 +360,11 @@ class depgraph:
 		addme = should I be added to the tree? (for the --onlydeps mode)"""
 		#if mybigkey==None:
 		#	return
-		
 		#update our groovy spinner
 		global spinner, spinpos
 		sys.stdout.write("\b"+spinner[spinpos])
 		spinpos=(spinpos+1)%8
 		sys.stdout.flush()
-		
 		#drobbins, 19 Jul 2002: Can't trigger this code below, so I'm commenting it out.  It appears to
 		#be an old optimization that's no longer needed.
 		#if self.digraph.hasnode(mybigkey):
@@ -389,132 +390,164 @@ class depgraph:
 		#		print "DEBUG: skipping",mykey
 		#		#already merged, skip.
 		#		return 1
+	
+		mytype,myroot,mykey=mybigkey
 		
+		#select the correct /var database that we'll be checking against
+		vardbapi=portage.db[myroot]["vartree"].dbapi
+		if "--update" in self.myopts:
+			#for --update, we want to rebuild an entire empty tree of dependencies, and then we won't merge was is already merged.
+			mydbapi=self.fakedbapi
+		else:
+			mydbapi=vardbapi
+	
+		merging=1
+		#this is where we add the node to the list of packages to merge
+		if addme:
+			#if the package is already on the system, we add a "nomerge" directive, otherwise we add a "merge" directive.
+			if mytype=="blocks":
+				#encode parent information:
+				if myparent:
+					mybigkey.append(myparent.split()[2])
+				else:
+					mybigkey.append(None)
+			elif "--emptytree" in self.myopts:
+				#if we are in "--emptytree" mode, then we want to merge the package even if it is already installed.
+				mybigkey.append("merge")
+			elif not vardbapi.cpv_exists(mykey):
+				#the package isn't on the system, so merge it.
+				mybigkey.append("merge")
+			else:	
+				#the package is on the system, so don't merge it.
+				mybigkey.append("nomerge")
+				merging=0
+			#whatever the case, we need to add the node to our digraph so that children can depend upon it.
+		if mytype=="blocks":	
+			if not myparent:
+				if portage.db[myroot]["vartree"].dbapi.match(mykey):
+					self.digraph.addnode(string.join(mybigkey),myparent)
+			else:
+				#is our parent the same ebuild that we're blocking?  If so, ignore this blocker.
+				parenttype,parentroot,parentkey,mergeme=string.split(myparent)
+				mykexp=portage.dep_expand(mykey,mydbapi)
+				pakexp=portage.dep_expand(parentkey,mydbapi)
+				myrealkey=portage.dep_getkey(mykexp)
+				parealkey=portage.dep_getkey(pakexp)
+				if myrealkey!=parealkey:
+					self.digraph.addnode(string.join(mybigkey),myparent)
+			return 1
+		else:		
+			self.digraph.addnode(string.join(mybigkey),myparent)
 		
-		#split our composite key into parts
-		mytype,myroot,mykey=string.split(mybigkey)
-		
-		
-		
+		if "--nodeps" in self.myopts:
+			#if we are not processing dependencies, then, err... abort here and don't process dependencies :)
+			return 1
+
+		if (not "--update" in myopts) and (not merging):
+			#optimization: there is no need to process dependencies if we are not in --update mode (and thus not doing an exhaustive tree
+			#build) and we are not merging the current key.  If we aren't merging the current key, there's no need to merge its deps.
+			return 1
+
+		#below, we tweak our --update functionality to not process dependencies of packages that are already up-to-date.
+		#In some ways, this sub-optimal but it's best for now since we don't have the benefit of SLOT-aware updates.
+		if ("--update" in myopts) and (not merging):
+			return 1
+
 		if mytype=="binary":
-			if not portage.db[portage.root]["bintree"].exists_specific(mykey):
-				print "\n\n!!!",mytype,mykey,"not found (possibly blocked by package.mask)\n"
-				sys.exit(1)
+			#if not portage.db[portage.root]["bintree"].exists_specific(mykey):
+			#	print "\n\n!!!",mytype,mykey,"not found (possibly blocked by package.mask)\n"
+			#	sys.exit(1)
 			mypkgparts=portage.catpkgsplit(mykey)
 			mytbz2=xpak.tbz2(portage.db[portage.root]["bintree"].getname(mykey))
 			edepend=["",string.join(mytbz2.getelements("RDEPEND")," "),mytbz2.getfile("SLOT",mypkgparts[2])]
 		elif mytype=="ebuild":
-			if not portage.db[myroot]["porttree"].exists_specific(mykey):
-				print "\n\n!!!",mytype,mykey,"not found (possibly blocked by package.mask)\n"
-				sys.exit(1)
-			myebuild=portage.db[myroot]["porttree"].getname(mykey)
+			#Since we comment out these lines, we assume that anything fed to us is a valid selection from PORTDIR
+			#if not portage.db[myroot]["porttree"].exists_specific(mykey):
+			#	print "\n\n!!!",mytype,mykey,"not found (possibly blocked by package.mask)\n"
+			#	sys.exit(1)
+			#myebuild=portage.db[myroot]["porttree"].getname(mykey)
 			try:
-				edepend=portage.db[myroot]["porttree"].dbapi.aux_get(mykey,portage.auxdbkeys)
+				edepend=portage.db[myroot]["porttree"].dbapi.aux_get(mykey,["DEPEND","RDEPEND"])
 			except (KeyError,IOError):
 				print "emerge: create(): aux_get() error on",mykey+"; aborting..."
 				sys.exit(1)
-		elif mytype=="blocks":
-			edepend=None
-			if not myparent:
-				if portage.isspecific(mykey):
-					if portage.db[myroot]["vartree"].exists_specific(mykey):
-						self.digraph.addnode(mybigkey,myparent)
-				else:
-					if portage.db[myroot]["vartree"].hasnode(mykey):
-						self.digraph.addnode(mybigkey,myparent)
-			else:
-				parenttype,parentroot,parentkey=string.split(myparent)
-				if portage.isspecific(mykey):
-					if portage.db[myroot]["vartree"].exists_specific(mykey):
-						if portage.db[myroot]["vartree"].resolve_key(mykey) != portage.db[myroot]["vartree"].resolve_key(parentkey):
-							#add the blocker, since we are not a package like app-editors/xemacs with a !virtual/xemacs in it
-							self.digraph.addnode(mybigkey,myparent)
-				else:
-					if portage.db[myroot]["vartree"].hasnode(mykey):
-						parentsplit=portage.catpkgsplit(parentkey)
-						parentkey=parentsplit[0]+"/"+parentsplit[1]
-						if portage.db[myroot]["vartree"].resolve_key(mykey) != portage.db[myroot]["vartree"].resolve_key(parentkey):
-							#add the blocker, since we are not a package like app-editors/xemacs with a !virtual/xemacs in it
-							self.digraph.addnode(mybigkey,myparent)
-		if edepend:
-			mydep={}	
-			if myroot=="/":
-				mydep["/"]=edepend[0]+" "+edepend[1]
-			else:
-				# We can no longer do this: mydep["/"],mydep[myroot]=edepend
-				# edepend now has more than 2 elements.
-				mydep["/"]=edepend[0]
-				mydep[myroot]=edepend[1]
-			if addme:
-				self.digraph.addnode(mybigkey,myparent)
-			if "--nodeps" in self.myopts:
-				return 1
+		
+		mydep={}	
+		if myroot=="/":
+			mydep["/"]=edepend[0]+" "+edepend[1]
+		else:
+			# We can no longer do this: mydep["/"],mydep[myroot]=edepend
+			# edepend now has more than 2 elements.
+			mydep["/"]=edepend[0]
+			mydep[myroot]=edepend[1]
+	
+		#Cycle through all our dependencies by their "root" (root fs where they will be installed):
+		for myroot in mydep.keys():
 
-			#Cycle through all our dependencies by their "root" (root fs where they will be installed):
-			for myroot in mydep.keys():
-
-				#If we're doing an update, check dependencies against an empty tree.
-				if "--update" in self.myopts:
-					mycheck=portage.dep_check(mydep[myroot],self.fakedbapi)
+			mycheck=portage.dep_check(mydep[myroot],mydbapi)
+			if mycheck[0]==0:
+				print "emerge: error merging",mytype,mykey+": invalid dependency in:"
+				print white("\n'"+mydep[myroot]+"'")
+				print ">>> Please report this ebuild error to http://bugs.gentoo.org.\n"
+				return 0
+		
+			#Now, handle unsatisfied dependencies
+			for x in mycheck[1]:
+				if addme:
+					parent=mybigkey
 				else:
-					#Otherwise, check deps against the "live" tree
-					mycheck=portage.db[myroot]["vartree"].depcheck(mydep[myroot])
-				if mycheck[0]==0:
-					if mytype=="binary":
-						print "!!! Error merging",mytbz2+": invalid dependency in:"
-					elif mytype=="ebuild":
-						print "!!! Error merging",myebuild+": invalid dependency in:"
-					else:
-						print "!!! Error merging",mykey+": invalid dependency in:"
-					print white("\n'"+mydep[myroot]+"'")
-					print ">>> Please report this ebuild error to http://bugs.gentoo.org.\n"
-					return 0
-			
-				#Now, handle unsatisfied dependencies
-				for x in mycheck[1]:
 					parent=None
-					if addme:
-						parent=mybigkey
-					# support mutual exclusive deps
-					mydep2=x
-					if mydep2[0]=="!":
-						mydep2=x[1:]
+				# support mutual exclusive deps
+				mydep2=x
+				if mydep2[0]=="!":
+					mydep2=x[1:]
 
-					if x[0]=="!":
-						#add our blocker; it will be ignored later if necessary (if we are remerging the same pkg, for example)
-						myk="blocks "+myroot+" "+mydep2
-					else:
-						#We are not processing a blocker but a normal dependency
-						myeb=portage.db[portage.root]["porttree"].dep_bestmatch(mydep2)
-						if not myeb:
-							if not mykey:
-								print "\n!!! Error: couldn't find match for",x
-							else:
-								print "\n!!! Error: couldn't find match for",x,"in",mykey
-							print
-							sys.exit(1)
-
-						if "--usepkg" in self.myopts:
-							#If we want to use packages, see if we have a pre-built one...
-							mypk=portage.db[portage.root]["bintree"].dbapi.match(x)
-							if myeb in mypk:
-								#Use it only if it's exactly the version we want.
-								myk="binary "+portage.root+" "+myeb
-							else:
-								myk="ebuild "+myroot+" "+myeb
+				if x[0]=="!":
+					#add our blocker; it will be ignored later if necessary (if we are remerging the same pkg, for example)
+					#myk=["blocks",myroot,portage.dep_expand(mydep2,mydbapi)]
+					myk=["blocks",myroot,mydep2]
+				else:
+					#We are not processing a blocker but a normal dependency
+					myeb=portage.db[portage.root]["porttree"].dep_bestmatch(mydep2)
+					if not myeb:
+						if not mykey:
+							print "\n!!! Error: couldn't find match for",x
 						else:
-							myk="ebuild "+myroot+" "+myeb
+							print "\n!!! Error: couldn't find match for",x,"in",mykey
+						print
+						sys.exit(1)
 
-					#if we have not yet added this matched dependency to our digraph...
-					if not self.digraph.hasnode(myk):
-						#and the package in question has not yet been merged to myroot...
-						if not portage.db[myroot]["vartree"].exists_specific(x):
-							#then recursively process this match dependency, returning 0 if error
-							if not self.create(myk,parent):
-								return 0
+					if "--usepkg" in self.myopts:
+						#If we want to use packages, see if we have a pre-built one...
+						mypk=portage.db[portage.root]["bintree"].dbapi.match(x)
+						if myeb in mypk:
+							#Use it only if it's exactly the version we want.
+							myk=["binary",portage.root,myeb]
+						else:
+							myk=["ebuild",myroot,myeb]
 					else:
-						#if we have added this matched dependency before, just increase its reference count.
-						self.digraph.addnode(myk,parent)
+						myk=["ebuild",myroot,myeb]
+
+				hacko=myk[:]
+				hacko2=myk[:]
+				hacko.append("merge")
+				hacko2.append("nomerge")
+				
+				if not self.digraph.hasnode(string.join(hacko)):
+					if not self.digraph.hasnode(string.join(hacko2)):
+						#this conditional is needed to prevent infinite recursion on already-processed deps
+						self.create(myk,string.join(parent))
+				
+				#if we have not yet added this matched dependency to our digraph...
+				#if not self.digraph.hasnode(myk):
+				#	##and the package in question has not yet been merged to myroot...
+				#	#if not portage.db[myroot]["vartree"].exists_specific(x):
+				#	#then recursively process this match dependency, returning 0 if error
+				#	if not self.create(myk,parent):
+				#		return 0
+				#else:
+				#	#if we have added this matched dependency before, just increase its reference count.
+				#	self.digraph.addnode(myk,parent)
 		return 1
 	
 	def altlist(self):
@@ -583,11 +616,11 @@ class depgraph:
 			if "--usepkg" in self.myopts:
 				mypk=portage.db[portage.root]["bintree"].dep_bestmatch(mydep)
 				if myeb==mypk:
-					myk="binary "+portage.root+" "+mypk
+					myk=["binary ",portage.root,mypk]
 				else:
-					myk="ebuild "+portage.root+" "+myeb
+					myk=["ebuild",portage.root,myeb]
 			else:
-				myk="ebuild "+portage.root+" "+myeb
+				myk=["ebuild",portage.root,myeb]
 			if not self.create(myk):
 				return 0
 		return 1
@@ -626,14 +659,24 @@ class depgraph:
 		for x in mylist:
 			if x[0]=="blocks":
 				addl=""+red("B")+"    "
-				myspeckey=portage.db[x[1]]["vartree"].resolve_key(x[2])
-				if myspeckey!=x[2]:
-					print "["+x[0]+" "+addl+"]",red(x[2]+" ("+myspeckey+")")
+				resolved=portage.db[x[1]]["vartree"].resolve_key(x[2])
+				print "["+x[0]+" "+addl+"]",red(resolved),
+				if resolved!=x[2]:
+					if x[3]:
+						print red("(\""+x[2]+"\" from pkg "+x[3]+")")
+					else:
+						print red("(\""+x[2]+"\")")
 				else:
-					print "["+x[0]+" "+addl+"]",red(x[2])
+					if x[3]:
+						print red("(from pkg "+x[3]+")")
+					else:
+						print
 			else:
-				if ("--update" in self.myopts) and (portage.db[x[1]]["vartree"].exists_specific(x[2])):
-					#already merged, continue
+				#if ("--update" in self.myopts) and (portage.db[x[1]]["vartree"].exists_specific(x[2])):
+				#	print "DEBUG: removing",x[2],"from list"
+				#	#already merged, continue
+				#	continue
+				if x[3]=="nomerge":
 					continue
 				if (not "--emptytree" in myopts) and portage.db[x[1]]["vartree"].exists_specific(x[2]):
 					addl="  "+yellow("R")+"  "
@@ -979,16 +1022,15 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 	if "--pretend" in myopts:
 		print "emerge: the \"sync\" and \"rsync\" actions do not support \"--pretend.\""
 		sys.exit(1)
-	rclean=0
+	if "--clean" in myopts:
+		print "emerge: --clean is now on by default; no need to specify this option."
+		sys.exit(1)
 	myportdir=portage.settings["PORTDIR"]
 	if myportdir[-1]=="/":
 		myportdir=myportdir[:-1]
 	if not os.path.exists(myportdir):
 		print ">>>",myportdir,"not found, creating it."
 		os.makedirs(myportdir,0755)	
-	if "--clean" in myopts:
-		#we'll --delete files when we rsync
-		rclean=1
 	syncuri=portage.settings["SYNC"]
 	os.umask(022)
 	if syncuri[:8]=="rsync://":
@@ -996,9 +1038,7 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 			print "!!! /usr/bin/rsync does not exist, so rsync support is disabled."
 			print "!!! Type \"emerge net-misc/cvs\" to enable rsync support."
 			sys.exit(1)
-		mycommand="/usr/bin/rsync -rlptDvz --stats "
-		if rclean:
-			mycommand=mycommand+"--delete --exclude='distfiles/*' --exclude='packages/*' "
+		mycommand="/usr/bin/rsync -rlptDvz --stats --delete --exclude='distfiles/*' --exclude='packages/*' "
 		mycommand=mycommand+syncuri+"/* "+myportdir
 		print ">>> starting rsync with "+syncuri+"..."
 	#protect users that did not set a default umask
@@ -1095,7 +1135,7 @@ elif "--help" in myopts:
 		print
 		print bold("Usage: ")+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] [ "+turquoise("ebuildfile")+" | "+turquoise("tbz2file")+" | "+turquoise("dependency")+" ] ..."
 		print "       "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] "+turquoise("system")
-		print "       "+turquoise("emerge")+" [ "+green("--clean")+" "+green("-c")+" ] "+turquoise("sync")+" | "+turquoise("rsync")
+		print "       "+turquoise("emerge")+" "+turquoise("sync")+" | "+turquoise("rsync")
 		print "       "+turquoise("emerge")+" "+green("--help")+" "" "+green("-h")+" [ "+turquoise("system")+" | "+turquoise("config")+" ] "
 		print
 		print turquoise("Help (this screen):")
@@ -1246,7 +1286,7 @@ elif "--help" in myopts:
 		print "              emerge to print out GNU info errors, if any."
 	elif myaction in ["rsync","sync"]:
 		print
-		print bold("Usage: ")+turquoise("emerge")+" [ "+green("--clean")+" "+green("-c")+" ] "+turquoise("sync")
+		print bold("Usage: ")+turquoise("emerge")+" "+turquoise("sync")
 		print
 		print "       \"emerge sync\" tells emerge to update the Portage tree as specified in"
 		print "       The SYNC variable found in /etc/make.conf.  By default, SYNC instructs"
@@ -1255,8 +1295,10 @@ elif "--help" in myopts:
 		print "       put 'SYNC=\"cvs://:pserver:cvs.gentoo.org:/home/cvsroot\" in your"
 		print "       /etc/make.conf.  If you haven't used anoncvs before, you'll be prompted"
 		print "       for a password, which for cvs.gentoo.org is empty (just hit enter.)"
-		print "       "+turquoise("NOTE:")+" if using rsync, adding a --clean will tell emerge to"
-		print "       remove any files in your Portage tree that aren't in our main repository."
+		print
+		print "       "+turquoise("WARNING:")
+		print "       If using our rsync server, emerge will clean out all files that do not"
+		print "       exist on it, including ones that you may have created."
 		print
 	elif myaction=="system":
 		print
@@ -1394,7 +1436,7 @@ else:
 			#		sys.exit(1)
 			if not "--oneshot" in myopts:
 				favorites.append(mykey)
-			if not mydepgraph.create(mytype+" "+portage.root+" "+mykey,None,"--onlydeps" not in myopts):
+			if not mydepgraph.create([mytype,portage.root,mykey],None,"--onlydeps" not in myopts):
 				sys.exit(1)
 		print "\b\b ...done!"
 	if "--pretend" in myopts:

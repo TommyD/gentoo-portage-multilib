@@ -23,7 +23,7 @@ except KeyError:
 	print "Please fix this so that Portage can operate correctly (It's normally GID 10)"
 	pass
 
-incrementals=["USE","FEATURES","ACCEPT_KEYWORDS","ACCEPT_LICENSE","CONFIG_PROTECT_MASK"]
+incrementals=["USE","FEATURES","ACCEPT_KEYWORDS","ACCEPT_LICENSE","CONFIG_PROTECT_MASK","CONFIG_PROTECT"]
 
 "this fixes situations where the current directory doesn't exist"
 try:
@@ -751,10 +751,14 @@ class config:
 		usesplit=string.split(self.configlist[-1]["USE"])
 	
 	def __getitem__(self,mykey):
+		if mykey=="CONFIG_PROTECT_MASK":
+			suffix=" /etc/env.d"
+		else:
+			suffix=""
 		for x in self.lookuplist:
 			if x.has_key(mykey):
-				return x[mykey]
-		return ""
+				return x[mykey]+suffix
+		return suffix
 
 	def has_key(self,mykey):
 		for x in self.lookuplist:
@@ -833,29 +837,6 @@ def spawn(mystring,debug=0,free=0):
 		#interrupted by signal
 		return 16
 
-#spawn up to a certain number of simultaneous child procesess
-mspawnmax=4
-mspawncur=0
-def multispawn(mycommand=None,myargs=None):
-	global mspawnmax,mspawncur
-	if mycommand==None:
-		mymax=1
-	else:
-		mymax=mspawnmax
-	while mspawncur>mymax:
-		myrpid,retval=os.wait()
-		mspawncur=mspawncur-1
-		return myrpid
-	if not mycommand:
-		return
-	mypid=os.fork()
-	if mypid==0:
-		os.execve(mycommand,myargs,settings.environ())
-		os._exit(1)
-		return # should never get reached
-	mspawncur=mspawncur+1
-	return mypid
-	
 def fetch(myuris):
 	"fetch files.  Will use digest file if available."
 	if ("mirror" in features) and ("nomirror" in settings["RESTRICT"].split()):
@@ -2587,6 +2568,9 @@ class portdbapi(dbapi):
 		global mtimedb
 		self.root=settings["PORTDIR"]
 		self.auxcache={}
+		#if the portdbapi is "frozen", then we assume that we can cache everything (that no updates to it are happening)
+		self.xcache={}
+		self.frozen=0
 
 	def aux_get(self,mycpv,mylist,strict=0):
 		"stub code for returning auxilliary db information, such as SLOT, DEPEND, etc."
@@ -2698,13 +2682,30 @@ class portdbapi(dbapi):
 			return []
 		return returnme
 
+	def freeze(self):
+		for x in ["list-visible","bestmatch-visible","match-visible","match-all"]:
+			self.xcache[x]={}
+		self.frozen=1
+
+	def melt(self):
+		self.xcache={}
+		self.frozen=0
+
 	def xmatch(self,level,origdep,mydep=None,mykey=None,mylist=None):
 		"caching match function; very trick stuff"
+		#if no updates are being made to the tree, we can consult our xcache...
+		if self.frozen:
+			try:
+				return self.xcache[level][origdep]
+			except KeyError:
+				pass
+
 		if not mydep:
 			#this stuff only runs on first call of xmatch()
 			#create mydep, mykey from origdep
 			mydep=dep_expand(origdep,self)
 			mykey=dep_getkey(mydep)
+	
 		if level=="list-visible":
 			#a list of all visible packages, not called directly (just by xmatch())
 			#myval=self.visible(self.cp_list(mykey))
@@ -2730,11 +2731,12 @@ class portdbapi(dbapi):
 		else:
 			print "ERROR: xmatch doesn't handle",level,"query!"
 			raise KeyError
+		if self.frozen and (level not in ["match-list","bestmatch-list"]):
+			self.xcache[level][mydep]=myval
 		return myval
 
 	def match(self,mydep):
 		return self.xmatch("match-visible",mydep)
-
 
 	def visible(self,mylist):
 		"""two functions in one.  Accepts a list of cpv values and uses the package.mask *and*
@@ -2973,7 +2975,6 @@ class dblink:
 			ppath=os.path.normpath(self.myroot+"/"+x)+"/"
 			if os.path.isdir(ppath):
 				self.protect.append(ppath)
-				print ">>> Config file management enabled for",ppath
 			
 		self.protectmask=[]
 		for x in string.split(settings["CONFIG_PROTECT_MASK"]):

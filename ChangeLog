@@ -1,6 +1,24 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  24 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, emerge: rewrote
+  create() function, closing bug #5469.  Also added freeze() and melt() methods
+  to portdbapi to enhance performance.
+  
+  24 Jul 2002; Daniel Robbins <drobbins@gentoo.org> emerge: the "rsync --clean"
+  option has been depreciated.  Cleaning is now on by default, closing bug
+  #5527.
+
+  24 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, make.globals:
+  It should now be safe to do what Spider did in the gconf ebuild and add
+  CONFIG_PROTECT and CONFIG_PROTECT_MASK to /etc/env.d entries.  Both variables
+  are now incremental, just like USE, and you can use "-path" to turn a path
+  off, or add CONFIG_PROTECT{_MASK}="path" to *add* a path to the list (this
+  will not overwrite "parent" settings.  Also added "/etc/env.d/" to
+  CONFIG_PROTECT_MASK in /etc/make.globals.  Also, very importantly, /etc/env.d
+  is now hard-coded into CONFIG_PROTECT_MASK as it was in earlier versions of
+  Portage and cannot be removed.
+  
   24 Jul 2002: Daniel Robbins <drobbins@gentoo.org> emerge, portage.py: two
   fixes; first, I removed xcache.p support from portage.py.  The code was
   designed based on the false theory that directory mtimes are updated whenever

@@ -16,6 +16,7 @@ DISTDIR=${PORTDIR}/distfiles
 PKGDIR=${PORTDIR}/packages
 RPMDIR=${PORTDIR}/rpm
 CONFIG_PROTECT="/etc /var/qmail/control /usr/share/config /usr/kde/2/share/config /usr/kde/3/share/config"
+CONFIG_PROTECT_MASK="/etc/gconf"
 
 # Options passed to make during the build process
 MAKEOPTS="-j2"
