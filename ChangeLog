@@ -1,3 +1,11 @@
+Portage 1.6.9, released 15 Sep 2001
+===================================
+
+	*portage.py
+	unmerge() now does not touch device nodes.  Unlinking them or touching them
+	in any way is bad practice.
+
+
 Portage 1.6.8, released 12 Sep 2001
 ===================================
 

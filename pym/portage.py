@@ -1855,28 +1855,9 @@ class dblink:
 				os.unlink(obj)
 				print "<<<       ","fif",obj
 			elif pkgfiles[obj][0]=="dev":
-				if not isdev(obj):
-					print "--- !dev  ","dev", obj
-					continue
-				myppath=""
-				for ppath in self.protect:
-					epath=expandpath(obj)
-					if epath[0:len(ppath)]==ppath:
-						masked=0
-						#config file management
-						for pmpath in self.protectmask:
-							if epath[0:len(pmpath)]==pmpath:
-								#skip, it's in the mask
-								masked=1
-								break
-						if not masked: 
-							myppath=ppath
-							break
-				if myppath:
-					print "--- cfg   ","fif",obj
-					continue
-				os.unlink(obj)
-				print "<<<       ","dev",obj
+				#we now do *not* unlink device nodes, because doing so is dangerous
+				print "--- !dev  ","dev", obj
+				continue
 
 		#remove provides
 		for mycatpkg in self.getelements("PROVIDE"):
