@@ -32,8 +32,7 @@ fi
 
 # Fix the temp dirs so we don't have booboos.
 for DIR in $(find ${BUILD_PREFIX} -type d -name temp -maxdepth 2 -mindepth 2 -print); do
-	echo "fixing: $DIR"
-	chown -R portage $DIR
+	chown -R portage $DIR &>/dev/null
 done
 
 if [ -f "${WORKDIR}/environment" ]; then
