@@ -39,7 +39,6 @@ options=["--all",
 	"--noreplace",
 	"--onlydeps",
 	"--pretend",
-	"--safe",
 	"--usepkg",
 	"--verbose",
 	"--update",
@@ -51,6 +50,7 @@ shortmapping={"a":"--autoclean",
 	"A":"--all",
 	"b":"--buildpkg",
 	"c":"clean",
+	"C":"unmerge",
 	"e":"--emptytree",
 	"d":"--debug",
 	"f":"--fetchonly",
@@ -60,7 +60,6 @@ shortmapping={"a":"--autoclean",
 	"o":"--onlydeps",
 	"p":"--pretend",
 	"s":"search",
-	"S":"--safe",
 	"u":"--update",
 	"v":"--verbose",
 	"V":"--version" }
@@ -766,24 +765,14 @@ elif "--help" in myopts:
 		print
 		print turquoise("Actions:")
 		print "       "+green("clean")+" ("+green("-c")+" short option)"
-		print "              Cleans the system by removing outdated packages."
-		print "              The behaviour is customized by setting an environmental variable"
-		print "              CLEANMODE in /etc/make.conf. You can temporarely modify the"
-		print "              behaviour by redefining it immediately before the emerge command."
-		print "              It supports the following settings:"
-		print "              "+bold("oldrevs")
-		print "              remove old revisions of each package (very safe)"
-		print "              "+bold("oldversions")
-		print "              remove old versions of each package (can cause problems)"
-		print "              "+bold("oldslots")
-		print "              remove old binary compatibility slots of each package (very safe)"
-		print
-		print "       "+green("unmerge")+" (no short option)"
-		print "              "+turquoise("WARNING: This option will remove *all* matching packages")
-		print "              Removes an installed package. the arguments can be in several"
-		print "              different formats : /var/db/pkg/category/package-version,"
-		print "              or dependency specification.  Here are a few examples of the"
- 		print "              dependency specification format:"
+		print "              Cleans the system by removing outdated packages which will not"
+		print "              remove functionalities or prevent your system from working."
+		print "              The arguments can be in several different formats :"
+		print "              * world "
+		print "              * system "
+		print "              * /var/db/pkg/category/package-version, or"
+		print "              * dependency specification."
+		print "              Here are a few examples of the dependency specification format:"
 		print "              "+bold("binutils")+" matches"
 		print "                  binutils-2.11.90.0.7 and binutils-2.11.92.0.12.3-r1"
 		print "              "+bold(">binutils-2.11.90.0.7")+" matches"
@@ -800,6 +789,12 @@ elif "--help" in myopts:
 		print "                  binutils-2.11.90.0.7"
 		print "              "+bold("<=sys-devel/binutils-2.11.92.0.12.3-r1")+" matches"
 		print "                  binutils-2.11.90.0.7 and binutils-2.11.92.0.12.3-r1"
+		print
+		print "       "+green("unmerge")+" ("+green("-C")+" short option)"
+		print "              "+turquoise("WARNING: This action can remove important packages!")
+		print "              "+turquoise("         Use with care!!!")
+		print "              Removes the old versions and revisions of installed packages."
+		print "              The argument format is the same as for the "+bold("clean")+" action."
 		print
 		print "       "+green("update")+" ("+green("-u")+" short option)"
 		print "              Updates packages that are part of the base system profile to the"
@@ -818,6 +813,12 @@ elif "--help" in myopts:
 		print "                  list all available packages "
 		print
 		print turquoise("Options:")
+		print "       "+green("--all")+" ("+green("-A")+" short option)"
+		print "              makes "+bold("emerge clean")+" or "+bold("emerge unmerge")+" remove all matching packages"
+		print "              without checking which versions are old and outdated."
+		print "              This thus effectively removes a package "+bold("completely")+" from your"
+		print "              system. Use with care!!!"
+		print
 		print "       "+green("--autoclean")+" ("+green("-a")+" short option)"
 		print "              emerge normally cleans out the package-specific temporary"
 		print "              build directory before it starts the building a package.  With"
@@ -852,6 +853,13 @@ elif "--help" in myopts:
 		print "              Merge specified packages, but don't merge any dependencies."
 		print "              Note that the build may fail if deps aren't satisfied."
 		print 
+		print "       "+green("--noreplace")+" ("+green("-n")+" short option)"
+		print "              Skip the packages specified on the command-line that have"
+		print "              already been installed.  Without this option, any packages,"
+		print "              ebuilds, or deps you specify on on the command-line *will* cause"
+		print "              Portage to remerge the package, even if it is already installed."
+		print "              Note that Portage won't remerge dependencies by default."
+		print
 		print "       "+green("--onlydeps")+" ("+green("-o")+" short option)"
 		print "              Only merge (or pretend to merge) the dependencies of the"
 		print "              specified packages, not the packages themselves."
@@ -864,13 +872,6 @@ elif "--help" in myopts:
 		print "              U = upgrading, R = replacing, B = blocked by an already installed"
 		print "              package."
 		print
-		print "       "+green("--noreplace")+" ("+green("-n")+" short option)"
-		print "              Skip the packages specified on the command-line that have"
-		print "              already been installed.  Without this option, any packages,"
-		print "              ebuilds, or deps you specify on on the command-line *will* cause"
-		print "              Portage to remerge the package, even if it is already installed."
-		print "              Note that Portage won't remerge dependencies by default."
-		print
 		print "       "+green("--usepkg")+" ("+green("-k")+" short option)"
 		print "              tell emerge to use binary packages (from $PKGDIR) if they are"
 		print "              available, thus possibly avoiding some time-consuming compiles."
@@ -878,16 +879,6 @@ elif "--help" in myopts:
 		print "              PKGDIR=/mnt/cdrom/packages and then use this option to have"
 		print "              emerge \"pull\" binary packages from the CD in order to satisfy" 
 		print "              dependencies."
-		print
-		print "       "+green("--safe")+" ("+green("-S")+" short option)"
-		print "              makes emerge unmerge only remove the packages that are outdated"
-		print "              by checking which versions are old and by keeping only the newest"
-		print "              ones. This is the same as emerge clean and uses the same"
-		print "              CLEANMODE setting."
-		print
-		print "       "+green("--all")+" ("+green("-A")+" short option)"
-		print "              makes emerge clean remove all matches packages without checking"
-		print "              which versions are old and keeping the newest one."
 		print
 		print "       "+green("--verbose")+" ("+green("-v")+" short option)"
 		print "              Tell emerge to run in verbose mode.  Currently, this causes"
@@ -988,11 +979,11 @@ elif "unmerge"==myaction or "clean"==myaction:
 	var_path=portage.root+"var/db/pkg"
 	# process all arguments, verify if they can be resolved to an installed
 	# ebuild file and add the absolute paths of these ebuild to a list
-	if "clean"==myaction and (not myfiles or "world" in myfiles or "system" in myfiles):
+	if not myfiles or "world" in myfiles or "system" in myfiles:
 		if "--all" in myopts and not "--pretend" in myopts:
 			print red("!!!")+" Thanks to the carefulnes of the Gentoo Linux developers, you were preserved"
-			print "from having erased your entire system. "+bold("emerge --all clean")+" can only be used"
-			print "when specifying explicit packages."
+			print "from having erased your entire system. "+bold("emerge --all clean")+" or "
+			print bold("emerge --all unmerge")+" can only be used when specifying explicit packages."
 			print
 		else:
 			mymatches=[]
@@ -1059,21 +1050,8 @@ elif "unmerge"==myaction or "clean"==myaction:
 						else:
 							full_package_paths[full_path]=package
 
-	if ("clean"==myaction and not "--all" in myopts) or ("unmerge"==myaction and "--safe" in myopts):
+	if not "--all" in myopts:
 		if len(full_package_paths) > 0:
-			# remove null slots from the oldslots functionality
-			if "oldslots"==portage.settings["CLEANMODE"]:
-				for full_path in full_package_paths.keys():
-					slot_path=dirname(full_path)+"/SLOT"
-					if os.path.exists(slot_path):
-						slot_file=open(slot_path)
-						package_slot=slot_file.readline().strip()
-						slot_file.close()
-						if package_slot=='':
-							del full_package_paths[full_path]
-					else:
-						del full_package_paths[full_path]
-			
 			latest_ebuilds={}
 			old_ebuilds={}
 			# determine the latest installed packages of each cat/pkg key
@@ -1095,25 +1073,14 @@ elif "unmerge"==myaction or "clean"==myaction:
 				else:
 					package_slot=""
 					
-				# by default the package sets are specified to remove only old revisions
-				# but by taking slots into account
-				# when the --versions option is specified, all previous versions within the same slot are removed too
-				# when the --slots option is specified, all previous slots are removed too
-				if not portage.settings["CLEANMODE"]:
-					print red("!!!")+" CLEANMODE not set, defaulting to '"+white("oldrevs")+"'"
-					print
-					portage.settings["CLEANMODE"]="oldrevs"
-
-				if "oldslots"==portage.settings["CLEANMODE"]:
+				if "unmerge"==myaction:
 					package_set=package_parts[0]+"-"+package_slot
-				elif "oldversions"==portage.settings["CLEANMODE"]:
-					package_set=package_parts[0]+"-"+package_slot
-				elif "oldrevs"==portage.settings["CLEANMODE"]:
-					package_set=package_parts[0]+"-"+package_parts[1]+"-"+package_slot
 				else:
-					print red("!!!")+" Unknown cleanmode '"+white(portage.settings["CLEANMODE"])+"', can't continue the cleaning operation."
-					sys.exit(1)
-				
+					if ""==package_slot:
+						package_set=package_parts[0]+"-"+package_parts[1]+"-"+package_slot
+					else:
+						package_set=package_parts[0]+package_slot
+
 				# create initial latest ebuild information for the current package set if it
 				# doesn't exists yet
 				if not latest_ebuilds.has_key(package_set):

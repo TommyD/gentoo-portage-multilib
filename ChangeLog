@@ -1,6 +1,13 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  07 Apr 2002; Geert Bevin <gbevin@gentoo.org>: make.globals, emerge:
+  Simplified unmerge functionality. Deprecated the CLEANMODE var,
+  emerge clean now removes both revisions and slots automatically,
+  emerge unmerge now removes all versions and revisions by default.
+  Both understand world and system targets, and the --all option which doesn't
+  check which packages are old and outdated.
+  
 *portage-1.8.17 (05 Apr 2002)
 
   05 Apr 2002; Daniel Robbins <drobbins@gentoo.org>: portage.py: no longer
