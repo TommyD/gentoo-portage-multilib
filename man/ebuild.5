@@ -219,7 +219,7 @@ exact versions all the time.  Hence we provide standard boolean operators:
 .br
 \fI<\fRmedia-libs/libgd-1.6
 .TP
-.B Extended Atom Prefixes [!] and Postfixes [*]
+.B Extended Atom Prefixes [!~] and Postfixes [*]
 Now to get even fancier, we provide the ability to define blocking packages and
 version range matching.  Also note that these extended prefixes/postfixes may
 be combined in any way with the atom classes defined above.  Here are some common
@@ -229,12 +229,19 @@ examples you may find in the portage tree:
 .br
 =dev-libs/glib-2\fI*\fR
 .br
-\fI!\fRnet-fs/samba-2\fI*\fR
+\fI!\fR=net-fs/samba-2\fI*\fR
+.br
+\fI~\fRnet-libs/libnet-1.0.2a
 
-\fI!\fR means block packages from being installed at the same time.  \fI*\fR
-means match any version of the package so long as the specified base is matched.  So
-with a version of '2*', we can match '2.1', '2.2', '2.2.1', etc... and not match
-version '1.0', '3.0', '4.1', etc...
+\fI!\fR means block packages from being installed at the same time.
+.br
+\fI*\fR means match any version of the package so long as the specified 
+base is matched.  So with a version of '2*', we can match '2.1', '2.2', 
+'2.2.1', etc... and not match version '1.0', '3.0', '4.1', etc...
+.br
+\fI~\fR means match any revision of the base version specified.  So in the 
+above example, we would match versions '1.0.2a', '1.0.2a-r1', '1.0.2a-r2', 
+etc...
 .RE
 .TP
 .B Dynamic DEPENDs
