@@ -29,7 +29,7 @@ debug=0
 	
 opts,pargs=getopt.getopt(sys.argv[1:],'',['debug'])
 for opt in opts:
-  	 if opt[0]=='--debug':
+	if opt[0]=='--debug':
 		debug=1 
 
 for x in pargs[1:]:

@@ -58,4 +58,3 @@ if [ -d /usr/portage.cvs/sys-apps/portage/ ]; then
 	ebuild /usr/portage/sys-apps/portage/portage-${V}.ebuild fetch digest
 	cp /usr/portage/sys-apps/portage/files/digest-portage-${V} /usr/portage.cvs/sys-apps/portage/files/digest-portage-${V}
 fi
-	

@@ -69,7 +69,7 @@ def abssymlink(symlink):
 	return os.path.normpath(mylink)
 
 dircache={}
-def listdir(mypath,recursive=0,filesonly=0):
+def listdir(mypath,recursive=0,filesonly=0,ignorecvs=0):
 	"""List directory contents, using cache. (from dircache module; streamlined by drobbins)
 	Exceptions will be propagated to the caller."""
 	#print "mypath:",mypath
@@ -102,9 +102,9 @@ def listdir(mypath,recursive=0,filesonly=0):
 	if recursive:
 		x=0
 		while x<len(ftype):
-			if ftype[x]==1:
+			if ftype[x]==1 and not (ignorecvs and (len(list[x])>=3) and (("/"+list[x][-3:])=="/CVS")):
 				#print "010:",mypath+"$"+list[x]
-				ignored=listdir(mypath+"/"+list[x],recursive,filesonly)
+				ignored=listdir(mypath+"/"+list[x],recursive,filesonly,ignorecvs)
 				m,l,f = dircache[mypath+"/"+list[x]]
 				l=l[:]
 				#print "020:",mypath+"/"+list[x]
@@ -1181,7 +1181,7 @@ def digestgen(myarchives,overwrite=1):
 		return
 	print ">>> Generating digest file..."
 
-	myfiles=listdir(settings["FILESDIR"],recursive=1,filesonly=1)
+	myfiles=listdir(settings["FILESDIR"],recursive=1,filesonly=1,ignorecvs=1)
 	for x in range(len(myfiles)-1,-1,-1):
 		if len(myfiles[x])>len("/files/digest-"):
 			if myfiles[x][:len("/files/digest-")]=="/files/digest-":

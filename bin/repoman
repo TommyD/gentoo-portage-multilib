@@ -8,7 +8,7 @@
 # Then, check to make sure deps are satisfiable (to avoid "can't find match for" problems)
 # that last one is tricky because multiple profiles need to be checked.
 
-import os,sys,string,signal,readline,portage,re
+import os,sys,string,signal,readline,portage,re,commands
 from output import *
 
 exename=os.path.basename(sys.argv[0])	
@@ -27,14 +27,19 @@ signal.signal(signal.SIGINT,exithandler)
 REPOROOTS=["gentoo-x86"]
 modes=["scan","fix","full","help","commit"]
 shortmodes={"ci":"commit"}
-options=["--pretend","--help"]
-modeshelp={"scan":"Scan current directory tree for QA issues (default)",
-"fix":"Fix those issues that can be fixed (stray digests, missing digests)",
-"full":"Scan current directory tree for QA issues (full listing)",
-"help":"Show this screen",
-"commit":"Scan current directory tree for QA issues; if OK, commit via cvs" }
-optionshelp={"--pretend":"Don't actually perform commit or fix steps; just show what would be done.",
-"--help":"Show this screen"
+modeshelp={
+"scan"  :"Scan current directory tree for QA issues (default)",
+"fix"   :"Fix those issues that can be fixed (stray digests, missing digests)",
+"full"  :"Scan current directory tree for QA issues (full listing)",
+"help"  :"Show this screen",
+"commit":"Scan current directory tree for QA issues; if OK, commit via cvs"
+}
+options=["--pretend","--help","--commitmsg","--commitmsgfile"]
+optionshelp={
+"--pretend":"Don't actually perform commit or fix steps; just show what would be done.",
+"--help"   :"Show this screen",
+"--commitmsg"    :"Adds a commit message on the command line.",
+"--commitmsgfile":"Adds a commit message from file on the command line."
 }
 qacats=["digest.stray","digest.missing","ebuild.invalidname","ebuild.namenomatch","changelog.missing",
 "ebuild.notadded","digest.notadded","ebuild.disjointed","digest.disjointed", "DEPEND.bad","RDEPEND.bad",
@@ -44,6 +49,8 @@ qawarnings=["changelog.missing","ebuild.notadded","digest.notadded","DEPEND.badm
 "IUSE.invalid"]
 missingvars=["KEYWORDS","LICENSE","DESCRIPTION","SLOT"]
 allvars=portage.auxdbkeys
+commitmessage=None
+commitmessagefile=None
 for x in missingvars:
 	qacats.append(x+".missing")
 	qawarnings.append(x+".missing")
@@ -131,19 +138,24 @@ def help():
 mymode=None
 myoptions=[]
 if len(sys.argv)>1:
-	for x in sys.argv[1:]:
-		if x in shortmodes.keys():
-			x=shortmodes[x]
-		if x in modes:
+	x=1
+	while x < len(sys.argv):
+		if sys.argv[x] in shortmodes.keys():
+			sys.argv[x]=shortmodes[sys.argv[x]]
+		if sys.argv[x] in modes:
 			if mymode==None:
-				mymode=x
+				mymode=sys.argv[x]
 			else:
-				err("Please specify either \""+mymode+"\" or \""+x+"\", but not both.")
-		elif x in options:
-			if not x in myoptions:
-				myoptions.append(x)
+				err("Please specify either \""+mymode+"\" or \""+sys.argv[x]+"\", but not both.")
+		elif sys.argv[x] in options:
+			if (sys.argv[x]=="--msg") and (len(sys.argv)>=(x+1)):
+				commitmessage=sys.argv[x+1]
+				x=x+1
+			elif sys.argv[x] not in myoptions:
+				myoptions.append(sys.argv[x])
 		else:
-			err("\""+x+"\" is not a valid mode or option.")
+			err("\""+sys.argv[x]+"\" is not a valid mode or option.")
+		x=x+1
 if mymode==None:
 	mymode="scan"
 if mymode=="help" or ("--help" in myoptions):
@@ -360,10 +372,12 @@ for x in scanlist:
 		if myesplit==None or not valid_ebuild_name(x.split("/")[0]+"/"+y):
 			stats["ebuild.invalidname"]=stats["ebuild.invalidname"]+1
 			fails["ebuild.invalidname"].append(x+"/"+y+".ebuild")
+			continue
 		elif myesplit[0]!=pkgdir:
 			print pkgdir,myesplit[0]
 			stats["ebuild.namenomatch"]=stats["ebuild.namenomatch"]+1
 			fails["ebuild.namenomatch"].append(x+"/"+y+".ebuild")
+			continue
 		try:
 			myaux=portage.db["/"]["porttree"].dbapi.aux_get(catdir+"/"+y,allvars,strict=1)
 		except KeyError:
@@ -484,18 +498,54 @@ else:
 		print "Dry-run cvs update complete."
 		print green("RepoMan sez:"), "\"So, you want to play it safe. Good call.\"\n"
 	else:
-		print "Please enter a CVS commit message at the prompt:"
-		try:
-			mycomment=raw_input(green("> "))
-		except KeyboardInterrupt: 
-			exithandler()
+		print "Checking the tree..."
+		ret=getstatusoutput("/usr/bin/cvs status | egrep '^File:.*Status:' | egrep -v 'File: digest-|Up-to-date|Locally Modified'")
+		if ret[0]:
+			print red("Failed to check the tree.")
+			print ret[1]
+			sys.exit(ret[0])
+		if ret[1]:
+			print red("Some files are not up to date! Digests will be wrong")
+			print red("for all packages in which these files are involved.")
+			print green("/usr/bin/cvs status")
+			print
+			print green("RepoMan sez:"), "\"Ah ha! Thought you could sneak in a dirty commit, didn't you?\"\n"
+			sys.exit(1)
+		usedfile=0
+		if not (commitmessage or commitmessagefile):
+			print "Please enter a CVS commit message at the prompt:"
+			try:
+				mycomment=raw_input(green("> "))
+			except KeyboardInterrupt: 
+				exithandler()
+			#backslash any single quotes
+			commitmessagefile="/tmp/.repoman.msg"
+			mymsg=open(commitmessagefile,"w")
+			mymsg.write(mycomment)
+			mymsg.close()
+		else:
+			unlinkfile=0
+			if commitmessagefile:
+				unlinkfile=1
+				try:
+					mymsg=open(commitmessagefile,"r")
+					mycomment=mymsg.read()
+					mymsg.close()
+				except Exception,e:
+					print "!!! Failed to open commit message file."
+					print "!!!",e
+					sys.exit(1)
+			else:
+				mycomment=commitmessage
 		print
-		#backslash any single quotes
-		mymsg=open("/tmp/.repoman.msg","w")
-		mymsg.write(mycomment)
-		mymsg.close()
-		retval=os.system("/usr/bin/cvs -q commit -F /tmp/.repoman.msg")
-		os.unlink("/tmp/.repoman.msg")
+		print green("Using commit message:")
+		print green("------------------------------------------------------------------------------")
+		print mycomment
+		print green("------------------------------------------------------------------------------")
+		print
+		retval=os.system("/usr/bin/cvs -q commit -F "+commitmessagefile)
+		if unlinkfile:
+			os.unlink(commitmessagefile)
 		print
 		print "Cvs commit complete."
 		print green("RepoMan sez:"), "\"If everyone were like you, I'd be out of business!\"\n"
