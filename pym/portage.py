@@ -873,21 +873,21 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 		checkme=alist
 
 	if not fetch(fetchme):
-		sys.exit(1)
+		return 1
 
 	if "digest" in features:
 		#generate digest if it doesn't exist.
 		digestgen(checkme,overwrite=0)
 	if mydo=="fetch":
-		sys.exit(0)
-
+		return 0
+		
 	# if we need to generate digests, do it here and exit.
 	if mydo=="digest":
 		digestgen(checkme)	
-		sys.exit(0)	
-	
+		return 0
+
 	if not digestcheck(checkme):
-		sys.exit(1)
+		return 1
 	#initial dep checks complete; time to process main commands
 	
 	actionmap={	"unpack":"unpack", 

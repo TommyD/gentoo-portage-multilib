@@ -1,6 +1,13 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-1.8.9_pre22 (08 Mar 2002)
+
+  08 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: I had
+  sys.exit() in doebuild()'s fetch section.  Converted to "return 1" and
+  "return 0" to be emerge --fetchonly friendly.  Thanks to Dan Armak for the
+  bug report.
+
 *portage-1.8.9_pre21 (07 Mar 2002)
 
   07 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: fixed symlink
