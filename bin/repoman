@@ -986,7 +986,7 @@ for x in scanlist:
 			if myuse[mypos] and (myuse[mypos] in uselist):
 				del myuse[mypos]
 		# uselist checks - local
-		mykey = portage.dep_getkey(catpkg)
+		mykey = portage.portage_dep.dep_getkey(catpkg)
 		if luselist.has_key(mykey):
 			for mypos in range(len(myuse)-1,-1,-1):
 				if myuse[mypos] and (myuse[mypos] in luselist[mykey]):

@@ -99,7 +99,7 @@ class config:
 			# The symlink might not exist or might not be a symlink.
 			try:
 				self.profiles=[abssymlink(self.profile_path)]
-			except (OSError, IOErrror):
+			except (OSError, IOError):
 				self.profiles=[self.profile_path]
 
 			mypath = self.profiles[0]
