@@ -25,7 +25,11 @@
 # Host Setting
 # ============
 #
-# All supported ARM platforms currently require this CHOST.
+# It's very important you select the right CHOST from the start.  A wrong
+# CHOST could easily lead to weird errors either in compiling or running.
+#
+# Netwinder (or any StrongArm110): armv4l-unknown-linux-gnu
+# Generic ARM: arm-unknown-linux-gnu
 #
 CHOST="armv4l-unknown-linux-gnu"
 
@@ -45,17 +49,14 @@ CHOST="armv4l-unknown-linux-gnu"
 # -march=<cpu-type> means to take full advantage of the ABI and instructions
 # for the particular CPU; this will break compatibility with older CPUs (for
 # example, -march=xscale code will not run on a StrongARM 11x0, and
-# -march=strongarm110 code will not run on a StrongARM 110 (NetWinder).
+# -march=strongarm110 code will not run on a regular StrongARM).
 #
-# Don't use -O3. Even -O2 may be risky
+# Don't use -O3.  Even -O2 may be risky in some cases.
 #
-# CPU types supported in gcc-3.2 and higher: 
-# 
-# CPU types supported in gcc-2.95*: 
+# For a full listing of supported CPU models, please refer to the GCC website:
+# http://gcc.gnu.org/onlinedocs/gcc-3.3/gcc/ARM-Options.html
 #
-# Decent examples:
-#
-# The defaults will support the Netwinder safely
+# These defaults will support the Netwinder safely
 #CFLAGS="-mcpu=strongarm110 -O2 -pipe"
 
 # If you set a CFLAGS above, then this line will set your default C++ flags to
@@ -261,7 +262,8 @@ CHOST="armv4l-unknown-linux-gnu"
 #                sandbox access violations for users. 
 #  'usersandbox' enables sandboxing while portage is running under userpriv.
 #                unpack -- for debugging purposes only.
-#FEATURES="sandbox buildpkg ccache distcc userpriv usersandbox notitles noclean noauto cvs keeptemp keepwork"
+#FEATURES="sandbox buildpkg ccache distcc userpriv usersandbox notitles noclean noauto cvs keeptemp keepwork autoaddcvs"
+#FEATURES="sandbox ccache distcc autoaddcvs"
 #
 # CCACHE_SIZE sets the space use limitations for ccache. The default size is
 #     2G, and will be set if not defined otherwise and ccache is in features. 
