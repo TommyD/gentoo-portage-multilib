@@ -1,6 +1,8 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+*portage 1.8.9_pre9 (21 Feb 2002)
+
   21 Feb 2002; Daniel Robbins <drobbins@gentoo.org>: moved entirety of Portage
   download/digest code from ebuild.sh (bash) to portage.py (python).  No
   support for custom FETCHCOMMANDs yet, but that's coming soon.  Good news is
