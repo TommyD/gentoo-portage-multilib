@@ -1,6 +1,9 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+  4 Feb 2002; G.Bevin <gbevin@gentoo.org> make.conf :
+  added description and default entry for the imlib USE variable
+  
   4 Feb 2002; G.Bevin <gbevin@gentoo.org> output.py :
   bugfix, write read() function instead of red(), doh !
   
