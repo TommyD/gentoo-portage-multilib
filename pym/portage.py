@@ -33,8 +33,12 @@ except KeyError:
 	portage_gid=0
 	print
 	print red("portage: 'portage' user or group missing. Please update baselayout")
-	print red("         and merge portage user(250) and group(250) into your passwd")
-	print red("         and group files. Non-root compilation is disabled until then.")
+	print red(  "         and merge portage user(250) and group(250) into your passwd")
+	print red(  "         and group files. Non-root compilation is disabled until then.")
+	print       "         For the defaults, line 1 goes into passwd, and 2 into group."
+	print green("         portage:x:250:250:portage:/var/tmp/portage:/bin/false")
+	print green("         portage::250:portage")
+	
 	print
 
 incrementals=["USE","FEATURES","ACCEPT_KEYWORDS","ACCEPT_LICENSE","CONFIG_PROTECT_MASK","CONFIG_PROTECT","PRELINK_PATH","PRELINK_PATH_MASK"]
@@ -147,7 +151,7 @@ def tokenize(mystring):
 	into embedded lists; returns None on paren mismatch"""
 	newtokens=[]
 	curlist=newtokens
-	prevlist=None
+	prevlists=[]
 	level=0
 	accum=""
 	for x in mystring:
@@ -157,15 +161,18 @@ def tokenize(mystring):
 				accum=""
 			newlist=[]
 			curlist.append(newlist)
-			prevlist=curlist
+			prevlists.append(curlist)
 			curlist=newlist
 			level=level+1
 		elif x==")":
 			if accum:
 				curlist.append(accum)
 				accum=""
-			curlist=prevlist
 			if level==0:
+				return None
+			try: # paranoia; level == len(prevlists) _should_ be an invariant
+				curlist=prevlists.pop()
+			except IndexError:
 				return None
 			level=level-1
 		elif x in string.whitespace:
@@ -1313,13 +1320,15 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 	
 	#initial dep checks complete; time to process main commands
 
-	actionmap={	  
+	nosandbox=("sandboxuser" not in features)
+	actionmap={
 			  "setup": {                 "args":(1,0)},  # no sandbox, as root
 			 "unpack": {"dep":"setup",   "args":(0,1)},  # w/ sandbox, as portage
-			"compile": {"dep":"unpack",  "args":(1,1)},  # no sandbox, as portage
+			"compile": {"dep":"unpack",  "args":(nosandbox,1)},  # no sandbox, as portage
 			"install": {"dep":"compile", "args":(0,0)},  # w/ sandbox, as root
 			    "rpm": {"dep":"install", "args":(0,0)},  # w/ sandbox, as root
 	}
+
 	if mydo in actionmap.keys():	
 		return spawnebuild(mydo,actionmap,debug)
 	elif mydo=="qmerge": 
@@ -4269,7 +4278,7 @@ try:
 		del mtimedb["old"]
 	if mtimedb.has_key("cur"):
 		del mtimedb["cur"]
-except Exception, e:
+except:
 	#print "!!!",e
 	mtimedb={"updates":{},"eclass":{},"packages":[],"version":"","starttime":0}
 if mtimedb.has_key("version") and mtimedb["version"]!=VERSION:

@@ -12,6 +12,7 @@ export PKG="portage"
 export TMP="/tmp"
 export V="$1"
 export DEST="${TMP}/${PKG}-${V}"
+export PREVEB="2.0.47_pre1"
 rm -rf ${DEST}
 install -d -m0755 ${DEST}
 #get any binaries out of the way
@@ -40,16 +41,16 @@ tar cjvf ${TMP}/${PKG}-${V}.tar.bz2 ${PKG}-${V}
 if [ -L ${TMP}/portage-copy ]; then
 	echo "Copying to portage-copy"
 	cp ${TMP}/${PKG}-${V}.tar.bz2 ${TMP}/portage-copy/
-	cp /usr/portage/sys-apps/portage/portage-2.0.45-r5.ebuild ${TMP}/portage-copy/portage-${V}.ebuild
+	cp /usr/portage/sys-apps/portage/portage-2.0.46-r2.ebuild ${TMP}/portage-copy/portage-${V}.ebuild
 fi
 if [ -L ${TMP}/portage-web ]; then
 	echo "Copying to portage-web"
 	cp ${TMP}/${PKG}-${V}.tar.bz2 ${TMP}/portage-web/
-	cp /usr/portage/sys-apps/portage/portage-2.0.45-r5.ebuild ${TMP}/portage-copy/portage-${V}.ebuild
+	cp /usr/portage/sys-apps/portage/portage-${PREVEB}.ebuild ${TMP}/portage-copy/portage-${V}.ebuild
 fi
 if [ -d /usr/portage.cvs/sys-apps/portage/ ]; then
-	cp /usr/portage/sys-apps/portage/portage-2.0.45-r5.ebuild /usr/portage/sys-apps/portage/portage-${V}.ebuild
-	cp /usr/portage/sys-apps/portage/portage-2.0.45-r5.ebuild /usr/portage.cvs/sys-apps/portage/portage-${V}.ebuild
+	cp /usr/portage/sys-apps/portage/portage-${PREVEB}.ebuild /usr/portage/sys-apps/portage/portage-${V}.ebuild
+	cp /usr/portage/sys-apps/portage/portage-${PREVEB}.ebuild /usr/portage.cvs/sys-apps/portage/portage-${V}.ebuild
 	rm -f /usr/portage/sys-apps/portage/files/digest-portage-${V}
 	rm -f /usr/portage.cvs/sys-apps/portage/files/digest-portage-${V}
 	ebuild /usr/portage/sys-apps/portage/portage-${V}.ebuild fetch digest

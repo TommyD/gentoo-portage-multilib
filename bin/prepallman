@@ -4,7 +4,7 @@
 # $Header$
 
 for x in `find ${D}/opt/*/man/ ${D}/usr/share/man/ ${D}/usr/local/man/ ${D}/usr/X11R6/share/man/ -type d 2>/dev/null` ; do
-	for y in `find ${x} ! -type f -or -type l -maxdepth 1 -mindepth 1 2>/dev/null` ; do
+	for y in `find ${x} -type f -or -type l -maxdepth 1 -mindepth 1 2>/dev/null` ; do
 		if [ -L "${y}" ] ; then
 			#symlink
 			mylink="${y}"

@@ -1,6 +1,14 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-2.0.47_pre2 (24 Dec 2002): Feature: userpriv compiles
+
+  Tokenizer fixup courtasy of Evgeny Roubinchtein. unalias -a in ebuild.sh.
+  Moved the help() to emergehelp.py. prepallman fixup for missed symlinks.
+  More info provided for portage-user-missing message. FEATURES=sandboxuser
+  not provides sandbox in compile phase along with userpriv. mtimedb
+  exception should actually be caught now.
+	
 *portage-2.0.47_pre1 (21 Dec 2002): Feature: userpriv compiles
 
   21 Dec 2002; Nicholas Jones <carpaski@gentoo.org> *:

@@ -8,6 +8,10 @@ then
 	ARGS="${*}"
 fi
 
+# Otherwise people using funny aliases might cause portage to
+# act inappropriately.
+unalias -a
+
 use() {
 	local x
 	for x in ${USE}
