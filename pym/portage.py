@@ -4105,23 +4105,24 @@ if not os.path.exists(root+"var/tmp"):
 cachedirs=["/var/cache/edb"]
 if root!="/":
 	cachedirs.append(root+"var/cache/edb")
-for cachedir in cachedirs:
-	if not os.path.exists(cachedir):
-		os.makedirs(cachedir,0755)
-		print ">>>",cachedir,"doesn't exist, creating it..."
-	if not os.path.exists(cachedir+"/dep"):
-		os.makedirs(cachedir+"/dep",2755)
-		print ">>>",cachedir+"/dep","doesn't exist, creating it..."
-	try:
-		os.chown(cachedir,uid,wheelgid)
-		os.chmod(cachedir,0775)
-	except OSError:
-		pass
-	try:
-		os.chown(cachedir+"/dep",uid,wheelgid)
-		os.chmod(cachedir+"/dep",02775)
-	except OSError:
-		pass
+if not os.environ.has_key("SANDBOX_ACTIVE"):
+	for cachedir in cachedirs:
+		if not os.path.exists(cachedir):
+			os.makedirs(cachedir,0755)
+			print ">>>",cachedir,"doesn't exist, creating it..."
+		if not os.path.exists(cachedir+"/dep"):
+			os.makedirs(cachedir+"/dep",2755)
+			print ">>>",cachedir+"/dep","doesn't exist, creating it..."
+		try:
+			os.chown(cachedir,uid,wheelgid)
+			os.chmod(cachedir,0775)
+		except OSError:
+			pass
+		try:
+			os.chown(cachedir+"/dep",uid,wheelgid)
+			os.chmod(cachedir+"/dep",02775)
+		except OSError:
+			pass
 	
 os.umask(022)
 profiledir=None
@@ -4267,12 +4268,12 @@ def portageexit():
    	# Store mtimedb
 		mymfn=mtimedbfile
 		try:
-			if mtimedb:
+			if mtimedb and not os.environ.has_key("SANDBOX_ACTIVE"):
 				mtimedb["version"]=VERSION
 				cPickle.dump(mtimedb,open(mymfn,"w"))
 				os.chown(mymfn,uid,wheelgid)
 				os.chmod(mymfn,0664)
-		except OSError:
+		except Exception, e:
 			pass
 
 atexit.register(portageexit)
