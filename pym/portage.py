@@ -726,16 +726,16 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 		return spawn("/usr/sbin/ebuild.sh "+mydo)
 	elif mydo=="qmerge": 
 		#qmerge is specifically not supposed to do a runtime dep check
-		return merge(settings["CATEGORY"],settings["PF"],settings["SLOT"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot)
+		return merge(settings["CATEGORY"],settings["PF"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot)
 	elif mydo=="merge":
 		retval=spawn("/usr/sbin/ebuild.sh setup fetch unpack compile install")
 		if retval: return retval
 		if checkdeps:
 			retval=dep_frontend("runtime",myebuild,mydeps[1])
 			if (retval): return retval
-		return merge(settings["CATEGORY"],settings["PF"],settings["SLOT"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot)
+		return merge(settings["CATEGORY"],settings["PF"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot)
 	elif mydo=="unmerge": 
-		return unmerge(settings["CATEGORY"],settings["PF"],settings["SLOT"],myroot)
+		return unmerge(settings["CATEGORY"],settings["PF"],myroot)
 	elif mydo=="package":
 		retval=spawn("/usr/sbin/ebuild.sh setup fetch")
 		if retval:
@@ -822,16 +822,15 @@ def pathstrip(x,mystart):
     cpref=os.path.commonprefix([x,mystart])
     return [root+x[len(cpref)+1:],x[len(cpref):]]
 
-def merge(mycat,mypkg,myslot,pkgloc,infloc,myroot):
-	mylink=dblink(mycat,mypkg,myslot,myroot)
+def merge(mycat,mypkg,pkgloc,infloc,myroot):
+	mylink=dblink(mycat,mypkg,myroot)
 	if not mylink.exists():
 		mylink.create()
 		#shell error code
 	mylink.merge(pkgloc,infloc,myroot)
 	
-def unmerge(cat,pkg,slot,myroot):
-	mylink=dblink(cat,pkg,slot,myroot)
-	mylink.makeDbdirCompat()
+def unmerge(cat,pkg,myroot):
+	mylink=dblink(cat,pkg,myroot)
 	if mylink.exists():
 		mylink.unmerge()
 	mylink.delete()
@@ -1798,31 +1797,9 @@ class vartree(packagetree):
 	def __init__(self,root="/",virtual=None,clone=None):
 		if clone:
 			self.root=clone.root
-			self.slots=copy.deepcopy(clone.slots)
 		else:
 			self.root=root
-			self.slots=[]
 		packagetree.__init__(self,virtual,clone)
-
-	def getebuildpaths(self,fullpkg):
-		full_paths=[]
-		# add the possible default ebuild path
-		package_parts=string.split(fullpkg, '/')
-		regular_ebuild=self.root+"var/db/pkg"+"/"+fullpkg+"/"+package_parts[1]+".ebuild"
-		if os.path.exists(regular_ebuild):
-			full_paths.append(regular_ebuild)
-		# add the possible slot matches
-		for x in self.slots:
-			if x[0]==fullpkg:
-				full_paths.append(x[1])
-		return full_paths
-
-	def slotted(self,fullpkg):
-		for x in self.slots:
-			if x[0]==fullpkg:
-				return 1
-		return 0
-
 	def populate(self):
 		"populates the local tree (/var/db/pkg)"
 		prevmask=os.umask(0)
@@ -1840,23 +1817,7 @@ class vartree(packagetree):
 			if not os.path.isdir(os.getcwd()+"/"+x):
 				continue
 			for y in os.listdir(os.getcwd()+"/"+x):
-				mypkgpath=os.getcwd()+"/"+x+"/"+y
-				# handle binary compatibility slots
-				if os.path.isfile(mypkgpath+"/SLOT") and os.path.isfile(mypkgpath+"/PF"):
-					mypf_file=open(mypkgpath+"/PF")
-					mypf=mypf_file.readline()[:-1]
-					mypf_file.close()
-					myebuildpath=mypkgpath+"/"+mypf+".ebuild"
-					if os.path.isfile(myebuildpath):
-						fullpkg=x+"/"+mypf
-						self.slots.append([fullpkg,myebuildpath])
-					else:
-						print "!!! Error:",myebuildpath,"could not be found, skipping..."
-						continue
-				# can't find the PF file, this means that it's probably a
-				# virtual package and thus appending a dummy 1.0 version
-				# number
-				elif isjustname(y):
+				if isjustname(y):
 					fullpkg=x+"/"+y+"-1.0"
 				else:
 					fullpkg=x+"/"+y
@@ -1996,39 +1957,12 @@ class binarytree(packagetree):
 
 class dblink:
 	"this class provides an interface to the standard text package database"
-	def __init__(self,cat,pkg,slot,myroot):
+	def __init__(self,cat,pkg,myroot):
 		"create a dblink object for cat/pkg.  This dblink entry may or may not exist"
 		self.cat=cat
 		self.pkg=pkg
-		self.slot=slot
-		pkg_parts=pkgsplit(pkg)
-		# handle packages that don't contain version information
-		if pkg_parts:
-			pkg_slot=pkg_parts[0]
-		else:
-			pkg_slot=pkg
-		# only add the slot version number of it's not empty and not 0
-		if slot != "" and slot != "0":
-			pkg_slot = pkg_slot+"-"+slot
-		self.dbdir=myroot+"/var/db/pkg/"+cat+"/"+pkg_slot
+		self.dbdir=myroot+"/var/db/pkg/"+cat+"/"+pkg
 		self.myroot=myroot
-
-	# backwards compatibility code to be able to unmerge packages that have been
-	# merged with a previous version of portage
-	def makeDbdirCompat(self):
-		mydbdir=self.myroot+"/var/db/pkg/"+self.cat+"/"+self.pkg
-		if os.path.exists(mydbdir) and not os.path.exists(mydbdir+"/SLOT"):
-			self.dbdir=mydbdir
-
-	# get the ebuild file path of this package
-	def getEbuildCurrent(self):
-		return self.dbdir+"/"+self.pkg+".ebuild"
-
-	# get the ebuild file path of the package that is installed
-	def getEbuildInstalled(self):
-		installedversion=self.getfile("PF").strip()
-		installedebuild=self.dbdir+"/"+installedversion+".ebuild"
-		return installedebuild
 
 	def getpath(self):
 		"return path to location of db information (for >>> informational display)"
@@ -2101,20 +2035,17 @@ class dblink:
 			if not pkgfiles:
 				return
 		
-		# get the ebuild file path
-		myebuildfilepath=self.getEbuildInstalled()
-
 		#do prerm script
-		a=doebuild(myebuildfilepath,"prerm",self.myroot)
+		a=doebuild(self.dbdir+"/"+self.pkg+".ebuild","prerm",self.myroot)
 		if a:
 			print "!!! pkg_prerm() script failed; exiting."
 			sys.exit(a)
 
 		#we do this so we don't unmerge the ebuild file by mistake
-		myebuildfilenorm=os.path.normpath(myebuildfilepath)
-		if os.path.exists(myebuildfilenorm):
-			if pkgfiles.has_key(myebuildfilenorm):
-				del pkgfiles[myebuildfilenorm]
+		myebuildfile=os.path.normpath(self.dbdir+"/"+self.pkg+".ebuild")
+		if os.path.exists(myebuildfile):
+			if pkgfiles.has_key(myebuildfile):
+				del pkgfiles[myebuildfile]
 				
 		mykeys=pkgfiles.keys()
 		mykeys.sort()
@@ -2241,7 +2172,7 @@ class dblink:
 		for mycatpkg in self.getelements("PROVIDE"):
 			mycat,mypkg=string.split(mycatpkg,"/")
 			tcatpkg=self.cat+"/"+self.pkg
-			mylink=dblink(mycat,mypkg,"",self.myroot)
+			mylink=dblink(mycat,mypkg,self.myroot)
 			if not mylink.exists():
 				continue
 			myvirts=mylink.getelements("VIRTUAL")
@@ -2259,7 +2190,7 @@ class dblink:
 				mylink.setelements(myvirts,"VIRTUAL")
 		
 		#do original postrm
-		a=doebuild(myebuildfilepath,"postrm",self.myroot)
+		a=doebuild(self.dbdir+"/"+self.pkg+".ebuild","postrm",self.myroot)
 		if a:
 			print "!!! pkg_postrm() script failed; exiting."
 			sys.exit(a)
@@ -2480,9 +2411,6 @@ class dblink:
 			if (oldcontents):
 				print ">>> Safely unmerging already-installed instance..."
 				self.unmerge(oldcontents)
-				# remove an ebuild file that has the same slot number, but a different version
-				if self.getEbuildCurrent() != self.getEbuildInstalled():
-					os.unlink(self.getEbuildInstalled())
 				print ">>> original instance of package unmerged safely."	
 
 			os.chdir(inforoot)
@@ -2492,7 +2420,7 @@ class dblink:
 			#create virtual links
 			for mycatpkg in self.getelements("PROVIDE"):
 				mycat,mypkg=string.split(mycatpkg,"/")
-				mylink=dblink(mycat,mypkg,"",self.myroot)
+				mylink=dblink(mycat,mypkg,self.myroot)
 				#this will create the link if it doesn't exist
 				mylink.create()
 				myvirts=mylink.getelements("VIRTUAL")
@@ -2616,9 +2544,6 @@ def pkgmerge(mytbz2,myroot):
 		print "!!! CATEGORY info missing from info chunk, aborting..."
 		return None
 	mycat=mycat.strip()
-	mypkgparts=pkgsplit(mypkg)
-	myslot=xptbz2.getfile("SLOT",mypkgparts[1])
-	myslot=myslot.strip()
 	mycatpkg=mycat+"/"+mypkg
 
 	tmploc=settings["PKG_TMPDIR"]
@@ -2639,7 +2564,7 @@ def pkgmerge(mytbz2,myroot):
 		cleanup_pkgmerge(mypkg,origdir)
 		return None
 	#the merge takes care of pre/postinst and old instance auto-unmerge, virtual/provides updates, etc.
-	mylink=dblink(mycat,mypkg,myslot,myroot)
+	mylink=dblink(mycat,mypkg,myroot)
 	if not mylink.exists():
 		mylink.create()
 		#shell error code

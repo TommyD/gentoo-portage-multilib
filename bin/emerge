@@ -16,14 +16,13 @@ import time
 
 #number of ebuilds merged
 merged=0
-actions=["--help",
+actions=["--clean",
+	"--help",
 	"--rebuild",
 	"--search",
-	"--update",
-	"--zap"]
+	"--update"]
 options=["--autoclean",
 	"--buildpkg",
-	"--clean",
 	"--debug",
 	"--fetchonly",
 	"--noreplace",
@@ -44,9 +43,8 @@ shortmapping={"a":"--autoclean",
 	"r":"--rebuild",
 	"s":"--search",
 	"u":"--update",
-	"v":"--verbose",
-	"z":"--zap"}
-modes=["rsync","config","system","world","noslot"]
+	"v":"--verbose"}
+modes=["rsync","config","system","world"]
 myaction=None
 myopts=[]
 mymode=[]
@@ -71,7 +69,7 @@ for x in sys.argv[1:]:
 		if x=="update":
 			print " "+red("* WARNING:"),green("emerge update"),"has been deprecated, use",green("emerge --update"),"instead."
 		elif x=="--unmerge":
-			print " "+red("* WARNING:"),green("emerge --unmerge"),"has been deprecated, use",green("emerge --zap"),"instead."
+			print " "+red("* WARNING:"),green("emerge --unmerge"),"has been deprecated, use",green("emerge --clean"),"instead."
 		elif x=="--world":
 			print " "+red("* WARNING:"),green("emerge --world"),"has been deprecated, use",green("emerge world"),"instead."
 		print " "+red("*"),"Read",green("emerge --help"),"to get a complete overview of the interface changes."
@@ -444,10 +442,6 @@ class depgraph:
 		if self.myaction=="--rebuild" and myeb[0:len("virtual")]=="virtual":
 			return None
 		
-		# handle filtering of non slot packages
-		if "noslot" in mymode and self.db[portage.root]["vartree"].slotted(myeb)==1:
-			return None
-		
 		if mydep[0]=="!":
 			myk="blocks "+myroot+" "+myeb
 		else:
@@ -645,11 +639,16 @@ elif "--help"==myaction:
 	if len(mymode)==0:
 		print
 		print bold("Usage: ")+turquoise("emerge")+" [ "+green("action")+" ] [ "+green("options")+" ] [ "+turquoise("ebuildfile")+" | "+turquoise("tbz2file")+" | "+turquoise("dependency")+" ] ..."
-		print "       "+turquoise("emerge")+" [ "+green("action")+" ] [ "+green("options")+" ] [ "+turquoise("system")+" | "+turquoise("world")+" | "+turquoise("noslot")+" ]"
+		print "       "+turquoise("emerge")+" [ "+green("action")+" ] [ "+green("options")+" ] [ "+turquoise("system")+" | "+turquoise("world")+" ]"
 		print "       "+turquoise("emerge")+" [ "+green("--clean")+" "+green("-c")+" ] "+turquoise("rsync")
-		print "       "+turquoise("emerge")+" "+green("--help")+" "" "+green("-h")+" [ "+turquoise("rsync")+" | "+turquoise("system")+" | "+turquoise("world")+" | "+turquoise("noslot")+" | "+turquoise("config")+" ] "
+		print "       "+turquoise("emerge")+" "+green("--help")+" "" "+green("-h")+" [ "+turquoise("rsync")+" | "+turquoise("system")+" | "+turquoise("world")+" | "+turquoise("config")+" ] "
 		print
 		print turquoise("Actions:")
+		print "       "+green("--clean")+" "+green("-c")
+		print "              removes an installed package. the arguments can be in two"
+		print "              different formats : /var/db/pkg/category/package-version"
+		print "              or category/package."
+		print
 		print "       "+green("--help")+" "+green("-h")
 		print "              displays this help, an additional mode specifier provides"
 		print "              detailed help about that mode instead"
@@ -658,11 +657,6 @@ elif "--help"==myaction:
 		print "              updates installed packages, this is typically used with",bold("world")
 		print "              and",bold("system")
 		print 
-		print "       "+green("--zap")+" "+green("-z")
-		print "              removes an installed package. the arguments can be in two"
-		print "              different formats : /var/db/pkg/category/package-version"
-		print "              or category/package."
-		print
 		print "       "+green("--rebuild")+" "+green("-r")
 		print "              forcably rebuild installed packages, this is typically used with"
 		print "              "+bold("world"),"and",bold("system")
@@ -764,10 +758,6 @@ elif "--help"==myaction:
 		print
 		print bold("Usage: ")+turquoise("emerge")+" [ "+green("action")+" ] "+" [ "+green("options")+" ] "+turquoise("world")
 		print
-	elif "noslot" in mymode:
-		print
-		print bold("Usage: ")+turquoise("emerge")+" [ "+green("action")+" ] "+" [ "+green("options")+" ] "+turquoise("noslot")
-		print
 	elif "config" in mymode:
 		outstuff=green("Config file management support (preliminary)")+"""
 
@@ -822,9 +812,9 @@ elif "--search"==myaction:
 			searchinstance.execute()
 			searchinstance.output()
 
-# ZAP action
-elif "--zap"==myaction:
-	if not myfiles and not "noslot" in mymode:
+# CLEAN action
+elif "--clean"==myaction:
+	if not myfiles:
 		print
 		print "No packages to unmerge have been provided."
 		print
@@ -832,14 +822,56 @@ elif "--zap"==myaction:
 		full_paths={}
 		full_ebuild_paths={}
 		full_package_paths={}
-		non_slot_packages=[]
 		
 		var_path=portage.root+"var/db/pkg"
-		if "noslot" in mymode:
-			localtree=portage.vartree(portage.root)	
-			for x in localtree.getallnodes():
-				if localtree.slotted(x)==0:
-					mymatches=localtree.dep_match(x)
+		# process all arguments, verify if they can be resolved to an installed
+		# ebuild file and add the absolute paths of these ebuild to a list
+		for x in myfiles:
+
+			# an absolute path has been given
+			if (x[0]=='/'):
+				path_parts=split(x, '/')
+				if len(path_parts) != 6:
+					print "When providing an absolute path it should be"
+					print "in the following format : "+var_path+"/category/package"
+					print "The path '"+x+"' doesn't respect this."
+					sys.exit(1)
+				elif not os.path.exists(x):
+					print "The path '"+x+"' doesn't exist."
+					sys.exit(1)
+				elif -1 == find(x, var_path):
+					print "The path '"+x+"' didn't commence with '"+var_path+"'."
+					sys.exit(1)
+				else:
+					# check if the SLOT file is present, and get the package version
+					# from the PF file in that case
+					package_slot_path=strip(x)+"/SLOT"
+					package_pf_path=strip(x)+"/PF"
+					if os.path.exists(package_pf_path):
+						package_pf_file=open(package_pf_path)
+						package_pf=package_pf_file.readline().strip()
+						package_pf_file.close()
+					else:
+						package_pf=path_parts[5]
+					full_path=strip(x)+"/"+package_pf+".ebuild"
+					if not os.path.exists(full_path):
+						print "The ebuild '"+full_path+"' couldn't be found."
+						print "Your portage installation tree seems to be corrupted."
+					else:
+						path_parts=split(full_path, "/")
+						full_ebuild_paths[full_path]=path_parts[4]+"/"+package_pf
+
+			# a category and package name have been given
+			else:
+				localtree=portage.vartree(portage.root)	
+				mymatches=localtree.dep_match(x)
+				# if no matches were found, try again by adding a '=' dep symbol if no
+				# dep symbols are already present
+				if not mymatches and x[0] not in ('<','>','=','~'):
+					mymatches=localtree.dep_match("="+x)
+
+				# only loops over the matches if they were found
+				if mymatches:
 					for package in mymatches:
 						myfullpaths=localtree.getebuildpaths(package)
 						for full_path in myfullpaths :
@@ -848,79 +880,6 @@ elif "--zap"==myaction:
 								print "Your portage installation tree seems to be corrupted."
 							else:
 								full_package_paths[full_path]=package
-		else:
-			# process all arguments, verify if they can be resolved to an installed
-			# ebuild file and add the absolute paths of these ebuild to a list
-			for x in myfiles:
-	
-				# an absolute path has been given
-				if (x[0]=='/'):
-					path_parts=split(x, '/')
-					if len(path_parts) != 6:
-						print "When providing an absolute path it should be"
-						print "in the following format : "+var_path+"/category/package"
-						print "The path '"+x+"' doesn't respect this."
-						sys.exit(1)
-					elif not os.path.exists(x):
-						print "The path '"+x+"' doesn't exist."
-						sys.exit(1)
-					elif -1 == find(x, var_path):
-						print "The path '"+x+"' didn't commence with '"+var_path+"'."
-						sys.exit(1)
-					else:
-						# check if the SLOT file is present, and get the package version
-						# from the PF file in that case
-						package_slot_path=strip(x)+"/SLOT"
-						package_pf_path=strip(x)+"/PF"
-						if os.path.exists(package_pf_path):
-							package_pf_file=open(package_pf_path)
-							package_pf=package_pf_file.readline().strip()
-							package_pf_file.close()
-						else:
-							package_pf=path_parts[5]
-						full_path=strip(x)+"/"+package_pf+".ebuild"
-						if not os.path.exists(full_path):
-							print "The ebuild '"+full_path+"' couldn't be found."
-							print "Your portage installation tree seems to be corrupted."
-						else:
-							path_parts=split(full_path, "/")
-							full_ebuild_paths[full_path]=path_parts[4]+"/"+package_pf
-	
-				# a category and package name have been given
-				else:
-					localtree=portage.vartree(portage.root)	
-					mymatches=localtree.dep_match(x)
-					# if no matches were found, try again by adding a '=' dep symbol if no
-					# dep symbols are already present
-					if not mymatches and x[0] not in ('<','>','=','~'):
-						mymatches=localtree.dep_match("="+x)
-	
-					# only loops over the matches if they were found
-					if mymatches:
-						for package in mymatches:
-							myfullpaths=localtree.getebuildpaths(package)
-							for full_path in myfullpaths :
-								if not os.path.exists(full_path):
-									print "The ebuild '"+full_path+"' couldn't be found."
-									print "Your portage installation tree seems to be corrupted."
-								else:
-									full_package_paths[full_path]=package
-	
-			# determine what the non slot packages are
-			if len(full_package_paths) > 0:
-				# determine the latest installed packages of each cat/pkg key
-				full_paths_keys=full_package_paths.keys()
-				# sort the ebuild paths
-				full_paths_keys.sort()
-				previous_package_set=None
-				for full_path in full_paths_keys:
-					# construct the key that will be used to determine when a new package set
-					# is being processed, the package slot is taken into account for this
-					package_parts=portage.pkgsplit(full_package_paths[full_path])
-					slot_path=dirname(full_path)+"/SLOT"
-					if not os.path.exists(slot_path):
-						package_slot=package_parts[1]
-						non_slot_packages.append(package_parts[0]+"-"+package_parts[1])
 
 		full_paths=full_ebuild_paths.keys()
 		full_paths.extend(full_package_paths.keys())
@@ -944,22 +903,6 @@ elif "--zap"==myaction:
 				path_parts=split(full_path, "/")
 				print "    "+path_parts[4]+"/"+path_parts[5]
 
-			if len(non_slot_packages)>0:
-				print
-				if "--verbose" not in myopts:
-					print " "+yellow("* IMPORTANT:"),len(non_slot_packages),"non slot packages; use "+green("--verbose")+" to view details."
-				else:
-					print " "+yellow("* IMPORTANT:"),len(non_slot_packages),"non slot packages"
-					print " "+yellow("*")+" These packages have been merged with an old version of portage that didn't"
-					print " "+yellow("*")+" support binary compatibility slots. This means that each package with a"
-					print " "+yellow("*")+" different version number will be considered different and only older versions"
-					print " "+yellow("*")+" of different releases will be unmerged automatically."
-					print " "+yellow("*")+" To get rid of all non slot packages, you can rebuild your system with"
-					print " "+yellow("*")+" "+green("emerge --noslot rebuild")+"."
-					print
-					for non_slot_package in non_slot_packages:
-						print "    "+non_slot_package
-			
 			if "--pretend" in myopts:
 				print
 			else:
@@ -984,7 +927,7 @@ elif "--zap"==myaction:
 
 # REBUILD action
 elif "--rebuild"==myaction:
-	if not "system" in mymode and not "world" in mymode and not "noslot" in mymode:
+	if not "system" in mymode and not "world" in mymode:
 		print
 		print " "+red("* WARNING:"),green("emerge --rebuild"),"shouldn't be used for regular packages"
 		print " "+red("*"),"it's only intended to be used with",green("system")+", "+green("world")+", and",green("noroot")
@@ -1003,11 +946,6 @@ elif "--rebuild"==myaction:
 		elif "world" in mymode:
 			mydepgraph=depgraph(mymode,myaction,myopts)
 			print "Calculating world dependencies",
-			mydepgraph.syscreate(mydepgraph.db["/"]["vartree"].getallnodes())
-			print " done!"
-		elif "noslot" in mymode:
-			mydepgraph=depgraph(mymode,myaction,myopts)
-			print "Calculating noslot dependencies",
 			mydepgraph.syscreate(mydepgraph.db["/"]["vartree"].getallnodes())
 			print " done!"
 
@@ -1054,11 +992,6 @@ elif "--update"==myaction or not myaction:
 		elif "world" in mymode:
 			mydepgraph=depgraph(mymode,myaction,myopts)
 			print "Calculating world dependencies",
-			mydepgraph.syscreate(mydepgraph.db["/"]["vartree"].getallnodes())
-			print " done!"
-		elif "noslot" in mymode:
-			mydepgraph=depgraph(mymode,myaction,myopts)
-			print "Calculating noslot dependencies",
 			mydepgraph.syscreate(mydepgraph.db["/"]["vartree"].getallnodes())
 			print " done!"
 		else:
