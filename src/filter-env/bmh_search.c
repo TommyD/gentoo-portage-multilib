@@ -5,9 +5,7 @@ aparently distributed by Addison-Wesley Publishing Co. Inc, http://aw.com/
 #include <string.h>
 #define MAXCHAR 256
 
-char *bmh_search( pat, text, n )
-char *pat, *text;
-int n;
+const char *bmh_search( const char *pat, const char *text, int n )
 { int i, j, k, m, skip[MAXCHAR];
 
     m = strlen(pat);

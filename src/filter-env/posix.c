@@ -38,7 +38,7 @@ const char *walk_command(const char *p, const char *end, char endchar, const cha
 static int debugging;
 
 int
-main(int argc, const char **argv)
+main(int argc, char *const *argv)
 {
     int fd = 0;
     char **funcs = NULL;	char **vars = NULL;
