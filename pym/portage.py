@@ -3965,7 +3965,10 @@ class binarytree(packagetree):
 
 	def isremote(self,pkgname):
 		"Returns true if the package is kept remotely."
-		remote = (not os.path.exists(self.getname(pkgname))) and self.remotepkgs.has_key(pkgname);
+		mysplit=string.split(pkgname,"/")
+		print (not os.path.exists(self.getname(pkgname)))
+		print self.remotepkgs.has_key(mysplit[1]+".tbz2")
+		remote = (not os.path.exists(self.getname(pkgname))) and self.remotepkgs.has_key(mysplit[1]+".tbz2")
 		return remote
 	
 	def gettbz2(self,pkgname):

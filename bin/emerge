@@ -635,24 +635,28 @@ class depgraph:
 		edepend={}
 		if mytype=="binary":
 			mypkgparts=portage.catpkgsplit(mykey)
+			tbz2name = string.split(mykey, "/")[1]+".tbz2"
 			if portage.db[portage.root]["bintree"].isremote(mykey) and ("--pretend" in myopts):
 				# It's remote, and we have the info already. In pretend,
 				# we don't want to be downloading the tbz2's.
-				if not portage.db[portage.root]["bintree"].remotepkgs.has_key(mykey):
-					sys.stderr.write("\nThere are no packages available to satisfy "+str(mykey)+"\n\n")
-					sys.exit(1)
-				edepend = portage.db[portage.root]["bintree"].remotepkgs[mykey]
+				#if not portage.db[portage.root]["bintree"].remotepkgs.has_key(mypkgparts[1]):
+				#	sys.stderr.write("\nThere are no packages available to satisfy "+str(mykey)+"\n\n")
+				#	sys.exit(1)
+				edepend = portage.db[portage.root]["bintree"].remotepkgs[tbz2name]
 				edepend["DEPEND"] =""
 				edepend["RDEPEND"]=string.join(string.split(edepend["RDEPEND"])," ")
 				edepend["PDEPEND"]=string.join(string.split(edepend["PDEPEND"])," ")
 				edepend["CDEPEND"]=string.join(string.split(edepend["CDEPEND"])," ")
 				edepend["SLOT"]   =string.strip(edepend["SLOT"])
 			else:
+				print "Is Remote?"
 				if portage.db[portage.root]["bintree"].isremote(mykey):
+					print " -- Yep"
 					# Get the tbz2
 					if not portage.db[portage.root]["bintree"].remotepkgs.has_key(mykey):
 						sys.stderr.write("\nThere are no packages available to satisfy "+str(mykey)+"\n\n")
 						sys.exit(1)
+					print "gettbz2:",mykey
 					portage.db[portage.root]["bintree"].gettbz2(mykey)
 				mytbz2=xpak.tbz2(portage.db[portage.root]["bintree"].getname(mykey))
 				edepend["DEPEND"] =""
