@@ -46,18 +46,12 @@ def help(myaction,myopts,havecolor=1):
 		print "              Here are a few examples of the dependency specification format:"
 		print "              "+bold("binutils")+" matches"
 		print "                  binutils-2.11.90.0.7 and binutils-2.11.92.0.12.3-r1"
-		print "              "+bold(">binutils-2.11.90.0.7")+" matches"
-		print "                  binutils-2.11.92.0.12.3-r1"
 		print "              "+bold("sys-devel/binutils")+" matches"
 		print "                  binutils-2.11.90.0.7 and binutils-2.11.92.0.12.3-r1"
-		print "              "+bold("sys-devel/binutils-2.11.90.0.7")+" matches"
-		print "                  binutils-2.11.90.0.7"
 		print "              "+bold(">sys-devel/binutils-2.11.90.0.7")+" matches"
 		print "                  binutils-2.11.92.0.12.3-r1"
 		print "              "+bold(">=sys-devel/binutils-2.11.90.0.7")+" matches"
 		print "                  binutils-2.11.90.0.7 and binutils-2.11.92.0.12.3-r1"
-		print "              "+bold("<sys-devel/binutils-2.11.92.0.12.3-r1")+" matches"
-		print "                  binutils-2.11.90.0.7"
 		print "              "+bold("<=sys-devel/binutils-2.11.92.0.12.3-r1")+" matches"
 		print "                  binutils-2.11.90.0.7 and binutils-2.11.92.0.12.3-r1"
 		print
@@ -79,13 +73,6 @@ def help(myaction,myopts,havecolor=1):
 		print "              make.{conf,globals,defaults} and the environment show up if"
 		print "              run with the '--verbose' flag."
 		print
-		print "       "+green("--inject")+" ("+green("-i")+" short option)"
-		print "              Add a stub entry for a package so that Portage thinks that it's"
-		print "              installed when it really isn't.  Handy if you roll your own"
-		print "              packages.  Example: "
-		#NOTE: this next line *needs* the "sys-kernel/"; *please* don't remove it!
-		print "              "+bold("emerge --inject sys-kernel/gentoo-sources-2.4.19")
-		print
 		print "       "+green("--metadata")
 		print "              Causes portage to process all the metacache files as is normally done"
 		print "              on the tail end of an rsync update using "+bold("emerge --sync")+". The"
@@ -94,9 +81,9 @@ def help(myaction,myopts,havecolor=1):
 		print
 		print "       "+green("--prune")+" ("+green("-P")+" short option)"
 		print "              "+turquoise("WARNING: This action can remove important packages!")
-		print "              Removes all older versions of a package from your system."
-		print "              This action doesn't always verify the possible binary"
-		print "              incompatibility between versions and can thus remove essential"
+		print "              Removes all but the most recently installed version of a package"
+		print "              from your system. This action doesn't verify the possible binary"
+		print "              compatibility between versions and can thus remove essential"
 		print "              dependencies from your system."
 		print "              The argument format is the same as for the "+bold("--clean")+" action."
 		print
@@ -108,20 +95,20 @@ def help(myaction,myopts,havecolor=1):
 		print
 		print "       "+green("--search")+" ("+green("-s")+" short option)"
 		print "              searches for matches of the supplied string in the current local"
-		print "              portage tree. The search string is a regular expression."
-		print "              A few examples: "
+		print "              portage tree. The search string is a regular expression. Prepending"
+		print "              the expression with a '@' will cause the category to be included in"
+		print "              the search."
+		print "              A few examples:"
 		print "              "+bold("emerge search '^kde'")
 		print "                  list all packages starting with kde"
 		print "              "+bold("emerge search 'gcc$'")
 		print "                  list all packages ending with gcc"
-		print "              "+bold("emerge search ''")+" or"
-		print "              "+bold("emerge search '.*'")
-		print "                  list all available packages "
+		print "              "+bold("emerge search @^dev-java.*jdk")
+		print "                  list all available Java JDKs"
 		print
 		print "       "+green("--unmerge")+" ("+green("-C")+" short option)"
 		print "              "+turquoise("WARNING: This action can remove important packages!")
-		print "              Removes all matching packages without checking for outdated"
-		print "              versions, effectively removing a package "+bold("completely")+" from"
+		print "              Removes all matching packages "+bold("completely")+" from"
 		print "              your system. Specify arguments using the dependency specification"
 		print "              format described in the "+bold("--clean")+" action above."
 		print
@@ -135,10 +122,11 @@ def help(myaction,myopts,havecolor=1):
 		print "              calculated once."
 		print
 		print "       "+green("--buildpkg")+" ("+green("-b")+" short option)"
-		print "              tell emerge to build binary packages for all ebuilds processed"
+		print "              Tell emerge to build binary packages for all ebuilds processed"
 		print "              (in addition to actually merging the packages.  Useful for"
 		print "              maintainers or if you administrate multiple Gentoo Linux"
-		print "              systems (build once, emerge tbz2s everywhere)."
+		print "              systems (build once, emerge tbz2s everywhere) as well as disaster"
+		print "              recovery."
 		print
 		print "       "+green("--buildpkgonly")+" ("+green("-B")+" short option)"
 		print "              Creates a binary package, but does not merge it to the"
@@ -169,8 +157,8 @@ def help(myaction,myopts,havecolor=1):
 		print "              listed in the dependencies of a package."
 		print 
 		print "       "+green("--emptytree")+" ("+green("-e")+" short option)"
-		print "              Virtually tweaks the tree of installed packages to only contain"
-		print "              libc, this is great to use together with --pretend. This makes"
+		print "              Virtually tweaks the tree of installed packages to contain"
+		print "              nothing. This is great to use together with --pretend. This makes"
 		print "              it possible for developers to get a complete overview of the"
 		print "              complete dependency tree of a certain package."
 		print
@@ -181,11 +169,8 @@ def help(myaction,myopts,havecolor=1):
 		print "              displayed multiple mirrors per line, one line per file."
 		print
 		print "       "+green("--fetch-all-uri")
-		print "              Instead of doing any package building, just perform fetches for"
-		print "              all packages (main package as well as all dependencies.), grabbing"
-		print "              all possible files."
-		print "              When used in combination with --pretend all the SRC_URIs will be"
-		print "              displayed multiple mirrors per line, one line per file."
+		print "              Same as --fetchonly except that all package files, including those"
+		print "              not required to build the package, will be processed."
 		print
 		print "       "+green("--getbinpkg")+" ("+green("-g")+" short option)"
 		print "              Using the server and location defined in PORTAGE_BINHOST, portage"
@@ -235,14 +220,15 @@ def help(myaction,myopts,havecolor=1):
 		print "              specified packages, not the packages themselves."
 		print
 		print "       "+green("--pretend")+" ("+green("-p")+" short option)"
-		print "              instead of actually performing the merge, simply display what"
+		print "              Instead of actually performing the merge, simply display what"
 		print "              ebuilds and tbz2s *would* have been installed if --pretend"
 		print "              weren't used.  Using --pretend is strongly recommended before"
 		print "              installing an unfamiliar package.  In the printout, N = new,"
 		print "              U = updating, R = replacing, F = fetch  restricted, B = blocked"
-		print "              by an already installed package, D = possible downgrading."
-		print "              --verbose causes affecting use flags to be printed out"
-		print "              accompanied by a '+' for enabled and a '-' for disabled flags."
+		print "              by an already installed package, D = possible downgrading,"
+		print "              S = slotted install. --verbose causes affecting use flags to be"
+		print "              printed out accompanied by a '+' for enabled and a '-' for"
+		print "              disabled USE flags."
 		print
 		print "       "+green("--quiet")+" ("+green("-q")+" short option)"
 		print "              Effects vary, but the general outcome is a reduced or condensed"
@@ -271,8 +257,9 @@ def help(myaction,myopts,havecolor=1):
 		print
 		print "       "+green("--tree")+" ("+green("-t")+" short option)"
 		print "              Shows the dependency tree using indentation for dependencies."
-		print "              Only really useful in combination with --emptytree, --update "
-		print "              or --deep."
+		print "              The packages are also listed in reverse merge order so that"
+		print "              a package's dependencies follow the package. Only really useful"
+		print "              in combination with --emptytree, --update or --deep."
 		print
 		print "       "+green("--update")+" ("+green("-u")+" short option)"
 		print "              Updates packages to the best version available, which may not"
@@ -280,13 +267,6 @@ def help(myaction,myopts,havecolor=1):
 		print "              and development. This will also update direct dependencies which"
 		print "              may not what you want. In general use this option only in combi-"
 		print "              nation with the world or system target."
-		print
-		print "       "+green("--upgradeonly")+" ("+green("-U")+" short option)"
-		print "              Updates packages, but excludes updates that would result in a"
-		print "              lower version of the package being installed. SLOTs are"
-		print "              considered at a basic level."
-		print "              WARNING: This option is deprecated and shouldn't be used anymore."
-		print "              Please use the /etc/portage/package.* files from now on."
 		print
 		print "       "+green("--usepkg")+" ("+green("-k")+" short option)"
 		print "              Tell emerge to use binary packages (from $PKGDIR) if they are"
@@ -317,11 +297,6 @@ def help(myaction,myopts,havecolor=1):
 		print "       'emerge --sync' tells emerge to update the Portage tree as specified in"
 		print "       The SYNC variable found in /etc/make.conf.  By default, SYNC instructs"
 		print "       emerge to perform an rsync-style update with rsync.gentoo.org."
-		#              Available"
-		#print "       sync methods are rsync and anoncvs.  To use anoncvs rather than rsync,"
-		#print "       put 'SYNC=\"cvs://:pserver:cvs.gentoo.org:/home/cvsroot\" in your"
-		#print "       /etc/make.conf.  If you haven't used anoncvs before, you'll be prompted"
-		#print "       for a password, which for cvs.gentoo.org is empty (just hit enter.)"
 		print
 		print "       'emerge-webrsync' exists as a helper app to emerge --sync, providing a"
 		print "       method to receive the entire portage tree as a tarball that can be"
@@ -329,7 +304,8 @@ def help(myaction,myopts,havecolor=1):
 		print
 		print "       "+turquoise("WARNING:")
 		print "       If using our rsync server, emerge will clean out all files that do not"
-		print "       exist on it, including ones that you may have created."
+		print "       exist on it, including ones that you may have created. The exceptions"
+		print "       to this are the distfiles, local and packages directories."
 		print
 	elif myaction=="system":
 		print

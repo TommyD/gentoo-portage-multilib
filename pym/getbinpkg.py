@@ -355,6 +355,7 @@ def file_get(baseurl,dest,conn=None,fcmd=None):
 
 	fcmd = string.replace(fcmd, "${DISTDIR}", dest)
 	fcmd = string.replace(fcmd, "${URI}", baseurl)
+	fcmd = string.replace(fcmd, "${FILE}", os.path.basename(baseurl))
 	mysplit = string.split(fcmd)
 	mycmd   = mysplit[0]
 	myargs  = [os.path.basename(mycmd)]+mysplit[1:]

@@ -7,8 +7,15 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  28 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> emergehelp.py: Fixed up
+  some incorrect descriptions. Added documentation for new and changed
+  functionality. Removed documentation for deprecated options.
+
+  28 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> getbinpkg.py: Added missing
+  substitution of ${FILE} in resume command. #69068
+
   28 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> repoman: Fixed aux_get error
-  due to calling getfetchlist() when an ebuild no longer exists.
+  due to calling getfetchlist() when an ebuild no longer exists. #69051
 
   28 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> emerge: Removed a duplicate
   loop from the userquery function. #69020
