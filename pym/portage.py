@@ -1031,7 +1031,14 @@ class config:
 			self.loadVirtuals('/')
 					
 			#package.mask
-			pkgmasklines = grab_multiple("package.mask", self.profiles + locations, grabfile)
+			# Don't enable per profile package.mask unless the profile
+			# specifically depends on the >=portage-2.0.51 using
+			# <portage-2.0.51 syntax.
+			if self.profiles and (">=sys-apps/portage-2.0.51" in self.packages \
+                                      or "*>=sys-apps/portage-2.0.51" in self.packages):
+				pkgmasklines = grab_multiple("package.mask", self.profiles + locations, grabfile)
+			else:
+				pkgmasklines = grab_multiple("package.mask", locations, grabfile)
 			pkgmasklines = stack_lists(pkgmasklines, incremental=1)
 
 			self.pmaskdict = {}
