@@ -171,11 +171,70 @@ arch  related flags (see \fBKEYWORDS\fR).
 \fBDEPEND\fR
 This should contain a list of all packages that are required for the
 program to compile.
+.RS
+.TP
+.B DEPEND Atoms
+A depend atom is simply a dependency that is used by portage when calculating
+relationships between packages.  Please note that if the atom has not already
+been emerged, then the latest version available is matched.
+.RS
+.TP
+.B Atom Bases
+The base atom is just a full category/packagename.  Hence, these are base atoms:
+
+.I sys-apps/sed
 .br
+.I sys-libs/zlib
+.br
+.I net-misc/dhcp
+.TP
+.B Atom Versions
+It is nice to be more specific and say that only certain versions of atoms are
+acceptable.  Hence you may add a version number as a postfix to the base:
+
+sys-apps/sed\fI-4.0.5\fR
+.br
+sys-libs/zlib\fI-1.1.4-r1\fR
+.br
+net-misc/dhcp\fI-3.0_p2\fR
+.TP
+.B Atom Prefix Operators [> >= = <= =]
+Sometimes you want to be able to depend on general versions rather than specifying
+exact versions all the time.  Hence we provide standard boolean operators:
+
+\fI>\fRmedia-libs/libgd-1.6
+.br
+\fI>=\fRmedia-libs/libgd-1.6
+.br
+\fI=\fRmedia-libs/libgd-1.6
+.br
+\fI<=\fRmedia-libs/libgd-1.6
+.br
+\fI<\fRmedia-libs/libgd-1.6
+.TP
+.B Extended Atom Prefixes [!] and Postfixes [*]
+Now to get even fancier, we provide the ability to define blocking packages and
+version range matching.  Also note that these extended prefixes/postfixes may
+be combined in any way with the atom classes defined above.  Here are some common
+examples you may find in the portage tree:
+
+\fI!\fRapp-text/dos2unix
+.br
+=dev-libs/glib-2\fI*\fR
+.br
+\fI!\fRnet-fs/samba-2\fI*\fR
+
+\fI!\fR means block packages from being installed at the same time.  \fI*\fR
+means match any version of the package so long as the specified base is matched.  So
+with a version of '2*', we can match '2.1', '2.2', '2.2.1', etc... and not match
+version '1.0', '3.0', '4.1', etc...
+.RE
+.TP
+.B USE Variation
 Sometimes programs may depend on different things depending on the USE
 variable.  To vary the packages the program depends on, just use this
 syntax:
-.br
+
 DEPEND="media-libs/libsdl
 .br
 	jpeg? ( >=media-libs/jpeg-6b )
@@ -186,6 +245,8 @@ DEPEND="media-libs/libsdl
 .br
 	X? ( virtual/x11 )"
 .TP
+.RE
+.TP
 \fBRDEPEND\fR
 This should contain a list of all packages that are required for this
 program to run (aka runtime depend).  If this is not set, then it
@@ -195,15 +256,19 @@ You may use the same syntax to vary dependencies as seen above in \fBDEPEND\fR.
 .TP
 \fBRESTRICT\fR = \fI[nostrip,nomirror,fetch]\fR
 This should be a space delimited list of portage features to restrict.
-.br
-.I nostrip:
+.PD 0
+.RS
+.TP
+.I nostrip
 final binaries/libraries will not be stripped of debug symbols.
-.br
-.I nomirror:
+.TP
+.I nomirror
 files in \fBSRC_URI\fR will not be downloaded from the \fBGENTOO_MIRRORS\fR.
-.br
-.I fetch:
+.TP
+.I fetch
 like \fInomirror\fR but the files will not be fetched via \fBSRC_URI\fR either.
+.RE
+.PD 1
 .TP
 \fBPROVIDE\fR = \fI"virtual/TARGET"\fR
 This variable should only be used when a package provides a virtual target.
