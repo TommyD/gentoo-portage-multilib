@@ -78,22 +78,6 @@ import xpak
 import re
 import copy
 
-# master category list.  Any new categories should be added to this list to
-# ensure that they all categories are read when we check the portage directory
-# for available ebuilds.
-
-categories=("app-i18n", "app-admin", "app-arch", "app-cdr", "app-crypt",
-"app-doc", "app-editors", "app-emulation", "app-games", "app-misc",
-"app-office", "app-shells", "app-text", "dev-db", "dev-java", "dev-lang",
-"dev-libs", "dev-lisp", "dev-perl", "dev-python", "dev-ruby", "dev-util",
-"gnome-base", "gnome-extra", "kde-apps", "kde-i18n", "kde-base", "kde-libs",
-"media-gfx", "media-libs", "media-sound", "media-video", "net-analyzer",
-"net-apache", "net-dialup", "net-fs", "net-ftp", "net-im", "net-irc",
-"net-libs", "net-mail", "net-misc", "net-news", "net-nds", "net-print",
-"net-www", "packages", "sys-apps", "sys-devel", "sys-kernel", "sys-libs",
-"x11-base", "x11-libs", "x11-misc", "x11-terms", "x11-wm", "virtual",
-"dev-tcltk")
-
 def tokenize(mystring):
 	"""breaks a string like 'foo? (bar) oni? (blah (blah))' into embedded lists; returns None on paren mismatch"""
 	tokens=string.split(mystring)
@@ -500,34 +484,34 @@ class config:
 	def populate(self):
 		if profiledir and os.path.exists(profiledir+"/make.defaults"):
 			self.configlist=[self.origenv.copy(),getconfig("/etc/make.conf"),getconfig(profiledir+"/make.defaults"),getconfig("/etc/make.globals")]
-			myuse=[]
-			for pos in [2,1,0]:
-				if self.configlist[pos].has_key("USE"):
-					myusesplit=string.split(expand(self.configlist[pos]["USE"],self.configlist[2]))
-					for x in myusesplit:
-						if x=="-*":
-							# "-*" is a special "minus" var that means "unset all USE settings".  so USE="-* gnome" will have *just* gnome enabled.
-							myuse=[]
-						elif x[0]!="-":
-							if not x in myuse:
-								myuse.append(x)
-						else:
-							while x[1:] in myuse:
-								myuse.remove(x[1:])
-			#inject into configlist[0] *and* origenv so that our USE tweaks are preserved beyond a self.reset()
-			self.configlist[0]["USE"]=string.join(myuse," ")
-			self.origenv["USE"]=self.configlist[0]["USE"]
 		else:
 			self.configlist=[self.origenv.copy(),getconfig("/etc/make.conf"),getconfig("/etc/make.globals")]
 		self.populated=1
-		if self.has_key("MAINTAINER"):
-			if self["MAINTAINER"]=="yes":
-				self["MAINTAINER"]=self["MAINTAINER_DEFAULT"]
-				self.origenv["MAINTAINER"]=self["MAINTAINER_DEFAULT"]
-			maintainerparts=string.split(self["MAINTAINER"],' ')
-			for x in maintainerparts:
-				self["MAINTAINER_"+x]="1"
-	
+		# cumulative Portage variables with "-" support: USE and FEATURES
+		# mycvars specifies the name of the variable and the parts of the config database that should be scanned.
+		mycvars=[["USE",self.configlist[:-1]],["FEATURES",self.configlist]]
+		# USE doesn't consult make.globals while FEATURES does.
+		for mycvar in mycvars:
+			mykey=mycvar[0]
+			mydb=mycvar[1]
+			mysetting=[]
+			#cycle backwards through the db entries
+			for pos in range(len(mydb)-1,-1,-1):
+				if mydb[pos].has_key(mykey):
+					#expand using only the current config file/db entry
+					mysplit=expand(mydb[pos][mykey],mydb[pos]).split()
+					for x in mysplit:
+						if x=="-*":
+							# "-*" is a special "minus" var that means "unset all settings".  so USE="-* gnome" will have *just* gnome enabled.
+							mysetting=[]
+						elif x[0]!="-":
+							if not x in mysetting:
+								mysetting.append(x)
+						else:
+							while x[1:] in mysetting:
+								mysetting.remove(x[1:])
+			#inject into configlist[0] *and* origenv so that our settings tweaks are preserved beyond a self.reset()
+			self.hardset(mykey,string.join(mysetting," "))
 	def __getitem__(self,mykey):
 		if not self.populated:
 			self.populate()
@@ -560,9 +544,18 @@ class config:
 					mykeys.append(y)
 		return mykeys
 	def __setitem__(self,mykey,myvalue):
+		"set a value; will be thrown away at reset() time"
 		if not self.populated:
 			self.populate()
 		self.configlist[0][mykey]=myvalue
+	
+	def hardset(self,mykey,myvalue):
+		"set a value persistently"
+		if not self.populated:
+			self.populate()
+		self.configlist[0][mykey]=myvalue
+		self.origenv[mykey]=myvalue
+
 	def reset(self):
 		if not self.populated:
 			self.populate()
@@ -576,11 +569,10 @@ class config:
 		return mydict
 	
 def spawn(mystring,debug=0):
-	global settings
 	mypid=os.fork()
 	if mypid==0:
 		myargs=[]
-		if settings["MAINTAINER_sandbox"]=="1":
+		if "sandbox" in features:
 			mycommand="/usr/lib/portage/bin/sandbox"
 			if debug:
 				myargs=["sandbox",mystring]
@@ -713,29 +705,17 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 	a=open(settings["T"]+"/src_uri_all","w")
 	a.write(flatten(alluris))
 	a.close()
-	
-	if mydo=="help": 
-		return spawn("/usr/sbin/ebuild.sh help")
-	elif mydo=="unpack": 
-		if settings["MAINTAINER_noauto"]=="1":
-			return spawn("/usr/sbin/ebuild.sh unpack")
+	actionmap={	"help":"help", 
+				"unpack":"fetch unpack", 
+				"compile":"setup fetch unpack compile",
+				"install":"setup fetch unpack compile install",
+				"rpm":"setup fetch unpack compile install rpm"
+				}
+	if mydo in actionmap.keys():	
+		if "noauto" in features:
+			return spawn("/usr/sbin/ebuild.sh "+mydo)
 		else:
-			return spawn("/usr/sbin/ebuild.sh setup fetch unpack")
-	elif mydo=="compile":
-		if settings["MAINTAINER_noauto"]=="1":
-			return spawn("/usr/sbin/ebuild.sh compile")
-		else:
-			return spawn("/usr/sbin/ebuild.sh setup fetch unpack compile")
-	elif mydo=="install":
-		if settings["MAINTAINER_noauto"]=="1":
-			return spawn("/usr/sbin/ebuild.sh install")
-		else:
-			return spawn("/usr/sbin/ebuild.sh setup fetch unpack compile install")
-	elif mydo=="rpm": 
-		if settings["MAINTAINER_noauto"]=="1":
-			return spawn("/usr/sbin/ebuild.sh rpm")
-		else:
-			return spawn("/usr/sbin/ebuild.sh setup fetch unpack compile install rpm")
+			return spawn("/usr/sbin/ebuild.sh "+actionmap[mydo])
 	elif mydo in ["prerm","postrm","preinst","postinst","config","touch","clean","setup","fetch","digest","batchdigest"]:
 		return spawn("/usr/sbin/ebuild.sh "+mydo)
 	elif mydo=="qmerge": 
@@ -789,7 +769,6 @@ def isfifo(x):
 expandcache={}
 
 def expandpath(mypath):
-	"""this is obsoleted by os.path.realpath() in python2.2"""
 	"""The purpose of this function is to resolve the 'real' path on disk, with all
 	symlinks resolved except for the basename, since we may be installing a symlink
 	and definitely don't want it expanded.  In fact, the file that we want to install
@@ -801,13 +780,8 @@ def expandpath(mypath):
 		return expandcache[join]+'/'+split[-1]
 	except:
 		pass
-	a=getstatusoutput("/bin/readlink -f	'"+join+"'")
-	if a[0]!=0:
-		#expansion didn't work; probably because the dir didn't exist.  Return original path.
-		return mypath 
-	else:
-		expandcache[join]=a[1]
-		return a[1]+"/"+split[-1]
+	expandcache[join]=os.path.realpath(join)
+	return a+"/"+split[-1]
 
 def movefile(src,dest,unlink=1):
 	"""moves a file from src to dest, preserving all permissions and attributes; mtime will
@@ -2331,11 +2305,11 @@ class dblink:
 		print ">>>",self.cat+"/"+self.pkg,"merged."
 
 	def isprotected(self,destroot,offset):
+		#we use os.path.realpath() rather than expandpath() because we want full expansion here
 		mytruncpath=os.path.realpath(destroot+offset)
 		mytruncpath=mytruncpath[len(destroot)-1:]+"/"
 		myppath=""
 		for ppath in self.protect:
-			#the expandpath() means that we will be expanding rootpath first (resolving dir symlinks)
 			#before matching against a protection path.
 			if mytruncpath[0:len(ppath)]==ppath:
 				myppath=ppath
@@ -2379,13 +2353,15 @@ class dblink:
 			except:
 				#dest file doesn't exist
 				mydmode=None
+			
 			# below, the [len(destroot):] is there to chop off the $ROOT 
 			# (we don't record this in CONTENTS) after the real
-			# target path has been expanded. os.path.realpath gets the "real"
-			# path, taking any existing symlinks into account.  That way, if
+			# target path has been expanded. expandpath() gets the "real"
+			# path, taking any existing symlinks into account but will *not* expand the file itself if *it* is a symlink.  That way, if
 			# the symlinks are unmerged, this object can still be found and unmerged
 			# too, since we record myrealdest in CONTENTS.
-			myrealdest=os.path.realpath(mydest)[len(destroot)-1:]
+			
+			myrealdest=expandpath(mydest)[len(destroot)-1:]
 			if S_ISLNK(mymode):
 				# we are merging a symbolic link
 				myto=os.readlink(mysrc)
@@ -2570,40 +2546,6 @@ class dblink:
 		"Is this a regular package (does it have a CATEGORY file?  A dblink can be virtual *and* regular)"
 		return os.path.exists(self.dbdir+"/CATEGORY")
 
-def depgrab(myfilename,depmark):
-	"""
-	Will grab the dependency string from an ebuild file, using
-	depmark as a marker (normally DEPEND or RDEPEND)
-	"""
-	depstring=""
-	myfile=open(myfilename,"r")
-	mylines=myfile.readlines()
-	myfile.close()
-	pos=0
-	while (pos<len(mylines)):
-		if mylines[pos][0:len(depmark)+1]==depmark+"=":
-			depstart=string.split(mylines[pos][len(depmark):],'"')
-			if len(depstart)==3:
-				depstring=depstart[1]
-				return string.join(string.split(depstring)," ")
-			elif len(depstart)==2:
-				depstring=depstart[1]+" "
-				pos=pos+1
-				while 1:
-					mysplit=string.split(mylines[pos],'"')
-					depstring=depstring+mysplit[0]+" "
-					if len(mysplit)>1:
-						return string.join(string.split(depstring)," ")
-					pos=pos+1
-			elif len(depstart)==1:
-				depstring=depstring+mylines[pos][len(depmark)+1:]
-				break
-			else:
-				break
-		else:
-			pos=pos+1
-	return string.join(string.split(depstring)," ")
-
 def cleanup_pkgmerge(mypkg,origdir):
 	shutil.rmtree(settings["PKG_TMPDIR"]+"/"+mypkg)
 	os.chdir(origdir)
@@ -2699,8 +2641,6 @@ if not os.path.exists(root+"var/tmp"):
 	os.mkdir(root+"var",0755)
 	os.mkdir(root+"var/tmp",01777)
 os.umask(022)
-settings=config()
-ebuild_initialized=0
 profiledir=None
 if root!="/":
 	if os.path.exists(root+"etc/make.profile/make.defaults"):
@@ -2708,3 +2648,15 @@ if root!="/":
 if not profiledir:
 	if os.path.exists("/etc/make.profile/make.defaults"):
 		profiledir="/etc/make.profile"
+settings=config()
+features=settings["FEATURES"].split()
+for x in features:
+	#this is handy for ebuilds
+	settings.hardset("FEATURES_"+x,"1")
+#getting categories from an external file now
+if os.path.exists(settings["PORTDIR"]+"/profiles/categories"):
+	categories=grabfile(settings["PORTDIR"]+"/profiles/categories")
+else:
+	categories=[]
+ebuild_initialized=0
+

@@ -191,7 +191,7 @@ dyn_digest() {
 	if [ ! -d ${FILESDIR} ]
 	then
 		install -d ${FILESDIR}
-		if [ "${MAINTAINER_cvs}" = "1" ]
+		if [ "${FEATURES_cvs}" = "1" ]
 		then
 			echo ">>> adding ${FILESDIR} to CVS (just in case it isn't there)"
 			( echo; cd `/usr/bin/dirname ${FILESDIR}`; cvs add `/usr/bin/basename ${FILESDIR}`; echo)
@@ -213,8 +213,8 @@ dyn_digest() {
 		fi
     done
     mv ${FILESDIR}/.digest-${PF} ${FILESDIR}/digest-${PF}
-    if [ "${MAINTAINER_cvs}" = "1" ]
-    then
+    if [ "${FEATURES_cvs}" = "1" ]
+    hen
 		echo ">>> adding digest-${PF} to CVS (just in case it isn't there)"
 		( echo; cd ${FILESDIR}; cvs add digest-${PF}; echo )
     fi
@@ -225,7 +225,7 @@ digest_check() {
 	if [ ! -e ${FILESDIR}/digest-${PF} ]
 	then
 		echo '!!!'" No message digest file found."
-		if [ "$MAINTAINER_digest" = "1" ]
+		if [ "$FEATURES_digest" = "1" ]
 		then
 			echo '>>> Maintainer mode: auto-computing digests.'
 			dyn_digest
@@ -246,7 +246,7 @@ digest_check() {
 	then
 		echo
 		echo '!!!'" No message digest found for ${1}."
-		if [ "$MAINTAINER_cvs" = "1" ]
+		if [ "$FEATURES_cvs" = "1" ]
 		then
 			echo '>>> Maintainer mode: auto-computing digests.'
 			dyn_digest
@@ -743,7 +743,7 @@ then
 	rm ${T}/archives.orig
 	export A=`cat ${T}/archives`
 	rm ${T}/archives
-	if [ "$MAINTAINER_digest" = "1" ]
+	if [ "$FEATURES_digest" = "1" ]
 	then
 		for x in `cat ${T}/src_uri_all` 
 		do

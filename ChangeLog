@@ -1,8 +1,17 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+  21 Feb 2002; Daniel Robbins <drobbins@gentoo.org>: rewrite of cumulative USE
+  setting code so that the new FEATURES (what used to be called MAINTAINER) is
+  now cumulative and supports "-" and "-*" options.  FEATURES is expanded using
+  all config files, while USE ignores make.globals but uses everything else.
+  Optimization of a couple parts of doebuild().  Upgraded expandpath() and used
+  it in one place where it was removed accidentally (in the new merge code.)
+  Master category list is now stored externally in
+  ${PORTDIR}/profiles/categories for ease of maintenance.
+  
   21 Feb 2002; Daniel Robbins <drobbins@gentoo.org> emerge: now supports the
-  EMERGE_OPTS make.conf variable for enabling emerge options by default. 
+  EMERGE_OPTS make.conf variable for enabling emerge options by default.
   Closes bug #605.
   
   21 Feb 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: dep_match() now

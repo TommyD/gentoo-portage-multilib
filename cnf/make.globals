@@ -69,7 +69,9 @@ KDE2DIR="/usr/kde/2"
 KDE3DIR="/usr/kde/3"
 
 # Default maintainer options
-MAINTAINER_DEFAULT="digest sandbox noclean noauto"
+#FEATURES="digest sandbox noclean noauto"
+# Default user options
+FEATURES="sandbox"
 
 # By default output colored text where possible, set to "true" to output only
 #black&white text
