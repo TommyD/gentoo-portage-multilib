@@ -16,22 +16,22 @@ import time
 
 #number of ebuilds merged
 merged=0
-opts=["--all",
-	"--autoclean",
+actions=["--help",
+	"--rebuild",
+	"--search",
+	"--update",
+	"--zap"]
+options=["--autoclean",
 	"--buildpkg",
 	"--clean",
 	"--debug",
 	"--fetchonly",
-	"--help",
 	"--noreplace",
 	"--onlydeps",
 	"--pretend",
-	"--search",
-	"--unmerge",
 	"--usepkg",
-	"--verbose",
-	"--world"]
-shortopts={"a":"--all",
+	"--verbose"]
+shortmapping={"a":"--autoclean",
 	"b":"--buildpkg",
 	"c":"--clean",
 	"d":"--debug",
@@ -41,31 +41,65 @@ shortopts={"a":"--all",
 	"n":"--noreplace",
 	"o":"--onlydeps",
 	"p":"--pretend",
+	"r":"--rebuild",
 	"s":"--search",
-	"u":"--unmerge",
+	"u":"--update",
 	"v":"--verbose",
-	"w":"--world"}
-modes=["rsync","system","update","rebuild","config"]
+	"z":"--zap"}
+modes=["rsync","config","system","world","noslot"]
+myaction=None
 myopts=[]
 mymode=[]
 myfiles=[]
 edebug=0
+
+# process short actions and options
 for x in sys.argv[1:]:
+	if x[0:1]=="-"and not x[1:2]=="-":
+		for y in x[1:]:
+			if shortmapping.has_key(y):
+				sys.argv.append(shortmapping[y])
+			else:
+				print y
+				print "!!! Error: -"+y+" is an invalid short action or option."
+		sys.argv.remove(x)
+
+# process the command arguments
+for x in sys.argv[1:]:
+	if x=="update" or x=="--unmerge" or x=="--world":
+		print
+		if x=="update":
+			print " "+red("* WARNING:"),green("emerge update"),"has been deprecated, use",green("emerge --update"),"instead."
+		elif x=="--unmerge":
+			print " "+red("* WARNING:"),green("emerge --unmerge"),"has been deprecated, use",green("emerge --zap"),"instead."
+		elif x=="--world":
+			print " "+red("* WARNING:"),green("emerge --world"),"has been deprecated, use",green("emerge world"),"instead."
+		print " "+red("*"),"Read",green("emerge --help"),"to get a complete overview of the interface changes."
+		print
+		sys.exit(1)
+
 	if len(x)>=2:
 		if x[0:1]=="-":
 			if x[1:2]=="-":
-				if x in opts:
+				if x in actions:
+					if myaction:
+						print "!!! Error: more than one action specified on command-line."
+						print "!!! Available actions:",actions
+						sys.exit(1)
+					else:
+						myaction=x
+				elif x in options:
 					myopts.append(x)
 				else:
-					print "!!! Error:",x,"is an invalid option."
+					print "!!! Error:",x,"is an invalid action or option."
 					sys.exit(1)
 			else:
 				for y in x[1:]:
-					if shortopts.has_key(y):
-						myopts.append(shortopts[y])
+					if shortmapping.has_key(y):
+						myopts.append(shortmapping[y])
 					else:
 						print y
-						print "!!! Error: -"+y+" is an invalid short option."
+						print "!!! Error: -"+y+" is an invalid short action or option."
 		elif x in modes:
 			if len(mymode)>=1:
 				print "!!! Error: more than one mode specified on command-line."
@@ -74,12 +108,13 @@ for x in sys.argv[1:]:
 			else:
 				mymode.append(x)
 		else:	
-				#this little conditional helps tab completion
+				# this little conditional helps tab completion
 				if x[-1]=="/":
 					myfiles.append(x[:-1])
 				else:
 					myfiles.append(x)
 
+# check if root user is the current user for the actions where emerge needs this
 if os.getuid()!=0 and "--help" not in myopts and "--search" not in myopts:
 	print "!!! to be able to perform the requested action emerge must be run by root."
 	sys.exit(1)
@@ -203,8 +238,9 @@ class search:
 #build our package digraph
 class depgraph:
 
-	def __init__(self,mymode,myopts):
+	def __init__(self,mymode,myaction,myopts):
 		self.mymode=mymode
+		self.myaction=myaction
 		self.myopts=myopts
 		virts=portage.getvirtuals("/")
 		self.db={}
@@ -273,7 +309,7 @@ class depgraph:
 			if addme:
 				self.digraph.addnode(mybigkey,myparent)
 			for dep in mydep.keys():
-				if "update" in mymode:
+				if "--update"==self.myaction:
 					mycheck=self.emptytree.depcheck(mydep[dep])
 				else:
 					mycheck=self.db[dep]["vartree"].depcheck(mydep[dep])
@@ -308,7 +344,7 @@ class depgraph:
 				print "!!! Error: circular dependencies"
 				sys.exit(1)
 			splitski=string.split(mycurkey)
-			if "update" in mymode:
+			if "--update"==self.myaction:
 				if not self.db["/"]["vartree"].exists_specific(splitski[2]):
 					self.db["/"]["merge"].append(splitski)
 			else:
@@ -319,22 +355,27 @@ class depgraph:
 				retlist.append(y)
 		return retlist
 
-	def syscreate(self,mylines=[]):
+	def processsyslist(self,mylines=[]):
 		mynewlines=[]
 		for x in mylines:
 			myline=string.join(string.split(x))
 			if not len(myline):
 				continue
-			if myline[0]=="#":
+			elif myline[0]=="#":
 				continue
-			if myline[0]!="*":
+			elif myline[0]!="*":
 				continue
 			myline=myline[1:]
 			mynewlines.append(myline)
-		if "--world" in self.myopts:
-			mynewlines.extend(self.db["/"]["vartree"].getallnodes())
+		return mynewlines
+	
+	def syscreate(self,mylines=[],depformat=1):
+		if depformat==1:
+			mynewlines=self.processsyslist(mylines)
+		else:
+			mynewlines=mylines
 		for myline in mynewlines:	
-			if "update" in self.mymode:
+			if "--update"==self.myaction:
 				self.create(self.match(myline,mykey="update (likely old /var/db/pkg entry)"))
 			else:
 				mycheck=self.db[portage.root]["vartree"].depcheck(myline)
@@ -377,15 +418,15 @@ class depgraph:
 	def display(self,mylist):
 		for x in mylist:
 			if x[0]=="blocks":
-				addl=""+red("B")+"   "
-				print "["+x[0]+" "+addl+"]",x[2]
+				addl=""+red("B")+"    "
+				print "["+x[0]+" "+addl+"]",red(x[2])
 			else:
 				if self.db[x[1]]["vartree"].exists_specific(x[2]):
-					addl="  "+yellow("R")+" "
+					addl="  "+yellow("R")+"  "
 				elif self.db[x[1]]["vartree"].exists_specific_cat(x[2]):
-					addl="   "+turquoise("U")
+					addl="   "+turquoise("U")+" "
 				else:
-					addl=" "+green("N")+"  "
+					addl=" "+green("N")+"   "
 				print "["+x[0]+" "+addl+"]",x[2],"to",x[1]
 				
 	def merge(self,mylist):
@@ -517,37 +558,97 @@ def post_emerge(retval=0):
 		print
 	sys.exit(retval)
 
+# general options that should be taken into account before any action
 if not portage.settings.has_key("MAINTAINER_noclean"):
 	if not "--autoclean" in myopts:
 		myopts.append("--autoclean")
 if "--debug" in myopts:
 	edebug=1
-if "--help" in myopts:
+
+# process modes that aren't in the universal emerge interface format first
+# this format is 'emerge --action --option --option [packageset]'
+if "rsync" in mymode and not myaction:
+	if not os.path.exists("/usr/bin/rsync"):
+		print "!!! /usr/bin/rsync does not exist, so rsync support is disabled."
+		sys.exit(1)
+	rclean=0
+	myportdir=portage.settings["PORTDIR"]
+	if myportdir[-1]=="/":
+		myportdir=myportdir[:-1]
+	if not os.path.exists(myportdir):
+		print ">>>",myportdir,"not found, creating it."
+		os.makedirs(myportdir,0755)	
+	if "--clean" in myopts:
+		#we'll --delete files when we rsync
+		rclean=1
+	mycommand="/usr/bin/rsync -rlptDv --stats --progress "
+	if rclean:
+		mycommand=mycommand+"--delete --exclude='distfiles/*' --exclude='packages/*' "
+	mycommand=mycommand+"rsync://cvs.gentoo.org/gentoo-x86-portage/* "+myportdir
+	print ">>> starting rsync with cvs.gentoo.org..."
+	#protect users that did not set a default umask
+	os.umask(022)
+	sys.exit(os.system(mycommand))	
+
+# HELP action
+elif "--help"==myaction:
 	if len(mymode)==0:
 		print
-		print bold("You can also type \"emerge --help system\", \"emerge --help rsync\" and")
-		print bold("\"emerge --help config\" for additional help.")
-		print
-		print turquoise("Usage: ")+turquoise("emerge")+" [ "+green("options")+" ] [ "+turquoise("ebuildfile")+" | "+turquoise("tbz2file")+" ] | "+turquoise("dep")+" ]..."
-		print "       "+turquoise("emerge")+" [ "+green("options")+" ] "+turquoise("system")
-		print "       "+turquoise("emerge")+" [ "+green("options")+" ] "+turquoise("update")
-		print "       "+turquoise("emerge")+" [ "+green("options")+" ] "+turquoise("rebuild")
+		print bold("Usage: ")+turquoise("emerge")+" [ "+green("action")+" ] [ "+green("options")+" ] [ "+turquoise("ebuildfile")+" | "+turquoise("tbz2file")+" | "+turquoise("dependency")+" ] ..."
+		print "       "+turquoise("emerge")+" [ "+green("action")+" ] [ "+green("options")+" ] [ "+turquoise("system")+" | "+turquoise("world")+" | "+turquoise("noslot")+" ]"
 		print "       "+turquoise("emerge")+" [ "+green("--clean")+" "+green("-c")+" ] "+turquoise("rsync")
+		print "       "+turquoise("emerge")+" "+green("--help")+" "" "+green("-h")+" [ "+turquoise("rsync")+" | "+turquoise("system")+" | "+turquoise("world")+" | "+turquoise("noslot")+" | "+turquoise("config")+" ] "
+		print
+		print turquoise("Actions:")
+		print "       "+green("--help")+" "+green("-h")
+		print "              displays this help, an additional mode specifier provides"
+		print "              detailed help about that mode instead"
+		print 
+		print "       "+green("--update")+" "+green("-u")
+		print "              updates installed packages, this is typically used with",bold("world")
+		print "              and",bold("system")
+		print 
+		print "       "+green("--zap")+" "+green("-z")
+		print "              removes an installed package. the arguments can be in two"
+		print "              different formats : /var/db/pkg/category/package-version"
+		print "              or category/package."
+		print
+		print "       "+green("--rebuild")+" "+green("-r")
+		print "              forcably rebuild installed packages, this is typically used with"
+		print "              "+bold("world"),"and",bold("system")
+		print
+		print "       "+green("--search")+" "+green("-s")
+		print "              searches for matches of the supplied string in the current local"
+		print "              portage tree. The search string is a regular expression."
+		print "              A few examples: "
+		print "              "+bold("emerge --search \"^kde\"")
+		print "                  list all packages starting with kde"
+		print "              "+bold("emerge --search \"gcc$\"")
+		print "                  list all packages ending with gcc"
+		print "              "+bold("emerge --search \"\"")+" or"
+		print "              "+bold("emerge --search \"*\"")
+		print "                  list all available packages "
 		print
 		print turquoise("Options:")
-		print "       "+green("--help")+" "+green("-h")+" [ mode ]"
-		print "              display this help (specify optional \"rsync\" or \"system\" for"
-		print "              more info)"
-		print 
-		print "       "+green("--verbose")+" "+green("-v")
-		print "              Tell emerge to run in verbose mode.  Currently, this causes"
-		print "              emerge to print out GNU info errors, if any."
-		print 
+		print "       "+green("--autoclean")+" "+green("-a")
+		print "              emerge normally cleans out the package-specific temporary"
+		print "              build directory before it starts the building a package.  With"
+		print "              --autoclean, it will also clean the directory *after* the"
+		print "              build completes.  This option is automatically enabled for"
+		print "              normal users, but maintainers can use this option to enable"
+		print "              autocleaning."
+		print
+		print "       "+green("--buildpkg")+" "+green("-b")
+		print "              tell emerge to build binary packages for all ebuilds processed"
+		print "              (in addition to actually merging the packages.  Useful for"
+		print "              maintainers or if you administrate multiple Gentoo Linux"
+		print "              systems (build once, emerge tbz2s everywhere)."
+		print
 		print "       "+green("--debug")+" "+green("-d")
-		print "              Tell emerge to run the "+turquoise("ebuild")+" command in --debug"
-		print "              mode.  In this mode, the bash build environment will run with"
-		print "              the -x option, causing it to output verbose debug information"
-		print "              to stdout.  --debug is great for finding bash syntax errors."
+		print "              Tell emerge to run the ebuild command in --debug mode. In this"
+		print "              mode, the bash build environment will run with the -x option,"
+		print "              causing it to output verbose debug information print to stdout."
+		print "              --debug is great for finding bash syntax errors."
 		print
 		print "       "+green("--fetchonly")+" "+green("-f")
 		print "              Instead of doing any package building, just perform fetches for"
@@ -557,6 +658,13 @@ if "--help" in myopts:
 		print "              Only merge (or pretend to merge) the dependencies of the"
 		print "              specified packages, not the packages themselves."
 		print
+		print "       "+green("--pretend")+" "+green("-p")
+		print "              instead of actually performing the merge, simply display what"
+		print "              ebuilds and tbz2s *would* have been installed if --pretend"
+		print "              weren't used.  Using --pretend is strongly recommended before"
+		print "              installing an unfamiliar package.  In the printout, N = new,"
+		print "              U = upgrading, R = replacing"
+		print
 		print "       "+green("--noreplace")+" "+green("-n")
 		print "              Skip the packages specified on the command-line that have"
 		print "              already been installed.  Without this option, any packages,"
@@ -565,76 +673,20 @@ if "--help" in myopts:
 		print "              Note that Portage will never remerge dependencies automatically."
 		print
 		print "       "+green("--usepkg")+" "+green("-k")
-		print "              tell emerge to use binary packages (from $DISTDIR) if they are"
+		print "              tell emerge to use binary packages (from $PKGDIR) if they are"
 		print "              available, thus possibly avoiding some time-consuming compiles."
 		print "              This option is useful for CD installs; you can export"
-		print "              DISTDIR=/mnt/cdrom/packages and then use this option to have"
+		print "              PKGDIR=/mnt/cdrom/packages and then use this option to have"
 		print "              emerge \"pull\" binary packages from the CD in order to satisfy" 
 		print "              dependencies."
 		print
-		print "       "+green("--buildpkg")+" "+green("-b")
-		print "              tell emerge to build binary packages for all ebuilds processed"
-		print "              (in addition to actually merging the packages.  Useful for"
-		print "              maintainers or if you administrate multiple Gentoo Linux"
-		print "              systems (build once, emerge tbz2s everywhere)."
-		print
-		print "       "+green("--autoclean")
-		print "              emerge normally cleans out the package-specific temporary"
-		print "              build directory before it starts the building a package.  With"
-		print "              --autoclean, it will also clean the directory *after* the"
-		print "              build completes.  This option is automatically enabled for"
-		print "              normal users, but maintainers can use this option to enable"
-		print "              autocleaning."
-		print
-		print "       "+green("--pretend")+" "+green("-p")
-		print "              instead of actually performing the merge, simply display what"
-		print "              ebuilds and tbz2s *would* have been installed if --pretend"
-		print "              weren't used.  Using --pretend is strongly recommended before"
-		print "              installing an unfamiliar package.  In the printout, N = new,"
-		print "              U = upgrading, R = replacing"
-		print
-		print "       "+green("--unmerge")+" "+green("-u")
-		print "              removes an installed package. the arguments can be in two"
-		print "              different formats : /var/db/pkg/category/package-version"
-		print "              or category/package-version."
-		print "              A few examples of the second format:"
-		print "              "+bold("binutils")+" matches"
-		print "                  binutils-2.11.90.0.7 and binutils-2.11.92.0.12.3-r1"
-		print "              "+white(">binutils-2.11.90.0.7")+" matches"
-		print "                  binutils-2.11.92.0.12.3-r1"
-		print "              "+white("sys-devel/binutils")+" matches"
-		print "                  binutils-2.11.90.0.7 and binutils-2.11.92.0.12.3-r1"
-		print "              "+white("sys-devel/binutils-2.11.90.0.7")+" matches"
-		print "                  binutils-2.11.90.0.7"
-		print "              "+white(">sys-devel/binutils-2.11.90.0.7")+" matches"
-		print "                  binutils-2.11.92.0.12.3-r1"
-		print "              "+white(">=sys-devel/binutils-2.11.90.0.7")+" matches"
-		print "                  binutils-2.11.90.0.7 and binutils-2.11.92.0.12.3-r1"
-		print "              "+white("<sys-devel/binutils-2.11.92.0.12.3-r1")+" matches"
-		print "                  binutils-2.11.90.0.7"
-		print "              "+white("<=sys-devel/binutils-2.11.92.0.12.3-r1")+" matches"
-		print "                  binutils-2.11.90.0.7 and binutils-2.11.92.0.12.3-r1"
-		print
-		print "       "+green("--all")+" "+green("-a")
-		print "              complements the --unmerge option to make sure that all"
-		print "              installed versions of an application will be unmerged, the"
-		print "              default behaviour is to not remove the last installed version."
-		print
-		print "       "+green("--search")+" "+green("-s")
-		print "              searches for matches of the supplied string in the current local"
-		print "              portage tree. The search string is a regular expression."
-		print "              A few examples: "
-		print "              "+white("emerge --search \"^kde\"")
-		print "                  list all packages starting with kde"
-		print "              "+white("emerge --search \"gcc$\"")
-		print "                  list all packages ending with gcc"
-		print "              "+white("emerge --search \"\"")+" or"
-		print "              "+white("emerge --search \"*\"")
-		print "                  list all available packages "
-		print
+		print "       "+green("--verbose")+" "+green("-v")
+		print "              Tell emerge to run in verbose mode.  Currently, this causes"
+		print "              emerge to print out GNU info errors, if any."
+		print 
 	elif "rsync" in mymode:
 		print
-		print "       "+turquoise("emerge")+" [ "+green("--clean")+" "+green("-c")+" ] "+turquoise("rsync")
+		print bold("Usage: ")+turquoise("emerge")+" [ "+green("--clean")+" "+green("-c")+" ] "+turquoise("rsync")
 		print
 		print "       \"emerge rsync\" initiates an rsync update with cvs.gentoo.org,"
 		print "       updating your Portage tree (typically in /usr/portage).  This option"
@@ -644,7 +696,7 @@ if "--help" in myopts:
 		print
 	elif "system" in mymode:
 		print
-		print "       "+turquoise("emerge")+" [ "+green("options")+" ] "+turquoise("system")
+		print bold("Usage: ")+turquoise("emerge")+" [ "+green("action")+" ] "+" [ "+green("options")+" ] "+turquoise("system")
 		print
 		print "       \"emerge system\" is the Portage system update command.  When run, it"
 		print "       will scan the etc/make.profile/packages file and determine what"
@@ -657,6 +709,14 @@ if "--help" in myopts:
 		print "       recent version that matches the profile spec) for you.  It's always a"
 		print "       good idea to do an \"emerge --pretend system\" before an \"emerge"
 		print "       system\", just so you know what emerge is planning to do."
+		print
+	elif "world" in mymode:
+		print
+		print bold("Usage: ")+turquoise("emerge")+" [ "+green("action")+" ] "+" [ "+green("options")+" ] "+turquoise("world")
+		print
+	elif "noslot" in mymode:
+		print
+		print bold("Usage: ")+turquoise("emerge")+" [ "+green("action")+" ] "+" [ "+green("options")+" ] "+turquoise("noslot")
 		print
 	elif "config" in mymode:
 		outstuff=green("Config file management support (preliminary)")+"""
@@ -698,9 +758,9 @@ CONFIG_PROTECT_MASK="/etc/wget /etc/rc.d"
 
 """
 		print outstuff
-	sys.exit(1)
 
-if "--search" in myopts:
+# SEARCH action
+elif "--search"==myaction:
 	if not myfiles:
 		print
 		print "No search terms provided."
@@ -711,9 +771,9 @@ if "--search" in myopts:
 			searchinstance.setKey(mysearch)
 			searchinstance.execute()
 			searchinstance.output()
-	sys.exit(1)
 
-if "--unmerge" in myopts:
+# ZAP action
+elif "--zap"==myaction:
 	if not myfiles:
 		print
 		print "No packages to unmerge have been provided."
@@ -765,12 +825,7 @@ if "--unmerge" in myopts:
 			# a category and package name have been given
 			else:
 				localtree=portage.vartree(portage.root)	
-				if x=="world":
-					mymatches=[]
-					for y in localtree.getallnodes():
-						mymatches.extend(localtree.dep_match(y))
-				else:
-					mymatches=localtree.dep_match(x)
+				mymatches=localtree.dep_match(x)
 				# if no matches were found, try again by adding a '=' dep symbol if no
 				# dep symbols are already present
 				if not mymatches and x[0] not in ('<','>','=','~'):
@@ -787,11 +842,8 @@ if "--unmerge" in myopts:
 							else:
 								full_package_paths[full_path]=package
 
-		# if the --all switch was not specified, remove the latest version of each package set
-		# to make sure that the system stays running
-		if not "--all" in myopts:
+			# determine what the non slot packages are
 			if len(full_package_paths) > 0:
-				latest_ebuilds={}
 				# determine the latest installed packages of each cat/pkg key
 				full_paths_keys=full_package_paths.keys()
 				# sort the ebuild paths
@@ -802,54 +854,16 @@ if "--unmerge" in myopts:
 					# is being processed, the package slot is taken into account for this
 					package_parts=portage.pkgsplit(full_package_paths[full_path])
 					slot_path=dirname(full_path)+"/SLOT"
-					if os.path.exists(slot_path):
-						slot_file=open(slot_path)
-						package_slot=slot_file.readline().strip()
-						slot_file.close()
-					else:
+					if not os.path.exists(slot_path):
 						package_slot=package_parts[1]
 						non_slot_packages.append(package_parts[0]+"-"+package_parts[1])
-					package_set=package_parts[0]+"-"+package_slot
-					# create initial latest ebuild information for the current package set if it
-					# doesn't exists yet
-					if not latest_ebuilds.has_key(package_set):
-						latest_ebuilds[package_set]=["",0]
-					# get the latest modification time of this package version, which should correspond to
-					# the time when it when installed
-					contents_path=dirname(full_path)+"/CONTENTS"
-					contents_mtime=os.stat(contents_path)[8]
-					# update the latest modified package version
-					if contents_mtime > latest_ebuilds[package_set][1]:
-						latest_ebuilds[package_set]=[full_path,contents_mtime]
-					# if a new package set is being processed, remove the latest version of the previous package set
-					if previous_package_set and previous_package_set!=package_set and latest_ebuilds[previous_package_set][0]:
-						del full_package_paths[latest_ebuilds[previous_package_set][0]]
-					# update which package set has just been processed
-					previous_package_set=package_set
-					
-				# remove the latest version of the last processed package set
-				if latest_ebuilds[package_set][0]:
-					del full_package_paths[latest_ebuilds[package_set][0]]
 
-		if len(non_slot_packages)>0:
-			if "--verbose" not in myopts:
-				print " "+yellow("*")+" ",len(non_slot_packages),"non slot packages; use "+green("--verbose")+" to view details."
-			else:
-				print " "+yellow("*")+" ",len(non_slot_packages),"non slot packages"
-				print " "+yellow("*")+" These packages have been merged with an old version of portage that didn't"
-				print " "+yellow("*")+" support binary compatibility slots. This means that each package with a"
-				print " "+yellow("*")+" different version number will be considered different and only older versions"
-				print " "+yellow("*")+" of different releases will be unmerged automatically."
-				print " "+yellow("*")+" To get rid of all non slot packages, you can rebuild your system with"
-				print " "+yellow("*")+" "+green("emerge --verbose rebuild")+"."
-				for non_slot_package in non_slot_packages:
-					print "    "+non_slot_package
-			
 		full_paths=full_ebuild_paths.keys()
 		full_paths.extend(full_package_paths.keys())
 		
 		if len(full_paths)==0:
 			print "Couldn't find any matching installed packages."
+			sys.exit(1)
 		else:
 			if "--pretend" in myopts:
 				print
@@ -865,76 +879,77 @@ if "--unmerge" in myopts:
 			for full_path in full_paths:
 				path_parts=split(full_path, "/")
 				print "    "+path_parts[4]+"/"+path_parts[5]
+
+			if len(non_slot_packages)>0:
+				print
+				if "--verbose" not in myopts:
+					print " "+yellow("* IMPORTANT:"),len(non_slot_packages),"non slot packages; use "+green("--verbose")+" to view details."
+				else:
+					print " "+yellow("* IMPORTANT:"),len(non_slot_packages),"non slot packages"
+					print " "+yellow("*")+" These packages have been merged with an old version of portage that didn't"
+					print " "+yellow("*")+" support binary compatibility slots. This means that each package with a"
+					print " "+yellow("*")+" different version number will be considered different and only older versions"
+					print " "+yellow("*")+" of different releases will be unmerged automatically."
+					print " "+yellow("*")+" To get rid of all non slot packages, you can rebuild your system with"
+					print " "+yellow("*")+" "+green("emerge --noslot rebuild")+"."
+					print
+					for non_slot_package in non_slot_packages:
+						print "    "+non_slot_package
+			
 			if "--pretend" in myopts:
 				print
 			else:
-				secs=5
-				print
-				print "Waiting",secs,"seconds to make sure that you want these"
-				print "packages to be removed ..."
-				while secs > 0:
-					sys.stdout.write(str(secs)+" ")	
-					sys.stdout.flush()
-					time.sleep(1)
-					secs = secs-1
-				print secs
+				secs=string.atoi(portage.settings["UNMERGE_DELAY"])
+				if secs > 0:
+					print
+					print "Waiting",secs,"seconds to make sure that you want these"
+					print "packages to be removed ..."
+					while secs > 0:
+						sys.stdout.write(str(secs)+" ")	
+						sys.stdout.flush()
+						time.sleep(1)
+						secs = secs-1
+					print secs
 				for full_path in full_paths:
 					print "Unmerging "+os.path.basename(full_path)+" ..."
 					retval=portage.doebuild(full_path,"unmerge",portage.root,0,edebug)
+	post_emerge()
 
-	sys.exit(1)
-
-if "rsync" in mymode:
-	if not os.path.exists("/usr/bin/rsync"):
-		print "!!! /usr/bin/rsync does not exist, so rsync support is disabled."
-		sys.exit(1)
-	rclean=0
-	myportdir=portage.settings["PORTDIR"]
-	if myportdir[-1]=="/":
-		myportdir=myportdir[:-1]
-	if not os.path.exists(myportdir):
-		print ">>>",myportdir,"not found, creating it."
-		os.makedirs(myportdir,0755)	
-	if "--clean" in myopts:
-			#we'll --delete files when we rsync
-			rclean=1
-	mycommand="/usr/bin/rsync -rlptDv --stats --progress "
-	if rclean:
-		mycommand=mycommand+"--delete --exclude='distfiles/*' --exclude='packages/*' "
-	mycommand=mycommand+"rsync://cvs.gentoo.org/gentoo-x86-portage/* "+myportdir
-	print ">>> starting rsync with cvs.gentoo.org..."
-	#protect users that did not set a default umask
-	os.umask(022)
-	sys.exit(os.system(mycommand))	
-
-if "rebuild" in mymode:
-	if "--pretend" in myopts:
-		print
-		print "These are the packages that I would merge, sorted."
-		print
+# REBUILD action
+elif "--rebuild"==myaction:
 	localtree=portage.vartree(portage.root)
 	porttree=portage.portagetree(portage.root)
 	mypackages={}
 	myoutdated=[]
+	print "Examining installed packages",
+	sys.stdout.flush()
+	localtree.populate()
+	porttree.populate()
 	for mynode in localtree.getallnodes():
 		for mypackage in localtree.dep_match(mynode):
+			sys.stdout.write(".")	
+			sys.stdout.flush()
 			if not mypackage[0:len("virtual")]=="virtual":
 				if porttree.exists_specific(mypackage):
 					mypackages[mypackage]=porttree.getname(mypackage)
 				else:
 					myoutdated.append(mypackage)
+	print " done!"
 	mypackageskeys=[]
 	mypackageskeys=mypackages.keys()
 	mypackageskeys.sort()
 	if "--pretend" in myopts:
+		print
+		print "These are the packages that I would merge, sorted."
+		print
 		for mypackage in mypackageskeys:
 			print "[ebuild   "+yellow("R")+" ]",mypackage,"to",portage.root
 		if len(myoutdated):
 			if "--verbose" not in myopts:
-				print " "+yellow("*")+" ",len(myoutdated),"packages aren't available anymore; use "+green("--verbose")+" to view details."
+				print " "+yellow("* IMPORTANT:"),len(myoutdated),"packages aren't available anymore; use "+green("--verbose")+" to view details."
 			else:
-				print " "+yellow("*")+" ",len(myoutdated),"packages aren't available anymore"
-				print " "+yellow("*")+" You portage tree doesn't contain the ebuilds anymore that correspond to the"
+				print " "+yellow("* IMPORTANT:"),len(myoutdated),"packages aren't available anymore"
+				print " "+yellow("*")+" Your portage tree doesn't contain the ebuilds anymore that correspond to the"
 				print " "+yellow("*")+" following packages. This means that portage is unable to rebuild them."
 				print " "+yellow("*")+" Instead you should upgrade to the latest versions or install possible"
 				print " "+yellow("*")+" alternative packages that provide the same functionalities."
@@ -980,7 +995,7 @@ if "rebuild" in mymode:
 				if retval:
 					print "!!! emerge aborting on ",myebuild,"."
 					sys.exit(1)
-		#my doing an exit this way, --fetchonly can continue to try to
+		#by doing an exit this way, --fetchonly can continue to try to
 		#fetch everything even if a particular download fails.
 		if "--fetchonly" in myopts:
 			if returnme:
@@ -988,66 +1003,80 @@ if "rebuild" in mymode:
 				sys.exit(returnme)
 			else:
 				sys.exit(0)
-	sys.exit(0)
-
-if "--pretend" in myopts:
-		print
-		print "These are the packages that I would merge, in order."
-		print
-
-if ("system" in mymode) or ("update" in mymode):
-	#system profile mode
-	if os.path.exists(portage.profiledir+"/packages"):
-		pfile=portage.profiledir+"/packages"
-	else:
-		print "!!! Couldn't find",portage.profiledir+"/packages;"
-		print "\"system\" mode unavailable."
-		sys.exit(1)
-	myfile=open(pfile,"r")
-	mylines=myfile.readlines()
-	myfile.close()
-	mydepgraph=depgraph(mymode,myopts)
-	print "Calculating system dependencies",
-	mydepgraph.syscreate(mylines)
-	print " done!"
-	if "--pretend" in myopts:
-		mydepgraph.display(mydepgraph.altlist())
-	else:
-		mydepgraph.merge(mydepgraph.altlist())
 	post_emerge()
 
-mydepgraph=depgraph(mymode,myopts)
-if not myfiles:
-	post_emerge()
-	#we don't have any files to process; skip this step and exit
-print "Calculating dependencies",
-for mypkg in myfiles:
-	if mypkg[-5:]==".tbz2":
-		mytype="binary"
-		mytbz2=xpak.tbz2(mypkg)
-		mykey=mytbz2.getelements("CATEGORY")[0]+"/"+os.path.basename(mypkg)[:-5]
-	elif mypkg[-7:]==".ebuild":
-		mytype="ebuild"
-		mykey=os.path.basename(os.path.abspath(mypkg+"/../.."))+"/"+os.path.basename(mypkg)[:-7]
+# INSTALL and UPDATE action
+elif "--update"==myaction or not myaction:
+	if not myaction and "world" in mymode:
+		print
+		print " "+red("* WARNING:"),green("emerge world"),"can't be used without an action"
+		print " "+red("*"),green("world"),"is only intended to be used with",green("emerge --update")
+		print
+	elif "noslot" in mymode:
+		print
+		print " "+red("* WARNING:"),green("emerge noslot"),"can't be used without an action"
+		print " "+red("*"),green("noslot"),"is only intended to be used with",green("emerge --rebuild")
+		print
 	else:
-		mykey=""
-		if "--usepkg" in myopts:
-			mykey=mydepgraph.db[portage.root]["bintree"].dep_bestmatch(mypkg)
-			mytype="binary"
-		if not mykey:
-			mykey=mydepgraph.db[portage.root]["porttree"].dep_bestmatch(mypkg)
-			mytype="ebuild"
-			if not mykey:
-				print "!!! Couldn't find match for",mypkg+"; aborting."
+		if "--pretend" in myopts:
+				print
+				print "These are the packages that I would merge, in order."
+				print
+
+		if "system" in mymode:
+			#system profile mode
+			if os.path.exists(portage.profiledir+"/packages"):
+				pfile=portage.profiledir+"/packages"
+			else:
+				print "!!! Couldn't find",portage.profiledir+"/packages;"
+				print "\"system\" mode unavailable."
 				sys.exit(1)
-#	else:
-#		print "!!! Error:",x,"is neither an ebuild nor a .tbz2 package."
-#		sys.exit(1)
-	mydepgraph.create(mytype+" "+portage.root+" "+mykey,None,"--onlydeps" not in myopts)
-print " done!"
-if "--pretend" in myopts:
-	mydepgraph.display(mydepgraph.altlist())
-else:
-	mydepgraph.merge(mydepgraph.altlist())
-post_emerge()
+			myfile=open(pfile,"r")
+			mylines=myfile.readlines()
+			myfile.close()
+			mydepgraph=depgraph(mymode,myaction,myopts)
+			print "Calculating system dependencies",
+			mydepgraph.syscreate(mylines)
+			print " done!"
+		elif "world" in mymode:
+			mydepgraph=depgraph(mymode,myaction,myopts)
+			print "Calculating system dependencies",
+			mydepgraph.syscreate(mydepgraph.db["/"]["vartree"].getallnodes(),depformat=0)
+			print " done!"
+		else:
+			mydepgraph=depgraph(mymode,myaction,myopts)
+			if not myfiles:
+				post_emerge()
+				#we don't have any files to process; skip this step and exit
+			print "Calculating dependencies",
+			for mypkg in myfiles:
+				if mypkg[-5:]==".tbz2":
+					mytype="binary"
+					mytbz2=xpak.tbz2(mypkg)
+					mykey=mytbz2.getelements("CATEGORY")[0]+"/"+os.path.basename(mypkg)[:-5]
+				elif mypkg[-7:]==".ebuild":
+					mytype="ebuild"
+					mykey=os.path.basename(os.path.abspath(mypkg+"/../.."))+"/"+os.path.basename(mypkg)[:-7]
+				else:
+					mykey=""
+					if "--usepkg" in myopts:
+						mykey=mydepgraph.db[portage.root]["bintree"].dep_bestmatch(mypkg)
+						mytype="binary"
+					if not mykey:
+						mykey=mydepgraph.db[portage.root]["porttree"].dep_bestmatch(mypkg)
+						mytype="ebuild"
+						if not mykey:
+							print "!!! Couldn't find match for",mypkg+"; aborting."
+							sys.exit(1)
+			#	else:
+			#		print "!!! Error:",x,"is neither an ebuild nor a .tbz2 package."
+			#		sys.exit(1)
+				mydepgraph.create(mytype+" "+portage.root+" "+mykey,None,"--onlydeps" not in myopts)
+			print " done!"
+
+		if "--pretend" in myopts:
+			mydepgraph.display(mydepgraph.altlist())
+		else:
+			mydepgraph.merge(mydepgraph.altlist())
+		post_emerge()
 

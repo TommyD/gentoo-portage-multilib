@@ -1,6 +1,23 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+  11 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge :
+  - removed support for --all and world in 'emerge --unmerge', by default now
+    all matching packages are removed since with the new slots functionality
+    old package versions should not exists anymore
+  - colored package name red too when a blocking package is found during
+    pretend operation
+  - changed emerge invocation arguments to be in a new universal interface
+    format this has been decided to be :
+	'emerge --action --option --option [packageset]'
+	some features however don't respect this, but that's since they are not
+	package installation related and are easier to use as straight commands
+	eg: emerge rsync
+  - added UNMERGE_DELAY var to make.globals and support it in emerge to obtain
+    the number of seconds to wait
+  - support for NOCOLOR="yes" as wel as NOCOLOR="true"
+  
+  
   11 Feb 2002; G.Bevin <gbevin@gentoo.org> sandbox.c, libsandbox.c :
   added checks to see if the files where information is written to are really
   regular files and not symlinks

@@ -74,3 +74,6 @@ MAINTAINER_DEFAULT="digest sandbox noclean noauto"
 #By default output colored text where possible, set to "true" to output only
 #black&white text
 NOCOLOR="false"
+
+#By default wait 5 secs before unmerging a package
+UNMERGE_DELAY="5"
