@@ -1,6 +1,12 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  06 Dec 2002; Nicholas Jones <carpaski@gentoo.org> emerge: Fixed 'xfrom'
+	variable-used-before-assignment message on masked ebuilds.
+
+  06 Dec 2002; Nicholas Jones <carpaski@gentoo.org> portage.py: Disabled
+	writes to DBs when sandbox is enabled.
+
   03 Dec 2002; Nicholas Jones <carpaski@gentoo.org> portage.py: Fixed a
   nice bug where python was writing 'L' at the end of long() types for
   mtimes.
