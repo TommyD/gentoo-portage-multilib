@@ -2,7 +2,7 @@
 # Copyright 1998-2002 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
 
-VERSION="2.0.4"
+VERSION="2.0.7"
 
 from stat import *
 from commands import *
@@ -593,6 +593,7 @@ def ExtractKernelVersion(base_dir):
 		version = version[1:-1]
 	return (version,None)
 
+aumtime=0
 
 def autouse(myvartree):
         "returns set of USE variables auto-enabled due to packages being installed"
@@ -663,7 +664,6 @@ class config:
 		else:
 			myincrementals=incrementals
 		for mykey in myincrementals:
-			#globals first, backupenv last
 			if mykey=="USE":
 				mydbs=self.uvlist		
 				self.configdict["auto"]["USE"]=autouse(db[root]["vartree"])
@@ -734,9 +734,10 @@ class config:
 	
 	def reset(self):
 		"reset environment to original settings"
-		for x in self.backupenv.keys():
-			self.configdict["env"][x]==self.backupenv[x]
-		self.regenerate()
+		#for x in self.backupenv.keys():
+		#	self.configdict["env"][x]==self.backupenv[x]
+		#self.regenerate(useonly=1)
+		pass
 
 	def environ(self):
 		"return our locally-maintained environment"
@@ -2158,17 +2159,18 @@ def match(origdep,mydata):
 			return [mymatch]
 	elif cp_key==None:
 		if mydep[0]=="!":
-			mynodes=[]
-			cp_key=mycpv.split("/")
-			for x in mylist:
-				cp_x=catpkgsplit(x)
-				if cp_x==None:
-					return None
-				if cp_key[0]==cp_x[0]:
-					mynodes.append(x)
-				elif cp_key[1]==cp_x[1]:
-					mynodes.append(x)
-			return mynodes
+			return []
+#			mynodes=[]
+#			cp_key=mycpv.split("/")
+#			for x in mylist:
+#				cp_x=catpkgsplit(x)
+#				if cp_x==None:
+#					return None
+#				if cp_key[0]==cp_x[0]:
+#					mynodes.append(x)
+#				elif cp_key[1]==cp_x[1]:
+#					mynodes.append(x)
+#			return mynodes
 		mynodes=[]
 		cp_key=mycpv.split("/")
 		for x in mylist:

@@ -1,6 +1,14 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-2.0.8 (27 Jun 2002)
+
+  27 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: fixed handling
+  of ! deps in match(), closing bug #4219.  Thanks Spidler!
+
+  27 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: disabled USE
+  regeneration on reset() for performance purposes.
+
 *portage-2.0.7 (26 Jun 2002)
 
   26 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: add a friendly
