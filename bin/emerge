@@ -32,10 +32,12 @@ class depgraph:
 		#the following is so we have an empty vartree (used in emerge update calculations)
 		self.emptytree=portage.vartree("/",virts,self.db["/"]["vartree"])
 		self.emptytree.tree={}
-	def create(self,mybigkey=None,myparent=None,addme=1):
+	def create(self,mybigkey,myparent=None,addme=1):
 		"""creates the actual digraph of packges to merge.  return 1 on success, 0 on failure
 		mybigkey = specification of package to merge; myparent = parent package (one depending on me);
 		addme = should I be added to the tree? (for the --onlydeps mode)"""
+		if mybigkey==None:
+			return
 		sys.stdout.write(".")	
 		sys.stdout.flush()
 		if self.digraph.hasnode(mybigkey):
@@ -82,7 +84,7 @@ class depgraph:
 				print "!!! depgraph.create() error: string format:",mydep
 				return 0
 			for x in mycheck[1]:
-				mynew=self.match(x,dep)
+				mynew=self.match(x,dep,mykey)
 				if not self.digraph.hasnode(mynew):
 					if addme:
 						if not self.create(mynew,mybigkey):
@@ -120,6 +122,7 @@ class depgraph:
 		return retlist
 
 	def syscreate(self,mylines):
+		mynewlines=[]
 		for x in mylines:
 			myline=string.join(string.split(x))
 			if not len(myline):
@@ -129,6 +132,10 @@ class depgraph:
 			if myline[0]!="*":
 				continue
 			myline=myline[1:]
+			mynewlines.append(myline)
+		if "--world" in self.myopts:
+			mynewlines.extend(self.db["/"]["vartree"].getallnodes())
+		for myline in mynewlines:	
 			if "update" not in self.mymode:
 				mycheck=self.db[portage.root]["vartree"].depcheck(myline)
 				if mycheck[0]==0:
@@ -137,15 +144,18 @@ class depgraph:
 				if mycheck[1]==None:
 					continue
 				for x in mycheck[1]:
-					self.create(self.match(myline))
+					self.create(self.match(myline,mykey="syscreate1"))
 			else:
-				self.create(self.match(myline))
+				self.create(self.match(myline,mykey="update (likely old /var/db/pkg entry)"))
 	
-	def match(self,mydep,myroot=portage.root):
+	def match(self,mydep,myroot=portage.root,mykey=None):
 		myeb=self.db[portage.root]["porttree"].dep_bestmatch(mydep)
 		if not myeb:
-			print "\n!!! Error: couldn't find match for",mydep,"\n"
-			sys.exit(1)
+			if not mykey:
+				print "\n!!! Warning: couldn't find match for",mydep
+			else:
+				print "\n!!! Warning: couldn't find match for",mydep,"in",mykey
+			return None
 		if "--usepkg" in self.myopts:
 			mypk=self.db[portage.root]["bintree"].dep_bestmatch(mydep)
 			if myeb==mypk:
@@ -291,7 +301,7 @@ def post_emerge(retval=0):
 
 #number of ebuilds merged
 merged=0
-opts=["--help","--pretend","--buildpkg","--usepkg","--autoclean","--clean","--debug","--fetchonly","--noreplace","--onlydeps","--verbose"]
+opts=["--world","--help","--pretend","--buildpkg","--usepkg","--autoclean","--clean","--debug","--fetchonly","--noreplace","--onlydeps","--verbose"]
 modes=["rsync","system","update","config"]
 myopts=[]
 mymode=[]
@@ -313,8 +323,11 @@ for x in sys.argv[1:]:
 			else:
 				mymode.append(x)
 		else:	
-				myfiles.append(x)
-			
+				#this little conditional helps tab completion
+				if x[-1]=="/":
+					myfiles.append(x[:-1])
+				else:
+					myfiles.append(x)
 if not portage.settings.has_key("MAINTAINER"):
 	if not "--autoclean" in myopts:
 		myopts.append("--autoclean")
@@ -458,7 +471,7 @@ CONFIG_PROTECT_MASK="/etc/wget /etc/rc.d"
 """
 		print outstuff
 	sys.exit(1)
-		
+
 if "--pretend" in myopts:
 		print
 		print "These are the packages that I would merge, in order."

@@ -568,6 +568,15 @@ def spawn(mystring,debug=0):
 		#interrupted by signal
 		return 16
 
+def getmycwd():
+	"this handles situations where the current directory doesn't exist"
+	try:
+		a=os.getcwd()
+	except:
+		os.chdir("/")
+		a=os.getcwd()
+	return a
+
 def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 	global settings
 	if not os.path.exists(myebuild):
@@ -580,7 +589,7 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 	settings["PORTAGE_DEBUG"]=str(debug)
 	#settings["ROOT"]=root
 	settings["ROOT"]=myroot
-	settings["STARTDIR"]=os.getcwd()
+	settings["STARTDIR"]=getmycwd()
 	settings["EBUILD"]=os.path.abspath(myebuild)
 	settings["O"]=os.path.dirname(settings["EBUILD"])
 	settings["CATEGORY"]=os.path.basename(os.path.normpath(settings["O"]+"/.."))
@@ -727,18 +736,26 @@ def isfifo(x):
 	mymode=os.stat(x)[ST_MODE]
 	return S_ISFIFO(mymode)
 
+expandcache={}
+
 def expandpath(mypath):
 	"""The purpose of this function is to resolve the 'real' path on disk, with all
 	symlinks resolved except for the basename, since we may be installing a symlink
 	and definitely don't want it expanded.  In fact, the file that we want to install
 	doesn't need to exist; just the dirname."""
+	global expandcache
 	split=string.split(mypath,"/")
 	join=string.join(split[:-1],"/")
+	try:
+		return expandcache[join]+'/'+split[-1]
+	except:
+		pass
 	a=getstatusoutput("/bin/readlink -f	'"+join+"'")
 	if a[0]!=0:
 		#expansion didn't work; probably because the dir didn't exist.  Return original path.
 		return mypath 
 	else:
+		expandcache[join]=a[1]
 		return a[1]+"/"+split[-1]
 
 def movefile(src,dest,unlink=1):
@@ -1668,7 +1685,7 @@ class vartree(packagetree):
 			os.mkdir(self.root+"var/db/pkg",0755)
 		os.umask(prevmask)
 		dbdir=self.root+"var/db/pkg"
-		origdir=os.getcwd()
+		origdir=getmycwd()
 		os.chdir(dbdir)
 		for x in os.listdir(os.getcwd()):
 			if not os.path.isdir(os.getcwd()+"/"+x):
@@ -1701,7 +1718,7 @@ class portagetree(packagetree):
 		packagetree.__init__(self,virtual)
 	def populate(self):
 		"populates the port tree"
-		origdir=os.getcwd()
+		origdir=getmycwd()
 		os.chdir(self.portroot)
 		for x in categories:
 			if not os.path.isdir(os.getcwd()+"/"+x):
@@ -2061,7 +2078,7 @@ class dblink:
 		#myroot should be set to the ROOT of where to merge to.
 
 		if mergestart==None:
-			origdir=os.getcwd()
+			origdir=getmycwd()
 			if not os.path.exists(self.dbdir):
 				self.create()
 				#open contents file if it isn't already open
@@ -2414,7 +2431,7 @@ def pkgmerge(mytbz2,myroot):
 	os.makedirs(infloc)
 	print ">>> extracting info"
 	xptbz2.unpackinfo(infloc)
-	origdir=os.getcwd()
+	origdir=getmycwd()
 	os.chdir(pkgloc)
 	print ">>> extracting",mypkg
 	notok=os.system("cat "+mytbz2+"| bzip2 -dq | tar xpf -")

@@ -2,10 +2,24 @@
 # Copyright 2001 Gentoo Technologies, Inc.; Distributed under the GPL
 # Written by Daniel Robbins (drobbins@gentoo.org)
 
+  12 Jan 2002; "emerge sys-apps/bash/" now works. (trailing "/" stripped to make
+  tab-completion users happy)  This fixes bug #119
+
+  12 Jan 2002; Portage should no longer bomb out if the current working directory
+  doesn't exist (has been deleted from underneath).
+  
+  12 Jan 2002; added "--world" option for "emerge update".   This tells Portage
+  to update the base system *as well as* upgrade any packages that are currently
+  installed but have new versions available.  This is your standard full system
+  update command.  This fixes bug #122
+
+  12 Jan 2002; Added an expandpath() cache which speeds up merging 
+  dramatically.
+
 *portage 1.8.3 (11 Jan 2002)
-  11 Jan 2002; added functions econf and einstall. Also made src_compile 
-  having a default implementation.
-	
+  11 Jan 2002; Mikael Hallendal (hallski@gentoo.org): added functions econf and
+  einstall. Also made src_compile having a default implementation.
+
 *portage 1.8.2 (07 Jan 2002)
   07 Jan 2002; sandbox included in portage
 	
