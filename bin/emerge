@@ -981,7 +981,7 @@ elif "--clean"==myaction:
 						package_slot=slot_file.readline().strip()
 						slot_file.close()
 					else:
-						package_slot=package_parts[1]
+						package_slot=""
 						
 					# by default the package sets are specified to remove only old revisions
 					# but by taking slots into account
