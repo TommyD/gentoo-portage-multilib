@@ -197,7 +197,23 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 	else:
 		raise ValueError, "Unknown type passed in '%s': '%s'" % (type(mypath),mypath)
 
-	fcntl.flock(myfd,fcntl.LOCK_EX)
+	#try for a non-blocking lock, if it's held, throw a message we're waiting on lockfile and use a blocking attempt.
+	try:
+		fcntl.flock(myfd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+
+	except IOError, ie:
+
+		# 11 == resource temp unavailable; eg, someone beat us to the lock.
+		if ie.errno == 11:
+			if type(mypath) == types.IntType:
+				print "waiting for lock on fd %i" % myfd
+			else:
+				print "waiting for lock on %s" % lockfilename
+			# try for the exclusive lock now.
+			fcntl.flock(myfd,fcntl.LOCK_EX)
+		else:
+			raise ie
+				
 	if type(lockfilename) == types.StringType and not os.path.exists(lockfilename):
 		# The file was deleted on us... Keep trying to make one...
 		os.close(myfd)

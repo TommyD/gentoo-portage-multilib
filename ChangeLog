@@ -9,6 +9,12 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  13 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py: 
+  Tweaked lockfile, so it attempts a non-blocking lock_ex first, then
+  states it's waiting on lock blar, then attempts a blocking lock.  This 
+  will be useful for informing the user why portage seems to have hung, 
+  and good for debugging.
+
   13 Aug 2004; Brian Harring <ferringb@gentoo.org> bin/emerge-webrsync:
   Added support for snapshot md5sum's (mirrors now carry them).
   This is used to ensure the fetched snapshot is sane; if it's sane, 
