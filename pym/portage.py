@@ -926,12 +926,16 @@ class config:
 					continue
 				#variables are already expanded
 				mysplit=curdb[mykey].split()
+				# XXX FIXME -- This needs to be rewritten sanely... use 'not in' XXX
 				for x in mysplit:
 					if x=="-*":
 						# "-*" is a special "minus" var that means "unset all settings".  so USE="-* gnome" will have *just* gnome enabled.
 						mysetting=[]
 						continue
-					add=x
+					if x[0]=="+":
+						add=x[1:]
+					else:
+						add=x
 					if x[0]=="-":
 						remove=x[1:]
 					else:
@@ -1550,16 +1554,17 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0,fetchonly=0):
 	# Build directory creation isn't required for any of these.
 	if mydo not in ["digest"]:
 		try:
-			if ("userpriv" in features) and portage_uid and portage_gid:
-				settings["HOME"]=settings["BUILD_PREFIX"]+"/homedir"
-				if (secpass==2):
-					if os.path.exists(settings["HOME"]):
-						spawn("rm -Rf "+settings["HOME"], free=1)
-					if not os.path.exists(settings["HOME"]):
-						os.makedirs(settings["HOME"])
-			elif ("userpriv" in features):
-				print "!!! Disabling userpriv from features... Portage UID/GID not valid."
-				del features[features.index("userpriv")]
+			if ("nouserpriv" not in string.split(settings["RESTRICT"])):
+				if ("userpriv" in features) and (portage_uid and portage_gid):
+					settings["HOME"]=settings["BUILD_PREFIX"]+"/homedir"
+					if (secpass==2):
+						if os.path.exists(settings["HOME"]):
+							spawn("rm -Rf "+settings["HOME"], free=1)
+						if not os.path.exists(settings["HOME"]):
+							os.makedirs(settings["HOME"])
+				elif ("userpriv" in features):
+					print "!!! Disabling userpriv from features... Portage UID/GID not valid."
+					del features[features.index("userpriv")]
 		except Exception, e:
 			print "!!! Couldn't empty HOME:",settings["HOME"]
 			print "!!!",e
@@ -1742,7 +1747,7 @@ def movefile(src,dest,newmtime=None,sstat=None):
 	"""moves a file from src to dest, preserving all permissions and attributes; mtime will
 	be preserved even when moving across filesystems.  Returns true on success and false on
 	failure.  Move is atomic."""
-	#print "movefile("+src+","+dest+","+str(newmtime)+","+str(sstat)+")"
+	#print "movefile("+str(src)+","+str(dest)+","+str(newmtime)+","+str(sstat)+")"
 	global lchown 	
 	try:
 		if not sstat:
@@ -4251,7 +4256,8 @@ class dblink:
 		# spawn("(cd "+srcroot+"; for x in `find`; do  touch -c $x 2>/dev/null; done)",free=1)
 		print ">>> Merging",self.cat+"/"+self.pkg,"to",destroot
 		# get current counter value (counter_tick also takes care of incrementing it)
-		counter=db[destroot]["vartree"].dbapi.counter_tick()
+		# XXX Need to make this destroot, but it needs to be initialized first. XXX
+		counter=db["/"]["vartree"].dbapi.counter_tick()
 		# write local package counter for recording
 		lcfile=open(inforoot+"/COUNTER","w")
 		lcfile.write(str(counter))
@@ -4401,12 +4407,8 @@ class dblink:
 		return (real_dirname+"/._cfg"+string.zfill(prot_num,4)+"_"+real_filename, real_dirname+"/"+last_pfile)
 		
 	def mergeme(self,srcroot,destroot,outfile,secondhand,stufftomerge,cfgfiledict,thismtime):
-		srcroot=os.path.normpath(srcroot)+"/"
-		if srcroot[:2]=="//":
-			srcroot=srcroot[1:]
-		destroot=os.path.normpath(destroot)+"/"
-		if destroot[:2]=="//":
-			destroot=destroot[1:]
+		srcroot=os.path.normpath("///"+srcroot)+"/"
+		destroot=os.path.normpath("///"+destroot)+"/"
 		# this is supposed to merge a list of files.  There will be 2 forms of argument passing.
 		if type(stufftomerge)==types.StringType:
 			#A directory is specified.  Figure out protection paths, listdir() it and process it.
@@ -4421,8 +4423,8 @@ class dblink:
 			mergelist=stufftomerge
 			offset=""
 		for x in mergelist:
-			mysrc=os.path.normpath(srcroot+offset+x)
-			mydest=os.path.normpath(destroot+offset+x)
+			mysrc=os.path.normpath("///"+srcroot+offset+x)
+			mydest=os.path.normpath("///"+destroot+offset+x)
 			# myrealdest is mydest without the $ROOT prefix (makes a difference if ROOT!="/")
 			myrealdest="/"+offset+x
 			# stat file once, test using S_* macros many times (faster that way)
@@ -4452,11 +4454,14 @@ class dblink:
 					if not S_ISLNK(mydmode):
 						if S_ISDIR(mydmode):
 							# directory in the way: we can't merge a symlink over a directory
-							print "!!!",mydest,"->",myto
 							# we won't merge this, continue with next file...
 							continue
 						if self.isprotected(mydest):
-							mydest = new_protect_filename(myrealdest, mymd5)
+							# Use md5 of the target in ${D} if it exists...
+							if os.path.exists(os.path.normpath(srcroot+myabsto)):
+								mydest = self.new_protect_filename(myrealdest, perform_md5(srcroot+myabsto))[0]
+							else:
+								mydest = self.new_protect_filename(myrealdest, perform_md5(myabsto))[0]
 								
 				# if secondhand==None it means we're operating in "force" mode and should not create a second hand.
 				if (secondhand!=None) and (not os.path.exists(myrealto)):
@@ -4565,7 +4570,7 @@ class dblink:
 									del cfgfiledict[myrealdest][0]
 	
 						if cfgprot:
-							mydest = new_prot_filename(myrealdest, mymd5)
+							mydest = self.new_protect_filename(myrealdest, mymd5)
 
 				# whether config protection or not, we merge the new file the
 				# same way.  Unless moveme=0 (blocking directory)

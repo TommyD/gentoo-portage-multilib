@@ -262,13 +262,16 @@ the program has been merged.
 .br
 You may use the same syntax to vary dependencies as seen above in \fBDEPEND\fR.
 .TP
-\fBRESTRICT\fR = \fI[nostrip,nomirror,fetch]\fR
+\fBRESTRICT\fR = \fI[nostrip,nomirror,fetch,nouserpriv]\fR
 This should be a space delimited list of portage features to restrict.
 .PD 0
 .RS
 .TP
 .I nostrip
 final binaries/libraries will not be stripped of debug symbols.
+.TP
+.I nouserpriv
+Disables userpriv for specific packages.
 .TP
 .I nomirror
 files in \fBSRC_URI\fR will not be downloaded from the \fBGENTOO_MIRRORS\fR.

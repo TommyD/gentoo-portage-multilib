@@ -29,8 +29,8 @@ CONFIG_PROTECT_MASK="/etc/gconf"
 MAKEOPTS="-j2"
 
 # Fetching command (5 tries, passive ftp for firewall compatibility)
-FETCHCOMMAND='/usr/bin/wget -t 5 --passive-ftp ${URI} -P ${DISTDIR}'
-RESUMECOMMAND='/usr/bin/wget -c -t 5 --passive-ftp ${URI} -P ${DISTDIR}'
+FETCHCOMMAND='/usr/bin/wget -t 5 --passive-ftp -P ${DISTDIR} ${URI}'
+RESUMECOMMAND='/usr/bin/wget -c -t 5 --passive-ftp -P ${DISTDIR} ${URI}'
 
 CFLAGS="-O2 -pipe"
 CXXFLAGS=${CFLAGS}

@@ -38,8 +38,7 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ]; then
 	fi
 fi
 
-if [ -n "$#" ]
-then
+if [ -n "$#" ]; then
 	ARGS="${*}"
 fi
 
@@ -55,8 +54,7 @@ alias assert='_retval=$?; [ $_retval = 0 ] || diefunc "$FUNCNAME" "$LINENO" "$_r
 
 OCC="$CC"
 OCXX="$CXX"
-if [ "$USERLAND" = "Linux" ]
-then
+if [ "$USERLAND" == "Linux" ]; then
 	source /etc/profile.env &>/dev/null
 fi
 [ ! -z "$OCC" ] && export CC="$OCC"
@@ -101,10 +99,8 @@ has() {
 	me=$1
 	shift
 	
-	for x in $@
-	do
-		if [ "${x}" = "${me}" ]
-		then
+	for x in "$@"; do
+		if [ "${x}" == "${me}" ]; then
 			tty --quiet < /dev/stdout || echo "${x}"
 			return 0
 		fi
@@ -208,8 +204,7 @@ export MOPREFIX=${PN}
 
 check_KV()
 {
-	if [ x"${KV}" = x ]
-	then
+	if [ -z "${KV}" ]; then
 		eerror ""
 		eerror "Could not determine your kernel version."
 		eerror "Make sure that you have /usr/src/linux symlink."
@@ -225,11 +220,10 @@ check_KV()
 # adds ".keep" files so that dirs aren't auto-cleaned
 keepdir()
 {
-	dodir $*
+	dodir "$@"
 	local x
-	for x in $*
-	do
-		[ ! -e ${D}/${x}/.keep -o -w ${D}/${x}/.keep ] && touch ${D}/${x}/.keep
+	for x in "$@"; do
+		touch ${D}/${x}/.keep || die "Failed to create .keep in ${D}/${x}"
 	done
 }
 
@@ -264,54 +258,53 @@ unpack() {
 	local myfail
 	local tarvars
 
-	if [ "$USERLAND" = "BSD" ]
-	then
+	if [ "$USERLAND" == "BSD" ]; then
 		tarvars=""
 	else
 		tarvars="--no-same-owner"	
 	fi	
 
-	for x in $@
-	do
+	for x in "$@"; do
 		myfail="failure unpacking ${x}"
 		echo ">>> Unpacking ${x} to $(pwd)"
 		y="$(echo $x | sed 's:.*\.\(tar\)\.[a-zA-Z0-9]*:\1:')"
+
 		case "${x##*.}" in
-		tar) 
-			tar ${tarvars} -xf ${DISTDIR}/${x} || die "$myfail"
-			;;
-		tgz) 
-			tar ${tarvars} -xzf ${DISTDIR}/${x} || die "$myfail"
-			;;
-		tbz2) 
-			bzip2 -dc ${DISTDIR}/${x} | tar ${tarvars} -xf ${DISTDIR}/${x} || die "$myfail"
-			;;
-		ZIP|zip) 
-			unzip -qo ${DISTDIR}/${x} || die "$myfail"
-			;;
-		gz|Z|z) 
-			if [ "${y}" == "tar" ]; then
+			tar) 
+				tar ${tarvars} -xf ${DISTDIR}/${x} || die "$myfail"
+				;;
+			tgz) 
 				tar ${tarvars} -xzf ${DISTDIR}/${x} || die "$myfail"
-			else
-				gzip -dc ${DISTDIR}/${x} > ${x%.*} || die "$myfail"
-			fi
-			;;
-		bz2) 
-			if [ "${y}" == "tar" ]; then
+				;;
+			tbz2) 
 				bzip2 -dc ${DISTDIR}/${x} | tar ${tarvars} -xf ${DISTDIR}/${x} || die "$myfail"
-			else
-				bzip2 -dc ${DISTDIR}/${x} > ${x%.*} || die "$myfail"
-			fi
-			;;
-		*)
-			echo "unpack ${x}: file format not recognized. Ignoring."
-			;;
+				;;
+			ZIP|zip) 
+				unzip -qo ${DISTDIR}/${x} || die "$myfail"
+				;;
+			gz|Z|z) 
+				if [ "${y}" == "tar" ]; then
+					tar ${tarvars} -xzf ${DISTDIR}/${x} || die "$myfail"
+				else
+					gzip -dc ${DISTDIR}/${x} > ${x%.*} || die "$myfail"
+				fi
+				;;
+			bz2) 
+				if [ "${y}" == "tar" ]; then
+					bzip2 -dc ${DISTDIR}/${x} | tar ${tarvars} -xf ${DISTDIR}/${x} || die "$myfail"
+				else
+					bzip2 -dc ${DISTDIR}/${x} > ${x%.*} || die "$myfail"
+				fi
+				;;
+			*)
+				echo "unpack ${x}: file format not recognized. Ignoring."
+				;;
 		esac
 	done
 }
 
 econf() {
-	if [ -x ./configure ] ; then
+	if [ -x ./configure ]; then
 		if [ ! -z "${CBUILD}" ]; then
 			EXTRA_ECONF="--build=${CBUILD} ${EXTRA_ECONF}"
 		fi
@@ -366,22 +359,19 @@ pkg_nofetch()
 	for MYFILE in `echo ${SRC_URI}`; do
 		echo "!!!   $MYFILE"
 	done
-	return 
 }
 
 src_unpack() { 
-	if [ "${A}" != "" ]
-	then
+	if [ "${A}" != "" ]; then
 		unpack ${A}
 	fi	
 }
 
 src_compile() { 
-	if [ -x ./configure ] ; then
+	if [ -x ./configure ]; then
 		econf 
 		emake || die "emake failed"
 	fi
-	return 
 }
 
 src_install() 
@@ -435,24 +425,20 @@ END
 
 dyn_setup()
 {
-	if [ "$USERLAND" = "Linux" ]
-	then	
+	if [ "$USERLAND" == "Linux" ]; then	
 		# The next bit is to ease the broken pkg_postrm()'s
 		# some of the gcc ebuilds have that nuke the new
 		# /lib/cpp and /usr/bin/cc wrappers ...
 	
 		# Make sure we can have it disabled somehow ....
-		if [ "${DISABLE_GEN_GCC_WRAPPERS}" != "yes" ]
-		then
+		if [ "${DISABLE_GEN_GCC_WRAPPERS}" != "yes" ]; then
 			# Create /lib/cpp if missing or a symlink
-			if [ -L /lib/cpp -o ! -e /lib/cpp ]
-			then
+			if [ -L /lib/cpp -o ! -e /lib/cpp ]; then
 				[ -L /lib/cpp ] && rm -f /lib/cpp
 				gen_wrapper /lib/cpp cpp
 			fi
 			# Create /usr/bin/cc if missing for a symlink
-			if [ -L /usr/bin/cc -o ! -e /usr/bin/cc ]
-			then
+			if [ -L /usr/bin/cc -o ! -e /usr/bin/cc ]; then
 				[ -L /usr/bin/cc ] && rm -f /usr/bin/cc
 				gen_wrapper /usr/bin/cc gcc
 			fi
@@ -464,46 +450,40 @@ dyn_setup()
 dyn_unpack() {
 	trap "abort_unpack" SIGINT SIGQUIT
 	local newstuff="no"
-	if [ -e ${WORKDIR} ]
-	then
+	if [ -e "${WORKDIR}" ]; then
 		local x
 		local checkme
-		for x in ${AA}
-		do
+		for x in ${AA}; do
 			echo ">>> Checking ${x}'s mtime..."
-			if [ ${DISTDIR}/${x} -nt ${WORKDIR} ]
-			then
+			if [ "${DISTDIR}/${x}" -nt "${WORKDIR}" ]; then
 				echo ">>> ${x} has been updated; recreating WORKDIR..."
 				newstuff="yes"
-				rm -rf ${WORKDIR}
+				rm -rf "${WORKDIR}"
 				break
 			fi
 		done
-		if [ ${EBUILD} -nt ${WORKDIR} ]
-		then
+		if [ ${EBUILD} -nt "${WORKDIR}" ]; then
 			echo ">>> ${EBUILD} has been updated; recreating WORKDIR..."
 			newstuff="yes"
-			rm -rf ${WORKDIR}
-		elif [ ! -f ${BUILDDIR}/.unpacked ]; then
+			rm -rf "${WORKDIR}"
+		elif [ ! -f "${BUILDDIR}/.unpacked" ]; then
 			echo ">>> Not marked as unpacked; recreating WORKDIR..."
 			newstuff="yes"
-			rm -rf ${WORKDIR}
+			rm -rf "${WORKDIR}"
 		fi
 	fi
-	if [ -e ${WORKDIR} ]
-	then
-		if [ "$newstuff" = "no" ]
-		then
+	if [ -e "${WORKDIR}" ]; then
+		if [ "$newstuff" == "no" ]; then
 			echo ">>> WORKDIR is up-to-date, keeping..."
 			return 0
 		fi
 	fi
-	install -m0700 -d ${WORKDIR}
-	[ -d "$WORKDIR" ] && cd ${WORKDIR}
+	
+	install -m0700 -d "${WORKDIR}" || die "Failed to create dir '${WORKDIR}'"
+	[ -d "$WORKDIR" ] && cd "${WORKDIR}"
 	echo ">>> Unpacking source..."
 	src_unpack
-	touch ${BUILDDIR}/.unpacked
-	#|| abort_unpack "fail"
+	touch ${BUILDDIR}/.unpacked || die "IO Failure -- Failed 'touch .unpacked' in BUILDIR"
 	echo ">>> Source unpacked."
 	cd $BUILDDIR
 	trap SIGINT SIGQUIT
@@ -515,91 +495,82 @@ dyn_clean() {
 
 	if ! has keeptemp $FEATURES; then
 		rm -rf ${T}/*
+	else
+		mv ${T}/environment ${T}/environment.keeptemp
 	fi
 
 	if ! has keepwork $FEATURES; then
 		rm -rf ${BUILDDIR}/.compiled
 		rm -rf ${BUILDDIR}/.unpacked
-		rm -rf ${WORKDIR} 
+		rm -rf "${WORKDIR}"
 	fi
 
 	if [ -f ${BUILDDIR}/.unpacked ]; then
-		find ${BUILDDIR} -type d ! -regex "^${WORKDIR}" | sort -r | $XARGS rmdir &>/dev/null
+		find ${BUILDDIR} -type d ! -regex "^${WORKDIR}" | sort -r | tr "\n" "\0" | $XARGS -0 rmdir &>/dev/null
 	fi
 	true
 }
 
 into() {
-	if [ $1 = "/" ]
-	then
+	if [ $1 == "/" ]; then
 		export DESTTREE=""
 	else
 		export DESTTREE=$1
-		if [ ! -d ${D}${DESTTREE} ]
-		then
-			install -d ${D}${DESTTREE}
+		if [ ! -d "${D}${DESTTREE}" ]; then
+			install -d "${D}${DESTTREE}"
 		fi
 	fi
 }
 
 insinto() {
-	if [ $1 = "/" ]
-	then
+	if [ "$1" == "/" ]; then
 		export INSDESTTREE=""
 	else
 		export INSDESTTREE=$1
-		if [ ! -d ${D}${INSDESTTREE} ]
-		then
-			install -d ${D}${INSDESTTREE}
+		if [ ! -d "${D}${INSDESTTREE}" ]; then
+			install -d "${D}${INSDESTTREE}"
 		fi
 	fi
 }
 
 exeinto() {
-	if [ $1 = "/" ]
-	then
+	if [ "$1" == "/" ]; then
 		export EXEDESTTREE=""
 	else
-		export EXEDESTTREE=$1
-		if [ ! -d ${D}${EXEDESTTREE} ]
-		then
-			install -d ${D}${EXEDESTTREE}
+		export EXEDESTTREE="$1"
+		if [ ! -d "${D}${EXEDESTTREE}" ]; then
+			install -d "${D}${EXEDESTTREE}"
 		fi
 	fi
 }
 
 docinto() {
-	if [ $1 = "/" ]
-	then
+	if [ "$1" == "/" ]; then
 		export DOCDESTTREE=""
 	else
-		export DOCDESTTREE=$1
-		if [ ! -d ${D}usr/share/doc/${PF}/${DOCDESTTREE} ]
-		then
-			install -d ${D}usr/share/doc/${PF}/${DOCDESTTREE} 
+		export DOCDESTTREE="$1"
+		if [ ! -d "${D}usr/share/doc/${PF}/${DOCDESTTREE}" ]; then
+			install -d "${D}usr/share/doc/${PF}/${DOCDESTTREE}"
 		fi
 	fi
 }
 
 insopts() {
 	INSOPTIONS=""
-	for x in $*
-	do
+	for x in $*; do
 		#if we have a debug build, let's not strip anything
-		if has nostrip $FEATURES $RESTRICT && [ "$x" = "-s" ]
-		then
+		if has nostrip $FEATURES $RESTRICT && [ "$x" == "-s" ]; then
 			continue
  		else
 			INSOPTIONS="$INSOPTIONS $x"
-	fi
+		fi
 	done
 	export INSOPTIONS
 }
 
 diropts() {
 	DIROPTIONS=""
-	for x in $*
-	do
+	for x in $*; do
 		DIROPTIONS="${DIROPTIONS} $x"
 	done
 	export DIROPTIONS
@@ -607,11 +578,9 @@ diropts() {
 
 exeopts() {
 	EXEOPTIONS=""
-	for x in $*
-	do
+	for x in $*; do
 		#if we have a debug build, let's not strip anything
-		if has nostrip $FEATURES $RESTRICT && [ "$x" = "-s" ]
-		then
+		if has nostrip $FEATURES $RESTRICT && [ "$x" == "-s" ]; then
 			continue
 		else
 			EXEOPTIONS="$EXEOPTIONS $x"
@@ -622,11 +591,9 @@ exeopts() {
 
 libopts() {
 	LIBOPTIONS=""
-	for x in $*
-	do
+	for x in $*; do
 		#if we have a debug build, let's not strip anything
-		if has nostrip $FEATURES $RESTRICT && [ "$x" = "-s" ]
-		then
+		if has nostrip $FEATURES $RESTRICT && [ "$x" == "-s" ]; then
 			continue
 		else
 			LIBOPTIONS="$LIBOPTIONS $x"
@@ -637,8 +604,7 @@ libopts() {
 
 abort_handler() {
 	local msg
-	if [ "$2" != "fail" ]
-	then
+	if [ "$2" != "fail" ]; then
 		msg="${EBUILD}: ${1} aborted; exiting."
 	else
 		msg="${EBUILD}: ${1} failed; exiting."
@@ -686,10 +652,16 @@ dyn_compile() {
 		echo "!!! want to be doing... You are using FEATURES=noauto so I'll assume"
 		echo "!!! that you know what you are doing... You have 5 seconds to abort..."
 		echo
-		echo -ne "\a"; sleep 0.25 ;	echo -ne "\a"; sleep 0.25
-		echo -ne "\a"; sleep 0.25 ;	echo -ne "\a"; sleep 0.25
-		echo -ne "\a"; sleep 0.25 ;	echo -ne "\a"; sleep 0.25
-		echo -ne "\a"; sleep 0.25 ;	echo -ne "\a"; sleep 0.25
+
+		echo -ne "\a"; sleep 0.25 &>/dev/null; echo -ne "\a"; sleep 0.25 &>/dev/null
+		echo -ne "\a"; sleep 0.25 &>/dev/null; echo -ne "\a"; sleep 0.25 &>/dev/null
+		echo -ne "\a"; sleep 0.25 &>/dev/null; echo -ne "\a"; sleep 0.25 &>/dev/null
+		echo -ne "\a"; sleep 0.25 &>/dev/null; echo -ne "\a"; sleep 0.25 &>/dev/null
+
+		echo -ne "\a"; sleep 0,25 &>/dev/null; echo -ne "\a"; sleep 0,25 &>/dev/null
+		echo -ne "\a"; sleep 0,25 &>/dev/null; echo -ne "\a"; sleep 0,25 &>/dev/null
+		echo -ne "\a"; sleep 0,25 &>/dev/null; echo -ne "\a"; sleep 0,25 &>/dev/null
+		echo -ne "\a"; sleep 0,25 &>/dev/null; echo -ne "\a"; sleep 0,25 &>/dev/null
 		sleep 3
 	fi
 
@@ -699,15 +671,13 @@ dyn_compile() {
 	fi
 	cp ${EBUILD} build-info/${PF}.ebuild
 	
-	if [ ${BUILDDIR}/.compiled -nt ${WORKDIR} ]
-	then
+	if [ ${BUILDDIR}/.compiled -nt "${WORKDIR}" ]; then
 		echo ">>> It appears that ${PN} is already compiled; skipping."
 		echo ">>> (clean to force compilation)"
 		trap SIGINT SIGQUIT
 		return
 	fi
-	if [ -d "${S}" ]
-		then
+	if [ -d "${S}" ]; then
 		cd "${S}"
 	fi
 	#our custom version of libtool uses $S and $D to fix
@@ -716,35 +686,31 @@ dyn_compile() {
 	#some packages use an alternative to $S to build in, cause
 	#our libtool to create problematic .la files
 	export PWORKDIR="$WORKDIR"
-	#some users have $TMP/$TMPDIR to a custom dir in their home ...
-	#this will cause sandbox errors with some ./configure
-	#scripts, so set it to $T.
-	export TMP="${T}"
-	export TMPDIR="${T}"
 	src_compile 
 	#|| abort_compile "fail" 
 	cd ${BUILDDIR}
 	touch .compiled
 	cd build-info
-	echo "$CFLAGS"   > CFLAGS
-	echo "$CXXFLAGS" > CXXFLAGS
-	echo "$CC"       > CC
-	echo "$CXX"      > CXX
-	echo "$CHOST"    > CHOST
 	echo "$CBUILD"   > CBUILD
-	echo "$USE"      > USE
+	echo "$CC"       > CC
+	echo "$CDEPEND"  > CDEPEND
+	echo "$CFLAGS"   > CFLAGS
+	echo "$CHOST"    > CHOST
+	echo "$CXX"      > CXX
+	echo "$CXXFLAGS" > CXXFLAGS
+	echo "$DEPEND"   > DEPEND
+	echo "$IUSE"     > IUSE
 	echo "$LICENSE"  > LICENSE
 	echo "$CATEGORY" > CATEGORY
-	echo "$PF"       > PF
-	echo "$SLOT"     > SLOT
-	echo "$DEPEND"   > DEPEND
-	echo "$RDEPEND"  > RDEPEND
-	echo "$CDEPEND"  > CDEPEND
 	echo "$PDEPEND"  > PDEPEND
+	echo "$PF"       > PF
 	echo "$PROVIDE"  > PROVIDE
+	echo "$RDEPEND"  > RDEPEND
+	echo "$SLOT"     > SLOT
+	echo "$USE"      > USE
+	set | bzip2 -9 - > environment.bzip2
 	cp ${EBUILD} ${PF}.ebuild
-	if has nostrip $FEATURES $RESTRICT
-	then
+	if has nostrip $FEATURES $RESTRICT; then
 		touch DEBUGBUILD
 	fi
 	trap SIGINT SIGQUIT
@@ -753,21 +719,19 @@ dyn_compile() {
 dyn_package() {
 	trap "abort_package" SIGINT SIGQUIT
 	cd ${BUILDDIR}/image
-	tar cvf ../bin.tar *
+	tar cpvf - * | bzip2 -f > ../bin.tar.bz2 || die "Failed to create tarball"
 	cd ..
-	bzip2 -f bin.tar
 	xpak build-info inf.xpak
 	tbz2tool join bin.tar.bz2 inf.xpak ${PF}.tbz2
-	mv ${PF}.tbz2 ${PKGDIR}/All
+	mv ${PF}.tbz2 ${PKGDIR}/All || die "Failed to move tbz2 to ${PKGDIR}/All"
 	rm -f inf.xpak bin.tar.bz2
-	if [ ! -d ${PKGDIR}/${CATEGORY} ]
-	then
+	if [ ! -d ${PKGDIR}/${CATEGORY} ]; then
 		install -d ${PKGDIR}/${CATEGORY}
 	fi
-	ln -sf ../All/${PF}.tbz2 ${PKGDIR}/${CATEGORY}/${PF}.tbz2
+	ln -sf ../All/${PF}.tbz2 ${PKGDIR}/${CATEGORY}/${PF}.tbz2 || die "Failed to create symlink in ${PKGDIR}/${CATEGORY}"
 	echo ">>> Done."
 	cd ${BUILDDIR}
-	touch .packaged
+	touch .packaged || die "Failed to 'touch .packaged' in ${BUILDDIR}"
 	trap SIGINT SIGQUIT
 }
 
@@ -775,8 +739,7 @@ dyn_install() {
 	trap "abort_install" SIGINT SIGQUIT
 	rm -rf ${BUILDDIR}/image
 	mkdir ${BUILDDIR}/image
-	if [ -d "${S}" ]
-	then
+	if [ -d "${S}" ]; then
 		cd "${S}"
 	fi
 	echo
@@ -787,11 +750,6 @@ dyn_install() {
 	#some packages uses an alternative to $S to build in, cause
 	#our libtool to create problematic .la files
 	export PWORKDIR="$WORKDIR"
-	#some users have $TMP/$TMPDIR to a custom dir in thier home ...
-	#this will cause sandbox errors with some ./configure
-	#scripts, so set it to $T.
-	export TMP="${T}"
-	export TMPDIR="${T}"
 	src_install 
 	#|| abort_install "fail"
 	prepall
@@ -812,8 +770,7 @@ dyn_install() {
 	fi
 	
 	find ${D}/ -user  portage -print0 | $XARGS -0 -n100 chown root
-	if [ "$USERLAND" = "BSD" ]
-	then
+	if [ "$USERLAND" == "BSD" ]; then
 		find ${D}/ -group portage -print0 | $XARGS -0 -n100 chgrp wheel
 	else	
 		find ${D}/ -group portage -print0 | $XARGS -0 -n100 chgrp root 
@@ -825,7 +782,7 @@ dyn_install() {
 }
 
 dyn_spec() {
-	tar czf /usr/src/redhat/SOURCES/${PF}.tar.gz ${O}/${PF}.ebuild ${O}/files
+	tar czf /usr/src/redhat/SOURCES/${PF}.tar.gz ${O}/${PF}.ebuild ${O}/files || die "Failed to create base rpm tarball."
 
 	cat <<__END1__ > ${PF}.spec
 Summary: ${DESCRIPTION}
@@ -858,8 +815,8 @@ __END1__
 
 dyn_rpm() {
 	dyn_spec
-	rpm -bb ${PF}.spec
-	install -D /usr/src/redhat/RPMS/i386/${PN}-${PV}-${PR}.i386.rpm ${RPMDIR}/${CATEGORY}/${PN}-${PV}-${PR}.rpm
+	rpm -bb ${PF}.spec || die "Failed to integrate rpm spec file"
+	install -D /usr/src/redhat/RPMS/i386/${PN}-${PV}-${PR}.i386.rpm ${RPMDIR}/${CATEGORY}/${PN}-${PV}-${PR}.rpm || die "Failed to move rpm"
 }
 
 dyn_help() {
@@ -903,8 +860,7 @@ dyn_help() {
 	fi
 	echo "  merge to    : ${ROOT}" 
 	echo
-	if [ -n "$USE" ]
-	then
+	if [ -n "$USE" ]; then
 		echo "Additionally, support for the following optional features will be enabled:"
 		echo 
 		echo "  ${USE}"
@@ -936,7 +892,7 @@ debug-print() {
 		fi
 		
 		# default target
-		echo $1 >> ${T}/eclass-debug.log
+		echo "$1" >> ${T}/eclass-debug.log
 		# let the portage user own/write to this file
 		chmod g+w ${T}/eclass-debug.log &>/dev/null
 		
@@ -958,21 +914,25 @@ debug-print-section() {
 
 # Sources all eclasses in parameters
 inherit() {
-	unset INHERITED
+	if [ ! -z "${INHERITED}" ]; then
+		debug-print "*** Multiple Inheritence"
+	fi
 	local location
-	while [ "$1" ]
-	do
+	while [ "$1" ]; do
 		location="${ECLASSDIR}/${1}.eclass"
 		PECLASS="$ECLASS"
 		export ECLASS="$1"
 
 		# any future resolution code goes here
-		if [ -n "$PORTDIR_OVERLAY" ]
-		then
-			olocation="${PORTDIR_OVERLAY}/eclass/${1}.eclass"
-			if [ -e "$olocation" ]; then
-				location="${olocation}"
-			fi
+		if [ -n "$PORTDIR_OVERLAY" ]; then
+			local overlay
+			for overlay in ${PORTDIR_OVERLAY}; do
+				olocation="${overlay}/eclass/${1}.eclass"
+				if [ -e "$olocation" ]; then
+					location="${olocation}"
+					debug-print "  eclass exists: ${location}"
+				fi
+			done
 		fi
 		debug-print "inherit: $1 -> $location"
 
@@ -992,7 +952,8 @@ inherit() {
 		#turn on glob expansion
 		set +f
 		
-		source "$location" || die "died sourcing $location in inherit()"
+		source "$location" || export ERRORMSG="died sourcing $location in inherit()"
+		[ -z "${ERRORMSG}" ] || die "${ERRORMSG}"
 		
 		#turn off glob expansion
 		set -f
@@ -1128,10 +1089,17 @@ export SANDBOX_ON="1"
 export S=${WORKDIR}/${P}
 unset DEPEND RDEPEND E_RDEPEND E_DEPEND
 source ${EBUILD} || die "error sourcing ebuild"
+[ -z "${ERRORMSG}" ] || die "${ERRORMSG}"
 #a reasonable default for $S
 if [ "$S" = "" ]; then
 	export S=${WORKDIR}/${P}
 fi
+
+#some users have $TMP/$TMPDIR to a custom dir in their home ...
+#this will cause sandbox errors with some ./configure
+#scripts, so set it to $T.
+export TMP="${T}"
+export TMPDIR="${T}"
 
 # Note: this next line is not the same as export RDEPEND=${RDEPEND:-${DEPEND}}
 # That will test for unset *or* NULL ("").  We want just to set for unset...
@@ -1169,14 +1137,12 @@ do
 		fi
 		;;
 	unpack|compile|clean|install)
-		if [ ${SANDBOX_DISABLED="0"} = "0" ]
-		then
+		if [ "${SANDBOX_DISABLED="0"}" == "0" ]; then
 			export SANDBOX_ON="1"
 		else
 			export SANDBOX_ON="0"
 		fi
-		if [ "$PORTAGE_DEBUG" != "1" ]
-		then
+		if [ "$PORTAGE_DEBUG" != "1" ]; then
 			dyn_${myarg}
 			#Allow non-zero return codes since they can be caused by &&
 		else
@@ -1202,8 +1168,7 @@ do
 		;;
 	package|rpm)
 		export SANDBOX_ON="0"
-		if [ "$PORTAGE_DEBUG" != "1" ]
-		then
+		if [ "$PORTAGE_DEBUG" != "1" ]; then
 			dyn_${myarg}
 		else
 			set -x
@@ -1222,19 +1187,19 @@ do
 		fi
 		# Make it group writable. 666&~002==664
 		umask 002
-		echo `echo "$DEPEND"` > $dbkey
-		echo `echo "$RDEPEND"` >> $dbkey
-		echo `echo "$SLOT"` >> $dbkey
-		echo `echo "$SRC_URI"` >> $dbkey
-		echo `echo "$RESTRICT"` >> $dbkey
-		echo `echo "$HOMEPAGE"` >> $dbkey
-		echo `echo "$LICENSE"` >> $dbkey
+		echo `echo "$DEPEND"`       > $dbkey
+		echo `echo "$RDEPEND"`     >> $dbkey
+		echo `echo "$SLOT"`        >> $dbkey
+		echo `echo "$SRC_URI"`     >> $dbkey
+		echo `echo "$RESTRICT"`    >> $dbkey
+		echo `echo "$HOMEPAGE"`    >> $dbkey
+		echo `echo "$LICENSE"`     >> $dbkey
 		echo `echo "$DESCRIPTION"` >> $dbkey
-		echo `echo "$KEYWORDS"` >> $dbkey
-		echo `echo "$INHERITED"` >> $dbkey
-		echo `echo "$IUSE"` >> $dbkey
-		echo `echo "$CDEPEND"` >> $dbkey
-		echo `echo "$PDEPEND"` >> $dbkey
+		echo `echo "$KEYWORDS"`    >> $dbkey
+		echo `echo "$INHERITED"`   >> $dbkey
+		echo `echo "$IUSE"`        >> $dbkey
+		echo `echo "$CDEPEND"`     >> $dbkey
+		echo `echo "$PDEPEND"`     >> $dbkey
 		set +f
 		#make sure it is writable by our group:
 		exit 0
@@ -1247,8 +1212,7 @@ do
 		exit 1
 		;;
 	esac
-	if [ $? -ne 0 ]
-	then
+	if [ $? -ne 0 ]; then
 		exit 1
 	fi
 done

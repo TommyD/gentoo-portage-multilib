@@ -236,6 +236,14 @@ function do_cfg() {
 				echo "Showing differences between ${ofile} and ${file}"
 				${showdiffcmd}
 			fi
+			if [ -L "${file}" ]; then
+				echo
+				echo "-------------------------------------------------------------"
+				echo "NOTE: File is a symlink to another file. REPLACE recommended."
+				echo "      The original file may simply have moved. Please review."
+				echo "-------------------------------------------------------------"
+				echo
+			fi
 			echo -n "1) Replace original with update
 2) Delete update, keeping original as is
 3) Interactively merge original with update

@@ -7,15 +7,22 @@
 # Then, check to make sure deps are satisfiable (to avoid "can't find match for" problems)
 # that last one is tricky because multiple profiles need to be checked.
 
-import os
+import os,sys
+exename=os.path.basename(sys.argv[0])	
 os.environ["PORTAGE_CALLER"]="repoman"
+version="1.2"	
 
-import sys,string,signal,readline,portage,re,cvstree
+import string,signal,readline,portage,re,cvstree
 from output import *
 from commands import getstatusoutput
 
-exename=os.path.basename(sys.argv[0])	
-version="1.2"	
+if "cvs" not in portage.features:
+	print
+	print
+	print red('!!! You do not have ')+bold('FEATURES="cvs" ')+red("enabled...")
+	print red("!!! ")+bold("Digests may be incorrect!")
+	print
+	sleep(5)
 
 def err(txt):
 	print exename+": "+txt

@@ -397,7 +397,7 @@ enewuser() {
 	fi
 
 	# see if user already exists
-	if [ ! -z "${realuser}"]; then
+	if [ ! -z "${realuser}" ]; then
 		if [ "${euser}" == "${realuser}" ]; then
 			einfo "${euser} already exists on your system :)"
 			return 0

@@ -5,6 +5,7 @@
 
 import os
 os.environ["PORTAGE_CALLER"]="emerge"
+os.chdir("/")
 
 import sys,portage,emergehelp,xpak,string,re,commands,time,threading,shutil,traceback,atexit
 from stat import *
@@ -1571,7 +1572,7 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 	if not os.path.exists(myportdir):
 		print ">>>",myportdir,"not found, creating it."
 		os.makedirs(myportdir,0755)	
-	syncuri=portage.settings["SYNC"]
+	syncuri=string.rstrip(portage.settings["SYNC"])
 	os.umask(0022)
 	if syncuri[:8]=="rsync://":
 		if not os.path.exists("/usr/bin/rsync"):

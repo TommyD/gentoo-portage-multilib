@@ -242,9 +242,9 @@ CHOST="powerpc-unknown-linux-gnu"
 #  'buildpkg'    causes binary packages to be created of all packages that 
 #                are merged.
 #  'ccache'      enables ccache support via CC.
-#  'cvs'         feature for developers that causes portage to enable full 
-#                settings and USE flags in SRC_URI and has wide effects -- 
-#                don't set this unless you're ready for it. 
+#  'cvs'         feature for developers that causes portage to enable all
+#                cvs features (commits, adds) and all USE flags in SRC_URI
+#                will be applied for digests.
 #  'digest'      autogenerate a digest for packages.
 #  'distcc'      enables distcc support via CC.
 #  'fixpackages' allows portage to fix binary packages that are stored in
