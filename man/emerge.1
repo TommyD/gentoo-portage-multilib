@@ -293,6 +293,12 @@ Tell emerge to run in verbose mode.  Currently this flag causes emerge to print 
 Displays the version number of \fBemerge\fR.  It cannot be used in
 conjunction with other options; the name and format of the action
 is a convention.
+.SH "ENVIRONMENT OPTIONS"
+.TP
+\fBROOT\fR = \fI[path]\fR
+Use \fBROOT\fR to specify the target root filesystem to be used for
+merging packages or ebuilds.
+Defaults to /.
 .SH "OUTPUT"
 While utilizing emerge and the pretend/verbose flags, the output
 may be a little hard to understand for the first time.  This section
