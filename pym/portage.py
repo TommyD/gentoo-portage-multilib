@@ -235,7 +235,7 @@ dircache = {}
 cacheHit=0 
 cacheMiss=0
 cacheStale=0
-def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError):
+def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymlinks=True):
 	global cacheHit,cacheMiss,cacheStale
 	mypath = normalize_path(my_original_path)
 	if dircache.has_key(mypath):
@@ -263,17 +263,23 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError):
 		ftype = []
 		for x in list:
 			try:
-				pathstat = os.stat(mypath+"/"+x)
+				if followSymlinks:
+					pathstat = os.stat(mypath+"/"+x)
+				else:
+					pathstat = os.lstat(mypath+"/"+x)
+				
 				if stat.S_ISREG(pathstat[stat.ST_MODE]):
 					ftype.append(0)
 				elif stat.S_ISDIR(pathstat[stat.ST_MODE]):
 					ftype.append(1)
-				else:
+				elif stat.S_ISLNK(pathstat[stat.ST_MODE]):
 					ftype.append(2)
+				else:
+					ftype.append(3)
 			except SystemExit, e:
 				raise
 			except:
-				ftype.append(2)
+				ftype.append(3)
 		dircache[mypath] = mtime, list, ftype
 
 	ret_list = []
@@ -295,9 +301,10 @@ def listdir (mypath,
 			 filesonly=False,
 			 ignorecvs=False,
 			 ignorelist=[],
+			 followSymlinks=True,
 			 EmptyOnError=False):
 
-	list, ftype = cacheddir(mypath, ignorecvs, ignorelist, EmptyOnError)
+	list, ftype = cacheddir(mypath, ignorecvs, ignorelist, EmptyOnError, followSymlinks)
 
 	if list is None:
 		list=[]
@@ -317,7 +324,8 @@ def listdir (mypath,
 				l,f = cacheddir(mypath+"/"+list[x],
 								  ignorecvs,
 								  ignorelist,
-								  EmptyOnError)
+								  EmptyOnError,
+								  followSymlinks)
 								  
 				l=l[:]
 				for y in range(0,len(l)):
@@ -6100,12 +6108,12 @@ class dblink:
 
 		# check for package collisions
 		if "collision-protect" in features:
-			myfilelist = listdir(srcroot, recursive=1, filesonly=1)
+			myfilelist = listdir(srcroot, recursive=1, filesonly=1, followSymlinks=False)
 
 			# the linkcheck only works if we are in srcroot
 			mycwd = os.getcwd()
 			os.chdir(srcroot)
-			mysymlinks = filter(os.path.islink, listdir(srcroot, recursive=1, filesonly=0))
+			mysymlinks = filter(os.path.islink, listdir(srcroot, recursive=1, filesonly=0, followSymlinks=False))
 
 			stopmerge=False
 			starttime=time.time()
