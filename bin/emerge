@@ -1573,9 +1573,9 @@ class depgraph:
 
 				xs=portage.portage_versions.pkgsplit(x[2])
 				if xs[2]=="r0":
-					xs[2]=""
+					xs=(xs[0],xs[1],"")
 				else:
-					xs[2]="-"+xs[2]
+					xs=(xs[0],xs[1],"-"+xs[2])
 
 				if self.pkgsettings.has_key("COLUMNWIDTH"):
 					mywidth=int(self.pkgsettings["COLUMNWIDTH"])
@@ -3309,12 +3309,13 @@ elif "depclean"==myaction:
 	for x in syslist+worldlist:
 		myparts = portage_versions.catpkgsplit(x)
 		if myparts:
+			mycat = ""
 			myparts = list(myparts)
 			if myparts[0][0] in ('<','>','='):
-				myparts[0] = myparts[0][1:]
-			if myparts[0][0] in ('<','>','='):
-				myparts[0] = myparts[0][1:]
-			catpack=myparts[0]+"/"+myparts[1]
+				mycat = myparts[0][1:]
+			elif myparts[0][:2] in ('<=','>='):
+				mycat = myparts[0][2:]
+			catpack=mycat+"/"+myparts[1]
 		else:
 			catpack=x
 		if catpack in cleanlist:
