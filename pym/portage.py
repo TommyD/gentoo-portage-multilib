@@ -398,7 +398,7 @@ def listdir (mypath,
 					l[y]=list[x]+"/"+l[y]
 				list=list+l
 				ftype=ftype+f
-			x=x+1
+			x+=1
 	if filesonly:
 		rlist=[]
 		for x in range(0,len(ftype)):
@@ -2369,6 +2369,7 @@ def digestgen(myarchives,mysettings,overwrite=1,manifestonly=0):
 
 	print green(">>> Generating manifest file...")
 	mypfiles=listdir(pbasedir,recursive=1,filesonly=1,ignorecvs=1,EmptyOnError=1)
+	mypfiles=cvstree.apply_cvsignore_filter(mypfiles)
 	if "Manifest" in mypfiles:
 		del mypfiles[mypfiles.index("Manifest")]
 
@@ -2476,7 +2477,6 @@ def digestCheckFiles(myfiles, mydigests, basedir, note="", strict=0):
 
 def digestcheck(myfiles, mysettings, strict=0):
 	"""Checks md5sums.  Assumes all files have been downloaded."""
-
 	# archive files
 	basedir=mysettings["DISTDIR"]+"/"
 	digestfn=mysettings["FILESDIR"]+"/digest-"+mysettings["PF"]
@@ -2517,16 +2517,25 @@ def digestcheck(myfiles, mysettings, strict=0):
 	else:
 		# Check the portage-related files here.
 		mymfiles=listdir(pbasedir,recursive=1,filesonly=1,ignorecvs=1,EmptyOnError=1)
+		mymfiles=cvstree.apply_cvsignore_filter(mymfiles)
+		manifest_files = mymdigests.keys()
 		for x in range(len(mymfiles)-1,-1,-1):
 			if mymfiles[x]=='Manifest': # We don't want the manifest in out list.
 				del mymfiles[x]
 				continue
-			if mymfiles[x] not in mymdigests.keys():
+			if mymfiles[x] in manifest_files:
+				manifest_files.remove(mymfiles[x])
+			else:
 				print red("!!! Security Violation: A file exists that is not in the manifest.")
 				print "!!! File:",mymfiles[x]
 				if strict:
 					return 0
-	
+		if manifest_files and strict:
+			print red("!!! Files listed in the manifest do not exist!")
+			for x in manifest_files:
+				print x
+			return 0
+
 		if not digestCheckFiles(mymfiles, mymdigests, pbasedir, "files  ", strict):
 			if strict:
 				print ">>> Please ensure you have sync'd properly. Please try '"+bold("emerge sync")+"' and"

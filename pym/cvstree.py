@@ -117,6 +117,7 @@ def findunadded(entries,recursive=0,basedir=""):
 	if basedir and basedir[-1]!="/":
 		basedir=basedir+"/"
 	mylist=[]
+
 	#ignore what cvs ignores.
 	for myfile in entries["files"].keys():
 		if "cvs" not in entries["files"][myfile]["status"]:
@@ -155,6 +156,16 @@ def findall(entries, recursive=0, basedir=""):
 	myremoved = findremoved(entries,recursive,basedir)
 	return [mynew, mychanged, mymissing, myunadded, myremoved]
 
+ignore_list = re.compile("(^|/)(RCS(|LOG)|SCCS|CVS(|\.adm)|cvslog\..*|tags|TAGS|\.(make\.state|nse_depinfo)|.*~|(\.|)#.*|,.*|_$.*|.*\$|\.del-.*|.*\.(old|BAK|bak|orig|rej|a|olb|o|obj|so|exe|Z|elc|ln)|core)$")
+def apply_cvsignore_filter(list):
+	x=0
+	while x < len(list):
+		if ignore_list.match(list[x].split("/")[-1]):
+			list.pop(x)
+		else:
+			x+=1
+	return list
+	
 def getentries(mydir,recursive=0):
 	"""(basedir,recursive=0)
 	Scans the given directory and returns an datadict of all the entries in
@@ -204,7 +215,8 @@ def getentries(mydir,recursive=0):
 			entries["files"][mysplit[1]]["status"]=["cvs"]
 			if entries["files"][mysplit[1]]["revision"][0]=="-":
 				entries["files"][mysplit[1]]["status"]+=["removed"]
-	for file in os.listdir(mydir):
+
+	for file in apply_cvsignore_filter(os.listdir(mydir)):
 		if file=="CVS":
 			continue
 		if file=="digest-framerd-2.4.3":

@@ -8,6 +8,11 @@
     3. /etc/portage/profile/virtuals is _USER_ configs only.
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
+  
+  16 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/cvstree.py 
+  pym/portage.py: Round #2 of ignorecvs, now w/ sane regex goodness and an 
+  addition to digest(gen|check) to use the same cvs filter for Manifests.
+  (#46070).
 
   15 Aug 2004; Nicholas Jones <carpaski@gentoo.org> emerge: message fix for
 	packages.provided.
