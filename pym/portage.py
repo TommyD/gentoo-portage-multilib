@@ -2638,6 +2638,8 @@ class dblink:
 		for x in mergelist:
 			mysrc=srcroot+offset+x
 			mydest=destroot+offset+x
+			# myrealdest is mydest without the $ROOT prefix (makes a difference if ROOT!="/")
+			myrealdest="/"+offset+x
 			# stat file once, test using S_* macros many times (faster that way)
 			mystat=os.lstat(mysrc)
 			mymode=mystat[ST_MODE]
@@ -2673,7 +2675,7 @@ class dblink:
 				# unlinking no longer necessary; "movefile" will overwrite symlinks atomically and correctly
 				if movefile(mysrc,mydest):
 					print ">>>",mydest,"->",myto
-					outfile.write("sym "+mydest+" -> "+myto+" "+`mymtime`+"\n")
+					outfile.write("sym "+myrealdest+" -> "+myto+" "+`mymtime`+"\n")
 				else:
 					print "!!!",mydest,"->",myto
 			elif S_ISDIR(mymode):
@@ -2698,7 +2700,7 @@ class dblink:
 					os.chmod(mydest,mystat[0])
 					os.chown(mydest,mystat[4],mystat[5])
 					print ">>>",mydest+"/"
-				outfile.write("dir "+mydest+"\n")
+				outfile.write("dir "+myrealdest+"\n")
 				# recurse and merge this directory
 				self.mergeme(srcroot,destroot,outfile,secondhand,offset+x+"/")
 			elif S_ISREG(mymode):
@@ -2758,7 +2760,7 @@ class dblink:
 				# whether config protection or not, we merge the new file the same way.  Unless moveme=0 (blocking directory)
 				if moveme and movefile(mysrc,mydest):
 					zing=">>>"
-					outfile.write("obj "+mydest+" "+mymd5+" "+`mymtime`+"\n")
+					outfile.write("obj "+myrealdest+" "+mymd5+" "+`mymtime`+"\n")
 				else:
 					zing="!!!"
 				print zing,mydest
@@ -2771,7 +2773,7 @@ class dblink:
 						zing=">>>"
 						if S_ISFIF(mymode):
 							#we don't record device nodes in CONTENTS, although we do merge them.
-							outfile.write("fif "+mydest+"\n")
+							outfile.write("fif "+myrealdest+"\n")
 					else:
 						zing="!!!"
 				print zing+" "+mydest

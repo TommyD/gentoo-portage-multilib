@@ -1,6 +1,11 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-1.8.9_pre29 (20 Mar 2002)
+
+  20 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: CONTENTS files
+  now record the correct path when ROOT!="/".
+
 *portage-1.8.9_pre28 (20 Mar 2002)
 
   20 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, emerge: an
