@@ -1,6 +1,12 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-1.9.2 (21 Apr 2002)
+
+  21 Apr 2002; Daniel Robbins <drobbins@gentoo.org>: portage.py: signal
+  handler now zaps /etc/ld.so.preload if it's there -- this prevents it
+  from hanging around and causing sandbox badness.
+  
   21 Apr 2002; Daniel Robbins <drobbins@gentoo.org>: emerge: fixed an
   error where --emptytree mode wouldn't really have a fully empty tree,
   due to the emptytree.inject() coming before the emptytree.root=None;
@@ -13,7 +19,10 @@
   install stages so that global variables can be shared.  This fixes an issue
   with woodchip's new apache ebuild and closes bug #1813.
 
-*portage-1.9.1 
+*portage-1.9.1 (16 Apr 2002)
+
+  16 Apr 2002; Daniel Robbins <drobbins@gentoo.org>: tiny (and forgotten)
+  quick fix.
 
 *portage-1.9.0 (16 Apr 2002)
 

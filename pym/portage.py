@@ -66,6 +66,9 @@ import missingos
 #handle ^C interrupts correctly:
 def exithandler(signum,frame):
 	print "!!! Portage interrupted by SIGINT; exiting."
+	#disable sandboxing to prevent problems
+	if os.path.exists("/etc/ld.so.preload"):
+		os.unlink("/etc/ld.so.preload")
 	# 0=send to *everybody* in process group
 	os.kill(0,signal.SIGKILL)
 	sys.exit(1)
@@ -1017,6 +1020,9 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 		if retval: return retval
 		return merge(settings["CATEGORY"],settings["PF"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot,myebuild=settings["EBUILD"])
 	elif mydo=="package":
+		retval=spawn("/usr/sbin/ebuild.sh setup")
+		if retval:
+			return retval
 		for x in ["","/"+settings["CATEGORY"],"/All"]:
 			if not os.path.exists(settings["PKGDIR"]+x):
 				os.makedirs(settings["PKGDIR"]+x)
@@ -1038,7 +1044,7 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 			print
 			return 0
 		else:
-			return spawn("/usr/sbin/ebuild.sh setup unpack compile install package")
+			return spawn("/usr/sbin/ebuild.sh unpack compile install package")
 
 def isfifo(x):
 	mymode=os.lstat(x)[ST_MODE]
