@@ -1152,6 +1152,9 @@ class config:
 				if os.path.exists(mypath):
 					self.profiles.insert(0,mypath)
 
+			if os.path.exists("/etc/portage/profile"):
+				self.profiles.append("/etc/portage/profile")
+
 			self.packages = grab_stacked("packages", self.profiles, grabfile, incremental_lines=1)
 			self.virtuals = self.getvirtuals('/')
 
@@ -3391,7 +3394,7 @@ def match_from_list(mydep,candidate_list):
 	else:
 		cat,pkg,ver,rev = mycpv_cps
 		if mydep == mycpv:
-			raise KeyError, "Specific key requires an operator (%s)" % (mydep)
+			raise KeyError, "Specific key requires an operator (%s) (try adding an '=')" % (mydep)
 
 	if ver and rev:
 		operator = get_operator(mydep)

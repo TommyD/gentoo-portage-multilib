@@ -2,6 +2,10 @@
 # Copyright 2000-2004 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  21 Jan 2004; Nicholas Jones <carpaski@gentoo.org> portage.py, emerge:
+	Fix from genone for emerge's direct reading of packages and his patch
+	that also adds in /etc/portage/profile as a stacked profile.
+
   21 Jan 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Completed
   inheritence capabilities for portage.config reading some files. Moved a
   copy of the getvirtuals() function into settings to handle multiple

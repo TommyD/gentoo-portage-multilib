@@ -600,23 +600,18 @@ class search:
 #build our package digraph
 def getlist(mode):
 	if mode=="system":
-		if portage.profiledir:
-			pfile=portage.profiledir+"/packages"
-		else:
-			print "!!! No profile directory; system mode unavailable."
-			sys.exit(1)
+		mylines=portage.settings.packages
 	elif mode=="world":
-		pfile=portage.root+"var/cache/edb/world"
-	try:
-		myfile=open(pfile,"r")
-		mylines=myfile.readlines()
-		myfile.close()
-	except OSError:
-		print "!!! Couldn't open "+pfile+"; exiting."
-		sys.exit(1)
-	except IOError:
-		#world file doesn't exist
-		mylines=[]
+		try:
+			myfile=open(portage.root+"var/cache/edb/world","r")
+			mylines=myfile.readlines()
+			myfile.close()
+		except OSError:
+			print "!!! Couldn't open "+pfile+"; exiting."
+			sys.exit(1)
+		except IOError:
+			#world file doesn't exist
+			mylines=[]
 	mynewlines=[]
 	for x in mylines:
 		myline=string.join(string.split(x))
