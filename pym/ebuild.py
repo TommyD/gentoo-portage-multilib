@@ -554,7 +554,7 @@ class ebuild_handler:
 		"""formerly portage.doebuild, since it's specific to ebuilds, it's now a method of ebuild handling.
 		severely gutted, and in need of cleansing/exorcism"""
 		from portage import db,ExtractKernelVersion,fetch,features, \
-			digestgen,digestcheck,root,flatten
+			digestgen,digestcheck,root,flatten, digestParseFile
 		from portage_data import portage_uid,portage_gid,secpass
 		import portage_dep
 		from portage_util import writemsg
