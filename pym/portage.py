@@ -1837,11 +1837,14 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0,fetchonly=0):
 		print red("doebuild():")+" aux_get() error; aborting."
 		sys.exit(1)
 
-	newuris=flatten(evaluate(tokenize(myuris),string.split(settings["USE"])))	
+	myurilist=myuris.split()
+	myurilist=dep_parenreduce(myurilist)
+	myurilist=dep_opconvert(myurilist,string.split(settings["USE"]))
+	newuris=flatten(myurilist)
 	alluris=flatten(evaluate(tokenize(myuris),[],1))	
 	alist=[]
 	aalist=[]
-	#uri processing list
+	#uri processing list; create list with duplicates removed:
 	upl=[[newuris,alist],[alluris,aalist]]
 	for myl in upl:
 		for x in myl[0]:
