@@ -1805,7 +1805,7 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 		rsynccommand="/usr/bin/rsync -rlptDvz --progress --stats --delete --delete-after --timeout="+str(mytimeout)+" --exclude='distfiles/*' --exclude='local/*' --exclude='packages/*' "
 		if portage.settings.has_key("RSYNC_EXCLUDEFROM"):
 			if os.path.exists(portage.settings["RSYNC_EXCLUDEFROM"]):
-				mycommand=mycommand+" --exclude-from "+portage.settings["RSYNC_EXCLUDEFROM"]
+				rsynccommand=rsynccommand+" --exclude-from "+portage.settings["RSYNC_EXCLUDEFROM"]
 			else:
 				print "!!! RSYNC_EXCLUDEFROM specified, but file does not exist."
 
@@ -1837,7 +1837,7 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 		while (1):
 			try:
 				ip=socket.gethostbyname(hostname)
-				dosyncuri=string.replace("//"+syncuri+"/", "//"+hostname+"/", ip, 1)
+				dosyncuri=string.replace(syncuri, "//"+hostname+"/", "//"+ip+"/", 1)
 			except Exception, e:
 				print "Notice:",str(e)
 				dosyncuri = syncuri
