@@ -77,16 +77,16 @@ arguments can be \fIebuilds\fR, \fItbz2s\fR, \fIclasses\fR, or
 to the \fBworld\fR file at the end, so that they are considered for
 later updating.  
 .TP
-\fB\-\-clean\fR (\fB\-c\fR)
+\fBclean\fR (\fB\-c\fR)
 Cleans the system by removing packages that will not effect the
 functionality of the system.  The arguments can be \fIebuilds\fR,
 \fIclasses\fR, or \fIdependencies\fR.  For example, \fBemerge
-\-\-clean binutils\fR cleans out old versions of binutils;
-\fBemerge \-\-clean net\-www/mozilla\-0.9.9\-r2\fR cleans out that
+clean binutils\fR cleans out old versions of binutils;
+\fBemerge clean net\-www/mozilla\-0.9.9\-r2\fR cleans out that
 specific version of Mozilla.  This is generally safe to use.
-\fBNote that\fR \-\-clean \fBdoes not remove unslotted packages.\fR
+\fBNote that\fR clean \fBdoes not remove unslotted packages.\fR
 .TP
-\fB\-\-depclean\fR
+\fBdepclean\fR
 Determines all packages installed on the system that have no
 explicit reason for being there.  \fBemerge\fR generates a list
 of packages which it expects to be installed by checking the
@@ -98,64 +98,64 @@ packages may cause packages which link to the removed package
 to stop working and complain about missing libraries.\fR
 Re\-emerge the complaining package to fix this issue.
 \fBNote that changes in USE flags can drastically affect the
-output of \-\-depclean.\fR
+output of depclean.\fR
 .TP
-\fB\-\-help\fR (\fB\-h\fR)
+\fBhelp\fR (\fB\-h\fR)
 Displays help information for emerge.  Adding one of the additional
 arguments listed above will give you more specific help information
 on that subject.  The internal \fBemerge\fR help documentation is
 updated more frequently than this man page; check it out if you
 are having problems that this man page does not help resolve.
 .TP
-\fB\-\-info\fR
+\fBinfo\fR
 This is a list of information to include in bug reports which aids
 the developers with fixing any problems you may report. \fBPlease
 include this information when submitting a bug report.\fR Expanded
-output can be obtained with the \fI\-\-verbose\fR option.
+output can be obtained with the \fI--verbose\fR option.
 .TP
-\fB\-\-inject\fR (\fB\-i\fR)
+\fBinject\fR (\fB\-i\fR)
 Injecting a package inserts a 'stub' for that package so that Portage
 thinks that it is installed. It is handy if you need, say, a binary
 version of XFree86 for esoteric hardware, or you just like to roll
 your own packages.  You \fBmust\fR specify a category and particular
 version of a package for injecting.  For example,
-\fBemerge \-\-inject sys\-kernel/gentoo\-sources\-2.4.19\fR.
+\fBemerge inject sys\-kernel/gentoo\-sources\-2.4.19\fR.
 .TP
-\fB\-\-prune\fR (\fB\-P\fR)
+\fBprune\fR (\fB\-P\fR)
 \fBWARNING: This action can remove important packages!\fR Removes
 all but the latest versions of matching packages.  If there are
 multiple SLOTs for a package, it leaves the latest version in each
 SLOT. This does no checking of dependencies, so it may remove
 packages necessary for the proper operation of your system. \fBUse\fR
-\-\-clean \fBinstead unless you really know what you're doing\fR.  Its
+clean \fBinstead unless you really know what you're doing\fR.  Its
 arguments can be \fIebuilds\fR, \fIclasses\fR, or \fIdependencies\fR
-\-\- see \fB\-\-clean\fR above for examples.
+\-\- see \fBclean\fR above for examples.
 .TP
-\fB\-\-rsync\fR
-Deprecated. Do not use this. See \fB\-\-sync\fR below.
+\fBrsync\fR
+See \fBsync\fR below.
 .TP
-\fB\-\-search\fR (\fB\-s\fR)
+\fBsearch\fR (\fB\-s\fR)
 Searches for matches of the supplied string in the portage tree.
 The search string is a regular expression.  For example, \fBemerge
-\-\-search "^kde"\fR searches for any package that starts with "kde";
-\fBemerge \-\-search "gcc$"\fR searches for any package that ends with
-"gcc"; \fBemerge \-\-search "office"\fR searches for any package that
+search "^kde"\fR searches for any package that starts with "kde";
+\fBemerge search "gcc$"\fR searches for any package that ends with
+"gcc"; \fBemerge search "office"\fR searches for any package that
 contains the word "office".  If you want to search the package
 descriptions as well, use the \fB\-\-searchdesc\fR,\fB-S\fR option.
 .TP
-\fB\-\-sync\fR
+\fBsync\fR
 Initiates a portage tree update with one of the rsync.gentoo.org
 mirrors.  \fBNote that any changes you have made to the portage
 tree will be erased\fR.  Except for in special circumstances,
 this uses \fBrsync\fR to do the update. See make.conf's description
 of PORTDIR_OVERLAY for a method to avoid deletions.
 .TP
-\fB\-\-unmerge\fR (\fB\-C\fR)
+\fBunmerge\fR (\fB\-C\fR)
 \fBWARNING: This action can remove important packages!\fR Removes
 all matching packages.  This does no checking of dependencies, so
 it may remove packages necessary for the proper operation of your
 system. Its arguments can be \fIebuilds\fR, \fIclasses\fR, or
-\fIdependencies\fR \-\- see \fB\-\-clean\fR above for examples.
+\fIdependencies\fR \-\- see \fBclean\fR above for examples.
 .TP
 \fB\-\-version\fR
 Displays the version number of \fBemerge\fR.
@@ -238,21 +238,13 @@ the package name.  \fBTake caution\fR as the descriptions are also
 matched as regular expressions.
 .TP
 \fB\-\-update\fR (\fB\-u\fR)
-Updates packages to the most recent version available.
-\fBNote that\fR \-\-update will not automatically update \fBdependencies of
-packages\fR in the \fBworld\fR file, unless they too are in the \fBworld\fR
-file. See \-\-deep for complete updates.
+Updates packages to the most recent version available.  \fBNote that\fR \-\-update \fBdoes not have full functionality yet\fR.  It will not automatically update dependencies of packages in the \fBworld\fR file, unless they too are in the \fBworld\fR file.
 .TP
 \fB\-\-usepkg\fR (\fB\-k\fR) 
-Tells emerge to use binary packages (from $PKGDIR) if they are available,
-thus possibly avoiding some time\-consuming compiles. This option is useful
-for CD installs; you can export PKGDIR=/mnt/cdrom/packages and then use this
-option to have emerge "pull" binary packages from the CD in order to satisfy
-dependencies.
+Tells emerge to use binary packages (from $PKGDIR) if they are available, thus possibly avoiding some time\-consuming compiles. This option is useful for CD installs; you can export PKGDIR=/mnt/cdrom/packages and then use this option to have emerge "pull" binary packages from the CD in order to satisfy dependencies.
 .TP
 \fB\-\-verbose\fR (\fB\-v\fR)
-Tell emerge to run in verbose mode. Various actions in portage will change
-their output when given this flag.
+Tell emerge to run in verbose mode.  Currently this flag causes emerge to print out GNU info errors, if any.
 .TP
 \fB\-\-version\fR
 Displays the version number of \fBemerge\fR.  It cannot be used in
@@ -392,4 +384,4 @@ Nicholas Jones <carpaski@gentoo.org>
 .br 
 Phil Bordelon <sunflare@gentoo.org>
 .SH "CVS HEADER"
-$ID: $
+$Id$
