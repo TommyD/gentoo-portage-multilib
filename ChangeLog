@@ -7,6 +7,11 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  06 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> portage_dep.py emerge:
+  Added a reimplementation of digraph. Still some work to do (including
+  comments) in order to support the differences between *DEPEND. Modified
+  emerge a little to build up both dep graphs for testing purposes.
+
   05 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> doins: Added vapier's fix
   for doins changing existing directory permissions. #69896
 

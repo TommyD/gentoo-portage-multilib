@@ -152,3 +152,113 @@ def dep_opconvert(deplist):
 			retlist.append(deplist[x])
 		x += 1
 	return retlist
+
+
+
+
+
+
+class DependencyGraph:
+
+	def __init__(self):
+		self.graph = {}
+
+	def clone(self):
+		newgraph = DependencyGraph()
+		newgraph.graph = copy.deepcopy(self.graph)
+		return newgraph
+
+	def has_node(self, node):
+		return self.graph.has_key(node)
+
+	def add_node(self, node):
+		if self.graph.has_key(node):
+			return
+		self.graph[node] = [[], []]
+
+	def add_relation(self, parent, child, priority):
+		node = (priority, parent)
+		if node not in self.graph[child]:
+			self.graph[child][0].append(node)
+			node = (priority, child)
+			self.graph[parent][1].append(node)
+
+	def get_relations(self, node):
+		return copy.deepcopy(self.graph[node])
+
+	def remove_node(self, node):
+		relations = self.get_relations(node)
+		for parent in relations[0]:
+			child = (parent[0], node)
+			self.graph[parent[1]][1].remove(child)
+		for child in relations[1]:
+			parent = (child[0], node)
+			self.graph[child[1]][0].remove(parent)
+		del self.graph[node]
+		return relations
+
+	def get_all_nodes(self):
+		return self.graph.keys()
+
+	def get_leaf_nodes(self):
+		nodes = []
+		for node in self.graph:
+			if not self.graph[node][1]:
+				nodes.append(node)
+		if nodes:
+			return nodes
+		circular = self.graph.keys()
+		for node in self.graph:
+			children = self.get_child_nodes(node, depth=0)
+			if len(children) < len(circular) and node in children:
+				circular = children
+		prioritized = []
+		for node in circular:
+			prioritized += [(len(self.get_parent_nodes(node, depth=0)), node)]
+		prioritized.sort()
+		prioritized.reverse()
+		nodes.append(prioritized[0][1])
+		return nodes
+
+	def get_root_nodes(self):
+		graph = self.clone()
+		roots = []
+		while graph.get_all_nodes():
+			nodes = graph.get_leaf_nodes()
+			for node in nodes:
+				if not graph.get_parent_nodes(node):
+					if node not in roots:
+						roots.append(node)
+			for node in nodes:
+				graph.remove_node(node)
+		return roots
+
+	def get_parent_nodes(self, node, depth=1):
+		return self.__traverse_nodes(node, depth, 0)
+
+	def get_child_nodes(self, node, depth=1):
+		return self.__traverse_nodes(node, depth, 1)
+
+	def __traverse_nodes(self, origin, depth, path):
+		traversed = []
+		stack = []
+		node = origin
+		if not depth:
+			depth = len(self.graph)
+		index = 0
+		while stack or len(self.graph[node][path]) != index:
+			if len(self.graph[node][path]) == index:
+				(node, index) = stack.pop()
+				depth += 1
+			else:
+				traversal = self.graph[node][path][index]
+				if traversal[1] not in traversed:
+					traversed.append(traversal[1])
+					if depth != 1:
+						stack += [(node, index)]
+						depth -= 1
+						node = traversal[1]
+						index = 0
+						continue
+			index += 1
+		return traversed

@@ -16,7 +16,7 @@ from output import *
 import portage_util
 import portage_locks
 import portage_exception
-
+from portage_dep import DependencyGraph
 
 spinner_msgs = ["Gentoo Rocks ("+os.uname()[0]+")",
                 "Thank you for using Gentoo. :)",
@@ -846,6 +846,7 @@ class depgraph:
 		self.missingbins=[]
 		self.myaction=myaction
 		self.digraph=portage.digraph()
+		self.mynewgraph = DependencyGraph()
 		self.orderedkeys=[]
 		self.outdatedpackages=[]
 		self.mydbapi={}
@@ -874,6 +875,12 @@ class depgraph:
 		
 		jbigkey=string.join(mybigkey)
 		if self.digraph.hasnode(jbigkey+" merge") or self.digraph.hasnode(jbigkey+" nomerge"):
+			if myparent:
+				if self.digraph.hasnode(jbigkey+" merge"):
+					child = jbigkey+" merge"
+				else:
+					child = jbigkey+" nomerge"
+				self.mynewgraph.add_relation(myparent, child, 1)
 			#this conditional is needed to prevent infinite recursion on already-processed deps
 			return 1
 
@@ -938,6 +945,9 @@ class depgraph:
 		# whatever the case, we need to add the node to our digraph so
 		# that children can depend upon it.
 		self.digraph.addnode(string.join(mybigkey),myparent)
+		self.mynewgraph.add_node(string.join(mybigkey))
+		if myparent:
+			self.mynewgraph.add_relation(myparent, string.join(mybigkey), 1)
 		if ("deep" not in myparams) and (not merging):
 			return 1
 		elif "recurse" not in myparams:
@@ -2969,6 +2979,18 @@ else:
 		myopts.remove("--ask")
 
 	if ("--pretend" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts):
+		print "\n\nRoot nodes:"
+		graph = mydepgraph.mynewgraph
+		nodes = graph.get_root_nodes()
+		nodes.sort()
+		for node in nodes:
+			print "     ",node
+		print "\n\nLeaf nodes:"
+		graph = mydepgraph.mynewgraph
+		nodes = graph.get_leaf_nodes()
+		nodes.sort()
+		for node in nodes:
+			print "     ",node
 		if ("--resume" in myopts):
 			mydepgraph.display(portage.mtimedb["resume"]["mergelist"])
 		else:
@@ -3001,3 +3023,4 @@ else:
 			print ">>> Auto-cleaning packages ..."
 			unmerge("clean", ["world"])
 	post_emerge()
+
