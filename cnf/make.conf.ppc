@@ -83,8 +83,8 @@ CHOST="powerpc-unknown-linux-gnu"
 #CFLAGS="-O2 -pipe -mmultiple -mstring"
 
 # If you set a CFLAGS above, then this line will set your default C++ flags to
-# the same settings. If you don't set a CFLAGS above, then comment this line out.
-CXXFLAGS="${CFLAGS}"
+# the same settings.
+#CXXFLAGS="${CFLAGS}"
 
 # Advanced Masking
 # ================

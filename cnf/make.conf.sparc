@@ -76,8 +76,8 @@ CHOST="sparc-unknown-linux-gnu"
 #CFLAGS="-mcpu=v8 -mtune=v9 -O2 -pipe"
 
 # If you set a CFLAGS above, then this line will set your default C++ flags to
-# the same settings. If you don't set CFLAGS above, then comment this line out.
-CXXFLAGS="${CFLAGS}"
+# the same settings.
+#CXXFLAGS="${CFLAGS}"
 
 # Advanced Masking
 # ================

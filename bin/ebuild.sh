@@ -8,6 +8,35 @@ then
 	ARGS="${*}"
 fi
 
+# Prevent aliases from causing portage to act inappropriately.
+# Make sure it's before everything so we don't mess aliases that follow.
+unalias -a
+
+# We need this next line for "die" and "assert". It expands 
+# It _must_ preceed all the calls to die and assert.
+shopt -s expand_aliases
+alias die='diefunc "$FUNCNAME" "$LINENO" "$?"'
+alias assert='_retval=$?; [ $_retval = 0 ] || diefunc "$FUNCNAME" "$LINENO" "$_retval"'
+
+OCC="$CC"
+OCXX="$CXX"
+source /etc/profile.env > /dev/null 2>&1
+[ ! -z "$OCC" ] && export CC="$OCC"
+[ ! -z "$OCXX" ] && export CXX="$OCXX"
+
+export PATH="/sbin:/usr/sbin:/usr/lib/portage/bin:/bin:/usr/bin:${ROOTPATH}"
+[ ! -z "$PREROOTPATH" ] && export PATH="${PREROOTPATH%%:}:$PATH"
+
+if [ -e /etc/init.d/functions.sh ]; then
+	source /etc/init.d/functions.sh > /dev/null 2>&1
+elif [ -e /etc/rc.d/config/functions ];	then
+	source /etc/rc.d/config/functions > /dev/null 2>&1
+fi
+esyslog() {
+	# Custom version of esyslog() to take care of the "Red Star" bug.
+	# MUST follow functions.sh to override the "" parameter problem.
+	return 0
+}
 
 use() {
 	local x
@@ -92,11 +121,6 @@ use_enable() {
 		echo "--disable-${UWORD}"
 		return 1
 	fi
-}
-# Custom version of esyslog() to take care of the "Red Star" bug
-# if no logger is running (tipically during bootstrap)
-esyslog() {
-	return 0
 }
 
 #The following diefunc() and aliases come from Aron Griffis -- an excellent bash coder -- thanks! 
@@ -961,26 +985,6 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ]; then
 		export USER=portage
 	fi
 
-	# Prevent aliases from causing portage to act inappropriately.
-	unalias -a
-
-	OCC="$CC"
-	OCXX="$CXX"
-	source /etc/profile.env > /dev/null 2>&1
-	[ ! -z "$OCC" ] && export CC="$OCC"
-	[ ! -z "$OCXX" ] && export CXX="$OCXX"
-
-	export PATH="/sbin:/usr/sbin:/usr/lib/portage/bin:/bin:/usr/bin:${ROOTPATH}"
-	[ ! -z "$PREROOTPATH" ] && export PATH="${PREROOTPATH%%:}:$PATH"
-
-	if [ -e /etc/init.d/functions.sh ]
-	then
-		source /etc/init.d/functions.sh > /dev/null 2>&1
-	elif [ -e /etc/rc.d/config/functions ]
-	then
-		source /etc/rc.d/config/functions > /dev/null 2>&1
-	fi
-
 	if has distcc ${FEATURES} &>/dev/null; then
 		if [ -d /usr/lib/distcc/bin ]; then
 			#We can enable distributed compile support
@@ -1020,11 +1024,6 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ]; then
 		ccache -M ${CCACHE_SIZE} &> /dev/null
 	fi
 fi # "$*"!="depend" && "$*"!="clean"
-
-#we need this next line for "die" and "assert"
-shopt -s expand_aliases
-alias die='diefunc "$FUNCNAME" "$LINENO" "$?"'
-alias assert='_retval=$?; [ $_retval = 0 ] || diefunc "$FUNCNAME" "$LINENO" "$_retval"'
 
 export SANDBOX_ON="1"
 export S=${WORKDIR}/${P}

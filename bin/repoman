@@ -8,7 +8,7 @@
 # Then, check to make sure deps are satisfiable (to avoid "can't find match for" problems)
 # that last one is tricky because multiple profiles need to be checked.
 
-import os,sys,string,signal,portage,readline
+import os,sys,string,signal,readline,portage
 from output import *
 exename=os.path.basename(sys.argv[0])	
 version="1.2"	
@@ -126,6 +126,29 @@ try:
 	myrepofile.close()
 except:
 	err("Error grabbing repository information; exiting.")
+
+try: # Determine if we're in PORTDIR... If not tell portage to accomodate.
+	mydir=os.getcwd()
+	if mydir!=portage.settings["PORTDIR"][:len(mydir)]:
+		# We're not in the PORTDIR
+		print
+		print darkred("We're not in PORTDIR..."),
+		while mydir!="/":
+			if os.path.exists(mydir+"/profiles/package.mask"):
+				# mydir == a PORTDIR root... We make PORTDIR = mydir.
+				print darkgreen("setting to:")+" "+bold(mydir)
+				os.environ["PORTDIR"]=mydir
+				reload(portage)
+				break;
+			else:
+				mydir=os.path.normpath(mydir+"/..")
+		if mydir=="/":
+			print darkred("unable to determine a PORTDIR.")
+except Exception, e:
+	print "!!! Error when determining valid(ity of) PORTDIR:"
+	print "!!!",e
+	pass
+
 reporoot=None
 for x in REPOROOTS:
 	if myreporoot[0:len(x)]==x:

@@ -46,13 +46,11 @@ CHOST="mips-unknown-linux-gnu"
 # GCC 3.2 supports many mips processor types including: r2000, r3000, r3900, r4000, 
 # r4100, r4300, r4400, r4600, r4650, r5000, r6000, r8000 , orion
 #
-#
-#
-CFLAGS="-O2 -pipe"
+#CFLAGS="-O2 -pipe"
 
 # If you set a CFLAGS above, then this line will set your default C++ flags to
-# the same settings. If you don't set a CFLAGS above, then comment this line out.
-CXXFLAGS="${CFLAGS}"
+# the same settings.
+#CXXFLAGS="${CFLAGS}"
 
 # Advanced Masking
 # ================

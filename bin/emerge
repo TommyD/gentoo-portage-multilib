@@ -1467,7 +1467,7 @@ def post_emerge(retval=0):
 						print " "+yellow("* IMPORTANT:")+"",len(files),"config files in",x,"need updating."
 		if procount:
 			#print " "+yellow("*")+" Type "+green("emerge --help config")+" to learn how to update config files."
-			print " "+yellow("*")+" Type "+green("emerge help config")+" to learn how to update config files."
+			print " "+yellow("*")+" Type "+green("emerge --help config")+" to learn how to update config files."
 		print
 	sys.exit(retval)
 
