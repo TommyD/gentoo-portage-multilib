@@ -1385,6 +1385,18 @@ class config:
 			self["PORTAGE_CACHEDIR"]="/var/cache/edb/dep/"
 			self.backup_changes("PORTAGE_CACHEDIR")
 
+		overlays = string.split(self["PORTDIR_OVERLAY"])
+		if overlays:
+			new_ov=[]
+			for ov in overlays:
+				ov=os.path.normpath(ov)
+				if os.path.isdir(ov):
+					new_ov.append(ov)
+				else:
+					writemsg(red("!!! Invalid PORTDIR_OVERLAY (not a dir): "+ov+"\n"))
+			self["PORTDIR_OVERLAY"] = string.join(new_ov)
+			self.backup_changes("PORTDIR_OVERLAY")
+
 		self.regenerate()
 		if mycpv:
 			self.setcpv(mycpv)
@@ -3914,6 +3926,9 @@ class dbapi:
 		if mycpv:
 			mysplit = pkgsplit(mycpv)
 			for x in self.match(mysplit[0],use_cache=0):
+				# fixed bug #41062
+				if x==mycpv:
+					continue
 				try:
 					old_counter = long(self.aux_get(x,["COUNTER"])[0])
 					writemsg("COUNTER '%d' '%s'\n" % (old_counter, x),1)
@@ -4423,7 +4438,8 @@ class vartree(packagetree):
 # ----------------------------------------------------------------------------
 class eclass_cache:
 	"""Maintains the cache information about eclasses used in ebuild."""
-	def __init__(self,settings):
+	def __init__(self,porttree_root,settings):
+		self.porttree_root = porttree_root
 		self.settings = settings
 		self.cachedir = self.settings["PORTAGE_CACHEDIR"]
 
@@ -4432,6 +4448,7 @@ class eclass_cache:
 		self.packages = {} # {"PV": {"eclass1": ["location", "_mtime_"]}}
 		self.eclasses = {} # {"Name": ["location","_mtime_"]}
 		
+		self.porttrees=self.settings["PORTDIR_OVERLAY"].split()+[self.porttree_root]
 		self.update_eclasses()
 
 	def flush_cache(self):
@@ -4441,8 +4458,7 @@ class eclass_cache:
 
 	def update_eclasses(self):
 		self.eclasses = {}
-		ec_overlays = suffix_array(string.split(self.settings["PORTDIR_OVERLAY"]), "/eclass")
-		for x in [self.settings["PORTDIR"]+"/eclass"]+ec_overlays:
+		for x in suffix_array(self.porttrees, "/eclass"):
 			if x and os.path.exists(x):
 				dirlist = listdir(x)
 				for y in dirlist:
@@ -4454,16 +4470,19 @@ class eclass_cache:
 							continue
 						self.eclasses[ys] = [x, ymtime]
 	
-	def setup_package(self, cat, pkg):
-		if not self.packages.has_key(cat):
-			self.packages[cat] = self.dbmodule(self.cachedir, cat+"-eclass", [], uid, portage_gid)
+	def setup_package(self, location, cat, pkg):
+		if not self.packages.has_key(location):
+			self.packages[location] = {}
+
+		if not self.packages[location].has_key(cat):
+			self.packages[location][cat] = self.dbmodule(self.cachedir+"/"+location, cat+"-eclass", [], uid, portage_gid)
 	
-	def sync(self, cat, pkg):
-		if self.packages.has_key(cat):
-			self.packages[cat].sync()
+	def sync(self, location, cat, pkg):
+		if self.packages[location].has_key(cat):
+			self.packages[location][cat].sync()
 	
-	def update_package(self, cat, pkg, eclass_list):
-		self.setup_package(cat, pkg)
+	def update_package(self, location, cat, pkg, eclass_list):
+		self.setup_package(location, cat, pkg)
 		if not eclass_list:
 			return 1
 
@@ -4474,23 +4493,23 @@ class eclass_cache:
 				return 0
 			data[x] = [self.eclasses[x][0],self.eclasses[x][1]]
 		
-		self.packages[cat][pkg] = data
-		self.sync(cat,pkg)
+		self.packages[location][cat][pkg] = data
+		self.sync(location,cat,pkg)
 		return 1
 
-	def is_current(self, cat, pkg, eclass_list):
-		self.setup_package(cat, pkg)
+	def is_current(self, location, cat, pkg, eclass_list):
+		self.setup_package(location, cat, pkg)
 
 		if not eclass_list:
 			return 1
 
-		if not (self.packages[cat].has_key(pkg) and self.packages[cat][pkg] and eclass_list):
+		if not (self.packages[location][cat].has_key(pkg) and self.packages[location][cat][pkg] and eclass_list):
 			return 0
 
 		eclass_list.sort()
 		eclass_list = unique_array(eclass_list)
 		
-		ec_data = self.packages[cat][pkg].keys()
+		ec_data = self.packages[location][cat][pkg].keys()
 		ec_data.sort()
 		if eclass_list != ec_data:
 			return 0
@@ -4498,7 +4517,7 @@ class eclass_cache:
 		for x in eclass_list:
 			if x not in self.eclasses:
 				return 0
-			data = self.packages[cat][pkg][x]
+			data = self.packages[location][cat][pkg][x]
 			if data[1] != self.eclasses[x][1]:
 				return 0
 			if data[0] != self.eclasses[x][0]:
@@ -4513,7 +4532,7 @@ auxdbkeylen=len(auxdbkeys)
 
 class portdbapi(dbapi):
 	"this tree will scan a portage directory located at root (passed to init)"
-	def __init__(self,root,mysettings=None):
+	def __init__(self,porttree_root,mysettings=None):
 
 		if mysettings:
 			self.mysettings = mysettings
@@ -4521,7 +4540,7 @@ class portdbapi(dbapi):
 			self.mysettings = config(clone=settings)
 
 		#self.root=settings["PORTDIR"]
-		self.root = root
+		self.porttree_root = porttree_root
 		
 		self.cachedir = self.mysettings["PORTAGE_CACHEDIR"]
 
@@ -4529,7 +4548,7 @@ class portdbapi(dbapi):
 		if not os.path.exists(self.tmpfs):
 			self.tmpfs = None
 		
-		self.eclassdb = eclass_cache(self.mysettings)
+		self.eclassdb = eclass_cache(self.porttree_root, self.mysettings)
 
 		self.metadb       = {}
 		self.metadbmodule = self.mysettings.load_best_module("portdbapi.metadbmodule")
@@ -4540,8 +4559,8 @@ class portdbapi(dbapi):
 		#if the portdbapi is "frozen", then we assume that we can cache everything (that no updates to it are happening)
 		self.xcache={}
 		self.frozen=0
-		#overlays="overlay roots"
-		self.overlays=[]
+
+		self.porttrees=[self.porttree_root]+self.mysettings["PORTDIR_OVERLAY"].split()
 
 	def flush_cache(self):
 		self.metadb = {}
@@ -4573,25 +4592,31 @@ class portdbapi(dbapi):
 			sys.exit(1)
 		
 		psplit=pkgsplit(mysplit[1])
+		ret=None
 		if psplit:
-			for myloc in suffix_array(self.overlays, "/"+mysplit[0]+"/"+psplit[0]+"/"+mysplit[1]+".ebuild"):
-				if os.access(myloc, os.R_OK):
-					return myloc,1
+			for x in self.porttrees:
+				# XXX Why are there errors here? XXX
+				try:
+					file=x+"/"+mysplit[0]+"/"+psplit[0]+"/"+mysplit[1]+".ebuild"
+				except Exception, e:
+					print
+					print "!!! Problem with determining the name/location of an ebuild."
+					print "!!! Please report this on IRC and bugs if you are not causing it."
+					print "!!! mycpv:  ",mycpv
+					print "!!! mysplit:",mysplit
+					print "!!! psplit: ",psplit
+					print "!!! error:  ",e
+					print
+					sys.exit(17)
+					
+				if os.access(file, os.R_OK):
+					# when found
+					ret=[file, x]
+		if ret:
+			return ret[0], ret[1]
 
-		# XXX Why are there errors here? XXX
-		try:
-			myret=self.root+"/"+mysplit[0]+"/"+psplit[0]+"/"+mysplit[1]+".ebuild"
-		except Exception, e:
-			print
-			print "!!! Problem with determining the name/location of an ebuild."
-			print "!!! Please report this on IRC and bugs if you are not causing it."
-			print "!!! mycpv:  ",mycpv
-			print "!!! mysplit:",mysplit
-			print "!!! psplit: ",psplit
-			print "!!! error:  ",e
-			print
-			sys.exit(17)
-		return myret,0
+		# when not found
+		return None, 0
 
 	def aux_get(self,mycpv,mylist,strict=0,metacachedir=None,debug=0):
 		"stub code for returning auxilliary db information, such as SLOT, DEPEND, etc."
@@ -4600,21 +4625,22 @@ class portdbapi(dbapi):
 		global auxdbkeys,auxdbkeylen
 		cat,pkg = string.split(mycpv, "/", 1)
 		
-		if cat not in self.auxdb:
-			self.auxdb[cat] = self.auxdbmodule(self.cachedir,cat,auxdbkeys,uid,portage_gid)
-		
 		if metacachedir:
 			if cat not in self.metadb:
 				self.metadb[cat] = self.metadbmodule(metacachedir,cat,auxdbkeys,uid,portage_gid)
 
-		dmtime=0
-		emtime=0
-		doregen=0
-		doregen2=0
-		mylines=[]
-		stale=0
-		usingmdcache=0
-		myebuild,in_overlay=self.findname2(mycpv)
+		myebuild, mylocation=self.findname2(mycpv)
+		if not myebuild:
+			writemsg("!!! aux_get(): ebuild for '%s' does not exist at:\n" % mycpv)
+			writemsg("!!!            %s\n" % myebuild)
+			raise KeyError
+			return None
+
+		if mylocation not in self.auxdb:
+			self.auxdb[mylocation] = {}
+
+		if not self.auxdb[mylocation].has_key(cat):
+			self.auxdb[mylocation][cat]=self.auxdbmodule(self.cachedir+"/"+mylocation,cat,auxdbkeys,uid,portage_gid)
 
 		if os.access(myebuild, os.R_OK):
 			emtime=os.stat(myebuild)[ST_MTIME]
@@ -4623,23 +4649,23 @@ class portdbapi(dbapi):
 			writemsg("!!!            %s\n" % myebuild)
 			raise KeyError
 
-		if not in_overlay and metacachedir and self.metadb[cat].has_key(pkg):
-			metadata = self.metadb[cat][pkg]
-			dmtime = metadata["_mtime_"]
-			self.eclassdb.update_package(cat,pkg,self.metadb[cat][pkg]["INHERITED"].split())
-			self.auxdb[cat][pkg] = metadata
+		# when mylocation is not overlay directorys and metacachedir is set,
+		# we use cache files, which is usually on /usr/portage/metadata/cache/.
+		if mylocation==self.mysettings["PORTDIR"] and metacachedir and self.metadb[cat].has_key(pkg):
+			metadata=self.metadb[cat][pkg]
+			self.eclassdb.update_package(mylocation,cat,pkg,metadata["INHERITED"].split())
+			self.auxdb[mylocation][cat][pkg]=metadata
 		else:
-			auxdb_is_valid = self.auxdb[cat].has_key(pkg) and \
-			                 self.auxdb[cat][pkg].has_key("_mtime_") and \
-			                 self.auxdb[cat][pkg]["_mtime_"] == emtime
+			auxdb_is_valid = self.auxdb[mylocation][cat].has_key(pkg) and \
+			                 self.auxdb[mylocation][cat][pkg].has_key("_mtime_") and \
+			                 self.auxdb[mylocation][cat][pkg]["_mtime_"] == emtime
 			writemsg("auxdb is valid: "+str(auxdb_is_valid)+" "+str(pkg)+"\n", 2)
 			if auxdb_is_valid:
-				dmtime = emtime
+				doregen=0
 			else:
 				doregen=1
 
-			if doregen or not self.eclassdb.is_current(cat,pkg,self.auxdb[cat][pkg]["INHERITED"].split()):
-				stale=1
+			if doregen or not self.eclassdb.is_current(mylocation,cat,pkg,self.auxdb[mylocation][cat][pkg]["INHERITED"].split()):
 				writemsg("doregen: %s %s\n" % (doregen,mycpv), 2)
 				writemsg("Generating cache entry(0) for: "+str(myebuild)+"\n",1)
 
@@ -4659,7 +4685,6 @@ class portdbapi(dbapi):
 					raise KeyError
 
 				try:
-					#print "grab cent"
 					mycent=open(mydbkey,"r")
 					mylines=mycent.readlines()
 					mycent.close()
@@ -4676,19 +4701,19 @@ class portdbapi(dbapi):
 					mydata[auxdbkeys[x]] = mylines[x]
 				mydata["_mtime_"] = emtime
 
-				self.auxdb[cat][pkg] = mydata
-				if not self.eclassdb.update_package(cat, pkg, mylines[auxdbkeys.index("INHERITED")].split()):
+				self.auxdb[mylocation][cat][pkg] = mydata
+				if not self.eclassdb.update_package(mylocation, cat, pkg, mylines[auxdbkeys.index("INHERITED")].split()):
 					sys.exit(1)
 
 		#finally, we look at our internal cache entry and return the requested data.
 		returnme=[]
 		for x in mylist:
-			if self.auxdb[cat][pkg].has_key(x):
-				returnme.append(self.auxdb[cat][pkg][x])
+			if self.auxdb[mylocation][cat][pkg].has_key(x):
+				returnme.append(self.auxdb[mylocation][cat][pkg][x])
 			else:
 				returnme.append("")
 
-		self.auxdb[cat].sync()
+		self.auxdb[mylocation][cat].sync()
 		return returnme
 
 	def getfetchlist(self,mypkg,useflags=None,mysettings=None,all=0):
@@ -4762,20 +4787,16 @@ class portdbapi(dbapi):
 		if not cps:
 			#invalid cat/pkg-v
 			return 0
-		for o_cpv in suffix_array(self.overlays,"/"+cps[0]+"/"+cps[1]+"/"+cps2[1]+".ebuild"):
-			if os.path.exists(o_cpv):
-				return 1
-		if os.path.exists(self.root+"/"+cps[0]+"/"+cps[1]+"/"+cps2[1]+".ebuild"):
+		if self.findname2(cps[0]+"/"+cps2[1]):
 			return 1
-		return 0
+		else:
+			return 0
 
 	def cp_all(self):
 		"returns a list of all keys in our tree"
 		biglist=[]
 		for x in self.mysettings.categories:
-			for y in listdir(self.root+"/"+x,EmptyOnError=1,ignorecvs=1):
-				biglist.append(x+"/"+y)
-			for oroot in self.overlays:
+			for oroot in self.porttrees:
 				for y in listdir(oroot+"/"+x,EmptyOnError=1,ignorecvs=1):
 					mykey=x+"/"+y
 					if not mykey in biglist:
@@ -4784,10 +4805,7 @@ class portdbapi(dbapi):
 	
 	def p_list(self,mycp):
 		returnme=[]
-		for x in listdir(self.root+"/"+mycp,EmptyOnError=1):
-			if x[-7:]==".ebuild":
-				returnme.append(x[:-7])	
-		for oroot in self.overlays:
+		for oroot in self.porttrees:
 			for x in listdir(oroot+"/"+mycp,EmptyOnError=1,ignorecvs=1):
 				if x[-7:]==".ebuild":
 					mye=x[:-7]
@@ -4798,17 +4816,12 @@ class portdbapi(dbapi):
 	def cp_list(self,mycp,use_cache=1):
 		mysplit=mycp.split("/")
 		returnme=[]
-		list=listdir(self.root+"/"+mycp,EmptyOnError=1)
-		if list:
-			for x in list:
-				if x[-7:]==".ebuild":
-					returnme.append(mysplit[0]+"/"+x[:-7])	
-		for oroot in self.overlays:
+		for oroot in self.porttrees:
 			for x in listdir(oroot+"/"+mycp,EmptyOnError=1,ignorecvs=1):
 				if x[-7:]==".ebuild":
-					mycp=mysplit[0]+"/"+x[:-7]
-					if not mycp in returnme:
-						returnme.append(mycp)
+					cp=mysplit[0]+"/"+x[:-7]
+					if not cp in returnme:
+						returnme.append(cp)
 		return returnme
 
 	def freeze(self):
@@ -6278,19 +6291,6 @@ settings.reset() # XXX: Regenerate use after we get a vartree -- GLOBAL
 
 # XXX: Might cause problems with root="/" assumptions
 portdb=portdbapi(settings["PORTDIR"])
-
-overlays = string.split(settings["PORTDIR_OVERLAY"])
-if overlays:
-	portdb.overlays = overlays[:]
-	for ov in overlays:
-		if not os.path.isdir(ov):
-			writemsg(red("!!! Invalid PORTDIR_OVERLAY (not a dir): "+ov+"\n"))
-			portdb.overlays.remove(ov)
-	settings["PORTDIR_OVERLAY"] = string.join(portdb.overlays)
-	settings.backup_changes("PORTDIR_OVERLAY")
-else:
-	portdb.overlays = []
-del overlays
 
 settings.lock()
 # -----------------------------------------------------------------------------

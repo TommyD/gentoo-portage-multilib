@@ -312,7 +312,8 @@ unpack() {
 	for x in "$@"; do
 		myfail="failure unpacking ${x}"
 		echo ">>> Unpacking ${x} to $(pwd)"
-		y="$(echo $x | sed 's:.*\.\(tar\)\.[a-zA-Z0-9]*:\1:')"
+		y="${x%.*}"
+		y="${y##*.}"
 
 		case "${x##*.}" in
 			tar) 
@@ -875,8 +876,8 @@ dyn_preinst() {
 				if [ "${suid}" = "${i/${IMAGE}/}" ]; then
 					echo "- ${i/${IMAGE}/} is an approved suid file"
 				else
-					for x in 5 4 3 2 1 0; do echo -ne "\a"; sleep 0.25 ; done
 					echo ">>> Removing sbit on non registered ${i/${IMAGE}/}"
+					for x in 5 4 3 2 1 0; do echo -ne "\a"; sleep 0.25 ; done
 					echo -ne "\a"
 					chmod ugo-s "${i}"
 					grep ^#${i/${IMAGE}/}$ ${sfconf} > /dev/null || {
@@ -885,7 +886,8 @@ dyn_preinst() {
 						# can easly be bypassed using the addwrite() function
 						addwrite "${sfconf}"
 						echo ">>> Appending commented out entry to ${sfconf} for ${PF}"
-						ls -ldh "${i}" | awk '{print "## "$0}' | sed s:"${IMAGE}"::g >> ${sfconf}
+						ls_ret=`ls -ldh "${i}"`
+						echo "## ${ls_ret%${IMAGE}*}${ls_ret#*${IMAGE}}" >> ${sfconf}
 						echo "#${i/${IMAGE}/}" >> ${sfconf}
 						# no delwrite() eh?
 						# delwrite ${sconf}
@@ -1078,7 +1080,6 @@ inherit() {
 				if [ -e "$olocation" ]; then
 					location="${olocation}"
 					debug-print "  eclass exists: ${location}"
-					break
 				fi
 			done
 		fi
@@ -1226,6 +1227,30 @@ do_newdepend() {
 # === === === === === functions end, main part begins === === === === ===
 # === === === === === === === === === === === === === === === === === ===
 
+# this is a function for removing any directory matching a passed in pattern from 
+# PATH
+function remove_path_entry() {
+	PREV_IFS="${IFS}"
+	IFS=":"
+	stripped_path="${PATH}"
+	while [ -n "$1" ]; do
+		cur_path=""
+		for p in ${stripped_path}; do
+			if [ ${p/${1}} == ${p} ]; then
+				cur_path="${cur_path}:${p}"
+			fi
+		done
+		stripped_path="${cur_path#:*}"
+		shift
+	done
+	if [ ${PREV_IFS} == "" ]; then
+		unset IFS
+	else
+		IFS="${PREV_IFS}"
+	fi
+	PATH="${stripped_path}"
+}
+
 if [ "$*" != "depend" ] && [ "$*" != "clean" ]; then
 	cd ${PORTAGE_TMPDIR} &> /dev/null
 	cd ${BUILD_PREFIX} &> /dev/null
@@ -1239,7 +1264,7 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ]; then
 			#We can enable distributed compile support
 			if [ -z "${PATH/*distcc*/}" ]; then
 				# Remove the other reference.
-				PATH="$(echo ${PATH} | sed 's/:[^:]*distcc[^:]*:/:/;s/^[^:]*distcc[^:]*://;s/:[^:]*distcc[^:]*$//')"
+				remove_path_entry "distcc"
 			fi
 			export PATH="/usr/lib/distcc/bin:${PATH}"
 			[ ! -z "${DISTCC_LOG}" ] && addwrite "$(dirname ${DISTCC_LOG})"
@@ -1253,7 +1278,7 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ]; then
 		#We can enable compiler cache support
 		if [ -z "${PATH/*ccache*/}" ]; then
 			# Remove the other reference.
-			PATH="$(echo ${PATH} | sed 's/:[^:]*ccache[^:]*:/:/;s/^[^:]*ccache[^:]*://;s/:[^:]*ccache[^:]*$//')"
+			remove_path_entry "ccache"
 		fi
 
 		if [ -d /usr/lib/ccache/bin ]; then

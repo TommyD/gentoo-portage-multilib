@@ -12,6 +12,11 @@ class database(portage_db_template.database):
 		self.uid      = uid
 		self.gid      = gid
 		
+		if not os.path.exists(self.path):
+			prevmask=os.umask(0)
+			makedirs(self.path, 02775)
+			os.umask(prevmask)
+
 		self.filename = self.path + "/" + self.category + ".anydbm"
 		
 		try:

@@ -2,6 +2,13 @@
 # Copyright 2000-2004 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  17 Mar 2004; Masatomo Nakano <nakano@gentoo.org> ebuild.sh, emerge,
+  portage.py, portage_db_anydbm.py, portage_db_cpickle.py,
+  portage_db_flat.py, portage_db_template.py:
+  Improved handling cache files on multi portage trees.
+  Fixed 'BAD COUNTER' error when emerge --inject. (#41062)
+  Added ferringb's patch to avoid sed command. (#40819)
+  
   12 Mar 2004; Marius Mauch <genone@gentoo.org> bin/repoman:
   repoman: Added a readonly-variable-assignment check (#44424)
 
@@ -27,7 +34,7 @@
 
   29 Feb 2004; Masatomo Nakano <nakano@gentoo.org> portage.py: Fixed 
   wrong USE in 'emerge info'. This should fix #34260.
-	
+
   27 Feb 2004; Masatomo Nakano <nakano@gentoo.org> emerge: Fixed info dir
   regeneration produces errors with a non-C locale and misleading error 
   message. This should fix #41872,#24299.

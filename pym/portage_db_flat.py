@@ -21,7 +21,9 @@ class database(portage_db_template.database):
 		self.fullpath = self.path + "/" + self.category + "/"
 
 		if not os.path.exists(self.fullpath):
-			makedirs(self.fullpath)
+			prevmask=os.umask(0)
+			makedirs(self.fullpath, 02775)
+			os.umask(prevmask)
 			try:
 				chown(self.fullpath, self.uid, self.gid)
 				chmod(self.fullpath, 02775)

@@ -1191,7 +1191,6 @@ class depgraph:
 
 		if "--verbose" in myopts:
 			overlays = string.split(portage.settings['PORTDIR_OVERLAY'])
-			overlays = map(os.path.normpath, overlays)
 		
 		if "--tree" in myopts:
 			mylist.reverse()
@@ -2247,10 +2246,15 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 			print "!!! PORTAGE_CACHEDIR IS SET TO A PRIMARY ROOT DIRECTORY ON YOUR SYSTEM."
 			print "!!! This is ALMOST CERTAINLY NOT what you want: "+str(cachedir)
 			sys.exit(73)
-		if os.path.exists(cachedir):
-			portage.spawn("rm -Rf "+cachedir+"/*",portage.settings,free=1)
-		else:
+		if not os.path.exists(cachedir):
 			os.mkdir(cachedir)
+
+		if (os.path.exists(cachedir) and os.path.exists(cachedir+"/app-portage")):
+			# removed old style cache.
+			portage.spawn("rm -Rf "+cachedir+"/*",portage.settings,free=1)
+
+		if os.path.exists(cachedir+"/"+myportdir):
+			portage.spawn("rm -Rf "+cachedir+"/"+myportdir+"/*",portage.settings,free=1)
 
 		# save timestamp.chk for next timestamp check.
 		try:
@@ -2268,6 +2272,9 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 			os.chmod(cachedir, 02775)
 		except:
 			pass
+		# we don't make overlay trees cache here.
+		backup_porttrees=portage.portdb.porttrees
+		portage.portdb.porttrees=[portage.portdb.porttree_root]
 		mynodes=portage.portdb.cp_all()
 		mynodes.sort()
 		for x in mynodes:
@@ -2280,6 +2287,7 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 					ignored=portage.portdb.aux_get(y,[],metacachedir=myportdir+"/metadata/cache",debug=("cachedebug" in portage.features))
 				except:
 					print "\nFailed cache update:",y
+		portage.portdb.porttrees=backup_porttrees
 		sys.stdout.write("\b\b  ...done!\n\n")
 		sys.stdout.flush()
 

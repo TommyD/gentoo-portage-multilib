@@ -15,6 +15,11 @@ class database(portage_db_template.database):
 		
 		self.modified = 0
 		
+		if not os.path.exists(self.path):
+			prevmask=os.umask(0)
+			makedirs(self.path, 02775)
+			os.umask(prevmask)
+
 		self.filename = self.path + "/" + self.category + ".cpickle"
 		
 		if access(self.filename, R_OK):
@@ -57,7 +62,7 @@ class database(portage_db_template.database):
 					unlink(self.filename)
 				cPickle.dump(self.db,open(self.filename,"w"))
 				chown(self.filename,self.uid,self.gid)
-				chmod(self.fullpath, 0664)
+				chmod(self.filename, 0664)
 			except:
 				pass
 	
