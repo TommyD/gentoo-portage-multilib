@@ -287,7 +287,7 @@ if (myaction in ["world", "system"]) and myfiles:
 	sys.exit(1)
 
 for x in myfiles:
-	if os.path.exists(os.path.abspath(x)):
+	if (x[-7:] == ".ebuild" or x[-5:] == ".tbz2") and os.path.exists(os.path.abspath(x)):
 		print "emerging by path implies --oneshot... adding --oneshot to options."
 		print red("\n*** emerging by path is broken and may not always work!!!\n")
 		break
@@ -1026,6 +1026,11 @@ class depgraph:
 				if portage.db["/"]["porttree"].dbapi.findname(mykey) != os.path.abspath(x):
 					print red("\n*** You need to adjust PORTDIR or PORTDIR_OVERLAY to emerge this package.\n")
 					sys.exit(1)
+				if mykey not in portage.db["/"]["porttree"].dbapi.xmatch("match-visible", portage.dep_getkey(mykey)):
+					print red("\n*** You are emerging a masked package. It is MUCH better to use")
+					print red("*** /etc/portage/package.* to accomplish this. See portage(5) man")
+					print red("*** page for details.")
+					countdown(EMERGE_WARNING_DELAY, "Continuing...")
 				if not self.create(["ebuild",portage.root,mykey],None,"--onlydeps" not in myopts):
 					return (0,myfavorites)
 				elif not "--oneshot" in myopts:
