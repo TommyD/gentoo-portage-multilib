@@ -9,6 +9,12 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  24 Jul 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge pym/portage.py:
+  Added USE flag based PROVIDE support.
+
+  24 Jul 2004; Jason Stubbs <jstubbs@gentoo.org> src/sandbox-1.1/libsandbox.c:
+  Fixed lchown sandbox bug. (#58084)
+
   23 Jul 2004; Brian Harring <ferringb@gentoo.org> bin/repoman: Corrected a 
   false positive on the ebuild.nesteddie check.  Basically it wasn't looking 
   to see if the line was active or not (fex # (die), bash skips, but repoman 

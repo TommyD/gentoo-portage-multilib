@@ -431,7 +431,6 @@ fopen(const char *pathname, const char *mode)
 int
 lchown(const char *path, uid_t owner, gid_t group)
 {
-/* Linux specific? */
 	int result = -1;
 	char canonic[SB_PATH_MAX];
 
@@ -439,8 +438,8 @@ lchown(const char *path, uid_t owner, gid_t group)
 
 	if FUNCTION_SANDBOX_SAFE
 		("lchown", canonic) {
-		check_dlsym(chown);
-		result = true_chown(path, owner, group);
+		check_dlsym(lchown);
+		result = true_lchown(path, owner, group);
 		}
 
 	return result;
