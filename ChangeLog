@@ -9,6 +9,18 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+*portage-2.0.51_pre20 (16 Aug 2004): Fixes and Public Readiness & GPG
+  
+  16 Aug 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Fixed the
+	imports and new modules so that the API remains constant.
+
+  16 Aug 2004; Nicholas Jones <carpaski@gentoo.org> portage_exec.py: Created
+	for external operations and calls. Presently contains spawn. Mostly for
+	prevention of circular imports.
+
+  16 Aug 2004; Nicholas Jones <carpaski@gentoo.org> portage_md5.py: using
+	the spawn call from portage_exec.py to avoid the circular import.
+
   16 Aug 2004; Brian Harring <ferringb@gentoo.org> bin/repoman: Fixed a 
   traceback related to file.size and --fix, added compatability tweaks for
   xmllint.

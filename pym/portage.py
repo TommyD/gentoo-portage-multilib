@@ -104,9 +104,13 @@ try:
 	from output import *
 	from portage_data import *
 	import portage_util
+	from portage_util import *
 	import portage_exception
 	import portage_gpg
 	import portage_locks
+	from portage_locks import *
+	import portage_md5
+	from portage_md5 import *
 except Exception, e:
 	sys.stderr.write("\n\n")
 	sys.stderr.write("!!! Failed to complete portage imports. There are internal modules for\n")
@@ -289,63 +293,6 @@ def listdir (mypath,
 		rlist=list
 			
 	return rlist
-
-prelink_capable=0
-# We _try_ to load this module. If it fails we do the slow fallback.
-try:
-	import fchksum
-	def perform_checksum(filename, calc_prelink=prelink_capable):
-		prelink_tmpfile = PRIVATE_PATH+"/prelink-checksum.tmp"
-		if calc_prelink and prelink_capable:
-			# Create non-prelinked temporary file to md5sum.
-			mylock = portage_locks.lockfile(prelink_tmpfile, wantnewlockfile=1)
-			try:
-				shutil.copy2(filename,prelink_tmpfile)
-			except Exception,e:
-				writemsg("!!! Unable to copy file '"+str(filename)+"'.\n")
-				writemsg("!!! "+str(e)+"\n")
-				sys.exit(1)
-			spawn(PRELINK_BINARY+" --undo "+prelink_tmpfile+" &>/dev/null", settings, free=1)
-			retval = fchksum.fmd5t(prelink_tmpfile)
-			os.unlink(prelink_tmpfile)
-			portage_locks.unlockfile(mylock)
-			return retval
-		else:
-			return fchksum.fmd5t(filename)
-except ImportError:
-	import md5
-	def perform_checksum(filename, calc_prelink=prelink_capable):
-		prelink_tmpfile = PRIVATE_PATH+"/prelink-checksum.tmp"
-		mylock = portage_locks.lockfile(prelink_tmpfile, wantnewlockfile=1)
-		myfilename=filename
-		if calc_prelink and prelink_capable:
-			# Create non-prelinked temporary file to md5sum.
-			# Raw data is returned on stdout, errors on stderr.
-			# Non-prelinks are just returned.
-			try:
-				shutil.copy2(filename,prelink_tmpfile)
-			except Exception,e:
-				writemsg("!!! Unable to copy file '"+str(filename)+"'.\n")
-				writemsg("!!! "+str(e)+"\n")
-				sys.exit(1)
-			spawn(PRELINK_BINARY+" --undo "+prelink_tmpfile+" &>/dev/null", settings, free=1)
-			myfilename=prelink_tmpfile
-
-		f = open(myfilename, 'rb')
-		blocksize=32768
-		data = f.read(blocksize)
-		size = 0L
-		sum = md5.new()
-		while data:
-			sum.update(data)
-			size = size + len(data)
-			data = f.read(blocksize)
-		f.close()
-
-		if calc_prelink and prelink_capable:
-			os.unlink(prelink_tmpfile)
-		portage_locks.unlockfile(mylock)
-		return (sum.hexdigest(),size)
 
 starttime=long(time.time())
 features=[]
@@ -851,7 +798,7 @@ def new_protect_filename(mydest, newmd5=None):
 	new_pfile = os.path.normpath(real_dirname+"/._cfg"+string.zfill(prot_num,4)+"_"+real_filename)
 	old_pfile = os.path.normpath(real_dirname+"/"+last_pfile)
 	if last_pfile and newmd5:
-		if perform_md5(real_dirname+"/"+last_pfile) == newmd5:
+		if portage_md5.perform_md5(real_dirname+"/"+last_pfile) == newmd5:
 			return old_pfile
 		else:
 			return new_pfile
@@ -2063,7 +2010,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							fetched=2
 						else:
 							# Check md5sum's at each fetch for fetchonly.
-							mymd5=perform_md5(mysettings["DISTDIR"]+"/"+myfile)
+							mymd5=portage_md5.perform_md5(mysettings["DISTDIR"]+"/"+myfile)
 							if mymd5 != mydigests[myfile]["md5"]:
 								writemsg("!!! Previously fetched file: "+str(myfile)+" MD5 FAILED! Refetching...\n")
 								os.unlink(mysettings["DISTDIR"]+"/"+myfile)
@@ -2151,7 +2098,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 							# file NOW, for those users who don't have a stable/continuous
 							# net connection. This way we have a chance to try to download
 							# from another mirror...
-							mymd5=perform_md5(mysettings["DISTDIR"]+"/"+myfile)
+							mymd5=portage_md5.perform_md5(mysettings["DISTDIR"]+"/"+myfile)
 							if mymd5 != mydigests[myfile]["md5"]:
 								writemsg("!!! Fetched file: "+str(myfile)+" MD5 FAILED! Removing corrupt distfile...\n")
 								os.unlink(mysettings["DISTDIR"]+"/"+myfile)
@@ -2192,7 +2139,7 @@ def digestCreate(myfiles,basedir):
 			print "!!! Given file does not appear to be readable. Does it exist?"
 			print "!!! File:",myfile
 			return None
-		mymd5=perform_md5(myfile)
+		mymd5=portage_md5.perform_md5(myfile)
 		mysize=os.stat(myfile)[ST_SIZE]
 		mydigests[x]=[mymd5,mysize]
 	return mydigests
@@ -2342,7 +2289,7 @@ def digestCheckFiles(myfiles, mydigests, basedir, note="", strict=0):
 				print "!!! File does not exist:",myfile
 				return 0
 			continue
-		mymd5=perform_md5(myfile)
+		mymd5=portage_md5.perform_md5(myfile)
 		if mymd5 != mydigests[x][0]:
 			print
 			print red("!!! File is corrupt or incomplete. (Digests do not match)")
@@ -2924,9 +2871,6 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 		os.utime(dest, (sstat[ST_ATIME], sstat[ST_MTIME]))
 		newmtime=sstat[ST_MTIME]
 	return newmtime
-
-def perform_md5(x, calc_prelink=0):
-	return perform_checksum(x, calc_prelink)[0]
 
 def merge(mycat,mypkg,pkgloc,infloc,myroot,mysettings,myebuild=None):
 	mylink=dblink(mycat,mypkg,myroot,mysettings)
@@ -6102,7 +6046,7 @@ class dblink:
 					if not os.path.isfile(obj):
 						print "--- !obj  ","obj", obj
 						continue
-					mymd5=perform_md5(obj, calc_prelink=1)
+					mymd5=portage_md5.perform_md5(obj, calc_prelink=1)
 
 					# string.lower is needed because db entries used to be in upper-case.  The
 					# string.lower allows for backwards compatibility.
@@ -6573,9 +6517,9 @@ class dblink:
 						if self.isprotected(mydest):
 							# Use md5 of the target in ${D} if it exists...
 							if os.path.exists(os.path.normpath(srcroot+myabsto)):
-								mydest = new_protect_filename(myrealdest, perform_md5(srcroot+myabsto))
+								mydest = new_protect_filename(myrealdest, portage_md5.perform_md5(srcroot+myabsto))
 							else:
-								mydest = new_protect_filename(myrealdest, perform_md5(myabsto))
+								mydest = new_protect_filename(myrealdest, portage_md5.perform_md5(myabsto))
 								
 				# if secondhand==None it means we're operating in "force" mode and should not create a second hand.
 				if (secondhand!=None) and (not os.path.exists(myrealto)):
@@ -6631,7 +6575,7 @@ class dblink:
 					return 1
 			elif S_ISREG(mymode):
 				# we are merging a regular file
-				mymd5=perform_md5(mysrc)
+				mymd5=portage_md5.perform_md5(mysrc)
 				# calculate config file protection stuff
 				mydestdir=os.path.dirname(mydest)	
 				moveme=1
@@ -6649,7 +6593,7 @@ class dblink:
 						# we only need to tweak mydest if cfg file management is in play.
 						if myppath:
 							# we have a protection path; enable config file management.
-							destmd5=perform_md5(mydest)
+							destmd5=portage_md5.perform_md5(mydest)
 							cycled=0
 							if cfgfiledict.has_key(myrealdest):
 								if destmd5 in cfgfiledict[myrealdest]:
@@ -7235,10 +7179,6 @@ if not os.path.islink(PROFILE_PATH) and os.path.exists(settings["PORTDIR"]+"/pro
 	writemsg(red("!!! It should point into a profile within %s/profiles/\n" % settings["PORTDIR"]))
 	writemsg(red("!!! (You can safely ignore this message when syncing. It's harmless.)\n\n\n"))
 	time.sleep(3)
-
-# Defaults set at the top of perform_checksum.
-if spawn(PRELINK_BINARY+" --version > /dev/null 2>&1",settings,free=1) == 0:
-	prelink_capable=1
 
 # ============================================================================
 # ============================================================================
