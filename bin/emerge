@@ -794,7 +794,11 @@ if "--unmerge" in myopts:
 				print
 				print "The following packages are going to be unmerged :"
 				print
-			for full_path in full_paths.keys():
+			sorted_paths=full_paths.keys()
+			# this makes revisions come before slot versions
+			# and therefor unmerges the older packages first
+			sorted_paths.sort()
+			for full_path in sorted_paths:
 				package_parts=split(full_path, "/")
 				print "    "+package_parts[4]+"/"+package_parts[5]
 			if "--pretend" in myopts:
@@ -810,7 +814,7 @@ if "--unmerge" in myopts:
 					time.sleep(1)
 					secs = secs-1
 				print secs
-				for full_path in full_paths.keys():
+				for full_path in sorted_paths:
 					print "Unmerging "+os.path.basename(full_path)+" ..."
 					retval=portage.doebuild(full_path,"unmerge",portage.root,0,edebug)
 

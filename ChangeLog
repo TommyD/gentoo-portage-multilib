@@ -1,6 +1,13 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+  5 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge :
+  sorted the packages to unmerge since this makes package names with revision
+  endings appear before plain version numbers. This makes the unmerge code
+  first remove the old and non slot aware packages before removing the newer
+  alternative which is in fact exactly the same apart from the revision
+  identifier.
+
 *portage 1.8.9_pre3 (5 Feb 2002)
 
   5 Feb 2002; G.Bevin <gbevin@gentoo.org> portage.py :
