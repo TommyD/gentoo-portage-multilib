@@ -7,6 +7,25 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  07 Nov 2004; Brian Harring <ferringb@gentoo.org> portage_exec.py, 
+  portage_checksums.py, portage_gpg.py, portage_const.py, portage_util.py,
+  portage_locks.py:  Code cleanup, moves, and shifting away from 
+  commands.gso to portage_exec.spawn_get_output.  Multiple additions to 
+  portage_exec adding fakeroot support, a native collect status output, 
+  and centralized code for killing off a set of pids.  Correction to 
+  portage_exec so that the spawned_list is correctly pruned- previously it 
+  was a list of _all_ pids spawned, so portage could try to kill off a pid 
+  that was previous a child, but by chance a new process runs as (depends on
+  how random the pid selection is).  Aside from changes to cleanup, these changes
+  are mostly standalone.
+  Additionally, moved selinux context switching into portage_exec post-fork- 
+  just specify the desired selinux_context, and it'll make the switch- if
+  portage_exec.selinux_capable, it makes the switch.  Otherwise, it ignores it.
+  Finally, new function added, spawn_func.  Pass in a python function, it'll fork,
+  then call the function w/ the args/kwargs passed to it- optionally using an additional
+  passed in function to interpret the results, and return an appropriate exitcode.
+  Also, a *large* amount of inline documentation is contained in this commit.
+
   07 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> dispatch-conf: Moved back
   to the version of dispatch-conf that was released (due to python-2.2
   compatibility) and fixed a small type in that version. #70282

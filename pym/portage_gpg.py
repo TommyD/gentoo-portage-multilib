@@ -6,9 +6,9 @@
 import os
 import copy
 import types
-import commands
 import portage_exception
 import portage_checksum
+import portage_exec
 
 GPG_BINARY       = "/usr/bin/gpg"
 GPG_OPTIONS      = " --lock-never --no-random-seed-file --no-greeting --no-sig-cache "
@@ -112,7 +112,7 @@ class FileChecker:
 			command += " '"+sigfile+"'"
 		command += " '"+filename+"'"
 	
-		result,output = commands.getstatusoutput(command)
+		result,output = portage_exec.spawn_get_output(command,raw_exit_code=True)
 		
 		signal = result & 0xff
 		result = (result >> 8)

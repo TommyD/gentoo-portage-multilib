@@ -2,7 +2,10 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-import sys,string,shlex,os.path
+import sys,string,shlex,os.path,stat,types
+import shutil
+
+from portage_file import normpath
 
 noiselimit = 0
 def writemsg(mystr,noiselevel=0):
@@ -11,6 +14,7 @@ def writemsg(mystr,noiselevel=0):
 	if noiselevel <= noiselimit:
 		sys.stderr.write(mystr)
 		sys.stderr.flush()
+
 
 def grabfile(myfilename, compat_level=0):
 	"""This function grabs the lines in a file, normalizes whitespace and returns lines in a list; if a line
@@ -449,6 +453,147 @@ def unique_array(array):
 			mya.append(x)
 	return mya
 
+def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
+	"""moves a file from src to dest, preserving all permissions and attributes; mtime will
+	be preserved even when moving across filesystems.  Returns true on success and false on
+	failure.  Move is atomic."""
+	#print "movefile("+str(src)+","+str(dest)+","+str(newmtime)+","+str(sstat)+")"
+	global lchown
+	from portage import selinux_enabled
+	if selinux_enabled:
+		import selinux
+	from portage_data import lchown
+	try:
+		if not sstat:
+			sstat=os.lstat(src)
+	except SystemExit, e:
+		raise
+	except Exception, e:
+		print "!!! Stating source file failed... movefile()"
+		print "!!!",e
+		return None
 
+	destexists=1
+	try:
+		dstat=os.lstat(dest)
+	except SystemExit, e:
+		raise
+	except:
+		dstat=os.lstat(os.path.dirname(dest))
+		destexists=0
+
+	if destexists:
+		if stat.S_ISLNK(dstat[stat.ST_MODE]):
+			try:
+				os.unlink(dest)
+				destexists=0
+			except SystemExit, e:
+				raise
+			except Exception, e:
+				pass
+
+	if stat.S_ISLNK(sstat[stat.ST_MODE]):
+		try:
+			target=os.readlink(src)
+			if mysettings and mysettings["D"]:
+				if target.find(mysettings["D"])==0:
+					target=target[len(mysettings["D"]):]
+			if destexists and not stat.S_ISDIR(dstat[stat.ST_MODE]):
+				os.unlink(dest)
+			if selinux_enabled:
+				sid = selinux.get_lsid(src)
+				selinux.secure_symlink(target,dest,sid)
+			else:
+				os.symlink(target,dest)
+			lchown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
+			return os.lstat(dest)[stat.ST_MTIME]
+			lchown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
+			return os.lstat(dest)[stat.ST_MTIME]
+		except SystemExit, e:
+			raise
+		except Exception, e:
+			print "!!! failed to properly create symlink:"
+			print "!!!",dest,"->",target
+			print "!!!",e
+			return None
+
+	renamefailed=1
+	if sstat[stat.ST_DEV]==dstat[stat.ST_DEV] or selinux_enabled:
+		try:
+			if selinux_enabled:
+				ret=selinux.secure_rename(src,dest)
+			else:
+				ret=os.rename(src,dest)
+			renamefailed=0
+		except SystemExit, e:
+			raise
+		except Exception, e:
+			import errno
+			if e[0]!=errno.EXDEV:
+				# Some random error.
+				print "!!! Failed to move",src,"to",dest
+				print "!!!",e
+				return None
+			# Invalid cross-device-link 'bind' mounted or actually Cross-Device
+	if renamefailed:
+		didcopy=0
+		if stat.S_ISREG(sstat[stat.ST_MODE]):
+			try: # For safety copy then move it over.
+				if selinux_enabled:
+					selinux.secure_copy(src,dest+"#new")
+					selinux.secure_rename(dest+"#new",dest)
+				else:
+					shutil.copyfile(src,dest+"#new")
+					os.rename(dest+"#new",dest)
+				didcopy=1
+			except SystemExit, e:
+				raise
+			except Exception, e:
+				print '!!! copy',src,'->',dest,'failed.'
+				print "!!!",e
+				return None
+		else:
+			#we don't yet handle special, so we need to fall back to /bin/mv
+			if selinux_enabled:
+				a=portage_exec.spawn_get_output(MOVE_BINARY+" -c -f '%s' '%s'" % (src,dest))
+			else:
+				a=portage_exec.spawn_get_output(MOVE_BINARY+" -f '%s' '%s'" % (src,dest))
+				if a[0]!=0:
+					print "!!! Failed to move special file:"
+					print "!!! '"+src+"' to '"+dest+"'"
+					print "!!!",a
+					return None # failure
+		try:
+			if didcopy:
+				lchown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
+				os.chmod(dest, stat.S_IMODE(sstat[stat.ST_MODE])) # Sticky is reset on chown
+				os.unlink(src)
+		except SystemExit, e:
+				os.unlink(src)
+		except SystemExit, e:
+			raise
+		except Exception, e:
+			print "!!! Failed to chown/chmod/unlink in movefile()"
+			print "!!!",dest
+			print "!!!",e
+			return None
+
+	if newmtime:
+		os.utime(dest,(newmtime,newmtime))
+	else:
+		os.utime(dest, (sstat[stat.ST_ATIME], sstat[stat.ST_MTIME]))
+		newmtime=sstat[stat.ST_MTIME]
+	return newmtime
+
+def flatten(mytokens):
+	"""this function now turns a [1,[2,3]] list into
+	a [1,2,3] list and returns it."""
+	newlist=[]
+	for x in mytokens:
+		if type(x)==types.ListType:
+			newlist.extend(flatten(x))
+		else:
+			newlist.append(x)
+	return newlist
 
 

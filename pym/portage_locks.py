@@ -36,7 +36,7 @@ def lockdir(mydir):
 def unlockdir(mylock):
 	return unlockfile(mylock)
 
-def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
+def lockfile(mypath,wantnewlockfile=0,unlinkfile=0,verbosity=0):
 	"""Creates all dirs upto, the given dir. Creates a lockfile
 	for the given directory as the file: directoryname+'.portage_lockfile'."""
 	import fcntl
@@ -74,7 +74,7 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 				if e[0] == 2: # No such file or directory
 					return lockfile(mypath,wantnewlockfile,unlinkfile)
 				else:
-					portage_util.writemsg("Cannot chown a lockfile. This could cause inconvenience later.\n");
+					portage_util.writemsg("Cannot chown a lockfile. This could cause inconvenience later.\n",verbosity)
 			os.umask(old_mask)
 		else:
 			myfd = os.open(lockfilename, os.O_CREAT|os.O_RDWR,0660)
@@ -96,9 +96,9 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 		if e.errno == errno.EAGAIN:
 			# resource temp unavailable; eg, someone beat us to the lock.
 			if type(mypath) == types.IntType:
-				print "waiting for lock on fd %i" % myfd
+				portage_util.writemsg("waiting for lock on fd %i\n" % myfd,verbosity)
 			else:
-				print "waiting for lock on %s" % lockfilename
+				portage_util.writemsg("waiting for lock on %s\n" % lockfilename,verbosity)
 			# try for the exclusive lock now.
 			fcntl.lockf(myfd,fcntl.LOCK_EX)
 		elif e.errno == errno.ENOLCK:
@@ -124,11 +124,11 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 	if type(lockfilename) == types.StringType and not os.path.exists(lockfilename):
 		# The file was deleted on us... Keep trying to make one...
 		os.close(myfd)
-		portage_util.writemsg("lockfile recurse\n",1)
-		lockfilename,myfd,unlinkfile,locking_method = lockfile(mypath,wantnewlockfile,unlinkfile)
+		portage_util.writemsg("lockfile recurse\n",verbosity+1)
+		lockfilename,myfd,unlinkfile,locking_method,verbosity = lockfile(mypath,wantnewlockfile,unlinkfile,verbosity)
 
-	portage_util.writemsg(str((lockfilename,myfd,unlinkfile))+"\n",1)
-	return (lockfilename,myfd,unlinkfile,locking_method)
+	portage_util.writemsg(str((lockfilename,myfd,unlinkfile))+"\n",verbosity+1)
+	return (lockfilename,myfd,unlinkfile,locking_method,verbosity)
 
 def unlockfile(mytuple):
 	import fcntl
@@ -137,8 +137,12 @@ def unlockfile(mytuple):
 	if len(mytuple) == 3:
 		lockfilename,myfd,unlinkfile = mytuple
 		locking_method = fcntl.flock
+		verbosity=0
 	elif len(mytuple) == 4:
 		lockfilename,myfd,unlinkfile,locking_method = mytuple
+		verbosity=0
+	elif len(mytuple) == 5:
+		lockfilename,myfd,unlinkfile,locking_method,verbosity = mytuple
 	else:
 		raise
 
