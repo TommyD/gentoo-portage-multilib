@@ -1113,7 +1113,7 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 				myl[1].append(mya)
 	settings["A"]=string.join(alist," ")
 	settings["AA"]=string.join(aalist," ")
-	if "cvs" in features:
+	if ("cvs" in features) or ("mirror" in features):
 		fetchme=alluris
 		checkme=aalist
 	else:
