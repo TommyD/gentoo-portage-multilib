@@ -1,4 +1,9 @@
 #!/bin/bash
-rm -rf ${T}/${2}
-cp ${1} ${T}/${2}
-dolib.a ${T}/${2}
+if [ -z "${T}" ] && [ -z "${2}" ]; then
+	echo "Nothing defined to do."
+	exit 1
+else
+	rm -rf ${T}/${2}
+	cp ${1} ${T}/${2}
+	dolib.a ${T}/${2}
+fi
