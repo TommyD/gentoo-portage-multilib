@@ -87,38 +87,47 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0,verbosity=0):
 
 	# try for a non-blocking lock, if it's held, throw a message
 	# we're waiting on lockfile and use a blocking attempt.
-	locking_method = fcntl.lockf
-	try:
-		fcntl.lockf(myfd,fcntl.LOCK_EX|fcntl.LOCK_NB)
-	except IOError, e:
-		if "errno" not in dir(e):
-			raise
-		if e.errno == errno.EAGAIN:
-			# resource temp unavailable; eg, someone beat us to the lock.
-			if type(mypath) == types.IntType:
-				portage_util.writemsg("waiting for lock on fd %i\n" % myfd,verbosity)
-			else:
-				portage_util.writemsg("waiting for lock on %s\n" % lockfilename,verbosity)
-			# try for the exclusive lock now.
-			fcntl.lockf(myfd,fcntl.LOCK_EX)
-		elif e.errno == errno.ENOLCK:
-			# We're not allowed to lock on this FS.
-			os.close(myfd)
-			link_success = False
-			if lockfilename == str(lockfilename):
-				if wantnewlockfile:
-					try:
-						if os.stat(lockfilename)[stat.ST_NLINK] == 1:
-							os.unlink(lockfilename)
-					except Exception, e:
-						pass
-					link_success = hardlink_lockfile(lockfilename)
-			if not link_success:
+	locking_method = None
+	link_success=False
+	for locking_method in (fcntl.flock, fcntl.lockf):
+		try:
+			locking_method(myfd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+			link_success=True
+			break
+		except IOError, e:
+			if "errno" not in dir(e):
 				raise
-			locking_method = None
-			myfd = HARDLINK_FD
-		else:
+			if e.errno == errno.EAGAIN:
+				# resource temp unavailable; eg, someone beat us to the lock.
+				if type(mypath) == types.IntType:
+					portage_util.writemsg("waiting for lock on fd %i\n" % myfd,verbosity)
+				else:
+					portage_util.writemsg("waiting for lock on %s\n" % lockfilename,verbosity)
+				# try for the exclusive lock now.
+				locking_method(myfd,fcntl.LOCK_EX)
+			elif e.errno == errno.ENOLCK:
+				pass
+			else:
+				raise
+
+
+	if not link_success:
+		# We're not allowed to lock on this FS.
+		os.close(myfd)
+		link_success = False
+		if lockfilename == str(lockfilename):
+			if wantnewlockfile:
+				try:
+					if os.stat(lockfilename)[stat.ST_NLINK] == 1:
+						os.unlink(lockfilename)
+				except Exception, e:
+					pass
+				link_success = hardlink_lockfile(lockfilename)
+		if not link_success:
 			raise
+		locking_method = None
+		myfd = HARDLINK_FD
+
 
 		
 	if type(lockfilename) == types.StringType and not os.path.exists(lockfilename):
@@ -276,7 +285,7 @@ def hardlink_lockfile(lockfilename, max_wait=14400):
 			print "This is a feature to prevent distfiles corruption."
 			print "/usr/lib/portage/bin/clean_locks can fix stuck locks."
 			print "Lockfile: " + lockfilename
-		time.sleep(3)
+		time.sleep(0.00001)
 	
 	os.unlink(myhardlock)
 	return False
