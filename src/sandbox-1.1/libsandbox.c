@@ -460,10 +460,19 @@ link(const char *oldpath, const char *newpath)
 int
 mkdir(const char *pathname, mode_t mode)
 {
-	int result = -1;
+	int result = -1, my_errno = errno;
 	char canonic[SB_PATH_MAX];
+	struct stat st;
 
 	canonicalize_int(pathname, canonic);
+
+	/* Check if the directory exist, return EEXIST rather than failing */
+	lstat(canonic, &st);
+	if (0 == errno) {
+		errno = EEXIST;
+		return errno;
+	}
+	errno = my_errno;
 
 	if FUNCTION_SANDBOX_SAFE
 		("mkdir", canonic) {
@@ -1011,8 +1020,8 @@ check_access(sbcontext_t * sbcontext, const char *func, const char *path)
 					 (0 == strncmp(func, "execlp", 6)) ||
 					 (0 == strncmp(func, "execle", 6)) ||
 					 (0 == strncmp(func, "execv", 5)) ||
-					 (0 == strncmp(func, "execvp", 6))
-					 || (0 == strncmp(func, "execve", 6))
+					 (0 == strncmp(func, "execvp", 6)) ||
+					 (0 == strncmp(func, "execve", 6))
 					)
 					) {
 				for (i = 0; i < sbcontext->num_read_prefixes; i++) {
