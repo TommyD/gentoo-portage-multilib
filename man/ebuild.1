@@ -6,12 +6,9 @@ ebuild \- manual page for the ebuild program, a low level interface to the Porta
 \fIfile\fR \fIcommand\fR [\fIcommand\fR]...
 .SH "DESCRIPTION"
 The ebuild program is the heart of the current implementation of the Portage system.  Accepting an ebuild script and one or more commands as arguments, the ebuild program will parse the ebuild script and execute the specified commands.  Commands exist to fetch sources, unpack sources, compile sources, install object files into a temporary directory "image", merge the image to the local filesystem, create a bzipped tarball package out of the image, and more.
-.SH "OPTIONS"
-.TP
-\fBFILE\fR
+.SH "FILE"
 This must be a valid ebuild script.  For further information read \fBebuild\fR(5).
-.TP
-\fBCOMMANDS\fR
+.SH "COMMANDS"
 .TP
 \fBcheck\fR 
 Checks to see if all build dependencies are satisfied.
