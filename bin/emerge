@@ -132,10 +132,7 @@ for x in cmdline:
 			if x in options:
 				myopts.append(x)
 			else:
-				if x=="--clean":
-					print "emerge: for rsyncs, --clean is now on by default; no need to specify this option."
-				else:
-					print "!!! Error:",x,"is an invalid option."
+				print "!!! Error:",x,"is an invalid option."
 				sys.exit(1)
 	elif (not myaction) and (x in actions):
 		myaction=x
