@@ -124,6 +124,7 @@ try:
 	from portage_locks import unlockfile,unlockdir,lockfile,lockdir
 	import portage_checksum
 	from portage_checksum import perform_md5,perform_checksum,prelink_capable
+	from portage_localization import _
 except SystemExit, e:
 	raise
 except Exception, e:
@@ -1496,6 +1497,8 @@ def spawn(mystring,mysettings,debug=0,free=0,droppriv=0,fd_pipes=None,**keywords
 		keywords["opt_name"] += " bash"
 		return portage_exec.spawn_bash(mystring,env=env,**keywords)
 
+
+
 def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",use_locks=1, try_mirrors=1):
 	"fetch files.  Will use digest file if available."
 	if ("mirror" in features) and ("nomirror" in mysettings["RESTRICT"].split()):
@@ -1516,7 +1519,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 	if custommirrors.has_key("local"):
 		mymirrors += custommirrors["local"]
 
-	if ("nomirror" in mysettings["RESTRICT"].split()):
+	if ("nomirror" in mysettings["RESTRICT"].split()) or \
+	   ("mirror"   in mysettings["RESTRICT"].split()):
 		# We don't add any mirrors.
 		pass
 	else:
@@ -1528,8 +1532,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					else:
 						mymirrors += [x]
 	
-	mydigests=None
-	digestfn=mysettings["FILESDIR"]+"/digest-"+mysettings["PF"]
+	mydigests = {}
+	digestfn  = mysettings["FILESDIR"]+"/digest-"+mysettings["PF"]
 	if os.path.exists(digestfn):
 		mydigests = digestParseFile(digestfn)
 
@@ -1546,12 +1550,12 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 			if not os.path.exists(destdir+myfile):
 				for mydir in fsmirrors:
 					if os.path.exists(mydir+"/"+myfile):
-						writemsg("Local mirror has file: %s\n" % myfile)
+						writemsg(_("Local mirror has file: %(file)s\n" % {"file":myfile}))
 						shutil.copyfile(mydir+"/"+myfile,destdir+"/"+myfile)
 						break
 		except (OSError,IOError),e:
 			# file does not exist
-			print "!!!",myfile,"not found in",mysettings["DISTDIR"]+"."
+			writemsg(_("!!! %(file)s not found in %(dir)s\n") % {"file":myfile, "dir":mysettings["DISTDIR"]})
 			gotit=0
 
 	if "fetch" in mysettings["RESTRICT"].split():
@@ -1564,7 +1568,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				mystat=os.stat(mysettings["DISTDIR"]+"/"+myfile)
 			except (OSError,IOError),e:
 				# file does not exist
-				print "!!!",myfile,"not found in",mysettings["DISTDIR"]+"."
+				writemsg(_("!!! %(file)s not found in %(dir)s\n") % {"file":myfile, "dir":mysettings["DISTDIR"]})
 				gotit=0
 		if not gotit:
 			print
@@ -1704,7 +1708,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 			try:
 				mystat=os.stat(mysettings["DISTDIR"]+"/"+myfile)
-				if mydigests!=None and mydigests.has_key(myfile):
+				if mydigests.has_key(myfile):
 					#if we have the digest file, we know the final size and can resume the download.
 					if mystat[stat.ST_SIZE]<mydigests[myfile]["size"]:
 						fetched=1
@@ -1831,7 +1835,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						fetched=2
 						break
 					elif mydigests!=None:
-						writemsg("No digest file available and download failed.\n")
+						writemsg("No digest file available and download failed.\n\n")
 		if use_locks and file_lock:
 			portage_locks.unlockfile(file_lock)
 		
@@ -1843,7 +1847,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 	return 1
 
 
-def digestCreate(myfiles,basedir):
+def digestCreate(myfiles,basedir,oldDigest={}):
 	"""Takes a list of files and the directory they are in and returns the
 	dict of dict[filename][CHECKSUM_KEY] = hash
 	returns None on error."""
@@ -1851,14 +1855,27 @@ def digestCreate(myfiles,basedir):
 	for x in myfiles:
 		print "<<<",x
 		myfile=os.path.normpath(basedir+"///"+x)
-		if not os.access(myfile, os.R_OK):
-			print "!!! Given file does not appear to be readable. Does it exist?"
-			print "!!! File:",myfile
-			return None
-		mysize = os.stat(myfile)[stat.ST_SIZE]
-		mysums = portage_checksum.perform_all(myfile)
+		if os.path.exists(myfile):
+			if not os.access(myfile, os.R_OK):
+				print "!!! Given file does not appear to be readable. Does it exist?"
+				print "!!! File:",myfile
+				return None
+			mysize = os.stat(myfile)[stat.ST_SIZE]
+			mysums = portage_checksum.perform_all(myfile)
+		else:
+			if x in oldDigest:
+				# DeepCopy because we might not have a unique reference.
+				mydigests[x] = copy.deepcopy(oldDigest[x])
+				mysize       = copy.deepcopy(oldDigest[x]["size"])
+			else:
+				print "!!! We have a source URI, but no file..."
+				print "!!! File:",myfile
+				return None
+			
 		mydigests[x] = mysums
-		mydigests[x]["size"] = mysize
+		if mydigests[x].has_key("size") and (mydigests[x]["size"] != mysize):
+			raise portage_exception.DigestException, "Size mismatch during checksums"
+		mydigests[x]["size"] = copy.deepcopy(mysize)
 	return mydigests
 
 def digestCreateLines(filelist, mydict):
@@ -1866,12 +1883,17 @@ def digestCreateLines(filelist, mydict):
 	mydigests = copy.deepcopy(mydict)
 	for myarchive in filelist:
 		mysize = mydigests[myarchive]["size"]
-		del mydigests[myarchive]["size"]
 		if len(mydigests[myarchive]) == 0:
 			raise portage_exception.DigestException, "No generate digest for '%(file)s'" % {"file":myarchive}
 		for sumName in mydigests[myarchive].keys():
+			if sumName not in portage_checksum.get_valid_checksum_keys():
+				continue
 			mysum = mydigests[myarchive][sumName]
-			myline = sumName+" "+mysum+" "+myarchive+" "+str(mysize)
+
+			myline  = sumName[:]
+			myline += " "+mysum
+			myline += " "+myarchive
+			myline += " "+str(mysize)
 			if sumName != "MD5":
 				# XXXXXXXXXXXXXXXX This cannot be used!
 				# Older portage make very dumb assumptions about the formats.
@@ -1909,7 +1931,14 @@ def digestgen(myarchives,mysettings,overwrite=1,manifestonly=0):
 			return 1
 
 		print green(">>> Generating digest file...")
-		mydigests=digestCreate(myarchives, basedir)
+		
+		# Track the old digest so we can assume checksums without requiring
+		# all files to be downloaded. 'Assuming'
+		myolddigest = {}
+		if os.path.exists(digestfn):
+			myolddigest = digestParseFile(digestfn)
+
+		mydigests=digestCreate(myarchives, basedir, oldDigest=myolddigest)
 		if mydigests==None: # There was a problem, exit with an errorcode.
 			return 0
 
@@ -2432,11 +2461,11 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		print red("doebuild():")+" aux_get() error; aborting."
 		sys.exit(1)
 
-	newuris, alist=db["/"]["porttree"].dbapi.getfetchlist(mycpv,mysettings=mysettings)
-	alluris, aalist=db["/"]["porttree"].dbapi.getfetchlist(mycpv,mysettings=mysettings,all=1)
+	newuris, alist  = db["/"]["porttree"].dbapi.getfetchlist(mycpv,mysettings=mysettings)
+	alluris, aalist = db["/"]["porttree"].dbapi.getfetchlist(mycpv,mysettings=mysettings,all=1)
 	mysettings["A"]=string.join(alist," ")
 	mysettings["AA"]=string.join(aalist," ")
-	if ("cvs" in features) or ("mirror" in features) or fetchall:
+	if ("mirror" in features) or fetchall:
 		fetchme=alluris
 		checkme=aalist
 	else:
@@ -2474,14 +2503,14 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	if "digest" in features:
 		#generate digest if it doesn't exist.
 		if mydo=="digest":
-			return (not digestgen(checkme,mysettings,overwrite=1))
+			return (not digestgen(aalist,mysettings,overwrite=1))
 		else:
-			digestgen(checkme,mysettings,overwrite=0)
+			digestgen(aalist,mysettings,overwrite=0)
 	elif mydo=="digest":
 		#since we are calling "digest" directly, recreate the digest even if it already exists
-		return (not digestgen(checkme,mysettings,overwrite=1))
+		return (not digestgen(aalist,mysettings,overwrite=1))
 	if mydo=="manifest":
-		return (not digestgen(checkme,mysettings,overwrite=1,manifestonly=1))
+		return (not digestgen(aalist,mysettings,overwrite=1,manifestonly=1))
 	
 	if not digestcheck(checkme, mysettings, ("strict" in features)):
 		return 1
@@ -5186,6 +5215,27 @@ class portdbapi(dbapi):
 					filesdict[myfile]=int(mymd5s[myfile]["size"])
 		return filesdict
 
+	def fetch_check(self, mypkg, useflags=None, mysettings=None, all=False):
+		if not useflags:
+			if mysettings:
+				useflags = mysettings["USE"].split()
+		myuri, myfiles = self.getfetchlist(mypkg, useflags=useflags, mysettings=mysettings, all=all)
+		mydigest       = self.finddigest(mypkg)
+		mysums         = digestParseFile(mydigest)
+		
+		failures = {}
+		for x in myfiles:
+			if x not in mysums:
+				ok     = False
+				reason = "digest missing"
+			else:
+				ok,reason = portage_checksum.verify_all(self.mysettings["DISTDIR"]+"/"+x, mysums[x])
+			if not ok:
+				failures[x] = reason
+		if failures:
+			return False
+		return True
+
 	def getsize(self,mypkg,useflags=None,debug=0):
 		# returns the total size of remaining downloads
 		#
@@ -7035,13 +7085,14 @@ def portageexit():
 			mymfn=mtimedbfile
 			try:
 				mtimedb["version"]=VERSION
-				cPickle.dump(mtimedb,open(mymfn,"w"))
+				cPickle.dump(mtimedb, open(mymfn,"w"), cPickle.HIGHEST_PROTOCOL)
 				#print "*** Wrote out mtimedb data successfully."
 				os.chown(mymfn,uid,portage_gid)
 				os.chmod(mymfn,0664)
 			except SystemExit, e:
 				raise
 			except Exception, e:
+				print "MTIMEDB:",e
 				pass
 
 atexit.register(portageexit)

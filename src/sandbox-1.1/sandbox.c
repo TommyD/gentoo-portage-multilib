@@ -336,7 +336,7 @@ setenv_sandbox_write(char *home_dir, char *portage_tmp_dir, char *var_tmp_dir,
 			strncat(buf, var_tmp_dir, sizeof(buf));
 			strncat(buf, ":/tmp/:/var/tmp/", sizeof(buf));
 		}
-		buf[sizeof(buf)] = 0;
+		buf[sizeof(buf) - 1] = '\0';
 		setenv(ENV_SANDBOX_WRITE, buf, 1);
 	}
 }
@@ -360,7 +360,7 @@ setenv_sandbox_predict(char *home_dir)
 				"/usr/lib/python3.0/:",
 			home_dir);
 
-		buf[sizeof(buf)] = 0;
+		buf[sizeof(buf) - 1] = '\0';
 		setenv(ENV_SANDBOX_PREDICT, buf, 1);
 	}
 }
@@ -666,7 +666,7 @@ main(int argc, char **argv)
 
 		setenv(ENV_SANDBOX_LOG, sandbox_log, 1);
 
-		snprintf(sandbox_debug_log, 254, "%s%s%s",
+		snprintf(sandbox_debug_log, sizeof(sandbox_debug_log), "%s%s%s",
 						 DEBUG_LOG_FILE_PREFIX, pid_string, LOG_FILE_EXT);
 		setenv(ENV_SANDBOX_DEBUG_LOG, sandbox_debug_log, 1);
 

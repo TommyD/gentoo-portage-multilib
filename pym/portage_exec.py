@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-import os,types,atexit
+import os,types,atexit,string
 import signal
 import portage_data
 import portage_util

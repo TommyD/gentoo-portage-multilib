@@ -809,6 +809,9 @@ dyn_compile() {
 	[ "${LDFLAGS-unset}"     != "unset" ] && export LDFLAGS
 	[ "${ASFLAGS-unset}"     != "unset" ] && export ASFLAGS
 
+	[ "${CCACHE_DIR-unset}"  != "unset" ] && export CCACHE_DIR
+	[ "${CCACHE_SIZE-unset}" != "unset" ] && export CCACHE_SIZE
+
 	[ "${DISTCC_DIR-unset}"  == "unset" ] && export DISTCC_DIR="${PORTAGE_TMPDIR}/.distcc"
 	[ ! -z "${DISTCC_DIR}" ] && addwrite "${DISTCC_DIR}"
 

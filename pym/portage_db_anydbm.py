@@ -47,7 +47,7 @@ class database(portage_db_template.database):
 	
 	def set_values(self,key,val):
 		self.check_key(key)
-		self.db[key] = cPickle.dumps(val)
+		self.db[key] = cPickle.dumps(val,cPickle.HIGHEST_PROTOCOL)
 	
 	def del_key(self,key):
 		if self.has_key(key):

@@ -7,6 +7,45 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+*portage-2.0.51_rc10_pre1 (18 Oct 2004): Spork.
+
+  18 Oct 2004; Nicholas Jones <carpaski@gentoo.org> *.py: Added a protocol
+  change for cPickles to make them more efficient (binary).
+
+  18 Oct 2004; Nicholas Jones <carpaski@gentoo.org> sandbox: Fixes for some
+  incorrect indexes that cause some boxes to have very random issues.
+
+  18 Oct 2004; Nicholas Jones <carpaski@gentoo.org> portage_locks.py: Reverted
+  the lock code to the lockf()+hardlock version as the new code has some
+  inexplicable incompatibility with NFS.
+  
+  18 Oct 2004; Nicholas Jones <carpaski@gentoo.org> portage_exception.py: Added
+  a couple exceptions pretaining specifically to packages and digests.
+
+  18 Oct 2004; Nicholas Jones <carpaski@gentoo.org> portage_checksum.py: Now
+  takes care of missing files better for the partial-digest handling.
+
+  18 Oct 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Fixed up some
+  of the output lines to use writemsg instead of print. Adjusted the fetch
+  code to handle partial-digests. digestCreate can substitute in old digest
+  entries now for missing files -- the assumption is that they are correct.
+  Portage no longer downloads all parts when FEATURES=cvs is enabled, but
+  does require a complete digest to commit, whether it was created piecewise
+  or en masse. Added 'fetch_check' to portdbapi which helps with with emerge's
+  pretend output for Fetch-Restriction.
+
+  18 Oct 2004; Nicholas Jones <carpaski@gentoo.org> repoman: Added in support
+  for partial-digests -- It complains, downloads, and adjusts. Sorted the QA
+  categories to make them easier to scan.
+
+  18 Oct 2004; Nicholas Jones <carpaski@gentoo.org> emerge: Added -F to force
+  all URIs to be downloaded. Added in a green, lowercase 'f' when the fetch
+  restriction is satisfied for pretend. Added Kevin Quinn's patch for some
+  prepstrip sanity and friendliness regarding TEXTRELs.
+
+  18 Oct 2004; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Added a message
+  about use/useq/usev. CCACHE_DIR and CCACHE_SIZE are now properly exported.
+  
   17 Oct 2004; <genone@gentoo.org> pym/portage.py:
   Added a followSymlinks parameter to listdir() as otherwise it gets stuck in
   an infinite loop when it encounters self-referencing symlinks, this behavior

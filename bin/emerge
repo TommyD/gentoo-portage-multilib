@@ -174,7 +174,7 @@ shortmapping={
 "c":"--clean",     "C":"--unmerge",
 "d":"--debug",     "D":"--deep",
 "e":"--emptytree",
-"f":"--fetchonly",
+"f":"--fetchonly", "F":"--fetch-all-uri",
 "g":"--getbinpkg", "G":"--getbinpkgonly",
 "h":"--help",
 "i":"--inject",
@@ -1428,6 +1428,8 @@ class depgraph:
 			else:
 				if (x[0]!="binary") and ("fetch" in string.split(portage.portdb.aux_get(x[2],["RESTRICT"])[0])):
 					fetch = red("F")
+					if portage.portdb.fetch_check(x[2], portage.settings):
+						fetch = green("f")
 
 				#we need to use "--emptrytree" testing here rather than "empty" param testing because "empty"
 				#param is used for -u, where you still *do* want to see when something is being upgraded.

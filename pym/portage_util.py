@@ -368,7 +368,7 @@ def pickle_write(data,filename,debug=0):
 	import cPickle,os
 	try:
 		myf=open(filename,"w")
-		cPickle.dump(data,myf)
+		cPickle.dump(data,myf,cPickle.HIGHEST_PROTOCOL)
 		myf.flush()
 		myf.close()
 		writemsg("Wrote pickle: "+str(filename)+"\n",1)

@@ -13,7 +13,12 @@ os.environ["PORTAGE_CALLER"]="repoman"
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 version="1.2"	
 
-import string,signal,portage,portage_dep,re,cvstree,pickle,tempfile
+import string,signal,re,pickle,tempfile
+
+import portage
+import portage_dep
+import portage_checksum
+import cvstree
 from output import *
 from commands import getstatusoutput
 from time import *
@@ -58,15 +63,18 @@ optionshelp={
 
 qahelp={
 	"CVS/Entries.IO_error":"Attempting to commit, and an IO error was encountered access the Entries file",
+	"digest.partial":"Digest files do not contain all corresponding URI elements",
+	"digest.assumed":"Existing digest must be assumed correct",
+	"digest.fail":"Digest does not match the specified local file",
 	"digest.stray":"Digest files that do not have a corresponding ebuild",
 	"digest.missing":"Digest files that are missing (ebuild exists, digest doesn't)",
+	"digest.disjointed":"Digests not added to cvs when the matching ebuild has been added",
+	"digest.notadded":"Digests that exist but have not been added to cvs",
+	"digest.unmatch":"Digests which are incomplete (please check if your USE/ARCH includes all files)",
 	"ebuild.invalidname":"Ebuild files with a non-parseable or syntactically incorrect name",
 	"ebuild.namenomatch":"Ebuild files that do not have the same name as their parent directory",
 	"changelog.missing":"Missing ChangeLog files",
 	"ebuild.disjointed":"Ebuilds not added to cvs when the matching digest has been added",
-	"digest.disjointed":"Digests not added to cvs when the matching ebuild has been added",
-	"digest.notadded":"Digests that exist but have not been added to cvs",
-	"digest.unmatch":"Digests which are incomplete (please check if your USE/ARCH includes all files)",
 	"ebuild.notadded":"Ebuilds that exist but have not been added to cvs",
 	"changelog.notadded":"ChangeLogs that exist but have not been added to cvs",
 	"filedir.missing":"Package lacks a files directory",
@@ -109,6 +117,7 @@ qahelp={
 }
 
 qacats = qahelp.keys()
+qacats.sort()
 
 qawarnings=[
 "changelog.missing",
@@ -116,10 +125,10 @@ qawarnings=[
 "ebuild.notadded",
 "ebuild.nostable",
 "ebuild.allmasked",
+"digest.assumed",
 "digest.notadded",
 "digest.disjointed",
 "digest.missing",
-"digest.unmatch",
 "DEPEND.badmasked","RDEPEND.badmasked","PDEPEND.badmasked",
 "DEPEND.badindev","RDEPEND.badindev","PDEPEND.badindev",
 "DEPEND.badmaskedindev","RDEPEND.badmaskedindev","PDEPEND.badmaskedindev",
@@ -436,7 +445,7 @@ def caterror(mycat):
 	err(mycat+" is not an official category.  Skipping QA checks in this directory.\nPlease ensure that you add "+catdir+" to "+repodir+"/profiles/categories\nif it is a new category.")
 print
 if "--pretend" in myoptions:
-	print green("RepoMan pretends to scour the neighborhood...")
+	print green("RepoMan does a once-over of the neighborhood...")
 else:
 	print green("RepoMan scours the neighborhood...")
 
@@ -682,19 +691,41 @@ for x in scanlist:
 				if os.stat(checkdir+"/files/"+y)[0] & 0x0248:
 					stats["file.executable"] += 1
 					fails["file.executable"].append(x+"/files/"+y)
-				#else:
-				#	mydigests=portage.digestParseFile(checkdir+"/files/"+y)
-				#	mykey = catdir + "/" + y[7:]
-				#	myuris = portage.db["/"]["porttree"].dbapi.aux_get(mykey,["SRC_URI"])[0]
-				#	alluris=portage.flatten(portage.evaluate(portage.tokenize(myuris),[],1))
-				#	allfiles=[]
-				#	for tmp in alluris:
-				#		allfiles.append(os.path.basename(tmp))
-				#
-				#	for tmpfile in allfiles:
-				#		if not mydigests.has_key(tmpfile):
-				#			stats["digest.unmatch"]=stats["digest.unmatch"]+1
-				#			fails["digest.unmatch"].append(x+"/files/"+y)
+				
+				mydigests=portage.digestParseFile(checkdir+"/files/"+y)
+
+				mykey = catdir + "/" + y[7:]
+				myuris,myfiles = portage.db["/"]["porttree"].dbapi.getfetchlist(mykey,all=True)
+
+				uri_dict = {}
+				for myu in myuris:
+					myubn = os.path.basename(myu)
+					if myubn not in uri_dict:
+						uri_dict[myubn]  = [myu]
+					else:
+						uri_dict[myubn] += [myu]
+
+				for myf in uri_dict:
+					myff = repoman_settings["DISTDIR"] + "/" + myf
+					if not mydigests.has_key(myf):
+						uri_settings = portage.config(clone=repoman_settings)
+						if mymode == "fix":
+							if not portage.fetch(uri_dict[myf], uri_settings):
+								stats["digest.unmatch"] += 1
+								fails["digest.unmatch"].append(y+"::"+myf)
+							else:
+								eb_name,eb_location = portage.db["/"]["porttree"].dbapi.findname2(mykey)
+								portage.doebuild(eb_name, "digest", "/", uri_settings)
+					else:
+						if os.path.exists(myff):
+							if not portage_checksum.verify_all(myff, mydigests[myf]):
+								stats["digest.fail"] += 1
+								fails["digest.fail"].append(y+"::"+myf)
+						else:
+							stats["digest.assumed"] += 1
+							fails["digest.assumed"].append(y+"::"+myf)
+							
+
 				if y[7:] not in ebuildlist:
 					#stray digest
 					if mymode=="fix":
@@ -765,7 +796,8 @@ for x in scanlist:
 		if not os.path.exists(checkdir+"/files/digest-"+y):
 			if mymode=="fix":
 				if "--pretend" in myoptions:
-					print "/usr/sbin/ebuild "+repodir+"/"+x+"/"+y+".ebuild digest"
+					print "You will need to run:"
+					print "  /usr/sbin/ebuild "+repodir+"/"+x+"/"+y+".ebuild digest"
 				else:
 					retval=os.system("/usr/sbin/ebuild "+repodir+"/"+x+"/"+y+".ebuild digest")
 					if retval:
@@ -1061,7 +1093,7 @@ dowarn=0
 #dofull will be set if we should print a "repoman full" informational message
 dofull=0
 for x in qacats:
-	if not isCvs and (string.find(x, "notadded") != -1 or string.find(x, "digest") != -1):
+	if not isCvs and (string.find(x, "notadded") != -1):
 		stats[x] = 0
 	if stats[x]:
 		dowarn=1
@@ -1070,7 +1102,7 @@ for x in qacats:
 	else:
 		if mymode!="full":
 			continue
-	print "  "+string.ljust(x,20),
+	print "  "+string.ljust(x,30),
 	if stats[x]==0:
 		print green(`stats[x]`)
 		continue
@@ -1173,7 +1205,7 @@ else:
 		if retval:
 			print "!!! Exiting on cvs (shell) error code:",retval
 			sys.exit(retval)
-		
+
 	if myunadded:
 		print red("!!! The following files are in your cvs tree but are not added to the master")
 		print red("!!! tree. Please remove them from the cvs tree or add them to the master tree.")

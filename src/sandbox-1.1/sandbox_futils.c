@@ -51,7 +51,7 @@ get_sandbox_path(char *argv0)
 		/* ARGV[0] specifies relative path */
 	} else {
 		egetcwd(cwd, sizeof(path)-2);
-		snprintf(path, sizeof(path)-1, "%s/%s", cwd, argv0);
+		snprintf(path, sizeof(path), "%s/%s", cwd, argv0);
 		if (cwd)
 			free(cwd);
 		cwd = NULL;
@@ -67,11 +67,11 @@ get_sandbox_lib(char *sb_path)
 	char path[255];
 
 #ifdef SB_HAVE_64BIT_ARCH
-        snprintf(path, sizeof(path)-1, "%s", LIB_NAME);
+        snprintf(path, sizeof(path), "%s", LIB_NAME);
 #else
-	snprintf(path, sizeof(path)-1, "/lib/%s", LIB_NAME);
+	snprintf(path, sizeof(path), "/lib/%s", LIB_NAME);
 	if (file_exist(path, 0) <= 0) {
-		snprintf(path, sizeof(path)-1, "%s%s", sb_path, LIB_NAME);
+		snprintf(path, sizeof(path), "%s%s", sb_path, LIB_NAME);
 	}
 #endif
 	return (strdup(path));
@@ -91,9 +91,9 @@ get_sandbox_rc(char *sb_path)
 {
 	char path[255];
 
-	snprintf(path, sizeof(path)-1, "/usr/lib/portage/lib/%s", BASHRC_NAME);
+	snprintf(path, sizeof(path), "/usr/lib/portage/lib/%s", BASHRC_NAME);
 	if (file_exist(path, 0) <= 0) {
-		snprintf(path, sizeof(path)-1, "%s%s", sb_path, BASHRC_NAME);
+		snprintf(path, sizeof(path), "%s%s", sb_path, BASHRC_NAME);
 	}
 	return (strdup(path));
 }
@@ -315,24 +315,24 @@ file_open(char *filename, char *mode, int perm_specified, ...)
 	fd = open(filename, file_getmode(mode));
 	file_security_check(filename);
 	if (-1 == fd) {
-		snprintf(error, 249, ">>> %s file mode: %s open", filename, mode);
+		snprintf(error, sizeof(error), ">>> %s file mode: %s open", filename, mode);
 		perror(error);
 		return (fd);
 	}
 	if (perm_specified) {
 		if (fchmod(fd, 0664) && (0 == getuid())) {
-			snprintf(error, 249, ">>> Could not set mode: %s", filename);
+			snprintf(error, sizeof(error), ">>> Could not set mode: %s", filename);
 			perror(error);
 		}
 	}
 	if (NULL != group) {
 		group_struct = getgrnam(group);
 		if (NULL == group) {
-			snprintf(error, 249, ">>> Could not get grp number: %s", group);
+			snprintf(error, sizeof(error), ">>> Could not get grp number: %s", group);
 			perror(error);
 		} else {
 			if (fchown(fd, -1, group_struct->gr_gid) && (0 == getuid())) {
-				snprintf(error, 249, ">>> Could not set group: %s", filename);
+				snprintf(error, sizeof(error), ">>> Could not set group: %s", filename);
 				perror(error);
 			}
 		}
@@ -353,7 +353,7 @@ file_open(char *filename, char *mode, int perm_specified, ...)
 			return -1;
 		}
 	} else {
-		snprintf(error, 249, ">>> %s file mode:%s open", filename, mode);
+		snprintf(error, sizeof(error), ">>> %s file mode:%s open", filename, mode);
 		perror(error);
 	}
 	return (fd);

@@ -84,54 +84,40 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 
 	# try for a non-blocking lock, if it's held, throw a message
 	# we're waiting on lockfile and use a blocking attempt.
-	link_success = False
-	locking_method = None
-	for lock in (fcntl.flock, fcntl.lockf):
-		try:
-			lock(myfd,fcntl.LOCK_EX|fcntl.LOCK_NB)
-			link_success = True
-		except IOError, e:
-			if "errno" not in dir(e):
-				raise e
-			if e.errno == errno.EAGAIN:
-				# resource temp unavailable; eg, someone beat us to the lock.
-				if type(mypath) == types.IntType:
-					print "waiting for lock on fd %i" % myfd
-				else:
-					print "waiting for lock on %s" % lockfilename
-				# try for the exclusive lock now.
-				lock(myfd,fcntl.LOCK_EX)
-				link_success = True
-
-			#einval should correct a mips n32 bug, bug # would be good here.
-			elif e.errno in (errno.ENOLCK, errno.EINVAL):
-				continue
-			else:
-				raise e
-		if link_success:
-			locking_method = lock
-
-	
-	if not link_success:
-		# this sucks, badly.
-		# We're not allowed to lock on this FS.
-		os.close(myfd)
-		if lockfilename == str(lockfilename):
-			if wantnewlockfile:
-				try:
-					if os.stat(lockfilename)[stat.ST_NLINK] == 1:
-						os.unlink(lockfilename)
-				except SystemExit, e:
-					raise
-				except Exception, e:
-					pass
-				link_success = hardlink_lockfile(lockfilename)
-		if not link_success:
+	locking_method = fcntl.lockf
+	try:
+		fcntl.lockf(myfd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+	except IOError, e:
+		if "errno" not in dir(e):
 			raise
-		#not much for this.
-		locking_method = None
-		myfd = HARDLINK_FD
+		if e.errno == errno.EAGAIN:
+			# resource temp unavailable; eg, someone beat us to the lock.
+			if type(mypath) == types.IntType:
+				print "waiting for lock on fd %i" % myfd
+			else:
+				print "waiting for lock on %s" % lockfilename
+			# try for the exclusive lock now.
+			fcntl.lockf(myfd,fcntl.LOCK_EX)
+		elif e.errno == errno.ENOLCK:
+			# We're not allowed to lock on this FS.
+			os.close(myfd)
+			link_success = False
+			if lockfilename == str(lockfilename):
+				if wantnewlockfile:
+					try:
+						if os.stat(lockfilename)[stat.ST_NLINK] == 1:
+							os.unlink(lockfilename)
+					except Exception, e:
+						pass
+					link_success = hardlink_lockfile(lockfilename)
+			if not link_success:
+				raise
+			locking_method = None
+			myfd = HARDLINK_FD
+		else:
+			raise
 
+		
 	if type(lockfilename) == types.StringType and not os.path.exists(lockfilename):
 		# The file was deleted on us... Keep trying to make one...
 		os.close(myfd)

@@ -5,16 +5,17 @@
 
 if [ "${FEATURES//*nostrip*/true}" == "true" ] || [ "${RESTRICT//*nostrip*/true}" == "true" ] ; then
 	echo "nostrip"
-	exit 0
-fi
-
-if [ ! -z "${CBUILD}" ] && [ "${CBUILD}" != "${CHOST}" ]; then
-	STRIP=${CHOST}-strip
+	STRIP="/bin/false"
 else
-	STRIP=strip
+	if [ ! -z "${CBUILD}" ] && [ "${CBUILD}" != "${CHOST}" ]; then
+		STRIP=${CHOST}-strip
+	else
+		STRIP=strip
+	fi
 fi
 
 echo "strip: "
+retval=0
 for x in "$@"; do # "$@" quotes each element... Plays nice with spaces.
 	if [ -d "${x}" ]; then
 		# We only want files. So make a pass for each directory and call again.
@@ -40,10 +41,11 @@ for x in "$@"; do # "$@" quotes each element... Plays nice with spaces.
 						echo -e "\aand might not function properly on other architectures hppa for example."
 						echo -e "\aIf you are a programmer please take a closer look at this package and"
 						echo -e "\aconsider writing a patch which addresses this problem."
-						exit 1
+						retval=1
 					fi >&2
 				fi
 			fi
 		fi
 	fi
 done
+exit ${retval}

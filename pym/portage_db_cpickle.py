@@ -64,7 +64,7 @@ class database(portage_db_template.database):
 			try:
 				if os.path.exists(self.filename):
 					unlink(self.filename)
-				cPickle.dump(self.db,open(self.filename,"w"))
+				cPickle.dump(self.db, open(self.filename,"w"), cPickle.HIGHEST_PROTOCOL)
 				os.chown(self.filename,self.uid,self.gid)
 				os.chmod(self.filename, 0664)
 			except SystemExit, e:
