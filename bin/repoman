@@ -94,7 +94,7 @@ qawarnings=[
 "metadata.missing",
 "metadata.bad"
 ]
-missingvars=["KEYWORDS","LICENSE","DESCRIPTION","SLOT"]
+missingvars=["KEYWORDS","LICENSE","DESCRIPTION","SLOT","IUSE"]
 allvars=portage.auxdbkeys
 commitmessage=None
 commitmessagefile=None
@@ -115,6 +115,7 @@ qahelp={
 	"changelog.notadded":"ChangeLogs that exist but have not been added to cvs",
 	"KEYWORDS.missing":"Ebuilds that have a missing KEYWORDS variable",
 	"LICENSE.missing":"Ebuilds that have a missing LICENSE variable",
+	"IUSE.missing":"Ebuilds that have a missing IUSE variable",
 	"DESCRIPTION.missing":"Ebuilds that have a missing DESCRIPTION variable",
 	"SLOT.missing":"Ebuilds that have a missing SLOT variable",
 	"DEPEND.bad":"User-visible ebuilds with bad DEPEND settings (matched against *visible* ebuilds)",
