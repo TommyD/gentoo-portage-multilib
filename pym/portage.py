@@ -921,7 +921,7 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 		#initial ebuild.sh bash environment configured
 	
 	mydbkey="/var/cache/edb/dep/dep-"+os.path.basename(settings["EBUILD"])
-	if (not os.path.exists(mydbkey)) or os.stat(mydbkey)[7]<os.stat(settings["EBUILD"])[7]:
+	if (not os.path.exists(mydbkey)) or os.stat(mydbkey)[ST_MTIME]<os.stat(settings["EBUILD"])[ST_MTIME]:
 		#cached info stale or non-existent
 		myso=getstatusoutput("/usr/sbin/ebuild.sh depend")
 		if myso[0]!=0:

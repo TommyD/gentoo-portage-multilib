@@ -1,6 +1,11 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  03 Apr 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: Fixed a
+  semi-long standing bug where I was comparing atimes rather than mtimes when
+  seeing if dep caches were stale.  This fixes a bug originally reported by Dan
+  Armak.
+  
   03 Apr 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: Added an
   indentation fix to prevent merge from dying if a file attempts to install
   itself on top of an existing directory.  Closes bug #1498.
