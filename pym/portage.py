@@ -645,6 +645,7 @@ def fetch(myuris):
 				myuri="http://www.ibiblio.org/gentoo/distfiles/"+myuri[14:]
 		myfile=os.path.basename(myuri)
 		locfetch=fetchcommand
+		docontinue=0
 		try:
 			mystat=os.stat(settings["DISTDIR"]+"/"+myfile)
 			if mydigests!=None:
@@ -655,12 +656,17 @@ def fetch(myuris):
 				else:
 					#we already have it downloaded, skip.
 					#if our file is bigger than the recorded size, digestcheck should catch it.
-					continue
+					docontinue=1
+					pass
 			else:
 				#we don't have the digest file, but the file exists.  Assume it is fully downloaded.
-				continue
+				docontinue=1
+				pass
 		except OSError:
 			pass
+		if docontinue:
+			#you can't use "continue" when you're inside a "try" block
+			continue
 		gotit=0
 		locations=mirrors[:]
 		for y in range(0,len(locations)):
@@ -2260,7 +2266,9 @@ class dblink:
 					print "--- !obj  ","obj", obj
 					continue
 				mymd5=md5(obj)
-				if mymd5 != pkgfiles[obj][2]:
+				# string.lower is needed because db entries used to be in upper-case.  The
+				# string.lower allows for backwards compatibility.
+				if mymd5 != string.lower(pkgfiles[obj][2]):
 					print "--- !md5  ","obj", obj
 					continue
 				myppath=""
