@@ -1,4 +1,4 @@
-# Copyright 2000-2002 Daniel Robbins, Gentoo Technologies, Inc.
+# Copyright 2000-2003 Daniel Robbins, Gentoo Technologies, Inc.
 # Contains local system settings for Portage system
 # $Header$
 
@@ -185,9 +185,20 @@ CXXFLAGS="${CFLAGS}"
 #     developers as well. 'buildpkg' is an always-on setting for the emerge
 #     flag of the same name. It causes binary packages to be created of all
 #     packages that are merged. 'distcc' enables distcc support for via CC.
-#FEATURES="ccache buildpkg distcc"
+#     'userpriv' allows portage to drop root privleges while it is compiling
+#     as a security measure, and as a side effect this can remove sandbox
+#     access violations for users. 'usersandbox' enables sandboxing while
+#     portage is running under userpriv.
+#FEATURES="buildpkg ccache distcc userpriv"
 #
 # RSYNC_RETRIES sets the number of times portage will attempt to retrieve
 #     a current portage tree before it exits with an error. This allows
 #     for a more successful retrieval without user intervention most times.
 #RSYNC_RETRIES="3"
+#
+# RSYNC_TIMEOUT sets the length of time rsync will wait before it times out
+#     on a connection. Most users will benefit from this setting as it will
+#     reduce the amount of 'dead air' they experience when they run across
+#     the occasional, unreachable mirror. Dialup users might want to set this
+#     value up around the 300 second mark.
+#RSYNC_TIMEOUT=180
