@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  09 Mar 2005; Brian Harring <ferringb@gentoo.org> pym/cache/fs_template.py:
+  _ensure_dirs didn't account for umask.
+
   09 Mar 2005; Brian Harring <ferringb@gentoo.org> pym/cache/flat_list.py:
   Damn I'm cool- _eclasses_ are now properly returned.
 

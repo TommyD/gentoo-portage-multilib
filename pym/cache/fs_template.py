@@ -47,9 +47,12 @@ class FsBased(template.database):
 		for dir in path.lstrip(os.path.sep).rstrip(os.path.sep).split(os.path.sep):
 			base = os.path.join(base,dir)
 			if not os.path.exists(base):
-				os.mkdir(base, self._perms | 0111)
-				os.chown(base, -1, self._gid)
-				
+				um=os.umask(0)
+				try:
+					os.mkdir(base, self._perms | 0111)
+					os.chown(base, -1, self._gid)
+				finally:
+					os.umask(um)
 
 	
 def gen_label(base, label):
