@@ -172,18 +172,14 @@ You may use the same syntax to vary dependencies as seen above in \fBDEPEND\fR.
 \fBRESTRICT\fR = \fI[nostrip,nomirror,fetch]\fR
 This should be a space delimited list of portage features to restrict.
 .br
-.I nostrip
+.I nostrip:
+final binaries/libraries will not be stripped of debug symbols.
 .br
-The final binaries/libraries of the package will not be stripped of debug symbols.
+.I nomirror:
+files in \fBSRC_URI\fR will not be downloaded from the \fBGENTOO_MIRRORS\fR.
 .br
-.I nomirror
-.br
-The files in \fBSRC_URI\fR will not be downloaded from the \fBGENTOO_MIRRORS\fR.
-.br
-.I fetch
-.br
-Portage will not automatically download the files in \fBSRC_URI\fR.  When the user
-attempts to emerge the package, the process will fail with a message telling them to download the package themselves.
+.I fetch:
+like \fInomirror\fR but the files will not be fetched via \fBSRC_URI\fR either.
 .SH "FUNCTIONS"
 .TP
 \fBpkg_setup\fR
