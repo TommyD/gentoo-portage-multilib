@@ -1,6 +1,11 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  01 Aug 2002; Daniel Robbins <drobbins@gentoo.org> emerge: rewrote the emerge
+  search code, making it fully API-compliant and much more streamlined and
+  compact.  This rewrite should fix the problem where emerge search doesn't
+  support Portage overlays (bug #5783.)
+  
   31 Jul 2002; Phil Bordelon <sunflare@gentoo.org> emerge.1: Documented the
   fact that emerge clean does not remove unslotted ebuilds.  Bumped the man
   page revision number to 2.0.22.

@@ -358,83 +358,76 @@ class search:
 	#
 	# public interface
 	#
-	def __init__(self,searchkey=""):
+	def __init__(self):
 		"""Searches the available and installed packages for the supplied search key.
 		The list of available and installed packages is created at object instantiation.
 		This makes successive searches faster."""
-		self.searchkey = searchkey
-		self.treecache = portage.portagetree()
-		self.installcache = portage.vartree()
-		self.re_portagedir = re.compile(portage.settings["PORTDIR"])
-		self.re_description = re.compile('DESCRIPTION="')
-		self.re_homepage = re.compile('HOMEPAGE="(.*)"')
-		self.initResults()
+		self.installcache = portage.db["/"]["vartree"]
 		
-	def setKey(self,searchkey):
-		"""changes the search key"""
-		self.searchkey = searchkey
-		self.initResults()
-	
-	def execute(self):
+	def execute(self,searchkey):
 		"""Performs the saerch for the supplied search key"""
 		global spinner, spinpos, myopts
+		self.searchkey=searchkey
+		self.packagematches = []
+		if "--searchdesc" in myopts:
+			self.searchdesc=1
+			self.matches = {"pkg":[], "desc":[]}
+		else:
+			self.searchdesc=0
+			self.matches = {"pkg":[]}
 		print "Searching...   ",
-		if self.searchkey:
-			self.initResults()
-			for package in self.treecache.getallnodes():
-				sys.stdout.write("\b"+spinner[spinpos])
-				spinpos=(spinpos+1)%8
-				sys.stdout.flush()
-				package_parts=package.split("/")
-				if package_parts:
-					if self.searchkey != "*":
-						if re.search(self.searchkey.lower(), package_parts[1].lower()):
-							self.packagematches.append(package)
-						elif "--searchdesc" in myopts: # DESCRIPTION searching
-							try: # Just in Case a random exception arises. (Debug at except)
-								full_package = string.strip(self.treecache.dep_bestmatch(package))
-							except Exception, e:
-								continue # Exceptions here aren't nice.
-
-							if full_package == "":
-								continue # No reason to cause an exception below.
-
-							try: # Actual filename may be a carryover from last
-								full_desc = self.getDescription(self.getFullPath(package, full_package), self.getVersion(full_package, search.VERSION_SHORT))
-								if re.search(self.searchkey.lower(), full_desc.lower()):
-									self.packagematches.append(package)
-							except Exception, e:
-								continue # Missing Ebuild / Empty Directory
-
-							full_package = ""
-					else:
-						self.packagematches.append(package)
-			self.packagematches.sort()
+		if self.searchkey=="*":
+			#hack for people who aren't regular expression gurus
+			self.searchkey==".*"
+		for package in portage.portdb.cp_all():
+			sys.stdout.write("\b"+spinner[spinpos])
+			spinpos=(spinpos+1)%8
+			sys.stdout.flush()
+			package_parts=package.split("/")
+			if re.search(self.searchkey.lower(), package_parts[1].lower()):
+				self.matches["pkg"].append(package)
+			elif self.searchdesc: # DESCRIPTION searching
+				full_package = string.strip(portage.portdb.xmatch("bestmatch-visible",package))
+				if not full_package:
+					#no match found; we don't want to query description
+					continue 
+				full_desc = portage.portdb.aux_get(full_package,["DESCRIPTION"])[0]
+				if re.search(self.searchkey.lower(), full_desc.lower()):
+					self.matches["desc"].append(full_package)
+		self.mlen=0
+		for mtype in self.matches.keys():
+			self.matches[mtype].sort()
+			self.mlen += len(self.matches[mtype])	
 
 	def output(self):
 		"""Outputs the results of the search."""
 		print "\b\b  \n[ Results for search key : "+white(self.searchkey)+" ]"
-		print "[ Applications found : "+white(str(len(self.packagematches)))+" ]"
+		print "[ Applications found : "+white(str(self.mlen))+" ]"
 		print " "
-		for match in self.packagematches:
-			full_package = string.strip(self.treecache.dep_bestmatch(match))
-			if len(full_package) > 1:
-				print green("*")+"  "+white(match)
-				print "     ", "Latest version Available:",self.getVersion(full_package, search.VERSION_RELEASE)
-				print "     ", self.getInstallationStatus(match)
-				print "     ", "Homepage:",self.getHomepage(self.getFullPath(match, full_package))
-				print "     ", "Description:",self.getDescription(self.getFullPath(match, full_package),self.getVersion(full_package, search.VERSION_SHORT))
-				print " "
-			else:
-				print green("*")+"  "+white(match)+" "+red("[ Masked ]")
-				print " "
+		for mtype in self.matches.keys():	
+			for match in self.matches[mtype]:
+				if mtype=="pkg":
+					full_package = string.strip(portage.portdb.xmatch("bestmatch-visible",match))
+					if not full_package:
+						#it's masked; we do filtering here because it's theoretically faster
+						continue
+				else:
+					full_package=match
+				desc, homepage = portage.portdb.aux_get(full_package,["DESCRIPTION","HOMEPAGE"])
+				if len(full_package) > 1:
+					print green("*")+"  "+white(match)
+					print "     ", "Latest version Available:",self.getVersion(full_package, search.VERSION_RELEASE)
+					print "     ", self.getInstallationStatus(match)
+					print "     ", "Homepage:",homepage
+					print "     ", "Description:",desc
+					print " "
+				else:
+					print green("*")+"  "+white(match)+" "+red("[ Masked ]")
+					print " "
 		
 	#
 	# private interface
 	#
-	def initResults(self):
-		self.packagematches = []
-	
 	def getInstallationStatus(self,package):
 		installed_package = self.installcache.dep_bestmatch(package)
 		result = ""
@@ -443,78 +436,6 @@ class search:
 			result = "Latest version Installed: "+version
 		else:
 			result = "Latest version Installed: [ Not Installed ]"
-		return result
-
-	def getHomepage(self,ebuildPath):
-		file = open(ebuildPath)
-		result = "";
-		indescription=0
-		homepage="";
-		while 1:
-			data = file.readline()
-			if data:
-				homepage_match=self.re_homepage.match(data)
-				if homepage_match:
-					homepage=homepage_match.group(1)
-					break;
-			else:
-				break;
-		file.close()
-		return homepage
-
-	def getDescription(self,ebuildPath,packageVersion): ## Gets description from latest ebuild ##
-		file = open(ebuildPath)
-		result = "";
-		indescription=0
-		while 1:
-			data = file.readline()
-			if data:
-				if self.re_description.match(data.upper()):
-					indescription=1
-					p = self.re_description.split(data)
-					p = p[1].split('"')
-					result = p[0].strip()
-					if len(p)>1:
-						break
-				elif indescription==1:
-					if '"' in data:
-						p = data.split('"')
-						result = result+" "+p[0].strip()
-						indescription = 0
-					else:
-						result = result+" "+data.strip()
-			else:
-				break;
-		file.close()
-		result = string.replace(result, "${PV}", packageVersion)
-		result = string.replace(result, "${pv}", packageVersion)
-		result = string.replace(result, "${description}", "KDE "  + packageVersion + " ")
-		result = string.replace(result, "\n", "")
-		file.close()
-		# format and wrap the description text nicely
-		wraplength=60
-		formatted_result=""
-		while len(result)>wraplength:
-			lineposition=0
-			position=wraplength
-			while result[lineposition+position]!=' ' and position != 0:
-				position = position-1
-			if position==0:
-				position=wraplength
-			if len(formatted_result)==0:
-				formatted_result=result[:position]
-			else:
-				formatted_result=formatted_result+"\n      "+result[:position]
-			result=result[position+1:]
-			if wraplength==60:
-				wraplength=73
-		formatted_result=formatted_result+"\n      "+result
-		return formatted_result
-
-	def getFullPath(self,packageShortName,packageFullName):  ## Returns the full path of the ebuild ##
-		absolute_path = portage.settings["PORTDIR"] + "/" + packageShortName.strip()
-		package_parts = packageFullName.split("/")
-		result = absolute_path + "/" + package_parts[1] + ".ebuild"
 		return result
 
 	def getVersion(self,full_package,detail):
@@ -1352,9 +1273,8 @@ elif "search"==myaction:
 	else:
 		searchinstance = search()
 		for mysearch in myfiles:
-			searchinstance.setKey(mysearch)
 			try:
-				searchinstance.execute()
+				searchinstance.execute(mysearch)
 			except re.error, comment:
 				print "!!! Regular expression error in \"%s\": %s" % ( mysearch, comment )
 				sys.exit(1)
