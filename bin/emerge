@@ -1,4 +1,4 @@
-#!/usr/bin/env spython
+#!/usr/bin/env python
 import os
 from os.path import walk, splitext, exists, basename, dirname
 import sys
@@ -372,7 +372,10 @@ class depgraph:
 			if myroot=="/":
 				mydep["/"]=edepend[0]+" "+edepend[1]
 			else:
-				mydep["/"],mydep[myroot]=edepend
+				# We can no longer do this: mydep["/"],mydep[myroot]=edepend
+				# edepend now has more than 2 elements.
+				mydep["/"]=edepend[0]
+				mydep[myroot]=edepend[1]
 			if addme:
 				self.digraph.addnode(mybigkey,myparent)
 			for dep in mydep.keys():

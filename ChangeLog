@@ -1,9 +1,14 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
-  22 Feb 2002; Geert Bevin <gbevin@gentoo.org> emerge: 
-  removed spurious csv conflict lines
-  fixed bug in the cleanup code where different slots weren't handled too well
+  23 Feb 2002; Daniel Robbins <drobbins@gentoo.org> emerge: spython ->
+  python fix; resolution of cvs merge conflict.  Removed edepend assignment
+  bug reintroduced in Geert's commit; added comment explaining why the new
+  code is needed so it doesn't get removed again ;)
+
+  22 Feb 2002; Geert Bevin <gbevin@gentoo.org> emerge: removed spurious cvs
+  conflict lines fixed bug in the cleanup code where different slots weren't
+  handled too well
 
 *portage-1.8.9_pre13 (22 Feb 2002)
 
