@@ -1160,22 +1160,7 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 		# Regular source tree
 		settings["KV"]=mykv
 	else:
-		mykv,err2=ExtractKernelVersion(root+"usr")
-		if mykv:
-			# Header files installed but not source tree
-			settings["KV"]=mykv
-		else:
-			if settings["CATEGORY"] != "sys-kernel":
-				# No Headers at all and not installing any.
-				print
-				print "!!! Error extracting kernel version:"
-				print "!!! You must either install kernel sources or kernel headers."
-				print "!!! Portage will not merge anything until one of those is merged."
-				print "!!!",err1
-				print "!!!",err2
-				print
-				sys.exit(1)
-
+		settings["KV"]=""
 
 	# if any of these are being called, handle them -- running them out of the sandbox -- and stop now.
 	if mydo in ["help","clean","setup","prerm","postrm","preinst","postinst","config"]:
