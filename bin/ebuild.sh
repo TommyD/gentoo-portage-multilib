@@ -943,7 +943,10 @@ inherit() {
 			olocation="${PORTDIR_OVERLAY}/eclass/${1}.eclass"
 			if [ -e "$olocation" ]; then
 				location="${olocation}"
-		
+			fi
+		fi
+		debug-print "inherit: $1 -> $location"
+
 		#We need to back up the value of DEPEND and RDEPEND to B_DEPEND and B_RDEPEND
 		#(if set).. and then restore them after the inherit call.
 	
@@ -960,8 +963,8 @@ inherit() {
 		#turn on glob expansion
 		set +f
 		
-			fi
-
+		source "$location" || die "died sourcing $location in inherit()"
+		
 		#turn off glob expansion
 		set -f
 		if [ "${RDEPEND-unset}" != "unset" ]; then
@@ -983,9 +986,6 @@ inherit() {
 		#turn on glob expansion
 		set +f
 			
-		fi
-		debug-print "inherit: $1 -> $location"
-		source "$location" || die "died sourcing $location in inherit()"
 		ECLASS="$PECLASS"
 		unset PECLASS
 
