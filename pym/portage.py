@@ -686,8 +686,9 @@ class config:
 
 		self.mygcfg=getconfig("/etc/make.globals")
 		if self.mygcfg==None:
-			print "!!! Parse error in /etc/make.globals."
+			print "!!! Parse error in /etc/make.globals. NEVER EDIT THIS FILE."
 			print "!!! Incorrect multiline literals can cause this. Do not use them."
+			print "!!! Errors in this file should be reported on bugs.gentoo.org."
 			sys.exit(1)
 		self.configlist.append(self.mygcfg)
 		self.configdict["globals"]=self.configlist[-1]
@@ -2835,10 +2836,10 @@ class portdbapi(dbapi):
 				pass
 			elif len(mylines)<auxdbkeylen:
 				doregen2=1
-			elif mylines[9]!="\n":
+			elif mylines[auxdbkeys.index("INHERITED")]!="\n":
 				#INHERITED is non-zero; we now need to verify the mtimes of the eclass files listed herein.
 				#myexts = my externally-sourced files that need mtime checks:
-				myexts=mylines[9].split()	
+				myexts=mylines[auxdbkeys.index("INHERITED")].split()	
 				for x in myexts:
 					if self.oroot:
 						extkey=self.oroot+"/eclass/"+x+".eclass"
