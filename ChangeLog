@@ -2,77 +2,82 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+*portage-2.0.48_pre4 (28 Apr 2003): Cleanups and polish.
+
+  28 Apr 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Quick fix
+  for a traceback/typo in the 'emerge -C' code.
+
 *portage-2.0.48_pre3 (28 Apr 2003): Cleanups and polish.
 
   28 Apr 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: listdir()
-	now takes care of non-existance errors instead of propagating them --- can
-	take EmptyOnError=1 as a param to return [] instead of None. All calls to
-	portage's listdir() have been updated to the new conventions. listdir()
-	ignores .# files from cvs now when ignorecvs=1 is set. Fixes for another
-	world-depleting bug. If findname() is passed a virtual, it now informs
-	the user to report a bug, instead of weird tracebacks. Added code in
-	dblink::unmerge() to remove stale virtual entries when set under trimworld.
+  now takes care of non-existance errors instead of propagating them --- can
+  take EmptyOnError=1 as a param to return [] instead of None. All calls to
+  portage's listdir() have been updated to the new conventions. listdir()
+  ignores .# files from cvs now when ignorecvs=1 is set. Fixes for another
+  world-depleting bug. If findname() is passed a virtual, it now informs
+  the user to report a bug, instead of weird tracebacks. Added code in
+  dblink::unmerge() to remove stale virtual entries when set under trimworld.
 
   28 Apr 2003; Nicholas Jones <carpaski@gentoo.org> etc-update: enabled the
-	diff pager again.
+  diff pager again.
 
   28 Apr 2003; Nicholas Jones <carpaski@gentoo.org> emerge: --changelog
-	implies --pretend. Spelling fixes. Added --skipfirst to allow the first
-	package in a resume operation to be skipped over --- allows -e to rebuild
-	almost everything, even under weird circumstances. Located another missed
-	world-file-depleting bug in unmerge() calls. Included a patch to fix an
-	off-by-one bug in depclean.
+  implies --pretend. Spelling fixes. Added --skipfirst to allow the first
+  package in a resume operation to be skipped over --- allows -e to rebuild
+  almost everything, even under weird circumstances. Located another missed
+  world-file-depleting bug in unmerge() calls. Included a patch to fix an
+  off-by-one bug in depclean.
 
   27 Apr 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Fix for
-	listdir() running on a non-existant dir -- returns None. Sets generated
-	files to the portage group -- Manifest & digests. Some coloring additions.
-	Handling of 'strict' features added. TEMPORARY addition of 'manifest' USE
-	flag so this can go mainstream now. Fixes in doebuild() to get unmerge
-	working again for ebuild. Debug code added to findname to help figuring
-	out the seemingly random tracebacks -- suspect is pkgsplit(). Unmasking
-	code for package.mask added in -- works just like mask, and can override
-	specific versions or ranges -- One per line: /etc/portage/package.unmask.
-	Security fix for python cPickle code -- mtimedb could create arbitrary
-	execution of code bug. Global update notices/info. Fixes for loops over
-	listdir() that depended upon raised errors to determine code flow.
+  listdir() running on a non-existant dir -- returns None. Sets generated
+  files to the portage group -- Manifest & digests. Some coloring additions.
+  Handling of 'strict' features added. TEMPORARY addition of 'manifest' USE
+  flag so this can go mainstream now. Fixes in doebuild() to get unmerge
+  working again for ebuild. Debug code added to findname to help figuring
+  out the seemingly random tracebacks -- suspect is pkgsplit(). Unmasking
+  code for package.mask added in -- works just like mask, and can override
+  specific versions or ranges -- One per line: /etc/portage/package.unmask.
+  Security fix for python cPickle code -- mtimedb could create arbitrary
+  execution of code bug. Global update notices/info. Fixes for loops over
+  listdir() that depended upon raised errors to determine code flow.
 
   27 Apr 2003; Nicholas Jones <carpaski@gentoo.org> cvstree.py: Added in
-	'removed' status checks.
-	
+  'removed' status checks.
+  
   27 Apr 2003; Nicholas Jones <carpaski@gentoo.org> repoman: Added in more
-	cvs checks. /space/cvsroot is now complained about.
+  cvs checks. /space/cvsroot is now complained about.
 
   27 Apr 2003; Nicholas Jones <carpaski@gentoo.org> emerge: Added in
-	PORTAGE_CALLER support to identify it as a 'do_update()' candidate.
+  PORTAGE_CALLER support to identify it as a 'do_update()' candidate.
 
   27 Apr 2003; Nicholas Jones <carpaski@gentoo.org> dodoc: Check sizes to
-	prevent 0 byte files from being added.
+  prevent 0 byte files from being added.
 
 *portage-2.0.48_pre2 (10 Apr 2003): Digests & Repoman
 
   16 Apr 2003; Nicholas Jones <carpaski@gentoo.org> repoman: Added CVS/Root
-	checks to ensure Manifests will be correct. Fixed local use-flag bug.
-	Commented out the no-stable code, as it can't be implemented well as is.
+  checks to ensure Manifests will be correct. Fixed local use-flag bug.
+  Commented out the no-stable code, as it can't be implemented well as is.
 
   16 Apr 2003; Nicholas Jones <carpaski@gentoo.org> prepstrip: Fixed a
-	problem where files were not being stripped.
+  problem where files were not being stripped.
 
   16 Apr 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Added in
-	a call to 'make -n' when under the --debug flag.
+  a call to 'make -n' when under the --debug flag.
 
 *portage-2.0.48_pre1 (10 Apr 2003): Digests & Repoman
 
   10 Apr 2003; Nicholas Jones <carpaski@gentoo.org> prepstrip: fix it so
-	that it actually strips and provides reasonable info.
-	
+  that it actually strips and provides reasonable info.
+  
   10 Apr 2003; Nicholas Jones <carpaski@gentoo.org> repoman: Added short
-	option for pretend. Added pretend capability to the majority of the
-	commit code. Bug fix for local IUSE code. Added in support for removed
-	cvs files.
-	
+  option for pretend. Added pretend capability to the majority of the
+  commit code. Bug fix for local IUSE code. Added in support for removed
+  cvs files.
+  
   10 Apr 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Changed
-	'manifest' to 'Manifest'. Removed the requirement that Manifests exist --
-	complain about it, but only die if 'strict' is set.
+  'manifest' to 'Manifest'. Removed the requirement that Manifests exist --
+  complain about it, but only die if 'strict' is set.
 
 *portage-2.0.47-r15 (09 Apr 2003): New digests/manifests, touchups.
 
