@@ -1487,7 +1487,7 @@ def movefile(src,dest,newmtime=None,sstat=None):
 				return None
 		elif S_ISLNK(sstat[ST_MODE]):
 			try:
-				target=os.readlink
+				target=os.readlink(src)
 				os.unlink(dest)
 				os.symlink(target,dest)
 				missingos.lchown(dest,sstat[ST_UID],sstat[ST_GID])
