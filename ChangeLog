@@ -3,6 +3,11 @@
 
 *portage-2.0.42 (24 Oct 2002): Bug fix release
 
+  26 Oct 2002; J Robert Ray <jrray@gentoo.org> portage.py:
+  Don't act like the download failed if after successfully downloading
+  a file its size doesn't match the file size in the digest.  Treat
+  this as a mismatched digest condition instead.
+
   24 Oct 2002; Nicholas Jones <carpaski@gentoo.org> make.defaults.5:
   Removed this file. It is horribly out of date and completely
   wrong to boot. Users shouldn't be modifying the 3 lines in this file
