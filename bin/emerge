@@ -1049,7 +1049,7 @@ if myaction in ["sync","rsync"]:
 			print ">>> starting cvs update with "+syncuri+"..."
 			sys.exit(portage.spawn("cd "+myportdir+"; cvs -q update -dP",free=1)) 
 	else:
-		print "!!!",syncuri,"not recognized; exiting."
+		print "!!! rsync setting: ",syncuri,"not recognized; exiting."
 		sys.exit(1)
 
 elif "--version" in myopts:
