@@ -291,7 +291,9 @@ or sun specifically.
 .B pkg_nofetch
 If you turn on \fIfetch\fR in \fBRESTRICT\fR, then this function will be
 run when the files in \fBSRC_URI\fR cannot be found.  Useful for
-displaying information to the user on *how* to obtain said files.
+displaying information to the user on *how* to obtain said files.  All 
+you have to do is output a message and let the function return.  Do not 
+end the function with a call to \fBdie\fR.
 .TP
 .B pkg_setup
 This function can be used if the package needs specific setup actions or
