@@ -78,8 +78,6 @@
 #include "localdecls.h"
 #include "sandbox.h"
 
-#define PIDS_FILE "/tmp/sandboxpids.tmp"
-
 /* Macros to check if a function should be executed */
 #define FUNCTION_SANDBOX_SAFE(func, path) \
         ((0 == is_sandbox_on()) || (1 == before_syscall(func, path)))
@@ -116,6 +114,7 @@
 }
 
 static char sandbox_lib[255];
+static char sandbox_pids_file[255];
 
 typedef struct {
 	int show_access_violation;
@@ -262,7 +261,13 @@ _init(void)
 	/* Get the path and name to this library */
 	tmp_string = get_sandbox_lib("/");
 	strncpy(sandbox_lib, tmp_string, 254);
+	if (tmp_string)
+		free(tmp_string);
+	tmp_string = NULL;
 
+	/* Generate sandbox pids-file path */
+	tmp_string = get_sandbox_pids_file();
+	strncpy(sandbox_pids_file, tmp_string, 254);
 	if (tmp_string)
 		free(tmp_string);
 	tmp_string = NULL;
@@ -847,7 +852,7 @@ is_sandbox_pid()
 
 	init_wrappers();
 
-	pids_stream = true_fopen(PIDS_FILE, "r");
+	pids_stream = true_fopen(sandbox_pids_file, "r");
 
 	if (NULL == pids_stream) {
 		perror(">>> pids file fopen");

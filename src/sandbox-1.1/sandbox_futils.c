@@ -65,6 +65,15 @@ get_sandbox_lib(char *sb_path)
 }
 
 char *
+get_sandbox_pids_file(void)
+{
+	if (0 < getenv("SANDBOX_PIDS_FILE")) {
+		return (strdup(getenv("SANDBOX_PIDS_FILE")));
+	}
+	return (strdup(PIDS_FILE));
+}
+
+char *
 get_sandbox_rc(char *sb_path)
 {
 	char path[255];

@@ -48,6 +48,7 @@
 
 char *get_sandbox_path(char *argv0);
 char *get_sandbox_lib(char *sb_path);
+char *get_sandbox_pids_file(void);
 char *get_sandbox_rc(char *sb_path);
 char *get_sandbox_log();
 char *sb_dirname(const char *path);

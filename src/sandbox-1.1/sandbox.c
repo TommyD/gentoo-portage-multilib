@@ -160,11 +160,20 @@ cleanup()
 	int pids_file = -1, num_of_pids = 0;
 	int *pids_array = NULL;
 	char pid_string[255];
+	char sandbox_pids_file[255];
+	char *tmp_string;
 #ifdef USE_LD_SO_PRELOAD
 	int preload_file = -1, num_of_preloads = 0;
 	char preload_entry[255];
 	char **preload_array = NULL;
 #endif
+
+	/* Generate sandbox pids-file path */
+	tmp_string = get_sandbox_pids_file();
+	strncpy(sandbox_pids_file, tmp_string, 254);
+	if (tmp_string)
+		free(tmp_string);
+	tmp_string = NULL;
 
 	/* Remove this sandbox's bash pid from the global pids
 	 * file if it has rights to adapt the ld.so.preload file */
@@ -176,7 +185,7 @@ cleanup()
 			printf("Cleaning up pids file.\n");
 
 		/* Stat the PIDs file, make sure it exists and is a regular file */
-		if (file_exist(PIDS_FILE, 1) <= 0) {
+		if (file_exist(sandbox_pids_file, 1) <= 0) {
 			perror(">>> pids file is not a regular file");
 			success = 0;
 			/* We should really not fail if the pidsfile is missing here, but
@@ -184,7 +193,7 @@ cleanup()
 			return;
 		}
 
-		pids_file = file_open(PIDS_FILE, "r+", 0);
+		pids_file = file_open(sandbox_pids_file, "r+", 0);
 		if (-1 == pids_file) {
 			success = 0;
 			/* Nothing more to do here */
@@ -268,7 +277,7 @@ cleanup()
 			pids_file = -1;
 
 			/* remove the pidsfile, as this was the last sandbox */
-			unlink(PIDS_FILE);
+			unlink(sandbox_pids_file);
 		}
 
 		if (pids_array != NULL)
@@ -509,6 +518,7 @@ main(int argc, char **argv)
 	char sandbox_debug_log[255];
 	char sandbox_dir[255];
 	char sandbox_lib[255];
+	char sandbox_pids_file[255];
 	char sandbox_rc[255];
 	char pid_string[255];
 	char **argv_bash = NULL;
@@ -551,6 +561,13 @@ main(int argc, char **argv)
 		/* Generate sandbox lib path */
 		tmp_string = get_sandbox_lib(sandbox_dir);
 		strncpy(sandbox_lib, tmp_string, 254);
+		if (tmp_string)
+			free(tmp_string);
+		tmp_string = NULL;
+
+		/* Generate sandbox pids-file path */
+		tmp_string = get_sandbox_pids_file();
+		strncpy(sandbox_pids_file, tmp_string, 254);
 		if (tmp_string)
 			free(tmp_string);
 		tmp_string = NULL;
@@ -776,11 +793,11 @@ main(int argc, char **argv)
 
 		/* Load our PID into PIDs file */
 		success = 1;
-		if (file_exist(PIDS_FILE, 1) < 0) {
+		if (file_exist(sandbox_pids_file, 1) < 0) {
 			success = 0;
-			fprintf(stderr, ">>> %s is not a regular file", PIDS_FILE);
+			fprintf(stderr, ">>> %s is not a regular file", sandbox_pids_file);
 		} else {
-			pids_file = file_open(PIDS_FILE, "r+", 1, 0644);
+			pids_file = file_open(sandbox_pids_file, "r+", 1, 0644);
 			if (-1 == pids_file)
 				success = 0;
 		}

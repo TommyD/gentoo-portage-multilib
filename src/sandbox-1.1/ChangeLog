@@ -2,6 +2,11 @@
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+  28 Sep 2003; Martin Schlemmer <azarah@gentoo.org> libsandbox.c, sandbox.c,
+  sandbox.h, sandbox_futils.c :
+  Add support to set the pids file via SANDBOX_PIDS_FILE at startup.  If
+  it is not set, it will revert to its old value.
+
   27 Sep 2003; Martin Schlemmer <azarah@gentoo.org> libsandbox.c :
   Fix our mkdir wrapper to check if the dir exist, and return EEXIST if so,
   rather than failing with a violation, bug #29748.
