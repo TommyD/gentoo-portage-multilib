@@ -2,6 +2,7 @@
 # Copyright 2001 Gentoo Technologies, Inc.; Distributed under the GPL
 # Written by Daniel Robbins (drobbins@gentoo.org)
 
+*portage 1.8.6-r1 (24 Jan 2002)
 
   24 Jan 2002: <karltk@gentoo.org>: Fixed to typos in dojar
   
