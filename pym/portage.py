@@ -51,7 +51,7 @@ VERSION="@portage_version@"
 import string,os
 from stat import *
 from commands import *
-import fchksum,types
+import types
 import sys
 import shlex
 import shutil
@@ -62,6 +62,31 @@ import copy
 import signal
 import time
 import missingos
+
+try:
+	import fchksum
+	def perform_checksum(filename):
+		return fchksum.fmd5t(filename)
+
+except ImportError:
+	import md5
+	def md5_to_hex(md5sum):
+		hexform = ""
+		for ix in xrange(len(md5sum)):
+			hexform = hexform + "%02x" % ord(md5sum[ix])
+		return(string.lower(hexform))
+	
+	def perform_checksum(filename):
+		f = open(filename, 'rb')
+		blocksize=32768
+		data = f.read(blocksize)
+		size = 0L
+		sum = md5.new()
+		while data:
+			sum.update(data)
+			size = size + len(data)
+			data = f.read(blocksize)
+		return (md5_to_hex(sum.digest()),size)
 
 #handle ^C interrupts correctly:
 def exithandler(signum,frame):
@@ -813,7 +838,7 @@ def digestgen(myarchives,overwrite=1):
 	outfile=open(myoutfn,"w")
 	for x in myarchives:
 		myfile=settings["DISTDIR"]+"/"+x
-		mymd5=md5(myfile)
+		mymd5=perform_md5(myfile)
 		mysize=os.stat(myfile)[ST_SIZE]
 		#The [:-1] on the following line is to remove the trailing "L"
 		outfile.write("MD5 "+mymd5+" "+x+" "+`mysize`[:-1]+"\n")	
@@ -860,7 +885,7 @@ def digestcheck(myarchives):
 				print "!!! No message digest found for",x+"."
 				print "!!! Type \"ebuild foo.ebuild digest\" to generate a digest."
 				return 0
-		mymd5=md5(settings["DISTDIR"]+"/"+x) 
+		mymd5=perform_md5(settings["DISTDIR"]+"/"+x)
 		if mymd5 != mydigests[x][0]:
 			print
 			print "!!!",x+": message digests do not match!"
@@ -1258,8 +1283,8 @@ def movefile(src,dest,newmtime=None,sstat=None):
 def getmtime(x):
 	 return `os.lstat(x)[-2]`
 
-def md5(x):
-	return fchksum.fmd5t(x)[0]
+def perform_md5(x):
+	return perform_checksum(x)[0]
 
 def pathstrip(x,mystart):
     cpref=os.path.commonprefix([x,mystart])
@@ -2635,7 +2660,7 @@ class dblink:
 				if not os.path.isfile(obj):
 					print "--- !obj  ","obj", obj
 					continue
-				mymd5=md5(obj)
+				mymd5=perform_md5(obj)
 				# string.lower is needed because db entries used to be in upper-case.  The
 				# string.lower allows for backwards compatibility.
 				if mymd5 != string.lower(pkgfiles[obj][2]):
@@ -2932,7 +2957,7 @@ class dblink:
 				self.mergeme(srcroot,destroot,outfile,secondhand,offset+x+"/",thismtime)
 			elif S_ISREG(mymode):
 				# we are merging a regular file
-				mymd5=md5(mysrc)
+				mymd5=perform_md5(mysrc)
 				# calculate config file protection stuff
 				mydestdir=os.path.dirname(mydest)	
 				moveme=1
@@ -2948,7 +2973,7 @@ class dblink:
 						# we only need to tweak mydest if cfg file management is in play.
 						if myppath:
 							# we have a protection path; enable config file management.
-							if mymd5!=md5(mydest):
+							if mymd5!=perform_md5(mydest):
 								# the files are not identical (from an md5 perspective); we cannot simply overwrite.
 								pnum=-1
 								# set pmatch to the literal filename only
@@ -2976,7 +3001,7 @@ class dblink:
 								# this keeps on-disk cfg management clutter to a minimum.
 								cleanup=0
 								if mypfile:
-									pmd5=md5(mydestdir+"/"+mypfile)
+									pmd5=perform_md5(mydestdir+"/"+mypfile)
 									if mymd5==pmd5:
 										mydest=(mydestdir+"/"+mypfile)
 										cleanup=1

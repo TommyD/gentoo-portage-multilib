@@ -4,6 +4,12 @@
   22 Apr 2002; Daniel Robbins <drobbins@gentoo.org>: emerge: rsync zlib
   compression enabled by default.
 
+*portage-1.9.3 (24 Apr 2002)
+
+  24 Apr 2002; Jon Nelson <jnelson@gentoo.org>: portage.py, chkcontents:
+  
+  Emulate fchksum's md5 checksum routine
+  
 *portage-1.9.2 (21 Apr 2002)
 
   21 Apr 2002; Daniel Robbins <drobbins@gentoo.org>: portage.py: signal

@@ -5,7 +5,29 @@
 # actual programs on the system (and makes sure that symlinks point to
 # the right files).
 
-import string, fchksum, os.path, os
+import string, os.path, os
+try:
+	import fchksum
+	def perform_checksum(filename): return fchksum.fmd5t(filename)
+except ImportError:
+	import md5
+	def md5_to_hex(md5sum):
+		hexform = ""
+		for ix in xrange(len(md5sum)):
+			hexform = hexform + "%02x" % ord(md5sum[ix])
+		return(string.lower(hexform))
+	
+	def perform_checksum(filename):
+		f = open(filename, 'rb')
+		blocksize=32768
+		data = f.read(blocksize)
+		size = 0L
+		sum = md5.new()
+		while data:
+			sum.update(data)
+			size = size + len(data)
+			data = f.read(blocksize)
+		return (md5_to_hex(sum.digest()),size)
 
 def CONTENTScheck(path):
 	try:
@@ -28,7 +50,7 @@ def CONTENTScheck(path):
 		if (items[0] == 'obj'):
 			md5stored = string.lower(items[2])
 			# fchksum.fmdft(file) returns the file's md5sum and the file's size
-			md5real = string.lower(fchksum.fmd5t(items[1])[0])
+			md5real = string.lower(perform_checksum(items[1])[0])
 			if (md5stored != md5real):
 				print "%s has md5sum of %s instead of %s" % (items[1],md5real, md5stored)
 		elif (items[0] == 'sym'):
