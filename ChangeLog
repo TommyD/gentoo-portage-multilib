@@ -7,6 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  21 Mar 2005; Marius Mauch <genone@gentoo.org> bin/ebuild-functions.sh:
+  Force the copy by removing the destination first in econf/autoconfig,
+  prevents sandbox violations by libtoolize calls without --copy.
+
   15 Mar 2005; Brian Harring <ferringb@gentoo.org> pym/cache/*;
   Cache updates moving _eclasses_ handling up into the template layer, 
   added delayed sync'ing support (see database.autocommit) which is relevant 

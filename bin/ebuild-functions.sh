@@ -77,7 +77,7 @@ econf() {
 				local x
 				for x in $(find ${WORKDIR} -type f -name config.guess -o -name config.sub); do
 					echo " * econf: updating ${x/${WORKDIR}\/} with /usr/share/gnuconfig/${x##*/}"
-					cp "/usr/share/gnuconfig/${x##*/}" "${x}"
+					cp -f "/usr/share/gnuconfig/${x##*/}" "${x}"
 				done
 			fi
 		fi
