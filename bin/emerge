@@ -697,6 +697,10 @@ class depgraph:
 
 	def select_dep(self,myroot,depstring,myparent=None,arg=None):
 		"given a dependency string, create the appropriate depgraph and return 1 on success and 0 on failure"
+		if "--debug" in myopts:
+			print
+			print "Parent:   ",myparent
+			print "Depstring:",depstring
 		if not arg:
 			#processing dependencies
 			mycheck=portage.dep_check(depstring,self.mydbapi[myroot])
@@ -706,6 +710,8 @@ class depgraph:
 		else:
 			#we're processing a command-line argument; unconditionally merge it even if it's already merged
 			mymerge=[depstring]
+		if "--debug" in myopts:
+			print "Candidates:",mymerge
 		for x in mymerge:
 			if x[0]=="!":
 				#add our blocker; it will be ignored later if necessary (if we are remerging the same pkg, for example)
@@ -736,6 +742,9 @@ class depgraph:
 						print "\nemerge: there are no masked or unmasked ebuilds to satisfy "+xinfo+"."
 					return 0
 
+				if "--debug" in myopts:
+					print "ebuild:",myeb
+
  				if "--upgradeonly" in myopts:
  					# Check that there isn't a newer version of this package already installed
  					cand=self.is_newer_ver_installed(myroot,x,myeb)
@@ -761,6 +770,9 @@ class depgraph:
 				#if --onlydeps is specified.
 				if not self.create(myk,myparent,"--onlydeps" not in myopts):
 					return 0
+
+		if "--debug" in myopts:
+			print "Exiting...",myparent
 		return 1
 		
 

@@ -2,6 +2,24 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+*portage-2.0.47-r13 (02 Mar 2003): Fixes & Security -- Repoman+Digests
+
+  02 Apr 2003; Nicholas Jones <carpaski@gentoo.org> emerge: Added debug to
+  the dep selection code in depgraph.
+
+  02 Apr 2003; Nicholas Jones <carpaski@gentoo.org> cvstree.py: Added new
+	module to handle cvs information without having to ask 'cvs status' many
+	times to determine file locations.
+
+  02 Apr 2003; Nicholas Jones <carpaski@gentoo.org> repoman: Major fix ups
+  to ease the introduction of enhanced digests. Intelligent cvs queries
+  and use of the new cvstree module for information about files in the tree.
+  Auto-digests, auto-fetches trivial cvs changes,  detects changelogs that
+  exist but have not been added to cvs, and detects '*' in KEYWORDS.
+
+  02 Apr 2003; Nicholas Jones <carpaski@gentoo.org> *: A typo fix or two.
+  prepstrip: fixup for sed's issues with '\000' (made it \001).
+
 *portage-2.0.47-r12 (27 Mar 2003): Fixes & Security -- Repoman+Digests
 
   27 Mar 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Moved all

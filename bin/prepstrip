@@ -13,19 +13,21 @@ else:
 	STRIP=strip
 fi
 
+echo -n "strip: "
 for x in "$@"; do # "$@" quotes each element... Plays nice with spaces.
 	if [ -d "${D}${x}" ]; then
 		# We only want files. So make a pass for each directory and call again.
-		find "${D}${x}" -type f \( -perm +0111 -or -regex '\.so$|\.so\.' \) -print0 |
-				sed -r 's:(\d000?)${D}:\1:g' | xargs -0 -r -n500 prepstrip
+		find "${D}${x}" -type f \( -perm +0111 -or -regex '\.so$|\.so\.' \) |
+				tr '\n' '\001' | sed -r 's:(\d001?)${D}:\1:g' |
+				tr '\001' '\000' | xargs -0 -r -n500 prepstrip
 	else
 		f=$(file "${x}")
 		if [ -z "${f/*SB executable*/}" ]; then
-			echo "${x}"
+			echo -n "${x}"
 			${STRIP} "${x}"
 		fi
 		if [ -z "${f/*SB shared object*/}" ]; then
-			echo "${x}"
+			echo -n "${x}"
 			${STRIP} --strip-debug "${x}"
 		fi
 	fi

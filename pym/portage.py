@@ -1473,7 +1473,7 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 	settings["WORKDIR"]=settings["BUILDDIR"]+"/work"
 	settings["D"]=settings["BUILDDIR"]+"/image/"
 
-	if mydo=="unmerge": 
+	if mydo=="unmerge":
 		return unmerge(settings["CATEGORY"],settings["PF"],myroot)
 
 	if settings.has_key("PORT_LOGDIR"):
@@ -4563,7 +4563,7 @@ if not os.environ.has_key("SANDBOX_ACTIVE"):
 			sys.stderr.write(">>> "+cachedir+" doesn't exist, creating it...\n")
 		if not os.path.exists(cachedir+"/dep"):
 			os.makedirs(cachedir+"/dep",2755)
-			sys.stderr.write(">>> "+cachedir+"/dep","doesn't exist, creating it...\n")
+			sys.stderr.write(">>> "+cachedir+"/dep doesn't exist, creating it...\n")
 		try:
 			os.chown(cachedir,uid,portage_gid)
 			os.chmod(cachedir,0775)

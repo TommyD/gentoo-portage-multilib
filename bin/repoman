@@ -7,7 +7,7 @@
 # Then, check to make sure deps are satisfiable (to avoid "can't find match for" problems)
 # that last one is tricky because multiple profiles need to be checked.
 
-import os,sys,string,signal,readline,portage,re
+import os,sys,string,signal,readline,portage,re,cvstree
 from output import *
 from commands import getstatusoutput
 
@@ -41,12 +41,28 @@ optionshelp={
 "--commitmsg"    :"Adds a commit message on the command line.",
 "--commitmsgfile":"Adds a commit message from file on the command line."
 }
-qacats=["digest.stray","digest.missing","ebuild.invalidname","ebuild.namenomatch","changelog.missing",
-"ebuild.notadded","digest.notadded","ebuild.disjointed","digest.disjointed", "DEPEND.bad","RDEPEND.bad",
-"DEPEND.badmasked","RDEPEND.badmasked","ebuild.syntax","ebuild.output","ebuild.nesteddie","LICENSE.invalid",
-"IUSE.invalid","KEYWORDS.invalid"]
-qawarnings=["changelog.missing","ebuild.notadded","digest.notadded","DEPEND.badmasked","RDEPEND.badmasked",
-"IUSE.invalid"]
+qacats=[
+"digest.stray","digest.missing",
+"ebuild.invalidname","ebuild.namenomatch",
+"changelog.missing",
+"changelog.notadded","ebuild.notadded","digest.notadded",
+"ebuild.disjointed","digest.disjointed",
+"DEPEND.bad","RDEPEND.bad",
+"DEPEND.badmasked","RDEPEND.badmasked",
+"ebuild.syntax","ebuild.output",
+"ebuild.nesteddie","LICENSE.invalid",
+"IUSE.invalid","KEYWORDS.invalid"
+]
+qawarnings=[
+"changelog.missing",
+"changelog.notadded",
+"ebuild.notadded",
+"digest.notadded",
+"digest.missing",
+"DEPEND.badmasked",
+"RDEPEND.badmasked",
+"IUSE.invalid"
+]
 missingvars=["KEYWORDS","LICENSE","DESCRIPTION","SLOT"]
 allvars=portage.auxdbkeys
 commitmessage=None
@@ -64,6 +80,7 @@ qahelp={
 	"digest.disjointed":"Digests not added to cvs when the matching ebuild has been added",
 	"digest.notadded":"Digests that exist but have not been added to cvs",
 	"ebuild.notadded":"Ebuilds that exist but have not been added to cvs",
+	"changelog.notadded":"ChangeLogs that exist but have not been added to cvs",
 	"KEYWORDS.missing":"Ebuilds that have a missing KEYWORDS variable",
 	"LICENSE.missing":"Ebuilds that have a missing LICENSE variable",
 	"DESCRIPTION.missing":"Ebuilds that have a missing DESCRIPTION variable",
@@ -85,11 +102,11 @@ def err(txt):
 	sys.exit(1)
 
 
-ven_cat = r'[\w0-9-]+'                                # Category
-ven_nam = r'([+a-z0-9-]+)'                            # Name
-ven_ver = r'((?:\d+\.)*\d+[a-z]?)'                    # Version
-ven_suf = r'(_(alpha\d*|beta\d*|pre\d*|rc\d*|p\d+))?' # Suffix
-ven_rev = r'(-r\d+)?'                                 # Revision
+ven_cat = r'[\w0-9-]+'                                 # Category
+ven_nam = r'([+a-z0-9-]+(?:[+_a-z0-9-]*[+a-z0-9-]+)*)' # Name
+ven_ver = r'((?:\d+\.)*\d+[a-z]?)'                     # Version
+ven_suf = r'(_(alpha\d*|beta\d*|pre\d*|rc\d*|p\d+))?'  # Suffix
+ven_rev = r'(-r\d+)?'                                  # Revision
 	
 ven_string=ven_cat+'/'+ven_nam+'-'+ven_ver+ven_suf+ven_rev
 valid_ebuild_name_re=re.compile(ven_string+'$', re.I)
@@ -254,8 +271,6 @@ except:
 	err("Couldn't read KEYWORDS from keywords.desc")
 if not kwlist:
 	kwlist=["alpha","arm","hppa","mips","ppc","sparc","x86"]
-	for pos in range(0,len(kwlist)):
-		kwlist+=["~"+kwlist[pos]]
 
 scanlist=[]
 if repolevel==2:
@@ -295,6 +310,7 @@ for x in scanlist:
 	#ebuilds and digests added to cvs respectively.
 	eadded=[]
 	dadded=[]
+	cladded=0
 	catdir,pkgdir=x.split("/")
 	checkdir=repodir+"/"+x
 	checkdirlist=os.listdir(checkdir)
@@ -315,6 +331,8 @@ for x in scanlist:
 			objsadded.append(splitl[0])
 			if splitl[0][-7:]==".ebuild":
 				eadded.append(splitl[0][:-7])
+			if splitl[0]=="ChangeLog":
+				cladded=1
 	except IOError:
 		continue
 	try:
@@ -353,9 +371,13 @@ for x in scanlist:
 						stats["digest.stray"]=stats["digest.stray"]+1
 						fails["digest.stray"].append(x+"/files/"+y)
 					
-	if not "ChangeLog" in checkdirlist:
-		stats["changelog.missing"]=stats["changelog.missing"]+1
+	if "ChangeLog" not in checkdirlist:
+		stats["changelog.missing"]+=1
 		fails["changelog.missing"].append(x+"/ChangeLog")
+	if not cladded:
+		stats["changelog.notadded"]+=1
+		fails["changelog.notadded"].append(x+"/ChangeLog")
+		
 	for y in ebuildlist:
 		if y not in eadded:
 			#ebuild not added to cvs
@@ -445,7 +467,7 @@ for x in scanlist:
 		#keyword checks
 		myuse=string.split(portage.db["/"]["porttree"].dbapi.aux_get(catdir+"/"+y,["KEYWORDS"])[0])
 		for mypos in range(0,len(myuse)):
-			if not myuse[mypos].strip("~-") in kwlist:
+			if (myuse[mypos]!="-*") and (myuse[mypos].strip("~-") not in kwlist):
 				stats["KEYWORDS.invalid"]=stats["KEYWORDS.invalid"]+1
 				fails["KEYWORDS.invalid"].append(x+"/"+y+".ebuild: %s" % myuse[mypos])
 
@@ -537,6 +559,8 @@ def dopkgdir(myheaders, basepath=""):
 	#print myheaders
 	for x in myheaders:
 		xs=x.split("/")
+		if xs[0]==".":
+			xs=xs[1:]
 		if len(xs)==1:     # It's an ebuild, we hope.
 			if xs[0][-len(".ebuild"):]==".ebuild":
 				if x[:-len(".ebuild")] not in mychanges:
@@ -590,64 +614,86 @@ else:
 		print "Dry-run cvs update complete."
 		print green("RepoMan sez:"), "\"So, you want to play it safe. Good call.\"\n"
 	else:
-		print "Checking in the tree:",reporoot
-		mystatus=getstatusoutput('/usr/bin/cvs status 2>/dev/null | egrep "Status:|Repository revision:" | tr "\n" "\001" | sed \'s#File:[^\d001]*Status: \([^\d001]\+\)[^/]*[^ ]*/'+reporoot+'/\([^\d001]\+\),v#\\1 -=- \\2#g\' | tr "\001" "\n" | egrep -v \'^[:space:]*$\'')
-		mylines=string.split(mystatus[1], "\n")
-		if mystatus[0]:
-			#print mylines
-			print red("Failed to check the tree.")
-			sys.exit(mystatus[0])
+		mycvstree=cvstree.getentries("./",recursive=1)
+		if not mycvstree:
+			print "!!! It seems we don't have a cvs tree?"
+			sys.exit(3)
+
+		myunadded=cvstree.findunadded(mycvstree,recursive=1,basedir="./")
+		if myunadded:
+			print red("!!! The following files are in your cvs tree but are not added to the master")
+			print red("!!! tree. Please remove them from the cvs tree or add them to the master tree.")
+			for x in myunadded:
+				print "   ",x
+			print
+			print
+			sys.exit(1)
+
+		mymissingfiles=cvstree.findmissing(mycvstree,recursive=1,basedir="./")
+		mymissing=[]
+		for x in mymissingfiles:
+			xs=string.split(x,"/")
+			if len(xs[-1])>len("digest-"):
+				if xs[-1][:len("digest-")]=="digest-":
+					continue
+			mymissing+=[x]
+		del mymissingfiles
+		
+		if mymissing:
+			print "The following files are obviously missing from your cvs tree"
+			print "and are being fetched so we can continue:"
+			for x in mymissing:
+				print "   ",x
+			retval=os.system("/usr/bin/cvs -q up "+string.join(mymissing))
+			if retval:
+				print "!!! Exiting on cvs (shell) error code:",retval
+				sys.exit(retval)
+			del mymissing
+		
+		retval=getstatusoutput("/usr/bin/cvs -n up | egrep '^[^\?] .*' | egrep -v '^. .*/digest-[^/]+'")
+		
+		mylines=string.split(retval[1], "\n")
 		myupdates=[]
+		for x in mylines:
+			if not x:
+				continue
+			if x[0] not in ["U","P","M"]: # Ignore updates and patches, they are ok.
+				print red("!!! Please fix the following issues reported from cvs: ")+green("(U and P are ok)")
+				print red("!!! Note: This is a pretend/no-modify pass...")
+				print retval[1]
+				print
+				sys.exit(1)
+			elif x[0] in ["U","P"]:
+				myupdates+=[x[2:]]
+		
+		if myupdates:
+			print green("Fetching trivial updates...")
+			retval=os.system("/usr/bin/cvs up "+string.join(myupdates))
+			if retval!=0:
+				print "!!! cvs exited with an error. Terminating."
+				sys.exit(retval)
+		
+		mycvstree=cvstree.getentries("./",recursive=1)
+		mychanged=cvstree.findchanged(mycvstree,recursive=1,basedir="./")
+		mynew=cvstree.findnew(mycvstree,recursive=1,basedir="./")
+		if not (mychanged or mynew):
+			print green("RepoMan sez:"), "\"Doing nothing is not always good for QA.\"\n"
+			print
+			print "(Didn't find any changed files...)"
+			print
+			sys.exit(0)
+
+		myupdates=mychanged+mynew
 		myheaders=[]
 		mydirty=[]
-		for line in mylines:
-			if not line:
-				continue
-			mysplit=string.split(line," -=- ")
-			#print portage.settings["PORTDIR"],mysplit
-			if mysplit[0][:5]=="Needs" or mysplit[0][:5]=="Entry":
-				mydirty.append(mysplit[1])
+		headerstring="'\$Header: .*"
+		headerstring+="\$'"
+		for myfile in myupdates:
+			myout=getstatusoutput("egrep -q "+headerstring+" "+myfile)
+			if myout[0]==0:
+				myheaders.append(myfile)
 
-			elif mysplit[0]=="Up-to-date":
-				#print ".",
-				continue
-			else:
-				if len(mysplit)<2:
-					if repolevel!=3:
-						print "!!! There is a package that has not been added yet. Please add and commit"
-						print "!!! it from it's directory."
-						try:
-							print "!!! See:",bold(string.split(mysplit[0],"\t")[0])
-						except:
-							pass
-						sys.exit(1)
-					myout=[0]
-					mysplit=[0,string.split(string.split(mysplit[0],"\t")[1]," ")[1]]
-				else:
-					headerstart="'\$Header: .*"
-					myout=getstatusoutput("egrep -q "+headerstart+"\$' "+mysplit[1])
-				if myout[0]==0:
-					myheaders.append(mysplit[1])
-				myupdates.append(mysplit[1])
-			#print line
-
-		for x in myupdates:
-			for y in mydirty:
-				#print "dirties:",x,y
-				if re.match(os.path.dirname(x),os.path.dirname(y)):
-					print red("Some files are not up to date! Digests will be wrong")
-					print red("for all packages in which these files are involved.")
-					print green("/usr/bin/cvs status")
-					print
-					print green("RepoMan sez:"), "\"Ah ha! Thought you could sneak in a dirty commit, didn't you?\"\n"
-					print
-					for z in mydirty:
-						print "Dirty:",z
-					sys.exit(1)
 		print "*",green(str(len(myupdates))),"files being committed...",green(str(len(myheaders))),"have headers that will change."
-		print
-		print myupdates
-		print myheaders
 		print "*","Files that have headers will be re-digested and the digests recommited."
 		print
 		unlinkfile=0
@@ -682,11 +728,12 @@ else:
 		print mycomment
 		print green("------------------------------------------------------------------------------")
 		print
-		#retval=0
+
 		retval=os.system("/usr/bin/cvs -q commit -F "+commitmessagefile)
 		if retval:
 			print "!!! Exiting on cvs (shell) error code:",retval
 			sys.exit(retval)
+
 		mychanges=[]
 		#print myheaders
 		if myheaders:
@@ -695,7 +742,7 @@ else:
 			elif repolevel==2: # In a category dir
 				mychanges=docatdir(myheaders)
 			elif repolevel==1: # repo-cvsroot
-				print green("RepoMan sez:"), "\"You're rather crazy to do the entire repository.\"\n"
+				print green("RepoMan sez:"), "\"You're rather crazy... doing the entire repository.\"\n"
 				mychanges=doall(myheaders)
 			else:
 				print red("I'm confused... I don't know where I am!")
@@ -715,13 +762,12 @@ else:
 		if "sign" in portage.features:
 			if os.system("/usr/bin/cvs -q add "+string.join(mysigs)):
 				print red("!!! Seem to have had a problem adding the signatures...")
+
 		retval=os.system("/usr/bin/cvs -q commit -F "+commitmessagefile)
 		if retval:
 			print "!!! Exiting on cvs (shell) error code:",retval
 			sys.exit(retval)
 		
-		#print "myheaders:",myheaders
-		#print "mychanges:",mychanges
 		if unlinkfile:
 			os.unlink(commitmessagefile)
 		print
@@ -729,12 +775,4 @@ else:
 		print green("RepoMan sez:"), "\"If everyone were like you, I'd be out of business!\"\n"
 	sys.exit(retval)
 sys.exit(0)
-
-
-
-
-
-
-
-
 
