@@ -1519,7 +1519,7 @@ class config:
 				else:
 					self.pmaskdict[mycatpkg]=[x]
 
-			pkgprovidedlines = grab_multiple("package.provided", locations, grabfile)
+			pkgprovidedlines = grab_multiple("package.provided", self.profiles, grabfile)
 			pkgprovidedlines = stack_lists(pkgprovidedlines, incremental=1)
 
 			self.pprovideddict = {}

@@ -11,7 +11,7 @@
 
   25 Jul 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge pym/portage.py:
   Deprecated --inject and added support for package.provided in both the
-  profile and /etc/portage directories.
+  profiles and /etc/portage/profile directory.
 
   24 Jul 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge pym/portage.py:
   Added USE flag based SLOT support.
