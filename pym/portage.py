@@ -1331,10 +1331,15 @@ class config:
 		if os.environ.get("PORTAGE_CALLER","") != "repoman":
 		   	user_profile_dir = myroot+USER_CONFIG_PATH
 		
-		if os.path.exists("/etc/portage/virtuals"):
-			writemsg("\n\n*** /etc/portage/virtuals should be moved to /etc/portage/profile/virtuals\n")
-			writemsg("*** Please correct this by merging or moving the file. (Deprecation notice)\n\n")
-			time.sleep(1)
+		# XXX: Removing this as virtuals and profile/virtuals behave
+		# differently. portage/profile/virtuals overrides the default
+		# virtuals but are overridden by installed virtuals whereas
+		# portage/virtuals overrides everything.
+
+		#if os.path.exists("/etc/portage/virtuals"):
+		#	writemsg("\n\n*** /etc/portage/virtuals should be moved to /etc/portage/profile/virtuals\n")
+		#	writemsg("*** Please correct this by merging or moving the file. (Deprecation notice)\n\n")
+		#	time.sleep(1)
 		
 		
 		self.dirVirtuals = grab_multiple("virtuals", myvirtdirs, grabdict)

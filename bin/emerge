@@ -2007,6 +2007,396 @@ class depgraph:
 			else:
 				sys.exit(0)
 
+class graph_display:
+	
+	def __init__(self, mygraph):
+		self.graph = mygraph
+		self.fetchsizes = {}
+		self.overlays = []
+		self.changelogs = []
+	
+	def old_version(self, mydep):
+		dep_type = mydep[0]
+		dep_root = mydep[1]
+		dep_pkg = mydep[2]
+		
+		if not portage.db[dep_root]["vartree"].exists_specific_cat(dep_pkg):
+			return None
+		
+		if dep_type == "binary":
+			mynewslot=portage.db["/"]["bintree"].getslot(dep_pkg)
+		else:
+			mynewslot=portage.db["/"]["porttree"].getslot(dep_pkg)
+		
+		mycurpkgs = portage.db[dep_root]["vartree"].dbapi.match(portage.portage_versions.pkgsplit(dep_pkg)[0])
+		for x in range(len(mycurpkgs)-1, -1, -1):
+			if portage.db[dep_root]["vartree"].getslot(mycurpkgs[x]) != mynewslot:
+				del mycurpkgs[x]
+		
+		if not mycurpkgs:
+			return None
+		
+		return portage.best(mycurpkgs)
+	
+	def use_flags(self, mydep):
+		portage.settings.unlock()
+		portage.settings.setcpv(mydep[2])
+		myflags = portage.settings["USE"].split()
+		portage.settings.setcpv(None)
+		portage.settings.lock()
+		return myflags
+	
+	def format_summary(self, mydep):
+		dep_type = mydep[0]
+		dep_root = mydep[1]
+		dep_pkg = mydep[2]
+		dep_extra = mydep[3]
+		
+		problem_status = " "
+		new_status = " "
+		slot_status = " "
+		update_status = " "
+		downgrade_status = " "
+		
+		if dep_extra == "nomerge":
+			dep_type = darkblue("merged")
+		
+		elif dep_type == "blocks":
+			problem_status = red("B")
+		
+		else:
+			if dep_type != "binary":
+				restrictions = portage.db["/"]["porttree"].dbapi.aux_get(dep_pkg, ["RESTRICT"])[0].split()
+				if "fetch" in restrictions:
+					if portage.db["/"]["porttree"].dbapi.fetch_check(dep_pkg, portage.settings):
+						problem_status = green("f")
+					else:
+						problem_status = red("F")
+			
+			if portage.db[dep_root]["vartree"].exists_specific(dep_pkg):
+				new_status = yellow("R")
+			
+			else:
+				prevpkg = self.old_version(mydep)
+				if prevpkg:
+					update_status = turquoise("U")
+					myoldpkg = portage.portage_versions.pkgsplit(prevpkg)
+					mynewpkg = portage.portage_versions.pkgsplit(dep_pkg)
+					if portage.portage_versions.pkgcmp(mynewpkg, myoldpkg) < 0:
+						downgrade_status = blue("D")
+				else:
+					new_status = green("N")
+					if portage.db[dep_root]["vartree"].exists_specific_cat(dep_pkg):
+						slot_status = green("S")
+		
+		summary = "["+dep_type+" "
+		summary += problem_status
+		summary += new_status
+		summary += slot_status
+		summary += update_status
+		summary += downgrade_status+"]"
+		
+		return summary
+	
+	def format_new_version(self, mydep):
+		if mydep[0] == "blocks":
+			return red(mydep[2])
+		elif mydep[3] == "nomerge":
+			return darkblue(mydep[2])
+		return darkgreen(mydep[2])
+	
+	def format_old_version(self, mydep):
+		dep_type = mydep[0]
+		dep_root = mydep[1]
+		dep_pkg = mydep[2]
+		dep_extra = mydep[3]
+		
+		if dep_extra == "nomerge":
+			return ""
+		
+		if dep_type == "blocks":
+			return red("("+dep_extra+")")
+		
+		prevpkg = self.old_version(mydep)
+		
+		if not prevpkg or prevpkg == dep_pkg:
+			return ""
+		
+		myoldsplit = portage.portage_versions.pkgsplit(prevpkg)
+		version = myoldsplit[1]
+		if myoldsplit[2] != "r0":
+			version += "-"+myoldsplit[2]
+		return blue("["+version+"]")
+	
+	def format_flags(self, mydep):
+		dep_type = mydep[0]
+		dep_root = mydep[1]
+		dep_pkg = mydep[2]
+		dep_extra = mydep[3]
+		
+		if dep_type == "blocks" or dep_extra == "nomerge":
+			return ""
+		
+		if dep_type == "binary":
+			iuse = portage.db["/"]["bintree"].dbapi.aux_get(dep_pkg,["IUSE"])[0].split()
+		elif dep_type == "ebuild":
+			iuse = portage.db["/"]["porttree"].dbapi.aux_get(dep_pkg,["IUSE"])[0].split()
+		else:
+			iuse = []
+		iuse.sort()
+		iuse = portage_util.unique_array(iuse)
+		
+		cur_use = self.use_flags(mydep)
+		bad_use = portage.settings.usemask
+		
+		prevpkg = self.old_version(mydep)
+		if prevpkg:
+			old_use = portage.db[dep_root]["vartree"].dbapi.aux_get(prevpkg, ["USE"])[0].split()
+		else:
+			old_use = cur_use
+		
+		uselist = []
+		for use in iuse:
+			if use in cur_use:
+				myuse = red("+"+use)
+			elif use in bad_use:
+				myuse = blue("(-"+use+")")
+			else:
+				myuse = blue("-"+use)
+			if (use in old_use and use not in cur_use) or \
+					(use not in old_use and use in cur_use):
+				myuse += "*"
+			uselist.append(myuse)
+			
+		return " ".join(uselist)
+	
+	def format_metadata(self, mydep):
+		catpkg = portage.portage_versions.pkgsplit(mydep[2])[0]
+		metadata_file = portage.settings["PORTDIR"] + "/" + catpkg + "/metadata.xml"
+		if not os.path.exists(metadata_file):
+			return ""
+			
+		parser = portage_metadata.make_parser()
+		handler = portage_metadata.Metadata_XML()
+		handler._maintainers = []
+		handler._herds = []
+		parser.setContentHandler(handler)
+		parser.parse(metadata_file)
+		
+		metadata = []
+		if handler._herds:
+			metadata += ["(" + teal("H:" + ", ".join(handler._herds) ) + ")"]
+		if handler._maintainers:
+			metadata += ["(" + teal("M:" + ", ".join(handler._maintainers) ) + ")"]
+		
+		return " ".join(metadata)
+	
+	def format_size(self, mydep):
+		mysize = 0
+		if mydep[0] == "ebuild" and mydep[3] != "nomerge":
+			myfilesdict=portage.portdb.getfetchsizes(mydep[2], useflags=self.use_flags(mydep), debug=edebug)
+			if myfilesdict:
+				for myfetchfile in myfilesdict.keys():
+					mysize += myfilesdict[myfetchfile]
+					self.fetchsizes[myfetchfile] = myfilesdict[myfetchfile]
+		if mysize:
+			return format_size(mysize)
+		return ""
+	
+	def post_size_msg(self):
+		mysize = 0
+		for myfetchfile in self.fetchsizes.keys():
+			mysize += self.fetchsizes[myfetchfile]
+		return "Total size of downloads: "+format_size(mysize)
+	
+	def format_overlay(self, mydep):
+		if mydep[0] != "ebuild" or mydep[3] == "nomerge":
+			return ""
+		filename = portage.db["/"]["porttree"].dbapi.findname(mydep[2])
+		dirname = os.path.abspath(os.path.dirname(filename)+"/../..")
+		if dirname in portage.settings['PORTDIR_OVERLAY'].split():
+			if dirname not in self.overlays:
+				self.overlays.append(dirname)
+			return teal("["+str(self.overlays.index(dirname)+1)+"]")
+		return ""
+	
+	def post_overlay_msg(self):
+		if self.overlays:
+			msg = "Portage overlays:\n"
+			for x in range(0, len(self.overlays)):
+				msg += " "+teal("["+str(x+1)+"]")+" "+self.overlays[x]+"\n"
+			return msg
+		return ""
+	
+	def find_changelog_tags(self,changelog):
+		divs = []
+		release = None
+		while 1:
+			match = re.search(r'^\*\ ?([-a-zA-Z0-9_.]*)(?:\ .*)?\n',changelog,re.M)
+			if match is None:                                                                            
+				if release is not None:
+					divs.append((release,changelog))
+				return divs
+			if release is not None:
+				divs.append((release,changelog[:match.start()]))
+			changelog = changelog[match.end():]
+			release = match.group(1)
+			if release.endswith('.ebuild'):
+				release = release[:-7]
+			if release.endswith('-r0'):
+				release = release[:-3]
+	
+	def calc_changelog(self,ebuildpath,current,next):
+		current = '-'.join(portage.portage_versions.catpkgsplit(current)[1:])
+		if current.endswith('-r0'): current = current[:-3]
+		next = '-'.join(portage.portage_versions.catpkgsplit(next)[1:])
+		if next.endswith('-r0'): next = next[:-3]
+		
+		changelogpath = os.path.join(os.path.split(ebuildpath)[0],'ChangeLog')
+		if os.path.exists(changelogpath):
+			changelog = open(changelogpath).read()
+		else:
+			return []
+		
+		divisions = self.find_changelog_tags(changelog)
+		
+		for i in range(len(divisions)):
+			if divisions[i][0]==next:
+				divisions = divisions[i:]
+				break
+		
+		for i in range(len(divisions)):
+			if divisions[i][0]==current:
+				divisions = divisions[:i]
+				break
+		
+		return divisions
+
+	def format_changelog(self, mydep):
+		thispkg = mydep[2]
+		ebuild_path = portage.db["/"]["porttree"].dbapi.findname(thispkg)
+		if ebuild_path:
+			prevpkg = self.old_version(mydep)
+			if prevpkg:
+				self.changelogs.extend(self.calc_changelog(ebuild_path, prevpkg, thispkg))
+	
+	def post_changelog_msg(self):
+		msg = ""
+		for (revision,text) in self.changelogs:
+			msg += bold("*"+revision)+"\n"
+			msg += text
+		if msg:
+			return "\n"+msg
+		return ""
+	
+	def display_flat(self):
+		mygraph = self.graph.clone()
+		funclist = [self.format_summary, self.format_new_version, self.format_old_version]
+		postfuncs = []
+		if verbosity:
+			funclist += [self.format_flags]
+			if verbosity >= 2:
+				funclist += [self.format_metadata]
+			funclist += [self.format_size, self.format_overlay]
+			postfuncs += [self.post_size_msg, self.post_overlay_msg]
+		if "--changelog" in myopts:
+			funclist += [self.format_changelog]
+			postfuncs += [self.post_changelog_msg]
+		
+		print
+		while mygraph.get_all_nodes():
+			nextpkg = mygraph.get_leaf_nodes()[0]
+			mygraph.remove_node(nextpkg)
+			nextpkg = nextpkg.split()
+			if nextpkg[3] == "nomerge":
+				continue
+			
+			for func in funclist:
+				txt = func(nextpkg)
+				if txt:
+					print txt,
+			print
+		
+		print
+		for func in postfuncs:
+			msg = func()
+			if msg:
+				print msg
+	
+	def display_tree(self):
+		mygraph = self.graph.clone()
+		
+		merge_nodes = mygraph.get_all_nodes()
+		for x in range(len(merge_nodes)-1,-1,-1):
+			if merge_nodes[x].split()[3] == "nomerge":
+				del merge_nodes[x]
+		
+		relevant = merge_nodes
+		for x in range(len(merge_nodes)):
+			parents = mygraph.get_parent_nodes(merge_nodes[x])
+			for node in parents:
+				if node not in relevant:
+					relevant.append(node)
+		
+		for node in mygraph.get_all_nodes():
+			if node not in relevant:
+				mygraph.remove_node(node)
+		
+		funclist = [self.format_new_version, self.format_old_version]
+		postfuncs = []
+		if verbosity:
+			funclist += [self.format_flags]
+			if verbosity >= 2:
+				funclist += [self.format_metadata]
+			funclist += [self.format_size, self.format_overlay]
+			postfuncs += [self.post_size_msg, self.post_overlay_msg]
+		if "--changelog" in myopts:
+			funclist += [self.format_changelog]
+			postfuncs += [self.post_changelog_msg]
+		
+		all = []
+		
+		stack = []
+		depth = 0
+		parents = []
+		curlist = mygraph.get_root_nodes()
+		index = 0
+		
+		print
+		while stack or index != len(curlist):
+			if index == len(curlist):
+				(depth, parents, curlist, index) = stack.pop()
+			else:
+				nextpkg = curlist[index].split()
+				if curlist[index] in all:
+					nextpkg[3] = "nomerge"
+				print self.format_summary(nextpkg),
+				if depth:
+					print (depth-1)*" ",
+				for func in funclist:
+					txt = func(nextpkg)
+					if txt:
+						print txt,
+				print
+				if curlist[index] not in parents and curlist[index] not in all:
+					children = mygraph.get_child_nodes(curlist[index])
+					stack += [(depth, parents, curlist, index)]
+					depth += 1
+					parents = parents + [curlist[index]]
+					curlist = children
+					index = 0
+					continue
+			if curlist[index] not in all:
+				all.append(curlist[index])
+			index += 1
+		
+		print
+		for func in postfuncs:
+			msg = func()
+			if msg:
+				print msg
+
+
 def unmerge(unmerge_action, unmerge_files):
 	candidate_catpkgs=[]
 	global_unmerge=0
@@ -2935,7 +3325,11 @@ else:
 			mydepgraph.display(portage.mtimedb["resume"]["mergelist"])
 			prompt="Do you want me to resume merging these packages?"
 		else:
-			mydepgraph.display(mydepgraph.altlist())
+			graphdisp = graph_display(mydepgraph.mynewgraph)
+			if "--tree" in myopts:
+				graphdisp.display_tree()
+			else:
+				graphdisp.display_flat()
 			mergecount=0
 			for x in mydepgraph.altlist():
 				if x[3]!="nomerge":
@@ -2965,7 +3359,11 @@ else:
 		if ("--resume" in myopts):
 			mydepgraph.display(portage.mtimedb["resume"]["mergelist"])
 		else:
-			mydepgraph.display(mydepgraph.altlist())
+			graphdisp = graph_display(mydepgraph.mynewgraph)
+			if "--tree" in myopts:
+				graphdisp.display_tree()
+			else:
+				graphdisp.display_flat()
 	else:
 		if ("--buildpkgonly" in myopts):
 			has_deps = False

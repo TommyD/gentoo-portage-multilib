@@ -7,6 +7,15 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  23 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge: Added class
+  graph_display and moved most of depgraph.display() into various functions
+  of it. --columns and --resume are not yet supported with it, so the
+  depgraph.display() has been kept for the time being.
+
+  23 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Commented
+  the deprecation notice for /etc/portage/virtuals as it does not yet have
+  a newer counterpart.
+
   22 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/transports/fetchcommand.py:
   spawn_bash, not spawn.
 
