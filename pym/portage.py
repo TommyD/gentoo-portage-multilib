@@ -1728,7 +1728,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								verbose=(verbosity==0))
 							if not myret:
 								writemsg(red("!!!")+"\n")
-								writemsg(red("!!!")+" FETCHCOMMAND/RESUMECOMMAND with exit code 127\n")
+								writemsg(red("!!!")+" FETCHCOMMAND/RESUMECOMMAND exited with code 127\n")
 								writemsg(red("!!!")+" This is indicative of missing libs for the fetch/resume binaries\n")
 								writemsg(red("!!!")+" Added, the independ BundledConnection succeeded\n")
 								writemsg(red("!!!")+" Please check your installation.\n")
