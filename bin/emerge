@@ -11,6 +11,7 @@ import xpak
 import string
 import commands
 import shutil
+import re
 
 #build our package digraph
 
@@ -223,6 +224,7 @@ class depgraph:
 				sys.exit(0)
 
 def post_emerge(retval=0):
+	auxpat=re.compile('^([^-]*)(-\d+)?\.info(-\d+)?(\.gz)?')	
 	global myopts
 	print
 	if "--pretend" in myopts:
@@ -239,9 +241,14 @@ def post_emerge(retval=0):
 		icount=0
 		badcount=0
 		for x in os.listdir(root+"usr/share/info"):
-			if (x[-5:]==".info") or (x[-8:]==".info.gz"):
+			aux=auxpat.search(x)
+			if not aux:
+				continue
+			auxgroups=aux.groups()	
+			if not (auxgroups[1] or auxgroups[2]):
 				myso=commands.getstatusoutput("/usr/bin/install-info --dir-file="+root+"usr/share/info/dir "+root+"usr/share/info/"+x)[1]
 				if myso!="":
+					print auxgroups	
 					badcount=badcount+1
 					if "--verbose" in myopts:
 						print myso

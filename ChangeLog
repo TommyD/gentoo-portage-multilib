@@ -2,6 +2,8 @@
 # Copyright 2001 Gentoo Technologies, Inc.; Distributed under the GPL
 # Written by Daniel Robbins (drobbins@gentoo.org)
 
+  25 Nov 2001; emerge's info file detection code has been improved.  
+
   20 Nov 2001; pdb, pdb.cgi and xpak used /usr/bin/python instead of
   /usr/bin/spython.  Fixed.
 
