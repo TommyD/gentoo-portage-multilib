@@ -721,6 +721,9 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 		os.makedirs(settings["T"])
 	settings["WORKDIR"]=settings["BUILDDIR"]+"/work"
 	settings["D"]=settings["BUILDDIR"]+"/image/"
+
+	if mydo=="unmerge": 
+		return unmerge(settings["CATEGORY"],settings["PF"],myroot)
 	
 	#initial ebuild.sh bash environment configured
 	mydbkey="/var/cache/edb/dep/dep-"+os.path.basename(settings["EBUILD"])
@@ -801,8 +804,6 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 		retval=spawn("/usr/sbin/ebuild.sh setup unpack compile install")
 		if retval: return retval
 		return merge(settings["CATEGORY"],settings["PF"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot)
-	elif mydo=="unmerge": 
-		return unmerge(settings["CATEGORY"],settings["PF"],myroot)
 	elif mydo=="package":
 		retval=spawn("/usr/sbin/ebuild.sh setup")
 		if retval:

@@ -1,6 +1,9 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+  22 Feb 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: unmerging now
+  works correctly.
+
 *portage 1.8.9_pre10 (22 Feb 2002)
 
   22 Feb 2002; Daniel Robbins <drobbins@gentoo.org>: "emerge" didn't like the
