@@ -411,6 +411,15 @@ unpack() {
 
 econf() {
 	if [ -x ./configure ]; then
+		if hasq autoconfig $FEATURES && ! hasq autoconfig $RESTRICT; then
+			if [ -e /usr/share/gnuconfig/ -a -x /bin/basename ]; then
+				local x
+				for x in $(find ${S} -type f -name config.guess -o -name config.sub) ; do
+					einfo "econf: updating $x with /usr/share/gnuconfig/$(/bin/basename ${x})"
+					cp /usr/share/gnuconfig/$(/bin/basename ${x}) ${x}
+				done
+			fi
+		fi
 		if [ ! -z "${CBUILD}" ]; then
 			EXTRA_ECONF="--build=${CBUILD} ${EXTRA_ECONF}"
 		fi
