@@ -196,13 +196,8 @@ def prefix_array(array,prefix,doblanks=1):
 			newarray.append(x)
 	return newarray
 
-def listdir(mypath,
-			recursive=False,
-			filesonly=False,
-			ignorecvs=False,
-			ignorelist=[],
-			EmptyOnError=False, 
-			followSymlinks=True):
+def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelist=[], EmptyOnError=False, 
+	followSymlinks=True):
 
 	list, ftype = cacheddir(mypath, ignorecvs, ignorelist, EmptyOnError,followSymlinks=followSymlinks)
 
@@ -217,15 +212,9 @@ def listdir(mypath,
 	if recursive:
 		x=0
 		while x<len(ftype):
-			if ftype[x]==1 and \
-			   not (ignorecvs and (len(list[x])>=3) and (("/"+list[x][-3:])=="/CVS")) and \
-				 not (ignorecvs and (len(list[x])>=4) and (("/"+list[x][-4:])=="/.svn")):
-
-				l,f = cacheddir(mypath+"/"+list[x],
-								  ignorecvs,
-								  ignorelist,
-								  EmptyOnError,
-								  followSymlinks=followSymlinks)
+			if ftype[x]==1 and not (ignorecvs and os.path.basename(list[x]) in ('CVS','.svn')):
+				l,f = cacheddir(mypath+"/"+list[x], ignorecvs, ignorelist, EmptyOnError,
+					followSymlinks=followSymlinks)
 								  
 				l=l[:]
 				for y in range(0,len(l)):
