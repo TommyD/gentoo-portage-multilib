@@ -2,6 +2,16 @@
 # Copyright 2000-2004 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  *** THIS IS FOR ARCHIVAL PURPOSES ONLY -- DO NOT MODIFY ***
+  *** THIS IS FOR ARCHIVAL PURPOSES ONLY -- DO NOT MODIFY ***
+  *** THIS IS FOR ARCHIVAL PURPOSES ONLY -- DO NOT MODIFY ***
+  *** THIS IS FOR ARCHIVAL PURPOSES ONLY -- DO NOT MODIFY ***
+  *** THIS IS FOR ARCHIVAL PURPOSES ONLY -- DO NOT MODIFY ***
+  *** THIS IS FOR ARCHIVAL PURPOSES ONLY -- DO NOT MODIFY ***
+  *** THIS IS FOR ARCHIVAL PURPOSES ONLY -- DO NOT MODIFY ***
+  *** THIS IS FOR ARCHIVAL PURPOSES ONLY -- DO NOT MODIFY ***
+  *** THIS IS FOR ARCHIVAL PURPOSES ONLY -- DO NOT MODIFY ***
+
   21 Jan 2004; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: TGL's fixes
   for exec/child/wait problems. Unset GREP_OPTIONS GREP_COLOR. has() and use()
   no longer attempt to determine if they are to be quiet or noisy -- They
