@@ -1097,9 +1097,9 @@ fi # "$*"!="depend" && "$*"!="clean"
 
 export SANDBOX_ON="1"
 export S=${WORKDIR}/${P}
+unset DEPEND RDEPEND E_RDEPEND E_DEPEND
 source ${EBUILD} || die "error sourcing ebuild"
 #a reasonable default for $S
-unset DEPEND RDEPEND E_RDEPEND E_DEPEND
 if [ "$S" = "" ]; then
 	export S=${WORKDIR}/${P}
 fi
@@ -1115,11 +1115,11 @@ if [ "${RDEPEND-unset}" == "unset" ]; then
 	export RDEPEND=${DEPEND}
 	debug-print "RDEPEND: not set... Setting to: ${DEPEND}"
 fi
-set +f
-
 #add in dependency info from eclasses
 RDEPEND="$RDEPEND $E_RDEPEND"
 DEPEND="$DEPEND $E_DEPEND"
+set +f
+
 for myarg in $*
 do
 	case $myarg in
