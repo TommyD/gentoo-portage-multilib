@@ -35,24 +35,24 @@
 
 int preload_adaptable = 1;
 int cleaned_up = 0;
-int print_debug=0;
+int print_debug = 0;
 
 /* Read pids file, and load active pids into an array.  Return number of pids in array */
 int load_active_pids(int fd, int **pids)
 {
-  char *data=NULL;
-  char *ptr=NULL, *ptr2=NULL;
+  char *data = NULL;
+  char *ptr = NULL, *ptr2 = NULL;
   int my_pid;
-  int num_pids=0;
+  int num_pids = 0;
   long len;
 
-  pids[0]=NULL;
+  pids[0] = NULL;
 
-  len=file_length(fd);
+  len = file_length(fd);
 
   /* Allocate and zero datablock to read pids file */
-  data=(char *)malloc((len+1)*sizeof(char));
-  memset(data, 0, len+1);
+  data = (char *)malloc((len + 1)*sizeof(char));
+  memset(data, 0, len + 1);
 
   /* Start at beginning of file */
   lseek(fd, 0L, SEEK_SET);
@@ -60,49 +60,50 @@ int load_active_pids(int fd, int **pids)
   /* read entire file into a buffer */
   read(fd, data, len);
 
-  ptr=data;
+  ptr = data;
 
   /* Loop and read all pids */
   while (1) {
     /* Find new line */
-    ptr2=strchr(ptr, '\n');
+    ptr2 = strchr(ptr, '\n');
     if (ptr2 == NULL) break; /* No more PIDs */
 
     /* clear the \n. And  ptr  should have a null-terminated decimal string */
-    ptr2[0]=0;
+    ptr2[0] = 0;
 
-    my_pid=atoi(ptr);
+    my_pid = atoi(ptr);
 
     /* If the PID is still alive, add it to our array */
-    if (my_pid != 0 && kill(my_pid, 0) == 0) {
-      pids[0]=(int *)realloc(pids[0], (num_pids+1)*sizeof(int));
-      pids[0][num_pids]=my_pid;
+    if ((0 != my_pid) && (0 == kill(my_pid, 0))) {
+      pids[0] = (int *)realloc(pids[0], (num_pids + 1)*sizeof(int));
+      pids[0][num_pids] = my_pid;
       num_pids++;
     }
 
     /* Put ptr past the NULL we just wrote */
-    ptr=ptr2+1;
+    ptr = ptr2 + 1;
   }
 
   if (data) free(data);
-  return(num_pids);
+  
+  return num_pids;
 }
 
 /* Read ld.so.preload file, and loads dirs into an array.  Return number of entries in array */
 int load_preload_libs(int fd, char ***preloads)
 {
-  char *data=NULL;
-  char *ptr=NULL, *ptr2=NULL;
-  int num_entries=0;
+  char *data = NULL;
+  char *ptr = NULL, *ptr2 = NULL;
+  int num_entries = 0;
   long len;
 
-  preloads[0]=NULL;
+  preloads[0] = NULL;
 
-  len=file_length(fd);
+  len = file_length(fd);
 
   /* Allocate and zero datablock to read pids file */
-  data=(char *)malloc((len+1)*sizeof(char));
-  memset(data, 0, len+1);
+  data = (char *)malloc((len + 1)*sizeof(char));
+  memset(data, 0, len + 1);
 
   /* Start at beginning of file */
   lseek(fd, 0L, SEEK_SET);
@@ -110,53 +111,55 @@ int load_preload_libs(int fd, char ***preloads)
   /* read entire file into a buffer */
   read(fd, data, len);
 
-  ptr=data;
+  ptr = data;
 
   /* Loop and read all pids */
   while (1) {
     /* Find new line */
-    ptr2=strchr(ptr, '\n');
+    ptr2 = strchr(ptr, '\n');
 
     /* clear the \n. And  ptr  should have a null-terminated decimal string
      * Don't break from the loop though because the last line may not
      * terminated with a \n
      */
-    if (ptr2 != NULL) ptr2[0]=0;
+    if (NULL != ptr2) ptr2[0] = 0;
 
     /* If listing does not match our libname, add it to the array */
-    if (strlen(ptr) && strstr(ptr, LIB_NAME) == NULL) {
-      preloads[0]=(char **)realloc(preloads[0], (num_entries+1)*sizeof(char **));
-      preloads[0][num_entries]=strdup(ptr);
+    if ((strlen(ptr)) && (NULL == strstr(ptr, LIB_NAME))) {
+      preloads[0] = (char **)realloc(preloads[0], (num_entries + 1)*sizeof(char **));
+      preloads[0][num_entries] = strdup(ptr);
       num_entries++;
     }
 
-    if (ptr2 == NULL) break; /* No more PIDs */
+    if (NULL == ptr2) break; /* No more PIDs */
 
     /* Put ptr past the NULL we just wrote */
-    ptr=ptr2+1;
+    ptr = ptr2 + 1;
   }
+  
   if (data) free(data);
-  return(num_entries);
+
+  return num_entries;
 }
 
 
 void cleanup()
 {
-  int i=0;
-  int success=1;
-  int pids_file=-1, num_of_pids=0;
-  int *pids_array=NULL;
+  int i = 0;
+  int success = 1;
+  int pids_file = -1, num_of_pids = 0;
+  int *pids_array = NULL;
   char pid_string[255];
 #ifdef USE_LD_SO_PRELOAD
-  int preload_file=-1, num_of_preloads=0;
+  int preload_file = -1, num_of_preloads = 0;
   char preload_entry[255];
-  char **preload_array=NULL;
+  char **preload_array = NULL;
 #endif
 
 
   /* remove this sandbox's bash pid from the global pids
    * file if it has rights to adapt the ld.so.preload file */
-  if (preload_adaptable == 1 && cleaned_up == 0) {
+  if ((1 == preload_adaptable) && (0 == cleaned_up)) {
     cleaned_up = 1;
     success = 1;
 
@@ -170,29 +173,29 @@ void cleanup()
       exit(1);
     }
 
-    pids_file=file_open(PIDS_FILE, "r+", 0);
-    if (pids_file == -1) {
-      success=0;
+    pids_file = file_open(PIDS_FILE, "r+", 0);
+    if (-1 == pids_file) {
+      success = 0;
       /* Go ahead and exit, failed opening pids file */
       exit(1);
     }
 
     /* Load "still active" pids into an array */
-    num_of_pids=load_active_pids(pids_file, &pids_array);
+    num_of_pids = load_active_pids(pids_file, &pids_array);
     //printf("pids: %d\r\n", num_of_pids);
 
 #ifdef USE_LD_SO_PRELOAD
     /* clean the /etc/ld.so.preload file if no other sandbox
 	 * processes are running anymore */
-    if (num_of_pids == 1) {
+    if (1 == num_of_pids) {
       success = 1;
 
       if (print_debug) printf("Cleaning up /etc/ld.so.preload.\n");
 	  
-      preload_file=file_open("/etc/ld.so.preload", "r+", 0);
-      if (preload_file != -1) {
+      preload_file = file_open("/etc/ld.so.preload", "r+", 0);
+      if (-1 != preload_file) {
         /* Load all the preload libraries into an array */
-        num_of_preloads=load_preload_libs(preload_file, &preload_array);
+        num_of_preloads = load_preload_libs(preload_file, &preload_array);
         //printf("num preloads: %d\r\n", num_of_preloads);
 	/* Clear file */
         file_truncate(preload_file);
@@ -243,13 +246,12 @@ void cleanup()
     }
 
     file_close(pids_file);
-    pids_file=-1;
- }
+    pids_file = -1;
+  }
 
- if (success == 0) {
-   exit(1);
- }
-
+  if (0 == success) {
+    exit(1);
+  }
 }
 
 void stop(int signum)
@@ -283,7 +285,7 @@ void setenv_sandbox_write(char *home_dir, char *portage_tmp_dir, char *var_tmp_d
     strcat(sandbox_write_var, ":");
     strcat(sandbox_write_var, "/usr/lib/cf");
     strcat(sandbox_write_var, ":");
-    if (portage_tmp_dir == NULL) {
+    if (NULL == portage_tmp_dir) {
       strcat(sandbox_write_var, tmp_dir);
       strcat(sandbox_write_var, ":");
       strcat(sandbox_write_var, var_tmp_dir);
@@ -293,7 +295,7 @@ void setenv_sandbox_write(char *home_dir, char *portage_tmp_dir, char *var_tmp_d
       strcat(sandbox_write_var, "/var/tmp/");
 
     /* How the heck is this possible?? we just set it above! */
-    } else if (strcmp(sandbox_write_var, "/var/tmp/") == 0) {
+    } else if (0 == strcmp(sandbox_write_var, "/var/tmp/")) {
       strcat(sandbox_write_var, portage_tmp_dir);
       strcat(sandbox_write_var, ":");
       strcat(sandbox_write_var, tmp_dir);
@@ -301,7 +303,7 @@ void setenv_sandbox_write(char *home_dir, char *portage_tmp_dir, char *var_tmp_d
       strcat(sandbox_write_var, "/tmp/");
 
     /* Still don't think this is possible, am I just stupid or something? */
-    } else if (strcmp(sandbox_write_var, "/tmp/") == 0) {
+    } else if (0 == strcmp(sandbox_write_var, "/tmp/")) {
       strcat(sandbox_write_var, portage_tmp_dir);
       strcat(sandbox_write_var, ":");
       strcat(sandbox_write_var, var_tmp_dir);
@@ -347,20 +349,20 @@ void setenv_sandbox_predict(char *home_dir)
 
 int print_sandbox_log(char *sandbox_log)
 {
-  int sandbox_log_file=-1;
+  int sandbox_log_file = -1;
   char *beep_count_env = NULL;
   int i, beep_count = 0;
-  long len=0;
-  char *buffer=NULL;
+  long len = 0;
+  char *buffer = NULL;
 
   sandbox_log_file=file_open(sandbox_log, "r", 0);
-  if (sandbox_log_file == -1) {
-    return(0);
+  if (-1 == sandbox_log_file) {
+    return 0;
   }
 
-  len=file_length(sandbox_log_file);
-  buffer=(char *)malloc((len+1)*sizeof(char));
-  memset(buffer, 0, len+1);
+  len = file_length(sandbox_log_file);
+  buffer = (char *)malloc((len + 1)*sizeof(char));
+  memset(buffer, 0, len + 1);
   read(sandbox_log_file, buffer, len);
   file_close(sandbox_log_file);
 
@@ -368,7 +370,7 @@ int print_sandbox_log(char *sandbox_log)
   printf("\e[31;01mLOG FILE = \"%s\"\033[0m\n", sandbox_log);
   printf("\n");
   printf("%s", buffer);
-  if (buffer) free(buffer); buffer=NULL;
+  if (buffer) free(buffer); buffer = NULL;
   printf("\e[31;01m--------------------------------------------------------------------------------\033[0m\n");
 
   beep_count_env = getenv(ENV_SANDBOX_BEEP);
@@ -384,23 +386,26 @@ int print_sandbox_log(char *sandbox_log)
       sleep(1);
     }
   }
-  return(1);
+  return 1;
 }
 
 int spawn_shell(char *argv_bash[]) 
 {
 #ifdef USE_SYSTEM_SHELL
-  int i=0;
-  char *sh=NULL;
-  int first=1;
+  int i = 0;
+  char *sh = NULL;
+  int first = 1;
   int ret;
-  long len=0;
+  long len = 0;
 
   while (1) {
-    if (argv_bash[i] == NULL) break;
-    if (sh != NULL) len=strlen(sh);
-    sh=(char *)realloc(sh, len+strlen(argv_bash[i]) + 5);
-    if (first) { sh[0]=0; first=0; }
+    if (NULL == argv_bash[i]) break;
+    if (NULL != sh) len = strlen(sh);
+    sh = (char *)realloc(sh, len+strlen(argv_bash[i]) + 5);
+    if (first) {
+      sh[0] = 0;
+      first = 0;
+    }
     strcat(sh, "\"");
     strcat(sh, argv_bash[i]);
     strcat(sh, "\" ");
@@ -409,20 +414,22 @@ int spawn_shell(char *argv_bash[])
     i++;
   }
   printf("%s\n", sh);
-  ret=system(sh);
+  ret = system(sh);
   if (sh) free(sh); sh = NULL;
-  if (ret == -1) return 0;
+  
+  if (-1 == ret) return 0;
   return 1;
+  
 #else
 # ifndef NO_FORK
   int pid;
-  int status=0;
-  int ret=0;
+  int status = 0;
+  int ret = 0;
 
-  pid=fork();
+  pid = fork();
 
   /* Child's process */
-  if (pid == 0) {
+  if (0 == pid) {
 # endif
     execv(argv_bash[0], argv_bash);
 # ifndef NO_FORK
@@ -430,8 +437,8 @@ int spawn_shell(char *argv_bash[])
   } else if (pid < 0) {
     return 0;
   }
-  ret=waitpid(pid, &status, 0);
-  if ((ret == -1) || (status > 0)) return 0;
+  ret = waitpid(pid, &status, 0);
+  if ((-1 == ret) || (status > 0)) return 0;
 # endif
   return 1;
 #endif
@@ -439,14 +446,15 @@ int spawn_shell(char *argv_bash[])
 
 int main(int argc, char** argv)
 {
-  int i=0, success=1;
-  int preload_file=-1;
-  int sandbox_log_presence=0, sandbox_log_file=-1;
-  int pids_file=-1;
+  int i = 0, success = 1;
+  int preload_file = -1;
+  int sandbox_log_presence = 0;
+  int sandbox_log_file = -1;
+  int pids_file = -1;
   long len;
 
-  int *pids_array=NULL;
-  int num_of_pids=0;
+  int *pids_array = NULL;
+  int num_of_pids = 0;
 
   // char run_arg[255];
   char portage_tmp_dir[PATH_MAX];
@@ -458,19 +466,19 @@ int main(int argc, char** argv)
   char sandbox_lib[255];
   char sandbox_rc[255];
   char pid_string[255];
-  char **argv_bash=NULL;
+  char **argv_bash = NULL;
 
   char *run_str = "-c";
-  char *home_dir=NULL;
-  char *tmp_string=NULL;
+  char *home_dir = NULL;
+  char *tmp_string = NULL;
 #ifdef USE_LD_SO_PRELOAD
-  char **preload_array=NULL;
-  int num_of_preloads=0;
+  char **preload_array = NULL;
+  int num_of_preloads = 0;
 #endif
 
   /* Only print info if called with no arguments .... */
   if (argc < 2) {
-    print_debug=1;
+    print_debug = 1;
   }
 
   if (print_debug) printf("========================== Gentoo linux path sandbox ===========================\n");
@@ -482,7 +490,6 @@ int main(int argc, char** argv)
     exit(1);
   } else {
 
-
     /* determine the location of all the sandbox support files */
     if (print_debug) printf("Detection of the support files.\n");
 
@@ -493,25 +500,24 @@ int main(int argc, char** argv)
     strcat(sandbox_dir, "/");
 
     /* Generate sandbox lib path */
-    tmp_string=get_sandbox_lib(sandbox_dir);
+    tmp_string = get_sandbox_lib(sandbox_dir);
     strncpy(sandbox_lib, tmp_string, 254);
     if (tmp_string) free(tmp_string); tmp_string = NULL;
 
     /* Generate sandbox bashrc path */
-    tmp_string=get_sandbox_rc(sandbox_dir);
+    tmp_string = get_sandbox_rc(sandbox_dir);
     strncpy(sandbox_rc, tmp_string, 254);
     if (tmp_string) free(tmp_string); tmp_string = NULL;
-
 
     /* verify the existance of required files */
     if (print_debug) printf("Verification of the required files.\n");
 
     if (file_exist(sandbox_lib, 0) <= 0) {
       fprintf(stderr, "Could not open the sandbox library at '%s'.\n", sandbox_lib);
-      return(-1);
+      return -1;
     } else if (file_exist(sandbox_rc, 0) <= 0) {
       fprintf(stderr, "Could not open the sandbox rc file at '%s'.\n", sandbox_rc);
-      return(-1);
+      return -1;
     }
 
 #ifdef USE_LD_SO_PRELOAD
@@ -527,22 +533,22 @@ int main(int argc, char** argv)
 
     /* Our r+ also will create the file if it doesn't exist */
     preload_file=file_open("/etc/ld.so.preload", "r+", 1, 0644);
-    if (preload_file == -1) {
+    if (-1 == preload_file) {
       preload_adaptable = 0;
 /*      exit(1);*/
     }
 
 #ifdef USE_LD_SO_PRELOAD
     /* Load entries of preload table */
-    num_of_preloads=load_preload_libs(preload_file, &preload_array);
+    num_of_preloads = load_preload_libs(preload_file, &preload_array);
 
     /* Zero out our ld.so.preload file */
     file_truncate(preload_file);
 
     /* Write contents of preload file */
-    for (i=0; i<num_of_preloads+1; i++) {
+    for (i = 0; i < num_of_preloads + 1; i++) {
       /* First entry should be our sandbox library */
-      if (i == 0) {
+      if (0 == i) {
         if (write(preload_file, sandbox_lib, strlen(sandbox_lib)) != strlen(sandbox_lib)) {
           perror(">>> /etc/ld.so.preload file write");
           success = 0;
@@ -550,32 +556,32 @@ int main(int argc, char** argv)
         }
       } else {
         /* Output all other preload entries */
-        if (write(preload_file, preload_array[i-1], strlen(preload_array[i-1])) != strlen(preload_array[i-1])) {
+        if (write(preload_file, preload_array[i - 1], strlen(preload_array[i - 1])) != strlen(preload_array[i - 1])) {
           perror(">>> /etc/ld.so.preload file write");
           success = 0;
           break;
         }
       }
       /* Don't forget the return character after each line! */
-      if (write(preload_file, "\n", 1) != 1) {
+      if (1 != write(preload_file, "\n", 1)) {
         perror(">>> /etc/ld.so.preload file write");
         success = 0;
         break;
       }
     }
 
-    for (i=0; i<num_of_preloads; i++) {
+    for (i = 0; i < num_of_preloads; i++) {
       if (preload_array[i]) free(preload_array[i]);
 	  preload_array[i] = NULL;
     }
     if (preload_array) free(preload_array);
-    num_of_preloads=0;
-    preload_array=NULL;
+    num_of_preloads = 0;
+    preload_array = NULL;
 #endif
 
     /* That's all we needed to do with the preload file */
     file_close(preload_file);
-    preload_file=-1;
+    preload_file = -1;
 	
     /* set up the required environment variables */
     if (print_debug) printf("Setting up the required environment variables.\n");
@@ -583,7 +589,7 @@ int main(int argc, char** argv)
     /* Generate sandbox log full path */
     tmp_string=get_sandbox_log();
     strncpy(sandbox_log, tmp_string, 254);
-    if (tmp_string) free(tmp_string); tmp_string=NULL;
+    if (tmp_string) free(tmp_string); tmp_string = NULL;
 
     setenv(ENV_SANDBOX_LOG, sandbox_log, 1);
 
@@ -624,29 +630,30 @@ int main(int argc, char** argv)
       chdir(portage_tmp_dir);
     }
 
-    argv_bash=(char **)malloc(6*sizeof(char *));
-    argv_bash[0]=strdup("/bin/bash");
-    argv_bash[1]=strdup("-rcfile");
-    argv_bash[2]=strdup(sandbox_rc);
+    argv_bash=(char **)malloc(6 * sizeof(char *));
+    argv_bash[0] = strdup("/bin/bash");
+    argv_bash[1] = strdup("-rcfile");
+    argv_bash[2] = strdup(sandbox_rc);
     if (argc < 2) {
-      argv_bash[3]=NULL;
+      argv_bash[3] = NULL;
     } else {
-      argv_bash[3]=strdup(run_str);  /* "-c" */
+      argv_bash[3] = strdup(run_str);  /* "-c" */
     }
-    argv_bash[4]=NULL;  /* strdup(run_arg); */
-    argv_bash[5]=NULL;
+    argv_bash[4] = NULL;  /* strdup(run_arg); */
+    argv_bash[5] = NULL;
     
     if (argc >= 2) {
       for (i = 1; i< argc; i++) {
-        if (argv_bash[4] == NULL) len=0;
-        else len=strlen(argv_bash[4]);
-        argv_bash[4]=(char *)realloc(argv_bash[4], (len+strlen(argv[i])+2)*sizeof(char));
-        if (len == 0) argv_bash[4][0]=0;
-        if (i != 1) strcat(argv_bash[4], " ");
+        if (NULL == argv_bash[4]) len = 0;
+        else len = strlen(argv_bash[4]);
+        argv_bash[4]=(char *)realloc(argv_bash[4], (len + strlen(argv[i]) + 2) * sizeof(char));
+        if (0 == len) argv_bash[4][0] = 0;
+        if (1 != i) strcat(argv_bash[4], " ");
         strcat(argv_bash[4], argv[i]);
       }
     }
- /*   char* argv_bash[] = {
+#if 0
+    char* argv_bash[] = {
                         "/bin/bash",
                         "-rcfile",
                         NULL,
@@ -654,9 +661,9 @@ int main(int argc, char** argv)
                         NULL,
                         NULL
                         };
-  */
+  
     /* adding additional bash arguments */
-   /* for (i = 1; i < argc; i++) {
+    for (i = 1; i < argc; i++) {
       if (1 == i) {
         argv_bash[3] = run_str;
         argv_bash[4] = run_arg;
@@ -665,7 +672,8 @@ int main(int argc, char** argv)
         strcat(argv_bash[4], " ");
         strcat(argv_bash[4], argv[i]);
       }
-    } */
+    }
+#endif
 
     /* set up the required signal handlers */
     signal(SIGHUP, &stop);
@@ -687,44 +695,44 @@ int main(int argc, char** argv)
     if (preload_adaptable) {
       success = 1;
       if (file_exist(PIDS_FILE, 1) < 0) {
-        success=0;
-	fprintf(stderr, ">>> pids file is not a regular file");
+        success = 0;
+        fprintf(stderr, ">>> pids file is not a regular file");
       } else {
         pids_file=file_open(PIDS_FILE, "r+", 1, 0644);
-	if (pids_file == -1) {
-	  success=0;
-	} else {
-	  /* Grab still active pids */
-          num_of_pids=load_active_pids(pids_file, &pids_array);
+        if (-1 == pids_file) {
+        success = 0;
+	  } else {
+        /* Grab still active pids */
+        num_of_pids = load_active_pids(pids_file, &pids_array);
 
-	  /* Zero out file */
-	  file_truncate(pids_file);
+        /* Zero out file */
+        file_truncate(pids_file);
 
-	  /* Output active pids, and append our pid */
-	  for (i=0; i<num_of_pids+1; i++) {
-	    /* Time for our entry */
-	    if (i == num_of_pids) {
-	      sprintf(pid_string, "%d\n", getpid());
-	    } else {
-	      sprintf(pid_string, "%d\n", pids_array[i]);
-	    }
-	    if (write(pids_file, pid_string, strlen(pid_string)) != strlen(pid_string)) {
-              perror(">>> /etc/ld.so.preload file write");
-              success = 0;
-	      break;
-            }
-	  }
-	  /* Clean pids_array */
-	  if (pids_array) free(pids_array); pids_array=NULL;
-	  num_of_pids=0;
+        /* Output active pids, and append our pid */
+        for (i = 0; i < num_of_pids + 1; i++) {
+          /* Time for our entry */
+          if (i == num_of_pids) {
+            sprintf(pid_string, "%d\n", getpid());
+          } else {
+            sprintf(pid_string, "%d\n", pids_array[i]);
+          }
+          if (write(pids_file, pid_string, strlen(pid_string)) != strlen(pid_string)) {
+            perror(">>> /etc/ld.so.preload file write");
+            success = 0;
+            break;
+          }
+        }
+        /* Clean pids_array */
+        if (pids_array) free(pids_array); pids_array = NULL;
+        num_of_pids = 0;
 
-	  /* We're done with the pids file */
-	  file_close(pids_file);
-	}
+        /* We're done with the pids file */
+        file_close(pids_file);
       }
+    }
 
       /* Something went wrong, bail out */
-      if (success == 0)
+    if (success == 0)
         exit(1);
     }
 
@@ -738,17 +746,17 @@ int main(int argc, char** argv)
 
     /* Start Bash */
     if (!spawn_shell(argv_bash)) {
-      fprintf(stderr, ">>> shell process failed to spawn\n");
+      if (print_debug) fprintf(stderr, ">>> shell process failed to spawn\n");
       success = 0;
     }
 
     /* Free bash stuff */
-    for (i=0; i<6; i++) {
+    for (i = 0; i < 6; i++) {
       if (argv_bash[i]) free(argv_bash[i]);
 	  argv_bash[i] = NULL;
     }
     if (argv_bash) free(argv_bash);
-    argv_bash=NULL;
+    argv_bash = NULL;
 
     if (print_debug) {
       printf("Cleaning up sandbox process\n");
@@ -765,7 +773,7 @@ int main(int argc, char** argv)
       sandbox_log_presence = 1;
       success = 1;
       if (!print_sandbox_log(sandbox_log)) {
-        success=0;
+        success = 0;
       }
 
 #if 0
@@ -779,9 +787,9 @@ int main(int argc, char** argv)
     }
 
     if ((sandbox_log_presence) || (!success)) {
-      return(1);
+      return 1;
     } else {
-      return(0);
+      return 0;
     }
   }
 }
