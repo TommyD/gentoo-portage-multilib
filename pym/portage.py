@@ -1747,47 +1747,65 @@ def dep_parenreduce(mysplit,mypos=0):
 def dep_opconvert(mysplit,myuse):
 	"Does dependency operator conversion"
 	mypos=0
+	newsplit=[]
 	while mypos<len(mysplit):
 		if type(mysplit[mypos])==types.ListType:
-			mysplit[mypos]=dep_opconvert(mysplit[mypos],myuse)
+			#mysplit[mypos]=dep_opconvert(mysplit[mypos],myuse)
+			newsplit.append(dep_opconvert(mysplit[mypos],myuse))
+			mypos += 1
 		elif mysplit[mypos]==")":
 			#mismatched paren, error
 			return None
 		elif mysplit[mypos]=="||":
-			if (mypos+1)<len(mysplit):
-				if type(mysplit[mypos+1])!=types.ListType:
-					# || must be followed by paren'd list
-					return None
-				else:
-					mynew=dep_opconvert(mysplit[mypos+1],myuse)
-					mysplit[mypos+1]=mynew
-					mysplit[mypos+1][0:0]=["||"]
-					del mysplit[mypos]
-			else:
-				#don't end a depstring with || :)
+			if ((mypos+1)>=len(mysplit)) or (type(mysplit[mypos+1])!=types.ListType):
+				# || must be followed by paren'd list
 				return None
+			mynew=dep_opconvert(mysplit[mypos+1],myuse)
+			mynew[0:0]=["||"]
+			newsplit.append(mynew)
+			mypos += 2
 		elif mysplit[mypos][-1]=="?":
 			#uses clause, i.e "gnome? ( foo bar )"
-			if (mypos+2<len(mysplit)) and (mysplit[mypos+2]==":"):
-				if (mysplit[mypos][:-1]) in myuse:
-					del mysplit[mypos] #del use
-					del mysplit[mypos+1] #del :
-					del mysplit[mypos+1] #del alt
-				else:
-					del mysplit[mypos] #del use
-					del mysplit[mypos] #del first
-					del mysplit[mypos] #del : 
-			elif (mysplit[mypos][:-1]) in myuse:
-				#if the package is installed, just delete the conditional
-				del mysplit[mypos]
+			#this is a quick and dirty hack so that repoman can enable all USE vars:
+			if (len(myuse)==1) and (myuse[0]=="*"):
+				#enable it even if it's ! (for repoman)
+				enabled=1
 			else:
-				#the package isn't installed, delete conditional and next item
-				del mysplit[mypos]
-				del mysplit[mypos]
-				#we don't want to move to the next item, so we perform a quick hack
-				mypos=mypos-1
-		mypos=mypos+1
-	return mysplit
+				#if use var is present, enable it, otherwise disable
+				if (mysplit[mypos][:-1]) in myuse:
+					enabled=1
+				else:
+					enabled=0
+				#if prefixed by a "!", flip the enabled value
+				if mysplit[mypos][0]=="!":
+					#a "not" USE
+					enabled=not enabled
+			if (mypos+2<len(mysplit)) and (mysplit[mypos+2]==":"):
+				#colon mode
+				if enabled:
+					#choose the first option
+					if type(mysplit[mypos+1])==types.ListType:
+						newsplit.append(dep_opconvert(mysplit[mypos+1],myuse))
+					else:
+						newsplit.append(mysplit[mypos+1])
+				else:
+					#choose the alternate option
+					if type(mysplit[mypos+1])==types.ListType:
+						newsplit.append(dep_opconvert(mysplit[mypos+3],myuse))
+					else:
+						newsplit.append(mysplit[mypos+3])
+				mypos += 4
+			else:
+				#normal use mode, and not a list (we checked for that earlier)
+				if enabled:
+					newsplit.append(mysplit[mypos+1])
+				#otherwise, continue.
+				mypos += 2
+		else:
+			#normal item
+			newsplit.append(mysplit[mypos])
+			mypos += 1
+	return newsplit
 
 def dep_eval(deplist):
 	if len(deplist)==0:
@@ -1818,7 +1836,8 @@ def dep_zapdeps(unreduced,reduced):
 			#deps satisfied, return None
 			return None
 		else:
-			return unreduced
+			#try to satisfy first dep
+			return unreduced[1]
 	else:
 		if dep_eval(reduced):
 			#deps satisfied, return None
@@ -2059,6 +2078,8 @@ def dep_wordreduce(mydeplist,mydbapi,mode):
 		if type(deplist[mypos])==types.ListType:
 			#recurse
 			deplist[mypos]=dep_wordreduce(deplist[mypos],mydbapi,mode)
+		elif deplist[mypos]=="||":
+			pass
 		else:
 			if mode:
 				mydep=mydbapi.xmatch(mode,deplist[mypos])
@@ -2313,7 +2334,12 @@ class fakedbapi(dbapi):
 	def __init__(self):
 		self.cpvdict={}
 		self.cpdict={}
-		
+
+	#this needs to be here for emerge --emptytree that uses fakedbapi for /var
+	#we should remove this requirement soon.
+	def counter_tick(self):
+		return counter_tick_core("/")
+	
 	def cpv_exists(self,mycpv):
 		return self.cpvdict.has_key(mycpv)
 
@@ -2336,25 +2362,10 @@ class fakedbapi(dbapi):
 			self.cpdict[mycp]=[]
 		if not mycpv in self.cpdict[mycp]:
 			self.cpdict[mycp].append(mycpv)
-	
-cptot=0
-class vardbapi(dbapi):
-	def __init__(self,root):
-		self.root=root
-		#cache for category directory mtimes
-		self.mtdircache={}
-		#cache for dependency checks
-		self.matchcache={}
-		#cache for cp_list results
-		self.cpcache={}	
 
-	def cpv_exists(self,mykey):
-		"Tells us whether an actual ebuild exists on disk (no masking)"
-		return os.path.exists(self.root+"var/db/pkg/"+mykey)
-
-	def counter_tick(self):
+def counter_tick_core(myroot):
 		"This method will grab the next COUNTER value and record it back to the global file.  Returns new counter value."
-		edbpath=self.root+"var/cache/edb/"
+		edbpath=myroot+"var/cache/edb/"
 		cpath=edbpath+"counter"
 
 		#We write our new counter value to a new file that gets moved into
@@ -2380,6 +2391,25 @@ class vardbapi(dbapi):
 		# now move global counter file into place
 		os.rename(newcpath,cpath)
 		return counter
+
+	
+cptot=0
+class vardbapi(dbapi):
+	def __init__(self,root):
+		self.root=root
+		#cache for category directory mtimes
+		self.mtdircache={}
+		#cache for dependency checks
+		self.matchcache={}
+		#cache for cp_list results
+		self.cpcache={}	
+
+	def cpv_exists(self,mykey):
+		"Tells us whether an actual ebuild exists on disk (no masking)"
+		return os.path.exists(self.root+"var/db/pkg/"+mykey)
+
+	def counter_tick(self):
+		return counter_tick_core(self.root)
 
 	def cpv_inject(self,mycpv):
 		"injects a real package into our on-disk database; assumes mycpv is valid and doesn't already exist"

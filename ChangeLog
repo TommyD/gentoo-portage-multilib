@@ -1,6 +1,28 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-2.0.20 (27 Jul 2002)
+
+  27 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, emerge,
+  repoman: Rewrote a good deal of our dependency-checking code, including all
+  of dep_opconvert().  Results?  repoman will now auto-enable all USE variables
+  (even ! use variables will get enabled) resulting in thorough checks of all
+  specified dependencies.  DEPEND="foo? bar : oni" and DEPEND="foo? ( bar oni )
+  : ( meep barf )" now works correctly.  DEPEND="|| ( foo bar oni )" now works
+  correctly and will try to satisfy "foo" (the first package) if none are
+  installed.  DEPEND="!foo? ( bar )" now works correctly; it was not working
+  before.  This should generally mean that our dependency system is now working
+  as expected.
+  
+  27 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: changed
+  counter_tick() method so that bulk of code is in the counter_tick_code()
+  helper function; then created a new method for fakedbapi that calls
+  counter_tick().  This fixes "--emptytree" issues with emerge, since emerge
+  still expects counter_tick() to exist as a method.
+
+  27 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, emerge: removed
+  a DEBUG: print and a stray "raise IndexError" that I used for debugging.
+
 *portage-2.0.19 (26 Jul 2002)
 
   26 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: Portage is now

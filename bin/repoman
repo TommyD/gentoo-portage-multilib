@@ -296,7 +296,6 @@ for x in scanlist:
 			if mydep[0]==1:
 				if mydep[1]!=[]:
 					#we have some unsolvable deps
-					
 					#remove ! deps, which always show up as unsatisfiable
 					d=0
 					while d<len(mydep[1]):

@@ -495,10 +495,9 @@ class depgraph:
 					myeb=portage.db[portage.root]["porttree"].dep_bestmatch(mydep2)
 					if not myeb:
 						if not mykey:
-							print "\n!!! Error: couldn't find match for",x
+							print "\n!!! Error: couldn't find match for \""+x+"\""
 						else:
-							print "\n!!! Error: couldn't find match for",x,"in",mykey
-							raise IndexError
+							print "\n!!! Error: couldn't find match for \""+x+"\" in",mykey
 						print
 						sys.exit(1)
 
@@ -836,7 +835,6 @@ def unmerge(unmerge_action, unmerge_files):
 			for mypkg in mymatch:
 				if unmerge_action=="clean":
 					myslot=localtree.getslot(mypkg)
-					print 'DEBUG:',mypkg,"has slot",myslot
 				else:
 					#since we're pruning, we don't care about slots and put all the pkgs in together
 					myslot=0
