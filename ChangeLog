@@ -2,6 +2,14 @@
 # Copyright 2001 Gentoo Technologies, Inc.; Distributed under the GPL
 # Written by Daniel Robbins (drobbins@gentoo.org)
 
+*portage 1.8.7 (30 Jan 2002)
+
+  30 Jan 2002; G.Bevin <gbevin@gentoo.org> : integrated and slightly adapted
+  Brent Rahn's code to support package names without category
+
+  30 Jan 2002; G.Bevin <gbevin@gentoo.org> : integrated and fixd Azarah's patch
+  to fix the wrongly generated archive size in the digests
+
 *portage 1.8.6-r3 (28 Jan 2002)
 
   28 Jan 2002; G.Bevin <gbevin@gentoo.org> : disabled warnings about non

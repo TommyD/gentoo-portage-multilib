@@ -197,8 +197,8 @@ dyn_digest() {
 			echo "error, aborting."
 			exit 1
 		else
-	    	mymd5=`md5sum ${DISTDIR}/${x} | cut -f1 -d" "`
-	    	mysize=`du -b ${DISTDIR}/${x} | cut -f1`
+			mymd5=`md5sum ${DISTDIR}/${x} | cut -f1 -d" "`
+			mysize=`ls -l ${DISTDIR}/${x} | awk '{ print $5 }'`
 			echo "MD5 $mymd5 $x $mysize" >> ${FILESDIR}/.digest-${PF}
 		fi
     done
