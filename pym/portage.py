@@ -2,7 +2,7 @@
 # Copyright 1998-2002 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
 
-VERSION="2.0.28"
+VERSION="2.0.30"
 
 from stat import *
 from commands import *
@@ -3736,74 +3736,37 @@ class dblink:
 						moveme=0
 						print "!!!",mydest
 					elif S_ISREG(mydmode):
+						cfgprot=0
 						# install of destination is blocked by an existing regular file; now, config file
 						# management may come into play.
 						# we only need to tweak mydest if cfg file management is in play.
 						if myppath:
 							# we have a protection path; enable config file management.
 							destmd5=perform_md5(mydest)
+							cycled=0
 							if cfgfiledict.has_key(myrealdest):
-								#this file has been merged in the past, either as the original file or as a ._cfg extension of original.
-								#we can skip the merging of this file.	But we need to do one thing first, called "cycling".  Let's say that 
-								#since the last merge on this file, the user has copied /etc/._cfg0000_foo to /etc/foo.  The ._cfg had
-								#position 4 in our md5 list (in cfgfiledict).  Now that the file has been moved into place, we want to
-								#*throw away* md5s 0-3.  Reasoning?  By doing this, we discard expired md5sums, and also allow a *new*
-								#package to merge a "classic" version of the file (consider if the new version was buggy, so we reverted
-								#to the original... without this important code, the new "original" would not get merged since it had
-								#been merged before.
 								if destmd5 in cfgfiledict[myrealdest]:
-									cfgfiledict[myrealdest]=cfgfiledict[myrealdest][cfgfiledict[myrealdest].index(destmd5):]
+									#cycle
+									del cfgfiledict[myrealdest]
+									cycled=1
 							if mymd5==destmd5:
-								#file already in place, so no need to merge this file.  However, we need to update the
-								#target file's times:
+								#file already in place; simply update mtimes of destination
 								os.utime(mydest,(thismtime,thismtime))
 								zing="---"
 								moveme=0
+							elif cycled:
+								#mymd5!=destmd5 and we've cycled; move mysrc into place as a ._cfg file
+								moveme=1
+								cfgfiledict[myrealdest]=[mymd5]
+								cfgprot=1
 							elif cfgfiledict.has_key(myrealdest) and (mymd5 in cfgfiledict[myrealdest]):
-								#ok, now that we've cycled cfgfiledict (see big paragraph above), it's safe to simply not merge this file
-								#if it has been merged by us in the past.  Thanks to the cycling, we can be do this with some assurance
-								#that we are not being overly zealous in our desire to avoid merging files unnecessarily.
-								zing="---"
+								#myd5!=destmd5, we haven't cycled, and the file we're merging has been already merged previously 
+								zing="-o-"
 								moveme=0
 							else:	
-								#don't overwrite --
-								# the files are not identical (from an md5 perspective); we cannot simply overwrite.
-								pnum=-1
-								# set pmatch to the literal filename only
-								pmatch=os.path.basename(mydest)
-								# config protection filename format:
-								# ._cfg0000_foo
-								# positioning (for reference):
-								# 0123456789012
-								mypfile=""
-								for pfile in listdir(mydestdir):
-									if pfile[0:5]!="._cfg":
-										continue
-									if pfile[10:]!=pmatch:
-										continue
-									try:
-										newpnum=string.atoi(pfile[5:9])
-										if newpnum>pnum:
-											pnum=newpnum
-										mypfile=pfile
-									except:
-										continue
-								pnum=pnum+1
-								# mypfile is set to the name of the most recent cfg management file currently on disk.
-								# if their md5sums match, we overwrite the mypfile rather than creating a new .cfg file.
-								# this keeps on-disk cfg management clutter to a minimum.
-								cleanup=0
-								if mypfile:
-									pmd5=perform_md5(mydestdir+"/"+mypfile)
-									if mymd5==pmd5:
-										mydest=(mydestdir+"/"+mypfile)
-										cleanup=1
-								if not cleanup:
-									# md5sums didn't match, so we create a new filename for merging.
-									# we now have pnum set to the official 4-digit config that should be used for the file
-									# we need to install.  Set mydest to this new value.
-									mydest=os.path.normpath(mydestdir+"/._cfg"+string.zfill(pnum,4)+"_"+pmatch)
-								#add to our md5 list for future reference (will get written to /var/cache/edb/config)
+								#mymd5!=destmd5, we haven't cycled, and the file we're merging hasn't been merged before
+								moveme=1
+								cfgprot=1
 								if not cfgfiledict.has_key(myrealdest):
 									cfgfiledict[myrealdest]=[]
 								if mymd5 not in cfgfiledict[myrealdest]:
@@ -3811,6 +3774,45 @@ class dblink:
 								#don't record more than 16 md5sums
 								if len(cfgfiledict[myrealdest])>16:
 									del cfgfiledict[myrealdest][0]
+	
+						if cfgprot:
+							pnum=-1
+							# set pmatch to the literal filename only
+							pmatch=os.path.basename(mydest)
+							# config protection filename format:
+							# ._cfg0000_foo
+							# positioning (for reference):
+							# 0123456789012
+							mypfile=""
+							for pfile in listdir(mydestdir):
+								if pfile[0:5]!="._cfg":
+									continue
+								if pfile[10:]!=pmatch:
+									continue
+								try:
+									newpnum=string.atoi(pfile[5:9])
+									if newpnum>pnum:
+										pnum=newpnum
+									mypfile=pfile
+								except:
+									continue
+							pnum=pnum+1
+							# mypfile is set to the name of the most recent cfg management file currently on disk.
+							# if their md5sums match, we overwrite the mypfile rather than creating a new .cfg file.
+							# this keeps on-disk cfg management clutter to a minimum.
+							cleanup=0
+							if mypfile:
+								pmd5=perform_md5(mydestdir+"/"+mypfile)
+								if mymd5==pmd5:
+									mydest=(mydestdir+"/"+mypfile)
+									cleanup=1
+							if not cleanup:
+								# md5sums didn't match, so we create a new filename for merging.
+								# we now have pnum set to the official 4-digit config that should be used for the file
+								# we need to install.  Set mydest to this new value.
+								mydest=os.path.normpath(mydestdir+"/._cfg"+string.zfill(pnum,4)+"_"+pmatch)
+							#add to our md5 list for future reference (will get written to /var/cache/edb/config)
+
 				# whether config protection or not, we merge the new file the same way.  Unless moveme=0 (blocking directory)
 				if moveme:
 					mymtime=movefile(mysrc,mydest,thismtime,mystat)
