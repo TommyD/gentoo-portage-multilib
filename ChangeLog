@@ -1,6 +1,8 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-2.0.17 (23 Jul 2002)
+
   23 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: fixed a bug
   pointed out by trance -- dep_nomatch() was still using the old (deleted)
   match() function.  Now it's using a new match() method.
