@@ -57,6 +57,7 @@ import shlex
 import shutil
 import xpak
 import re
+import fcntl
 import copy
 import signal
 import time
@@ -1805,7 +1806,7 @@ class packagetree:
 	def getallnodes(self):
 		"returns a list of all keys in our tree"
 		if not self.populated:
-			self.populate
+			self.populate()
 		mykeys=[]
 		for x in self.tree.keys():
 			if len(self.tree[x]):
@@ -1955,7 +1956,7 @@ class packagetree:
 		# if not, seperate the deps chars and try
 		# to find a matching category
 		if not '/' in mypkgdep:
-			re_deps=re.compile("^([><=~]+)(.+)$")
+			re_deps=re.compile("^([><=~]*)(.+)$")
 			mypkgdep_parts=re_deps.findall(mypkgdep)
 			# set default values
 			mypkgdep_deps=""
@@ -2693,6 +2694,32 @@ class dblink:
 		# this ensures that their mtime is current and unmerging works correctly
 		# spawn("(cd "+srcroot+"; for x in `find`; do  touch -c $x 2>/dev/null; done)",free=1)
 		print ">>> Merging",self.cat+"/"+self.pkg,"to",destroot
+		# get current counter value
+		edbpath=destroot+"/var/cache/edb/"
+		counterpath=edbpath+"counter"
+		packagecounter=long(0)
+		globalcounterfile=None
+		if not os.path.exists(edbpath):
+			os.makedirs(edbpath)
+		if os.path.exists(counterpath):
+			globalcounterfile=open(counterpath, "r+")
+			fcntl.flock(globalcounterfile.fileno(), fcntl.LOCK_EX)
+			packagecounter=long(globalcounterfile.readline())
+		else:
+			globalcounterfile=open(counterpath, "w")
+			fcntl.flock(globalcounterfile.fileno(), fcntl.LOCK_EX)
+		packagecounter=packagecounter+1
+		# write package counter
+		localcounterfile=open(inforoot+"/COUNTER","w")
+		localcounterfile.write(str(packagecounter))
+		localcounterfile.close()
+		# update global counter
+		globalcounterfile.seek(0,0)
+		globalcounterfile.truncate(0);
+		globalcounterfile.write(str(packagecounter))
+		fcntl.flock(globalcounterfile.fileno(), fcntl.LOCK_UN)
+		globalcounterfile.close()
+		print ">>> Package will have counter",packagecounter
 		# get old contents info for later unmerging
 		oldcontents=self.getcontents()
 		# run preinst script
@@ -2753,7 +2780,6 @@ class dblink:
 			print ">>> Safely unmerging already-installed instance..."
 			self.unmerge(oldcontents)
 			print ">>> original instance of package unmerged safely."	
-
 		# copy "info" files (like SLOT, CFLAGS, etc.) into the database
 		for x in os.listdir(inforoot):
 			self.copyfile(inforoot+"/"+x)
@@ -2946,7 +2972,7 @@ class dblink:
 						outfile.write("obj "+myrealdest+" "+mymd5+" "+`mymtime`+"\n")
 					else:
 						zing="!!!"
-					print zing,mydest
+				print zing,mydest
 			else:
 				# we are merging a fifo or device node
 				zing="!!!"

@@ -1,12 +1,39 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-1.8.16 (04 Apr 2002)
+
+  04 Apr 2002; Geert Bevin <gbevin@gentoo.org> portage.py, emerge : Forgot to
+  commit my changes, this is an assembled version of both drobbins's and my
+  changes
+
 *portage-1.8.15 (04 Apr 2002)
 
-  03 Apr 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: Fixed a
+  04 Apr 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: Fixed a
   semi-long standing bug where I was comparing atimes rather than mtimes when
   seeing if dep caches were stale.  This fixes a bug originally reported by Dan
   Armak.
+  
+*portage-1.8.14 (04 Apr 2002)
+
+  04 Apr 2002; Geert Bevin <gbevin@gentoo.org> emerge:
+  Fixed short options for --all, --safe and clean.
+  
+*portage-1.8.13 (04 Apr 2002)
+
+  04 Apr 2002; Geert Bevin <gbevin@gentoo.org> portage.py, emerge:
+  Added emerge --all clean and emerge --safe unmerge.
+  Made the counter updates atomic so that multiple merges can happen without
+  risking counter clashes.
+  Updated --help.
+  Fixed short options bug that prevented two seperate short options to be
+  specified successively.
+
+*portage-1.8.12 (04 Apr 2002)
+
+  04 Apr 2002; Geert Bevin <gbevin@gentoo.org> portage.py, emerge:
+  implemented "emerge clean" with oldrevs, oldversions and oldslots options for
+  the make.conf/make.globals CLEANMODE variable.
   
   03 Apr 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: Added an
   indentation fix to prevent merge from dying if a file attempts to install
