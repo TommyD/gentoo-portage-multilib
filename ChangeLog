@@ -13,7 +13,7 @@
   
   16 Aug 2004; Nicholas Jones <carpaski@gentoo.org> dolib*: Added LV's
   CONF_LIBDIR patch to help out the 32/64 bit lib migrations.
-	
+  
   16 Aug 2004; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: CONF_LIBDIR
   patch updates. Added a possible fix for the export issues in environment.
 
@@ -33,14 +33,14 @@
   (#46070).
 
   15 Aug 2004; Nicholas Jones <carpaski@gentoo.org> emerge: message fix for
-	packages.provided.
+  packages.provided.
 
   15 Aug 2004; Nicholas Jones <carpaski@gentoo.org> repoman: Made file.size
-	a warning for the time being.
+  a warning for the time being.
 
   15 Aug 2004; Nicholas Jones <carpaski@gentoo.org> cvstree.py: Removed the
-	auto-ignore regex as it is broken AND it breaks Manifests due to excess
-	files allowed into them.
+  auto-ignore regex as it is broken AND it breaks Manifests due to excess
+  files allowed into them.
 
   15 Aug 2004; Nicholas Jones <carpaski@gentoo.org> emerge: A couple changes
   to the select_dep exception handling for the signing code.
