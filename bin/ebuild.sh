@@ -379,7 +379,7 @@ insopts() {
 	for x in $*
 	do
 		#if we have a debug build, let's not strip anything
-		if [ -n "$DEBUGBUILD" ] &&  [ "$x" = "-s" ]
+		if [ -n "$DEBUGBUILD" ] && [ "$x" = "-s" ]
 		then
 			continue
  		else
@@ -403,7 +403,7 @@ exeopts() {
 	for x in $*
 	do
 		#if we have a debug build, let's not strip anything
-		if [ -n "$DEBUGBUILD" ] &&  [ "$x" = "-s" ]
+		if [ -n "$DEBUGBUILD" ] && [ "$x" = "-s" ]
 		then
 			continue
 		else
@@ -418,10 +418,10 @@ libopts() {
 	for x in $*
 	do
 		#if we have a debug build, let's not strip anything
-		if [ -n "$DEBUGBUILD" ] &&  [ "$x" = "-s" ]
+		if [ -n "$DEBUGBUILD" ] && [ "$x" = "-s" ]
 		then
 			continue
-        	else
+		else
 			LIBOPTIONS="$LIBOPTIONS $x"
 		fi
 	done
@@ -633,7 +633,7 @@ dyn_help() {
 	echo "                (auto-fetch/unpack/compile if needed)"
 	echo "  unmerge     : remove package from live filesystem"
 	echo "  package     : create tarball package of type ${PACKAGE}"
-        echo "                (will be stored in ${PKGDIR}/All)"
+	echo "                (will be stored in ${PKGDIR}/All)"
 	echo "  clean       : clean up all source and temporary files"
 	echo
 	echo "The following settings will be used for the ebuild process:"
@@ -649,17 +649,17 @@ dyn_help() {
 	echo -n "  build mode  : "
 	if [ -n "${DEBUGBUILD}" ]
 	then
-	    echo "debug (large)"
+		echo "debug (large)"
 	else
-	    echo "production (stripped)"
+		echo "production (stripped)"
 	fi
 	echo "  merge to    : ${ROOT}" 
 	echo 
 	if [ -n "$USE" ]
 	then
-	    echo "Additionally, support for the following optional features will be enabled:"
-	    echo 
-	    echo "  ${USE}"
+		echo "Additionally, support for the following optional features will be enabled:"
+		echo 
+		echo "  ${USE}"
 	fi    
 	echo
 }
@@ -686,7 +686,7 @@ debug-print() {
 		if [ "$ECLASS_DEBUG_OUTPUT" == "on" ]; then
 			echo "debug: $1"
 		elif [ -n "$ECLASS_DEBUG_OUTPUT" ]; then
-	    	        echo "debug: $1" >> $ECLASS_DEBUG_OUTPUT
+			echo "debug: $1" >> $ECLASS_DEBUG_OUTPUT
 		fi
 		
 		# default target
