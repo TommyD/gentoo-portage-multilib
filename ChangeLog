@@ -2,6 +2,11 @@ Portage 1.6.7, released 05 Sep 2001
 ===================================
 
 	*portage.py
+	(last-minute fix)
+	CONFIG_PROTECT unmerge protection is now observed for symlinks, fifos and
+	device nodes.
+	
+	*portage.py
 	Fixes for unmerging CONFIG_PROTECTed files.  Protected files are now *not*
 	unlinked from the filesystem.  Messier but safer, and simplifies package
 	upgrades.
