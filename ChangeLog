@@ -9,6 +9,9 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  13 Aug 2004; Brian Harring <ferringb@gentoo.org> bin/emerge: Fixed a 
+  traceback related to attempting to concat an int/long to a str. (#60256)
+
   13 Aug 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge:
   Relocated blocker checking code to before pkgsettings.setcpv() is called
   on it in depgraph.create()

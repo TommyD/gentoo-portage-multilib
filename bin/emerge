@@ -1515,7 +1515,7 @@ class depgraph:
 
 		if "--verbose" in myopts:
 			print
-			print "Total size of downloads: "+format_size(totalsize)
+			print "Total size of downloads: "+str(format_size(totalsize))
 			if overlays and display_overlays:
 				print "Portage overlays:"
 				y=0
