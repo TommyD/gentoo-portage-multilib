@@ -2343,6 +2343,7 @@ class portagetree:
 		if clone:
 			self.root=clone.root
 			self.portroot=clone.portroot
+			self.pkglines=clone.pkglines
 		else:
 			self.root=root
 			self.portroot=settings["PORTDIR"]
@@ -4418,7 +4419,7 @@ def portageexit():
 			if mtimedb and not os.environ.has_key("SANDBOX_ACTIVE"):
 				mtimedb["version"]=VERSION
 				cPickle.dump(mtimedb,open(mymfn,"w"))
-				print "*** Wrote out mtimedb data successfully."
+				#print "*** Wrote out mtimedb data successfully."
 				os.chown(mymfn,uid,wheelgid)
 				os.chmod(mymfn,0664)
 		except Exception, e:
