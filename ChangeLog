@@ -9,6 +9,11 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  26 Jul 2004; Brian Harring <ferringb@gentoo.org> bin/repoman:
+  Added file.executable check- ebuilds, digests, Manifest, ChangeLog, and
+  metadata.xml don't need the executable bit set.  CVS preserves it upon 
+  commit, so we do the check prior to commit.  (#55647)
+
   26 Jul 2004; Brian Harring <ferringb@gentoo.org> bin/emerge:
   Removed the hardcoding of uname for emerge info, using which to find it
   instead.

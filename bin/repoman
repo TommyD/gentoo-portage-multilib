@@ -60,7 +60,7 @@ qacats=[
 "ebuild.invalidname","ebuild.namenomatch",
 "changelog.missing",
 "changelog.notadded","ebuild.notadded","digest.notadded",
-"ebuild.disjointed","digest.disjointed",
+"ebuild.disjointed","digest.disjointed", "file.executable",
 "digest.unmatch",
 "DEPEND.bad","RDEPEND.bad","PDEPEND.bad",
 "DEPEND.badmasked","RDEPEND.badmasked","PDEPEND.badmasked",
@@ -113,6 +113,7 @@ qahelp={
 	"digest.unmatch":"Digests which are incomplete (please check if your USE/ARCH includes all files)",
 	"ebuild.notadded":"Ebuilds that exist but have not been added to cvs",
 	"changelog.notadded":"ChangeLogs that exist but have not been added to cvs",
+	"file.execultable":"Ebuilds, digests, metadata.xml, Manifest, and ChangeLog do note need the executable bit",
 	"KEYWORDS.missing":"Ebuilds that have a missing KEYWORDS variable",
 	"LICENSE.missing":"Ebuilds that have a missing LICENSE variable",
 	"IUSE.missing":"Ebuilds that have a missing IUSE variable",
@@ -553,6 +554,10 @@ for x in scanlist:
 	for y in checkdirlist:
 		if y[-7:]==".ebuild":
 			ebuildlist.append(y[:-7])
+		if y in ["Manifest","ChangeLog","metadata.xml"]:
+			if os.stat(checkdir+"/"+y)[0] & 0x0248:
+				stats["file.executable"] += 1
+				fails["file.executable"].append(checkdir+"/"+y)
 	digestlist=[]
 	if isCvs:
 		try:
@@ -598,6 +603,11 @@ for x in scanlist:
 					if y[7:] in eadded:
 						stats["digest.disjointed"]=stats["digest.disjointed"]+1
 						fails["digest.disjointed"].append(x+"/files/"+y)
+						
+				if os.stat(checkdir+"/files/"+y)[0] & 0x0248:
+					stats["file.executable"] += 1
+					fails["file.executable"].append(x+"/files/"+y)
+
 				#else:
 				#	mydigests=portage.digestParseFile(checkdir+"/files/"+y)
 				#	mykey = catdir + "/" + y[7:]
@@ -642,6 +652,9 @@ for x in scanlist:
 					fails["metadata.bad"].append(x+"/metadata.xml")
 
 	for y in ebuildlist:
+		if os.stat(checkdir+"/"+y+".ebuild")[0] & 0x0248:
+			stats["file.executable"] += 1
+			fails["file.executable"].append(x+"/"+y+".ebuild")
 		if y not in eadded:
 			#ebuild not added to cvs
 			stats["ebuild.notadded"]=stats["ebuild.notadded"]+1
