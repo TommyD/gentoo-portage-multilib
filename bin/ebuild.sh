@@ -268,11 +268,13 @@ econf() {
 einstall() {
 	if [ -f ./[mM]akefile -o -f ./GNUmakefile ] ; then
 		make prefix=${D}/usr \
-		    mandir=${D}/usr/share/man \
-		    infodir=${D}/usr/share/info \
 		    datadir=${D}/usr/share \
-		    sysconfdir=${D}/etc \
+		    incdir=${D}/usr/include \
+		    infodir=${D}/usr/share/info \
+		    libdir=${D}/usr/lib \
 		    localstatedir=${D}/var/lib \
+		    mandir=${D}/usr/share/man \
+		    sysconfdir=${D}/etc \
 		    "$@" install || die "einstall failed" 
 	else
 		die "no Makefile found"

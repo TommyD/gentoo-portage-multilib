@@ -3,7 +3,7 @@
 # Distributed under the GNU Public License v2
 # $Header$
 
-VERSION="2.0.47-r6"
+VERSION="2.0.47-r8"
 
 from stat import *
 from commands import *
@@ -1245,7 +1245,10 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 		return 1
 
 	settings.reset()
-	settings["PORTAGE_DEBUG"]=str(debug)
+	if debug: # Otherwise it overrides emerge's settings.
+		# We have no other way to set debug... debug can't be passed in
+		# due to how it's coded... Don't overwrite this so we can use it.
+		settings["PORTAGE_DEBUG"]=str(debug)
 	#settings["ROOT"]=root
 	settings["ROOT"]=myroot
 	settings["STARTDIR"]=getcwd()
@@ -1312,7 +1315,8 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 	# get possible slot information from the deps file
 	if mydo=="depend":
 		myso=getstatusoutput("/usr/sbin/ebuild.sh depend")
-		if debug:
+		if settings.has_key("PORTAGE_DEBUG") and settings["PORTAGE_DEBUG"]=="1":
+			print
 			print myso[1]
 		return myso[0]
 
@@ -2931,8 +2935,8 @@ def eclass(myeclass=None,mycpv=None,mymtime=None):
 	if myeclass != None:
 		if not mtimedb["eclass"].has_key(myeclass):
 			# Eclass doesn't exist.
-			print "!!! eclass does not exist:",myeclass
-			return None
+			print "!!! eclass '"+myeclass+"' in '"+myeclass+"' does not exist:"
+			raise KeyError
 		else:
 			if (mycpv!=None) and (mymtime!=None):
 				if mycpv not in mtimedb["packages"]:
@@ -2999,6 +3003,7 @@ class portdbapi(dbapi):
 				return myloc
 			except (OSError,IOError):
 				pass
+		# XXX Catch invalid names? XXX #
 		return self.root+"/"+mysplit[0]+"/"+psplit[0]+"/"+mysplit[1]+".ebuild"
 
 	def aux_get(self,mycpv,mylist,strict=0,metacachedir=None):
@@ -3060,9 +3065,9 @@ class portdbapi(dbapi):
 			else:
 				if doebuild(myebuild,"depend","/"):
 					#depend returned non-zero exit code...
-					if strict:
-						sys.stderr.write(str(red("\naux_get():")+" (0) Error in",mycpv,"ebuild.\n"))
-						raise KeyError
+					sys.stderr.write(str(red("\naux_get():")+" (0) Error in "+mycpv+" ebuild.\n"
+             "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
+					raise KeyError
 
 			doregen2=1
 			dmtime=0
@@ -3095,9 +3100,8 @@ class portdbapi(dbapi):
 			mylines=mycent.readlines()
 			mycent.close()
 		except (IOError, OSError):
-			print red("\n\naux_get():")+" (1) couldn't open cache entry for",mycpv
-			print "               Check for syntax error or corruption in the ebuild."
-			print 
+			sys.stderr.write(str(red("\naux_get():")+" (1) Error in "+mycpv+" ebuild.\n"
+			  "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
 			raise KeyError
 
 		#We now have the db
@@ -3120,8 +3124,7 @@ class portdbapi(dbapi):
 				myret=eclass(myeclass,mycpv,dmtime)
 				#print "eclass '",myeclass,"':",myret,doregen,doregen2
 				if myret==None:
-					print red("\n\naux_get():")+' eclass "'+myeclass+'" from',mydbkey,"not found."
-					print "!!! Eclass '"+myeclass+"'not found."
+					# eclass is missing... We'll die if it doesn't get fixed on regen
 					doregen2=1
 					break
 				if myret==0 and not usingmdcache:
@@ -3149,15 +3152,15 @@ class portdbapi(dbapi):
 			
 			if doebuild(myebuild,"depend","/"):
 				#depend returned non-zero exit code...
-				if strict:
-					print red("\n\naux_get():")+" (0) Error in",mycpv,"ebuild."
-					raise KeyError
+				sys.stderr.write(str(red("\naux_get():")+" (2) Error in "+mycpv+" ebuild.\n"
+				  "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
+				raise KeyError
 			try:
 				os.utime(mydbkey,(emtime,emtime))
 				mycent=open(mydbkey,"r")
 			except (IOError, OSError):
-				print red("\n\naux_get():")+" (2) couldn't open cache entry for",mycpv
-				print "               Check for syntax error or corruption in the ebuild."
+				sys.stderr.write(str(red("\naux_get():")+" (3) Error in "+mycpv+" ebuild.\n"
+				  "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
 				raise KeyError
 			mylines=mycent.readlines()
 			mycent.close()
@@ -3178,7 +3181,11 @@ class portdbapi(dbapi):
 				os.unlink(mydbkey)
 				sys.exit(1)
 			for myeclass in myeclasses:
-				eclass(myeclass,mycpv,emtime)
+				if eclass(myeclass,mycpv,emtime)==None:
+					# Eclass wasn't found.
+					print red("\n\naux_get():")+' eclass "'+myeclass+'" from',mydbkey,"not found."
+					print "!!! Eclass '"+myeclass+"' not found."
+					sys.exit(1)
 			try:
 				for x in range(0,len(auxdbkeys)):
 					self.auxcache[mycpv][auxdbkeys[x]]=mylines[x][:-1]
@@ -3383,7 +3390,7 @@ class portdbapi(dbapi):
 			auxerr=0
 			try:
 				myaux=db["/"]["porttree"].dbapi.aux_get(mycpv, ["KEYWORDS"])
-			except (KeyError,IOError):
+			except (KeyError,IOError,TypeError):
 				return []
 			if not myaux[0]:
 				# KEYWORDS=""
