@@ -1893,7 +1893,10 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 
 		servertimestampdir=portage.settings["PORTAGE_TMPDIR"]+"/sync/"
 
-		content=portage.grabfile(myportdir+"/metadata/timestamp.chk")
+		content=portage.grabfile(portage.settings["PORTAGE_TMPDIR"]+"/sync/timestamp.chk.previous")
+		if (not content):
+			content=portage.grabfile(myportdir+"/metadata/timestamp.chk")
+
 		if (content):
 			mytimestamp=time.mktime(time.strptime(content[0], "%a, %d %b %Y %H:%M:%S +0000"))
 		else:
@@ -2077,6 +2080,13 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 		portage.spawn("chmod -R g+rw "+portage.dbcachedir, portage.settings, free=1)
 		sys.stdout.write("\b\b  ...done!\n\n")
 		sys.stdout.flush()
+
+	# store timestamp.chk for checking timestamp in next time.
+	try:
+		portage.movefile(portage.settings["PORTAGE_TMPDIR"]+"/sync/timestamp.chk", portage.settings["PORTAGE_TMPDIR"]+"/sync/timestamp.chk.previous")
+	except Exception, e:
+		print "!!! Failed to store current timestamp."
+		print "!!!",e
 
 	portage.portageexit()
 	reload(portage)
