@@ -1738,7 +1738,10 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					#if root, -always- set the perms.
 					if os.path.exists(mysettings["DISTDIR"]+"/"+myfile) and (fetched != 1 or os.getuid() == 0):
 						if os.stat(mysettings["DISTDIR"]+"/"+myfile).st_gid != portage_gid:
-							os.chown(mysettings["DISTDIR"]+"/"+myfile,-1,portage_gid)
+							try:
+								os.chown(mysettings["DISTDIR"]+"/"+myfile,-1,portage_gid)
+							except:
+								portage_util.writemsg("chown failed on distfile: " + str(myfile))
 						os.chmod(mysettings["DISTDIR"]+"/"+myfile,0664)
 
 				if mydigests!=None and mydigests.has_key(myfile):
@@ -4925,7 +4928,13 @@ class portdbapi(dbapi):
 				mylock = portage_locks.lockfile(mydbkey, wantnewlockfile=1)
 
 				if os.path.exists(mydbkey):
-					os.unlink(mydbkey)
+					try:
+						os.unlink(mydbkey)
+					except Exception, e:
+						portage_locks.unlockfile(mylock)
+						self.lock_held = 0
+						writemsg("Uncaught handled exception: %(exception)s\n" % {"exception":str(e)})
+						raise
 
 				myret=doebuild(myebuild,"depend","/",self.mysettings,dbkey=mydbkey)
 				if myret:
@@ -4947,6 +4956,11 @@ class portdbapi(dbapi):
 					writemsg(str(red("\naux_get():")+" (1) Error in "+mycpv+" ebuild.\n"
 					  "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
 					raise KeyError
+				except Exception, e:
+					portage_locks.unlockfile(mylock)
+					self.lock_held = 0
+					writemsg("Uncaught handled exception: %(exception)s\n" % {"exception":str(e)})
+					raise
 
 				portage_locks.unlockfile(mylock)
 				self.lock_held = 0

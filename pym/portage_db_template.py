@@ -69,7 +69,7 @@ class database:
 				self.__addCache(key,values)
 				return values
 			except Exception, e:
-				raise CorruptionError("Corruption detected when reading key '%s'" % (key))
+				raise CorruptionError("Corruption detected when reading key '%s': %s" % (key,str(e)))
 		raise KeyError("Key not in db: '%s'" % (key))
 	
 	def __setitem__(self,key,values):

@@ -1002,7 +1002,7 @@ class depgraph:
 				elif not "--oneshot" in myopts:
 					myfavorites.append(mykey)
 			else:
-				try: 
+				try:
 					mykey=portage.dep_expand(x,portage.portdb)
 				except ValueError, errpkgs:
 					print "\n\n!!! The short ebuild name \"" + x + "\" is ambiguous.  Please specify"
@@ -2259,9 +2259,9 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 			"--delete-after", # Delete only after everything else is done
 			"--stats",        # Show final statistics about what was transfered
       "--timeout="+str(mytimeout), # IO timeout if not done in X seconds
-			"--exclude='distfiles/*'",   # Exclude distfiles from consideration
-			"--exclude='local/*'",       # Exclude local     from consideration
-			"--exclude='packages/*'",    # Exclude packages  from consideration
+			"--exclude='/distfiles'",   # Exclude distfiles from consideration
+			"--exclude='/local'",       # Exclude local     from consideration
+			"--exclude='/packages'",    # Exclude packages  from consideration
 		]
 
 		if "--quiet" in myopts:

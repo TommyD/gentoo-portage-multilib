@@ -18,7 +18,6 @@ fi
 cd "$DISTDIR"
 
 found=0
-attempts=0
 if [ "$1" == "-v" ] ; then
 	wgetops=
 else	
@@ -49,7 +48,8 @@ sync_local() {
 	chown -R 0:0 portage
 	cd portage
 	rsync -av --progress --stats --delete --delete-after \
-	--exclude='distfiles/*' --exclude='packages/*' . ${PORTDIR%%/}
+	--exclude='/distfiles' --exclude='/packages' \
+	--exclude='/local' . ${PORTDIR%%/}
 	cd ..
 	echo "cleaning up"
 	rm -rf portage
@@ -59,7 +59,9 @@ sync_local() {
 
 echo "Fetching most recent snapshot"
 
+declare -i attempts=-1
 while (( $attempts <  40 )) ; do
+	attempts=$(( attempts + 1 ))
 
 	#this too, sucks.  it works in the interim though.
 	if [ "$USERLAND" == "BSD" ] ; then
@@ -74,6 +76,8 @@ while (( $attempts <  40 )) ; do
 	fi
 
 	FILE_ORIG="portage-${year}${month}${day}.tar.bz2"
+
+	echo "Attempting to fetch file dated: ${year}${month}${day}"
 		
 	got_md5=0
 
@@ -92,15 +96,15 @@ while (( $attempts <  40 )) ; do
 	FILE="${FILE_ORIG}"
 
 	if (($got_md5 == 0 )); then
-		echo "unable to fetch md5sum, no way to detect corruption.  bailing"
-		exit 1
+		echo " --- No md5sum present on the mirror. (Not yet available.)"
+		continue
 	elif [ -s "${FILE}" ]; then
 		if eval "$md5_com"; then
-			echo "existing snapshot $FILE is correct, using it"
+			echo " === snapshot $FILE is correct, using it"
 			sync_local
 			echo
-			echo " *** Reused snapshot $FILE"
-			ehco 
+			echo " === Snapshot has beed sync'd"
+			echo
 			exit 0
 		else
 			rm $FILE
@@ -126,7 +130,6 @@ while (( $attempts <  40 )) ; do
 		fi
 
 	done
-	attempts=$[attempts+1]
 done
 
 rm -rf portage

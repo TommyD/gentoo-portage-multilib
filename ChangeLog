@@ -7,6 +7,19 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  30 Sep 2004; Nicholas Jones <carpaski@gentoo.org> emerge: Rsync fix part 2
+  for the distfiles, local, and packages directory unlinks.
+  
+  30 Sep 2004; Nicholas Jones <carpaski@gentoo.org> emerge-webrsync: Fix for
+  the missing md5sum causing failure to download. Fixed up a couple messages.
+  Modified the local rsync line.
+  
+  30 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Make more of
+  the chown calls friendly. More output on strange exceptions in aux_get.
+  
+  30 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage_db_template.py:
+  Added some more putput to the corruption message.
+
   29 Sep 2004; Jason Stubbs <jstubbs@gentoo.org> output.py: Added unicode-rxvt
   to the list of legal term types. #65762
 
@@ -17,7 +30,7 @@
 
   26 Sep 2004; Nicholas Jones <carpaski@gentoo.org> emerge: Restart fix for
   the -a into execv code.
-	
+  
   26 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage_locks.py: Fixed
   a traceback for Fat32 users.
 
@@ -74,7 +87,7 @@
   26 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage_lock.py: Added
   more cleanup to the lockfile descriptors.
 
-*portage-2.0.51_rc2 (25 Sep 2004): And we another Release Candidate!
+*portage-2.0.51_rc2 (25 Sep 2004): And we have another Release Candidate!
 
   25 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage_db_flat.py: Fix
   for typos.
@@ -138,6 +151,8 @@
   16 Sep 2004; Jason Stubbs <jstubbs@gentoo.org> portage.py: Modified
   getmaskingstatus() to use settings.prevmaskdict rather than reading packages
   directly in support of cascading profiles.
+
+*portage-2.0.51_rc1 (25 Sep 2004): And we have a Release Candidate!
 
   15 Sep 2004; Nicholas Jones <carpaski@gentoo.org> ebuild: On merge, disable
   the noauto feature explicitly.
@@ -680,7 +695,7 @@
   to the titlebar terminals.
 
   02 Aug 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Added a message
-  regarding the location of the virtuals file (move to /etc/portage/profiles).
+  regarding the location of the virtuals file (move to /etc/portage/profile).
   Added a invalid-mirror message and a missing URI message for fetching. Added
   the selinux sandbox patch. Removed the old dep_opconvert call as all ?:
   syntax is gone.
