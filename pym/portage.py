@@ -1152,8 +1152,11 @@ class config:
 				if os.path.exists(mypath):
 					self.profiles.insert(0,mypath)
 
-			if os.path.exists("/etc/portage/profile"):
-				self.profiles.append("/etc/portage/profile")
+			if os.environ.has_key("PORTAGE_CALLER") and os.environ["PORTAGE_CALLER"] == "repoman":
+				pass
+			else:
+				if os.path.exists("/etc/portage/profile"):
+					self.profiles.append("/etc/portage/profile")
 
 			self.packages = grab_stacked("packages", self.profiles, grabfile, incremental_lines=1)
 			self.virtuals = self.getvirtuals('/')
@@ -1385,8 +1388,12 @@ class config:
 
 	def getvirtuals(self, myroot):
 		myvirts     = {}
-		myvirtfiles = []
-		myvirtdirs  = prefix_array(self.profiles,myroot)
+
+		# This breaks catalyst/portage when setting to a fresh/empty root.
+		# Virtuals cannot be calculated because there is nothing to work
+		# from. So the only ROOT prefixed dir should be local configs.
+		#myvirtdirs  = prefix_array(self.profiles,myroot+"/")
+		myvirtdirs = copy.deepcopy(self.profiles)
 
 		# repoman doesn't need local virtuals.
 		if os.environ.has_key("PORTAGE_CALLER") and os.environ["PORTAGE_CALLER"] == "repoman":
@@ -2020,7 +2027,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	mysettings["PF"]       = mypv
 	
 	mysettings["ECLASSDIR"]   = mysettings["PORTDIR"]+"/eclass"
-	mysettings["SANDBOX_LOG"] = mycpv
+	mysettings["SANDBOX_LOG"] = mycpv.replace("/", "_-_")
 
 	mysettings["P"]  = mysplit[0]+"-"+mysplit[1]
 	mysettings["PN"] = mysplit[0]
@@ -3726,13 +3733,14 @@ class dbapi:
 	def invalidentry(self, mypath):
 		if re.search("portage_lockfile$",mypath):
 			if not os.environ.has_key("PORTAGE_MASTER_PID"):
-				writemsg("Lockfile removed: %s\n" % mypath)
+				writemsg("Lockfile removed: %s\n" % mypath, 1)
 				unlockfile((mypath,None,None))
 			else:
 				# Nothing we can do about it. We're probably sandboxed.
 				pass
 		elif re.search(".*/-MERGING-(.*)",mypath):
-			writemsg(red("INCOMPLETE MERGE:")+" "+mypath+"\n")
+			if os.path.exists(mypath):
+				writemsg(red("INCOMPLETE MERGE:")+" "+mypath+"\n")
 		else:
 			writemsg("!!! Invalid db entry: %s\n" % mypath)
 

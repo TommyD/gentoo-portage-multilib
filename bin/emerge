@@ -2094,7 +2094,7 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 				try:
 					ignored=portage.portdb.aux_get(y,[],metacachedir=myportdir+"/metadata/cache",debug=("cachedebug" in portage.features))
 				except:
-					pass
+					print "\nFailed cache update:",y
 		sys.stdout.write("\b\b  ...done!\n\n")
 		sys.stdout.flush()
 

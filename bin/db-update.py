@@ -53,6 +53,6 @@ if not os.path.exists("/tmp/db-upgrade-bak"):
 	os.mkdir("/tmp/db-upgrade-bak")
 print ">>> Backing up to /tmp/db-upgrade-bak..."
 for myarg in myvalidargs:
-	print ">>> Backing up",portage.root+portage.VDB_PATH+origkey[myarg]
-	os.system("mv "+portage.root+portage.VDB_PATH+origkey[myarg]+" /tmp/db-upgrade-bak")
+	print ">>> Backing up",portage.root+portage.VDB_PATH+"/"+origkey[myarg]
+	os.system("mv "+portage.root+portage.VDB_PATH+"/"+origkey[myarg]+" /tmp/db-upgrade-bak")
 print ">>> Done."

@@ -38,7 +38,6 @@ class database(portage_db_template.database):
 		# return portage.listdir(self.fullpath,filesonly=1)
 		mykeys = []
 		for x in os.listdir(self.fullpath):
-			print x,self.fullpath+x,os.path.isdir(self.fullpath+x)
 			if os.path.isfile(self.fullpath+x):
 				mykeys += [x]
 		return mykeys

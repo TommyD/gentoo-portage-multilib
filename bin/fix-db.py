@@ -35,7 +35,7 @@ except:
 	writemsg("ERROR: Real counter is invalid.\n")
 	real_counter = 0
 
-vardbdir = root+VDB_PATH
+vardbdir = root+VDB_PATH+"/"
 for cat in os.listdir(vardbdir):
 	catdir = vardbdir+cat+"/"
 	if not os.path.isdir(catdir):
