@@ -2,7 +2,7 @@
 # Copyright 1998-2002 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
 
-VERSION="2.0.8"
+VERSION="2.0.11"
 
 from stat import *
 from commands import *
@@ -1203,6 +1203,8 @@ def movefile(src,dest,newmtime=None,sstat=None):
 		if destexists:
 			try:
 				os.unlink(dest)
+				if os.path.exists(dest):
+					print "WARNING: ",dest,"still exists!"
 			except:
 				print "!!! couldn't unlink",dest
 				# uh oh. oh well
@@ -1215,6 +1217,8 @@ def movefile(src,dest,newmtime=None,sstat=None):
 			return None 
 		try:
 			os.symlink(real_src,dest)
+			if os.readlink(dest)!=real_src:
+				print "WARNING:",dest,"points to",os.readlink(dest),"instead of","real_src!"
 		except:
 			print "!!! couldn't symlink",real_src,"->",dest
 			return None 
@@ -2187,6 +2191,7 @@ def match(origdep,mydata):
 		for x in mylist:
 			cp_x=catpkgsplit(x)
 			if cp_x==None:
+				print "cp_x == None",x
 				return None
 			if cp_key[0]!=cp_x[0]:
 				continue
@@ -2209,6 +2214,7 @@ def match(origdep,mydata):
 		for x in mylist:
 			cp_x=catpkgsplit(x)
 			if cp_x==None:
+				print "cp_x == None",x
 				return None
 			if cp_key[0]!=cp_x[0]:
 				continue
@@ -2221,6 +2227,7 @@ def match(origdep,mydata):
 
 class portagetree:
 	def __init__(self,root="/",virtual=None,clone=None):
+		global portdb
 		if clone:
 			self.root=clone.root
 			self.portroot=clone.portroot
@@ -2229,7 +2236,7 @@ class portagetree:
 			self.root=root
 			self.portroot=settings["PORTDIR"]
 			self.virtual=virtual
-			self.dbapi=portdbapi()
+			self.dbapi=portdb
 
 	def dep_bestmatch(self,mydep):
 		"compatibility method"
@@ -2728,8 +2735,9 @@ class portdbapi(dbapi):
 			for x in maskdict[mycp]:
 				mymatches=self.xmatch("match-all",x)
 				if mymatches==None:
-					#error
-					return None
+					#error in package.mask file; print warning and continue:
+					print "emerge: visible(): package.mask entry \""+x+"\" is invalid, ignoring..."
+					continue
 				for y in mymatches:
 					while y in newlist:
 						newlist.remove(y)
@@ -2740,8 +2748,9 @@ class portdbapi(dbapi):
 				#Without this, ~ deps in the packages files are broken.
 				mymatches=self.xmatch("match-list",x,mylist=newlist)
 				if mymatches==None:
-					#error
-					return None
+					#error in packages file; print warning and continue:
+					print "emerge: visible(): profile packages entry \""+x+"\" is invalid, ignoring..."
+					continue
 				pos=0
 				while pos<len(newlist):
 					if newlist[pos] not in mymatches:
@@ -2783,6 +2792,7 @@ class portdbapi(dbapi):
 		return newlist
 		
 	def match2(self,mydep,mykey,mylist):
+		"Notable difference to our match() function is that we don't return None. Ever.  Just empty list."
 		mycpv=dep_getcpv(mydep)
 		if isspecific(mycpv):
 			cp_key=catpkgsplit(mycpv)
@@ -2814,7 +2824,8 @@ class portdbapi(dbapi):
 				for x in mylist:
 					cp_x=catpkgsplit(x)
 					if cp_x==None:
-						return None
+						#hrm, invalid entry.  Continue.
+						continue
 					#skip entries in our list that do not have matching categories
 					if cp_key[0]!=cp_x[0]:
 						continue
@@ -2840,7 +2851,8 @@ class portdbapi(dbapi):
 			for x in mylist:
 				cp_x=catpkgsplit(x)
 				if cp_x==None:
-					return None
+					#invalid entry; continue.
+					continue
 				if cp_key[0]!=cp_x[0]:
 					continue
 				if eval("pkgcmp(cp_x[1:],cp_key[1:])"+cmpstr+"0"):
@@ -2853,7 +2865,8 @@ class portdbapi(dbapi):
 			for x in mylist:
 				cp_x=catpkgsplit(x)
 				if cp_x==None:
-					return None
+					#invalid entry; continue
+					continue
 				if cp_key[0]!=cp_x[0]:
 					continue
 				if cp_key[2]!=cp_x[2]:
@@ -2875,7 +2888,8 @@ class portdbapi(dbapi):
 			for x in mylist:
 				cp_x=catpkgsplit(x)
 				if cp_x==None:
-					return None
+					#invalid entry; continue
+					continue
 				if cp_key[0]!=cp_x[0]:
 					continue
 				if cp_key[1]!=cp_x[1]:
@@ -2883,7 +2897,7 @@ class portdbapi(dbapi):
 				mynodes.append(x)
 			return mynodes
 		else:
-			return None
+			return []
 
 			
 class binarytree(packagetree):
@@ -3056,18 +3070,12 @@ class dblink:
 		if not os.path.exists(myebuildpath):
 			myebuildpath=None
 		#do prerm script
-		if myebuildpath:
+		if myebuildpath and os.path.exists(myebuildpath):
 			a=doebuild(myebuildpath,"prerm",self.myroot)
 			if a:
 				print "!!! pkg_prerm() script failed; exiting."
 				sys.exit(a)
 
-		#we do this so we don't unmerge the ebuild file by mistake
-		myebuildfile=os.path.normpath(self.dbdir+"/"+self.pkg+".ebuild")
-		if os.path.exists(myebuildfile):
-			if pkgfiles.has_key(myebuildfile):
-				del pkgfiles[myebuildfile]
-				
 		mykeys=pkgfiles.keys()
 		mykeys.sort()
 		mykeys.reverse()
@@ -3086,7 +3094,10 @@ class dblink:
 			if os.path.isdir(ppath):
 				self.protectmask.append(ppath)
 			#if it doesn't exist, silently skip it
-		
+	
+		#process symlinks second-to-last, directories last.
+		mydirs=[]
+		mysyms=[]
 		for obj in mykeys:
 			obj=os.path.normpath(obj)
 			if not os.path.islink(obj):
@@ -3098,29 +3109,22 @@ class dblink:
 					continue
 			lstatobj=os.lstat(obj)
 			lmtime=`lstatobj[ST_MTIME]`
-			if (pkgfiles[obj][0] not in ("dir","fif","dev")) and (lmtime != pkgfiles[obj][1]):
+			#next line: we dont rely on mtimes for symlinks anymore.
+			if (pkgfiles[obj][0] not in ("dir","fif","dev","sym")) and (lmtime != pkgfiles[obj][1]):
 				print "--- !mtime", pkgfiles[obj][0], obj
 				continue
 			if pkgfiles[obj][0]=="dir":
 				if not os.path.isdir(obj):
 					print "--- !dir  ","dir", obj
 					continue
-				if listdir(obj):
-					print "--- !empty","dir", obj
-					continue
-				try:
-					os.rmdir(obj)
-				except OSError,IOError:
-					#We couldn't remove the dir; maybe it's immutable?
-					pass
-				print "<<<       ","dir",obj
+				mydirs.append(obj)
 			elif pkgfiles[obj][0]=="sym":
 				if not os.path.islink(obj):
 					print "--- !sym  ","sym", obj
 					continue
-				if (lmtime != pkgfiles[obj][1]):
-					print "--- !mtime sym",obj
-					continue
+				#if (lmtime != pkgfiles[obj][1]):
+				#	print "--- !mtime sym",obj
+				#	continue
 				mydest=os.readlink(obj)
 				if os.path.exists(os.path.normpath(self.myroot+mydest)):
 					if mydest != pkgfiles[obj][2]:
@@ -3140,14 +3144,9 @@ class dblink:
 							myppath=ppath
 							break
 				if myppath:
-					print "--- cfgpro  ","sym",obj
+					print "--- cfgpro sym",obj
 					continue
-				try:
-					os.unlink(obj)
-				except OSError,IOError:
-					#immutable?
-					pass
-				print "<<<       ","sym",obj
+				mysyms.append(obj)
 			elif pkgfiles[obj][0]=="obj":
 				if not os.path.isfile(obj):
 					print "--- !obj  ","obj", obj
@@ -3172,7 +3171,7 @@ class dblink:
 							myppath=ppath
 							break
 				if myppath:
-					print "--- cfgpro  ","obj",obj
+					print "--- cfgpro obj",obj
 				else:
 					try:
 						os.unlink(obj)
@@ -3197,7 +3196,7 @@ class dblink:
 							myppath=ppath
 							break
 				if myppath:
-					print "--- cfgpro  ","fif",obj
+					print "--- cfgpro fif",obj
 					continue
 				try:
 					os.unlink(obj)
@@ -3206,6 +3205,79 @@ class dblink:
 				print "<<<       ","fif",obj
 			elif pkgfiles[obj][0]=="dev":
 				print "---       ","dev",obj
+
+		#Now, we need to remove symlinks and directories.  We'll repeatedly
+		#remove dead symlinks, then directories until we stop making progress.
+		#This is how we'll clean up directories containing symlinks pointing to
+		#directories that are now empty.  These cases will require several
+		#iterations through our two-stage symlink/directory cleaning loop.
+
+		#main symlink and directory removal loop:
+
+		#progress -- are we making progress?  Initialized to 1 so loop will start
+		progress=1
+		while progress:
+			#let's see if we're able to make progress this iteration...
+			progress=0
+
+			#step 1: remove all the dead symlinks we can...
+	
+			pos = 0
+			while pos<len(mysyms):
+				obj=mysyms[pos]
+				try:
+					#target exists; keep it for now.
+					mystat=os.stat(obj)
+					pos += 1
+				except:
+					#we have a dead symlink; remove it from our list, then from existence
+					del mysyms[pos]
+					#we've made progress!	
+					progress = 1
+					try:
+						os.unlink(obj)
+						print "<<<       ","sym",obj
+					except OSError,IOError:
+						#immutable?
+						pass
+	
+			#step 2: remove all the empty directories we can...
+	
+			pos = 0
+			while pos<len(mydirs):
+				obj=mydirs[pos]
+				if listdir(obj):
+					#we won't remove this directory (yet), continue
+						pos += 1
+						continue
+				else:
+					#zappo time
+					del mydirs[pos]
+					#we've made progress!
+					progress = 1
+					try:
+						os.rmdir(obj)
+						print "<<<       ","dir",obj
+					except OSError,IOError:
+						#immutable?
+						pass
+				#else:
+				#	print "--- !empty","dir", obj
+				#	continue
+		
+			#step 3: if we've made progress, we'll give this another go...
+
+		#step 4: otherwise, we'll print out the remaining stuff that we didn't unmerge (and rightly so!)
+
+		#directories that aren't empty:
+		for x in mydirs:
+			print "--- !empty dir", x
+			
+		#symlinks whose target still exists:
+		for x in mysyms:
+			print "--- !targe sym", x
+
+		#step 5: well, removal of package objects is complete, now for package *meta*-objects....
 
 		#remove self from vartree database so that our own virtual gets zapped if we're the last node
 		db[self.myroot]["vartree"].zap(self.cat+"/"+self.pkg)
@@ -3222,7 +3294,7 @@ class dblink:
 		writedict(newvirts,self.myroot+"var/cache/edb/virtuals")
 		
 		#do original postrm
-		if myebuildpath:
+		if myebuildpath and os.path.exists(myebuildpath):
 			a=doebuild(myebuildpath,"postrm",self.myroot)
 			if a:
 				print "!!! pkg_postrm() script failed; exiting."
@@ -3629,7 +3701,7 @@ class dblink:
 		return os.path.exists(self.dbdir+"/CATEGORY")
 
 def cleanup_pkgmerge(mypkg,origdir):
-	shutil.rmtree(settings["PKG_TMPDIR"]+"/"+mypkg)
+	shutil.rmtree(settings["PORTAGE_TMPDIR"]+"/portage-pkg/"+mypkg)
 	os.chdir(origdir)
 
 def pkgmerge(mytbz2,myroot):
@@ -3648,7 +3720,7 @@ def pkgmerge(mytbz2,myroot):
 		return None
 	mycat=mycat.strip()
 	mycatpkg=mycat+"/"+mypkg
-	tmploc=settings["PKG_TMPDIR"]
+	tmploc=settings["PORTAGE_TMPDIR"]+"/portage-pkg/"
 	pkgloc=tmploc+"/"+mypkg+"/bin/"
 	infloc=tmploc+"/"+mypkg+"/inf/"
 	myebuild=tmploc+"/"+mypkg+"/inf/"+os.path.basename(mytbz2)[:-4]+"ebuild"
@@ -3748,6 +3820,8 @@ if profiledir:
 else:
 	usedefaults=[]
 settings=config()
+#the new standardized db names:
+portdb=portdbapi()
 #continue setting up other trees
 db["/"]["porttree"]=portagetree("/",virts)
 db["/"]["bintree"]=binarytree("/",virts)
@@ -3758,6 +3832,16 @@ thirdpartymirrors=grabdict(settings["PORTDIR"]+"/profiles/thirdpartymirrors")
 
 #,"porttree":portagetree(root,virts),"bintree":binarytree(root,virts)}
 features=settings["FEATURES"].split()
+#create PORTAGE_TMPDIR if it doesn't exist.
+if not os.path.exists(settings["PORTAGE_TMPDIR"]):
+	print "portage: the directory specified in your PORTAGE_TMPDIR variable, \""+settings["PORTAGE_TMPDIR"]+",\""
+	print "does not exist.  Please create this directory or correct your PORTAGE_TMPDIR settting."
+	sys.exit(1)
+if not os.path.isdir(settings["PORTAGE_TMPDIR"]):
+	print "portage: the directory specified in your PORTAGE_TMPDIR variable, \""+settings["PORTAGE_TMPDIR"]+",\""
+	print "is not a directory.  Please correct your PORTAGE_TMPDIR settting."
+	sys.exit(1)
+
 #getting categories from an external file now
 if os.path.exists(settings["PORTDIR"]+"/profiles/categories"):
 	categories=grabfile(settings["PORTDIR"]+"/profiles/categories")

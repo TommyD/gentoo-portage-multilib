@@ -1,6 +1,54 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-2.0.12 (10 Jul 2002)
+
+  10 Jul 2002; Daniel Robbins <drobbins@gentoo.org> ccache support is now
+  controlled via a "ccache" FEATURES variable, which is enabled in make.globals
+  my default.  ccache support can now be turned off by adding a
+  FEATURES="-ccache" to /etc/make.conf.  Also, CCACHE_DIR correctly detected
+  and utilized.
+
+  10 Jul 2002; Daniel Robbins <drobbins@gentoo.org> emerge: "emerge --help
+  rsync" now works correctly and displays rync help rather than rsyncing.  This
+  closes bug #4438, #4629.
+
+  10 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: Portage now
+  prints a friendly error if PORTAGE_TMPDIR doesn't exist or is not a
+  directory.  This effectively closes bug #4360.
+
+  10 Jul 2002; Daniel Robbins <drobbins@gentoo.org> emerge: the "inject",
+  "sync" and "rsync" actions no longer allow "--pretend" or "-p" to be
+  specified. This closes bug #4352.
+  
+  10 Jul 2002; Daniel Robbins <drobbins@gentoo.org> sandbox.c: use realpath()
+  to expand the PORTAGE_TMPDIR, /var/tmp, /tmp paths.  This allows write access
+  to these directories even if /var or /var/tmp is a symlink, for example.
+  Without this fix, access to these directories will be denied by the sandbox,
+  creating a bunch of problems.  Closes bugs #4256, #2379, #4625, #2931, #4829.
+
+  10 Jul 2002; Daniel Robbins <drobbins@gentoo.org> megadigest, megadownload,
+  megatouch, pkgsearch: removed from the bin/ directory; depreciated.
+
+  10 Jul 2002; Daniel Robbins <drobbins@gentoo.org> emerge, quickpkg: remove
+  hard-coded references to "/usr/portage" in "emerge search", quickpkg.  Now
+  correctly uses PORTDIR instead.  Closes bug #4836.
+
+  10 Jul 2002; Daniel Robbins <drobbins@gentoo.org> emerge: emerge now checks
+  to see if the "wheel" group exists before running; if it doesn't, it exits
+  with a polite error message.  Closes bug #4736.
+  
+  08 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: changed the
+  unmerge() code so that it doesn't use mtimes to test whether a symlink
+  should be unmerged, since mtimes and symlinks are weird partners.  Instead,
+  we save unmerging of our symlinks until the end of the code, and unmerge
+  them only if their target no longer exists.  This closes bug #4491.
+  
+  08 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: check whether
+  ebuild actually exists immediately before running pkg_postint() and
+  pkg_preinst() from the dblink merge() method.  Also change all PKG_TMPDIR
+  references to PORTAGE_TMPDIR plus suffix, closing bug #4447.
+
 *portage-2.0.11 (07 Jul 2002)
 
   07 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: rewrote

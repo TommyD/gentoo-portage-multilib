@@ -120,12 +120,16 @@ addpredict()
 	export SANDBOX_PREDICT="$SANDBOX_PREDICT:$1"
 }
 
-#Add compiler cache support
-if [ -d /usr/bin/ccache ]
+if [ "${FEATURES/-ccache/}" = "${FEATURES}" -a "${FEATURES/ccache/}" != "${FEATURES}" -a -d /usr/bin/ccache ]
 then
+	#We can enable compiler cache support
 	export PATH="/usr/bin/ccache:${PATH}"
-	addread /root/.ccache
-	addwrite /root/.ccache
+	if [ ! -z "${CCACHE_DIR}" ]
+	then
+		CCACHE_DIR=/root/.ccache
+	fi
+	addread ${CCACHE_DIR}
+	addwrite ${CCACHE_DIR}
 fi
 
 unpack() {

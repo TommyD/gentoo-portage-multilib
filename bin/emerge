@@ -3,6 +3,13 @@ import os,sys,portage,xpak,string,re,commands,time,threading,grp
 from stat import *
 from output import *
 
+try:
+	grp.getgrnam("wheel")
+except KeyError:
+	print "emerge: your system doesn't have a \"wheel\" group."
+	print "Please fix this so that Portage can operate correctly (It's normally GID 10)"
+	sys.exit(1)
+
 spinner="\|/-\|/-"
 spinpos=0
 #number of ebuilds merged
@@ -11,7 +18,6 @@ actions=["clean",
 	"config",
 	"help",
 	"prune",
-	"rebuild",
 	"rsync",
 	"search",
 	"sync",
@@ -127,7 +133,7 @@ class search:
 		self.searchkey = searchkey
 		self.treecache = portage.portagetree()
 		self.installcache = portage.vartree()
-		self.re_portagedir = re.compile('/usr/portage/')
+		self.re_portagedir = re.compile(portage.settings["PORTDIR"])
 		self.re_description = re.compile('DESCRIPTION="')
 		self.re_homepage = re.compile('HOMEPAGE="(.*)"')
 		self.initResults()
@@ -252,7 +258,7 @@ class search:
 		return formatted_result
 
 	def getFullPath(self,packageShortName,packageFullName):  ## Returns the full path of the ebuild ##
-		absolute_path = '/usr/portage/' + packageShortName.strip()
+		absolute_path = portage.settings["PORTDIR"] + "/" + packageShortName.strip()
 		package_parts = packageFullName.split("/")
 		result = absolute_path + "/" + package_parts[1] + ".ebuild"
 		return result
@@ -509,7 +515,6 @@ class depgraph:
 	def syscreate(self,mylines=[]):
 		for myline in mylines:	
 			if "--update" in self.myopts:
-			#or "--rebuild"==self.myaction:
 				if not self.create(self.match(myline,mykey="update (likely old /var/db/pkg entry)")):
 					return 0
 			else:
@@ -530,12 +535,6 @@ class depgraph:
 		if mydep2[0]=="!":
 			mydep2=mydep[1:]
 
-		#if self.myaction=="--rebuild":
-		#	myeb=portage.db[portage.root]["vartree"].dep_bestmatch(mydep2)
-		#	if not portage.db[portage.root]["porttree"].exists_specific(myeb):
-		#		self.outdatedpackages.append(myeb)
-		#		return None
-		#else:
 		if mydep[0]=="!":
 			#add our blocker; it will be ignored later if necessary (if we are remerging the same pkg, for example)
 			myk="blocks "+myroot+" "+mydep2
@@ -899,7 +898,10 @@ if "noclean" not in portage.features:
 if "--debug" in myopts:
 	edebug=1
 
-if myaction in ["sync","rsync"]:
+if myaction in ["sync","rsync"] and (not "--help" in myopts):
+	if "--pretend" in myopts:
+		print "emerge: the \"sync\" and \"rsync\" actions do not support \"--pretend.\""
+		sys.exit(1)
 	rclean=0
 	myportdir=portage.settings["PORTDIR"]
 	if myportdir[-1]=="/":
@@ -1195,6 +1197,9 @@ elif "search"==myaction:
 				sys.exit(1)
 			searchinstance.output()
 elif "inject"==myaction:
+	if "--pretend" in myopts:
+		print "emerge: the \"inject\" action does not support \"--pretend.\""
+		sys.exit(1)
 	for x in myfiles:
 		if not portage.catpkgsplit(x):
 			print "!!!",x,"is not a specific cat/pkg-version, skipping..."

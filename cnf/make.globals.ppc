@@ -39,7 +39,7 @@ KDE3DIR="/usr/kde/3"
 #FEATURES="digest sandbox noclean noauto"
 #	WARNING: sanbox is broken on ppc - don't use!
 # Default user options
-#FEATURES=""
+FEATURES="ccache"
 
 # By default output colored text where possible, set to "true" to output only
 #black&white text
