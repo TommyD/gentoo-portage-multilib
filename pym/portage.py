@@ -2041,10 +2041,10 @@ class dblink:
 					#moveme=0 is used to avoid copying on top of directories
 					if movefile(x,rootfile):
 						zing=">>>"
+						outfile.write("obj "+expandpath(relfile)+" "+mymd5+" "+getmtime(rootfile)+"\n")
 					else:
 						zing="!!!"
 					print zing,rootfile
-					outfile.write("obj "+expandpath(relfile)+" "+mymd5+" "+getmtime(rootfile)+"\n")
 			elif isfifo(x):
 				#fifo
 				zing="!!!"
