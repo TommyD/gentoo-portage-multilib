@@ -562,10 +562,52 @@ def autouse(myvartree):
 			myusevars=myusevars+" "+myuse
 	return myusevars
 
+# returns a tuple.  (version[string], error[string])
+# They are pretty much mutually exclusive.
+# Either version is a string and error is none, or
+# version is None and error is a string
+#
+def ExtractKernelVersion(base_dir):
+	pathname = os.path.join(base_dir, 'include/linux/version.h')
+	try:
+		lines = open(pathname, 'r').readlines()
+	except OSError, details:
+		return (None, str(details))
+	except IOError, details:
+		return (None, str(details))
+
+	lines = map(string.strip, lines)
+
+	version = ''
+
+	for line in lines:
+		items = string.split(line, ' ', 2)
+		if items[0] == '#define' and \
+			items[1] == 'UTS_RELEASE':
+			version = items[2] # - may be wrapped in quotes
+		break
+
+	if version == '':
+		return (None, "Unable to locate UTS_RELEASE in %s" % (pathname))
+
+	if version[0] == '"' and version[-1] == '"':
+		version = version[1:-1]
+	return (version,None)
+
 class config:
 	def __init__(self):
 		self.configdict={}
 		self.configdict["origenv"]=os.environ.copy()
+		if os.environ.has_key('KV'):
+			pass
+		else:
+			(KV,err) = ExtractKernelVersion('/usr/src/linux')
+			if KV != None:
+				self.configdict["origenv"]['KV'] = KV
+			else:
+				pass
+#				 print "!!! Couldn't extract kernel version - %s" % (err)
+
 		self.configdict["backupenv"]={}
 		if os.environ.has_key("FEATURES"):
 			self.configdict["backupenv"]["FEATURES"]=os.environ["FEATURES"]
@@ -1111,7 +1153,7 @@ def movefile(src,dest,newmtime=None,sstat=None):
 	failure.  Move is atomic."""
 	
 	#implementation note: we may want to try doing a simple rename() first, and fall back
-	#to the "hard link shuffle" only if that doesn't work.  We now do the hard-link shuffle
+	#to the "hard link shuffle" only if that doesn't work.	We now do the hard-link shuffle
 	#for everything.
 
 	try:
@@ -2355,7 +2397,7 @@ class vartree(packagetree):
 	def gettimeval(self,mycatpkg):
 		"""Get an integer time value that can be used to compare against other catpkgs; the timeval will try to use
 		COUNTER but will also take into account the start time of Portage and use mtimes of CONTENTS files if COUNTER
-		doesn't exist.  The algorithm makes it safe to compare the timeval values of COUNTER-enabled and non-COUNTER
+		doesn't exist.	The algorithm makes it safe to compare the timeval values of COUNTER-enabled and non-COUNTER
 		db entries.  Assumes mycatpkg exists."""
 		global starttime	
 		rootp=self.root+"var/db/pkg/"+mycatpkg
@@ -3047,7 +3089,7 @@ class dblink:
 							destmd5=perform_md5(mydest)
 							if cfgfiledict.has_key(myrealdest):
 								#this file has been merged in the past, either as the original file or as a ._cfg extension of original.
-								#we can skip the merging of this file.  But we need to do one thing first, called "cycling".  Let's say that 
+								#we can skip the merging of this file.	But we need to do one thing first, called "cycling".  Let's say that 
 								#since the last merge on this file, the user has copied /etc/._cfg0000_foo to /etc/foo.  The ._cfg had
 								#position 4 in our md5 list (in cfgfiledict).  Now that the file has been moved into place, we want to
 								#*throw away* md5s 0-3.  Reasoning?  By doing this, we discard expired md5sums, and also allow a *new*
