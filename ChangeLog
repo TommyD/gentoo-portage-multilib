@@ -7,6 +7,13 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  05 Dec 2004; Brian Harring <ferringb@gentoo.org> tarball.sh: Yanked
+  the script- A) it's specific to nicks setup, B) the tarball/release 
+  creation functionality is already handled by the autotooling of portage
+  (make dist), C) make dist does it better, and automatically handles
+  pulling in all required deps as an ancillary function of it's building/installing,
+  D) make dist requires no specific maintenance while tarball.sh does.
+
   05 Dec 2004; Brian Harring <ferringb@gentoo.org> pym/cache, pym/cache/template.py,
   pym/cache/fs_template.py, pym/cache/sql_template.py, pym/cache/flat_list.py, 
   pym/cache/anydbm.py, pym/cache/sqlite.py, pym/cache/cache_errors.py, 
