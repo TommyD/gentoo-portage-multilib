@@ -1,6 +1,11 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-1.9.13 (21 May 2002)
+
+  21 May 2002; Grant Goodyear <g2boojum@gentoo.org> emerge.1: Updated man page.
+  Thanks to carpaski@twobit.net.  
+
   20 May 2002; Daniel Robbins <drobbins@gentoo.org> emerge: a fix for dep
   regeneration; stale dep cache entries should now be properly regenerated.
 
