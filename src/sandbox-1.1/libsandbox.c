@@ -31,10 +31,13 @@ S *  Path sandbox for the gentoo linux portage package system, initially
 
 /* Uncomment below to enable wrapping of mknod().
  * This is broken currently. */
-/* #define WRAP_MKNOD */
+/* #define WRAP_MKNOD 1 */
 
 /* Uncomment below to enable the use of strtok_r(). */
-#define REENTRANT_STRTOK
+#define REENTRANT_STRTOK 1
+
+/* Uncomment below to enable memory debugging. */
+/* #define SB_MEM_DEBUG 1 */
 
 
 #define open   xxx_open
@@ -61,6 +64,10 @@ S *  Path sandbox for the gentoo linux portage package system, initially
 #include <sys/param.h>
 #include <unistd.h>
 #include <utime.h>
+
+#ifdef SB_MEM_DEBUG
+# include <mcheck.h>
+#endif
 
 #ifdef WRAP_MKNOD
 # undef __xmknod
@@ -243,6 +250,10 @@ void _init(void)
 {
   int old_errno = errno;
   char *tmp_string = NULL;
+
+#ifdef SB_MEM_DEBUG
+  mtrace();
+#endif
 
   init_wrappers();
 
@@ -860,7 +871,7 @@ static void init_env_entries(char*** prefixes_array, int* prefixes_num, char* en
       while ((NULL != token) && (strlen(token) > 0)) {
         prefix = strndup(token, strlen(token));
         (*prefixes_array)[(*prefixes_num)++] = filter_path(prefix);
-        
+
 #ifdef REENTRANT_STRTOK
         token = strtok_r(NULL, ":", &buffer);
 #else
@@ -874,8 +885,7 @@ static void init_env_entries(char*** prefixes_array, int* prefixes_num, char* en
     else if (prefixes_env_length > 0) {
       (*prefixes_array) = (char **)malloc(sizeof(char *));
          
-      prefix = strndupa(prefixes_env, prefixes_env_length);
-      (*prefixes_array)[(*prefixes_num)++] = filter_path(prefix);
+      (*prefixes_array)[(*prefixes_num)++] = filter_path(prefixes_env);
     }
   }
 
@@ -903,6 +913,10 @@ static int check_access(sbcontext_t* sbcontext, const char* func, const char* pa
 
   if ('/' != filtered_path[0]) {
     errno = old_errno;
+
+    if (filtered_path) free(filtered_path);
+    filtered_path = NULL;
+
     return 0;
   }
 

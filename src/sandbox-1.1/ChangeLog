@@ -2,6 +2,10 @@
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+  29 Jun 2003; Martin Schlemmer <azarah@gentoo.org> create-localdecls,
+  libsandbox.c :
+  Make sure SB_PATH_MAX will not wrap.  Fix two possible memory leaks.
+
   22 Jun 2003; Martin Schlemmer <azarah@gentoo.org> libsandbox.c, canonicalize.c
   create-localdecls :
   When checking path names of files accessed, we need to canonicalize it, else
