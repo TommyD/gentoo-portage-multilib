@@ -52,8 +52,8 @@ packages.  Two classes are currently supported: \fBsystem\fR
 and \fBworld\fR.  \fBsystem\fR refers to a set of packages
 deemed necessary for your system to run properly.  \fBworld\fR
 contains all of the packages in \fBsystem\fR, along with any
-other packages listed in \fB/var/cache/edb/world\fR.  [See
-\fBFILES\fR below for more information.]  Note that these
+other packages listed in \fB/var/lib/portage/world\fR.  [See
+\fBFILES\fR below for more information].  Note that these
 commands are generally used in conjunction with \fB\-\-update\fR.
 .TP
 .BR dependency
@@ -509,7 +509,8 @@ bug report.
 .BR "emerge \-\-help",
 .BR ebuild (1),
 .BR ebuild (5),
-.BR make.conf (5)
+.BR make.conf (5),
+.BR portage (5)
 .LP
 A number of helper applications reside in \fI/usr/lib/portage/bin\fR.
 .LP
@@ -517,7 +518,7 @@ The \fBapp\-admin/gentoolkit\fR package contains useful scripts such as \fBqpkg\
 (a package query tool).
 .SH "FILES"
 .TP
-\fB/var/cache/edb/world\fR 
+\fB/var/lib/portage/world\fR 
 Contains a list of all user\-specified packages.  You can safely edit
 this file, adding packages that you want to be considered in \fBworld\fR
 class updates and removing those that you do not want to be considered.
