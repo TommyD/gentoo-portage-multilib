@@ -1227,7 +1227,6 @@ class config:
 						mystr = string.lower(var)+"_"+x
 						if mystr not in usesplit:
 							usesplit.append(mystr)
-							self.configlist[-1]["USE"] += " "+mystr
 
 		# Pre-Pend ARCH variable to USE settings so '-*' in env doesn't kill arch.
 		if profiledir:
@@ -1235,7 +1234,8 @@ class config:
 				if self.configdict["defaults"]["ARCH"]:
 					if self.configdict["defaults"]["ARCH"] not in usesplit:
 						usesplit.insert(0,self.configdict["defaults"]["ARCH"])
-						self.configlist[-1]["USE"]=string.join(usesplit," ")
+
+		self.configlist[-1]["USE"]=string.join(usesplit," ")
 	
 	def __getitem__(self,mykey):
 		if mykey=="CONFIG_PROTECT_MASK":

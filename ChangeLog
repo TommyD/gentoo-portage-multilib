@@ -2,6 +2,11 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  21 Dec 2003; Masatomo Nakano <nakano@gentoo.org> bin/ebuild, bin/emerge,
+  pym/portage.py:
+  Changed to show disabled USE flags from use.mask when using emerge -vp.
+  And fixed use.mask issue.
+
   20 Dec 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Rewrote
   match_from_list -- Simplified and made pkgcmp and match_from_list
   properly compare package names.

@@ -1205,6 +1205,8 @@ class depgraph:
 							continue
 						if ebuild_iuse in self.applied_useflags[x[2]]:
 							iuse=iuse+red("+"+ebuild_iuse)+" "
+						elif ebuild_iuse in portage.settings.usemask:
+							iuse=iuse+blue("-("+ebuild_iuse+")")+" "
 						else:
 							iuse=iuse+blue("-"+ebuild_iuse)+" "
 					if x[0] == "ebuild":
