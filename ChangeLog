@@ -1,9 +1,8 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
-  05 Oct 2002; Mark Guertin <gerk@gentoo.org> cnf/make.conf
-  cnf/make.conf.ppc:
-  Fixed typo (missing /) in make.conf and make.conf.ppc, bug#7944
+  05 Oct 2002; Mark Guertin <gerk@gentoo.org> cnf/make.conf cnf/make.conf.ppc:
+  Fixed typo (missing "/") in make.conf and make.conf.ppc, bug #7944
 
   28 Sep 2002; Daniel Robbins <drobbins@gentoo.org> ebuild.sh: remove
   deprecated "ld.so" from newdepend.
