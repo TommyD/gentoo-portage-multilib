@@ -8,4 +8,4 @@
 #        /etc/make.globals here because emake is only called from an
 #        ebuild.
 
-make ${MAKEOPTS} "$@" || make "$@"
+make ${MAKEOPTS} "$@"

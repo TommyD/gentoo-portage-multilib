@@ -1,6 +1,20 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  15 Jul 2002; Daniel Robbins <drobbins@gentoo.org> emake: no longer falls back
+  to plain old "make" if parallel make fails.  I believe it's best to fix the
+  problem (turn parallel make off in the ebuild) rather than tweak emake to
+  avoid it.
+  
+  15 Jul 2002; Daniel Robbins <drobbins@gentoo.org> emerge: rewrote some code,
+  cleaning things up and removing redundant functions.  Starting to
+  de-cruftify.
+
+  15 Jul 2002; Daniel Robbins <drobbins@gentoo.org> emerge: fix for permissions
+  when updating the cache using server-generated entries.
+
+*portage-2.0.14 (15 Jul 2002)
+  
   15 Jul 2002; Daniel Robbins <drobbins@gentoo.org> ebuild.sh: ccache bug fix;
   removed extra "!".  Ccache should now get enabled properly.  Also, INHERITED
   variable is now getting added to the dep cache entries for future

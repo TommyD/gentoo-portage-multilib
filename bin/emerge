@@ -310,45 +310,8 @@ def getlist(mode):
 def genericdict(mylist):
 	mynewdict={}
 	for x in mylist:
-		if x[0] in ["=","~","!"]:
-			mynew=x[1:]
-		elif x[0:2] in [">=", "<=" ]:
-			mynew=x[2:]
-		elif x[0] in [">","<"]:
-			mynew=x[1:]
-		else:
-			mynew=x
-		if portage.isspecific(mynew):
-			mysplit=portage.catpkgsplit(mynew)
-			mynewdict[mysplit[0]+"/"+mysplit[1]]=x
-		else:
-			mynewdict[mynew]=x
+		mynewdict[portage.dep_getkey(x)]=x
 	return mynewdict
-
-def getworldlist():
-	syslist=getlist("system")
-	worldlist=getlist("world")
-	sysdict=genericdict(syslist)
-	worlddict=genericdict(worldlist)
-	#we're effectively upgrading sysdict to contain all new deps from worlddict
-	for x in worlddict.keys():
-		#only add the world node if the package is:
-		#actually installed -- this prevents the remerging of already unmerged packages when we do a world --update;
-		#actually available -- this prevents emerge from bombing out due to no match being found (we want a silent ignore)
-		if portage.db[portage.root]["porttree"].dep_match(x):
-			#package is available
-			if "--emptytree" in myopts:
-				if portage.match(x,olddbapi):
-					sysdict[x]=worlddict[x]
-			elif portage.db[portage.root]["vartree"].dep_match(x):
-				#package is installed
-				#note: when implementing the "anti-dep" world profile entry feature, we will need to test for "!" deps and
-				#*not* call dep_match() on those, as dep_match() doesn't expect ! deps (since nothing matches a !)
-				sysdict[x]=worlddict[x]
-	mylist=[]
-	for x in sysdict.keys():
-		mylist.append(sysdict[x])
-	return mylist
 
 olddbapi=None
 class depgraph:
@@ -412,7 +375,6 @@ class depgraph:
 			if not portage.db[myroot]["porttree"].exists_specific(mykey):
 				print "\n\n!!!",mytype,mykey,"not found (possibly blocked by package.mask)\n"
 				sys.exit(1)
-				mydep={}
 			myebuild=portage.db[myroot]["porttree"].getname(mykey)
 			try:
 				edepend=portage.db[myroot]["porttree"].dbapi.aux_get(mykey,portage.auxdbkeys)
@@ -517,24 +479,50 @@ class depgraph:
 				retlist.append(y)
 		return retlist
 
-	def syscreate(self,mylines=[]):
-		for myline in mylines:	
-			if "--update" in self.myopts:
-				if not self.create(self.match(myline,mykey="update (likely old /var/db/pkg entry)")):
-					return 0
+	def xcreate(self,mode="system"):
+		global syslist
+		if mode=="system":
+			mylist=syslist
+		else:
+			#world mode
+			worldlist=getlist("world")
+			sysdict=genericdict(syslist)
+			worlddict=genericdict(worldlist)
+			#we're yffectively upgrading sysdict to contain all new deps from worlddict
+			for x in worlddict.keys():
+				#only add the world node if the package is:
+				#actually installed -- this prevents the remerging of already unmerged packages when we do a world --update;
+				#actually available -- this prevents emerge from bombing out due to no match being found (we want a silent ignore)
+				if "--emptytree" in myopts:
+					if olddbapi.match(x):
+						sysdict[x]=worlddict[x]
+				elif portage.db[portage.root]["vartree"].dbapi.match(x):
+					#package is installed
+					sysdict[x]=worlddict[x]
+			mylist=[]
+			for x in sysdict.keys():
+				mylist.append(sysdict[x])
+
+		for mydep in mylist:	
+			myeb=portage.portdb.xmatch("bestmatch-visible",mydep)
+			if not myeb:
+				#this is an unavailable world entry; just continue
+				continue
+			#THIS NEXT BUNCH OF CODE NEEDS TO BE REPLACED TO SUPPORT WORLD ANTI-DEPS
+			#if mydep2[0]=="!":, etc.
+			if "--usepkg" in self.myopts:
+				mypk=portage.db[portage.root]["bintree"].dep_bestmatch(mydep)
+				if myeb==mypk:
+					myk="binary "+portage.root+" "+mypk
+				else:
+					myk="ebuild "+portage.root+" "+myeb
 			else:
-				mycheck=portage.db[portage.root]["vartree"].depcheck(myline)
-				if mycheck[0]==0:
-					print "\n!!! Warning:",myline,"has an invalid depstring\n"
-					continue
-				if mycheck[1]==None:
-					continue
-				for x in mycheck[1]:
-					if not self.create(self.match(myline,mykey="syscreate1")):
-						return 0
+				myk="ebuild "+portage.root+" "+myeb
+			if not self.create(myk):
+				return 0
 		return 1
-	
-	def match(self,mydep,myroot=portage.root,mykey=None):
+
+	def match(self,mydep,myroot=portage.root,mykey=None,skip=0):
 		# support mutual exclusive deps
 		mydep2=mydep
 		if mydep2[0]=="!":
@@ -546,11 +534,14 @@ class depgraph:
 		else:
 			myeb=portage.db[portage.root]["porttree"].dep_bestmatch(mydep2)
 			if not myeb:
+				if skip:
+					return None
 				if not mykey:
 					print "\n!!! Error: couldn't find match for",mydep
 				else:
 					print "\n!!! Error: couldn't find match for",mydep,"in",mykey
 				print
+				raise
 				sys.exit(1)
 
 			if "--usepkg" in self.myopts:
@@ -963,11 +954,13 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 	if os.path.exists(myportdir+"/metadata/cache"):
 		print "\n>>> Updating Portage cache...  ",
 		mynodes=portage.portdb.cp_all()
+		wheelgid=grp.getgrnam("wheel")[2]
 		for x in mynodes:
 			myxsplit=x.split("/")
 			mycatdir=portage.settings["PORTAGE_CACHEDIR"]+"/"+myxsplit[0]
 			if not os.path.exists(mycatdir):
-				os.makedirs(mycatdir)
+				os.makedirs(mycatdir,02775)
+				os.chown(mycatdir,0,wheelgid)
 			mymatches=portage.portdb.xmatch("match-all",x)
 			for y in mymatches:
 				sys.stdout.write("\b"+spinner[spinpos])
@@ -997,7 +990,8 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 				except OSError:
 					pass
 				if (newkeytime>=ebuildtime>curkeytime):
-					shutil.copy2(newdbkey,curdbkey)
+					shutil.copy(newdbkey,curdbkey)
+					os.chown(curdbkey,0,wheelgid)
 		sys.stdout.write("\b\b  \n\n")
 		sys.stdout.flush()
 elif myaction=="regen":
@@ -1278,14 +1272,9 @@ else:
 	mydepgraph=depgraph(myaction,myopts)
 	favorites=[]
 	syslist=getlist("system")
-	if myaction=="system":
-		print "Calculating system dependencies  ",
-		if not mydepgraph.syscreate(syslist):
-			sys.exit(1)
-		print "\b\b ...done!"
-	elif myaction=="world":
-		print "Calculating world dependencies  ",
-		if not mydepgraph.syscreate(getworldlist()):
+	if myaction in ["system","world"]:
+		print "Calculating",myaction,"dependencies  ",
+		if not mydepgraph.xcreate(myaction):
 			sys.exit(1)
 		print "\b\b ...done!"
 	else:
