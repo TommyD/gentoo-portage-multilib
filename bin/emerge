@@ -1654,6 +1654,7 @@ def unmerge(unmerge_action, unmerge_files):
 	candidate_catpkgs=[]
 	global_unmerge=0
 	
+	global myopts	
 	mysettings = portage.config(clone=portage.settings)
 	
 	if not unmerge_files or "world" in unmerge_files or "system" in unmerge_files:
@@ -1830,7 +1831,7 @@ def unmerge(unmerge_action, unmerge_files):
 	if "--ask" in myopts:
 		if userquery("Do you want me to unmerge these packages?")=="No":
 			# enter pretend mode for correct formatting of results
-			__main__.myopts+=["--pretend"]
+			myopts+=["--pretend"]
 			print
 			print "Quitting."
 			print
@@ -2550,6 +2551,12 @@ else:
 			for x in mydepgraph.altlist():
 				if x[3]!="nomerge":
 					mergecount+=1
+				#check for blocking dependencies
+				if x[0]=="blocks":
+					print "\n!!! Error: The above package list contains packages which cannot be installed"
+					print   "!!!        on the same system."
+					print
+					sys.exit(1)
 			if mergecount==0:
 				if portage.settings["AUTOCLEAN"] and "yes"==portage.settings["AUTOCLEAN"]:
 					prompt="Nothing to merge; do you want me to auto-clean packages?"
