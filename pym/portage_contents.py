@@ -31,7 +31,7 @@ def ContentsHandler(filename):
 		parts  = string.split(line)
 
 		mytype   = parts[0]
- 		mytarget = None
+		mytarget = None
 
 		if   mytype in ["dir","dev","fif"]:
 			mypath = string.join(parts[1:])

@@ -10,6 +10,13 @@ Legend:
  '*' Just do it.        '#' Tricky
  '!' Difficult          '@' Restricted in some way
 
+  File "/usr/lib/portage/pym/portage_locks.py", line 46, in lockfile
+	    myfd = os.open(lockfilename, os.O_CREAT|os.O_RDWR,0660)
+			OSError: [Errno 13] Permission denied: '/var/tmp/portage/tmpfs/aux_db_key_temp'
+			
+
+
+
 * Clean should only produce output for 'emerge clean'
 
 # Stop using mtimes for packages. Have portage look up all files in the

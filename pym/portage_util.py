@@ -199,43 +199,46 @@ def getconfig(mycfg,tolerant=0):
 		f=open(mycfg,'r')
 	except IOError:
 		return None
-	lex=shlex.shlex(f)
-	lex.wordchars=string.digits+string.letters+"~!@#$%*_\:;?,./-+{}"     
-	lex.quotes="\"'"
-	while 1:
-		key=lex.get_token()
-		if (key==''):
-			#normal end of file
-			break;
-		equ=lex.get_token()
-		if (equ==''):
-			#unexpected end of file
-			#lex.error_leader(self.filename,lex.lineno)
-			if not tolerant:
-				writemsg("!!! Unexpected end of config file: variable "+str(key)+"\n")
-				raise Exception("ParseError: Unexpected EOF: "+str(mycfg)+": on/before line "+str(lex.lineno))
-			else:
-				return mykeys
-		elif (equ!='='):
-			#invalid token
-			#lex.error_leader(self.filename,lex.lineno)
-			if not tolerant:
-				writemsg("!!! Invalid token (not \"=\") "+str(equ)+"\n")
-				raise Exception("ParseError: Invalid token (not '='): "+str(mycfg)+": line "+str(lex.lineno))
-			else:
-				return mykeys
-		val=lex.get_token()
-		if (val==''):
-			#unexpected end of file
-			#lex.error_leader(self.filename,lex.lineno)
-			if not tolerant:
-				writemsg("!!! Unexpected end of config file: variable "+str(key)+"\n")
-				raise Exception("ParseError: Unexpected EOF: "+str(mycfg)+": line "+str(lex.lineno))
-			else:
-				return mykeys
-		mykeys[key]=varexpand(val,mykeys)
+	try:
+		lex=shlex.shlex(f)
+		lex.wordchars=string.digits+string.letters+"~!@#$%*_\:;?,./-+{}"     
+		lex.quotes="\"'"
+		while 1:
+			key=lex.get_token()
+			if (key==''):
+				#normal end of file
+				break;
+			equ=lex.get_token()
+			if (equ==''):
+				#unexpected end of file
+				#lex.error_leader(self.filename,lex.lineno)
+				if not tolerant:
+					writemsg("!!! Unexpected end of config file: variable "+str(key)+"\n")
+					raise Exception("ParseError: Unexpected EOF: "+str(mycfg)+": on/before line "+str(lex.lineno))
+				else:
+					return mykeys
+			elif (equ!='='):
+				#invalid token
+				#lex.error_leader(self.filename,lex.lineno)
+				if not tolerant:
+					writemsg("!!! Invalid token (not \"=\") "+str(equ)+"\n")
+					raise Exception("ParseError: Invalid token (not '='): "+str(mycfg)+": line "+str(lex.lineno))
+				else:
+					return mykeys
+			val=lex.get_token()
+			if (val==''):
+				#unexpected end of file
+				#lex.error_leader(self.filename,lex.lineno)
+				if not tolerant:
+					writemsg("!!! Unexpected end of config file: variable "+str(key)+"\n")
+					raise portage_exception.CorruptionError("ParseError: Unexpected EOF: "+str(mycfg)+": line "+str(lex.lineno))
+				else:
+					return mykeys
+			mykeys[key]=varexpand(val,mykeys)
+	except Exception, e:
+		raise e.__class__, str(e)+" in "+mycfg
 	return mykeys
-
+	
 #cache expansions of constant strings
 cexpand={}
 def varexpand(mystring,mydict={}):

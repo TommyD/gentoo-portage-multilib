@@ -83,6 +83,9 @@ my $TMP_DEV_PERL_DIR = '/var/tmp/db/dev-perl';
 my $MAKECONF         = '/etc/make.conf';
 my ( $OVERLAY_DIR, $PORTAGE_DIR, $PORTAGE_DEV_PERL, $PORTAGE_DISTDIR ) = get_globals();
 
+# Create the ebuild in PORTDIR_OVERLAY, if it is defined and exists
+$tmp_overlay_dir = $OVERLAY_DIR unless $OVERLAY_DIR eq "";
+
 my $arches = join( ' ', map { chomp; $_ } `cat $PORTAGE_DIR/profiles/arch.list` );
 
 #this should never find the dir, but just to be safe
@@ -121,8 +124,7 @@ sub ebuild_exists {
     # check the main portage tree
     return 1
       if ( ( -d File::Spec->catfile( $PORTAGE_DEV_PERL, $dir ) )
-        || ( -d File::Spec->catfile( $OVERLAY_DIR,      $dir ) )
-        || ( -d File::Spec->catfile( $tmp_overlay_dir,  $dir ) )
+        || ( -d File::Spec->catfile( $perldev_overlay,  $dir ) )
         || ( -d File::Spec->catfile( $TMP_DEV_PERL_DIR, $dir ) ) );
 
     return 0;
@@ -276,10 +278,10 @@ sub install_module {
     if ($have_digestmd5) {
     open( DIGIFILE, $localfile ) or die "Can't open '$file': $!";
     binmode(DIGIFILE);
-	    $md5digest = Digest::MD5->new->addfile(*DIGIFILE)->hexdigest;
+    $md5digest = Digest::MD5->new->addfile(*DIGIFILE)->hexdigest;
     close(DIGIFILE);
     } else {
-    	    ($md5digest = qx(/usr/bin/md5sum $localfile)) =~ s/^(.*?)\s.*$/$1/s;
+        ($md5digest = qx(/usr/bin/md5sum $localfile)) =~ s/^(.*?)\s.*$/$1/s;
     }
 
     my $md5string = sprintf "MD5 %s %s %d", $md5digest, $base,
@@ -307,14 +309,15 @@ sub clean_up {
     $ENV{'PORTDIR_OVERLAY'} = $OVERLAY_DIR;
 
     #Clean out the /tmp tree we were using
-    rmtree( ["$tmp_overlay_dir"] );
+    rmtree( ["$tmp_overlay_dir"] ) if $OVERLAY_DIR eq "";
 }
 
 sub emerge_module {
     foreach my $ebuild_name (@ebuild_list) {
         $ebuild_name =~ m/.*\/(.*)-[^-]+\./;
         print "emerging $ebuild_name\n";
-        system("emerge $ebuild_name");
+#       system("emerge $ebuild_name");
+	system( "emerge", "--digest", $ebuild_name );
 
     }
 }

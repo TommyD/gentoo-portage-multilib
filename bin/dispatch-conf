@@ -51,6 +51,14 @@ class dispatch:
 
             confs += self.massage (os.popen (FIND_EXTANT_CONFIGS % (path,)).readlines ())
 
+        if self.options['use-rcs'] == 'yes' and ((os.system( "which rcs >/dev/null 2>&1" ) == 256)
+                                                 or (os.system( "which ci >/dev/null 2>&1" ) == 256)
+                                                 or (os.system( "which co >/dev/null 2>&1" ) == 256) 
+                                                 or (os.system( "which rcsmerge >/dev/null 2>&1" ) == 256)):
+            print >> sys.stderr, 'dispatch-conf: Error finding all RCS utils and use-rcs=yes in config; fatal'
+            return False
+
+
         #
         # Remove new configs identical to current
         #                  and
@@ -184,7 +192,7 @@ class dispatch:
         the diff of what changed into the LOG_CHANGES_TO file."""
         os.system((DIFF_CONTENTS % (curconf, newconf)) + '>>' + LOG_CHANGES_TO)
         try:
-            shutil.move (newconf, curconf)
+            shutil.move(newconf, curconf)
         except (IOError, os.error), why:
             print >> sys.stderr, 'dispatch-conf: Error renaming %s to %s: %s; fatal' % \
                   (newconf, curconf, str(why))

@@ -765,12 +765,12 @@ def autouse(myvartree,use_cache=1):
 		return ""
 	myusevars=""
 	for myuse in usedefaults:
-		mydep = string.join(usedefaults[myuse])
-		#check dependencies; tell depcheck() to ignore settings["USE"] since we are still forming it.
-		myresult=dep_check(mydep,myvartree.dbapi,None,use="no",use_cache=use_cache)
-		if myresult[0]==1 and not myresult[1]:
-			#deps satisfied, add USE variable...
-			myusevars=myusevars+" "+myuse
+		dep_met = True
+		for mydep in usedefaults[myuse]:
+			if not myvartree.dep_match(mydep,use_cache=True):
+				dep_met = False
+				break
+		myusevars += " "+myuse
 	return myusevars
 
 def check_config_instance(test):
@@ -898,18 +898,15 @@ class config:
 
 			# get profile-masked use flags -- INCREMENTAL Child over parent
 			usemask_lists = grab_multiple("use.mask", self.profiles, grabfile)
-			self.usemask  = stack_lists(usemask_lists, incremental=1)
-			#self.usemask  = grab_stacked("use.mask", self.profiles, grabfile, incremental_lines=1)
+			self.usemask  = stack_lists(usemask_lists, incremental=True)
 			del usemask_lists
 			use_defs_lists = grab_multiple("use.defaults", self.profiles, grabdict)
-			self.use_defs  = stack_dictlist(use_defs_lists, incrementals=INCREMENTALS)
-			#self.use_defs  = grab_stacked("use.defaults", self.profiles, grabdict)
+			self.use_defs  = stack_dictlist(use_defs_lists, incremental=True)
 			del use_defs_lists
 
 			try:
 				mygcfg_dlists = grab_multiple("make.globals", self.profiles+["/etc"], getconfig)
 				self.mygcfg   = stack_dicts(mygcfg_dlists, incrementals=INCREMENTALS, ignore_none=1)
-				#self.mygcfg   = grab_stacked("make.globals", self.profiles+["/etc"], getconfig)
 
 				if self.mygcfg == None:
 					self.mygcfg = {}
@@ -1017,14 +1014,10 @@ class config:
 			categories = grab_multiple("categories", locations, grabfile)
 			self.categories = stack_lists(categories, incremental=1)
 			del categories
-			#self.categories = grab_stacked("categories", locations, grabfile)
 					
 			#package.mask
 			pkgmasklines = grab_multiple("package.mask", locations, grabfile)
 			pkgmasklines = stack_lists(pkgmasklines, incremental=1)
-			#pkgmasklines = stack_lists(pkgmasklines)
-			#pkgmasklines = portage_util.unique_array(pkgmasklines.keys())
-			#pkgmasklines = grab_stacked("package.mask", locations, grabdict_package)
 
 			self.pmaskdict = {}
 			for x in pkgmasklines:
@@ -1331,8 +1324,6 @@ class config:
 		self.userVirtuals = {}
 		if user_profile_dir and os.path.exists(user_profile_dir+"/virtuals"):
 			self.userVirtuals = grabdict(user_profile_dir+"/virtuals")
-		#dirVirtuals = stack_dicts(dvirts, incremental=1)
-		#dirVirtuals = grab_stacked("virtuals",myvirtdirs,grabdict)
 		# User settings and profile settings take precedence over tree.
 		val = stack_dictlist([self.userVirtuals]+[self.treeVirtuals]+self.dirVirtuals,incremental=1)
 		for x in val.keys():
@@ -4236,6 +4227,7 @@ class vardbapi(dbapi):
 			mynewcat=newcp.split("/")[0]
 			if mycpsplit[3]!="r0":
 				mynewcpv += "-"+mycpsplit[3]
+			mycpsplit_new = catpkgsplit(mynewcpv)
 			origpath=self.root+VDB_PATH+"/"+mycpv
 			if not os.path.exists(origpath):
 				continue
@@ -4248,6 +4240,15 @@ class vardbapi(dbapi):
 				#dest already exists; keep this puppy where it is.
 				continue
 			spawn(MOVE_BINARY+" "+origpath+" "+newpath,settings, free=1)
+
+			# We need to rename the ebuild now.
+			old_eb_path = newpath+"/"+mycpsplit[1]    +"-"+mycpsplit[2]
+			new_eb_path = newpath+"/"+mycpsplit_new[1]+"-"+mycpsplit[2]
+			if mycpsplit[4] != "r0":
+				old_eb_path += "-"+mycpsplit[3]
+				new_eb_path += "-"+mycpsplit[3]
+			if os.path.exists(old_eb_path+".ebuild"):
+				os.rename(old_eb_path+".ebuild", new_eb_path+".ebuild")
 			
 			catfile=open(newpath+"/CATEGORY", "w")
 			catfile.write(mynewcat+"\n")

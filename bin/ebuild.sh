@@ -961,6 +961,25 @@ dyn_install() {
 		echo "UNSAFE SetUID: $i"
 	done
 	
+	if [ -x /usr/bin/readelf -a -x /usr/bin/file ]; then
+		for x in $(find "${D}/" -type f \( -perm -04000 -o -perm -02000 \) ); do
+			f=$(file "${x}")
+			if [ -z "${f/*SB executable*/}" -o -z "${f/*SB shared object*/}" ]; then
+				/usr/bin/readelf -d "${x}" | egrep '\(FLAGS(.*)NOW' > /dev/null
+				if [ $? != 0 ]; then
+					if [ ! -z "${f/*statically linked*/}" ]; then
+						#uncomment this line out after developers have had ample time to fix pkgs.
+						#UNSAFE=$(($UNSAFE + 1))
+						echo -ne '\a'
+						echo "QA Notice: Security risk ${x:${#D}:${#x}}. Please consider relinking with 'append-ldflags -Wl,-z,now' to fix."
+						echo -ne '\a'
+						sleep 1
+					fi
+				fi
+			fi
+		done
+	fi
+
 	if [[ $UNSAFE > 0 ]]; then
 		die "There are ${UNSAFE} unsafe files. Portage will not install them."
 	fi
