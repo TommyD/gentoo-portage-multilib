@@ -2,7 +2,7 @@
 .SH NAME
 g-cpan.pl \- install CPAN-provided Perl modules using Gentoo's Portage
 .SH SYNOPSIS
-\fBg-cpan.pl\fR <\fImodule-name\fR>
+\fBg-cpan.pl\fR [\ \fB\-v\fR\ ] <\fImodule-name\fR>
 .SH "DESCRIPTION"
 .B g-cpan.pl
 is a perl script that installs a CPAN module (including its
@@ -11,6 +11,10 @@ stored files as if they were installed through a regular ebuild.
 
 The first time you run \fBg-cpan.pl\fR, it will ask you to setup your CPAN
 environment.  Most users can agree with the defaults asked.
+.SH "ARGUMENTS"
+.B -v
+Enable verbose mode for more feedback on the step by step processes that
+g-cpan is running
 .SH "EXAMPLES"
 Here we install Jabber::RPC
 
