@@ -1,6 +1,7 @@
 # Copyright 1998-2002 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
 
+havecolor=1
 codes={}
 codes["reset"]="\x1b[0m"
 codes["bold"]="\x1b[01m"
@@ -25,6 +26,7 @@ codes["darkred"]="\x1b[31;06m"
 
 def nocolor():
 	"turn off colorization"
+	havecolor=0
 	for x in codes.keys():
 		codes[x]=""
 

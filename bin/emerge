@@ -15,12 +15,12 @@ spinpos=0
 merged=0
 params=["selective", "deep", "self", "recurse", "empty"]
 actions=["clean", "config", "help", "info", "prune", "rsync", "search", "sync", "system", "unmerge", "world", "inject", "regen", "depclean"]
-options=["--autoclean", "--deep", "--selective", "--buildpkg", "--debug", "--nodeps", "--emptytree", "--fetchonly", "--changelog",
+options=["--autoclean", "--deep", "--selective", "--buildpkg", "--buildpkgonly", "--debug", "--nodeps", "--emptytree", "--fetchonly", "--changelog",
 "--noreplace", "--onlydeps", "--pretend", "--usepkg", "--usepkgonly", "--searchdesc", "--verbose", "--update", "--help", "--oneshot", "--version"]
 
-shortmapping={"a":"--autoclean", "b":"--buildpkg", "c":"clean", "C":"unmerge", "e":"--emptytree", "d":"--debug", "f":"--fetchonly",
-	"h":"--help", "k":"--usepkg", "K":"--usepkgonly", "n":"--noreplace", "o":"--onlydeps", "p":"--pretend", "P":"prune", "s":"search",
-	"S":"--searchdesc",	"u":"--update", "v":"--verbose", "V":"--version", "i":"inject"}
+shortmapping={"a":"--autoclean", "b":"--buildpkg", "B":"--buildpkgonly", "c":"clean", "C":"unmerge", "e":"--emptytree", "d":"--debug", "f":"--fetchonly",
+	"h":"--help", "i":"inject", "k":"--usepkg", "K":"--usepkgonly", "l":"--changelog", "n":"--noreplace", "o":"--onlydeps", "O":"--nodeps",
+	"p":"--pretend", "P":"prune", "s":"search", "S":"--searchdesc", "u":"--update", "v":"--verbose", "V":"--version"}
 
 def emergelog(mystr):
 	try:
@@ -66,7 +66,7 @@ def getportageversion():
 
 def help():
 	# Move all the help stuff out of this file.
-	emergehelp.help(myaction)
+	emergehelp.help(myaction,myopts,havecolor)
 
 myaction=None
 myopts=[]
@@ -899,12 +899,13 @@ class depgraph:
 					retval=portage.doebuild(y,"package",myroot,edebug)
 					if retval:
 						sys.exit(1)
-					#dynamically update our database	
-					portage.db[portage.root]["bintree"].inject(x[2])
-					mytbz2=portage.db[portage.root]["bintree"].getname(x[2])
-					retval=portage.pkgmerge(mytbz2,myroot)
-					if retval==None:
-						sys.exit(1)
+					#dynamically update our database
+					if "--buildpkgonly" not in myopts:
+						portage.db[portage.root]["bintree"].inject(x[2])
+						mytbz2=portage.db[portage.root]["bintree"].getname(x[2])
+						retval=portage.pkgmerge(mytbz2,myroot)
+						if retval==None:
+							sys.exit(1)
 				else:
 					retval=portage.doebuild(y,"clean",myroot,edebug)
 					if retval:
@@ -964,8 +965,10 @@ class depgraph:
 							emergelog(" *** RESTARTING emerge via exec() after change of portage version.")
 							os.execv("/usr/lib/portage/bin/emerge", myargv)
 
-		if ("--pretend" not in myopts) and (mergecount>0):
-			portage.env_update()
+		if ("--pretend" not in myopts):
+			if ("--fetchonly" not in myopts):
+				if (mergecount>0):
+					portage.env_update()
 
 		#by doing an exit this way, --fetchonly can continue to try to
 		#fetch everything even if a particular download fails.
@@ -1516,7 +1519,7 @@ elif "depclean"==myaction:
 		print "Number removed:       "+str(len(cleanlist))
 
 	post_emerge()
-	
+
 # "update", "system", or just process files:
 else:
 	if ("--pretend" in myopts) and not ("--fetchonly" in myopts):
@@ -1546,6 +1549,12 @@ else:
 	if ("--pretend" in myopts) and not ("--fetchonly" in myopts):
 		mydepgraph.display(mydepgraph.altlist())
 	else:
+		if ("--buildpkgonly" in myopts):
+			if not mydepgraph.digraph.hasallzeros():
+				print "\n!!! --buildpkgonly requires all dependancies to be merged."
+				print "!!! Cannot merge requested packages. Merge deps and try again.\n"
+				sys.exit(1)
+			
 		mydepgraph.merge(mydepgraph.altlist())
 		if portage.settings["AUTOCLEAN"] and "yes"==portage.settings["AUTOCLEAN"]:
 			print ">>> Auto-cleaning packages ..."

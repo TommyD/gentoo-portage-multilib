@@ -1,6 +1,29 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-2.0.47 (06 Jan 2003): UserPriv
+
+  06 Jan 2003; Nicholas Jones <carpaski@gentoo.org> portage.py:
+  Forced HOME to BUILD_PREFIX regardless of user. Added in a 'rm -Rf' notice
+  to readonly-fs/Full-Disk notices. Disabled the usepkg on buildpkg function
+  of portage. digraph.hasallzeros() added -- Determines if tree is zero depth.
+	
+  06 Jan 2003; Nicholas Jones <carpaski@gentoo.org> cnf/*: Added in the
+  PORT_LOGDIR option and description. Also added a GENTOO_MIRRORS section
+  back into the make.conf* files so that users are aware that they need to
+  specify ibiblio. Killed the linefeeds in the sparc conf.
+
+  06 Jan 2003; Nicholas Jones <carpaski@gentoo.org> emerge: options and
+  actions fixup. Added new short options and long options. --buildpkgonly
+  now works and restricts the process to deplists of zero depth. Updated
+  the help for portage, and created a seperate shorthelp function with
+  the terse, options-only, versions of the regular help. Fixed the env_update
+  call after --fetchonly runs.
+
+  06 Jan 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh:
+  touchups to the user priv and logging code to kill the invalid user
+  messages when portage:portage doesn't exist on the system.
+
 *portage-2.0.47_pre4 (03 Jan 2003): UserPriv Works + Per-Ebuild logging
 
   04 Jan 2003; Nicholas Jones <carpaski@gentoo.org> portage.py:
@@ -33,6 +56,8 @@
   Added documentation of the --deep option.
 
 *portage-2.0.46-r5 (30 Dec 2002): Touchups and sparc confs
+
+  30 Dec 2002; Nicholas Jones <carpaski@gentoo.org> *:
   fix for prelink unmerge problems. small touches to outputs.
   sparc configs added. Azarah's fixups for the prep* scripts.
   Changes to 'emerge info' output. tbz2 prefixes PKGDIR/All if the

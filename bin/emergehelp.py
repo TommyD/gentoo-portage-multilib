@@ -6,16 +6,28 @@
 import os,sys
 from output import *
 
-def help(myaction):
-	import portage
-	if (not sys.stdout.isatty()) or (portage.settings["NOCOLOR"] in ["yes","true"]):
+def shorthelp():
+	print
+	print
+	print bold("Usage:")
+	print "   "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] [ "+turquoise("ebuildfile")+" | "+turquoise("tbz2file")+" | "+turquoise("dependency")+" ] [ ... ]"
+	print "   "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] < "+turquoise("system")+" | "+turquoise("world")+" >"
+	print "   "+turquoise("emerge")+" < "+turquoise("sync")+" | "+turquoise("rsync")+" | "+turquoise("info")+" >"
+	print "   "+turquoise("emerge")+" "+green("--help")+" "+green("-h")+" [ "+turquoise("system")+" | "+turquoise("config")+" ] "
+	print bold("Options:")+" "+green("-")+"["+green("abcCdefhikKlnoOpPsSuvV")+"] ["+green("--deep")+"] ["+green("--oneshot")+"]"
+	print bold("Actions:")+" [ clean | depclean | inject | prune | regen | search | unmerge ]"
+	print
+
+def help(myaction,myopts,havecolor=1):
+	if not havecolor:
 		nocolor()
-	if not myaction:
+	if not myaction and ("--help" not in myopts):
+		shorthelp()
 		print
-		print bold("Usage: ")+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] [ "+turquoise("ebuildfile")+" | "+turquoise("tbz2file")+" | "+turquoise("dependency")+" ] ..."
-		print "       "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] "+turquoise("system")
-		print "       "+turquoise("emerge")+" "+turquoise("sync")+" | "+turquoise("rsync")
-		print "       "+turquoise("emerge")+" "+green("--help")+" "" "+green("-h")+" [ "+turquoise("system")+" | "+turquoise("config")+" ] "
+		print "   For more help try 'emerge --help' or consult the man page."
+		print
+	elif not myaction:
+		shorthelp()
 		print
 		print turquoise("Help (this screen):")
 		print "       "+green("--help")+" ("+green("-h")+" short option)"
@@ -109,6 +121,12 @@ def help(myaction):
 		print "              maintainers or if you administrate multiple Gentoo Linux"
 		print "              systems (build once, emerge tbz2s everywhere)."
 		print
+		print "       "+green("--buildpkgonly")+" ("+green("-B")+" short option)"
+		print "              Creates binary a binary package, but does not merge it to the"
+		print "              system. This has the restriction that unsatisfied dependancies"
+		print "              must not exist for the desired package as they cannot be used if"
+		print "              they do not exist on the system."
+		print
 		print "       "+green("--debug")+" ("+green("-d")+" short option)"
 		print "              Tell emerge to run the ebuild command in --debug mode. In this"
 		print "              mode, the bash build environment will run with the -x option,"
@@ -127,7 +145,7 @@ def help(myaction):
 		print "              used in combination with --pretend all the SRC_URIs will be"
 		print "              displayed multiple mirrors per line, one line per file."
 		print
-		print "       "+green("--nodeps")
+		print "       "+green("--nodeps")+" ("+green("-O")+" short option)"
 		print "              Merge specified packages, but don't merge any dependencies."
 		print "              Note that the build may fail if deps aren't satisfied."
 		print 
@@ -140,7 +158,8 @@ def help(myaction):
 		print
 		print "       "+green("--oneshot")
 		print "              Emerge as normal, but don't add packages to the world profile for"
-		print "              later updating."
+		print "              later updating. This prevents consideration of this package"
+		print "              unless this package is depended upon by another package."
 		print
 		print "       "+green("--onlydeps")+" ("+green("-o")+" short option)"
 		print "              Only merge (or pretend to merge) the dependencies of the"
@@ -154,7 +173,7 @@ def help(myaction):
 		print "              U = upgrading, R = replacing, B = blocked by an already installed"
 		print "              package."
 		print
-		print "       "+green("--changelog")
+		print "       "+green("--changelog")+" ("+green("-l")+" short option)"
 		print "              When pretending, also display the ChangeLog entries for packages"
 		print "              that will be upgraded."
 		print
@@ -168,14 +187,26 @@ def help(myaction):
 		print
 		print "       "+green("--update")+" ("+green("-u")+" short option)"
 		print "              Updates packages to the most recent version available."
+		print
+		print "       "+green("--deep")
+		print "              When used in conjunction with --update, this flag forces emerge"
+		print "              to consider the entire dependency tree of packages, instead of"
+		print "              checking only the immediate dependencies of the packages.  As an"
+		print "              example, this catches updates in libraries that are not directly"
+		print "              listed in the dependencies of a package."
 		print 
 		print "       "+green("--usepkg")+" ("+green("-k")+" short option)"
-		print "              tell emerge to use binary packages (from $PKGDIR) if they are"
+		print "              Tell emerge to use binary packages (from $PKGDIR) if they are"
 		print "              available, thus possibly avoiding some time-consuming compiles."
 		print "              This option is useful for CD installs; you can export"
 		print "              PKGDIR=/mnt/cdrom/packages and then use this option to have"
 		print "              emerge \"pull\" binary packages from the CD in order to satisfy" 
 		print "              dependencies."
+		print
+		print "       "+green("--usepkgonly")+" ("+green("-K")+" short option)"
+		print "              Like --usepkg above, except this only allows the use of binary"
+		print "              packages, and it will abort the emerge if the package is not"
+		print "              available at the time of dependancy calculation."
 		print
 		print "       "+green("--verbose")+" ("+green("-v")+" short option)"
 		print "              Tell emerge to run in verbose mode.  Currently, this causes"

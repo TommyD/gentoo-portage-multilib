@@ -142,6 +142,13 @@ CXXFLAGS="${CFLAGS}"
 #
 # Prozilla (turbo downloader)
 #FETCHCOMMAND='/usr/bin/proz --no-getch -s ${URI} -P ${DISTDIR}'
+#
+# Portage uses GENTOO_MIRRORS to specify mirrors to use for source retrieval.
+# The list is a space seperated list which is read left to right. If you use
+# another mirror we highly recommend leaving the default mirror at the end of
+# the list so that portage will fall back to it if the files cannot be found
+# on your specified mirror.
+#GENTOO_MIRRORS="<your_mirror_here> http://www.ibiblio.org/pub/Linux/distributions/gentoo"
 
 # Advanced Features
 # =================

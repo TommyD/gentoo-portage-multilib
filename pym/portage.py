@@ -278,6 +278,14 @@ class digraph:
 				zerolist.append(x)
 		return zerolist
 
+	def hasallzeros(self):
+		"returns 0/1, Are all nodes zeros? 1 : 0"
+		zerolist = []
+		for x in self.dict.keys():
+			if self.dict[x][0]!=0:
+				return 0
+		return 1
+
 	def empty(self):
 		if len(self.dict)==0:
 			return 1
@@ -920,16 +928,15 @@ def spawn(mystring,debug=0,free=0,droppriv=0):
 			#drop root privileges, become the 'portage' user
 			os.setgid(portage_gid)
 			os.setuid(portage_uid)
-			settings["HOME"]=settings["BUILD_PREFIX"]
-			settings["BASH_ENV"]=settings["HOME"]+"/.bashrc"
 		else:
 			if droppriv:
 				print "portage: Unable to drop root for",mystring
 				if free and ("sandbox" in features):
+					# DropPriv is a normally SandBox'd condition.
 					print "portage: Enabling sandbox."
 					free=0
-			settings["HOME"]="/root"
-			settings["BASH_ENV"]=settings["HOME"]+"/.bashrc"
+		settings["HOME"]=settings["BUILD_PREFIX"]
+		settings["BASH_ENV"]=settings["HOME"]+"/.bashrc"
 
 		if ("sandbox" in features) and (not free):
 			mycommand="/usr/lib/portage/bin/sandbox"
@@ -1239,8 +1246,9 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 			os.chown(settings["T"],portage_uid,portage_gid)
 			os.chmod(settings["T"],02770)
 	except OSError, e:
-		print "!!! File system problem. (ReadOnly?)"
-		print "!!!"+str(e)
+		print "!!! File system problem. (ReadOnly? Out of space?)"
+		print "!!! Perhaps: rm -Rf",settings["BUILD_PREFIX"]
+		print "!!!",str(e)
 		return 1
 
 	settings["WORKDIR"]=settings["BUILDDIR"]+"/work"
@@ -1342,17 +1350,21 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 		for x in ["","/"+settings["CATEGORY"],"/All"]:
 			if not os.path.exists(settings["PKGDIR"]+x):
 				os.makedirs(settings["PKGDIR"]+x)
-		pkgloc=settings["PKGDIR"]+"/All/"+settings["PF"]+".tbz2"
-		rebuild=0
-		if os.path.exists(pkgloc):
-			for x in [settings["A"],settings["EBUILD"]]:
-				if not os.path.exists(x):
-					continue
-				if os.path.getmtime(x)>os.path.getmtime(pkgloc):
-					rebuild=1
-					break
-		else:	
-			rebuild=1
+
+		# XXX: This is annoying as it never considers changes.  #
+		# XXX: Removing until we get a few things updated like  #
+		# XXX: rebuild-on-use and others to notice the changes. #
+		#pkgloc=settings["PKGDIR"]+"/All/"+settings["PF"]+".tbz2"
+		rebuild=1
+		#if os.path.exists(pkgloc):
+		#	for x in [settings["A"],settings["EBUILD"]]:
+		#		if not os.path.exists(x):
+		#			continue
+		#		if os.path.getmtime(x)>os.path.getmtime(pkgloc):
+		#			rebuild=1
+		#			break
+		#else:	
+		#	rebuild=1
 		if not rebuild:
 			print
 			print ">>> Package",settings["PF"]+".tbz2 appears to be up-to-date."
