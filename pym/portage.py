@@ -1755,7 +1755,7 @@ def digestcheck(myfiles, mysettings, strict=0):
 		if "digest" in features:
 			print ">>> No package digest/Manifest file found."
 			print ">>> \"digest\" mode enabled; auto-generating new digest..."
-			return digestgen(myfiles)
+			return digestgen(myfiles,mysettings)
 		else:
 			if not os.path.exists(manifestfn):
 				if strict:
@@ -3865,14 +3865,15 @@ class vardbapi(dbapi):
 			curmtime=os.stat(self.root+"var/db/pkg/"+mycat)
 		except:
 			curmtime=0
-		if self.matchcache.has_key(mydep):
-			if self.mtdircache[mycat]==curmtime:
-				return self.matchcache[mydep]
-		#generate new cache entry
-		mymatch=match_from_list(mydep,self.cp_list(mykey))
-		self.mtdircache[mycat]=curmtime
-		self.matchcache[mydep]=mymatch
-		return mymatch
+
+		if not self.matchcache.has_key(mycat) or not self.mtdircache[mycat]==curmtime:
+			# clear cache entry
+			self.mtdircache[mycat]=curmtime
+			self.matchcache[mycat]={}
+		if not self.matchcache[mycat].has_key(mydep):
+			mymatch=match_from_list(mydep,self.cp_list(mykey))
+			self.matchcache[mycat][mydep]=mymatch
+		return self.matchcache[mycat][mydep]
 	
 	def aux_get(self, mycpv, wants):
 		global auxdbkeys

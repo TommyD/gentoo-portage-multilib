@@ -2,8 +2,13 @@
 # Copyright 2000-2004 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  18 Jan 2004; Masatomo Nakano <nakano@gentoo.org> portage.py:
+  Fixed AUTOCLEAN delay problem in .50pre* by TGL's patch. This close 
+  #38189. Fixed unmerge failture bug when 'ebuild foo-1.0.0 unmerge'.
+  These close #38189, #38366
+
   18 Jan 2004; Masatomo Nakano <nakano@gentoo.org> emerge, portage.py:
-  Fixed "ebuild /foo/bar-1.0.0.ebuild unmerge" and "emerge bar.1.0.0 unmerge" 
+  Fixed "ebuild /foo/bar-1.0.0.ebuild unmerge" and "emerge bar-1.0.0 unmerge" 
   problems. This should close #38420.
 
   17 Jan 2004; Masatomo Nakano <nakano@gentoo.org> portage.py: Fixed
