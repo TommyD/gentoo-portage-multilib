@@ -1,6 +1,10 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  25 Sep 2002; Maik Schreiber <blizzy@gentoo.org> cnf/make.globals,
+  cnf/make.globals.ppc: Added /opt/jakarta/tomcat/conf to
+  CONFIG_PROTECT.
+
 *portage-2.0.37 (19 Sep 2002): Gentoo Linux 1.4_rc1 version 
 
   10 Sep 2002; Mark Guertin <gerk@gentoo.org> cnf/make.conf.ppc : Backed down
