@@ -1131,7 +1131,7 @@ else:
 					continue
 				mydone.append(xs[0])
 				repoman_settings["O"]="./"+xs[0]
-				portage.digestgen([],repomansettings,manifestonly=1)
+				portage.digestgen([],repoman_settings,manifestonly=1)
 				if "sign" in portage.features:
 					while(os.system(gpgcmd+repoman_settings["O"]+"/Manifest")):
 						portage.writemsg("!!! YOU MUST sign the Manifest.\n")
@@ -1147,7 +1147,7 @@ else:
 					continue
 				mydone.append(string.join(xs[:2],"/"))
 				repoman_settings["O"]="./"+string.join(xs[:2],"/")
-				portage.digestgen([],repomansettings,manifestonly=1)
+				portage.digestgen([],repoman_settings,manifestonly=1)
 				if "sign" in portage.features:
 					os.system(gpgcmd+repoman_settings["O"]+"/Manifest")
 					mysigs+=[sigfile]
