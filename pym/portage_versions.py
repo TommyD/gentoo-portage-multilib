@@ -100,7 +100,13 @@ def vercmp(ver1, ver2, silent=1):
 		if s1[0] != s2[0]:
 			return suffix_value[s1[0]] - suffix_value[s2[0]]
 		if s1[1] != s2[1]:
-			return string.atoi(s1[1]) - string.atoi(s2[1])
+			# it's possible that the s(1|2)[1] == ''
+			# in such a case, fudge it.
+			try:			r1 = string.atoi(s1[1])
+			except ValueError:	r1 = 0
+			try:			r2 = string.atoi(s2[1])
+			except ValueError:	r2 = 0
+			return r1 - r2
 	
 	# the suffix part is equal to, so finally check the revision
 	if match1.group(10):
