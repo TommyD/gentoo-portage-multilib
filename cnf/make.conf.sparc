@@ -121,7 +121,7 @@ CXXFLAGS="${CFLAGS}"
 #     creates from each individual merge. They are stored as YYMMDD-$PF.log
 #     in the directory specified. This is disabled until you enable it by
 #     providing a directory. Permissions will be modified as needed.
-#PORT_LOGDIR=/var/log/emerge/
+#PORT_LOGDIR=/var/log/emerge
 #
 # PORTDIR_OVERLAY is a directory where local ebuilds may be stored without
 #     concern that they will be deleted by rsync updates. Default is not
@@ -150,7 +150,8 @@ CXXFLAGS="${CFLAGS}"
 # The list is a space seperated list which is read left to right. If you use
 # another mirror we highly recommend leaving the default mirror at the end of
 # the list so that portage will fall back to it if the files cannot be found
-# on your specified mirror.
+# on your specified mirror. We _HIGHLY_ recommend that you change this setting
+# to a nearby mirror using the 'mirrorselect' tool in portage.
 #GENTOO_MIRRORS="<your_mirror_here> http://www.ibiblio.org/pub/Linux/distributions/gentoo"
 
 # Advanced Features
