@@ -1116,11 +1116,11 @@ class depgraph:
 			overlays = string.split(portage.settings['PORTDIR_OVERLAY'])
 			overlays = map(os.path.normpath, overlays)
 		
-		i = 0
 		if "--tree" in myopts:
 			mylist.reverse()
 			mygraph=self.digraph.copy()
 
+		i = 0
 		while i < len(mylist):
 			if mylist[i][-1]=="nomerge":
 				if not ("--tree" in myopts):
@@ -1221,11 +1221,11 @@ class depgraph:
 
 					# size verbose
 					mysize=0
-					if x[0] == "ebuild":
+					if x[0] == "ebuild" and x[-1]!="nomerge":
 						mysize=portage.portdb.getsize(x[2], debug=edebug)
 						if type(mysize) == types.IntType:
 							totalsize+=mysize
-					verboseadd+=format_size(mysize)+" "
+						verboseadd+=format_size(mysize)+" "
 
 					# overlay verbose
 					file_name=portage.portdb.findname(x[2])
