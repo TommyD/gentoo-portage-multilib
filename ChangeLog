@@ -9,6 +9,16 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  15 Aug 2004; Nicholas Jones <carpaski@gentoo.org> emerge: message fix for
+	packages.provided.
+
+  15 Aug 2004; Nicholas Jones <carpaski@gentoo.org> repoman: Made file.size
+	a warning for the time being.
+
+  15 Aug 2004; Nicholas Jones <carpaski@gentoo.org> cvstree.py: Removed the
+	auto-ignore regex as it is broken AND it breaks Manifests due to excess
+	files allowed into them.
+
   15 Aug 2004; Nicholas Jones <carpaski@gentoo.org> emerge: A couple changes
   to the select_dep exception handling for the signing code.
 

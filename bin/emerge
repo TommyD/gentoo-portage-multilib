@@ -312,7 +312,7 @@ if ("--debug" in myopts):
 if "inject" == myaction:
 	print
 	print red("*** --inject has been deprecated.")
-	print red("*** Please add package to /etc/portage/package.provided")
+	print red("*** Please add package to /etc/portage/profile/package.provided")
 	print red("*** using its full name (eg foo/bar-1.0) instead.")
 	print
 

@@ -126,6 +126,7 @@ qawarnings=[
 "IUSE.invalid",
 "ebuild.minorsyn",
 "ebuild.badheader",
+"file.size",
 "metadata.missing",
 "metadata.bad"
 ]
