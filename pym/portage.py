@@ -3194,7 +3194,7 @@ def dep_opconvert(mysplit,myuse,mysettings):
 			mypos += 1
 	return newsplit
 
-def dep_virtual(mysplit):
+def dep_virtual(mysplit, mysettings):
 	"Does virtual dependency conversion"
 
 
@@ -3202,19 +3202,19 @@ def dep_virtual(mysplit):
 	newsplit=[]
 	for x in mysplit:
 		if type(x)==types.ListType:
-			newsplit.append(dep_virtual(x))
+			newsplit.append(dep_virtual(x, mysettings))
 		else:
 			mykey=dep_getkey(x)
-			if virts.has_key(mykey):
-				if len(virts[mykey])==1:
-					a=string.replace(x, mykey, virts[mykey][0])
+			if mysettings.virtuals.has_key(mykey):
+				if len(mysettings.virtuals[mykey])==1:
+					a=string.replace(x, mykey, mysettings.virtuals[mykey][0])
 				else:
 					if x[0]=="!":
 						# blocker needs "and" not "or(||)".
 						a=[]
 					else:
 						a=['||']
-					for y in virts[mykey]:
+					for y in mysettings.virtuals[mykey]:
 						a.append(string.replace(x, mykey, y))
 				newsplit.append(a)
 			else:
@@ -3561,7 +3561,7 @@ def dep_check(depstring,mydbapi,mysettings,use="yes",mode=None,myuse=None,use_ca
 	mysplit=portage_dep.dep_opconvert(mysplit)
 	
 	#convert virtual dependencies to normal packages.
-	mysplit=dep_virtual(mysplit)
+	mysplit=dep_virtual(mysplit, mysettings)
 	#if mysplit==None, then we have a parse error (paren mismatch or misplaced ||)
 	#up until here, we haven't needed to look at the database tree
 
