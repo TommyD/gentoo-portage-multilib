@@ -2020,6 +2020,9 @@ class vartree(packagetree):
 		mycat,mypkg=string.split(mykey,"/")
 		if not self.tree.has_key(mykey):
 			self.tree[mykey]=[]
+		#This next line allows us to set root to None and disable loading (for "emptytrees")
+		if not self.root:
+			return
 		if self.gotcat.has_key(mycat):
 			return
 		if not os.path.isdir(self.root+"/var/db/pkg/"+mycat):

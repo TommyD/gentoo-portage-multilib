@@ -32,6 +32,7 @@ options=["--autoclean",
 	"--clean",
 	"--buildpkg",
 	"--debug",
+	"--nodeps",
 	"--emptytree",
 	"--fetchonly",
 	"--noreplace",
@@ -279,11 +280,12 @@ class depgraph:
 		self.emptytree=portage.vartree("/",virts,portage.db["/"]["vartree"])
 		self.emptytree.tree={}
 		if "--emptytree" in myopts:
-			print "Running in empty tree mode"
+			portage.db["/"]["vartree"].root=None
 			portage.db["/"]["vartree"].tree=self.emptytree.tree
 			portage.db["/"]["vartree"].populated=1
 			portage.db["/"]["vartree"].inject("virtual/glibc-1.0")
 		self.outdatedpackages=[]
+
 	def create(self,mybigkey,myparent=None,addme=1):
 		"""creates the actual digraph of packages to merge.  return 1 on success, 0 on failure
 		mybigkey = specification of package to merge; myparent = parent package (one depending on me);
@@ -346,6 +348,8 @@ class depgraph:
 				mydep[myroot]=edepend[1]
 			if addme:
 				self.digraph.addnode(mybigkey,myparent)
+			if "--nodeps" in self.myopts:
+				return 1
 			for dep in mydep.keys():
 				if "update"==self.myaction:
 					mycheck=self.emptytree.depcheck(mydep[dep])
@@ -749,6 +753,10 @@ elif "--help" in myopts:
 		print "              Instead of doing any package building, just perform fetches for"
 		print "              all packages (main package as well as all dependencies.)"
 		print
+		print "       "+green("--nodeps")
+		print "              Merge specified packages, but don't merge any dependencies."
+		print "              Note that the build may fail if deps aren't satisfied."
+		print 
 		print "       "+green("--onlydeps")+" ("+green("-o")+" short option)"
 		print "              Only merge (or pretend to merge) the dependencies of the"
 		print "              specified packages, not the packages themselves."
