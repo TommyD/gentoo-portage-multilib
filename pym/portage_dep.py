@@ -88,9 +88,11 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0):
 				# If it's a list, and we have ||/&& somewhere inside it and not
 				# in front then it is not a valid dep string.
 				for x in head[1:]:
-					if (x == "||") or (x == "&&"):
-						raise portage_exception.InvalidDependString("Stray "+str(x)+" in depend string. Use --debug for more info.")
-		except:
+					if (x in ["||","&&"]):
+						myIndex = head[1:].index(x)
+						if type(head[myIndex+2]) != types.ListType:
+							raise portage_exception.InvalidDependString("Stray "+str(x)+" in depend string. Use --debug for more info.")
+		except (IndexError,TypeError):
 			raise portage_exception.InvalidDependString("Run with --debug for more information")
 
 		if type(head) == types.ListType:
