@@ -15,7 +15,7 @@ def shorthelp():
 	print "   "+turquoise("emerge")+" < "+turquoise("sync")+" | "+turquoise("rsync")+" | "+turquoise("info")+" >"
 	print "   "+turquoise("emerge")+" "+turquoise("--resume")+" ["+green("--pretend")+"]"
 	print "   "+turquoise("emerge")+" "+turquoise("--help")+" [ "+green("system")+" | "+green("config")+" | "+green("rsync")+" ] "
-	print bold("Options:")+" "+green("-")+"["+green("bcCdefhikKlnoOpPsSuvV")+"] ["+green("--deep")+"] ["+green("--oneshot")+"] ["+green("--noconfmem")+"]"
+	print bold("Options:")+" "+green("-")+"["+green("bcCdDefhikKlnoOpPsSuUvV")+"] ["+green("--oneshot")+"] ["+green("--noconfmem")+"]"
 	print bold("Actions:")+" [ clean | depclean | inject | prune | regen | search | unmerge ]"
 	print
 
@@ -144,7 +144,7 @@ def help(myaction,myopts,havecolor=1):
 		print "              causing it to output verbose debug information print to stdout."
 		print "              --debug is great for finding bash syntax errors."
 		print
-		print "       "+green("--deep")
+		print "       "+green("--deep")+" ("+green("-D")+" short option)"
 		print "              When used in conjunction with --update, this flag forces emerge"
 		print "              to consider the entire dependency tree of packages, instead of"
 		print "              checking only the immediate dependencies of the packages.  As an"
@@ -219,6 +219,11 @@ def help(myaction,myopts,havecolor=1):
 		print "              Updates packages to the best version available, which may not"
 		print "              always be the highest version number due to masking for testing"
 		print "              and development."
+		print
+		print "       "+green("--upgradeonly")+" ("+green("-U")+" short option)"
+		print "              Updates packages, but excludes updates that would result in a"
+		print "              lower version of the package being installed. SLOTs are"
+		print "              considered at a basic level."
 		print
 		print "       "+green("--usepkg")+" ("+green("-k")+" short option)"
 		print "              Tell emerge to use binary packages (from $PKGDIR) if they are"
