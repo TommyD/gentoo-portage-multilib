@@ -10,6 +10,9 @@
        It is for convenience. Do not mistake this for the actual file.
 
   01 Aug 2004; Marius Mauch <genone@gentoo.org> bin/emerge:
+  Added a warning for `emerge /path/to/ebuild`
+
+  01 Aug 2004; Marius Mauch <genone@gentoo.org> bin/emerge:
   Fixing broken logic for the `emerge rsync` deprecation notice (it only showed
   up on `emerge --rsync`).
 

@@ -468,6 +468,15 @@ def help():
 	# Move all the help stuff out of this file.
 	emergehelp.help(myaction,myopts,havecolor)
 
+# broken and dangerous feature
+for x in myfiles:
+	if x[-7:] == ".ebuild":
+		print
+		print red("!!! Warning: emerge /path/to/ebuild is broken and considered dangerous.")
+		print red("!!! Don't use it. I'm serious, we're coming after you if you use it.")
+		print
+		countdown(10, "Continuing with emerge /path/to/ebuild")
+
 # check if root user is the current user for the actions where emerge needs this
 if ("--pretend" in myopts) or ("--fetchonly" in myopts) or (myaction=="search"):
 	if not portage.secpass:
