@@ -9,6 +9,23 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+*portage-2.0.51_pre19 (16 Aug 2004): Fixes and Public Readiness & GPG
+  
+  16 Aug 2004; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Add predict
+  for gpg verification.
+
+  16 Aug 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Fixed the
+  lock code to use the external module.
+
+  16 Aug 2004; Nicholas Jones <carpaski@gentoo.org> portage_gpg.py: Fixed
+  the writing operations and access violations.
+
+  16 Aug 2004; Nicholas Jones <carpaski@gentoo.org> portage_locks.py: Fixed
+  the code so it acutally works and is used.
+
+  16 Aug 2004; Nicholas Jones <carpaski@gentoo.org> portage_md5.py: Fixed
+	the lock calls.
+
 *portage-2.0.51_pre18 (16 Aug 2004): Fixes and Public Readiness & GPG
   
   16 Aug 2004; Nicholas Jones <carpaski@gentoo.org> dolib*: Added LV's

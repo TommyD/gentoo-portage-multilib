@@ -7,6 +7,10 @@ export SANDBOX_PREDICT="${SANDBOX_PREDICT}:/proc/self/maps:/dev/console:/usr/lib
 export SANDBOX_WRITE="${SANDBOX_WRITE}:/dev/shm:${PORTAGE_TMPDIR}"
 export SANDBOX_READ="${SANDBOX_READ}:/dev/shm:${PORTAGE_TMPDIR}"
 
+if [ ! -z "${PORTAGE_GPG_DIR}" ]; then
+	SANDBOX_PREDICT="${SANDBOX_PREDICT}:${PORTAGE_GPG_DIR}"
+fi
+
 if [ "$*" != "depend" ] && [ "$*" != "clean" ] && [ "$*" != "nofetch" ]; then
 	if [ -f "${T}/successful" ]; then
 		rm -f "${T}/successful"

@@ -106,6 +106,7 @@ try:
 	import portage_util
 	import portage_exception
 	import portage_gpg
+	import portage_locks
 except Exception, e:
 	sys.stderr.write("\n\n")
 	sys.stderr.write("!!! Failed to complete portage imports. There are internal modules for\n")
@@ -147,126 +148,6 @@ def best_from_dict(key, top_dict, key_order, EmptyOnError=1, FullCopy=1, AllowEm
 	else:
 		raise KeyError, "Key not found in list; '%s'" % key
 
-def lockdir(mydir):
-	return lockfile(mydir,wantnewlockfile=1)
-def unlockdir(mylock):
-	return unlockfile(mylock)
-
-def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
-	"""Creates all dirs upto, the given dir. Creates a lockfile
-	for the given directory as the file: directoryname+'.portage_lockfile'."""
-	import fcntl
-
-	if not mypath:
-		raise ValueError, "Empty path given"
-
-	if type(mypath) == types.StringType and mypath[-1] == '/':
-		mypath = mypath[:-1]
-
-	if type(mypath) == types.FileType:
-		mypath = mypath.fileno()
-	if type(mypath) == types.IntType:
-		lockfilename    = mypath
-		wantnewlockfile = 0
-		unlinkfile      = 0
-	elif wantnewlockfile:
-		lockfilename = mypath+".portage_lockfile"
-		unlinkfile   = 1
-	else:
-		lockfilename = mypath
-	
-	if type(mypath) == types.StringType:
-		if not os.path.exists(os.path.dirname(mypath)):
-			raise IOError, "Base path does not exist '%s'" % os.path.dirname(mypath)
-		if not os.path.exists(lockfilename):
-			old_mask=os.umask(000)
-			myfd = os.open(lockfilename, os.O_CREAT|os.O_RDWR,0660)
-			if os.stat(lockfilename).st_gid != portage_gid:
-				os.chown(lockfilename,os.getuid(),portage_gid)
-			os.umask(old_mask)
-		else:
-			myfd = os.open(lockfilename, os.O_CREAT|os.O_WRONLY,0660)
-
-	elif type(mypath) == types.IntType:
-		myfd = mypath
-
-	else:
-		raise ValueError, "Unknown type passed in '%s': '%s'" % (type(mypath),mypath)
-
-	#try for a non-blocking lock, if it's held, throw a message we're waiting on lockfile and use a blocking attempt.
-	try:
-		fcntl.flock(myfd,fcntl.LOCK_EX|fcntl.LOCK_NB)
-
-	except IOError, ie:
-
-		# 11 == resource temp unavailable; eg, someone beat us to the lock.
-		if ie.errno == 11:
-			if type(mypath) == types.IntType:
-				print "waiting for lock on fd %i" % myfd
-			else:
-				print "waiting for lock on %s" % lockfilename
-			# try for the exclusive lock now.
-			fcntl.flock(myfd,fcntl.LOCK_EX)
-		else:
-			raise ie
-				
-	if type(lockfilename) == types.StringType and not os.path.exists(lockfilename):
-		# The file was deleted on us... Keep trying to make one...
-		os.close(myfd)
-		writemsg("lockfile recurse\n",1)
-		lockfilename,myfd,unlinkfile = lockfile(mypath,wantnewlockfile,unlinkfile)
-
-	writemsg(str((lockfilename,myfd,unlinkfile))+"\n",1)
-	return (lockfilename,myfd,unlinkfile)
-
-def unlockfile(mytuple):
-	import fcntl
-
-	lockfilename,myfd,unlinkfile = mytuple
-	
-	if type(lockfilename) == types.StringType and not os.path.exists(lockfilename):
-		writemsg("lockfile does not exist '%s'\n" % lockfile,1)
-		return None
-
-	try:
-		if myfd == None:
-			myfd = os.open(lockfilename, os.O_WRONLY,0660)
-			unlinkfile = 1
-		fcntl.flock(myfd,fcntl.LOCK_UN)
-	except Exception, e:
-		raise IOError, "Failed to unlock file '%s'\n" % lockfilename
-
-	try:
-		fcntl.flock(myfd,fcntl.LOCK_EX|fcntl.LOCK_NB)
-		# We won the lock, so there isn't competition for it.
-		# We can safely delete the file.
-		writemsg("Got the lockfile...\n",1)
-		if unlinkfile:
-			#writemsg("Unlinking...\n")
-			os.unlink(lockfilename)
-			writemsg("Unlinked lockfile...\n",1)
-		fcntl.flock(myfd,fcntl.LOCK_UN)
-	except Exception, e:
-		# We really don't care... Someone else has the lock.
-		# So it is their problem now.
-		writemsg("Failed to get lock... someone took it.\n",1)
-		writemsg(str(e)+"\n",1)
-		pass
-	# why test lockfilename?  because we may have been handed an fd originally, and the caller might not like having their
-	# open fd closed automatically on them.
-	if type(lockfilename) == types.StringType:
-		os.close(myfd)
-			
-	return 1
-
-def unique_array(array):
-	"""Takes an array and makes sure each element is unique."""
-	mya = []
-	for x in array:
-		if x not in mya:
-			mya.append(x)
-	return mya
-									
 def getcwd():
 	"this fixes situations where the current directory doesn't exist"
 	try:
@@ -417,7 +298,7 @@ try:
 		prelink_tmpfile = PRIVATE_PATH+"/prelink-checksum.tmp"
 		if calc_prelink and prelink_capable:
 			# Create non-prelinked temporary file to md5sum.
-			mylock = lockfile(prelink_tmpfile, wantnewlockfile=1)
+			mylock = portage_locks.lockfile(prelink_tmpfile, wantnewlockfile=1)
 			try:
 				shutil.copy2(filename,prelink_tmpfile)
 			except Exception,e:
@@ -427,7 +308,7 @@ try:
 			spawn(PRELINK_BINARY+" --undo "+prelink_tmpfile+" &>/dev/null", settings, free=1)
 			retval = fchksum.fmd5t(prelink_tmpfile)
 			os.unlink(prelink_tmpfile)
-			unlockfile(mylock)
+			portage_locks.unlockfile(mylock)
 			return retval
 		else:
 			return fchksum.fmd5t(filename)
@@ -435,7 +316,7 @@ except ImportError:
 	import md5
 	def perform_checksum(filename, calc_prelink=prelink_capable):
 		prelink_tmpfile = PRIVATE_PATH+"/prelink-checksum.tmp"
-		mylock = lockfile(prelink_tmpfile, wantnewlockfile=1)
+		mylock = portage_locks.lockfile(prelink_tmpfile, wantnewlockfile=1)
 		myfilename=filename
 		if calc_prelink and prelink_capable:
 			# Create non-prelinked temporary file to md5sum.
@@ -463,7 +344,7 @@ except ImportError:
 
 		if calc_prelink and prelink_capable:
 			os.unlink(prelink_tmpfile)
-		unlockfile(mylock)
+		portage_locks.unlockfile(mylock)
 		return (sum.hexdigest(),size)
 
 starttime=long(time.time())
@@ -1518,7 +1399,7 @@ class config:
 			pkgmasklines = grab_multiple("package.mask", locations, grabfile)
 			pkgmasklines = stack_lists(pkgmasklines, incremental=1)
 			#pkgmasklines = stack_lists(pkgmasklines)
-			#pkgmasklines = unique_array(pkgmasklines.keys())
+			#pkgmasklines = portage_util.unique_array(pkgmasklines.keys())
 			#pkgmasklines = grab_stacked("package.mask", locations, grabdict_package)
 
 			self.pmaskdict = {}
@@ -1693,7 +1574,7 @@ class config:
 			virt = dep_getkey(virt)
 			if not self.treeVirtuals.has_key(virt):
 				self.treeVirtuals[virt] = []
-			self.treeVirtuals[virt] = unique_array(self.treeVirtuals[virt]+[cp])
+			self.treeVirtuals[virt] = portage_util.unique_array(self.treeVirtuals[virt]+[cp])
 		# Reconstruct the combined virtuals.
 		val = stack_dictlist([self.userVirtuals]+[self.treeVirtuals]+self.dirVirtuals,incremental=1)
 		for x in val.keys():
@@ -1807,7 +1688,7 @@ class config:
 				myVarTree    = db[myroot]["vartree"]
 				self.treeVirtuals = map_dictlist_vals(getCPFromCPV,myVarTree.get_all_provides())
 				for x in self.treeVirtuals.keys():
-					self.treeVirtuals[x] = unique_array(self.treeVirtuals[x])
+					self.treeVirtuals[x] = portage_util.unique_array(self.treeVirtuals[x])
 			user_profile_dir = myroot+USER_CONFIG_PATH
 
 		if os.path.exists("/etc/portage/virtuals"):
@@ -2148,9 +2029,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		else:
 			if use_locks and can_fetch:
 				if locks_in_subdir:
-					file_lock = lockfile(mysettings["DISTDIR"]+"/"+locks_in_subdir+"/"+myfile,wantnewlockfile=1)
+					file_lock = portage_locks.lockfile(mysettings["DISTDIR"]+"/"+locks_in_subdir+"/"+myfile,wantnewlockfile=1)
 				else:
-					file_lock = lockfile(mysettings["DISTDIR"]+"/"+myfile,wantnewlockfile=1)
+					file_lock = portage_locks.lockfile(mysettings["DISTDIR"]+"/"+myfile,wantnewlockfile=1)
 		for loc in filedict[myfile]:
 			if listonly:
 				writemsg(loc+" ")
@@ -2289,7 +2170,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					elif mydigests!=None:
 						writemsg("No digest file available and download failed.\n")
 		if use_locks and file_lock:
-			unlockfile(file_lock)
+			portage_locks.unlockfile(file_lock)
 		
 		if listonly:
 			writemsg("\n")
@@ -4558,7 +4439,7 @@ class dbapi:
 		if re.search("portage_lockfile$",mypath):
 			if not os.environ.has_key("PORTAGE_MASTER_PID"):
 				writemsg("Lockfile removed: %s\n" % mypath, 1)
-				unlockfile((mypath,None,None))
+				portage_locks.unlockfile((mypath,None,None))
 			else:
 				# Nothing we can do about it. We're probably sandboxed.
 				pass
@@ -5141,7 +5022,7 @@ class eclass_cache:
 			return 0
 
 		eclass_list.sort()
-		eclass_list = unique_array(eclass_list)
+		eclass_list = portage_util.unique_array(eclass_list)
 		
 		ec_data = self.packages[location][cat][pkg].keys()
 		ec_data.sort()
@@ -5394,11 +5275,11 @@ class portdbapi(dbapi):
 				if self.lock_held:
 					raise "Lock is already held by me?"
 				self.lock_held = 1
-				mylock = lockfile(mydbkey,unlinkfile=1)
+				mylock = portage_locks.lockfile(mydbkey,unlinkfile=1)
 
 				myret=doebuild(myebuild,"depend","/",self.mysettings,dbkey=mydbkey)
 				if myret:
-					unlockfile(mylock)
+					portage_locks.unlockfile(mylock)
 					self.lock_held = 0
 					#depend returned non-zero exit code...
 					writemsg(str(red("\naux_get():")+" (0) Error in "+mycpv+" ebuild. ("+str(myret)+")\n"
@@ -5410,13 +5291,13 @@ class portdbapi(dbapi):
 					mylines=mycent.readlines()
 					mycent.close()
 				except (IOError, OSError):
-					unlockfile(mylock)
+					portage_locks.unlockfile(mylock)
 					self.lock_held = 0
 					writemsg(str(red("\naux_get():")+" (1) Error in "+mycpv+" ebuild.\n"
 					  "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
 					raise KeyError
 
-				unlockfile(mylock)
+				portage_locks.unlockfile(mylock)
 				self.lock_held = 0
 
 				mydata = {}
@@ -6005,15 +5886,15 @@ class dblink:
 
 	def lockdb(self):
 		if self.lock_num == 0:
-			self.lock_pkg = lockdir(self.dbpkgdir)
-			self.lock_tmp = lockdir(self.dbtmpdir)
+			self.lock_pkg = portage_locks.lockdir(self.dbpkgdir)
+			self.lock_tmp = portage_locks.lockdir(self.dbtmpdir)
 		self.lock_num += 1
 		
 	def unlockdb(self):
 		self.lock_num -= 1
 		if self.lock_num == 0:
-			unlockdir(self.lock_tmp)
-			unlockdir(self.lock_pkg)
+			portage_locks.unlockdir(self.lock_tmp)
+			portage_locks.unlockdir(self.lock_pkg)
 
 	def getpath(self):
 		"return path to location of db information (for >>> informational display)"
@@ -6590,9 +6471,9 @@ class dblink:
 					continue
 				os.unlink(destroot+PRIVATE_PATH+"/"+x)
 
-		mylock = lockfile(destroot+CONFIG_MEMORY_FILE)
+		mylock = portage_locks.lockfile(destroot+CONFIG_MEMORY_FILE)
 		writedict(cfgfiledict,destroot+CONFIG_MEMORY_FILE)
-		unlockfile(mylock)
+		portage_locks.unlockfile(mylock)
 		
 		#do postinst script
 		if myebuild:
