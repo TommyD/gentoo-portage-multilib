@@ -745,16 +745,15 @@ class depgraph:
 		#self.fakedbapi.cpv_inject("sys-libs/glibc-2.3")	
 		self.outdatedpackages=[]
 		self.mydbapi={}
-		if "empty" in myparams:
-			#for --update, we want to rebuild an entire empty tree of dependencies, and then we won't merge was is already merged.
-			self.mydbapi["/"]=self.fakedbapi
-		else:
-			self.mydbapi["/"]=portage.db["/"]["vartree"].dbapi
+		self.mydbapi["/"]=self.fakedbapi
+		if "empty" not in myparams:
+			for pkg in portage.db["/"]["vartree"].getallcpv():
+				self.mydbapi["/"].cpv_inject(pkg)
 		if portage.root!="/":
-			if "empty" in myparams:
-				self.mydbapi[portage.root]=self.fakedbapi
-			else:
-				self.mydbapi[portage.root]=portage.db[portage.root]["vartree"].dbapi
+			self.mydbapi[portage.root]=self.fakedbapi
+			if "empty" not in myparams:
+				for pkg in portage.db[portage.root]["vartree"].getallcpv():
+					self.mydbapi[portage.root].cpv_inject(pkg)
 			
 		if "--usepkg" in myopts:
 			try:
@@ -823,9 +822,18 @@ class depgraph:
 			merging=2
 		if merging==1:
 			mybigkey.append("merge")
+			self.mydbapi[myroot].cpv_inject(mykey)
 		else:
 			mybigkey.append("nomerge")
 			
+		virts = portage.db[myroot]["porttree"].dbapi.aux_get(mykey, ["PROVIDE"])[0].split()
+		cp = portage.dep_getkey(mykey)
+		for virt in virts:
+			virt = portage.dep_getkey(virt)
+			while cp in portage.virts[virt]:
+				portage.virts[virt].remove(cp)
+			portage.virts[virt].insert(0, cp)
+		
 		# whatever the case, we need to add the node to our digraph so
 		# that children can depend upon it.
 		self.digraph.addnode(string.join(mybigkey),myparent)
