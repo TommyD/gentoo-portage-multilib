@@ -26,34 +26,41 @@ class CustomConnection:
 				self.__crc[k[14:]] = mysettings[k]
 			
 
-	def fetch(self, uri, file_name=None, distdir=None,verbose=None):
-		"""fetch uri, storing it to file_name
-		distdir can be used to overload the stored directory, although it is deprecated"""
-		return self.__execute(uri,file_name,distdir,False,verbose)
+	def fetch(self, uri, file_name=None, verbose=None):
+		"""fetch uri, storing it to file_name"""
+		return self.__execute(uri,file_name,False,verbose)
 
-	def resume(self, uri, file_name=None, distdir=None,verbose=None):
+	def resume(self, uri, file_name=None,verbose=None):
 		"""resume uri into file_name"""
-		return self.__execute(uri,file_name,distdir,True,verbose)
+		return self.__execute(uri,file_name,True,verbose)
 
-	def __execute(self, uri, file_name, distdir, resume,verbose):
+	def __execute(self, uri, file_name, resume,verbose):
 		"""internal function doing the actual work of fetch/resume"""
 		if verbose==None:
 			verbose=self.__verbose
-		if not distdir:
-			distdir = self.__distdir
+
+		proto = urlparse.urlparse(uri)[0].upper()
+
 		if not file_name:
 			x = uri.rfind("/")
+			distdir=self.__distdir
 			if x == -1:
 				raise Exception,"Unable to deterimine file_name from %s" % uri
 			file_name = uri[x+1:]
+		else:
+			x = file_name.rfind("/")
+			if x == -1:
+				distdir=self.__distdir
+			else:
+				distdir=file_name[:x]
+				file_name=file_name[x+1:]
 
-		proto = urlparse.urlparse(uri)[0].upper()
-		
 		if resume:
 			f = self.__crc.get(proto, self.__rc)
 		else:
 			f = self.__cfc.get(proto, self.__fc)
 
+		
 		f=f.replace("${DISTDIR}", distdir)
 		f=f.replace("${URI}",uri)
 		f=f.replace("${FILE}",file_name)
