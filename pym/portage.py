@@ -811,6 +811,7 @@ class config:
 			                    "auto":      self.configlist[4],
 			                    "backupenv": self.configlist[5],
 			                    "env":       self.configlist[6] }
+			self.profiles = copy.deepcopy(clone.profiles)
 			self.backupenv  = copy.deepcopy(clone.backupenv)
 			self.pusedict   = copy.deepcopy(clone.pusedict)
 			self.categories = copy.deepcopy(clone.categories)
@@ -2116,7 +2117,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	mysettings["ECLASSDIR"]   = mysettings["PORTDIR"]+"/eclass"
 	mysettings["SANDBOX_LOG"] = mycpv.replace("/", "_-_")
 
-	mysettings["PROFILE_PATHS"] = PROFILE_PATH+"\n"+CUSTOM_PROFILE_PATH
+	mysettings["PROFILE_PATHS"] = string.join(mysettings.profiles,"\n")+"\n"+CUSTOM_PROFILE_PATH
 	mysettings["P"]  = mysplit[0]+"-"+mysplit[1]
 	mysettings["PN"] = mysplit[0]
 	mysettings["PV"] = mysplit[1]
