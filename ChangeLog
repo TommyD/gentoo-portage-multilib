@@ -3,11 +3,11 @@
 
 *portage-2.0.47_pre4 (03 Jan 2003): UserPriv Works + Per-Ebuild logging
 
-	04 Jan 2003; Nicholas Jones <carpaski@gentoo.org> :
-	tokenize() fixups to remedy the || reduce problems. 
+  04 Jan 2003; Nicholas Jones <carpaski@gentoo.org> portage.py:
+  tokenize() fixups to remedy the || reduce problems. 
 
-	04 Jan 2003; Nicholas Jones <carpaski@gentoo.org> prepall:
-	Fixup for '//' problem.
+  04 Jan 2003; Nicholas Jones <carpaski@gentoo.org> prepall:
+  Fixup for '//' problem.
 
   03 Jan 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh:
   Support for per-ebuild logging via PORT_LOGDIR variable. ebuild.sh
