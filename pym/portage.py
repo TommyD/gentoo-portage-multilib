@@ -1640,12 +1640,8 @@ class vartree(packagetree):
 			if not os.path.isdir(os.getcwd()+"/"+x):
 				continue
 			for y in os.listdir(os.getcwd()+"/"+x):
-				if x=="virtual":
-					#virtual packages don't require versions, if none is found, add a "1.0" to the end
-					if isjustname(y):
-						fullpkg=x+"/"+y+"-1.0"
-					else:
-						fullpkg=x+"/"+y
+				if isjustname(y):
+					fullpkg=x+"/"+y+"-1.0"
 				else:
 					fullpkg=x+"/"+y
 				mysplit=catpkgsplit(fullpkg,0)

@@ -2,6 +2,9 @@
 # Copyright 2001 Gentoo Technologies, Inc.; Distributed under the GPL
 # Written by Daniel Robbins (drobbins@gentoo.org)
 
+  29 Nov 2001; portage.py: removed an unnecessary quirk in the code preventing
+  virtual packages from being in any other category but "virtual".
+  
   25 Nov 2001; emerge's info file detection code has been improved.  
 
 * portage 1.7.3 (20 Nov 2001)
