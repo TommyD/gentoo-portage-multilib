@@ -3877,12 +3877,12 @@ class portdbapi(dbapi):
 			self.manifestVerifyLevel   = portage_gpg.EXISTS
 			if "strict" in self.mysettings.features:
 				self.manifestVerifyLevel = portage_gpg.MARGINAL
-				self.manifestVerifier = portage_gpg.FileChecker(self.mysettings["PORTAGE_GPG_DIR"], "gentoo.gpg", minimumTrust=self.manifestVerifyLevel,home=mysettings["HOME"])
+				self.manifestVerifier = portage_gpg.FileChecker(self.mysettings["PORTAGE_GPG_DIR"], "gentoo.gpg", minimumTrust=self.manifestVerifyLevel,self.home=mysettings["HOME"])
 			elif "severe" in self.mysettings.features:
 				self.manifestVerifyLevel = portage_gpg.TRUSTED
-				self.manifestVerifier = portage_gpg.FileChecker(self.mysettings["PORTAGE_GPG_DIR"], "gentoo.gpg", requireSignedRing=True, minimumTrust=self.manifestVerifyLevel,home=mysettings["HOME"])
+				self.manifestVerifier = portage_gpg.FileChecker(self.mysettings["PORTAGE_GPG_DIR"], "gentoo.gpg", requireSignedRing=True, minimumTrust=self.manifestVerifyLevel,self.home=mysettings["HOME"])
 			else:
-				self.manifestVerifier = portage_gpg.FileChecker(self.mysettings["PORTAGE_GPG_DIR"], "gentoo.gpg", minimumTrust=self.manifestVerifyLevel,home=mysettings["HOME"])
+				self.manifestVerifier = portage_gpg.FileChecker(self.mysettings["PORTAGE_GPG_DIR"], "gentoo.gpg", minimumTrust=self.manifestVerifyLevel,self.home=mysettings["HOME"])
 
 		#self.root=settings["PORTDIR"]
 		self.porttree_root = porttree_root
