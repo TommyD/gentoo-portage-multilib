@@ -8,5 +8,15 @@ if [ -n "${DEBUGBUILD}" ] ; then
 fi
 
 for x in $@ ; do
-	strip --strip-debug "${D}${x}"/*.so*
+    if [ -d "${D}${x}" ] ; then
+        for y in `find "${D}${x}"/ -type f \( -name "*.so" -or -name "*.so.*" \) 2>/dev/null` ; do
+            f="`file "${y}"`"
+            if [ "${f/*SB shared object*/1}" == "1" ] ; then
+                echo "${y}"
+                strip --strip-debug "${y}"
+            fi
+        done
+
+		ldconfig -n -N "${D}${x}"
+    fi
 done

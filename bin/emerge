@@ -526,6 +526,15 @@ class depgraph:
 		myfavorites=[]
 		for x in myfiles:
 			if x[-5:]==".tbz2":
+				if not os.path.exists(x):
+					if os.path.exists(portage.settings["PKGDIR"]+"/All/"+x):
+						x=portage.settings["PKGDIR"]+"/All/"+x
+					elif os.path.exists(portage.settings["PKGDIR"]+"/"+x):
+						x=portage.settings["PKGDIR"]+"/"+x
+					else:
+						print "\n\n!!! Binary package '"+str(x)+"' does not exist."
+						print "!!! Please ensure the tbz2 exists as specified.\n"
+						sys.exit(1)
 				mytbz2=xpak.tbz2(x)
 				mykey=mytbz2.getelements("CATEGORY")[0]+"/"+os.path.basename(x)[:-5]
 				if not self.create(["binary",portage.root,mykey],None,"--onlydeps" not in myopts):
@@ -769,7 +778,10 @@ class depgraph:
 				else:
 					addl=" "+green("N")+"   "
 				if myoldbest:
-					myoldbest=blue("["+portage.pkgsplit(myoldbest)[1]+"-"+portage.pkgsplit(myoldbest)[2]+"]")
+					myoldbest=portage.pkgsplit(myoldbest)[1]+"-"+portage.pkgsplit(myoldbest)[2]
+					if myoldbest[-3:]=="-r0":
+						myoldbest=myoldbest[:-3]
+					myoldbest=blue("["+myoldbest+"]")
 				if x[1]!="/":
 					print "["+x[0]+" "+addl+"]",darkgreen(x[2]),myoldbest,darkgreen("to "+x[1])
 				else:
@@ -1368,10 +1380,10 @@ elif "info"==myaction:
 	print getportageversion()
 	print "================================================================="
 	print "System uname: "+unameout
-	for x in ['USE', 'ARCH', 'COMPILER', 'CHOST', 'CFLAGS', 'CXXFLAGS',
-	          'ACCEPT_KEYWORDS', 'CONFIG_PROTECT', 'CONFIG_PROTECT_MASK',
-						'MAKEOPTS', 'JDK_HOME', 'JAVA_HOME', 'AUTOCLEAN', 'SYNC',
-						'GENTOO_MIRRORS']:
+	for x in ['GENTOO_MIRRORS', 'CONFIG_PROTECT', 'CONFIG_PROTECT_MASK',
+			'PORTDIR', 'DISTDIR', 'PKGDIR', 'PORTAGE_TMPDIR', 'PORTDIR_OVERLAY',
+			'USE', 'COMPILER', 'CHOST', 'CFLAGS', 'CXXFLAGS','ACCEPT_KEYWORDS', 
+			'MAKEOPTS', 'AUTOCLEAN', 'SYNC', 'FEATURES']:
 		print x+'="'+portage.settings[x]+'"'
 	#print portage.settings.keys()
 	print

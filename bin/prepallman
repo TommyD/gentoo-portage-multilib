@@ -3,31 +3,10 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-for x in `find ${D}/opt/*/man/ ${D}/usr/share/man/ ${D}/usr/local/man/ ${D}/usr/X11R6/share/man/ -type d 2>/dev/null` ; do
-	for y in `find ${x} -type f -or -type l -maxdepth 1 -mindepth 1 2>/dev/null` ; do
-		if [ -L "${y}" ] ; then
-			#symlink
-			mylink="${y}"
-			linkto=`readlink ${y}`
-
-			# remove any weirdly embedded ${D}'s
-			linkto="${linkto/${D}/}"
-
-			if [ "${linkto##*.}" != "gz" ] ; then
-				linkto="${linkto}.gz"
-			fi
-			if [ "${mylink##*.}" != "gz" ] ; then
-				mylink="${mylink}.gz"
-			fi
-
-			echo "fixing man page symlink: ${mylink##*/}"
-			rm -f "${y}" "${mylink}"
-			ln -sf "${linkto}" "${mylink}"
-		elif [ -f "${y}" ] ; then
-			if [ "${y##*.}" != "gz" ] ; then
-				gzip -f -9 "${y}"
-				echo "gzipping man page: ${y}"
-			fi
-		fi
-	done
+echo "man:"
+for x in "${D}"opt/*/man "${D}"usr/share/man "${D}"usr/local/man "${D}"usr/X11R6/share/man ; do
+	if [ -d "${x}" ]
+	then
+		prepman "`echo "${x}" | sed -e "s:${D}::" -e "s:/man[/]*$::"`"
+	fi
 done

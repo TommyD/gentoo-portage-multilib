@@ -1,8 +1,31 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-2.0.47_pre3 (02 Jan 2003): Forward port of fixes & New fixes
+
+  02 Jan 2003; Nicholas Jones <carpaski@gentoo.org> emerge:
+	tbz2 handling improved -- checks current, pkgdir/All/x, pkgdir/x.
+	-r0 removal on current ver to stop people from complaining about it.
+	More info added to 'emerge info' output.
+
+  02 Jan 2003; Nicholas Jones <carpaski@gentoo.org> portage.py:
+	Spaces in filenames fix for prelink-capable systems. Exception caused
+	by invalid or unsatisfiable '||' dependancies caught and warned about.
+	auxdbkey order fix. dbcachedir now ensures a '/' before the cache dir.
+
+  02 Jan 2003; Nicholas Jones <carpaski@gentoo.org> prep*:
+	Fixes from Azarah to make the included files more proper.
+
   26 Dec 2002; Phil Bordelon <sunflare@gentoo.org> man/emerge.1:
   Added documentation of the --deep option.
+
+*portage-2.0.46-r5 (30 Dec 2002): Touchups and sparc confs
+  fix for prelink unmerge problems. small touches to outputs.
+  sparc configs added. Azarah's fixups for the prep* scripts.
+	Changes to 'emerge info' output. tbz2 prefixes PKGDIR/All if the
+	tbz2 doesn't exist in the current dir.
+
+*portage-2.0.46-r3 (24 Dec 2002): Backport of fixes in 2.0.47_pre2
 
 *portage-2.0.47_pre2 (24 Dec 2002): Feature: userpriv compiles
 

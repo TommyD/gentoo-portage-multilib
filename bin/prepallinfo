@@ -3,17 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-[ ! -d ${D}/usr/share/info ] && exit
+[ ! -d "${D}usr/share/info" ] && exit 0
 
 echo "info:"
-cd ${D}/usr/share/info
-rm -f dir dir.info dir.info.gz
-
-for x in ${D}/usr/share/info/* ; do
-	[ ! -f "$x" ] && continue
-
-	if [ "${x##*.}" != "gz" ] ; then
-		echo "gzipping GNU info file ${x##*/}"
-		gzip -f -9 "${x}"
-	fi
-done
+prepinfo

@@ -9,4 +9,6 @@ else
 	z="${D}$1/lib"
 fi
 
-ldconfig -n -N "${z}"
+if [ -d "${z}" ] ; then
+	ldconfig -n -N "${z}"
+fi

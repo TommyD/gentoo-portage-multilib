@@ -7,6 +7,18 @@ if [ -n "${DEBUGBUILD}" ] ; then
 	exit 0
 fi
 
-for x in "$@" ; do
-	strip "${D}${x}"/*
+for x in $@ ; do
+	if [ -d "${D}${x}" ] ; then
+		for y in `find "${D}${x}"/ -type f \( -perm -0100 -or -perm -0010 -or -perm -0001 -or -name "*.so" -or -name "*.so.*" \) 2>/dev/null` ; do
+			f="`file "${y}"`"
+			if [ "${f/*SB executable*/1}" == "1"  ] ; then
+				echo "${y}"
+				strip "${y}"
+			fi
+			if [ "${f/*SB shared object*/1}" == "1" ] ; then
+				echo "${y}"
+				strip --strip-debug "${y}"
+			fi
+		done
+	fi
 done

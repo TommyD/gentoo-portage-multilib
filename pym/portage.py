@@ -82,7 +82,7 @@ try:
 		if calc_prelink and prelink_capable:
 			# Create non-prelinked temporary file to md5sum.
 			prelink_tmpfile="/tmp/portage-prelink.tmp"
-			os.system("cp "+filename+" "+prelink_tmpfile+" && /usr/sbin/prelink --undo "+prelink_tmpfile+" &>/dev/null")
+			os.system('cp "'+filename+'" '+prelink_tmpfile+" && /usr/sbin/prelink --undo "+prelink_tmpfile+" &>/dev/null")
 			retval = fchksum.fmd5t(prelink_tmpfile)
 			os.unlink(prelink_tmpfile)
 			return retval
@@ -1937,7 +1937,11 @@ def dep_opconvert(mysplit,myuse):
 			if ((mypos+1)>=len(mysplit)) or (type(mysplit[mypos+1])!=types.ListType):
 				# || must be followed by paren'd list
 				return None
-			mynew=dep_opconvert(mysplit[mypos+1],myuse)
+			try:
+				mynew=dep_opconvert(mysplit[mypos+1],myuse)
+			except Exception, e:
+				print "!!! Unable to satisfy OR dependancy:",string.join(mysplit," || ")
+				raise e
 			mynew[0:0]=["||"]
 			newsplit.append(mynew)
 			mypos += 2
@@ -2951,7 +2955,7 @@ def eclass(myeclass=None,mycpv=None,mymtime=None):
 		return 1
 # ----------------------------------------------------------------------------
 
-auxdbkeys=['DEPEND','RDEPEND','SLOT','SRC_URI','RESTRICT','HOMEPAGE','LICENSE','DESCRIPTION','KEYWORDS','INHERITED','IUSE','PDEPEND','CDEPEND']
+auxdbkeys=['DEPEND','RDEPEND','SLOT','SRC_URI','RESTRICT','HOMEPAGE','LICENSE','DESCRIPTION','KEYWORDS','INHERITED','IUSE','CDEPEND','PDEPEND']
 auxdbkeylen=len(auxdbkeys)
 class portdbapi(dbapi):
 	"this tree will scan a portage directory located at root (passed to init)"
@@ -2989,7 +2993,7 @@ class portdbapi(dbapi):
 		doregen2=0
 		mylines=[]
 		stale=0
-		mydbkey=dbcachedir+mycpv
+		mydbkey=dbcachedir+"/"+mycpv
 		myebuild=self.findname(mycpv)
 
 		# first, we take a look at the size of the ebuild/cache entry to ensure we

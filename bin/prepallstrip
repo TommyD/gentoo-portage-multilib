@@ -8,16 +8,16 @@ if [ -n "${DEBUGBUILD}" ] ; then
 fi
 
 echo "strip:"
-z=`find ${D} -type f \( -perm -0100 -or -perm -0010 -or -perm -0001 -or -name "*.so" -or -name "*.so.*" \)`
+z="`find "${D}"/ -type f \( -perm -0100 -or -perm -0010 -or -perm -0001 -or -name "*.so" -or -name "*.so.*" \) 2>/dev/null`"
 
-for x in $z ; do
-	f=`file "$x"`
+for x in ${z} ; do
+	f="`file "${x}"`"
 	if [ "${f/*SB executable*/1}" == "1"  ] ; then
-		echo $x
+		echo "${x}"
 		strip "${x}"
 	fi
 	if [ "${f/*SB shared object*/1}" == "1" ] ; then
-		echo $x
+		echo "${x}"
 		strip --strip-debug "${x}"
 	fi
 done

@@ -8,24 +8,24 @@ prepallinfo
 prepallstrip
 
 #this should help to ensure that all (most?) shared libraries are executable
-cd "${D}"
-for i in opt/*/lib lib usr/lib usr/X11R6/lib ; do
-	[ -d "$i" ] && continue
+for i in "${D}"opt/*/lib "${D}"lib "${D}"usr/lib "${D}"usr/X11R6/lib ; do
+	[ ! -d "${i}" ] && continue
 
-	for j in "$i"/*.so.* "$i"/*.so ; do
-		[ ! -e "$j" ] && continue
-		[ -L "$j" ] && continue
-		chmod +x "$j"
+	for j in "${i}"/*.so.* "${i}"/*.so ; do
+		[ ! -e "${j}" ] && continue
+		[ -L "${j}" ] && continue
+		echo "making executable: /${j/${D}/}"
+		chmod +x "${j}"
 	done
 done
 
 # Move aclocals
-for i in `find ${D} -name "aclocal" -type d` ; do
-	[ -z "$i" ] && continue
-	[ "$i" == "${D}usr/share/aclocal" ] && continue
+for i in `find "${D}"/ -name "aclocal" -type d 2>/dev/null` ; do
+	[ -z "${i}" ] && continue
+	[ "${i}" == "${D}usr/share/aclocal" ] && continue
 
-	echo "moving aclocal: $i"
-	install -d "${D}usr/share/aclocal"
-	mv "${i}"/* "${D}usr/share/aclocal"
+	echo "moving aclocal: /${i/${D}/}"
+	install -d "${D}"usr/share/aclocal
+	mv "${i}"/* "${D}"usr/share/aclocal
 	rm -fr "${i}"
 done
