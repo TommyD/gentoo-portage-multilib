@@ -32,16 +32,22 @@ fi
 
 jarroot="${DESTTREE}/share/${PN}/"
 jardest="${DESTTREE}/share/${PN}/${JARDESTTREE}/"
+pf=${D}${jarroot}/package.env
 
 dodir ${jardest}
 
 for i in $* ; do
 	bn=`basename $i`
 	
-	if [ ! -f ${D}${jarroot}/classpath.env ] ; then
-		echo -n "${jardest}/${bn}" > ${D}${jarroot}/classpath.env
+
+	if [ -f $pf ] ; then
+		oldcp=`grep "CLASSPATH=" $pf | sed "s/CLASSPATH=//"`
+		grep -v "CLASSPATH=" $pf > ${pf}.new
+		echo "CLASSPATH=${oldcp}:${jardest}${bn}" >> ${pf}.new
+		mv ${pf}.new $pf
 	else
-		echo -n ":${jardest}${bn}" >> ${D}${jarroot}/classpath.env
+		echo "DESCRIPTION=\"${DESCRIPTION}\"" > $pf
+		echo "CLASSPATH=${jardest}${bn}" >> $pf
 	fi
 	
 	cp $i ${D}${jardest}/
