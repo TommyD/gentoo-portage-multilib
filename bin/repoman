@@ -709,12 +709,14 @@ for x in scanlist:
 				mydigests=portage.digestParseFile(checkdir+"/files/"+y)
 				
 				mykey = catdir + "/" + y[7:]
-				myuris,myfiles = portage.db["/"]["porttree"].dbapi.getfetchlist(mykey,all=True)
-
-				for entry in mydigests.keys():
-					if entry not in myfiles:
-						stats["digest.unused"] += 1
-						fails["digest.unused"].append(y+"::"+entry)
+				if mykey in portage.db["/"]["porttree"].dbapi.xmatch("match-all", portage.dep_getkey(mykey)):
+					myuris,myfiles = portage.db["/"]["porttree"].dbapi.getfetchlist(mykey,all=True)
+					for entry in mydigests.keys():
+						if entry not in myfiles:
+							stats["digest.unused"] += 1
+							fails["digest.unused"].append(y+"::"+entry)
+				else:
+					pass # This is a stale digest
 
 				uri_dict = {}
 				for myu in myuris:

@@ -111,9 +111,6 @@ def userquery(prompt, responses=None, colours=None):
 			for key in responses:
 				if response.upper()==key[:len(response)].upper():
 					return key
-			for key in responses:
-				if response.upper()==key[:len(response)].upper():
-					return key
 			print "Sorry, response '%s' not understood." % response,
 	except (EOFError, KeyboardInterrupt):
 		print "Interrupted."

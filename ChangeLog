@@ -7,9 +7,15 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  28 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> repoman: Fixed aux_get error
+  due to calling getfetchlist() when an ebuild no longer exists.
+
+  28 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> emerge: Removed a duplicate
+  loop from the userquery function. #69020
+
   27 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> dispatch-conf: Moved temp file
-  creation from /tmp to /var/lib/portage. Made the log file a configurable option
-  that is disabled by default.
+  creation into a safe directory under /tmp. Made the log file a configurable
+  option that is disabled by default.
 
   26 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> portage.py:  Added a check to
   portdbapi.fetchcheck to account for a missing digest.

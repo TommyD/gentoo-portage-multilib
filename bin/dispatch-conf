@@ -26,10 +26,11 @@ DIFF_WSCOMMENTS      = 'diff -Nau %s %s | grep "^[+-][^+-]" | grep -v "^[-+]#" |
 MERGE                = 'sdiff --suppress-common-lines --output=%s %s %s'
 
 # We need a secure scratch dir and python does silly verbose errors on the use of tempnam
+oldmask = os.umask(0077)
 SCRATCH_DIR = None
 while SCRATCH_DIR is None:
     try:
-        mydir = "/var/lib/portage/dispatch-conf."
+        mydir = "/tmp/dispatch-conf."
         for x in range(0,8):
             if int(random() * 3) == 0:
                 mydir += chr(int(65+random()*26.0))
@@ -44,6 +45,7 @@ while SCRATCH_DIR is None:
     except OSError, e:
         if e.errno != 17:
             raise
+os.umask(oldmask)
 
 # Ensure the scratch dir is deleted
 def cleanup(mydir=SCRATCH_DIR):
