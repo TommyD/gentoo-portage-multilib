@@ -73,12 +73,11 @@ econf() {
 	local ret
 	if [ -x ./configure ]; then
 		if hasq autoconfig $FEATURES && ! hasq autoconfig $RESTRICT; then
-			if [ -e /usr/share/gnuconfig/ -a -x /bin/basename ]; then
-				local x name
+			if [ -e /usr/share/gnuconfig/ ]; then
+				local x
 				for x in $(find ${S} -type f -name config.guess -o -name config.sub); do
-					name="$(/bin/basename ${x})"
-					einfo "econf: updating $x with /usr/share/gnuconfig/$name"
-					cp "/usr/share/gnuconfig/${name}" "${x}"
+					einfo "econf: updating $x with /usr/share/gnuconfig/${x##*/}"
+					cp "/usr/share/gnuconfig/${x##*/}" "${x}"
 				done
 			fi
 		fi
