@@ -939,9 +939,8 @@ class depgraph:
 					sys.exit(1)
 				#need to check for errors
 			portage.db[x[1]]["vartree"].inject(x[2])
-			if (not "--fetchonly" in myopts) and (x[2] in favorites):
-				mysplit=portage.catpkgsplit(x[2])
-				myfavkey=mysplit[0]+"/"+mysplit[1]
+			myfavkey=portage.cpv_getkey(x[2])
+			if (not "--fetchonly" in myopts) and (myfavkey in favorites):
 				myfavs=portage.grabfile(myroot+"var/cache/edb/world")
 				myfavdict=genericdict(myfavs)
 				mysysdict=genericdict(syslist)
@@ -949,9 +948,7 @@ class depgraph:
 				if (not mysysdict.has_key(myfavkey)) and (not myfavdict.has_key(myfavkey)):
 					#we don't have a favorites entry for this package yet; add one
 					myfavdict[myfavkey]=myfavkey
-					print
 					print ">>> Recording",myfavkey,"in \"world\" favorites file..."
-					print
 					portage.writedict(myfavdict,myroot+"var/cache/edb/world",writekey=0)
 			if "--autoclean" in myopts:
 				retval=portage.doebuild(y,"clean",myroot,edebug)
