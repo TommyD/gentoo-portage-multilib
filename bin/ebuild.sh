@@ -3,53 +3,11 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-cd ${PORTAGE_TMPDIR} &> /dev/null
-cd ${BUILD_PREFIX} &> /dev/null
-
-if [ "$*" != "depend" ] && [ "$*" != "clean" ]; then
-	if [ -f ${T}/successful ]; then
-		rm -f ${T}/successful
-	fi
-
-	# Hurray for per-ebuild logging.
-	if [ ! -z "${PORT_LOGDIR}" ]; then
-		if [ -z "${PORT_LOGGING}" ]; then
-			export PORT_LOGGING=1
-			export SANDBOX_WRITE="$SANDBOX_WRITE:${PORT_LOGDIR}"
-			install -d ${PORT_LOGDIR} &>/dev/null
-			chown root:portage ${PORT_LOGDIR} &>/dev/null
-			chmod g+rwxs ${PORT_LOGDIR} &> /dev/null
-			touch "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log" &> /dev/null
-			chmod g+w "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log" &> /dev/null
-			$0 $* 2>&1 | tee -a "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log"
-			if [ "$?" != "0" ]; then
-				exit 1
-			fi
-			if [ -f ${T}/successful ]; then
-				rm -f ${T}/successful
-				exit 0
-			else
-				exit 1
-			fi
-		fi
-	fi
-
-	if [ -f "${WORKDIR}/environment" ]; then
-		source "${WORKDIR}/environment"
-	fi
-
-	if [ `id -nu` == "portage" ] ; then
-		export USER=portage
-	fi
-fi # "$*"!="depend" && "$*"!="clean"
-
-# Prevent aliases from causing portage to act inappropriately.
-unalias -a
-
 if [ -n "$#" ]
 then
 	ARGS="${*}"
 fi
+
 
 use() {
 	local x
@@ -135,26 +93,6 @@ use_enable() {
 		return 1
 	fi
 }
-
-#we need this next line for "die" and "assert"
-shopt -s expand_aliases
-OCC="$CC"
-OCXX="$CXX"
-source /etc/profile.env > /dev/null 2>&1
-[ ! -z "$OCC" ] && export CC="$OCC"
-[ ! -z "$OCXX" ] && export CXX="$OCXX"
-
-export PATH="/sbin:/usr/sbin:/usr/lib/portage/bin:/bin:/usr/bin:${ROOTPATH}"
-[ ! -z "$PREROOTPATH" ] && export PATH="${PREROOTPATH%%:}:$PATH"
-
-if [ -e /etc/init.d/functions.sh ]
-then
-	source /etc/init.d/functions.sh > /dev/null 2>&1
-elif [ -e /etc/rc.d/config/functions ]
-then
-	source /etc/rc.d/config/functions > /dev/null 2>&1
-fi
-
 # Custom version of esyslog() to take care of the "Red Star" bug
 # if no logger is running (tipically during bootstrap)
 esyslog() {
@@ -174,13 +112,6 @@ diefunc() {
 	exit 1
 }
 
-alias die='diefunc "$FUNCNAME" "$LINENO" "$?"'
-alias assert='_retval=$?; [ $_retval = 0 ] || diefunc "$FUNCNAME" "$LINENO" "$_retval"'
-
-# don't need to handle the maintainer fine grained settings here
-# anymore since it's initialized by ebuild through the python
-# portage module
-	
 #if no perms are specified, dirs/files will have decent defaults
 #(not secretive, but not stupid)
 umask 022
@@ -193,8 +124,6 @@ export EXEOPTIONS="-m0755"
 export LIBOPTIONS="-m0644"
 export DIROPTIONS="-m0755"
 export MOPREFIX=${PN}
-#Moved to portage
-#export KVERS=`uname -r`
 
 check_KV()
 {
@@ -247,41 +176,6 @@ addpredict()
 	export SANDBOX_PREDICT="$SANDBOX_PREDICT:$1"
 }
 
-if [ "$*" != "depend" ]; then
-	if has distcc ${FEATURES} &>/dev/null; then
-		if [ -d /usr/lib/distcc/bin ]; then
-			#We can enable distributed compile support
-			if [ -z "${PATH/*distcc*/}" ]; then
-				# Remove the other reference.
-				PATH="$(echo ${PATH} | sed 's/:[^:]*distcc[^:]*:/:/;s/^[^:]*distcc[^:]*://;s/:[^:]*distcc[^:]*$//')"
-				export PATH="/usr/lib/distcc/bin:${PATH}"
-			fi
-			[ -z "${DISTCC_HOSTS}" ] && DISTCC_HOSTS="localhost"
-			[ ! -z "${DISTCC_LOG}" ] && addwrite "$(dirname ${DISTCC_LOG})"
-			export DISTCC_HOSTS
-		elif which distcc &>/dev/null; then
-			export CC="distcc $CC"
-			export CXX="distcc $CXX"
-		fi
-	fi
-
-	if has ccache ${FEATURES} &>/dev/null; then
-		#We can enable compiler cache support
-		if [ -z "${PATH/*ccache*/}" ]; then
-			# Remove the other reference.
-			PATH="$(echo ${PATH} | sed 's/:[^:]*ccache[^:]*:/:/;s/^[^:]*ccache[^:]*://;s/:[^:]*ccache[^:]*$//')"
-		fi
-
-		if [ -d /usr/lib/ccache/bin ]; then
-			export PATH="/usr/lib/ccache/bin:${PATH}"
-		elif [ -d /usr/bin/ccache ]; then
-			export PATH="/usr/bin/ccache:${PATH}"
-		fi
-		[ -z "${CCACHE_DIR}" ] && export CCACHE_DIR=/root/.ccache
-		addread ${CCACHE_DIR}
-		addwrite ${CCACHE_DIR}
-	fi
-fi # $*==depend
 
 unpack() {
 	local x
@@ -1022,14 +916,122 @@ newdepend() {
 	done
 }
 
-# --- functions end, main part begins ---
+# === === === === === === === === === === === === === === === === === ===
+# === === === === === functions end, main part begins === === === === ===
+# === === === === === functions end, main part begins === === === === ===
+# === === === === === functions end, main part begins === === === === ===
+# === === === === === === === === === === === === === === === === === ===
+
+if [ "$*" != "depend" ] && [ "$*" != "clean" ]; then
+	cd ${PORTAGE_TMPDIR} &> /dev/null
+	cd ${BUILD_PREFIX} &> /dev/null
+
+	if [ -f ${T}/successful ]; then
+		rm -f ${T}/successful
+	fi
+
+	# Hurray for per-ebuild logging.
+	if [ ! -z "${PORT_LOGDIR}" ]; then
+		if [ -z "${PORT_LOGGING}" ]; then
+			export PORT_LOGGING=1
+			export SANDBOX_WRITE="$SANDBOX_WRITE:${PORT_LOGDIR}"
+			install -d ${PORT_LOGDIR} &>/dev/null
+			chown root:portage ${PORT_LOGDIR} &>/dev/null
+			chmod g+rwxs ${PORT_LOGDIR} &> /dev/null
+			touch "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log" &> /dev/null
+			chmod g+w "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log" &> /dev/null
+			$0 $* 2>&1 | tee -a "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log"
+			if [ "$?" != "0" ]; then
+				exit 1
+			fi
+			if [ -f ${T}/successful ]; then
+				rm -f ${T}/successful
+				exit 0
+			else
+				exit 1
+			fi
+		fi
+	fi
+
+	if [ -f "${WORKDIR}/environment" ]; then
+		source "${WORKDIR}/environment"
+	fi
+
+	if [ `id -nu` == "portage" ] ; then
+		export USER=portage
+	fi
+
+	# Prevent aliases from causing portage to act inappropriately.
+	unalias -a
+
+	OCC="$CC"
+	OCXX="$CXX"
+	source /etc/profile.env > /dev/null 2>&1
+	[ ! -z "$OCC" ] && export CC="$OCC"
+	[ ! -z "$OCXX" ] && export CXX="$OCXX"
+
+	export PATH="/sbin:/usr/sbin:/usr/lib/portage/bin:/bin:/usr/bin:${ROOTPATH}"
+	[ ! -z "$PREROOTPATH" ] && export PATH="${PREROOTPATH%%:}:$PATH"
+
+	if [ -e /etc/init.d/functions.sh ]
+	then
+		source /etc/init.d/functions.sh > /dev/null 2>&1
+	elif [ -e /etc/rc.d/config/functions ]
+	then
+		source /etc/rc.d/config/functions > /dev/null 2>&1
+	fi
+
+	if has distcc ${FEATURES} &>/dev/null; then
+		if [ -d /usr/lib/distcc/bin ]; then
+			#We can enable distributed compile support
+			if [ -z "${PATH/*distcc*/}" ]; then
+				# Remove the other reference.
+				PATH="$(echo ${PATH} | sed 's/:[^:]*distcc[^:]*:/:/;s/^[^:]*distcc[^:]*://;s/:[^:]*distcc[^:]*$//')"
+				export PATH="/usr/lib/distcc/bin:${PATH}"
+			fi
+			[ -z "${DISTCC_HOSTS}" ] && DISTCC_HOSTS="localhost"
+			[ ! -z "${DISTCC_LOG}" ] && addwrite "$(dirname ${DISTCC_LOG})"
+			export DISTCC_HOSTS
+		elif which distcc &>/dev/null; then
+			export CC="distcc $CC"
+			export CXX="distcc $CXX"
+		fi
+	fi
+
+	if has ccache ${FEATURES} &>/dev/null; then
+		#We can enable compiler cache support
+		if [ -z "${PATH/*ccache*/}" ]; then
+			# Remove the other reference.
+			PATH="$(echo ${PATH} | sed 's/:[^:]*ccache[^:]*:/:/;s/^[^:]*ccache[^:]*://;s/:[^:]*ccache[^:]*$//')"
+		fi
+
+		if [ -d /usr/lib/ccache/bin ]; then
+			export PATH="/usr/lib/ccache/bin:${PATH}"
+		elif [ -d /usr/bin/ccache ]; then
+			export PATH="/usr/bin/ccache:${PATH}"
+		fi
+
+		[ -z "${CCACHE_DIR}" ] && export CCACHE_DIR="/root/.ccache"
+
+		addread ${CCACHE_DIR}
+		addwrite ${CCACHE_DIR}
+
+		[ -z "${CCACHE_SIZE}" ] && export CCACHE_SIZE="2G"
+		ccache -M ${CCACHE_SIZE} &> /dev/null
+	fi
+fi # "$*"!="depend" && "$*"!="clean"
+
+#we need this next line for "die" and "assert"
+shopt -s expand_aliases
+alias die='diefunc "$FUNCNAME" "$LINENO" "$?"'
+alias assert='_retval=$?; [ $_retval = 0 ] || diefunc "$FUNCNAME" "$LINENO" "$_retval"'
+
 export SANDBOX_ON="1"
-S=${WORKDIR}/${P}
+export S=${WORKDIR}/${P}
 source ${EBUILD} || die "error sourcing ebuild"
 #a reasonable default for $S
-if [ "$S" = "" ]
-then
-	S=${WORKDIR}/${P}
+if [ "$S" = "" ]; then
+	export S=${WORKDIR}/${P}
 fi
 if [ "${RESTRICT/nostrip/}" != "${RESTRICT}" ]
 then
@@ -1118,7 +1120,7 @@ do
 		dbkey=${PORTAGE_CACHEDIR}/${CATEGORY}/${PF}
 		if [ ! -d ${PORTAGE_CACHEDIR}/${CATEGORY} ]
 		then
-			install -d -g ${PORTAGE_GID} -m2775 ${PORTAGE_CACHEDIR}/${CATEGORY}
+			install -d -g ${PORTAGE_GID} -m4775 ${PORTAGE_CACHEDIR}/${CATEGORY}
 		fi
 		# Make it group writable. 666&~002==664
 		umask 002

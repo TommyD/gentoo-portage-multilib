@@ -2,7 +2,22 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
-*portage-2.0.47-r4 (17 Feb 2003): Wicked Fast, BugFree v3, UserPriv
+*portage-2.0.47-r5 (26 Feb 2003): Wicked Fast, BugFree v3.1, UserPriv
+
+  26 Feb 2003; Nicholas Jones <carpaski@gentoo.org> *: Update docs and help
+  again to drop --system and --world, and pull them from emerge's command
+  line. General cleanups.
+  
+  26 Feb 2003; Nicholas Jones <carpaski@gentoo.org> emerge/portage.py: Fixes
+  to the cache directory permissions -- all dirs are properly owned by group
+  portage now. Add CCACHE_SIZE setting so we set a value for ccache. If the
+  dirs are set to the wrong perms, make sure they get changed recursively.
+  
+  26 Feb 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Rearraged the
+  code blocks so that they are easier to follow -- no more code in between
+  functions. All code follows function definitions now.
+
+*portage-2.0.47-r4 (25 Feb 2003): Wicked Fast, BugFree v3, UserPriv
 
   25 Feb 2003; Nicholas Jones <carpaski@gentoo.org> *: Update docs and help
   to match the deprecation of actions without '--' preceding them.

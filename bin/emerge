@@ -90,10 +90,13 @@ for x in cmdline:
 					print
 					print red("*** --rsync has been deprecated.")
 					print red("***   Please use '--sync' instead.")
+					x="--sync"
 				if myaction:
+					if myaction not in ["system", "world"]:
+						myaction="--"+myaction
 					print
 					print red("!!!")+green(" Multiple actions requested... Please choose one only.")
-					print red("!!!")+" '"+darkgreen("--"+myaction)+"' "+red("or")+" '"+darkgreen(x)+"'"
+					print red("!!!")+" '"+darkgreen(myaction)+"' "+red("or")+" '"+darkgreen(x)+"'"
 					print
 					sys.exit(1)
 				myaction=x[2:]
@@ -101,11 +104,13 @@ for x in cmdline:
 				print "!!! Error:",x,"is an invalid option."
 				sys.exit(1)
 	elif (not myaction) and (x in actions):
-		print red("*** Deprecated use of action '"+x+"'")
-		if myaction=="rsync":
-			print red("***   Please use '--sync' instead.")
-		else:
-			print red("***   Please use '--"+x+"' instead.")
+		if x not in ["system", "world"]:
+			print red("*** Deprecated use of action '"+x+"'")
+			if x=="rsync":
+				print red("***   Please use '--sync' instead.")
+				x="sync"
+			else:
+				print red("***   Please use '--"+x+"' instead.")
 		if myaction:
 			print
 			print red("!!!")+green(" Multiple actions requested... Please choose one only.")
@@ -1470,7 +1475,7 @@ if "--debug" in myopts:
 
 if myaction in ["sync","rsync"] and (not "--help" in myopts):
 	if "--pretend" in myopts:
-		print "emerge: the \"sync\" and \"rsync\" actions do not support \"--pretend.\""
+		print "emerge: the \"--sync\" action does not support \"--pretend.\""
 		sys.exit(1)
 
 	emergelog(" === rsync")
@@ -1481,7 +1486,7 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 		print ">>>",myportdir,"not found, creating it."
 		os.makedirs(myportdir,0755)	
 	syncuri=portage.settings["SYNC"]
-	os.umask(022)
+	os.umask(0022)
 	if syncuri[:8]=="rsync://":
 		if not os.path.exists("/usr/bin/rsync"):
 			print "!!! /usr/bin/rsync does not exist, so rsync support is disabled."
@@ -1501,7 +1506,6 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 				print "!!! RSYNC_EXCLUDEFROM specified, but file does not exist."
 		mycommand=mycommand+" "+syncuri+"/* "+myportdir
 		print ">>> starting rsync with "+syncuri+"..."
-		#protect users that did not set a default umask
 		exitcode=portage.spawn(mycommand,free=1)
 		#if the exit code of rsync is 12 retry to rsync till
 		#we have reached RSYNC_RETRIES or the default of 3 retries
@@ -1549,11 +1553,23 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 		sys.exit(1)
 	if os.path.exists(myportdir+"/metadata/cache"):
 		print "\n>>> Updating Portage cache...  ",
+		os.umask(0002)
 		if os.path.exists(portage.dbcachedir):
-			portage.spawn("rm -rf "+portage.dbcachedir,free=1)
+			portage.spawn("rm -Rf "+portage.dbcachedir,free=1)
+		try:
+			os.mkdir(portage.dbcachedir)
+			os.chown(portage.dbcachedir, os.getuid(), portage.portage_gid)
+			os.chmod(portage.dbcachedir, 06775)
+			os.umask(002)
+		except:
+			pass
 		mynodes=portage.portdb.cp_all()
 		for x in mynodes:
 			myxsplit=x.split("/")
+			if not os.path.exists(portage.dbcachedir+"/"+myxsplit[0]):
+				os.mkdir(portage.dbcachedir+"/"+myxsplit[0])
+				os.chown(portage.dbcachedir+"/"+myxsplit[0], os.getuid(), portage.portage_gid)
+				os.chmod(portage.dbcachedir+"/"+myxsplit[0], 06775)
 			mymatches=portage.portdb.xmatch("match-all",x)
 			for y in mymatches:
 				update_spinner()
@@ -1561,6 +1577,7 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 					ignored=portage.portdb.aux_get(y,[],metacachedir=myportdir+"/metadata/cache")
 				except:
 					pass
+		portage.spawn("chmod -R g+rw "+portage.dbcachedir, free=1)
 		sys.stdout.write("\b\b  ...done!\n\n")
 		sys.stdout.flush()
 

@@ -11,10 +11,10 @@ def shorthelp():
 	print
 	print bold("Usage:")
 	print "   "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] [ "+turquoise("ebuildfile")+" | "+turquoise("tbz2file")+" | "+turquoise("dependency")+" ] [ ... ]"
-	print "   "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] < "+turquoise("--system")+" | "+turquoise("--world")+" >"
+	print "   "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] < "+turquoise("system")+" | "+turquoise("world")+" >"
 	print "   "+turquoise("emerge")+" < "+turquoise("--sync")+" | "+turquoise("--info")+" >"
 	print "   "+turquoise("emerge")+" "+turquoise("--resume")+" ["+green("--pretend")+"]"
-	print "   "+turquoise("emerge")+" "+turquoise("--help")+" [ "+green("--system")+" | "+green("--config")+" | "+green("--sync")+" ] "
+	print "   "+turquoise("emerge")+" "+turquoise("--help")+" [ "+green("system")+" | "+green("--config")+" | "+green("--sync")+" ] "
 	print bold("Options:")+" "+green("-")+"["+green("bcCdDefhikKlnoOpPsSuUvV")+"] ["+green("--oneshot")+"] ["+green("--noconfmem")+"]"
 	print bold("Actions:")+" "+green("--")+"[ "+green("clean")+" | "+green("depclean")+" | "+green("inject")+" | "+green("prune")+" | "+green("regen")+" | "+green("search")+" | "+green("unmerge")+" ]"
 	print
@@ -262,19 +262,19 @@ def help(myaction,myopts,havecolor=1):
 		print
 	elif myaction=="system":
 		print
-		print bold("Usage: ")+turquoise("emerge")+" [ "+green("options")+" ] "+turquoise("--system")
+		print bold("Usage: ")+turquoise("emerge")+" [ "+green("options")+" ] "+turquoise("system")
 		print
-		print "       \"emerge --system\" is the Portage system update command.  When run, it"
+		print "       \"emerge system\" is the Portage system update command.  When run, it"
 		print "       will scan the etc/make.profile/packages file and determine what"
 		print "       packages need to be installed so that your system meets the minimum"
 		print "       requirements of your current system profile.  Note that this doesn't"
 		print "       necessarily bring your system up-to-date at all; instead, it just"
 		print "       ensures that you have no missing parts.  For example, if your system"
 		print "       profile specifies that you should have sys-apps/iptables installed"
-		print "       and you don't, then \"emerge --system\" will install it (the most"
+		print "       and you don't, then \"emerge system\" will install it (the most"
 		print "       recent version that matches the profile spec) for you.  It's always a"
-		print "       good idea to do an \"emerge --pretend --system\" before an \"emerge"
-		print "       --system\", just so you know what emerge is planning to do."
+		print "       good idea to do an \"emerge --pretend system\" before an \"emerge"
+		print "       system\", just so you know what emerge is planning to do."
 		print
 	elif myaction=="config":
 		outstuff=green("Config file management support (preliminary)")+"""
