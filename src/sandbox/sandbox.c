@@ -406,7 +406,7 @@ int main(int argc, char** argv)
 		free(tmp_string);
 		tmp_string = NULL;
 		strcat(sandbox_dir, "/");
-		strcpy(sandbox_lib, "/usr/lib/portage/lib/");
+		strcpy(sandbox_lib, "/lib/");
 		strcat(sandbox_lib, LIB_NAME);
 		if (-1 == stat(sandbox_lib, &sandbox_lib_stat))
 		{
