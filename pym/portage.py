@@ -2136,7 +2136,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 
 expandcache={}
 
-def movefile(src,dest,newmtime=None,sstat=None):
+def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 	"""moves a file from src to dest, preserving all permissions and attributes; mtime will
 	be preserved even when moving across filesystems.  Returns true on success and false on
 	failure.  Move is atomic."""
@@ -2168,6 +2168,9 @@ def movefile(src,dest,newmtime=None,sstat=None):
 	if S_ISLNK(sstat[ST_MODE]):
 		try:
 			target=os.readlink(src)
+			if mysettings and mysettings["D"]:
+				if target.find(mysettings["D"])==0:
+					target=target[len(mysettings["D"]):]
 			if destexists and not S_ISDIR(dstat[ST_MODE]):
 				os.unlink(dest)
 			if selinux_enabled:
@@ -2899,9 +2902,11 @@ def dep_getkey(mydep):
 		mydep=mydep[1:]
 	if mydep[-1]=="*":
 		mydep=mydep[:-1]
+	if mydep[0]=="!":
+		mydep=mydep[1:]
 	if mydep[:2] in [ ">=", "<=" ]:
 		mydep=mydep[2:]
-	elif mydep[:1] in "=<>~!":
+	elif mydep[:1] in "=<>~":
 		mydep=mydep[1:]
 	if isspecific(mydep):
 		mysplit=catpkgsplit(mydep)
@@ -2918,9 +2923,11 @@ def dep_getcpv(mydep):
 		mydep=mydep[1:]
 	if mydep[-1]=="*":
 		mydep=mydep[:-1]
+	if mydep[0]=="!":
+		mydep=mydep[1:]
 	if mydep[:2] in [ ">=", "<=" ]:
 		mydep=mydep[2:]
-	elif mydep[:1] in "=<>~!":
+	elif mydep[:1] in "=<>~":
 		mydep=mydep[1:]
 	return mydep
 
@@ -5474,7 +5481,7 @@ class dblink:
 		# We hold both directory locks.
 		self.dbdir = self.dbpkgdir
 		self.delete()
-		movefile(self.dbtmpdir, self.dbpkgdir)
+		movefile(self.dbtmpdir, self.dbpkgdir, mysettings=self.settings)
 
 		self.unlockdb()
 
@@ -5635,6 +5642,9 @@ class dblink:
 					if myabsto[0]!="/":
 						myabsto="/"+myabsto
 				myto=os.readlink(mysrc)
+				if self.settings and self.settings["D"]:
+					if myto.find(self.settings["D"])==0:
+						myto=myto[len(self.settings["D"]):]
 				# myrealto contains the path of the real file to which this symlink points.
 				# we can simply test for existence of this file to see if the target has been merged yet
 				myrealto=os.path.normpath(os.path.join(destroot,myabsto))
@@ -5660,7 +5670,7 @@ class dblink:
 					secondhand.append(mysrc[len(srcroot):])
 					continue
 				# unlinking no longer necessary; "movefile" will overwrite symlinks atomically and correctly
-				mymtime=movefile(mysrc,mydest,thismtime,mystat)
+				mymtime=movefile(mysrc,mydest,thismtime,mystat, mysettings=self.settings)
 				if mymtime!=None:
 					print ">>>",mydest,"->",myto
 					outfile.write("sym "+myrealdest+" -> "+myto+" "+str(mymtime)+"\n")
@@ -5686,7 +5696,7 @@ class dblink:
 						print "---",mydest+"/"
 					else:
 						# a non-directory and non-symlink-to-directory.  Won't work for us.  Move out of the way.
-						if movefile(mydest,mydest+".backup") == None:
+						if movefile(mydest,mydest+".backup", mysettings=self.settings) == None:
 							sys.exit(1)
 						print "bak",mydest,mydest+".backup"
 						#now create our directory
@@ -5765,7 +5775,7 @@ class dblink:
 				# whether config protection or not, we merge the new file the
 				# same way.  Unless moveme=0 (blocking directory)
 				if moveme:
-					mymtime=movefile(mysrc,mydest,thismtime,mystat)
+					mymtime=movefile(mysrc,mydest,thismtime,mystat, mysettings=self.settings)
 					if mymtime == None:
 						sys.exit(1)
 					zing=">>>"
@@ -5784,7 +5794,7 @@ class dblink:
 				zing="!!!"
 				if mydmode==None:
 					# destination doesn't exist
-					if movefile(mysrc,mydest,thismtime,mystat)!=None:
+					if movefile(mysrc,mydest,thismtime,mystat, mysettings=self.settings)!=None:
 						zing=">>>"
 						if S_ISFIFO(mymode):
 							# we don't record device nodes in CONTENTS,

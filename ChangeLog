@@ -1,6 +1,10 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
-# Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
+# Copyright 2000-2004 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
+
+  17 Jan 2004; Masatomo Nakano <nakano@gentoo.org> portage.py: Fixed
+  "!<=" style block problem. Fixed symlink with absolute path 
+  problem in treewalk().
 
 *portage-2.0.50_pre16 (13 Jan 2004): Quick Fixes -- ~arch version
 
