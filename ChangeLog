@@ -93,7 +93,7 @@
   (this is needed since sudo emerge blar can bail, leaving a stale lock that 
   non-root usage cannot remove).  Added locking to emerge's emergelog function, 
   preventing log messages from potentially getting mixed together.  Added check 
-  to fetch function to complain if unable to write to DESTDIR (previously the 
+  to fetch function to complain if unable to write to DISTDIR (previously the 
   fetcher just bailed, stepping through each src_uri).  Added lockfiles for 
   fetching/md5ing of the src- these lockfiles are stored in a subdirectory 
   (locks_in_subdir=".locks") if specified, and locking is controlled via 
