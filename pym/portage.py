@@ -3618,18 +3618,17 @@ class dblink:
 					print "!!!",mydest,"->",myto
 			elif S_ISDIR(mymode):
 				# we are merging a directory
-				if not os.access(mydest, os.W_OK):
-					pkgstuff = pkgsplit(self.pkg)
-					sys.stderr.write("\n!!! Cannot write to '"+mydest+"'.\n")
-					sys.stderr.write("!!! Please check permissions and directories for broken symlinks.\n")
-					sys.stderr.write("!!! You may start the merge process again by using ebuild:\n")
-					sys.stderr.write("!!! ebuild "+settings["PORTDIR"]+"/"+self.cat+"/"+pkgstuff[0]+"/"+self.pkg+".ebuild merge\n")
-					sys.stderr.write("!!! And finish by running this: env-update\n\n")
-					#self.fuck
-					return 1
-
 				if mydmode!=None:
 					# destination exists
+					if not os.access(mydest, os.W_OK):
+						pkgstuff = pkgsplit(self.pkg)
+						sys.stderr.write("\n!!! Cannot write to '"+mydest+"'.\n")
+						sys.stderr.write("!!! Please check permissions and directories for broken symlinks.\n")
+						sys.stderr.write("!!! You may start the merge process again by using ebuild:\n")
+						sys.stderr.write("!!! ebuild "+settings["PORTDIR"]+"/"+self.cat+"/"+pkgstuff[0]+"/"+self.pkg+".ebuild merge\n")
+						sys.stderr.write("!!! And finish by running this: env-update\n\n")
+						return 1
+
 					if S_ISLNK(mydmode) or S_ISDIR(mydmode):
 						# a symlink to an existing directory will work for us; keep it:
 						print "---",mydest+"/"
