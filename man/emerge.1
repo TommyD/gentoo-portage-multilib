@@ -48,6 +48,22 @@ This must be a valid portage package directory name, such as sys-apps/portage or
 \fB--help [mode]\fR
 display help information for emerge.  Specify "rsync" or "system" for additional info.
 .TP
+\fB--search [package]\fR
+searches for matches of the supplied string in the current local portage tree.  The search string is a regular expression.  Some examples:
+.br
+	emerge --search "^kde"
+.br
+		lists all packages starting with kde
+.br
+	emerge --search "gcc$"
+.br
+		list all packages ending with gcc
+.br
+	emerge --search "*" or emerge --search ""
+.br
+		list all available packages
+.br
+.TP
 \fB--pretend\fR 
 instead of actually performing the merge, simply display what ebuilds and tbz2s *would* have been installed if --pretend weren't used.  Using --pretend is strongly recommended before installing an unfamiliar package.  In the printout, N = new, U = upgrading, R = replacing
 .TP
