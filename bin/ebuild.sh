@@ -486,9 +486,10 @@ dyn_compile() {
 	#some packages use an alternative to $S to build in, cause
 	#our libtool to create problematic .la files
 	export PWORKDIR="$WORKDIR"
-	#some users have $TMPDIR to a custom dir in their home ...            
-	#this will cause sandbox errors with some ./configure            
+	#some users have $TMP/$TMPDIR to a custom dir in their home ...
+	#this will cause sandbox errors with some ./configure
 	#scripts, so set it to $T.
+	export TMP="${T}"
 	export TMPDIR="${T}"
     src_compile 
 	#|| abort_compile "fail" 
@@ -555,9 +556,10 @@ dyn_install() {
 	#some packages uses an alternative to $S to build in, cause
 	#our libtool to create problematic .la files
 	export PWORKDIR="$WORKDIR"
-	#some users have $TMPDIR to a custom dir in thier home ...            
-	#this will cause sandbox errors with some ./configure            
+	#some users have $TMP/$TMPDIR to a custom dir in thier home ...
+	#this will cause sandbox errors with some ./configure
 	#scripts, so set it to $T.
+	export TMP="${T}"
 	export TMPDIR="${T}"
 	src_install 
 	#|| abort_install "fail"
