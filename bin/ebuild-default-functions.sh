@@ -385,7 +385,7 @@ dyn_test() {
 function stat_perms() {
 	local f
 	f=$(stat -c '%f' "$1")
-	f=$(printf %o ox$f)
+	f=$(printf %o 0x$f)
 	f="${f:${#f}-4}"
 	echo $f
 }
