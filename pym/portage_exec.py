@@ -128,7 +128,7 @@ def spawn(mycommand,env={},raw_exit_code=False,opt_name=None,fd_pipes=None,retur
 	fd_pipes controls which file descriptor numbers are left open in the forked process- it's a dict of
 	current fd's raw fd #, desired #.
 
-	func_call is a control for specifying to execute a python function- use spawn_func instead.
+	func_call is a boolean for specifying to execute a python function- use spawn_func instead.
 	raise_signals is questionable.  Basically throw an exception if signal'd.  No exception is thrown
 	if raw_input is on.
 

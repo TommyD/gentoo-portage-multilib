@@ -6473,19 +6473,35 @@ def do_upgrade(mykey):
 
 exit_callbacks = []
 
+def append_exit_callback(func,args=[],kwargs={}):
+	"""append a callback to the exit callback list
+	args is positionally expanded and must be a list/tuple
+	kwargs is a optional param, and expanded- must be a dict."""
+	global exit_callbacks
+	exit_callbacks.append((func,args,kwargs))
+	
+def kill_spawned_pids():
+	"""since exit_callbacks takes an array, and kwargs upon initializing, it's possible that
+	faulty code in portage_exec.spawn might replace spawned_pids, instead of modifying it.
+	In doing so, that would make portage not have an up to date list of pids
+	so, we call this function instead which pulls (at exit time) from portage_exec.spawned_pids"""
+	portage_exec.cleanup(portage_exec.spawned_pids)
+
+#order here is important.  we want to attempt to cleanly shutdown the daemons prior to
+#resorting to wax'ing them w/ a sigint/sigkill
+append_exit_callback(ebuild.shutdown_all_processors)
+append_exit_callback(kill_spawned_pids)
+
 def portageexit():
 	global uid,portage_gid,portdb,db
 	global exit_callbacks
-	ebuild.shutdown_all_processors()
-	portage_exec.cleanup(portage_exec.spawned_pids)
 	for x in exit_callbacks:
-		print "calling exit callback",x
 		try:
-			x()
+			x[0](*x[1],**x[2])
 		except SystemExit:
 			raise
 		except Exception, e:
-			print "caught exception for exit_callback func",x
+			print "caught exception for exit_callback func",x[0]
 			print e
 			pass
 

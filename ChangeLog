@@ -7,6 +7,11 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  07 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py: tweaked
+  portage.exit_callbacks so it's more flexible.  
+  Call portage.append_exit_callback to append to it, optionally specifying args
+  and keyword args.
+
   07 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portageq.py, bin/portageq:
   Tied portageq script into using the portageq module.
 
