@@ -751,13 +751,14 @@ int before_syscall(const char* func, const char* file)
 
 int before_syscall_open_int(const char* func, const char* file, int flags)
 {
-	if (flags == O_RDONLY)
+	if (flags & O_WRONLY ||
+		flags & O_RDWR)
 	{
-		return before_syscall("open_rd", file);
+		return before_syscall("open_wr", file);
 	}
 	else
 	{
-		return before_syscall("open_wr", file);
+		return before_syscall("open_rd", file);
 	}
 }
 
