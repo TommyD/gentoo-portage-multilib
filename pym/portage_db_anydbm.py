@@ -21,6 +21,8 @@ class database(portage_db_template.database):
 		try:
 			# open it read/write
 			self.db = anydbm.open(self.filename, "c", 0664)
+		except SystemExit, e:
+			raise
 		except:
 			# Create a new db... DB type not supported anymore?
 			self.db = anydbm.open(self.filename, "n", 0664)

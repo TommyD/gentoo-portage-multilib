@@ -11,6 +11,8 @@ import portage_util
 try:
 	import resource
 	max_fd_limit=resource.getrlimit(RLIMIT_NOFILE)
+except SystemExit, e:
+	raise
 except:
 	# hokay, no resource module.
 	max_fd_limit=256
@@ -22,6 +24,8 @@ def cleanup():
 		pid = spawned_pids.pop()
 		try:
 			os.kill(pid,SIGKILL)
+		except SystemExit, e:
+			raise
 		except:
 			pass
 atexit.register(cleanup)
@@ -49,6 +53,8 @@ def spawn_sandbox(mycommand,uid=None,opt_name=None,**keywords):
 	try:
 		os.chown(SANDBOX_PIDS_FILE,uid,portage_data.portage_gid)
 		os.chmod(SANDBOX_PIDS_FILE,0664)
+	except SystemExit, e:
+		raise
 	except:
 		pass
 	return spawn(args,uid=uid,**keywords)
@@ -116,7 +122,10 @@ def spawn(mycommand,env={},opt_name=None,fd_pipes=None,returnpid=False,uid=None,
 					try:
 						while True: 
 							src_fd[s.index(trg_fd[x])]=new
-					except: pass
+					except SystemExit, e:
+						raise
+					except:
+						pass
 			for x in range(0,len(trg_fd)):
 				if trg_fd[x] != src_fd[x]:
 					os.dup2(src_fd[x], trg_fd[x])
@@ -126,6 +135,8 @@ def spawn(mycommand,env={},opt_name=None,fd_pipes=None,returnpid=False,uid=None,
 			if x not in trg_fd:
 				try: 
 					os.close(x)
+				except SystemExit, e:
+					raise
 				except:
 					pass
 		# note this order must be preserved- can't change gid/groups if you change uid first.
@@ -142,13 +153,18 @@ def spawn(mycommand,env={},opt_name=None,fd_pipes=None,returnpid=False,uid=None,
 			# XXX: output, and consequently, we'd get to handle the sigINT.
 			#os.close(sys.stdin.fileno())
 			pass
+		except SystemExit, e:
+			raise
 		except:
 			pass
+
 		try:
 			#print "execing", myc, myargs
 			os.execve(myc,myargs,env)
+		except SystemExit, e:
+			raise
 		except Exception, e:
-			raise str(e)+":\n   "+mycommand+" "+string.join(myargs)
+			raise str(e)+":\n   "+myc+" "+string.join(myargs)
 		# If the execve fails, we need to report it, and exit
 		# *carefully* --- report error here
 		os._exit(1)

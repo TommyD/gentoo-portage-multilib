@@ -40,6 +40,8 @@ def makedirs(path, perms=0755, uid=None, gid=None, must_chown=False):
 			os.mkdir(mypath, perm)
 			try:
 				os.chown(mypath, uid, gid)
+			except SystemExit, e:
+				raise
 			except:
 				if must_chown:
 					os.umask(old_umask)

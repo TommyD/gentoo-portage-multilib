@@ -55,6 +55,8 @@ def xpak(rootdir,outfile=None):
 	xpak segment."""
 	try:
 		origdir=os.getcwd()
+	except SystemExit, e:
+		raise
 	except:
 		os.chdir("/")
 		origdir="/"
@@ -193,6 +195,8 @@ def xpand(myid,mydest):
 	mydata=myid[1]
 	try:
 		origdir=os.getcwd()
+	except SystemExit, e:
+		raise
 	except:
 		os.chdir("/")
 		origdir="/"
@@ -298,6 +302,8 @@ class tbz2:
 			self.datapos=a.tell()
 			a.close()
 			return 2
+		except SystemExit, e:
+			raise
 		except:
 			return 0
 
@@ -333,6 +339,8 @@ class tbz2:
 			return 0
 		try:
 			origdir=os.getcwd()
+		except SystemExit, e:
+			raise
 		except:
 			os.chdir("/")
 			origdir="/"

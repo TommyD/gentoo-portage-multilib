@@ -61,6 +61,8 @@ stickies=["KEYWORDS_ACCEPT","USE","CFLAGS","CXXFLAGS","MAKEOPTS","EXTRA_ECONF","
 
 try:
 	import sys
+except SystemExit, e:
+	raise
 except:
 	print "Failed to import sys! Something is _VERY_ wrong with python."
 	raise SystemExit, 127
@@ -75,6 +77,8 @@ try:
 	import commands
 	from time import sleep
 	from random import shuffle
+except SystemExit, e:
+	raise
 except Exception, e:
 	sys.stderr.write("\n\n")
 	sys.stderr.write("!!! Failed to complete python imports. There are internal modules for\n")
@@ -120,6 +124,8 @@ try:
 	from portage_locks import unlockfile,unlockdir,lockfile,lockdir
 	import portage_checksum
 	from portage_checksum import perform_md5,perform_checksum,prelink_capable
+except SystemExit, e:
+	raise
 except Exception, e:
 	sys.stderr.write("\n\n")
 	sys.stderr.write("!!! Failed to complete portage imports. There are internal modules for\n")
@@ -177,6 +183,8 @@ def getcwd():
 	"this fixes situations where the current directory doesn't exist"
 	try:
 		return os.getcwd()
+	except SystemExit, e:
+		raise
 	except:
 		os.chdir("/")
 		return "/"
@@ -242,6 +250,8 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError):
 			mtime = pathstat[stat.ST_MTIME]
 		else:
 			raise Exception
+	except SystemExit, e:
+		raise
 	except:
 		if EmptyOnError:
 			return [], []
@@ -260,6 +270,8 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError):
 					ftype.append(1)
 				else:
 					ftype.append(2)
+			except SystemExit, e:
+				raise
 			except:
 				ftype.append(2)
 		dircache[mypath] = mtime, list, ftype
@@ -592,6 +604,8 @@ def env_update(makelinks=1):
 	for x in specials["LDPATH"]+['/usr/lib','/lib']:
 		try:
 			newldpathtime=os.stat(x)[stat.ST_MTIME]
+		except SystemExit, e:
+			raise
 		except:
 			newldpathtime=0
 		if mtimedb["ldpath"].has_key(x):
@@ -707,6 +721,8 @@ def new_protect_filename(mydest, newmd5=None):
 			if new_prot_num > prot_num:
 				prot_num = new_prot_num
 				last_pfile = pfile
+		except SystemExit, e:
+			raise
 		except:
 			continue
 	prot_num = prot_num + 1
@@ -885,6 +901,8 @@ class config:
 			# The symlink might not exist or might not be a symlink.
 			try:
 				self.profiles=[abssymlink(self.profile_path)]
+			except SystemExit, e:
+				raise
 			except:
 				self.profiles=[self.profile_path]
 
@@ -929,6 +947,8 @@ class config:
 
 				if self.mygcfg == None:
 					self.mygcfg = {}
+			except SystemExit, e:
+				raise
 			except Exception, e:
 				writemsg("!!! %s\n" % (e))
 				writemsg("!!! Incorrect multiline literals can cause this. Do not use them.\n")
@@ -945,6 +965,8 @@ class config:
 					#self.mygcfg = grab_stacked("make.defaults", self.profiles, getconfig)
 					if self.mygcfg == None:
 						self.mygcfg = {}
+				except SystemExit, e:
+					raise
 				except Exception, e:
 					writemsg("!!! %s\n" % (e))
 					writemsg("!!! 'rm -Rf /usr/portage/profiles; emerge sync' may fix this. If it does\n")
@@ -959,6 +981,8 @@ class config:
 				self.mygcfg=getconfig("/"+MAKE_CONF_FILE)
 				if self.mygcfg == None:
 					self.mygcfg = {}
+			except SystemExit, e:
+				raise
 			except Exception, e:
 				writemsg("!!! %s\n" % (e))
 				writemsg("!!! Incorrect multiline literals can cause this. Do not use them.\n")
@@ -1191,6 +1215,8 @@ class config:
 								self.configdict["pkg"][filename] = "-* "+mydata
 							else:
 								self.configdict["pkg"][filename] = mydata
+					except SystemExit, e:
+						raise
 					except:
 						writemsg("!!! Unable to read file: %s\n" % infodir+"/"+filename)
 						pass
@@ -1385,6 +1411,8 @@ class config:
 					writemsg("Note: %s already contains escape codes." % (mykey))
 				else:
 					match = urllib.quote(match)
+			except SystemExit, e:
+				raise
 			except:
 				writemsg("Failed to fix %s using urllib, attempting to continue.\n"  % (mykey))
 				pass
@@ -1563,6 +1591,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				if thirdpartymirrors.has_key(mirrorname):
 					try:
 						shuffle(thirdpartymirrors[mirrorname])
+					except SystemExit, e:
+						raise
 					except:
 						writemsg(red("!!! YOU HAVE A BROKEN PYTHON/GLIBC.\n"))
 						writemsg(    "!!! You are most likely on a pentium4 box and have specified -march=pentium4\n")
@@ -1628,6 +1658,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				if os.stat(mysettings["DISTDIR"]+"/"+locks_in_subdir).st_gid != portage_gid:
 					try:
 						os.chown(mysettings["DISTDIR"]+"/"+locks_in_subdir,-1,portage_gid)
+					except SystemExit, e:
+						raise
 					except:
 						pass
 				os.umask(old_umask)
@@ -1736,6 +1768,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						if os.stat(mysettings["DISTDIR"]+"/"+myfile).st_gid != portage_gid:
 							try:
 								os.chown(mysettings["DISTDIR"]+"/"+myfile,-1,portage_gid)
+							except SystemExit, e:
+								raise
 							except:
 								portage_util.writemsg("chown failed on distfile: " + str(myfile))
 						os.chmod(mysettings["DISTDIR"]+"/"+myfile,0664)
@@ -1754,8 +1788,12 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 										try:
 											os.unlink(mysettings["DISTDIR"]+"/"+myfile)
 											writemsg(">>> Deleting invalid distfile. (Improper 404 redirect from server.)\n")
+										except SystemExit, e:
+											raise
 										except:
 											pass
+								except SystemExit, e:
+									raise
 								except:
 									pass
 							continue
@@ -1869,6 +1907,8 @@ def digestgen(myarchives,mysettings,overwrite=1,manifestonly=0):
 
 		try:
 			outfile=open(digestfn, "w+")
+		except SystemExit, e:
+			raise
 		except Exception, e:
 			print "!!! Filesystem error skipping generation. (Read-Only?)"
 			print "!!!",e
@@ -1879,6 +1919,8 @@ def digestgen(myarchives,mysettings,overwrite=1,manifestonly=0):
 		try:
 			os.chown(digestfn,os.getuid(),portage_gid)
 			os.chmod(digestfn,0664)
+		except SystemExit, e:
+			raise
 		except Exception,e:
 			print e
 
@@ -1894,6 +1936,8 @@ def digestgen(myarchives,mysettings,overwrite=1,manifestonly=0):
 
 	try:
 		outfile=open(manifestfn, "w+")
+	except SystemExit, e:
+		raise
 	except Exception, e:
 		print "!!! Filesystem error skipping generation. (Read-Only?)"
 		print "!!!",e
@@ -1904,6 +1948,8 @@ def digestgen(myarchives,mysettings,overwrite=1,manifestonly=0):
 	try:
 		os.chown(manifestfn,os.getuid(),portage_gid)
 		os.chmod(manifestfn,0664)
+	except SystemExit, e:
+		raise
 	except Exception,e:
 		print e
 
@@ -2173,6 +2219,8 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 				mycpv,["INHERITED","RESTRICT"])
 			mysettings["PORTAGE_RESTRICT"]=string.join(flatten(portage_dep.use_reduce(portage_dep.paren_reduce( \
 				mysettings["PORTAGE_RESTRICT"]), uselist=mysettings["USE"].split())),'')
+		except SystemExit, e:
+			raise
 		except:
 			pass
 	
@@ -2258,6 +2306,8 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 				elif ("userpriv" in features):
 					print "!!! Disabling userpriv from features... Portage UID/GID not valid."
 					del features[features.index("userpriv")]
+		except SystemExit, e:
+			raise
 		except Exception, e:
 			print "!!! Couldn't empty HOME:",mysettings["HOME"]
 			print "!!!",e
@@ -2309,6 +2359,8 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 				os.chmod(mysettings["CCACHE_DIR"],02770)
 				spawn("chown -R "+str(portage_uid)+":"+str(portage_gid)+" "+mysettings["CCACHE_DIR"],mysettings, free=1)
 				spawn("chmod -R g+rw "+mysettings["CCACHE_DIR"],mysettings, free=1)
+		except SystemExit, e:
+			raise
 		except:
 			pass
 			
@@ -2400,6 +2452,8 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 			os.chmod(mysettings["DISTDIR"]+"/cvs-src",02770)
 			spawn("chgrp -R "+str(portage_gid)+" "+mysettings["DISTDIR"]+"/cvs-src", free=1)
 			spawn("chmod -R g+rw "+mysettings["DISTDIR"]+"/cvs-src", free=1)
+	except SystemExit, e:
+		raise
 	except:
 		pass
 
@@ -2475,6 +2529,8 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 	try:
 		if not sstat:
 			sstat=os.lstat(src)
+	except SystemExit, e:
+		raise
 	except Exception, e:
 		print "!!! Stating source file failed... movefile()"
 		print "!!!",e
@@ -2483,6 +2539,8 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 	destexists=1
 	try:
 		dstat=os.lstat(dest)
+	except SystemExit, e:
+		raise
 	except:
 		dstat=os.lstat(os.path.dirname(dest))
 		destexists=0
@@ -2492,6 +2550,8 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 			try:
 				os.unlink(dest)
 				destexists=0
+			except SystemExit, e:
+				raise
 			except Exception, e:
 				pass
 
@@ -2510,6 +2570,8 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 				os.symlink(target,dest)
 			lchown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
 			return os.lstat(dest)[stat.ST_MTIME]
+		except SystemExit, e:
+			raise
 		except Exception, e:
 			print "!!! failed to properly create symlink:"
 			print "!!!",dest,"->",target
@@ -2524,6 +2586,8 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 			else:
 				ret=os.rename(src,dest)
 			renamefailed=0
+		except SystemExit, e:
+			raise
 		except Exception, e:
 			import errno
 			if e[0]!=errno.EXDEV:
@@ -2543,6 +2607,8 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 					shutil.copyfile(src,dest+"#new")
 					os.rename(dest+"#new",dest)
 				didcopy=1
+			except SystemExit, e:
+				raise
 			except Exception, e:
 				print '!!! copy',src,'->',dest,'failed.'
 				print "!!!",e
@@ -2563,6 +2629,8 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 				lchown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
 				os.chmod(dest, stat.S_IMODE(sstat[stat.ST_MODE])) # Sticky is reset on chown
 				os.unlink(src)
+		except SystemExit, e:
+			raise
 		except Exception, e:
 			print "!!! Failed to chown/chmod/unlink in movefile()"
 			print "!!!",dest
@@ -2614,6 +2682,8 @@ def relparse(myver):
 				endtype=endversion[x]
 				try:
 					endnumber=string.atof(mynewver[1][elen:])
+				except SystemExit, e:
+					raise
 				except:
 					endnumber=0
 				break
@@ -2648,6 +2718,8 @@ def ververify(myorigval,silent=1):
 			return 0
 		try:
 			foo=int(x)
+		except SystemExit, e:
+			raise
 		except:
 			if not silent:
 				print "!!! Name error in",myorigval+": \""+x+"\" is not a valid version component."
@@ -2662,6 +2734,8 @@ def ververify(myorigval,silent=1):
 		foo=int(myval[-1])
 		vercache[myorigval]=1
 		return 1
+	except SystemExit, e:
+		raise
 	except:
 		pass
 	#ok, our last component is not a plain number or blank, let's continue
@@ -2671,6 +2745,8 @@ def ververify(myorigval,silent=1):
 			return 1
 			vercache[myorigval]=1
 			# 1a, 2.0b, etc.
+		except SystemExit, e:
+			raise
 		except:
 			pass
 	#ok, maybe we have a 1_alpha or 1_beta2; let's see
@@ -2684,12 +2760,16 @@ def ververify(myorigval,silent=1):
 	try:
 		foo=int(ep[0][-1])
 		chk=ep[0]
+	except SystemExit, e:
+		raise
 	except:
 		# because it's ok last char is not numeric. example: foo-1.0.0a_pre1
 		chk=ep[0][:-1]
 
 	try:
 		foo=int(chk)
+	except SystemExit, e:
+		raise
 	except:
 		#this needs to be numeric or numeric+single letter,
 		#i.e. the "1" in "1_alpha" or "1a_alpha"
@@ -2708,6 +2788,8 @@ def ververify(myorigval,silent=1):
 					foo=int(ep[1][len(mye):])
 					vercache[myorigval]=1
 					return 1
+				except SystemExit, e:
+					raise
 				except:
 					#if no endversions work, *then* we return 0
 					pass	
@@ -2748,6 +2830,8 @@ def isspecific(mypkg):
 	"now supports packages with no category"
 	try:
 		return iscache[mypkg]
+	except SystemExit, e:
+		raise
 	except:
 		pass
 	mysplit=string.split(mypkg,"/")
@@ -2791,6 +2875,8 @@ def pkgsplit(mypkg,silent=1):
 		try:
 			int(myrev[1:])
 			revok=1
+		except SystemExit, e:
+			raise
 		except: 
 			pass
 	if revok:
@@ -2988,6 +3074,8 @@ def dep_opconvert(mysplit,myuse,mysettings):
 				return None
 			try:
 				mynew=dep_opconvert(mysplit[mypos+1],myuse,mysettings)
+			except SystemExit, e:
+				raise
 			except Exception, e:
 				print "!!! Unable to satisfy OR dependency:",string.join(mysplit," || ")
 				raise e
@@ -3782,6 +3870,8 @@ def match_from_list(mydep,candidate_list):
 		for x in candidate_list:
 			try:
 				result = pkgcmp(pkgsplit(x), [cat+"/"+pkg,ver,rev])
+			except SystemExit, e:
+				raise
 			except:
 				writemsg("\nInvalid package name: %s\n" % x)
 				sys.exit(73)
@@ -3834,6 +3924,8 @@ def match_from_list_original(mydep,mylist):
 				#We don't need to worry about _pre and friends because they're not supported with '*' deps.
 				new_v=string.join(mynewsplit,".")+"_alpha0"
 				#new_v will be used later in the code when we do our comparisons using pkgcmp()
+			except SystemExit, e:
+				raise
 			except:
 				#erp, error.
 				return [] 
@@ -3982,6 +4074,8 @@ class portagetree:
 		myslot = ""
 		try:
 			myslot=self.dbapi.aux_get(mycatpkg,["SLOT"])[0]
+		except SystemExit, e:
+			raise
 		except Exception, e:
 			pass
 		return myslot
@@ -4033,6 +4127,8 @@ class dbapi:
 				try:
 					old_counter = long(self.aux_get(x,["COUNTER"])[0])
 					writemsg("COUNTER '%d' '%s'\n" % (old_counter, x),1)
+				except SystemExit, e:
+					raise
 				except:
 					old_counter = 0
 					writemsg("!!! BAD COUNTER in '%s'\n" % (x))
@@ -4060,6 +4156,8 @@ class dbapi:
 			try:
 				counter=long(commands.getoutput("for FILE in $(find /"+VDB_PATH+" -type f -name COUNTER); do echo $(<${FILE}); done | sort -n | tail -n1 | tr -d '\n'"))
 				writemsg("!!! Global counter missing. Regenerated from counter files to: %s\n" % counter)
+			except SystemExit, e:
+				raise
 			except:
 				writemsg("!!! Initializing global counter.\n")
 				counter=long(0)
@@ -4226,6 +4324,8 @@ class vardbapi(dbapi):
 					myf.flush()
 					myf.close()
 					counter = 1
+				except SystemExit, e:
+					raise
 				except Exception, e:
 					writemsg("!!! COUNTER file is missing for "+str(mycpv)+" in /var/db.\n")
 					writemsg("!!! Please run /usr/lib/portage/bin/fix-db.pl or\n")
@@ -4422,6 +4522,8 @@ class vardbapi(dbapi):
 			return match_from_list(mydep,self.cp_list(mykey,use_cache=use_cache))
 		try:
 			curmtime=os.stat(self.root+VDB_PATH+"/"+mycat)[stat.ST_MTIME]
+		except SystemExit, e:
+			raise
 		except:
 			curmtime=0
 
@@ -4487,6 +4589,8 @@ class vartree(packagetree):
 						mys = string.split(myprovide, "/")
 					myprovides += [mys[0] + "/" + mys[1]]
 			return myprovides
+		except SystemExit, e:
+			raise
 		except Exception, e:
 			print
 			print "Check " + self.root+VDB_PATH+"/"+mycpv+"/PROVIDE and USE."
@@ -4578,6 +4682,8 @@ class vartree(packagetree):
 		myslot = ""
 		try:
 			myslot=string.join(grabfile(self.root+VDB_PATH+"/"+mycatpkg+"/SLOT"))
+		except SystemExit, e:
+			raise
 		except Exception, e:
 			pass
 		return myslot
@@ -4621,6 +4727,8 @@ class eclass_cache:
 				try:
 					self.packages[x][y].sync()
 					self.packages[x][y].close()
+				except SystemExit, e:
+					raise
 				except Exception,e:
 					writemsg("Exception when closing DB: %s: %s\n" % (Exception,e))
 				del self.packages[x][y]
@@ -4641,6 +4749,8 @@ class eclass_cache:
 						try:
 							ys=y[:-len(".eclass")]
 							ymtime=os.stat(x+"/"+y)[stat.ST_MTIME]
+						except SystemExit, e:
+							raise
 						except:
 							continue
 						self.eclasses[ys] = [x, ymtime]
@@ -4652,6 +4762,8 @@ class eclass_cache:
 		if not self.packages[location].has_key(cat):
 			try:
 				self.packages[location][cat] = self.dbmodule(self.depcachedir+"/"+location, cat+"-eclass", [], uid, portage_gid)
+			except SystemExit, e:
+				raise
 			except Exception, e:
 				writemsg("\n!!! Failed to open the dbmodule for eclass caching.\n")
 				writemsg("!!! Generally these are permission problems. Caught exception follows:\n")
@@ -4796,6 +4908,8 @@ class portdbapi(dbapi):
 			mydig   = string.join(mydigs, "/")
 
 			mysplit = mycpv.split("/")
+		except SystemExit, e:
+			raise
 		except:
 			return ""
 		return mydig+"/files/digest-"+mysplit[-1]
@@ -4820,6 +4934,8 @@ class portdbapi(dbapi):
 				# XXX Why are there errors here? XXX
 				try:
 					file=x+"/"+mysplit[0]+"/"+psplit[0]+"/"+mysplit[1]+".ebuild"
+				except SystemExit, e:
+					raise
 				except Exception, e:
 					print
 					print "!!! Problem with determining the name/location of an ebuild."
@@ -4919,6 +5035,8 @@ class portdbapi(dbapi):
 				auxdb_is_valid = self.auxdb[mylocation][cat].has_key(pkg) and \
 				                 self.auxdb[mylocation][cat][pkg].has_key("_mtime_") and \
 				                 self.auxdb[mylocation][cat][pkg]["_mtime_"] == emtime
+			except SystemExit, e:
+				raise
 			except Exception, e:
 				auxdb_is_valid = 0
 				writemsg("auxdb exception: [%(loc)s]: %(exception)s\n" % {"loc":mylocation+"::"+cat+"/"+pkg, "exception":str(e)})
@@ -4953,6 +5071,8 @@ class portdbapi(dbapi):
 				if os.path.exists(mydbkey):
 					try:
 						os.unlink(mydbkey)
+					except SystemExit, e:
+						raise
 					except Exception, e:
 						portage_locks.unlockfile(mylock)
 						self.lock_held = 0
@@ -4973,6 +5093,8 @@ class portdbapi(dbapi):
 					os.unlink(mydbkey)
 					mylines=mycent.readlines()
 					mycent.close()
+				except SystemExit, e:
+					raise
 				except (IOError, OSError):
 					portage_locks.unlockfile(mylock)
 					self.lock_held = 0
@@ -5339,6 +5461,8 @@ class binarytree(packagetree):
 			catfile.close()
 			try:
 				os.rename(mytmpdir+"/"+string.split(mycpv,"/")[1]+".ebuild", mytmpdir+"/"+string.split(mynewcpv, "/")[1]+".ebuild")
+			except SystemExit, e:
+				raise
 			except Exception, e:
 				pass
 				
@@ -5434,6 +5558,8 @@ class binarytree(packagetree):
 				try:
 					# invalid tbz2's can hurt things.
 					self.dbapi.cpv_inject(fullpkg)
+				except SystemExit, e:
+					raise
 				except:
 					continue
 
@@ -5445,6 +5571,8 @@ class binarytree(packagetree):
 				chunk_size = long(settings["PORTAGE_BINHOST_CHUNKSIZE"])
 				if chunk_size < 8:
 					chunk_size = 8
+			except SystemExit, e:
+				raise
 			except:
 				chunk_size = 3000
 
@@ -5466,6 +5594,8 @@ class binarytree(packagetree):
 					#print "cpv_inject("+str(fullpkg)+")"
 					self.dbapi.cpv_inject(fullpkg)
 					#print "  -- Injected"
+				except SystemExit, e:
+					raise
 				except:
 					writemsg("!!! Failed to inject remote binary package:"+str(fullpkg)+"\n")
 					del self.remotepkgs[mypkg]
@@ -5530,6 +5660,8 @@ class binarytree(packagetree):
 		mydest = self.pkgdir+"/All/"
 		try:
 			os.makedirs(mydest, 0775)
+		except SystemExit, e:
+			raise
 		except:
 			pass
 		getbinpkg.file_get(settings["PORTAGE_BINHOST"]+"/"+tbz2name, mydest, fcmd=settings["RESUMECOMMAND"])
@@ -5540,6 +5672,8 @@ class binarytree(packagetree):
 		myslot = ""
 		try:
 			myslot=self.dbapi.aux_get(mycatpkg,["SLOT"])[0]
+		except SystemExit, e:
+			raise
 		except Exception, e:
 			pass
 		return myslot
@@ -6029,6 +6163,8 @@ class dblink:
 				sys.exit(1)
 			try:
 				os.chdir(mycwd)
+			except SystemExit, e:
+				raise
 			except:
 				pass
 			
@@ -6210,6 +6346,8 @@ class dblink:
 			# stat file once, test using S_* macros many times (faster that way)
 			try:
 				mystat=os.lstat(mysrc)
+			except SystemExit, e:
+				raise
 			except OSError, e:
 				writemsg("\n")
 				writemsg(red("!!! ERROR: There appears to be ")+bold("FILE SYSTEM CORRUPTION.")+red(" A file that is listed\n"))
@@ -6235,6 +6373,8 @@ class dblink:
 			# mysrc is the source object in the temporary install dir 
 			try:
 				mydmode=os.lstat(mydest)[stat.ST_MODE]
+			except SystemExit, e:
+				raise
 			except:
 				#dest file doesn't exist
 				mydmode=None
@@ -6602,6 +6742,8 @@ if not os.path.exists(root+"var/tmp"):
 		pass
 	try:
 		os.mkdir(root+"var/tmp",01777)
+	except SystemExit, e:
+		raise
 	except:
 		writemsg("portage: couldn't create /var/tmp; exiting.\n")
 		sys.exit(1)
@@ -6657,10 +6799,6 @@ def do_vartree(mysettings):
 			vkeysplit=x.split("/")
 			if not virts_p.has_key(vkeysplit[1]):
 				virts_p[vkeysplit[1]]=virts[x]
-	try:
-		del x
-	except:
-		pass
 	db["/"]={"virtuals":virts,"vartree":vartree("/",virts)}
 	if root!="/":
 		virts=mysettings.getvirtuals(root)
@@ -6751,6 +6889,8 @@ try:
 		del mtimedb["old"]
 	if mtimedb.has_key("cur"):
 		del mtimedb["cur"]
+except SystemExit, e:
+	raise
 except:
 	#print "!!!",e
 	mtimedb={"updates":{},"version":"","starttime":0}
@@ -6891,6 +7031,8 @@ def portageexit():
 				#print "*** Wrote out mtimedb data successfully."
 				os.chown(mymfn,uid,portage_gid)
 				os.chmod(mymfn,0664)
+			except SystemExit, e:
+				raise
 			except Exception, e:
 				pass
 

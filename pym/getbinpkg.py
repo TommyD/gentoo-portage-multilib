@@ -8,11 +8,15 @@ import htmllib,HTMLParser,string,formatter,sys,os,xpak,time,tempfile,cPickle,bas
 
 try:
 	import ftplib
+except SystemExit, e:
+	raise
 except Exception, e:
 	sys.stderr.write(red("!!! CANNOT IMPORT FTPLIB: ")+str(e)+"\n")
 
 try:
 	import httplib
+except SystemExit, e:
+	raise
 except Exception, e:
 	sys.stderr.write(red("!!! CANNOT IMPORT HTTPLIB: ")+str(e)+"\n")
 
@@ -188,6 +192,8 @@ def make_http_request(conn, address, params={}, headers={}, dest=None):
 			if (rc != 0):
 				conn,ignore,ignore,ignore,ignore = create_conn(address)
 			conn.request("GET", address, params, headers)
+		except SystemExit, e:
+			raise
 		except Exception, e:
 			return None,None,"Server request failed: "+str(e)
 		response = conn.getresponse()
@@ -414,6 +420,8 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 		metadata = cPickle.load(metadatafile)
 		sys.stderr.write("Loaded metadata pickle.\n")
 		metadatafile.close()
+	except SystemExit, e:
+		raise
 	except:
 		metadata = {}
 	if not metadata.has_key(baseurl):
@@ -462,6 +470,8 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 						mytempfile.seek(0)
 						gzindex = gzip.GzipFile(mfile[:-3],'rb',9,mytempfile)
 						data = gzindex.read()
+					except SystemExit, e:
+						raise
 					except Exception, e:
 						mytempfile.close()
 						sys.stderr.write("!!! Failed to use gzip: "+str(e)+"\n")
@@ -474,6 +484,8 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 					metadata[baseurl]["modified"]  = 0 # It's not, right after download.
 					sys.stderr.write("Pickle loaded.\n")
 					break
+				except SystemExit, e:
+					raise
 				except Exception, e:
 					sys.stderr.write("!!! Failed to read data from index: "+str(mfile)+"\n")
 					sys.stderr.write("!!! "+str(e)+"\n")
@@ -481,6 +493,8 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 				metadatafile = open("/var/cache/edb/remote_metadata.pickle", "w+")
 				cPickle.dump(metadata,metadatafile)
 				metadatafile.close()
+			except SystemExit, e:
+				raise
 			except Exception, e:
 				sys.stderr.write("!!! Failed to write binary metadata to disk!\n")
 				sys.stderr.write("!!! "+str(e)+"\n")
@@ -513,6 +527,8 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 			metadatafile = open(makepickle, "w")
 			cPickle.dump(metadata[baseurl]["data"],metadatafile)
 			metadatafile.close()
+	except SystemExit, e:
+		raise
 	except Exception, e:
 		sys.stderr.write("!!! Failed to write binary metadata to disk!\n")
 		sys.stderr.write("!!! "+str(e)+"\n")

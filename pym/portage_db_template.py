@@ -33,6 +33,8 @@ class database:
 		try:
 			if self.__template_init_called:
 				pass
+		except SystemExit, e:
+			raise
 		except:
 			raise NotImplementedError("db_template.__init__ was overridden")
 
@@ -70,6 +72,8 @@ class database:
 				values = self.get_values(key)
 				self.__addCache(key,values)
 				return values
+			except SystemExit, e:
+				raise
 			except Exception, e:
 				raise CorruptionError("Corruption detected when reading key '%s': %s" % (key,str(e)))
 		raise KeyError("Key not in db: '%s'" % (key))

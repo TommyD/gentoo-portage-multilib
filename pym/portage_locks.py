@@ -68,6 +68,8 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 			if os.stat(lockfilename).st_gid != portage_data.portage_gid:
 				try:
 					os.chown(lockfilename,os.getuid(),portage_data.portage_gid)
+				except SystemExit, e:
+					raise
 				except:
 					portage_util.writemsg("Cannot chown a lockfile. This could cause inconvenience later.\n");
 			os.umask(old_mask)
@@ -115,6 +117,8 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 				try:
 					if os.stat(lockfilename)[stat.ST_NLINK] == 1:
 						os.unlink(lockfilename)
+				except SystemExit, e:
+					raise
 				except Exception, e:
 					pass
 				link_success = hardlink_lockfile(lockfilename)
@@ -151,6 +155,8 @@ def unlockfile(mytuple):
 			myfd = os.open(lockfilename, os.O_WRONLY,0660)
 			unlinkfile = 1
 		fcntl.lockf(myfd,fcntl.LOCK_UN)
+	except SystemExit, e:
+		raise
 	except Exception, e:
 		if type(lockfilename) == types.StringType:
 			os.close(myfd)
@@ -169,6 +175,8 @@ def unlockfile(mytuple):
 			os.unlink(lockfilename)
 			portage_util.writemsg("Unlinked lockfile...\n",1)
 		fcntl.lockf(myfd,fcntl.LOCK_UN)
+	except SystemExit, e:
+		raise
 	except Exception, e:
 		# We really don't care... Someone else has the lock.
 		# So it is their problem now.
@@ -198,6 +206,8 @@ def hardlink_is_mine(link,lock):
 	try:
 		myhls = os.stat(link)
 		mylfs = os.stat(lock)
+	except SystemExit, e:
+		raise
 	except:
 		myhls = None
 		mylfs = None
@@ -235,6 +245,8 @@ def hardlink_lockfile(lockfilename, max_wait=14400):
 
 		try:
 			res = os.link(myhardlock, lockfilename)
+		except SystemExit, e:
+			raise
 		except Exception, e:
 			#print "lockfile(): Hardlink: Link failed."
 			#print "Exception: ",e
@@ -267,6 +279,8 @@ def unhardlink_lockfile(lockfilename):
 			os.unlink(myhardlock)
 		if os.path.exists(lockfilename):
 			os.unlink(lockfilename)
+	except SystemExit, e:
+		raise
 	except:
 		portage_util.writemsg("Something strange happened to our hardlink locks.\n")
 
@@ -314,6 +328,8 @@ def hardlock_cleanup(path, remove_all_locks=False):
 							# We're sweeping through, unlinking everyone's locks.
 							os.unlink(filename)
 							results.append(_("Unlinked: ") + filename)
+						except SystemExit, e:
+							raise
 						except Exception,e:
 							pass
 				try:
@@ -321,12 +337,16 @@ def hardlock_cleanup(path, remove_all_locks=False):
 					results.append(_("Unlinked: ") + path+"/"+x)
 					os.unlink(mylockname)
 					results.append(_("Unlinked: ") + mylockname)
+				except SystemExit, e:
+					raise
 				except Exception,e:
 					pass
 			else:
 				try:
 					os.unlink(mylockname)
 					results.append(_("Unlinked: ") + mylockname)
+				except SystemExit, e:
+					raise
 				except Exception,e:
 					pass
 

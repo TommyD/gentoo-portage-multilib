@@ -25,6 +25,8 @@ class database(portage_db_template.database):
 			try:
 				os.chown(self.fullpath, self.uid, self.gid)
 				os.chmod(self.fullpath, 02775)
+			except SystemExit, e:
+				raise
 			except:
 				pass
 		

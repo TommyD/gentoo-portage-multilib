@@ -112,6 +112,8 @@ def perform_checksum(filename, hash_function=md5hash, calc_prelink=0):
 		# Non-prelinks are just returned.
 		try:
 			shutil.copy2(filename,prelink_tmpfile)
+		except SystemExit, e:
+			raise
 		except Exception,e:
 			portage_util.writemsg("!!! Unable to copy file '"+str(filename)+"'.\n")
 			portage_util.writemsg("!!! "+str(e)+"\n")

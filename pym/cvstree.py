@@ -179,6 +179,8 @@ def getentries(mydir,recursive=0):
 		myfile=open(myfn, "r")
 		mylines=myfile.readlines()
 		myfile.close()
+	except SystemExit, e:
+		raise
 	except:
 		mylines=[]
 	for line in mylines:
@@ -263,6 +265,8 @@ def getentries(mydir,recursive=0):
 					print "stat done"
 				
 				del mystat
+			except SystemExit, e:
+				raise
 			except Exception, e:
 				print "failed to stat",file
 				print e

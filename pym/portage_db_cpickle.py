@@ -23,6 +23,8 @@ class database(portage_db_template.database):
 				mypickle=cPickle.Unpickler(open(self.filename,"r"))
 				mypickle.find_global=None
 				self.db = mypickle.load()
+			except SystemExit, e:
+				raise
 			except:
 				self.db = {}
 		else:
@@ -65,6 +67,8 @@ class database(portage_db_template.database):
 				cPickle.dump(self.db,open(self.filename,"w"))
 				os.chown(self.filename,self.uid,self.gid)
 				os.chmod(self.filename, 0664)
+			except SystemExit, e:
+				raise
 			except:
 				pass
 	

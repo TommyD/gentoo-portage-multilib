@@ -251,6 +251,8 @@ def getconfig(mycfg,tolerant=0):
 				else:
 					return mykeys
 			mykeys[key]=varexpand(val,mykeys)
+	except SystemExit, e:
+		raise
 	except Exception, e:
 		raise e.__class__, str(e)+" in "+mycfg
 	return mykeys
@@ -372,6 +374,8 @@ def pickle_write(data,filename,debug=0):
 		writemsg("Wrote pickle: "+str(filename)+"\n",1)
 		os.chown(myefn,uid,portage_gid)
 		os.chmod(myefn,0664)
+	except SystemExit, e:
+		raise
 	except Exception, e:
 		return 0
 	return 1
@@ -390,6 +394,8 @@ def pickle_read(filename,default=None,debug=0):
 		myf.close()
 		del mypickle,myf
 		writemsg("pickle_read(): Loaded pickle. '"+filename+"'\n",1)
+	except SystemExit, e:
+		raise
 	except Exception, e:
 		writemsg("!!! Failed to load pickle: "+str(e)+"\n",1)
 		data = default
