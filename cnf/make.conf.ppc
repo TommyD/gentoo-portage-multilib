@@ -1,90 +1,98 @@
 # Copyright 2000-2002 Daniel Robbins, Gentoo Technologies, Inc.
-# Contains system settings for Portage system
-
-# Download sites: The main Gentoo Linux source mirror; specify as many
-# space-separated mirrors as you like.
-GENTOO_MIRRORS="http://www.ibiblio.org/pub/Linux/distributions/gentoo"
-
-# The main Gentoo Linux Portage server; specify a single Portage server.
-#SYNC="rsync://rsync.gentoo.org/gentoo-portage"
-
-# If you want/need rsync to use an HTTP proxy to make its connections, set
-# the RSYNC_PROXY proxy variable in root's .bashrc or /etc/profile.  It's
-# best to enable globally since then all rsync calls on your system will
-# take advantage of your proxy.
+# Contains local system settings for Portage system
 
 # Build-time functionality
+# ========================
+#
+# The USE variable is used to enable optional build-time functionality. For
+# example, quite a few packages have optional X, gtk or GNOME functionality
+# that can only be enabled or disabled at compile-time. Gentoo Linux has a
+# very extensive set of USE variables described in our USE variable HOWTO at
+# http://www.gentoo.org/doc/use-howto.html
+# 
+# Example:
+#USE="X gtk gnome -alsa"
 
-# USE=""
+# Host Setting
+# ============
+#
+# All PowerPC systems should use this host setting:
 
-# USE options are inherited from /etc/make.profile/make.defaults.  To turn a
-# USE setting off, add a "-setting" to the USE variable here.  To enable a
-# setting, add the setting name to the USE variable here.  Separate USE toggles
-# with whitespace.
-
-# Host-specific settings
-
-# For optimization, the -mcpu= option will cause binaries to be optimized for a
-# particular x86 CPU, but will continue to work on all CPUs.  The -march=
-# option, on the other hand, will instruct the compiler to use instuctions
-# specific to that particular CPU in order to enhance performance.  Resultant
-# binaries will *not* run on other systems unless they are 100% compatible with
-# your processor's instruction set.  For example, -march=i686 will produce
-# executables that do not execute on Pentium Classic or K6 systems, but will
-# run on Pentium Pro and "above" systems.  -march=x automatically enables
-# -mcpu=x.
-
-# Examples:
-
-#These are all the same CHOST
 CHOST="powerpc-unknown-linux-gnu"
 
-# These CFLAGS are for gcc 2.95.3 (pre Gentoo 1.4), using these with Gentoo 1.4
-# or newer is _not_ reccomended
+# Host and optimization settings 
+# ==============================
+#
+# For optimal performance, enable a CFLAGS setting appropriate for your CPU
+#
+# -mcpu=<cpu-type> for PowerPC systems selects the type of processor you want to
+# optimize your code for.   Code generated under those options will run best on 
+# that processor, and may not run at all on others.
+#
+# GCC 3.2 supports many powerpc processor types including:  rios, rios1, rsc, 
+# rios2, rs64a, 601, 602, 603, 603e, 604, 604e, 620, 630, 740, 7400, 7450, 
+# 750, power, power2, powerpc, 403, 505, 801, 821, 823, and 860 and common.
+#
+# GCC 2.95.3 lists these processor types as well, but only makes the distinction 
+# between pre G3 and G3 or better processors, whereas GCC 3.2 makes much finer
+# distinctions.
+#
+# Testing has shown that -mcpu should not be used an any pre G3 processors for
+# either gcc 2.95.3 or gcc 3.2.
+#
+# Recommended settings for GCC 3.2 only (Gentoo 1.4 or newer) :
+#
+# -maltivec enables optional (still limited) altivec support and should be used 
+# only for G4 processors,  on GCC 3.2 or newer.  It also requires that you have 
+# the alitvec option compiled into your kernel to take full advantage of this feature.
+#
+# Optimized for G4; "cat /proc/cpuinfo" to get your CPU model number and substitute
+# it for the "7400" below (could be "7400", "7450", "7455"):
+#
+#CFLAGS="-O3 -pipe -mcpu=7400 -maltivec -mpowerpc-gfxopt -fsigned-char"
 
-# PowerPC 750 > up: this works on G4s;
+# Optimized for G3; "cat /proc/cpuinfo" to get your CPU model number and substitute
+# it for the "750" below (may not be necessary to change this number but is safe):
+#
+#CFLAGS="-O3 -pipe -mcpu=750 -mpowerpc-gfxopt -fsigned-char"
+
+# All other processors should use these options (don't use -mcpu)
+# these should be safe for all processors and build generic code
+# that will run on all PPC's, if you use BootX to boot you should
+# select this option
+#
+#CFLAGS="-03 -pipe -fsigned-char"
+
+# Recommended settings for GCC 2.95.3 only (Gentoo 1.2 or older):
+#
+# PowerPC 750 > up: this works on G3's and G4s, gcc 2.95.3 doesn't make the distinction
+# between G3 and G4, so this is fine for all NewWorld machines, if you use yaboot
+# to boot you should select this option
 #CFLAGS=" -O2 -pipe -mcpu=750 -mpowerpc-gfxopt -mmultiple -mstring "
-#CXXFLAGS=${CFLAGS}
 
-# This is safer, and thus the default
-CFLAGS=" -O2 -pipe -mmultiple -mstring "
-CXXFLAGS=${CFLAGS}
+# This will run on all other processors, by building more generic code
+# This is safe for all PPC machines running gcc 2.95.3, and works for all
+# OldWorld machines - if you use BootX to boot you should select this option
+#CFLAGS=" -O2 -pipe -mmultiple -mstring "
 
-# the following are gcc 3.2 CFLAGS for use with Gentoo 1.4 or higher 
-# (not safe for gcc 2.95.3)/pre Gentoo 1.4
+# If you set a CFLAGS above, then this line will set your default C++ flags to
+# the same settings. If you don't set a CFLAGS above, then comment this line out.
+CXXFLAGS="${CFLAGS}"
 
-# Optimized G4 settings (substitute 7400 for your CPU model number
-# (you can get this from /proc/cpuinfo )
-#CFLAGS=" -O3 -pipe -mcpu=7400 -mtune=7400 -maltivec -mabi=altivec -mpowerpc-gfxopt -fsigned-char "
-#CXXFLAGS=${CFLAGS}
-
-# Optimized G3 settings
-#CFLAGS=" -O3 -pipe -mcpu=750 -mtune=750 -mpowerpc-gfxopt -fsigned-char "
-#CXXFLAGS=${CFLAGS}
-
-# This is safer, and should be used for all pre G3 models
-#CFLAGS=" -O3 -pipe "
-#CXXFLAGS=${CFLAGS}
-
-# If you need to set a proxy for wget or lukemftp, add the appropriate
-# "export ftp_proxy=<proxy>" and "export http_proxy=<proxy>" lines to
-# /etc/profile if all users on your system should use them.
-# Uncomment to use Lukemftp for download; you need to merge lukemftp first.
+# Fetching files 
+# ==============
+#
+# If you need to set a proxy for wget or lukemftp, add the appropriate "export
+# ftp_proxy=<proxy>" and "export http_proxy=<proxy>" lines to /etc/profile if
+# all users on your system should use them.
+#
+# Portage uses wget by default. Here are some settings for some alternate
+# downloaders -- note that you need to merge these programs first before they
+# will be available.
+#
+# Lukemftp (BSD ftp):
 #FETCHCOMMAND="/usr/bin/lukemftp -s -a -o \${DISTDIR}/\${FILE} \${URI}"
 #RESUMECOMMAND="usr/bin/lukemftp -s -a -R -o \${DISTDIR}/\${FILE} \${URI}"
-
-# Uncomment if you wanna use Prozilla for download
-# you need to merge prozilla first!
+#
+# Prozilla (turbo downloader)
 #FETCHCOMMAND='/usr/bin/proz --no-getch -s ${URI} -P ${DISTDIR}'
-
-# Uncomment if you are a package maintainer with cvs access
-# The following fine grained configuration options are now available
-# digest : automatically create a digest for new ebuilds
-# cvs : automatically commit new digests to cvs
-# sandbox : enable the sandbox for path prefix protection
-#	WARNING: sandbox is broken on ppc - don't use!
-# noclean : don't clean the temp dirs when emerge terminates
-# noauto : don't execute prior ebuild steps automatically
-#          (eg. 'ebuild install' does just that and not
-#          'fetch unpack compile install'
-#FEATURES="digest cvs noclean noauto"
