@@ -15,7 +15,9 @@ do
 done
 cp ${DEST}/pym/portage.py ${DEST}/pym/portage.py.orig
 sed '/^VERSION=/s/^.*$/VERSION="'${V}'"/' < ${DEST}/pym/portage.py.orig > ${DEST}/pym/portage.py
-rm ${DEST}/pym/portage.py.orig
+cp ${DEST}/man/emerge.1 ${DEST}/man/emerge.1.orig
+sed "s/##VERSION##/${V}/g" < ${DEST}/man/emerge.1.orig > ${DEST}/man/emerge.1
+rm ${DEST}/pym/portage.py.orig ${DEST}/man/emerge.1.orig
 cp ChangeLog ${DEST}
 cd ${DEST}
 find -name CVS -exec rm -rf {} \;

@@ -2,7 +2,7 @@
 # Copyright 1998-2002 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
 
-VERSION="2.0.23"
+VERSION="2.0.24"
 
 from stat import *
 from commands import *
@@ -2051,6 +2051,28 @@ def cpv_expand(mycpv,mydb=None):
 	else:
 		return mykey
 
+def dep_transform(mydep,oldkey,newkey):
+	origdep=mydep
+	if not len(mydep):
+		return mydep
+	if mydep[0]=="*":
+		mydep=mydep[1:]
+	prefix=""
+	postfix=""
+	if mydep[-1]=="*":
+		mydep=mydep[:-1]
+		postfix="*"
+	if mydep[:2] in [ ">=", "<=" ]:
+		prefix=mydep[:2]
+		mydep=mydep[2:]
+	elif mydep[:1] in "=<>~!":
+		prefix=mydep[:1]
+		mydep=mydep[1:]
+	if mydep==oldkey:
+		return prefix+newkey+postfix
+	else:
+		return origdep
+
 def dep_expand(mydep,mydb):
 	if not len(mydep):
 		return mydep
@@ -2457,6 +2479,31 @@ class vardbapi(dbapi):
 		lcfile=open(self.root+"var/db/pkg/"+mycpv+"/COUNTER","w")
 		lcfile.write(str(counter))
 		lcfile.close()
+
+	def move_ent(self,mylist):
+		origcp=mylist[1]
+		newcp=mylist[2]
+		origmatches=self.cp_list(origcp)
+		if not origmatches:
+			return
+		for mycpv in origmatches:
+			mycpsplit=catpkgsplit(mycpv)
+			mynewcpv=newcp+"-"+mycpsplit[2]
+			mynewcat=mycpsplit[0]
+			if mycpsplit[3]!="r0":
+				mynewcpv += "-"+mycpsplit[3]
+			origpath=self.root+"var/db/pkg/"+mycpv
+			if not os.path.exists(origpath):
+				continue
+			if not os.path.exists(self.root+"var/db/pkg/"+mynewcat):
+				#create the directory
+				os.makedirs(self.root+"var/db/pkg"+mynewcat)	
+			newpath=self.root+"var/db/pkg/"+mynewcpv
+			if os.path.exists(newpath):
+				#dest already exists; keep this puppy where it is.
+				continue
+			print "portage: vardbapi: moving",mycpv,"to",mynewcpv
+			os.system("/bin/mv "+origpath+" "+newpath)
 
 	def cp_list(self,mycp):
 		mysplit=mycp.split("/")
@@ -3160,9 +3207,14 @@ class dblink:
 			pkgfiles=self.getcontents()
 			if not pkgfiles:
 				return
-		myebuildpath=self.dbdir+"/"+self.pkg+".ebuild"
-		if not os.path.exists(myebuildpath):
-			myebuildpath=None
+		#Now, don't assume that the name of the ebuild is the same as the name of the dir;
+		#the package may have been moved.
+		myebuildpath=None
+		mystuff=listdir(self.dbdir)
+		for x in mystuff:
+			if x[-7:]==".ebuild":
+				myebuildpath=self.dbdir+"/"+x+".ebuild"
+				break
 		#do prerm script
 		if myebuildpath and os.path.exists(myebuildpath):
 			a=doebuild(myebuildpath,"prerm",self.myroot)
@@ -3385,6 +3437,31 @@ class dblink:
 			if newvirts[myvirt]==[]:
 				del newvirts[myvirt]
 		writedict(newvirts,self.myroot+"var/cache/edb/virtuals")
+	
+		#new code to remove stuff from the world file when it's unmerged.
+		worldlist=grabfile(self.myroot+"var/cache/edb/world")
+		mycpv=self.cat+"/"+self.pkg
+		mykey=cpv_getkey(mycpv)
+		newworldlist=[]
+		for x in worldlist:
+			if dep_getkey(x)==mykey:
+				matches=db[self.myroot]["vartree"].dbapi.match(x)
+				if not matches:
+					#zap our world entry
+					pass
+				elif (len(matches)==1) and (matches[0]==mycpv):
+					#zap our world entry
+					pass
+				else:
+					#others are around; keep it.
+					newworldlist.append(x)
+			else:
+				#this doesn't match the package we're unmerging; keep it.
+				newworldlist.append(x)
+		myworld=open(self.myroot+"var/cache/edb/world","w")
+		for x in newworldlist:
+			myworld.write(x+"\n")
+		myworld.close()
 		
 		#do original postrm
 		if myebuildpath and os.path.exists(myebuildpath):
@@ -3497,7 +3574,8 @@ class dblink:
 				else:
 					myvirts[mycatpkg]=[myvkey]
 			writedict(myvirts,destroot+"var/cache/edb/virtuals")
-			
+		
+
 		#do postinst script
 		if myebuild:
 			# if we are merging a new ebuild, use *its* pre/postinst rather than using the one in /var/db/pkg 
@@ -3887,21 +3965,26 @@ else:
 #from here on in we can assume that profiledir is set to something valid
 db={}
 
-virts=getvirtuals("/")
-virts_p={}
+def do_vartree():
+	global virts,virts_p
+	virts=getvirtuals("/")
+	virts_p={}
 
-if virts:
-	myvkeys=virts.keys()
-	for x in myvkeys:
-		vkeysplit=x.split("/")
-		if not virts_p.has_key(vkeysplit[1]):
-			virts_p[vkeysplit[1]]=virts[x]
-del x
-db["/"]={"virtuals":virts,"vartree":vartree("/",virts)}
-if root!="/":
-	virts=getvirtuals(root)
-	db[root]={"virtuals":virts,"vartree":vartree(root,virts)}
-#We need to create the vartree first, then load our settings, and then set up our other trees
+	if virts:
+		myvkeys=virts.keys()
+		for x in myvkeys:
+			vkeysplit=x.split("/")
+			if not virts_p.has_key(vkeysplit[1]):
+				virts_p[vkeysplit[1]]=virts[x]
+	del x
+	db["/"]={"virtuals":virts,"vartree":vartree("/",virts)}
+	if root!="/":
+		virts=getvirtuals(root)
+		db[root]={"virtuals":virts,"vartree":vartree(root,virts)}
+	#We need to create the vartree first, then load our settings, and then set up our other trees
+
+do_vartree()
+
 if profiledir:
 	usedefaults=grabfile(profiledir+"/use.defaults")
 else:
@@ -3910,6 +3993,69 @@ settings=config()
 #grab mtimes
 mtimedb={"cur":{}}
 mtimedb["old"]=grabints(root+"var/cache/edb/mtimes")
+	
+def do_upgrade(mykey):
+	#now, let's process this file...
+	processed=1
+	#remove stale virtual entries (mappings for packages that no longer exist)
+	myvirts=grabdict("/var/cache/edb/virtuals")
+		
+	worldlist=grabfile("/var/cache/edb/world")
+	myupd=grabfile(mykey)
+	for myline in myupd:
+		mysplit=myline.split()
+		if not len(mysplit):
+			continue
+		if mysplit[0]!="move":
+			print "portage: Update type \""+mysplit[0]+"\" not recognized."
+			processed=0
+			continue
+		if len(mysplit)!=3:
+			print "portage: Update command \""+myline+"\" invalid; skipping."
+			processed=0
+			continue
+		db["/"]["vartree"].dbapi.move_ent(mysplit)
+		
+		#update world entries:
+		for x in range(0,len(worldlist)):
+			#update world entries, if any.
+			worldlist[x]=dep_transform(worldlist[x],mysplit[1],mysplit[2])
+		
+		#update virtuals:
+		for myvirt in myvirts.keys():
+			for mypos in range(0,len(myvirts[myvirt])):
+				if myvirts[myvirt][mypos]==mysplit[1]:
+					#update virtual to new name
+					myvirts[myvirt][mypos]=mysplit[2]
+	
+	if processed:
+		#update our internal mtime since we processed all our directives.
+		mtimedb["old"][mykey]=os.stat(mykey)[ST_MTIME]
+	myworld=open("/var/cache/edb/world","w")
+	for x in worldlist:
+		myworld.write(x+"\n")
+	myworld.close()
+	writedict(myvirts,"/var/cache/edb/virtuals")
+
+if secpass==2:
+	#only do this if we're root
+	updpath=os.path.normpath(settings["PORTDIR"]+"/profiles/updates")
+	didupdate=0
+	try:
+		for myfile in listdir(updpath):
+			mykey=updpath+"/"+myfile
+			if not os.path.isfile(mykey):
+				continue
+			if (not mtimedb["old"].has_key(mykey)) or (mtimedb["old"][mykey] != os.stat(mykey)[ST_MTIME]):
+				didupdate=1
+				do_upgrade(mykey)
+	except OSError:
+		#directory doesn't exist
+		pass
+	if didupdate:
+		#make sure our internal databases are consistent; recreate our virts and vartree
+		do_vartree()
+
 #the new standardized db names:
 portdb=portdbapi()
 if settings["PORTDIR_OVERLAY"]:

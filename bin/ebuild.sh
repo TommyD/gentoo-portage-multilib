@@ -2,35 +2,34 @@
 
 # Save the current environment to file.
 esave_ebuild_env() {
-	# only save when $T is valid, else it create a bogus
-	# /saved_ebuild_env_ file.
-	if [ -n "${T}" ]
-	then
-		# turn off globbing.
-		set -f
-
-		# unset this function, else we get problems on
-		# restore (env stuff do not get saved properly)
-		unset esave_ebuild_env
-		
-		# we do not want to save critical variables
-		set | awk '!/PORTAGE_RESTORE_ENV|PORTAGE_MASTER_PID/ { print $0 }' \
-			> ${T}/saved_ebuild_env_${PORTAGE_MASTER_PID}
-		set +f
-	fi
+	# turn off globbing.
+	set -f
+	# unset this function, else we get problems on
+	# restore (env stuff do not get saved properly)
+	unset esave_ebuild_env
+	# we do not want to save critical variables
+	set | awk '!/PORTAGE_RESTORE_ENV|PORTAGE_MASTER_PID/ { print $0 }' \
+		> ${T}/saved_ebuild_env_${PORTAGE_MASTER_PID}
+	set +f
 }
 
-# Save the environment apon exit
-trap "esave_ebuild_env" EXIT
-
-# Calls ebuild.sh with the required arguments, restoring a saved
-# environment if needed.
-if [ "${PORTAGE_RESTORE_ENV}" = "1" ] && \
-   [ -f ${T}/saved_ebuild_env_${PORTAGE_MASTER_PID} ]
+if [ -n "$T" ]
 then
-	set -f
-	source ${T}/saved_ebuild_env_${PORTAGE_MASTER_PID} &> /dev/null
-	set +f
+	#if $T is defined, then we're not simply calculating dependencies and can backup/restore our env
+	#otherwise, we don't wanna try it.
+	
+	# Save the environment apon exit
+	trap "esave_ebuild_env" EXIT
+
+	# Calls ebuild.sh with the required arguments, restoring a saved
+	# environment if needed.
+	if [ "${PORTAGE_RESTORE_ENV}" = "1" ] && \
+	[ -f ${T}/saved_ebuild_env_${PORTAGE_MASTER_PID} ]
+	then
+		set -f
+		source ${T}/saved_ebuild_env_${PORTAGE_MASTER_PID} &> /dev/null
+		set +f
+	fi
 fi
 
 if [ -n "$#" ]
@@ -893,7 +892,10 @@ do
 		fi
 		export SANDBOX_ON="0"
 		;;
-	help|clean)
+	help|clean|setup)
+		#pkg_setup needs to be out of the sandbox for tmp file creation;
+		#for example, awking and piping a file in /tmp requires a temp file to be created
+		#in /etc.  If pkg_setup is in the sandbox, both our lilo and apache ebuilds break.
 		export SANDBOX_ON="0"
 		if [ "$PORTAGE_DEBUG" = "0" ]
 		then
@@ -903,23 +905,6 @@ do
 		  dyn_${myarg}
 		  set +x
 		fi
-	    ;;
-	setup)
-		#sandbox is still enabled; no fs access needed
-		if [ ${SANDBOX_DISABLED="0"} = "0" ]
-		then
-			export SANDBOX_ON="1"
-		else
-			export SANDBOX_ON="0"
-		fi
-	    if [ "$PORTAGE_DEBUG" = "0" ]
-	    then
-	      dyn_${myarg}
-	    else
-	      set -x
-	      dyn_${myarg}
-	      set +x
-	    fi
 	    ;;
 	touch|package|rpm)
 		export SANDBOX_ON="0"

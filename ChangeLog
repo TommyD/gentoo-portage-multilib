@@ -1,13 +1,40 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
-  06 Aug 2002; Martin Schlemmer <azarah@gentoo.org> ebuild.sh : only save
-  the environment of ebuild.sh when $T is valid, else /saved_ebuild_env_
-  is created.  Also unset esave_ebuild_env, else the sourced copy messes
-  saving of the environment.
+*portage-2.0.26 (06 Aug 2002)
 
-  05 Aug 2002; Phil Bordelon <sunflare@gentoo.org> emerge.1: Updated the
-  man page to match the current version of 2.0.25.
+  06 Aug 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: on unmerge,
+  entries are now removed from the world file if 1) the dependency refers to
+  the cat/pkg being unmerged, and 2) the dependency matches the current version
+  being unmerged, and 3) unmerging this package will leave no other packages on
+  this system that will match this world entry.  This closes bug #3409.
+  
+  06 Aug 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: new global
+  update support.  You can now add an entry to a file in
+  /usr/portage/profiles/updates/, something like "move x11-base/xfree
+  x11-base/xfree86".  Portage will then update the /var/db/pkg db on user's
+  boxes so that any xfree packages are renamed to xfree86; it will also update
+  the world and virtuals files appropriately.  We are naming the update files
+  "3Q-2002", etc.  -- for third quarter in 2002.  This way, we don't bog
+  Portage down by having it run through all our directives.  It will only look
+  at update files whose mtimes have changed.  Closes bug #4753, #5463, 
+  
+  06 Aug 2002; Daniel Robbins <drobbins@gentoo.org> ebuild.sh: tweaked Azarah's
+  environment-saving patch to not be enabled when $T is not defined -- this
+  closes bug #6070 and should speed up dep calculations too.  Also tweaked
+  ebuild.sh so that pkg_setup() is run *outside* of the sandbox.  This is
+  important because piping stuff around tends to require temp files to be
+  created; pkg_setup() being in the sandbox prevents this from happening.
+  
+  06 Aug 2002; Martin Schlemmer <azarah@gentoo.org> ebuild.sh : Unset
+  esave_ebuild_env in esave_ebuild_env(), otherwise the sourced copy messes
+  saving of the environment.
+  
+  05 Aug 2002; Phil Bordelon <sunflare@gentoo.org> emerge.1: Updated the man
+  page to match the current version of 2.0.25.
+  
+  05 Aug 2002; Phil Bordelon <sunflare@gentoo.org> emerge.1: Updated the man
+  page to match the current version of 2.0.25.
 
 *portage-2.0.25 (05 Aug 2002)
 
