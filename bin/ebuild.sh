@@ -295,7 +295,7 @@ unpack() {
 	for x in $@
 	do
 		myfail="failure unpacking ${x}"
-		echo ">>> Unpacking ${x}"
+		echo ">>> Unpacking ${x} to $(pwd)"
 		y="$(echo $x | sed 's:.*\.\(tar\)\.[a-zA-Z0-9]*:\1:')"
 		case "${x##*.}" in
 		tar) 

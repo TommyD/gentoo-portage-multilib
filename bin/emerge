@@ -14,13 +14,36 @@ spinpos=0
 #number of ebuilds merged
 merged=0
 params=["selective", "deep", "self", "recurse", "empty"]
-actions=["clean", "config", "help", "info", "prune", "rsync", "search", "sync", "system", "unmerge", "world", "inject", "regen", "depclean"]
-options=["--autoclean", "--deep", "--selective", "--buildpkg", "--buildpkgonly", "--debug", "--nodeps", "--emptytree", "--fetchonly", "--changelog",
-"--noreplace", "--onlydeps", "--pretend", "--quiet", "--searchdesc", "--usepkg", "--usepkgonly", "--verbose", "--update", "--help", "--oneshot", "--version"]
-
-shortmapping={"a":"--autoclean", "b":"--buildpkg", "B":"--buildpkgonly", "c":"clean", "C":"unmerge", "e":"--emptytree", "d":"--debug", "f":"--fetchonly",
-	"h":"--help", "i":"inject", "k":"--usepkg", "K":"--usepkgonly", "l":"--changelog", "n":"--noreplace", "o":"--onlydeps", "O":"--nodeps",
-	"p":"--pretend", "P":"prune", "q":"--quiet", "s":"search", "S":"--searchdesc", "u":"--update", "v":"--verbose", "V":"--version"}
+actions=[
+"clean", "config", "depclean", "help", "info",   "inject",  "prune",
+"regen", "rsync",  "search",   "sync", "system", "unmerge", "world"
+]
+options=[
+"--autoclean",  "--buildpkg",   "--buildpkgonly", "--changelog",
+"--debug",      "--deep",       "--emptytree",    "--fetchonly", "--help",
+"--noconfmem",  "--nodeps",     "--noreplace",    "--oneshot",   "--onlydeps",
+"--pretend",    "--quiet",      "--searchdesc",   "--selective", "--update",
+"--usepkg",     "--usepkgonly", "--verbose",      "--version"
+]
+shortmapping={
+"a":"--autoclean",
+"b":"--buildpkg",  "B":"--buildpkgonly",
+"c":"clean",       "C":"unmerge",
+"d":"--debug",
+"e":"--emptytree",
+"f":"--fetchonly",
+"h":"--help",
+"i":"inject",
+"k":"--usepkg",    "K":"--usepkgonly",
+"l":"--changelog",
+"n":"--noreplace",
+"o":"--onlydeps",  "O":"--nodeps",
+"p":"--pretend",   "P":"prune",
+"q":"--quiet",
+"s":"search",      "S":"--searchdesc",
+"u":"--update",
+"v":"--verbose",   "V":"--version"
+}
 
 def emergelog(mystr):
 	try:
@@ -60,8 +83,14 @@ def getportageversion():
 	if glibcver==[]:
 		glibcver="unavailable"
 
-	gccver=commands.getstatusoutput("`which gcc` -dumpversion")[1]
-	return "Portage " + portage.VERSION +" ("+profilever+", gcc-"+gccver+", glibc-"+glibcver+")"
+	gccver=commands.getstatusoutput("`which gcc` -dumpversion")
+	if gccver[0]:
+		print "!!! No gcc found. You probably need to 'source /etc/profile' to update"
+		print "!!! the environment of this terminal and possibly other terminals also."
+		print
+		gccver[1]="unavailable"
+	gccver[1]="gcc-"+gccver[1]
+	return "Portage " + portage.VERSION +" ("+profilever+", "+gccver[1]+", glibc-"+glibcver+")"
 
 
 def help():
@@ -135,6 +164,10 @@ if ("--searchdesc" in myopts) and (not myaction):
 # Also allow -K to apply --usepkg
 if ("--usepkgonly" in myopts) and not ("--usepkg" in myopts):
 		myopts.append("--usepkg")
+
+# Set so that configs will be merged regardless of remembered status
+if ("--noconfmem" in myopts):
+		portage.settings["NOCONFMEM"]="1"
 
 # check if root user is the current user for the actions where emerge needs this
 if ("--pretend" in myopts) or (myaction=="search"):
@@ -1371,39 +1404,10 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 		mynodes=portage.portdb.cp_all()
 		for x in mynodes:
 			myxsplit=x.split("/")
-			mycatdir=portage.settings["PORTAGE_CACHEDIR"]+"/"+myxsplit[0]
-			if not os.path.exists(mycatdir):
-				os.makedirs(mycatdir,02775)
-				os.chown(mycatdir,0,portage.wheelgid)
 			mymatches=portage.portdb.xmatch("match-all",x)
 			for y in mymatches:
 				update_spinner()
-				curdbkey=portage.settings["PORTAGE_CACHEDIR"]+"/"+y
-				newdbkey=myportdir+"/metadata/cache/"+y
-				mysplit=y.split("/")
-				myebuild=myportdir+"/"+myxsplit[0]+"/"+myxsplit[1]+"/"+mysplit[1]+".ebuild"
-				notfound=0
-				try:
-					ebuildtime=os.stat(myebuild)[ST_MTIME]
-				except OSError:
-					notfound=1
-				if notfound:
-					continue
-				curkeytime=0
-				notfound=0
-				try:
-					newkeytime=os.stat(newdbkey)[ST_MTIME]
-				except OSError:
-					notfound=1
-				if notfound:
-					continue
-				try:
-					curkeytime=os.stat(curdbkey)[ST_MTIME]
-				except OSError:
-					pass
-				if (newkeytime>=ebuildtime>curkeytime):
-					shutil.copy(newdbkey,curdbkey)
-					os.chown(curdbkey,0,portage.wheelgid)
+				ignored=aux_get(y,[],metacachedir=myportdir+"/metadata/cache")
 		sys.stdout.write("\b\b  \n\n")
 		sys.stdout.flush()
 elif myaction=="regen":
