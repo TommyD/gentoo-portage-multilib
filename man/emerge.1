@@ -1,4 +1,4 @@
-.TH "EMERGE" "1" "Nov 2002" "Portage 2.0.44" "Portage"
+.TH "EMERGE" "1" "Feb 2003" "Portage 2.0.47" "Portage"
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -45,9 +45,9 @@ The \fIebuild\fR may also be an actual filename, such as
 \fBtbz2file\fR
 A \fItbz2file\fR must be a valid .tbz2 created with \fBebuild
 <package>\-<version>.ebuild package\fR or \fBemerge
-\-\-buildpkg <package>.
+\-\-buildpkg <package>\fR.
 .TP
-\fBclass\fI
+\fBclass\fR
 Package classes are a convenient shorthand for large groups of
 packages.  Two classes are currently supported: \fBsystem\fR
 and \fBworld\fR.  \fBsystem\fR refers to a set of packages
@@ -69,97 +69,173 @@ to get around escaping problems.
 .SH "ACTIONS"
 .TP
 \fBNo action\fR
-If no action is specified, the action is to merge in the specified packages, satisfying any dependencies
-that they may have.  The arguments can be \fIebuilds\fR, \fItbz2s\fR, \fIclasses\fR, or
-\fIdependencies\fR.  \fBNote that you need to use the\fR \-\-usepkg \fBoption if you want
-to install a tbz2\fR.  The packages are added to the \fBworld\fR file at the end, so that they are
-considered for later updating.  
+If no action is specified, the action is to merge in the specified
+packages, satisfying any dependencies that they may have.  The
+arguments can be \fIebuilds\fR, \fItbz2s\fR, \fIclasses\fR, or
+\fIdependencies\fR.  \fBNote that you need to use the\fR \-\-usepkg
+\fBoption if you want to install a tbz2\fR.  The packages are added
+to the \fBworld\fR file at the end, so that they are considered for
+later updating.  
 .TP
 \fBclean\fR (\fB\-c\fR)
-Cleans the system by removing packages that will not effect the functionality of the system.  The
-arguments can be \fIebuilds\fR, \fIclasses\fR, or \fIdependencies\fR.  For example, \fBemerge
-clean binutils\fR cleans out old versions of binutils; \fBemerge clean net\-www/mozilla\-0.9.9\-r2\fR
-cleans out that specific version of Mozilla.  This is generally safe to use. \fBNote that\fR clean \fBdoes not remove unslotted packages.\fR
+Cleans the system by removing packages that will not effect the
+functionality of the system.  The arguments can be \fIebuilds\fR,
+\fIclasses\fR, or \fIdependencies\fR.  For example, \fBemerge
+clean binutils\fR cleans out old versions of binutils;
+\fBemerge clean net\-www/mozilla\-0.9.9\-r2\fR cleans out that
+specific version of Mozilla.  This is generally safe to use.
+\fBNote that\fR clean \fBdoes not remove unslotted packages.\fR
 .TP
 \fBdepclean\fR
-Determines all packages installed on the system that have no explicit reason for being there.  \fBemerge\fR generates a list of packages which it expects to be installed by checking the \fBsystem\fR package list and the \fBworld\fR file.  It then compares that list to the list of packages which are actually installed; the differences are listed as unnecessary packages and are suggested for unmerging. \fBWARNING: Removing some packages may cause packages which link to the removed package to stop working and complain about missing libraries.\fR Re\-\fBemerge\fR the complaining package to fix this issue. \fBNote that changes in USE flags can drastically affect the output of depclean.\fR
+Determines all packages installed on the system that have no
+explicit reason for being there.  \fBemerge\fR generates a list
+of packages which it expects to be installed by checking the
+\fBsystem\fR package list and the \fBworld\fR file.  It then
+compares that list to the list of packages which are actually
+installed; the differences are listed as unnecessary packages
+and are suggested for unmerging. \fBWARNING: Removing some
+packages may cause packages which link to the removed package
+to stop working and complain about missing libraries.\fR
+Re\-emerge the complaining package to fix this issue.
+\fBNote that changes in USE flags can drastically affect the
+output of depclean.\fR
 .TP
 \fBhelp\fR (\fB\-h\fR)
-Displays help information for emerge.  Adding one of the additional arguments listed above will give you more specific help information on that subject.  The internal \fBemerge\fR help documentation is updated more frequently than this man page; check it out if you are having problems that this man page does not help resolve.
+Displays help information for emerge.  Adding one of the additional
+arguments listed above will give you more specific help information
+on that subject.  The internal \fBemerge\fR help documentation is
+updated more frequently than this man page; check it out if you
+are having problems that this man page does not help resolve.
 .TP
 \fBinfo\fR
-This is a list of information to include in bug reports which aids the developers with fixing any problems you may report. \fBPlease include this information when submitting a bug report.\fR
+This is a list of information to include in bug reports which aids
+the developers with fixing any problems you may report. \fBPlease
+include this information when submitting a bug report.\fR Expanded
+output can be obtained with the \fI--verbose\fR option.
 .TP
 \fBinject\fR (\fB\-i\fR)
-Injecting a package inserts a 'stub' for that package so that Portage thinks that it is installed.
-It is handy if you need, say, a binary version of XFree86 for esoteric hardware, or you just like
-to roll your own packages.  You \fBmust\fR specify a category and particular version of a package for injecting.  For
-example, \fBemerge inject sys\-kernel/gentoo\-sources\-2.4.19\fR.
+Injecting a package inserts a 'stub' for that package so that Portage
+thinks that it is installed. It is handy if you need, say, a binary
+version of XFree86 for esoteric hardware, or you just like to roll
+your own packages.  You \fBmust\fR specify a category and particular
+version of a package for injecting.  For example,
+\fBemerge inject sys\-kernel/gentoo\-sources\-2.4.19\fR.
 .TP
 \fBprune\fR (\fB\-P\fR)
-\fBWARNING: This action can remove important packages!\fR Removes all but the latest versions of matching packages.  If there are multiple SLOTs for a package, it leaves the latest version in each SLOT.
-This does no checking of dependencies, so it may remove packages necessary for the proper operation of your
-system.  \fBUse\fR clean \fBinstead unless you really know what you're doing\fR.  Its arguments can be
-\fIebuilds\fR, \fIclasses\fR, or \fIdependencies\fR\-\-see \fBclean\fR above for examples.
+\fBWARNING: This action can remove important packages!\fR Removes
+all but the latest versions of matching packages.  If there are
+multiple SLOTs for a package, it leaves the latest version in each
+SLOT. This does no checking of dependencies, so it may remove
+packages necessary for the proper operation of your system. \fBUse\fR
+clean \fBinstead unless you really know what you're doing\fR.  Its
+arguments can be \fIebuilds\fR, \fIclasses\fR, or \fIdependencies\fR
+\-\- see \fBclean\fR above for examples.
 .TP
 \fBrsync\fR
 See \fBsync\fR below.
 .TP
 \fBsearch\fR (\fB\-s\fR)
-Searches for matches of the supplied string in the portage tree.  The search string is a regular expression.  For example, \fBemerge search "^kde"\fR searches
-for any package that starts with "kde"; \fBemerge search "gcc$"\fR searches for any package that ends with
-"gcc"; \fBemerge search "office"\fR searches for any package that contains the word "office".  If you want to search the package descriptions as well, use the \fB\-\-searchdesc\fR option.
+Searches for matches of the supplied string in the portage tree.
+The search string is a regular expression.  For example, \fBemerge
+search "^kde"\fR searches for any package that starts with "kde";
+\fBemerge search "gcc$"\fR searches for any package that ends with
+"gcc"; \fBemerge search "office"\fR searches for any package that
+contains the word "office".  If you want to search the package
+descriptions as well, use the \fB\-\-searchdesc\fR,\fB-S\fR option.
 .TP
 \fBsync\fR
-Initiates a portage tree update with one of the rsync.gentoo.org mirrors.  \fBNote that any changes you have made to the portage tree will be erased\fR.  Except for in special circumstances, this uses \fBrsync\fR to do the update. See make.conf's description of PORTDIR_OVERLAY for a method to avoid deletions.
+Initiates a portage tree update with one of the rsync.gentoo.org
+mirrors.  \fBNote that any changes you have made to the portage
+tree will be erased\fR.  Except for in special circumstances,
+this uses \fBrsync\fR to do the update. See make.conf's description
+of PORTDIR_OVERLAY for a method to avoid deletions.
 .TP
 \fBunmerge\fR (\fB\-C\fR)
-\fBWARNING: This action can remove important packages!\fR Removes all matching packages.  This does
-no checking of dependencies, so it may remove packages necessary for the proper operation of your system.
-Its arguments can be \fIebuilds\fR, \fIclasses\fR, or \fIdependencies\fR\-\-see \fBclean\fR above
-for examples.
+\fBWARNING: This action can remove important packages!\fR Removes
+all matching packages.  This does no checking of dependencies, so
+it may remove packages necessary for the proper operation of your
+system. Its arguments can be \fIebuilds\fR, \fIclasses\fR, or
+\fIdependencies\fR \-\- see \fBclean\fR above for examples.
 .TP
 \fB\-\-version\fR
 Displays the version number of \fBemerge\fR.
 .SH "OPTIONS "
 .TP
-\fB\-\-autoclean\fR (\fB\-a\fR)
-\fBemerge\fR normally cleans out the package\-specific temporary build directory before it starts the building a package.  With \fB\-\-autoclean\fR, it will also clean the directory \fIafter\fR the build completes.  This option is automatically enabled for normal users, but maintainers can use this option to enable autocleaning.
-.TP
 \fB\-\-buildpkg\fR (\fB\-b\fR)
-Tells emerge to build binary packages for all ebuilds processed in addition to actually merging the packages.  Useful for maintainers or if you administrate multiple Gentoo Linux systems (build once, emerge tbz2s everywhere).  The package will be created in the \fI${PKGDIR}\fR/All directory.
+Tells emerge to build binary packages for all ebuilds processed in
+addition to actually merging the packages.  Useful for maintainers
+or if you administrate multiple Gentoo Linux systems (build once,
+emerge tbz2s everywhere).  The package will be created in the
+\fI${PKGDIR}\fR/All directory.
+.TP
+\fB\-\-columns\fR
+Used along side \fI--pretend\fR to causes the package, new version,
+and old version to be displayed in an aligned format for easy cut\-n\-paste.
 .TP
 \fB\-\-debug\fR (\fB\-d\fR)
-Tells emerge to run the emerge command in \-\-debug mode.  In this mode the bash build environment will run with the \-x option, causing it to output verbose debug information to stdout.  \-\-debug is great for finding bash syntax errors.
+Tells emerge to run the emerge command in \-\-debug mode.  In this
+mode the bash build environment will run with the \-x option,
+causing it to output verbose debug information to stdout.
+\-\-debug is great for finding bash syntax errors.
 .TP
 \fB\-\-deep\fR
-When used in conjunction with \fB\-\-update\fR, this flag forces \fBemerge\fR to consider the entire dependency
-tree of packages, instead of checking only the immediate dependencies of the packages.  As an example, this
-catches updates in libraries that are not directly listed in the dependencies of a package.
+When used in conjunction with \fB\-\-update\fR, this flag forces
+\fBemerge\fR to consider the entire dependency tree of packages,
+instead of checking only the immediate dependencies of the packages.
+As an example, this catches updates in libraries that are not directly
+listed in the dependencies of a package.
 .TP
 \fB\-\-emptytree\fR (\fB\-e\fR)
-Virtually tweaks the tree of installed packages to only contain glibc; this is great to use together with \-\-pretend. This allows developers to get a complete overview of the complete dependency tree of a package, and it enables complete trees to be rebuilt using the latest libraries.
+Virtually tweaks the tree of installed packages to only contain glibc;
+this is great to use together with \-\-pretend. This allows developers
+to get a complete overview of the complete dependency tree of a package,
+and it enables complete trees to be rebuilt using the latest libraries.
 .TP
 \fB\-\-fetchonly\fR (\fB\-f\fR)
-Instead of doing any package building, just perform fetches for all packages (the main package as well as all dependencies.)
+Instead of doing any package building, just perform fetches for all
+packages (the main package as well as all dependencies.)
+.TP
+\fB\-\-noconfmem\fR
+Causes portage to disregard merge records indicating that a config file
+inside of a CONFIG_PROTECT directory has been merged already. Portage
+will normally merge those files only once to prevent the user from
+dealing with the same config multiple times. This flag will cause the
+file to always be merged.
 .TP
 \fB\-\-nodeps\fR
-Merges specified packages without merging any dependencies.  Note that the build may fail if the dependencies aren't satisfied.
+Merges specified packages without merging any dependencies.  Note that
+the build may fail if the dependencies aren't satisfied.
 .TP
 \fB\-\-noreplace\fR (\fB\-n\fR)
-Skips the packages specified on the command\-line that have already been installed.  Without this option, any packages, ebuilds, or deps you specify on on the command\-line *will* cause Portage to remerge the package, even if it is already installed. Note that Portage will not remerge dependencies by default.
+Skips the packages specified on the command\-line that have already
+been installed.  Without this option, any packages, ebuilds, or deps
+you specify on on the command\-line *will* cause Portage to remerge
+the package, even if it is already installed. Note that Portage will
+not remerge dependencies by default.
+.TP
+\fB\-\-nospinner\fR
+Disables the spinner for the session. The spinner is active when the
+terminal device is determined to be a TTY. This flag disables it regardless.
 .TP
 \fB\-\-oneshot\fR
-Emerge as normal, but do not add the packages to the world profile for later updating.
+Emerge as normal, but do not add the packages to the world profile
+for later updating.
 .TP
 \fB\-\-onlydeps\fR (\fB\-o\fR)
-Only merge (or pretend to merge) the dependencies of the packages specified, not the packages themselves.
+Only merge (or pretend to merge) the dependencies of the packages
+specified, not the packages themselves.
 .TP
 \fB\-\-pretend\fR (\fB\-p\fR)
-Instead of actually performing the merge, simply display what *would* have been installed if \-\-pretend weren't used.  Using \-\-pretend is strongly recommended before installing an unfamiliar package.  In the printout, N = new, U = upgrading, R = replacing, B = blocked by an already installed package.
+Instead of actually performing the merge, simply display what *would*
+have been installed if \-\-pretend weren't used.  Using \-\-pretend
+is strongly recommended before installing an unfamiliar package. In
+the printout, N = new, U = upgrading, R = replacing, B = blocked by
+an already installed package.
 .TP
 \fB\-\-searchdesc\fR (\fB\-S\fR)
-Matches the search string against the description field as well as the package name.  \fBTake caution\fR as the descriptions are also matched as regular expressions.
+Matches the search string against the description field as well as
+the package name.  \fBTake caution\fR as the descriptions are also
+matched as regular expressions.
 .TP
 \fB\-\-update\fR (\fB\-u\fR)
 Updates packages to the most recent version available.  \fBNote that\fR \-\-update \fBdoes not have full functionality yet\fR.  It will not automatically update dependencies of packages in the \fBworld\fR file, unless they too are in the \fBworld\fR file.
@@ -171,8 +247,9 @@ Tells emerge to use binary packages (from $PKGDIR) if they are available, thus p
 Tell emerge to run in verbose mode.  Currently this flag causes emerge to print out GNU info errors, if any.
 .TP
 \fB\-\-version\fR
-Displays the version number of \fBemerge\fR.  It cannot be used in conjunction with other options; the
-name and format of the action is a convention.
+Displays the version number of \fBemerge\fR.  It cannot be used in
+conjunction with other options; the name and format of the action
+is a convention.
 .SH "NOTES"
 You should almost always precede any package install or update
 attempt with a \fB\-\-pretend\fR install or update.  This lets
@@ -205,42 +282,47 @@ newer feature not present in this version of \fBemerge\fR.  You
 can use \fBemerge \-\-update portage\fR to upgrade to the lastest
 version, which should support any necessary new features.
 .SH "MASKED PACKAGES"
-\fINOTE: Please use caution when using development packages. Problems and bugs resulting from misusing masked packages drains Gentoo developer time. Please be
-sure you are capable of handling problems that may ensue.\fR
+\fINOTE: Please use caution when using development packages. Problems
+and bugs resulting from misusing masked packages drains Gentoo
+developer time. Please be sure you are capable of handling problems
+that may ensue.\fR
 .LP 
-Masks in \fBportage\fR provide three primary functions: they allow a testing
-period where the packages can be used in live machines; they prevent the use of a
-package when it will fail, and they mask existing packages that have are broken or
-pose a security risk. Masking can be done by two methods: \fBpackage.mask\fR and
-KEYWORDS. 
+Masks in \fBportage\fR provide three primary functions: they allow a
+testing period where the packages can be used in live machines; they
+prevent the use of a package when it will fail, and they mask existing
+packages that have are broken or pose a security risk. Masking can be
+done by two methods: \fBpackage.mask\fR and KEYWORDS. 
 .TP
 \fBpackage.mask\fR
 \fBpackage.mask\fR primarily blocks the use of packages that cause
 problems or are known to have issues on disparate systems. It resides in
-\fI${PORTDIR}/profiles\fR. Packages may be unmasked in the file by adding a comment
-character (\fB#\fR) to the beginning of the line which masks the package.
+\fI${PORTDIR}/profiles\fR. Packages may be unmasked in the file by adding
+a comment character (\fB#\fR) to the beginning of the line which masks
+the package.
 .TP
 \fBKEYWORDS\fR
 KEYWORDS are also used for masking packages still in testing. There are
 architecture\-specific keywords for each package that let \fBportage\fR
-know which systems are compatible with the package.  Packages which compile on
-an architecture, but have not been proven to be "stable", are masked with a tilde
-(\fB~\fR) in front of the architecture name.  \fBemerge\fR examines the
-\fBACCEPT_KEYWORDS\fR environment variable to allow or disallow the emerging of
-a package masked by a KEYWORD.  To inform \fBemerge\fR that it should build these
-'testing' versions of packages, you may set \fBACCEPT_KEYWORDS\fR to
-"\fB~arch\fR", where \fBarch\fR is one of \fBx86\fR, \fBppc\fR,
-\fBsparc\fR, \fBsparc64\fR, or \fBalpha\fR.  For example,
-\fBACCEPT_KEYWORDS="~x86" emerge xfree\fR will cause \fBemerge\fR to consider
-KEYWORDS\-masked versions of XFree it decides the packages to build.  \fBWARNING:
-Do \fInot\fR set this variable to anything other than the value cooresponding to
-your architecture.\fR
+know which systems are compatible with the package.  Packages which
+compile on an architecture, but have not been proven to be "stable",
+are masked with a tilde (\fB~\fR) in front of the architecture name.
+\fBemerge\fR examines the \fBACCEPT_KEYWORDS\fR environment variable
+to allow or disallow the emerging of a package masked by a KEYWORD.
+To inform \fBemerge\fR that it should build these 'testing' versions
+of packages, you may set \fBACCEPT_KEYWORDS\fR to "\fB~arch\fR", where
+\fBarch\fR is one of \fBx86\fR, \fBppc\fR, \fBsparc\fR, \fBsparc64\fR,
+or \fBalpha\fR.  For example, \fBACCEPT_KEYWORDS="~x86" emerge xfree\fR
+will cause \fBemerge\fR to consider KEYWORDS\-masked versions of XFree
+it decides the packages to build.  \fBWARNING:\fR Do \fInot\fR set this
+variable to anything other than the value corresponding to your
+architecture.
 .SH "REPORTING BUGS"
 Please report any bugs you encounter through our website:
 .LP 
 \fBhttp://bugs.gentoo.org/\fR
 .LP 
-Please include the output of \fBemerge info\fR when you submit your bug report.
+Please include the output of \fBemerge info\fR when you submit your
+bug report.
 .SH "SEE ALSO"
 .BR ebuild (1),
 .BR ebuild (5),
@@ -253,33 +335,44 @@ The \fBgentoolkit\fR package contains useful scripts such as \fBqpkg\fR
 .SH "FILES"
 .TP
 \fB/var/cache/edb/world\fR 
-Contains a list of all user\-specified packages.  You can safely edit this file, adding
-packages that you want to be considered in \fBworld\fR class updates and removing those
-that you do not want to be considered.
+Contains a list of all user\-specified packages.  You can safely edit
+this file, adding packages that you want to be considered in \fBworld\fR
+class updates and removing those that you do not want to be considered.
 .TP
 \fB/etc/make.conf\fR 
-Contains variables for the build process, overriding those in \fBmake.globals\fR. \fBYou should
-edit this file instead of the ones listed below\fR.
+Contains variables for the build process, overriding those in
+\fBmake.globals\fR. \fBYou should edit this file instead of the ones
+listed below\fR.
 .TP
 \fB/etc/make.profile/make.defaults\fR
-Contains profile\-specific variables for the build process.  \fBDo not edit this file\fR.
+Contains profile\-specific variables for the build process. \fBDo not
+edit this file\fR.
 .TP
 \fB/etc/make.profile/use.defaults\fR
-Contains the USE flags that are enabled by default. \fBDo not edit this file\fR.
+Contains the USE flags that are enabled by default. \fBDo not edit this
+file\fR.
 .TP
 \fB/usr/portage/profiles/use.desc\fR 
-Contains the master list of USE flags with descriptions of their functions. \fBDo not edit
-this file\fR.
+Contains the master list of USE flags with descriptions of their
+functions. \fBDo not edit this file\fR.
 .TP
 \fB/etc/make.profile/virtuals\fR 
-Contains a list of packages used to resolve virtual dependencies. \fBDo not edit this file\fR.
+Contains a list of default packages used to resolve virtual dependencies.
+\fBDo not edit this file\fR.
+.TP
+\fB/var/cache/edb/virtuals\fR 
+Contains a list of packages used to resolve virtual dependencies. In the
+case of failing virtual matches, you may reorder the entries for the
+corresponding virtual here. The first package listed after the virtual is
+the entry used for matching the virtual.
 .TP
 \fB/etc/make.profile/package\fR
-Contains a list of packages used for the base system. The \fBsystem\fR and \fBworld\fR
-classes consult this file. \fBDo not edit this file\fR.
+Contains a list of packages used for the base system. The \fBsystem\fR
+and \fBworld\fR classes consult this file. \fBDo not edit this file\fR.
 .TP
 \fB/etc/make.globals\fR 
-Contains the default variables for the build process. \fBDo not edit this file\fR.
+Contains the default variables for the build process. \fBDo not edit
+this file\fR.
 .SH "AUTHORS"
 Daniel Robbins <drobbins@gentoo.org>
 .br 

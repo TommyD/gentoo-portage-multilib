@@ -1,46 +1,86 @@
-.TH "EBUILD" "5" "Dec 2002" "Portage 2.0.45" "portage"
+.TH "EBUILD" "5" "Feb 2003" "Portage 2.0.47" "portage"
 .SH "NAME"
 ebuild \- the internal format, variables, and functions in an ebuild script
 .SH "DESCRIPTION"
 The
 .BR ebuild (1)
-program accepts a single ebuild script as an argument.  This script contains variables and commands that specify how to download, unpack, patch, compile, install and merge a particular software package from its original sources.  In addition to all of this, the ebuild script can also contain pre/post install/remove commands, as required.
+program accepts a single ebuild script as an argument.  This script
+contains variables and commands that specify how to download, unpack,
+patch, compile, install and merge a particular software package from
+its original sources.  In addition to all of this, the ebuild script
+can also contain pre/post install/remove commands, as required.
 .SH "EXAMPLES"
 Here's a simple example ebuild:
 
 .DS
+# Please have a GPL header on all ebuild submissions. Perferably naming
+.br
+# Gentoo Technologies as the owner. It makes the devs lives easier.
+.br
 # Copyright 1999\-2002 Gentoo Technologies, Inc.
 .br
 # Distributed under the terms of the GNU General Public License v2
 .br
-#\ $Header$
+# The following line
 .br
-
-S=${WORKDIR}/${P}
+# \$Header$
 .br
-DESCRIPTION="Super\-useful stream editor"
+.br
+# The next line is a default setting.
+.br
+#S=${WORKDIR}/${P}
+.br
+# This line contains a _useful_ description and keywords for searching.
+.br
+DESCRIPTION="Super\-useful stream editor (sed)"
+.br
+# A space\-seperated list of URLs. Duplicate files become alternate links.
 .br
 SRC_URI="ftp://alpha.gnu.org/pub/gnu/sed/${P}.tar.gz"
 .br
+# A reference to the projects homepage or where info can be found.
+.br
 HOMEPAGE="http://www.gnu.org/software/sed/sed.html"
 .br
-KEYWORDS="x86 ppc sparc mips alpha arm hppa"
+# ALL submitted ebuilds only list the ~arch of any verified arch and
 .br
+# may add the ~arch of other previously stable arch's to it as well.
+.br
+KEYWORDS="~x86"
+.br
+# This _must_ be defined, and will normally be "0".
 SLOT="0"
+.br
+# This _must_ be a valid license. See \fB/usr/portage/licenses\fR.
 .br
 LICENSE="GPL\-2"
 .br
+# List every non-arch USE variable tested against in this ebuild here.
+.br
 IUSE=""
 .br
-
+# Specify the minimum requirements to compile/install this package.
+.br
 DEPEND="virtual/glibc"
 .br
-RDEPEND="virtual/glibc"
+# Specify the minimum to install for a binary package. Defaults to
+.br
+# the same value contained in DEPEND if not set.
+.br
+#RDEPEND="virtual/glibc"
 .br
 
 src_compile() {
 .br
+	# This provides a convenient way to provide configure with all the
+.br
+	# necessary options. econf() will die if it fails.
+.br
 	econf
+.br
+	# emake works the same way as econf(), passing in default options,
+.br
+	# presently limited to MAKE_OPTS. emake \fBwill not\fR die itself.
 .br
 	emake || die "emake failed"
 .br
@@ -48,20 +88,27 @@ src_compile() {
 
 src_install() {
 .br
+	# Path to install into
 	into /usr
 .br
+	# Denotes '.info' files to install. Sets proper paths after into().
 	doinfo doc/sed.info
 .br
+	# Installs and compresses man pages into the proper directories.
 	doman doc/sed.1
 .br
 	into /
 .br
+	# Installs binaraies, seting them executable.
 	dobin sed/sed
 .br
+	# Creates the /usr/bin dir in the ${D} destination directory.
 	dodir /usr/bin
 .br
+	# Creates symlinks properly inside the ${D} directory.
 	dosym /bin/sed /usr/bin/sed
 .br
+	# Installs documentation and compresses it.
 	dodoc COPYING NEWS README* THANKS TODO AUTHORS BUGS ANNOUNCE
 .br
 }
@@ -70,59 +117,60 @@ src_install() {
 .B MISC USAGE NOTES
 - PORTAGE* and PORTDIR* variables may be found in \fBmake.conf\fR(5).
 .br
-- When assigning values to variables in ebuilds, you cannot have a space between the variable name and the equal sign.
+- When assigning values to variables in ebuilds, you \fBcannot have a space\fR
+between the variable name and the equal sign.
 .TP
 \fBP\fR
-This variable contains the package name without the ebuild revision. This variable should NEVER be modified.
+This variable contains the package name without the ebuild revision.
+This variable must NEVER be modified.
 .br
-.BR 'xfree\-4.2.1\-r2.ebuild'\ $P=='xfree\-4.2.1'
+.BR 'xfree\-4.2.1\-r2.ebuild'\ \-\-> \fB$P\fR=='\fIxfree\-4.2.1\fR'
 .TP
 \fBPN\fR
 Contains the name of the script without the version number.
 .br
-.BR 'xfree\-4.2.1\-r2.ebuild'\ $PN=='xfree'
+.BR 'xfree\-4.2.1\-r2.ebuild'\ \-\-> \fB$PN\fR=='\fIxfree\fR'
 .TP
 \fBPV\fR
 Contains the version number without the revision.
 .br
-.BR 'xfree\-4.2.1\-r2.ebuild'\ $PV=='4.2.1'
+.BR 'xfree\-4.2.1\-r2.ebuild'\ \-\-> \fB$PV\fR=='\fI4.2.1\fR'
 .TP
 \fBPR\fR
 Contains the revision number or 'r0' if no revision number exists.
 .br
-.BR 'xfree\-4.2.1\-r2.ebuild'\ $PV=='r2'
+.BR 'xfree\-4.2.1\-r2.ebuild'\ \-\-> \fB$PV\fR=='\fIr2\fR'
 .TP
 \fBPF\fR
-Contains the full package name \fI[PN]\-[PV]_r[PR]\fR
+Contains the full package name \fI[PN]\-[PV]-r[PR]\fR
 .br
-.BR 'xfree\-4.2.1\-r2.ebuild'\ $P=='xfree\-4.2.1\-r2'
+.BR 'xfree\-4.2.1\-r2.ebuild'\ \-\-> \fB$P\fR=='\fIxfree\-4.2.1\-r2\fR'
 .TP
 \fBA\fR
-Contains all source files required for the package.  This variable must no
-longer be defined because it is autogenerated from the \fISRC_URI\fR
-variables.
+Contains all source files required for the package.  This variable must
+not be defined. It is autogenerated from the \fISRC_URI\fR variables.
 .TP
 \fBWORKDIR\fR = \fI"${PORTAGE_TMPDIR}/portage/${PF}/work"\fR
 Contains the path to the package build root.  Do not modify this variable.
 .TP
 \fBFILESDIR\fR = \fI"${PORTDIR}/${CATEGORY}/${PF}/files"\fR
-Contains the path to the 'files' sub folder in the package specific location in
-the portage tree.  Do not modify this variable.
+Contains the path to the 'files' sub folder in the package specific
+location in the portage tree.  Do not modify this variable.
 .TP
 \fBS\fR = \fI"${WORKDIR}/${P}"\fR
-Contains the path to the temporary \fIbuild directory\fR.  This variable is used by the
-functions \fIsrc_compile\fR and \fIsrc_install\fR.  Both are executed
-with \fIS\fR as the current directory.  This variable may be modified to match the
-extraction directory of a tarball for the package.
+Contains the path to the temporary \fIbuild directory\fR.  This variable
+is used by the functions \fIsrc_compile\fR and \fIsrc_install\fR.  Both
+are executed with \fIS\fR as the current directory.  This variable may
+be modified to match the extraction directory of a tarball for the package.
 .TP
 \fBT\fR = \fI"${PORTAGE_TMPDIR}/portage/${PF}/temp"\fR
-Contains the path to a \fItemporary directory\fR.  You may use this for whatever
-you like.
+Contains the path to a \fItemporary directory\fR.  You may use this for
+whatever you like.
 .TP
 \fBD\fR = \fI"${PORTAGE_TMPDIR}/portage/${PF}/image"\fR
-Contains the path to the temporary \fIinstall directory\fR.  Every write operation that
-does not involve the helper tools and functions (found below) should be prefixed with
-${D}.  Do not modify this variable.
+Contains the path to the temporary \fIinstall directory\fR.  Every write
+operation that does not involve the helper tools and functions (found
+below) should be prefixed with ${D}.  Do not modify this variable.
 .TP
 \fBDESCRIPTION\fR = \fI"A happy little package"\fR
 Should contain a short description of the package.
@@ -137,28 +185,31 @@ Should contain a list of URL's for the sources main sites and other further
 package dependent information.
 .TP
 \fBKEYWORDS\fR = \fI[-~][x86,ppc,sparc,mips,alpha,arm,hppa]\fR
-Should contain appropriate list of arches that the ebuild is know to work/not work.  By
-default if you do not know if an ebuild runs under a particular arch simply omit that
-KEYWORD.  If the ebuild will not work on that arch include it as \-ppc for example.  If
-the ebuild is being submitted for inclusion, it must have ~arch set for architectures
-where it has been PROVEN TO WORK.  (Packages KEYWORDed this way may be unmasked for
-testing by setting ACCEPT_KEYWORDS="~arch" on the command line, or in \fBmake.conf\fR(5))
-For an authoritative list please review /usr/portage/profiles/arch.list.
+Should contain appropriate list of arches that the ebuild is know to
+work/not work.  By default if you do not know if an ebuild runs under
+a particular arch simply omit that KEYWORD.  If the ebuild will not
+work on that arch include it as \-ppc for example.  If the ebuild is
+being submitted for inclusion, it must have ~arch set for architectures
+where it has been PROVEN TO WORK.  (Packages KEYWORDed this way may be
+unmasked for testing by setting ACCEPT_KEYWORDS="~arch" on the command
+line, or in \fBmake.conf\fR(5)) For an authoritative list please review
+/usr/portage/profiles/arch.list.
 .TP
 \fBSLOT\fR
 This sets the SLOT for packages that may need to co\-exist.  By default
-you should set \fBSLOT\fR="0" unless you know what you are doing and need to do
-otherwise.  This value should \fINEVER\fR be left undefined.
+you should set \fBSLOT\fR="0" unless you know what you are doing and need
+to do otherwise.  This value should \fINEVER\fR be left undefined.
 .TP
 \fBLICENSE\fR
 This should be a space delimited list of licenses that the package falls
-under.  This \fB_must_\fR be set to a matching license in /usr/portage/licenses/.  
-If the license does not exist in portage yet you must add it first.
+under.  This \fB_must_\fR be set to a matching license in
+/usr/portage/licenses/. If the license does not exist in portage yet you
+must add it first.
 .TP
 \fBIUSE\fR
-This should be a list of any and all USE flags that are leveraged within your 
-build script.  The only USE flags that should not be listed here are arch 
-related flags (see \fBKEYWORDS\fR).
+This should be a list of any and all USE flags that are leveraged within
+your build script.  The only USE flags that should not be listed here are
+arch  related flags (see \fBKEYWORDS\fR).
 .TP
 \fBDEPEND\fR
 This should contain a list of all packages that are required for the
@@ -179,8 +230,9 @@ DEPEND="media-libs/libsdl
 	X? ( virtual/x11 )"
 .TP
 \fBRDEPEND\fR
-This should contain a list of all packages that are required for this program to run (aka runtime depend).  If
-this is not set, then it defaults to the value of \fBDEPEND\fR.
+This should contain a list of all packages that are required for this
+program to run (aka runtime depend).  If this is not set, then it
+defaults to the value of \fBDEPEND\fR.
 .br
 You may use the same syntax to vary dependencies as seen above in \fBDEPEND\fR.
 .TP
@@ -197,24 +249,27 @@ files in \fBSRC_URI\fR will not be downloaded from the \fBGENTOO_MIRRORS\fR.
 like \fInomirror\fR but the files will not be fetched via \fBSRC_URI\fR either.
 .TP
 \fBPROVIDE\fR = \fI"virtual/TARGET"\fR
-This variable should only be used when a package provides a virtual target.  For example,
-blackdown-jdk and sun-jdk provide \fIvirtual/jdk\fR.  This allows for packages to depend on
-\fIvirtual/jdk\fR rather than on blackdown or sun specifically.
+This variable should only be used when a package provides a virtual target.
+For example, blackdown-jdk and sun-jdk provide \fIvirtual/jdk\fR.  This
+allows for packages to depend on \fIvirtual/jdk\fR rather than on blackdown
+or sun specifically.
 .SH "FUNCTIONS"
 .TP
 .B pkg_nofetch
-If you turn on \fIfetch\fR in \fBRESTRICT\fR, then this function will be run when the
-files in \fBSRC_URI\fR cannot be found.  Useful for displaying information to the user on
-*how* to obtain said files.
+If you turn on \fIfetch\fR in \fBRESTRICT\fR, then this function will be
+run when the files in \fBSRC_URI\fR cannot be found.  Useful for
+displaying information to the user on *how* to obtain said files.
 .TP
 .B pkg_setup
-This function can be used if the package needs specific setup actions or checks to be preformed before anything else.
+This function can be used if the package needs specific setup actions or
+checks to be preformed before anything else.
 .br
 Initial working directory of ${PORTAGE_TMPDIR}.
 .TP
 .B src_unpack
-This function is used to unpack all the sources in \fIA\fR to \fIWORKDIR\fR.  If not defined in the \fIebuild
-script\fR it calls \fIunpack ${A}\fR.  Any patches and other pre configure/compile modifications should be done here.
+This function is used to unpack all the sources in \fIA\fR to \fIWORKDIR\fR.
+If not defined in the \fIebuild script\fR it calls \fIunpack ${A}\fR. Any
+patches and other pre configure/compile modifications should be done here.
 .br
 Initial working directory of $WORKDIR.
 .TP
@@ -224,14 +279,15 @@ All necessary steps for configuration and compilation should be done in here.
 Initial working directory of $S.
 .TP
 .B src_install
-Should contain everything required to install the package in the temporary \fIinstall directory\fR.
+Should contain everything required to install the package in the temporary
+\fIinstall directory\fR.
 .br
 Initial working directory of $S.
 .TP
 .B pkg_preinst pkg_postinst
 All modifications required on the live\-filesystem before and after the
-package is merged should be placed here.  
-Also commentary for the user should be listed here as it will be displayed last.
+package is merged should be placed here. Also commentary for the user
+should be listed here as it will be displayed last.
 .br
 Initial working directory of $PWD.
 .TP
@@ -247,12 +303,13 @@ Initial working directory of $PWD.
 .SH "HELPER FUNCTIONS: GENERAL"
 .TP
 \fBdie\fR \fI[reason]\fR
-Causes the current emerge process to be aborted.  The final display will include \fIreason\fR.
+Causes the current emerge process to be aborted. The final display will
+include \fIreason\fR.
 .TP
 \fBuse\fR \fI<USE item>\fR
-If \fIUSE item\fR is in the \fBUSE\fR variable, \fIUSE item\fR will be echoed and the
-function will return 0.  If \fIUSE item\fR is not in the \fBUSE\fR variable, the
-function will return 1.
+If \fIUSE item\fR is in the \fBUSE\fR variable, \fIUSE item\fR will be
+echoed and the function will return 0.  If \fIUSE item\fR is not in the
+\fBUSE\fR variable, the function will return 1.
 .RS
 .TP
 .I Example:
@@ -278,11 +335,14 @@ fi
 .RE
 .TP
 \fBuse_with\fR \fI<USE item>\fR \fI[configure option]\fR
-Useful for creating custom options to pass to a configure script.  If \fIUSE item\fR is
-in the \fBUSE\fR variable, then the string \fI--with-[configure option]\fR will be
-echoed.  If \fIUSE item\fR is not in the \fBUSE\fR variable, then the string
-\fI--without-[configure option]\fR will be echoed.  If \fIconfigure option\fR is not
-specified, than \fIUSE item\fR will be used instead.
+Useful for creating custom options to pass to a configure script. If
+\fIUSE item\fR is in the \fBUSE\fR variable, then the string
+\fI--with-[configure option]\fR will be echoed.  If \fIUSE item\fR is
+not in the \fBUSE\fR variable, then the string
+\fI--without-[configure option]\fR will be echoed.  If
+\fIconfigure option\fR is not specified, than \fIUSE item\fR will be
+used instead. You should depend on >=sys-apps/portage-2.0.46-r12 to
+use this feature for the time being. It is a new feature.
 .RS
 .TP
 .I Example:
@@ -306,31 +366,40 @@ myconf="`use_with pic`"
 .RE
 .TP
 \fBuse_enable\fR \fI<USE item>\fR \fI[configure option]\fR
-Useful for creating custom options to pass to a configure script.  If \fIUSE item\fR is
-in the \fBUSE\fR variable, then the string \fI--enable-[configure option]\fR will be
-echoed.  If \fIUSE item\fR is not in the \fBUSE\fR variable, then the string
-\fI--disable-[configure option]\fR will be echoed.  If \fIconfigure option\fR is not
-specified, than \fIUSE item\fR will be used instead.
+Useful for creating custom options to pass to a configure script. If
+\fIUSE item\fR is in the \fBUSE\fR variable, then the string
+\fI--enable-[configure option]\fR will be echoed.  If \fIUSE item\fR is
+not in the \fBUSE\fR variable, then the string
+\fI--disable-[configure option]\fR will be echoed. If \fIconfigure option\fR
+is not specified, than \fIUSE item\fR will be used instead. You should
+depend on >=sys-apps/portage-2.0.46-r12 to use this feature for the
+time being. It is a new feature.
 .br
 See \fBuse_with\fR for an example.
 .TP
 \fBhas\fR \fI<item>\fR \fI<item list>\fR
 If \fIitem\fR is in \fIitem list\fR, then \fIitem\fR is echoed and \fBhas\fR
-returns 0.  Otherwise, nothing is echoed and 1 is returned.
+returns 0.  Otherwise, nothing is echoed and 1 is returned. You should
+depend on >=sys-apps/portage-2.0.46-r12 to use this feature for the
+time being. It is a new feature.
 .br
-The \fIitem list\fR is delimited by the \fIIFS\fR variable.  This variable has a
-default value of ' ', or a space.  It is a \fBbash\fR(1) setting.
+The \fIitem list\fR is delimited by the \fIIFS\fR variable.  This variable
+has a default value of ' ', or a space.  It is a \fBbash\fR(1) setting.
 .TP
 \fBhas_version\fR \fI<category/package-version>\fR
-Check to see if \fIcategory/package-version\fR is installed on the system.  The parameter
-accepts all values that are acceptable in the \fBDEPEND\fR variable.  The function returns
-0 if \fIcategory/package-version\fR is installed, 1 otherwise.
+Check to see if \fIcategory/package-version\fR is installed on the system.
+The parameter accepts all values that are acceptable in the \fBDEPEND\fR
+variable.  The function returns 0 if \fIcategory/package-version\fR is
+installed, 1 otherwise. You should depend on >=sys-apps/portage-2.0.46-r12
+to use this feature for the time being. It is a new feature.
 .TP
 \fBbest_version\fR \fI<package name>\fR
-This function will look up \fIpackage name\fR in the database of currently installed
-programs and echo the "best version" of the package that is currently installed.  The
-function returns 0 if there is a package that matches \fIpackage name\fR.  Otherwise,
-the function will return 1.
+This function will look up \fIpackage name\fR in the database of currently
+installed programs and echo the "best version" of the package that is
+currently installed.  The function returns 0 if there is a package that
+matches \fIpackage name\fR.  Otherwise, the function will return 1. You
+should depend on >=sys-apps/portage-2.0.46-r12 to use this feature for the
+time being. It is a new feature.
 .RS
 .TP
 .I Example:
@@ -341,8 +410,8 @@ VERINS=`best_version net-ftp/glftpd`
 .SH "HELPER FUNCTIONS: UNPACK"
 .TP
 \fBunpack\fR \fI<source>\fR \fI[list of more sources]\fR
-This function uncompresses and/or untars a list of sources into the current directory.  The
-function will append \fIsource\fR to the \fBDISTDIR\fR variable.
+This function uncompresses and/or untars a list of sources into the current
+directory. The function will append \fIsource\fR to the \fBDISTDIR\fR variable.
 .SH "HELPER FUNCTIONS: COMPILE"
 .TP
 \fBeconf\fR \fI[configure options]\fR
@@ -366,19 +435,22 @@ configure \\
 .br
 	\fIconfigure options\fR
 
-\fB*Note:\fR There is no need to use '|| \fBdie\fR' because \fBeconf\fR checks for you
+\fB*Note:\fR There is no need to use '|| \fBdie\fR' because \fBeconf\fR
+checks for you
 .TP
 \fBemake\fR \fI[make options]\fR
-This is used as a replacement for make.  Performs 'make ${MAKEOPTS} \fImake options\fR'
-(as set in /etc/make.globals), default is \-j2.
+This is used as a replacement for make.  Performs
+'make ${MAKEOPTS} \fImake options\fR' (as set in /etc/make.globals),
+default is MAKEOPTS="\-j2".
 
 \fB***warning***\fR
 .br
-if you are going to use \fBemake\fR, make sure your build is happy with paralell makes
-(make \-j2).  It should be tested thoroughly as paralell makes are notorious
-for failing _sometimes_ but not always.
+if you are going to use \fBemake\fR, make sure your build is happy with
+paralell makes (make \-j2).  It should be tested thoroughly as parallel
+makes are notorious for failing _sometimes_ but not always.
 
-\fB*Note:\fR Be sure to use '|| \fBdie\fR' constructs to ensure \fBemake\fR success
+\fB*Note:\fR Be sure to use '|| \fBdie\fR' constructs to ensure
+\fBemake\fR success
 .SH "HELPER FUNCTIONS: INSTALL"
 .TP
 \fBeinstall\fR \fI[make options]\fR
@@ -398,7 +470,8 @@ make prefix=${D}/usr \\
 .br
             \fImake options\fR install
 
-\fB*Note:\fR There is no need to use '|| \fBdie\fR' because \fBeinstall\fR checks for you
+\fB*Note:\fR There is no need to use '|| \fBdie\fR' because \fBeinstall\fR
+checks for you
 
 .PD 0
 .TP
@@ -412,17 +485,18 @@ make prefix=${D}/usr \\
 .TP
 .B prepallstrip
 .PD 1
-Useful for when a package installs into \fB${D}\fR via scripts (i.e. makefiles).  If you
-want to be sure that libraries are executable, aclocal files are installed into the
-right place, doc/info/man files are all compressed, and that executables are all
-stripped of debugging symbols, then use these suite of functions.
+Useful for when a package installs into \fB${D}\fR via scripts
+(i.e. makefiles).  If you want to be sure that libraries are executable,
+aclocal files are installed into the right place, doc/info/man files are
+all compressed, and that executables are all stripped of debugging symbols,
+then use these suite of functions.
 .RS
 .PD 0
 .TP
 .B prepall:
-Runs \fBprepallman\fR, \fBprepallinfo\fR, \fBprepallstrip\fR, sets libraries +x,
-and then checks aclocal directories.  Please note this does \fI*not*\fR run
-\fBprepalldocs\fR.
+Runs \fBprepallman\fR, \fBprepallinfo\fR, \fBprepallstrip\fR, sets
+libraries +x, and then checks aclocal directories.  Please note this
+does \fI*not*\fR run \fBprepalldocs\fR.
 .TP
 .B prepalldocs:
 Compresses all doc files in ${D}/usr/share/doc.
@@ -453,23 +527,26 @@ Similiar to the \fBprepall\fR functions, these are subtle in their differences.
 .PD 0
 .TP
 .B prepinfo:
-If a \fIdir\fR is not specified, then \fBprepinfo\fR will assume the dir \fIusr\fR.
-\fBprepinfo\fR will then compress all the files in ${D}/\fIdir\fR/info.
+If a \fIdir\fR is not specified, then \fBprepinfo\fR will assume the dir
+\fIusr\fR. \fBprepinfo\fR will then compress all the files in
+${D}/\fIdir\fR/info.
 .TP
 .B preplib:
-If a \fIdir\fR is not specified, then \fBpreplib\fR will assume the dir \fIusr\fR.
-\fBpreplib\fR will then run 'ldconfig -n -N' on ${D}/\fIdir\fR/lib.
+If a \fIdir\fR is not specified, then \fBpreplib\fR will assume the dir
+\fIusr\fR. \fBpreplib\fR will then run 'ldconfig -n -N' on ${D}/\fIdir\fR/lib.
 .TP
 .B preplib.so:
-All the files with '.so' in their name and are found in ${D}/\fIdir\fR will be
-stripped of their debug symbols.  You may specify multiple directories.
+All the files with '.so' in their name and are found in ${D}/\fIdir\fR will
+be stripped of their debug symbols.  You may specify multiple directories.
 .TP
 .B prepman:
-If a \fIdir\fR is not specified, then \fBprepman\fR will assume the dir \fIusr\fR.
-\fBprepman\fR will then compress all the files in ${D}/\fIdir\fR/man/*/.
+If a \fIdir\fR is not specified, then \fBprepman\fR will assume the dir
+\fIusr\fR. \fBprepman\fR will then compress all the files in
+${D}/\fIdir\fR/man/*/.
 .TP
 .B prepstrip:
-All the files found in ${D}/\fIdir\fR will be stripped.  You may specify multiple directories.
+All the files found in ${D}/\fIdir\fR will be stripped.  You may specify
+multiple directories.
 .RE
 .PD 1
 .TP
@@ -489,20 +566,22 @@ Creates a directory inside of ${D}.
 creates ${D}/usr/lib/apache
 .TP
 \fBinto\fR \fI<path>\fR
-Sets the root (\fIDESTTREE\fR) for other functions like \fBdobin\fR, \fBdosbin\fR, \fBdoman\fR,
-\fBdoinfo\fR, \fBdolib\fR.
+Sets the root (\fIDESTTREE\fR) for other functions like \fBdobin\fR,
+\fBdosbin\fR, \fBdoman\fR, \fBdoinfo\fR, \fBdolib\fR.
 .br
 The default root is /usr.
 .TP
 \fBkeepdir\fR \fI<path>\fR
-Tells portage to leave a directory behind even if it is empty.  Functions the same as
-\fBdodir\fR.
+Tells portage to leave a directory behind even if it is empty.  Functions
+the same as \fBdodir\fR.
 .TP
 \fBdobin\fR \fI<binary> [list of more binaries]\fR
-Installs a \fIbinary\fR or a list of binaries into \fIDESTTREE\fR/bin.  Creates all necessary dirs.
+Installs a \fIbinary\fR or a list of binaries into \fIDESTTREE\fR/bin.
+Creates all necessary dirs.
 .TP
 \fBdosbin\fR \fI<binary> [list of more binaries]\fR
-Installs a \fIbinary\fR or a list of binaries into \fIDESTTREE\fR/sbin.  Creates all necessary dirs.
+Installs a \fIbinary\fR or a list of binaries into \fIDESTTREE\fR/sbin.
+Creates all necessary dirs.
 
 .PD 0
 .TP
@@ -516,8 +595,9 @@ Installs a library or a list of libraries into \fIDESTTREE\fR/lib.
 Creates all necessary dirs.
 .TP
 \fBdoman\fR \fI<man-page> [list of more man\-pages]\fR
-Installs manual\-pages into \fIDESTDIR\fR/man/man[1\-8n] depending on the manual file ending.  
-The files are gzipped if they are not already.  Creates all necessary dirs.  
+Installs manual\-pages into \fIDESTDIR\fR/man/man[1\-8n] depending on the
+manual file ending. The files are gzipped if they are not already. Creates
+all necessary dirs.
 
 .PD 0
 .TP
@@ -528,18 +608,23 @@ The files are gzipped if they are not already.  Creates all necessary dirs.
 Performs the ln command as either a hard link or symlink.
 .TP
 \fBdohtml\fR \fI [\-a filetypes] [\-r] [\-x list\-of\-dirs\-to\-ignore] [list\-of\-files\-and\-dirs]\fR
-Installs the files in the list of files (space\-separated list) into /usr/share/doc/${PF}/html provided the file
-ends in .html, .png, .js, .jpg or .css.  Setting \-a limits what types of files will be included, \-A appends to the default list, setting \-x sets which dirs to exclude (CVS excluded by default), \-r sets recursive.
+Installs the files in the list of files (space\-separated list) into
+/usr/share/doc/${PF}/html provided the file ends in .html, .png, .js,
+.jpg or .css.  Setting \-a limits what types of files will be included,
+\-A appends to the default list, setting \-x sets which dirs to exclude
+(CVS excluded by default), \-r sets recursive.
 .TP
 \fBdoinfo\fR \fI<info-file> [list of more info\-files]\fR
-Installs info\-pages into \fIDESTDIR\fR/info.  Files are automatically gzipped.  Creates all necessary dirs.
+Installs info\-pages into \fIDESTDIR\fR/info.  Files are automatically
+gzipped.  Creates all necessary dirs.
 .TP
 \fBdojar\fR \fI<jar file> [list of more jar files]\fR
-Installs jar files into /usr/share/${PN}/lib and adds them to /usr/share/${PN}/classpath.env.
+Installs jar files into /usr/share/${PN}/lib and adds them to
+/usr/share/${PN}/classpath.env.
 .TP
 \fBdomo\fR \fI<locale-file> [list of more locale\-files] \fR
-Installs locale\-files into \fIDESTDIR\fR/usr/share/locale/[LANG] depending on local\-file's ending.  Creates all
-necessary dirs.
+Installs locale\-files into \fIDESTDIR\fR/usr/share/locale/[LANG]
+depending on local\-file's ending.  Creates all necessary dirs.
 
 .PD 0
 .TP
@@ -547,7 +632,8 @@ necessary dirs.
 .TP
 \fBfperms\fR \fI<permissions> <file> [files]\fR
 .PD 1
-Performs chown (\fBfowners\fR) or chmod (\fBfperms\fR), applying \fIpermissions\fR to \fIfiles\fR.
+Performs chown (\fBfowners\fR) or chmod (\fBfperms\fR), applying
+\fIpermissions\fR to \fIfiles\fR.
 .TP
 \fBinsinto\fR \fI[path]\fR
 Sets the root (\fIINSDESTTREE\fR) for the \fBdoins\fR function.
@@ -555,7 +641,8 @@ Sets the root (\fIINSDESTTREE\fR) for the \fBdoins\fR function.
 The default root is /.
 .TP
 \fBinsopts\fR \fI[options for install(1)]\fR
-Can be used to define options for the install function used in \fBdoins\fR.  The default is \fI\-m0644\fR.
+Can be used to define options for the install function used in
+\fBdoins\fR.  The default is \fI\-m0644\fR.
 .TP
 \fBdoins\fR \fI<file> [list of more files]\fR
 Installs files into \fIINSDESTTREE\fR.  This function uses \fBinstall\fR(1).
@@ -566,8 +653,8 @@ Sets the root (\fIEXEDESTTREE\fR) for the \fBdoexe\fR function.
 The default root is /.
 .TP
 \fBexeopts\fR \fI[options for install(1)]\fR
-Can be used to define options for the install function used in \fBdoexe\fR.  The
-default is \fI\-m0755\fR.
+Can be used to define options for the install function used in \fBdoexe\fR.
+The default is \fI\-m0755\fR.
 .TP
 \fBdoexe\fR \fI<executable> [list of more executables]\fR
 Installs a executable or a list of executable into \fIEXEDESTTREE\fR.
@@ -619,7 +706,8 @@ The helper apps in \fI/usr/lib/portage/bin\fR.
 Contains variables for the build\-process and overwrites those in make.defaults.
 .TP
 \fB/etc/make.globals\fR
-Contains the default variables for the build\-process, you should edit \fI/etc/make.conf\fR instead.
+Contains the default variables for the build\-process, you should edit
+\fI/etc/make.conf\fR instead.
 .SH "AUTHORS"
 Achim Gottinger <achim@gentoo.org>
 .br
