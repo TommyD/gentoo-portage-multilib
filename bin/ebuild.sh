@@ -601,10 +601,14 @@ then
 	export DEBUGBUILD="yes"
 fi
 
-if [ "${RDEPEND}" = "" ]
+# Note: this next line is not the same as export RDEPEND=${RDEPEND:-${DEPEND}}
+# That will test for unset *or* NULL ("").  We want just to set for unset...
+
+if [ -z "`set | grep ^RDEPEND=`" ]
 then
 	export RDEPEND=${DEPEND}
 fi
+
 count=1
 while [ $count -le $# ]
 do

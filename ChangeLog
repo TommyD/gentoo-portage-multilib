@@ -1,6 +1,11 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  18 Mar 2002; Daniel Robbins <drobbins@gentoo.org>: RDEPEND was getting set
+  to DEPEND even if there was an RDEPEND="" in the ebuild.  This has now been
+  fixed and RDEPEND will only get to DEPEND if RDEPEND has unset (not "unset
+  or null", as it was before this fix.)
+  
   18 Mar 2002; Daniel Robbins <drobbins@gentoo.org>: emerge: circular
   dependencies error will result in the digraph dependencies being printed to
   stdout, greatly simplifying debugging.
