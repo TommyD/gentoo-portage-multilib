@@ -9,6 +9,10 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  14 Jul 2004; Marius Mauch <genone@gentoo.org> bin/etc-update:
+  Added a hint to etc-update so people that don't know what to do don't use -3
+  or -5 by accident.
+
   12 Jul 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge:
   Adjusted masked binary checking code to exclude --usepkgonly.
 

@@ -118,6 +118,7 @@ configuration file is followed by a list of possible replacement files."
 			if (( ${mode} == 0 )); then
 				cat ${TMP}/menuitems
 				echo    "Please select a file to edit by entering the corresponding number."
+				echo    "              (don't use -3 or -5 if you're unsure what to do)"
 				echo    "              (-1 to exit) (-3 to auto merge all remaining files)"
 				echo -n "                           (-5 to auto-merge AND not use 'mv -i'): "
 				read input
