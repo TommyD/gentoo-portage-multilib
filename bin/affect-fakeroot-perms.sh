@@ -13,7 +13,7 @@ while read l; do
 		p="${r/=*}"
 		p="${p:1}"
 		p="$(printf %o 0x${p})"
-		p="${p:${#p}-3}"
+		p="${p:${#p}-4}"
 		f="${r/*=}"
 		chown "$o" "$f"
 		chmod "$p" "$f"

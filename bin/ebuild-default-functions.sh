@@ -399,6 +399,7 @@ dyn_install() {
 	#our libtool to create problematic .la files
 	export PWORKDIR="$WORKDIR"
 	src_install 
+	return
 	#|| abort_install "fail"
 	prepall
 	cd "${D}"
@@ -437,12 +438,33 @@ dyn_install() {
 	if [[ $UNSAFE > 0 ]]; then
 		die "There are ${UNSAFE} unsafe files. Portage will not install them."
 	fi
-	
-	find "${D}/" -user  portage -print0 | $XARGS -0 -n100 chown root
+
+	function stat_perms() {
+		local f
+		f=$(stat -c '%f' "$1")
+		f=$(printf %o ox$f)
+		f="${f:${#f}-4}"
+		echo $f
+	}
+	local file
+	find "${D}/" -user  portage -print0 | while read file; do
+		s=$(stat_perms $file)
+		chown root "$file"
+		chmod "$s" "$file"
+	done
+
 	if [ "$USERLAND" == "BSD" ]; then
-		find "${D}/" -group portage -print0 | $XARGS -0 -n100 chgrp wheel
+		find "${D}/" -group portage -print0 | while read file; do
+			s=$(stat_perms "$file")
+			chgrp wheel "$file"
+			chmod "%s" "$file"
+		done
 	else
-		find "${D}/" -group portage -print0 | $XARGS -0 -n100 chgrp root
+		find "${D}/" -group portage -print0 | while read file; do
+			s=$(stat_perms "$file")
+			chgrp root "$file"
+			chmod "%s" "$file"
+		done
 	fi
 
 	echo ">>> Completed installing into ${D}"
