@@ -85,12 +85,9 @@ esyslog() {
 
 use() {
 	local x
-	for x in ${USE}
-	do
-		if [ "${x}" = "${1}" ]
-		then
-			#tty --quiet < /dev/stdout || echo "${x}"
-			echo "${x}"
+	for x in ${USE}; do
+		if [ "${x}" == "${1}" ]; then
+			tty --quiet < /dev/stdout || echo "${x}"
 			return 0
 		fi
 	done
@@ -108,8 +105,7 @@ has() {
 	do
 		if [ "${x}" = "${me}" ]
 		then
-			#tty --quiet < /dev/stdout || echo "${x}"
-			echo "${x}"
+			tty --quiet < /dev/stdout || echo "${x}"
 			return 0
 		fi
 	done
@@ -135,7 +131,13 @@ best_version() {
 use_with() {
 	if [ -z "$1" ]; then
 		echo "!!! use_with() called without a parameter." >&2
+		echo "!!! use_with <USEFLAG> [<flagname> [value]]" >&2
 		return
+	fi
+
+	local UW_SUFFIX=""	
+	if [ ! -z "${3}" ]; then
+		UW_SUFFIX="=${3}"
 	fi
 
 	local UWORD="$2"
@@ -144,7 +146,7 @@ use_with() {
 	fi
 	
 	if use $1 &>/dev/null; then
-		echo "--with-${UWORD}"
+		echo "--with-${UWORD}${UW_SUFFIX}"
 		return 0
 	else
 		echo "--without-${UWORD}"
@@ -155,7 +157,13 @@ use_with() {
 use_enable() {
 	if [ -z "$1" ]; then
 		echo "!!! use_enable() called without a parameter." >&2
+		echo "!!! use_enable <USEFLAG> [<flagname> [value]]" >&2
 		return
+	fi
+
+	local UE_SUFFIX=""	
+	if [ ! -z "${3}" ]; then
+		UE_SUFFIX="=${3}"
 	fi
 
 	local UWORD="$2"
@@ -164,7 +172,7 @@ use_enable() {
 	fi
 	
 	if use $1 &>/dev/null; then
-		echo "--enable-${UWORD}"
+		echo "--enable-${UWORD}${UE_SUFFIX}"
 		return 0
 	else
 		echo "--disable-${UWORD}"

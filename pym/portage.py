@@ -3915,8 +3915,9 @@ class dblink:
 		"create a dblink object for cat/pkg.  This dblink entry may or may not exist"
 		self.cat=cat
 		self.pkg=pkg
-		self.dbdir=myroot+"/var/db/pkg/"+cat+"/"+pkg
+		self.dbdir=os.path.normpath(myroot+"///var/db/pkg/"+cat+"/"+pkg)
 		self.myroot=myroot
+		self.updateprotect()
 
 	def getpath(self):
 		"return path to location of db information (for >>> informational display)"
@@ -4353,6 +4354,51 @@ class dblink:
 		#update environment settings, library paths. DO NOT change symlinks.
 		env_update(makelinks=0)
 		print ">>>",self.cat+"/"+self.pkg,"merged."
+
+
+	def new_protect_filename(self,mydest, newmd5=None):
+		"""Resolves a config-protect filename for merging, optionally
+		using the last filename if the md5 matches.
+		(dest,md5) ==> 'string'            --- path_to_target_filename
+		(dest)     ==> ('next', 'highest') --- next_target and most-recent_target
+		"""
+
+		# config protection filename format:
+		# ._cfg0000_foo
+		# 0123456789012
+		prot_num=-1
+		last_pfile=""
+		
+		if (len(mydest) == 0):
+			raise ValueError, "Empty path provided where a filename is required"
+		if (mydest[-1]=="/"): # XXX add better directory checking
+			raise ValueError, "Directory provided but this function requires a filename"
+		if not os.path.exists(mydest):
+			return mydest
+		
+		real_filename = os.path.basename(mydest)
+		real_dirname  = os.path.dirname(mydest)
+		for pfile in listdir(real_dirname):
+			if pfile[0:5] != "._cfg":
+				continue
+			if pfile[10:] != real_filename:
+				continue
+			try:
+				new_prot_num = string.atoi(pfile[5:9])
+				if new_prot_num > prot_num:
+					prot_num = new_prot_num
+					last_pfile = pfile
+			except:
+				continue
+		prot_num = prot_num + 1
+
+		if last_pfile and newmd5:
+			if perform_md5(real_dirname+"/"+last_pfile) == newmd5:
+				return os.path.normpath(real_dirname+"/"+last_pfile)
+			else:
+				return os.path.normpath(real_dirname+"/._cfg"+string.zfill(prot_num,4)+"_"+real_filename)
+
+		return (real_dirname+"/._cfg"+string.zfill(prot_num,4)+"_"+real_filename, real_dirname+"/"+last_pfile)
 		
 	def mergeme(self,srcroot,destroot,outfile,secondhand,stufftomerge,cfgfiledict,thismtime):
 		srcroot=os.path.normpath(srcroot)+"/"
@@ -4403,11 +4449,15 @@ class dblink:
 				myrealto=os.path.normpath(os.path.join(destroot,myabsto))
 				if mydmode!=None:
 					#destination exists
-					if (not S_ISLNK(mydmode)) and (S_ISDIR(mydmode)):
-						# directory in the way: we can't merge a symlink over a directory
-						print "!!!",mydest,"->",myto
-						# we won't merge this, continue with next file...
-						continue
+					if not S_ISLNK(mydmode):
+						if S_ISDIR(mydmode):
+							# directory in the way: we can't merge a symlink over a directory
+							print "!!!",mydest,"->",myto
+							# we won't merge this, continue with next file...
+							continue
+						if self.isprotected(mydest):
+							mydest = new_protect_filename(myrealdest, mymd5)
+								
 				# if secondhand==None it means we're operating in "force" mode and should not create a second hand.
 				if (secondhand!=None) and (not os.path.exists(myrealto)):
 					# either the target directory doesn't exist yet or the target file doesn't exist -- or
@@ -4515,44 +4565,7 @@ class dblink:
 									del cfgfiledict[myrealdest][0]
 	
 						if cfgprot:
-							pnum=-1
-							# set pmatch to the literal filename only
-							pmatch=os.path.basename(mydest)
-							# config protection filename format:
-							# ._cfg0000_foo
-							# positioning (for reference):
-							# 0123456789012
-							mypfile=""
-							for pfile in listdir(mydestdir):
-								if pfile[0:5]!="._cfg":
-									continue
-								if pfile[10:]!=pmatch:
-									continue
-								try:
-									newpnum=string.atoi(pfile[5:9])
-									if newpnum>pnum:
-										pnum=newpnum
-									mypfile=pfile
-								except:
-									continue
-							pnum=pnum+1
-							# mypfile is set to the name of the most recent cfg management file currently on disk.
-							# if their md5sums match, we overwrite the mypfile rather than creating a new .cfg file.
-							# this keeps on-disk cfg management clutter to a minimum.
-							cleanup=0
-							if mypfile:
-								pmd5=perform_md5(mydestdir+"/"+mypfile)
-								if mymd5==pmd5:
-									mydest=(mydestdir+"/"+mypfile)
-									cleanup=1
-							if not cleanup:
-								# md5sums didn't match, so we create a new name for merging.
-								# we now have pnum set to the official 4-digit config that
-								# should be used for the file we need to install.  Set mydest
-								# to this new value.
-								mydest=os.path.normpath(mydestdir+"/._cfg"+string.zfill(pnum,4)+"_"+pmatch)
-							# add to our md5 list for future reference
-							# (will get written to /var/cache/edb/config)
+							mydest = new_prot_filename(myrealdest, mymd5)
 
 				# whether config protection or not, we merge the new file the
 				# same way.  Unless moveme=0 (blocking directory)
