@@ -1654,7 +1654,7 @@ class config:
 		# Grab the virtuals this package provides and add them into the tree virtuals.
 		virts = mydbapi.aux_get(mycpv, ["PROVIDE"])[0].split()
 
-		cp = dep_getkey(mykey)
+		cp = dep_getkey(mycpv)
 		for virt in virts:
 			virt = dep_getkey(virt)
 			if not self.treeVirtuals.has_key(virt):
