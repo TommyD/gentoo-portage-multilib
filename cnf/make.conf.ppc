@@ -14,6 +14,9 @@
 # The available list of use flags with descriptions is in your portage tree.
 # Use 'less' to view them:  --> less /usr/portage/profiles/use.desc <--
 #
+# Also if you emerge ufed (and use it), it is a nice interface that will 
+# set these for you in this conf file
+#
 # Example:
 #USE="X gtk gnome -alsa"
 
@@ -37,42 +40,27 @@ CHOST="powerpc-unknown-linux-gnu"
 # rios2, rs64a, 601, 602, 603, 603e, 604, 604e, 620, 630, 740, 7400, 7450, 750,
 # power, power2, powerpc, 403, 505, 801, 821, 823, and 860 and common.
 #
-# GCC 2.95.3 lists these processor types as well, but only makes the
-# distinction between pre G3 and G3 or better processors, whereas GCC 3.2 makes
-# much finer distinctions.
-#
-# Testing has shown that -mcpu should not be used an any pre G3 processors for
-# either gcc 2.95.3 or gcc 3.2.
-#
 # Recommended settings for GCC 3.2 only (Gentoo 1.4 or newer) :
 #
 # -maltivec enables optional (still limited) altivec support and should be used
 # only for G4 processors,  on GCC 3.2 or newer.  It also requires that you have
 # the alitvec option compiled into your kernel to take full advantage of this
-# feature.  Note: you should also include -mabi=altivec flag.
+# feature.  Note: you should also include -mabi=altivec flag if using this option.
 #
-# Long term testing has shown that -O3 opts are unreliable on G4's but work
-# on G3 series processors. Use on a G4 at your own risk =)
+# Long term testing has shown that -O3 opts can be unreliable on G4's but work
+# on G3 series processors or earlier. Use on a G4 at your own risk =)
 #
-# Optimized for G4; "cat /proc/cpuinfo" to get your CPU model number and
-# substitute it for the "7400" below (could be "7400", "7450"):
 # Due to some failures with the cpu string of 7450, the dev team recommends 
 # using -mcpu=7400 for all G4 series processors until GCC 3.2 is more mature
 #
-#CFLAGS="-O2 -pipe -mcpu=7400 -maltivec -mabi=altivec -mpowerpc-gfxopt -fsigned-char"
-#
-# Optimized for G3; "cat /proc/cpuinfo" to get your CPU model number and
-# substitute it for the "750" below (may not be necessary to change this number
-# but is safe):
+#CFLAGS="-O2 -pipe -mcpu=7400 -maltivec -mabi=altivec"
 #
 #
-#CFLAGS="-O2 -pipe -mcpu=750 -mpowerpc-gfxopt -fsigned-char"
+# All non G4 PPC boxen should choose this next option.  It will work fine for
+# all G3 and pre machines.  (note it will not hurt pre G3 machines either to 
+# use this mcpu option as it is the default for gcc 3.2.x anyway)
 #
-# All other processors should use these options (don't use -mcpu) these should
-# be safe for all processors and build generic code that will run on all PPC's,
-# if you use BootX to boot you should probably select this option
-#
-#CFLAGS="-O2 -pipe -fsigned-char"
+#CFLAGS="-O3 -pipe -mcpu=750"
 
 # Recommended settings for GCC 2.95.3 only (Gentoo 1.2 or older):
 #
@@ -104,6 +92,9 @@ CXXFLAGS="${CFLAGS}"
 # '~ppc', '~sparc', '~sparc64' are the unstable KEYWORDS for their respective
 # platforms. DO NOT PUT ANYTHING BUT YOUR SPECIFIC ~ARCHITECTURE IN THE LIST.
 # IF YOU ARE UNSURE OF YOUR ARCH, OR THE IMPLICATIONS, DO NOT MODIFY THIS.
+#
+# Note: this really shouldn't be enabled until _AFTER_ you bootstrap and emerge
+# system.  If you want the testing things update after these steps are completed.
 #
 #ACCEPT_KEYWORDS="~ppc"
 

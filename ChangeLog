@@ -1,6 +1,10 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  08 Jan 2003; Mark Guertin <gerk@gentoo.org> cnf/make.conf.ppc:
+  updated make.conf.ppc to remove G3 options for CFLAGS and other
+  small tweaks
+
 *portage-2.0.47 (06 Jan 2003): UserPriv
 
   06 Jan 2003; Nicholas Jones <carpaski@gentoo.org> portage.py:
