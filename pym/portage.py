@@ -3005,7 +3005,6 @@ class portdbapi(dbapi):
 		try:
 			emtime=os.stat(myebuild)[ST_MTIME]
 		except:
-			print "!!! Failed to stat ebuild:",myebuild
 			return None
 		
 		# first, we take a look at the size of the ebuild/cache entry to ensure we

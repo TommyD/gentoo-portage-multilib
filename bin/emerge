@@ -844,13 +844,20 @@ class depgraph:
 				elif (not "--emptytree" in myopts) and portage.db[x[1]]["vartree"].exists_specific_cat(x[2]):
 					myoldbest=portage.best(portage.db[x[1]]["vartree"].dbapi.match(portage.pkgsplit(x[2])[0]))
 
-					myoldslot=portage.portdb.aux_get(myoldbest,["SLOT"])[0]
+					try:
+						myoldslot=portage.db[portage.root]["vartree"].getslot(myoldbest)
+					except:
+						myoldslot=None
 					mynewslot=portage.portdb.aux_get(x[2],["SLOT"])[0]
 
 					if (myoldslot==mynewslot) and portage.pkgcmp(portage.pkgsplit(x[2]), portage.pkgsplit(myoldbest)) < 0:
 						addl="   "+turquoise("U")+blue("D")
 					else:
-						addl="   "+turquoise("U")+" "
+						if myoldslot:
+							addl="   "+turquoise("U")+" "
+						else:
+							addl="   "+turquoise("U")+blue("-")
+
 					if "--changelog" in myopts:
 		 				changelogs.extend(self.calc_changelog(
 							portage.portdb.findname(x[2]),
@@ -892,7 +899,7 @@ class depgraph:
 					if "--columns" in myopts:
 						myprint="["+x[0]+" "+addl+"] "+darkgreen(xs[0])
 						if (newlp-len(myprint)) > 0:
-							myprint=myprint+" "*(newlp-len(myprint))
+							myprint=myprint+(" "*(newlp-len(myprint)))
 						myprint=myprint+"["+darkblue(xs[1]+xs[2])+"] "
 						if (oldlp-len(myprint)) > 0:
 							myprint=myprint+" "*(oldlp-len(myprint))
@@ -1442,7 +1449,7 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 			except:
 				pass
 		mycommand="/usr/bin/rsync -rlptDvz --progress --stats --delete --delete-after --timeout="+str(mytimeout)+" --exclude='distfiles/*' --exclude='packages/*' "
-		if portage.settings.haskey("RSYNC_EXCLUDEFROM"):
+		if portage.settings.has_key("RSYNC_EXCLUDEFROM"):
 			if os.path.exists(portage.settings["RSYNC_EXCLUDEFROM"]):
 				mycommand=mycommand+" --exclude-from "+portage.settings["RSYNC_EXCLUDEFROM"]
 			else:
@@ -1497,8 +1504,8 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 		sys.exit(1)
 	if os.path.exists(myportdir+"/metadata/cache"):
 		print "\n>>> Updating Portage cache...  ",
-		if os.path.exist(portage.dbcachedir):
-			portage.spawn("rm -rf "+portage.dbcachedir)
+		if os.path.exists(portage.dbcachedir):
+			portage.spawn("rm -rf "+portage.dbcachedir,free=1)
 		mynodes=portage.portdb.cp_all()
 		for x in mynodes:
 			myxsplit=x.split("/")
