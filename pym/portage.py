@@ -78,7 +78,7 @@ starttime=int(time.time())
 buildphase=""
 
 #the build phases for which sandbox should be active
-sandboxactive=["unpack","compile","clean","install","help"]
+sandboxactive=["unpack","compile","clean","install","help","setup"]
 #if the exithandler triggers before features has been initialized, then it's safe to assume
 #that the sandbox isn't active.
 features=[]
@@ -721,22 +721,15 @@ class config:
 						# "-*" is a special "minus" var that means "unset all settings".  so USE="-* gnome" will have *just* gnome enabled.
 						mysetting=[]
 						continue
-					colonsplit=x.split(":")
+					add=x
 					if x[0]=="-":
-						if len(colonsplit)==2:
-							print "!!! USE variable syntax \""+x+"\" not supported; treating as \""+colonsplit[0]+"\""
-						remove=colonsplit[0][1:]
-						#preserve the "-foo" just in case we spawn another python process that interprets the USE vars.
-						add=x
-						#that way, they'll still be correct.
+						remove=x[1:]
 					else:
-						remove=colonsplit[0]
-						add=x
+						remove=x
 					#remove any previous settings of this variable
 					dellist=[]
 					for y in range(0,len(mysetting)):
-						colonsplit2=mysetting[y].split(":")
-						if colonsplit2[0]==remove:
+						if mysetting[y]==remove:
 							#we found a previously-defined variable; add it to our dellist for later removal.
 							dellist.append(mysetting[y])
 					for y in dellist:
@@ -1124,7 +1117,7 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 		settings["KV"]=mykv
 
 	# if any of these are being called, handle them and stop now.
-	if mydo in ["help","clean","setup","prerm","postrm","preinst","postinst"]:
+	if mydo in ["help","clean","setup","prerm","postrm","preinst","postinst","config"]:
 		return ebuildsh(mydo,debug)
 	
 	# get possible slot information from the deps file

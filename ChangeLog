@@ -1,13 +1,23 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-2.0.27 (06 Aug 2002)
+
+  07 Aug 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: removed some
+  beta extended USE functionality to speed up regenerate(); as we are likely
+  not going to need extended USE for a good while.
+  
+  07 Aug 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: ebuild.sh now
+  supports "config" (pkg_config) again.
+
   06 Aug 2002; Dan Armak <danarmak@gentoo.org> ebuild.sh: change debug-print()
-  to exit if $T is not defined, i.e. if emerge is running in dependency detection
-  mode and isn't actually emerging everything. This fixes bug #4932
+  to exit if $T is not defined, i.e. if emerge is running in dependency
+  detection mode and isn't actually emerging everything. This fixes bug #4932
   (the "eclass-debug.log is created in /" problem).
 
-  06 Aug 2002; Nicholas Jones <carpaski@gentoo.org> ebuild.sh:
-  Fixed a case-check problem that prevented tar.Z from being un-tar'd. 
+  06 Aug 2002; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Fixed a
+  case-check problem that prevented tar.Z from being un-tar'd. This closes bug
+  #6126.
 
   06 Aug 2002; Martin Schlemmer <azarah@gentoo.org> portage.py, ebuild.sh:
   Remove "setup" from 'sandboxactive' in portage.py, as we are not running
