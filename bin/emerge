@@ -341,29 +341,47 @@ class depgraph:
 		"""creates the actual digraph of packages to merge.  return 1 on success, 0 on failure
 		mybigkey = specification of package to merge; myparent = parent package (one depending on me);
 		addme = should I be added to the tree? (for the --onlydeps mode)"""
-		if mybigkey==None:
-			return
+		#if mybigkey==None:
+		#	return
+		
+		#update our groovy spinner
 		global spinner, spinpos
 		sys.stdout.write("\b"+spinner[spinpos])
 		spinpos=(spinpos+1)%8
 		sys.stdout.flush()
-		if self.digraph.hasnode(mybigkey):
-			#if we've already hit this node before, we're already recursing on the dependencies.
-			#no need to recurse again.
-			if addme:
-				if myparent:
-					self.digraph.addnode(mybigkey,myparent)
-			return 1
-		mytype,myroot,mykey=string.split(mybigkey)
+		
+		#drobbins, 19 Jul 2002: Can't trigger this code below, so I'm commenting it out.  It appears to
+		#be an old optimization that's no longer needed.
+		#if self.digraph.hasnode(mybigkey):
+		#	#if we've already hit this node before, we're already recursing on the dependencies.
+		#	#no need to recurse again.
+		#	if addme:
+		#		if myparent:
+		#			print "DEBUG: adding node",mybigkey,"with parent",myparent
+		#			self.digraph.addnode(mybigkey,myparent)
+		#	print "DEBUG: skipping double",mybigkey
+		#	return 1
 		#IMPORTANT: in the next line, ("--update" in self.myopts) should eventually be removed.
 		#It will allow childrean of already-upgraded packages to be upgraded.  Unfortunately, "fixing" this
 		#creates a new problem -- when child deps are calculated, it uses the current USE settings rather than
 		#the settings with which the package was compiled.  Meaning that USE tweaks are overridden.
 		#Too big a change for a stable version of Portage.
-		if ("--noreplace" in self.myopts) or ("--update" in self.myopts):
-			if portage.db[myroot]["vartree"].exists_specific(mykey):
-				#already merged, skip.
-				return 1
+		#if ("--noreplace" in self.myopts) or ("--update" in self.myopts):
+		#NEW LINE TEST:
+		
+		#Trying to call this earlier rather than later (here)
+		#if not ("--emptytree" in self.myopts):
+		#	if portage.db[myroot]["vartree"].exists_specific(mykey):
+		#		print "DEBUG: skipping",mykey
+		#		#already merged, skip.
+		#		return 1
+		
+		
+		#split our composite key into parts
+		mytype,myroot,mykey=string.split(mybigkey)
+		
+		
+		
 		if mytype=="binary":
 			if not portage.db[portage.root]["bintree"].exists_specific(mykey):
 				print "\n\n!!!",mytype,mykey,"not found (possibly blocked by package.mask)\n"
@@ -417,11 +435,16 @@ class depgraph:
 				self.digraph.addnode(mybigkey,myparent)
 			if "--nodeps" in self.myopts:
 				return 1
-			for dep in mydep.keys():
+
+			#Cycle through all our dependencies by their "root" (root fs where they will be installed):
+			for myroot in mydep.keys():
+
+				#If we're doing an update, check dependencies against an empty tree.
 				if "--update" in self.myopts:
-					mycheck=portage.dep_check(mydep[dep],self.fakedbapi)
+					mycheck=portage.dep_check(mydep[myroot],self.fakedbapi)
 				else:
-					mycheck=portage.db[dep]["vartree"].depcheck(mydep[dep])
+					#Otherwise, check deps against the "live" tree
+					mycheck=portage.db[myroot]["vartree"].depcheck(mydep[myroot])
 				if mycheck[0]==0:
 					if mytype=="binary":
 						print "!!! Error merging",mytbz2+": invalid dependency in:"
@@ -429,23 +452,55 @@ class depgraph:
 						print "!!! Error merging",myebuild+": invalid dependency in:"
 					else:
 						print "!!! Error merging",mykey+": invalid dependency in:"
-					print white("\n'"+mydep[dep]+"'")
+					print white("\n'"+mydep[myroot]+"'")
 					print ">>> Please report this ebuild error to http://bugs.gentoo.org.\n"
 					return 0
+			
+				#Now, handle unsatisfied dependencies
 				for x in mycheck[1]:
-					mynew=self.match(x,dep,mykey)
-					if not self.digraph.hasnode(mynew):
-						if addme:
-							if not self.create(mynew,mybigkey):
-								return 0
+					parent=None
+					if addme:
+						parent=mybigkey
+					# support mutual exclusive deps
+					mydep2=x
+					if mydep2[0]=="!":
+						mydep2=x[1:]
+
+					if x[0]=="!":
+						#add our blocker; it will be ignored later if necessary (if we are remerging the same pkg, for example)
+						myk="blocks "+myroot+" "+mydep2
+					else:
+						#We are not processing a blocker but a normal dependency
+						myeb=portage.db[portage.root]["porttree"].dep_bestmatch(mydep2)
+						if not myeb:
+							if not mykey:
+								print "\n!!! Error: couldn't find match for",x
+							else:
+								print "\n!!! Error: couldn't find match for",x,"in",mykey
+							print
+							sys.exit(1)
+
+						if "--usepkg" in self.myopts:
+							#If we want to use packages, see if we have a pre-built one...
+							mypk=portage.db[portage.root]["bintree"].dep_bestmatch(x)
+							if myeb==mypk:
+								#Use it only if it's exactly the version we want.
+								myk="binary "+portage.root+" "+mypk
+							else:
+								myk="ebuild "+myroot+" "+myeb
 						else:
-							if not self.create(mynew,None):
+							myk="ebuild "+myroot+" "+myeb
+
+					#if we have not yet added this matched dependency to our digraph...
+					if not self.digraph.hasnode(myk):
+						#and the package in question has not yet been merged to myroot...
+						if not portage.db[myroot]["vartree"].exists_specific(x):
+							#then recursively process this match dependency, returning 0 if error
+							if not self.create(myk,parent):
 								return 0
 					else:
-						if addme:
-							self.digraph.addnode(mynew,mybigkey)
-						else:
-							self.digraph.addnode(mynew,None)
+						#if we have added this matched dependency before, just increase its reference count.
+						self.digraph.addnode(myk,parent)
 		return 1
 	
 	def altlist(self):
@@ -468,9 +523,10 @@ class depgraph:
 				sys.exit(1)
 			splitski=string.split(mycurkey)
 			#I'm not sure of the significance of the following lines (vestigal?) so I'm commenting 'em out.
+			#These lines remove already-merged things from our alt-list
 			#if "--update" in self.myopts:
-			#if not portage.db["/"]["vartree"].exists_specific(splitski[2]):
-			#	portage.db["/"]["merge"].append(splitski)
+			#	if not portage.db["/"]["vartree"].exists_specific(splitski[2]):
+			#		portage.db["/"]["merge"].append(splitski)
 			#else:
 			portage.db[splitski[1]]["merge"].append(splitski)	
 			mygraph.delnode(mycurkey)
@@ -522,7 +578,7 @@ class depgraph:
 				return 0
 		return 1
 
-	def match(self,mydep,myroot=portage.root,mykey=None,skip=0):
+	def match(self,mydep,myroot=portage.root,mykey=None):
 		# support mutual exclusive deps
 		mydep2=mydep
 		if mydep2[0]=="!":
@@ -534,14 +590,11 @@ class depgraph:
 		else:
 			myeb=portage.db[portage.root]["porttree"].dep_bestmatch(mydep2)
 			if not myeb:
-				if skip:
-					return None
 				if not mykey:
 					print "\n!!! Error: couldn't find match for",mydep
 				else:
 					print "\n!!! Error: couldn't find match for",mydep,"in",mykey
 				print
-				raise
 				sys.exit(1)
 
 			if "--usepkg" in self.myopts:
