@@ -679,17 +679,20 @@ if "--unmerge" in myopts:
 			else:
 				localtree=portage.vartree()	
 				mymatches=localtree.dep_match(x)
-				# if no matches were found, try again by added an '=' dep symbol
-				if not mymatches:
+				# if no matches were found, try again by adding a '=' dep symbol if no
+				# dep symbols are already present
+				if not mymatches and x[0] not in ('<','>','=','~'):
 					mymatches=localtree.dep_match("="+x)
-				for package in mymatches:
-					package_parts=split(package, '/')
-					full_path=var_path+"/"+package+"/"+package_parts[1]+".ebuild"
-					if not os.path.exists(full_path):
-						print "The ebuild '"+full_path+"' couldn't be found."
-						print "Your portage installation tree seems to be corrupted."
-					else:
-						full_paths[full_path]=1
+				# only loops over the matches if they were found
+				if mymatches:
+					for package in mymatches:
+						package_parts=split(package, '/')
+						full_path=var_path+"/"+package+"/"+package_parts[1]+".ebuild"
+						if not os.path.exists(full_path):
+							print "The ebuild '"+full_path+"' couldn't be found."
+							print "Your portage installation tree seems to be corrupted."
+						else:
+							full_paths[full_path]=1
 
 		if len(full_paths)==0:
 			print "Couldn't find any matching installed packages."
