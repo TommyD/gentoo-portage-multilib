@@ -71,12 +71,12 @@ CHOST="powerpc-unknown-linux-gnu"
 # distinction between G3 and G4, so this is fine for all NewWorld machines, if
 # you use yaboot to boot you should select this option
 #
-#CFLAGS=" -O2 -pipe -mcpu=750 -mpowerpc-gfxopt -mmultiple -mstring "
+#CFLAGS="-O2 -pipe -mcpu=750 -mpowerpc-gfxopt -mmultiple -mstring"
 #
 # This will run on all other processors, by building more generic code This is
 # safe for all PPC machines running gcc 2.95.3, and works for all OldWorld
 # machines - if you use BootX to boot you should select this option
-#CFLAGS=" -O2 -pipe -mmultiple -mstring "
+#CFLAGS="-O2 -pipe -mmultiple -mstring"
 
 # If you set a CFLAGS above, then this line will set your default C++ flags to
 # the same settings. If you don't set a CFLAGS above, then comment this line out.
