@@ -3495,9 +3495,8 @@ class dblink:
 			lstatobj=os.lstat(obj)
 			lmtime=str(lstatobj[ST_MTIME])
 			if (pkgfiles[obj][0] not in ("dir","fif","dev","sym")) and (lmtime != pkgfiles[obj][1]):
-				if not prelink_capable:
-					print "--- !mtime", pkgfiles[obj][0], obj
-					continue
+				print "--- !mtime", pkgfiles[obj][0], obj
+				continue
 
 			if pkgfiles[obj][0]=="dir":
 				if not os.path.isdir(obj):
