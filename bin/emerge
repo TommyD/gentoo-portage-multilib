@@ -5,7 +5,6 @@
 
 import os
 os.environ["PORTAGE_CALLER"]="emerge"
-os.chdir("/")
 
 import sys,portage,emergehelp,xpak,string,re,commands,time,threading,shutil,traceback,atexit
 from stat import *
@@ -1458,6 +1457,7 @@ def unmerge(unmerge_action, unmerge_files):
 
 def post_emerge(retval=0):
 	auxpat=re.compile('^([^-]*)(-\d+)?\.info(-\d+)?(\.gz)?')	
+	os.chdir("/")
 	global myopts
 	print
 	if "--pretend" in myopts:

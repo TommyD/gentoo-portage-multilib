@@ -277,7 +277,7 @@ unpack() {
 				tar ${tarvars} -xzf ${DISTDIR}/${x} || die "$myfail"
 				;;
 			tbz2) 
-				bzip2 -dc ${DISTDIR}/${x} | tar ${tarvars} -xf ${DISTDIR}/${x} || die "$myfail"
+				bzip2 -dc ${DISTDIR}/${x} | tar ${tarvars} -xf - || die "$myfail"
 				;;
 			ZIP|zip) 
 				unzip -qo ${DISTDIR}/${x} || die "$myfail"
@@ -291,7 +291,7 @@ unpack() {
 				;;
 			bz2) 
 				if [ "${y}" == "tar" ]; then
-					bzip2 -dc ${DISTDIR}/${x} | tar ${tarvars} -xf ${DISTDIR}/${x} || die "$myfail"
+					bzip2 -dc ${DISTDIR}/${x} | tar ${tarvars} -xf - || die "$myfail"
 				else
 					bzip2 -dc ${DISTDIR}/${x} > ${x%.*} || die "$myfail"
 				fi
@@ -931,6 +931,7 @@ inherit() {
 				if [ -e "$olocation" ]; then
 					location="${olocation}"
 					debug-print "  eclass exists: ${location}"
+					break
 				fi
 			done
 		fi

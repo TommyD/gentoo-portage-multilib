@@ -2,32 +2,49 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+*portage-2.0.48-r2 (29 Jun 2003): Fixes and Multiple Overlays
+
+  29 Jun 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Fixed the
+  commands for tar.
+
+  29 Jun 2003; Nicholas Jones <carpaski@gentoo.org> emerge: Mode the chdir
+  to fix the spanky bugs down to post_emerge to fix the "can't merge an
+  ebuild file with an absolute path" bug.
+
+  29 Jun 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Added function
+  suffix_array(array,suffix) which takes an array and adds suffix to the end
+  of each element. Added 'cd / ;' into the getstatusoutput() calls to ldconfig.
+  Added a check so that portage doesn't try to add files/dir from a non-cvs
+  directory. Added 'manifest' target to ebuild/portage to only adjust the
+  manifest. Added Multiple overlay support -- Should be fairly thorough --
+  needs more debug though. Fixed portdbapi::new_protect_filename().
+
 *portage-2.0.48-r2 (29 Jun 2003): Cleanups and Fixes (testing)
 
   29 Jun 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Lots of
-	consistency cleanups. Added more files to the var/db data for future
-	use. Added more die conditions to failure points. Fixed/Hacked a fix
-	into the inherit-not-dieing problem. Set TMPDIR and TMP globally. Added
-	notice for multiple inheritance. Fixed inheritance problem with multiple
-	inheritance clobbering previous list of eclasses. Basic support for
-	multiple overlays added to ebuild.sh.
-	
-	29 Jun 2003; Nicholas Jones <carpaski@gentoo.org> emerge: SRC_URI fix for
-	'rm /etc/*' problem. Spanky bug: chdir to / to avoid problems when merging
-	from inside a builddir that gets deleted.
-	
-	29 Jun 2003; Nicholas Jones <carpaski@gentoo.org> etc-update: Added notice
-	for symlinks in cfg_prot setups.
-	
-	29 Jun 2003; Nicholas Jones <carpaski@gentoo.org> repoman: complain if
-	FEATURES=cvs not set.
-	
-	29 Jun 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Added in
-	a work around for the 'USE=+useflag' users. Added support for nouserpriv
-	via RESTRICT. Fix the bug with ROOTs with no previous file causing a TB
-	from counter_tick(). Make symlinks follow config_protect just like normal
-	files.
-	
+  consistency cleanups. Added more files to the var/db data for future
+  use. Added more die conditions to failure points. Fixed/Hacked a fix
+  into the inherit-not-dieing problem. Set TMPDIR and TMP globally. Added
+  notice for multiple inheritance. Fixed inheritance problem with multiple
+  inheritance clobbering previous list of eclasses. Basic support for
+  multiple overlays added to ebuild.sh.
+  
+  29 Jun 2003; Nicholas Jones <carpaski@gentoo.org> emerge: SRC_URI fix for
+  'rm /etc/*' problem. Spanky bug: chdir to / to avoid problems when merging
+  from inside a builddir that gets deleted.
+  
+  29 Jun 2003; Nicholas Jones <carpaski@gentoo.org> etc-update: Added notice
+  for symlinks in cfg_prot setups.
+  
+  29 Jun 2003; Nicholas Jones <carpaski@gentoo.org> repoman: complain if
+  FEATURES=cvs not set.
+  
+  29 Jun 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Added in
+  a work around for the 'USE=+useflag' users. Added support for nouserpriv
+  via RESTRICT. Fix the bug with ROOTs with no previous file causing a TB
+  from counter_tick(). Make symlinks follow config_protect just like normal
+  files.
+  
   10 Jun 2003; Daniel Robbins <drobbins@gentoo.org> ebuild.sh, portage.py,
   various commands in bin/, cnf/make.conf.mac, cnf/make.globals.mac: 
   Added preliminary Mac OS X/BSD support.
@@ -49,17 +66,17 @@
   to a couple of rare bugs. Added some quoting to $S. Removed the DISTCC
   hosts variable. Moved build-info's creation around so that it actually
   works for non-portage-compiled merges.
-	
+  
   29 May 2003; Nicholas Jones <carpaski@gentoo.org> repoman: Quick fix for
   the files-dir-not-added lack of notification. Added in a fix for a possible
   security problem with the repoman commit messages and symlink-attacks.
-	
+  
   29 May 2003; Nicholas Jones <carpaski@gentoo.org> cnf/*: Added in a diff
   from 'Danny' that contained a SYNC cleanup and expanded explanation. :)
-	
+  
   29 May 2003; Nicholas Jones <carpaski@gentoo.org> output.py: Fixed the
   TitleBar and unset TERM issues.
-	
+  
   29 May 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Added new
   functions to aid in determining virtuals. cpv_all() added to dbapi -- it
   displays all versions instead of just package names -- cp_all() now calls
