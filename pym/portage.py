@@ -239,6 +239,10 @@ def env_update():
 		if x[-1]=='~' or x[-4:]==".bak":
 			continue
 		myconfig=getconfig(root+"etc/env.d/"+x)
+		if myconfig==None:
+			print "!!! Parsing error in",root+"etc/env.d/"+x
+			#parse error
+			continue
 		# process PATH, CLASSPATH, LDPATH
 		for myspec in specials.keys():
 			if myconfig.has_key(myspec):
