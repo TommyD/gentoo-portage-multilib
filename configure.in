@@ -76,7 +76,7 @@ AC_HELP_STRING([--enable-just-compiled-sources],[install just the bytecode, not 
   no)	enable_py_sources=true;;
   *)	AC_MSG_ERROR(bad value ${enableval} for --enable-just-compiled-sources);;
 esac],
-[enable_py_sources=false])
+[enable_py_sources=true])
 
 if test x$enable_missingos = xauto
 then
