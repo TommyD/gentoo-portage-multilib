@@ -359,6 +359,12 @@ class DependencyGraph:
 		parents = {}
 		for node in self.graph:
 			parents[node] = self.get_parent_nodes(node, depth=0)
+			if len(parents[node]) == len(self.graph):
+				# XXX: Every node in the graph depends on
+				# this node. Following the logic through will
+				# return this node or another that has equal
+				# number of parents, so shortcut it here.
+				return [node]
 			counts += [(len(parents[node]), node)]
 
 		# Reverse sort the generated list.
@@ -461,11 +467,8 @@ class DependencyGraph:
 		# Set depth to the maximum if it is 0.
 		if not depth:
 			depth = len(self.graph)
-		traversed = []  # The list of nodes to be returned
-		# constant lookup if a relation is in traversed.
-		# check into if traversed can just be a dict instead.
-		# is dependant on if the returned list is a set, or a sequence.
-		trav_cache_dict = {} 
+
+		traversed = {}  # The list of nodes to be returned
 
 		# This function _needs_ to be fast, so we use a stack
 		# based implementation rather than recursive calls.
@@ -488,9 +491,8 @@ class DependencyGraph:
 			else:
 				relation = graph[node][path][index]
 				# Add the relation to our list if necessary...
-				if relation not in trav_cache_dict:
-					traversed.append(relation)
-					trav_cache_dict[relation] = None
+				if relation not in traversed:
+					traversed[relation] = None
 					# ...and then check if we can go deeper
 					if depth != 1:
 						# Add state to the stack.
@@ -506,9 +508,8 @@ class DependencyGraph:
 			# Move onto the next relation.
 			index += 1
 
-		trav_cache_dict.clear()
 		# Return our list.
-		return traversed
+		return traversed.keys()
 
 def dep_getkey(mydep):
 	if not len(mydep):

@@ -7,6 +7,11 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  03 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage_dep.py:
+  Added shortcut to circular dep "resolution" as per bug 85130. Removed
+  the traversed cache dict from __traverse_nodes and made the original
+  list into a dict.
+
   27 Mar 2005; Brian Harring <ferringb@gentoo.org> bin/ebuild-functions.sh:
   Pushed ECONF_SOURCE support forward from stable.  Seems kind of fluffish.
 
