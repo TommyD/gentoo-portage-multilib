@@ -1,6 +1,10 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  27 Jul 2002; Daniel Robbins <drobbins@gentoo.org> emerge: security modes now
+  work correctly; root access now required for merging.  The new security pass
+  code was missing a check that is now present.
+
 *portage-2.0.20 (27 Jul 2002)
 
   27 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, emerge,

@@ -104,8 +104,11 @@ if ("--searchdesc" in myopts) and (not myaction):
 # check if root user is the current user for the actions where emerge needs this
 if ("--pretend" in myopts) or (myaction=="search"):
 	if not portage.secpass:
-		print "emerge: root access required (or wheel group membership for \"--pretend\" and search.)"
+		print "emerge: wheel group membership required for \"--pretend\" and search."
 		sys.exit(1)
+elif portage.secpass!=2:
+	print "emerge: root access required."
+	sys.exit(1)
 	
 # search functionality
 class search:
