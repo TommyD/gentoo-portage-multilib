@@ -135,7 +135,7 @@ def envvar(argv):
 #
 
 def usage():
-	print ">>> Portage information query tool -- version $Version$"
+	print ">>> Portage information query tool -- version $Revision$"
 	print ">>> Usage: portageq <command> [<option> ...]"
 	print ""
 	print "Available commands:"
