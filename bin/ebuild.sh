@@ -846,6 +846,11 @@ dyn_preinst() {
 		rm -fR "${IMAGE}/usr/share/doc"
 	fi
 
+  # remove share dir if unnessesary
+  if has nodoc $FEATURES -o has noman $FEATURES -o has noinfo $FEATURES; then
+    rmdir "${IMAGE}/usr/share" &> /dev/null
+  fi
+
 	# Smart FileSystem Permissions
 	if has sfperms $FEATURES; then
 		for i in $(find ${IMAGE}/ -type f -perm -4000); do
