@@ -697,9 +697,11 @@ def unmerge(unmerge_action, unmerge_files):
 				if not os.path.exists(x):
 					print "\n!!! The path '"+x+"' doesn't exist.\n"
 					return 0
-				absx=abspath[x]
+				absx=os.path.abspath(x)
 				spabsx=split(absx,"/")
-				if absx[:12]!="/var/db/pkg/" or len(spabsx)!=6:
+				if absx[:12]!="/var/db/pkg/" or len(spabsx)!=7:
+					print spabsx
+					print absx
 					print "\n!!!",x,"is not inside /var/db/pkg; aborting.\n"
 					return 0
 				candidate_catpkgs.append("="+spabsx[4]+"/"+spabsx[5])
@@ -712,6 +714,9 @@ def unmerge(unmerge_action, unmerge_files):
 	for x in candidate_catpkgs:
 		#cycle through all our candidate deps and determine what will and will not get unmerged
 		mymatch=localtree.dep_match(x)
+		if not mymatch and x[0] not in "<>=~":
+			#add a "=" if missing
+			mymatch=localtree.dep_match("="+x)
 		if not mymatch:
 			print "\n!!! Couldn't find match for",white(x)
 			continue

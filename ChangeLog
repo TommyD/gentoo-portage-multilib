@@ -1,6 +1,12 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  13 May 2002; Daniel Robbins <drobbins@gentoo.org> emerge: "abspath[x]" =>
+  "abspath(x)" typo fix.  Also added 2-liner to allow for "emerge unmerge"
+  to specify "foo/bar-1.0" rather than requiring "=foo/bar-1.0."  Also fixed
+  problems when specifying the names of actual ebuilds in /var/db/pkg to 
+  unmerge.
+  
   08 May 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: An empty
   USE_ORDER (due to an out-of-date /etc/make.globals) would cause USE to always
   be empty.  I added a reasonable default USE_ORDER if USE_ORDER is not found
