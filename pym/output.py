@@ -2,7 +2,11 @@
 # Distributed under the GNU Public License v2
 # $Header$
 
+import os
+
 havecolor=1
+dotitles=1
+
 codes={}
 codes["reset"]="\x1b[0m"
 codes["bold"]="\x1b[01m"
@@ -26,10 +30,14 @@ codes["red"]="\x1b[31;01m"
 codes["darkred"]="\x1b[31;06m"
 
 def xtermTitle(mystr):
-	if havecolor:
+	if havecolor and dotitles:
 		myt=os.environ["TERM"]
 		if myt in ["xterm","Eterm","aterm"]:
 			print "\x1b]1;\x07\x1b]2;"+str(mystr)+"\x07"
+
+def notitles():
+	"turn off title setting"
+	dotitles=0
 
 def nocolor():
 	"turn off colorization"

@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-import os,sys,portage,emergehelp,xpak,string,re,commands,time,threading,shutil,traceback
+import os,sys,portage,emergehelp,xpak,string,re,commands,time,threading,shutil,traceback,atexit
 from stat import *
 from output import *
 if (not sys.stdout.isatty()) or (portage.settings["NOCOLOR"] in ["yes","true"]):
@@ -163,6 +163,7 @@ if ("--debug" in myopts):
 
 
 def emergelog(mystr):
+	xtermTitle(mystr)
 	try:
 		mylogfile=open("/var/log/emerge.log", "a")
 		mylogfile.write(str(time.time())[:10]+": "+mystr+"\n")
@@ -172,6 +173,13 @@ def emergelog(mystr):
 		if edebug:
 			print "emergelog():",e
 		pass
+
+def emergeexit():
+	"""This gets out final log message in before we quit. As it overrides
+	any other atexit's we have setup, we need to call them ourself."""
+	portage.portageexit()
+	emergelog(" *** terminating.")
+atexit.register(emergeexit)
 
 def countdown(secs=5, doing="Starting"):
 	if secs:
@@ -1089,6 +1097,15 @@ class depgraph:
 
 			portage.mtimedb["resume"]["mergelist"]=mymergelist[:]
 
+		# We need to yank the harmful-to-new-builds settings from features.
+		myorigfeat=portage.settings["FEATURES"]
+		myfeat=myorigfeat.split()
+		while ("keeptemp" in myfeat):
+			del myfeat[myfeat.index("keeptemp")]
+		while ("keepwork" in myfeat):
+			del myfeat[myfeat.index("keepwork")]
+		portage.settings["FEATURES"]=string.join(myfeat)
+
 		mergecount=0
 		for x in mymergelist:
 			mergecount+=1
@@ -1112,9 +1129,12 @@ class depgraph:
 						continue
 				elif "--buildpkg" in myopts:
 					#create pkg, then merge pkg
+					emergelog(" === Cleaning ("+y+")")
 					retval=portage.doebuild(y,"clean",myroot,edebug)
 					if retval:
 						sys.exit(1)
+					portage.settings["FEATURES"]=myorigfeat # Put back flags.
+					emergelog(" === Compiling/Packaging ("+y+")")
 					retval=portage.doebuild(y,"package",myroot,edebug)
 					if retval:
 						sys.exit(1)
@@ -1122,22 +1142,17 @@ class depgraph:
 					if "--buildpkgonly" not in myopts:
 						portage.db[portage.root]["bintree"].inject(x[2])
 						mytbz2=portage.db[portage.root]["bintree"].getname(x[2])
+						emergelog(" === Merging ("+y+")")
 						retval=portage.pkgmerge(mytbz2,myroot)
 						if retval==None:
 							sys.exit(1)
 				else:
-					# We need to yank the harmful-to-new-builds settings from features.
-					myorigfeat=portage.settings["FEATURES"]
-					myfeat=myorigfeat.split()
-					while ("keeptemp" in myfeat):
-						del myfeat[myfeat.index("keeptemp")]
-					while ("keepwork" in myfeat):
-						del myfeat[myfeat.index("keepwork")]
-					portage.settings["FEATURES"]=string.join(myfeat)
+					emergelog(" === Cleaning ("+y+")")
 					retval=portage.doebuild(y,"clean",myroot,edebug)
 					if retval:
 						sys.exit(1)
-					portage.settings["FEATURES"]=myorigfeat
+					portage.settings["FEATURES"]=myorigfeat # Put back flags.
+					emergelog(" === Compiling/Merging ("+y+")")
 					retval=portage.doebuild(y,"merge",myroot,edebug)
 					if retval:
 						sys.exit(1)
@@ -1145,6 +1160,7 @@ class depgraph:
 			elif x[0]=="binary":
 				#merge the tbz2
 				mytbz2=portage.db[portage.root]["bintree"].getname(x[2])
+				emergelog(" === Merging Binary ("+y+")")
 				retval=portage.pkgmerge(mytbz2,x[1])
 				if retval==None:
 					sys.exit(1)
@@ -1161,9 +1177,11 @@ class depgraph:
 						#we don't have a favorites entry for this package yet; add one
 						myfavdict[myfavkey]=myfavkey
 						print ">>> Recording",myfavkey,"in \"world\" favorites file..."
+						emergelog(" === Updating world file ("+y+")")
 						portage.writedict(myfavdict,myroot+"var/cache/edb/world",writekey=0)
 
 				if "noclean" not in portage.features:
+					emergelog(" === Post-Build Cleaning ("+y+")")
 					retval=portage.doebuild(y,"clean",myroot,edebug)
 					if retval:
 						sys.exit(1)
@@ -1195,15 +1213,17 @@ class depgraph:
 										myr-=1
 									myr+=1
 								emergelog(" *** RESTARTING emerge via exec() after change of portage version.")
-								del portage.mtimedb["resume"]["mergelist"][0]
 								portage.portageexit()
-								os.execv("/usr/lib/portage/bin/emerge", ["emerge","--resume"])
+								os.execv("/usr/lib/portage/bin/emerge", myargv)
 
 			if ("--pretend" not in myopts) and ("--fetchonly" not in myopts):
 				emergelog(" ::: completed emerge ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[2]+" to "+x[1])
 			
 			# Unsafe for parallel merges
 			del portage.mtimedb["resume"]["mergelist"][0]
+
+		emergelog(" *** Finished. Cleaning up...")
+
 		# We're out of the loop... We're done. Delete the resume data.
 		if portage.mtimedb.has_key("resume"):
 			del portage.mtimedb["resume"]
@@ -1372,6 +1392,7 @@ def unmerge(unmerge_action, unmerge_files):
 	for x in pkgmap.keys():
 		for y in pkgmap[x]["selected"]:
 			print ">>> Unmerging "+y+"..."
+			emergelog("=== Unmerging... ("+y+")")
 			mysplit=string.split(y,"/")
 			#unmerge...
 			retval=portage.unmerge(mysplit[0],mysplit[1],portage.root)

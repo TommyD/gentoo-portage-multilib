@@ -203,7 +203,8 @@ CHOST="powerpc-unknown-linux-gnu"
 #     'userpriv' allows portage to drop root privleges while it is compiling
 #     as a security measure, and as a side effect this can remove sandbox
 #     access violations for users. 'usersandbox' enables sandboxing while
-#     portage is running under userpriv. 'noclean' prevents portage from
+#     portage is running under userpriv. 'notitles' disables xterm titlebar
+#     updates (which contain status info). 'noclean' prevents portage from
 #     removing the source and temporary files after a merge -- for debugging
 #     purposes only. 'noauto' is a feature which causes ebuild to perform
 #     the action requested and not any other required actions like clean or
@@ -212,7 +213,7 @@ CHOST="powerpc-unknown-linux-gnu"
 #     has wide effects -- don't set this unless you're ready for it. 'keeptemp'
 #     prevents the clean phase from deleting the temp files ($T) from a merge.
 #     'keepwork' prevents the clean phase from deleting the $WORKDIR.
-#FEATURES="sandbox buildpkg ccache distcc userpriv usersandbox noclean noauto cvs keeptemp keepwork"
+#FEATURES="sandbox buildpkg ccache distcc userpriv usersandbox notitles noclean noauto cvs keeptemp keepwork"
 #
 # CCACHE_SIZE sets the space use limitations for ccache. The default size is
 #     2G, and will be set if not defined otherwise and ccache is in features. 

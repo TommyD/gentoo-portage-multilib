@@ -4611,6 +4611,8 @@ thirdpartymirrors=grabdict(settings["PORTDIR"]+"/profiles/thirdpartymirrors")
 
 #,"porttree":portagetree(root,virts),"bintree":binarytree(root,virts)}
 features=settings["FEATURES"].split()
+if "notitles" in features:
+	notitles()
 
 # Defaults set at the top of perform_checksum.
 if spawn("/usr/sbin/prelink --version > /dev/null 2>&1",free=1) == 0:
