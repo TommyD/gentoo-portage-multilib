@@ -2294,6 +2294,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		if use_locks:
 			unlockfile(file_lock)
 		
+		if listonly:
+			writemsg("\n")
 		if (fetched!=2) and not listonly:
 			writemsg("!!! Couldn't download "+str(myfile)+". Aborting.\n")
 			return 0
@@ -2853,6 +2855,9 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 
 	if not fetch(fetchme, mysettings, listonly, fetchonly):
 		return 1
+
+	if mydo=="fetch" and listonly:
+		return 0
 
 	if "digest" in features:
 		#generate digest if it doesn't exist.

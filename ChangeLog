@@ -9,6 +9,10 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  03 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py: Ongoing 
+  cleanup in emerge -fp; this corrects a minor naggle affecting previous 
+  releases, where emerge -fp would still attempt to do md5 checks on files.
+
   03 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py: Corrected 
   logic for fetch(..., ..., use_locks=1,listonly=1) attempting to use locks, 
   when fetch is just printing the src_uri's.  (#59394).
