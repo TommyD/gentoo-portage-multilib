@@ -9,6 +9,9 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  09 Jun 2004; Marius Mauch <genone@gentoo.org> bin/emerge:
+  Changed emerge --info to reflect libc versions other than glibc.  
+
   08 Jun 2004; Marius Mauch <genone@gentoo.org> pym/portage.py:
   Added the collision-protect feature that prevents packages from
   overwriting files they don't own. Has to be enabled with 

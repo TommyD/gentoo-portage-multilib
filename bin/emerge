@@ -425,21 +425,21 @@ def getportageversion():
 		profilever=os.path.basename(os.path.normpath(os.readlink("/etc/make.profile")))
 	except:
 		profilever="unavailable"
-	glibcver=[]
-	for x in portage.vardbapi(portage.root).match("glibc"):
-		xs=portage.pkgsplit(x)
-		if glibcver:
-			glibcver+=","+xs[1]+"-"+xs[2]
+	libcver=[]
+	for x in portage.vardbapi(portage.root).match("virtual/glibc"):
+		xs=portage.catpkgsplit(x)
+		if libcver:
+			libcver+=","+string.join(xs[1:], "-")
 		else:
-			glibcver=xs[1]+"-"+xs[2]
-	if glibcver==[]:
-		glibcver="unavailable"
+			libcver=string.join(xs[1:], "-")
+	if libcver==[]:
+		libcver="unavailable"
 
 	gccver = getgccversion()
 
 	unameout=os.uname()[2]
 
-	return "Portage " + portage.VERSION +" ("+profilever+", "+gccver+", glibc-"+glibcver+", "+unameout+")"
+	return "Portage " + portage.VERSION +" ("+profilever+", "+gccver+", "+libcver+", "+unameout+")"
 
 def help():
 	# Move all the help stuff out of this file.
