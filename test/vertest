@@ -119,6 +119,7 @@ elif p == "verify":
     for i in range(len(list)):
 	if list[i][2] != list2[i][2]:
 	    print list[i][0], list[i][1], list[i][2], list2[i][2]
+
 elif p == "compare":
     list = sys.stdin.readlines()
     list = [x.strip().split() for x in list if x.strip()]
