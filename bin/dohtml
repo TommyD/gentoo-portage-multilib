@@ -39,11 +39,11 @@ __version__ = "0.1.2"
 __author__ = "Karl Trygve Kalleberg <karltk@gentoo.org>"
 
 def dodir(path):
-	os.system("install -d " + path)
+	os.system("install -d '%s'" % path)
 
 def dofile(src,dst):
 
-	os.system("install -m0644 " + src + " " + dst)
+	os.system("install -m0644 '%s' '%s'" % (src, dst))
 
 def install(basename, dirname, options, prefix=""):
 
