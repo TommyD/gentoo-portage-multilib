@@ -549,13 +549,13 @@ dyn_unpack() {
 dyn_clean() {
 	rm -rf "${BUILDDIR}/image"
 
-	if ! has keeptemp $FEATURES; then
+	if ! hasq keeptemp $FEATURES; then
 		rm -rf "${T}"/*
 	else
 		mv "${T}/environment" "${T}/environment.keeptemp"
 	fi
 
-	if ! has keepwork $FEATURES; then
+	if ! hasq keepwork $FEATURES; then
 		rm -rf "${BUILDDIR}/.compiled"
 		rm -rf "${BUILDDIR}/.unpacked"
 		rm -rf "${BUILDDIR}/build-info"
@@ -616,7 +616,7 @@ insopts() {
 	INSOPTIONS=""
 	for x in $*; do
 		#if we have a debug build, let's not strip anything
-		if has nostrip $FEATURES $RESTRICT && [ "$x" == "-s" ]; then
+		if hasq nostrip $FEATURES $RESTRICT && [ "$x" == "-s" ]; then
 			continue
  		else
 			INSOPTIONS="$INSOPTIONS $x"
@@ -637,7 +637,7 @@ exeopts() {
 	EXEOPTIONS=""
 	for x in $*; do
 		#if we have a debug build, let's not strip anything
-		if has nostrip $FEATURES $RESTRICT && [ "$x" == "-s" ]; then
+		if hasq nostrip $FEATURES $RESTRICT && [ "$x" == "-s" ]; then
 			continue
 		else
 			EXEOPTIONS="$EXEOPTIONS $x"
@@ -650,7 +650,7 @@ libopts() {
 	LIBOPTIONS=""
 	for x in $*; do
 		#if we have a debug build, let's not strip anything
-		if has nostrip $FEATURES $RESTRICT && [ "$x" == "-s" ]; then
+		if hasq nostrip $FEATURES $RESTRICT && [ "$x" == "-s" ]; then
 			continue
 		else
 			LIBOPTIONS="$LIBOPTIONS $x"
@@ -712,7 +712,7 @@ dyn_compile() {
 	[ "${DISTCC_DIR-unset}"  == "unset" ] && export DISTCC_DIR="${PORTAGE_TMPDIR}/.distcc"
 	[ ! -z "${DISTCC_DIR}" ] && addwrite "${DISTCC_DIR}"
 
-	if has noauto $FEATURES &>/dev/null && [ ! -f ${BUILDDIR}/.unpacked ]; then
+	if hasq noauto $FEATURES &>/dev/null && [ ! -f ${BUILDDIR}/.unpacked ]; then
 		echo
 		echo "!!! We apparently haven't unpacked... This is probably not what you"
 		echo "!!! want to be doing... You are using FEATURES=noauto so I'll assume"
@@ -777,7 +777,7 @@ dyn_compile() {
 	echo "$USE"      > USE
 	set | bzip2 -9 - > environment.bz2
 	cp "${EBUILD}" "${PF}.ebuild"
-	if has nostrip $FEATURES $RESTRICT; then
+	if hasq nostrip $FEATURES $RESTRICT; then
 		touch DEBUGBUILD
 	fi
 	trap SIGINT SIGQUIT
@@ -857,27 +857,27 @@ dyn_preinst() {
 	pkg_preinst
 
 	# remove man pages
-	if has noman $FEATURES; then
+	if hasq noman $FEATURES; then
 		rm -fR "${IMAGE}/usr/share/man"
 	fi
 
 	# remove info pages
-	if has noinfo $FEATURES; then
+	if hasq noinfo $FEATURES; then
 		rm -fR "${IMAGE}/usr/share/info"
 	fi
 
 	# remove docs
-	if has nodoc $FEATURES; then
+	if hasq nodoc $FEATURES; then
 		rm -fR "${IMAGE}/usr/share/doc"
 	fi
 
   # remove share dir if unnessesary
-  if has nodoc $FEATURES -o has noman $FEATURES -o has noinfo $FEATURES; then
+  if hasq nodoc $FEATURES -o hasq noman $FEATURES -o hasq noinfo $FEATURES; then
     rmdir "${IMAGE}/usr/share" &> /dev/null
   fi
 
 	# Smart FileSystem Permissions
-	if has sfperms $FEATURES; then
+	if hasq sfperms $FEATURES; then
 		for i in $(find ${IMAGE}/ -type f -perm -4000); do
 			ebegin ">>> SetUID: [chmod go-r] $i "
 			chmod go-r "$i"
@@ -891,7 +891,7 @@ dyn_preinst() {
 	fi
 
 	# total suid control.
-	if has suidctl $FEATURES > /dev/null ; then
+	if hasq suidctl $FEATURES > /dev/null ; then
 		sfconf=/etc/portage/suidctl.conf
 		echo ">>> Preforming suid scan in ${IMAGE}"
 		for i in $(find ${IMAGE}/ -type f \( -perm -4000 -o -perm -2000 \) ); do
@@ -924,7 +924,7 @@ dyn_preinst() {
 	fi
 
 	# SELinux file labeling (needs to always be last in dyn_preinst)
-	if use selinux; then
+	if useq selinux; then
 		# only attempt to label if setfiles is executable
 		# and 'context' is available on selinuxfs.
 		if [ -f /selinux/context -a -x /usr/sbin/setfiles ]; then
@@ -997,15 +997,24 @@ dyn_help() {
 	echo "One or more of the following options can then be specified.  If more"
 	echo "than one option is specified, each will be executed in order."
 	echo
+	echo "  help        : show this help screen"
 	echo "  setup       : execute package specific setup actions"
 	echo "  fetch       : download source archive(s) and patches"
+	echo "  digest      : creates a digest and a manifest file for the package"
+	echo "  manifest    : creates a manifest file for the package"
 	echo "  unpack      : unpack/patch sources (auto-fetch if needed)"
 	echo "  compile     : compile sources (auto-fetch/unpack if needed)"
-	echo "  merge       : merge image into live filesystem, recording files in db"
-	echo "                (auto-fetch/unpack/compile if needed)"
+	echo "  preinst     : execute pre-install instructions"
+	echo "  postinst    : execute post-install instructions"
+	echo "  install     : installs the package to the temporary install directory"
+	echo "  qmerge      : merge image into live filesystem, recording files in db"
+	echo "  merge       : does fetch, unpack, compile, install and qmerge"
+	echo "  prerm       : execute pre-removal instructions"
+	echo "  postrm      : execute post-removal instructions"
 	echo "  unmerge     : remove package from live filesystem"
-	echo "  package     : create tarball package of type ${PACKAGE}"
-	echo "                (will be stored in ${PKGDIR}/All)"
+	echo "  config      : execute package specific configuration actions"
+	echo "  package     : create tarball package in ${PKGDIR}/All"
+	echo "  rpm         : builds a RedHat RPM package"
 	echo "  clean       : clean up all source and temporary files"
 	echo
 	echo "The following settings will be used for the ebuild process:"
@@ -1019,7 +1028,7 @@ dyn_help() {
 	echo "  c++ flags   : ${CXXFLAGS}" 
 	echo "  make flags  : ${MAKEOPTS}" 
 	echo -n "  build mode  : "
-	if has nostrip $FEATURES $RESTRICT;	then
+	if hasq nostrip $FEATURES $RESTRICT;	then
 		echo "debug (large)"
 	else
 		echo "production (stripped)"
@@ -1116,12 +1125,13 @@ inherit() {
 		set -f
 
 		# Retain the old data and restore it later.
-		unset B_DEPEND B_RDEPEND B_CDEPEND B_PDEPEND
+		unset B_IUSE B_DEPEND B_RDEPEND B_CDEPEND B_PDEPEND
+		[ "${IUSE-unset}"    != "unset" ] && B_IUSE="${IUSE}"
 		[ "${DEPEND-unset}"  != "unset" ] && B_DEPEND="${DEPEND}"
 		[ "${RDEPEND-unset}" != "unset" ] && B_RDEPEND="${RDEPEND}"
 		[ "${CDEPEND-unset}" != "unset" ] && B_CDEPEND="${CDEPEND}"
 		[ "${PDEPEND-unset}" != "unset" ] && B_PDEPEND="${PDEPEND}"
-		unset   DEPEND   RDEPEND   CDEPEND   PDEPEND
+		unset   IUSE   DEPEND   RDEPEND   CDEPEND   PDEPEND
 		#turn on glob expansion
 		set +f
 		
@@ -1133,10 +1143,14 @@ inherit() {
 
 		# If each var has a value, append it to the global variable E_* to
 		# be applied after everything is finished. New incremental behavior.
+		[ "${IUSE-unset}"    != "unset" ] && export E_IUSE="${E_IUSE} ${IUSE}"
 		[ "${DEPEND-unset}"  != "unset" ] && export E_DEPEND="${E_DEPEND} ${DEPEND}"
 		[ "${RDEPEND-unset}" != "unset" ] && export E_RDEPEND="${E_RDEPEND} ${RDEPEND}"
 		[ "${CDEPEND-unset}" != "unset" ] && export E_CDEPEND="${E_CDEPEND} ${CDEPEND}"
 		[ "${PDEPEND-unset}" != "unset" ] && export E_PDEPEND="${E_PDEPEND} ${PDEPEND}"
+
+		[ "${B_IUSE-unset}"    != "unset" ] && IUSE="${B_IUSE}"
+		[ "${B_IUSE-unset}"    != "unset" ] || unset IUSE
 
 		[ "${B_DEPEND-unset}"  != "unset" ] && DEPEND="${B_DEPEND}"
 		[ "${B_DEPEND-unset}"  != "unset" ] || unset DEPEND
@@ -1283,7 +1297,7 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ]; then
 		export USER=portage
 	fi
 
-	if has distcc ${FEATURES} &>/dev/null; then
+	if hasq distcc ${FEATURES} &>/dev/null; then
 		if [ -d /usr/lib/distcc/bin ]; then
 			#We can enable distributed compile support
 			if [ -z "${PATH/*distcc*/}" ]; then
@@ -1298,7 +1312,7 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ]; then
 		fi
 	fi
 
-	if has ccache ${FEATURES} &>/dev/null; then
+	if hasq ccache ${FEATURES} &>/dev/null; then
 		#We can enable compiler cache support
 		if [ -z "${PATH/*ccache*/}" ]; then
 			# Remove the other reference.
@@ -1338,12 +1352,17 @@ fi # "$*"!="depend" && "$*"!="clean"
 export SANDBOX_ON="1"
 export S=${WORKDIR}/${P}
 
-unset   DEPEND   RDEPEND   CDEPEND   PDEPEND
-unset E_DEPEND E_RDEPEND E_CDEPEND E_PDEPEND
+unset   IUSE   DEPEND   RDEPEND   CDEPEND   PDEPEND
+unset E_IUSE E_DEPEND E_RDEPEND E_CDEPEND E_PDEPEND
 
-export EBUILD_PHASE="$*"
+declare -rx EBUILD_PHASE="$*"
+declare -r T P PN PV PVR PR A AA D EBUILD EMERGE_FROM O PPID FILESDIR
+declare -r PORTAGE_TMPDIR
+
 source ${EBUILD} || die "error sourcing ebuild"
 [ -z "${ERRORMSG}" ] || die "${ERRORMSG}"
+
+hasq nostrip ${RESTRICT} && export DEBUGBUILD=1
 
 #a reasonable default for $S
 if [ "$S" = "" ]; then
@@ -1362,13 +1381,13 @@ export TMPDIR="${T}"
 #turn off glob expansion from here on in to prevent *'s and ? in the DEPEND
 #syntax from getting expanded :)  Fixes bug #1473
 set -f
-#if [ -z "`set | grep ^RDEPEND=`" ]; then
 if [ "${RDEPEND-unset}" == "unset" ]; then
 	export RDEPEND=${DEPEND}
 	debug-print "RDEPEND: not set... Setting to: ${DEPEND}"
 fi
 
 #add in dependency info from eclasses
+IUSE="$IUSE $E_IUSE"
 DEPEND="$DEPEND $E_DEPEND"
 RDEPEND="$RDEPEND $E_RDEPEND"
 CDEPEND="$CDEPEND $E_CDEPEND"

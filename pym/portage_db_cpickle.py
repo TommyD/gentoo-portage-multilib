@@ -14,12 +14,11 @@ class database(portage_db_template.database):
 		self.uid      = uid
 		self.gid      = gid
 		
-		self.modified = 0
+		self.modified = False
 		
+		prevmask=os.umask(0)
 		if not os.path.exists(self.path):
-			prevmask=os.umask(0)
 			os.makedirs(self.path, 02775)
-			os.umask(prevmask)
 
 		self.filename = self.path + "/" + self.category + ".cpickle"
 		
@@ -32,6 +31,8 @@ class database(portage_db_template.database):
 				self.db = {}
 		else:
 			self.db = {}
+
+		os.umask(prevmask)
 
 	def has_key(self,key):
 		self.check_key(key)
@@ -49,13 +50,14 @@ class database(portage_db_template.database):
 		return None
 	
 	def set_values(self,key,val):
-		self.modified = 1
+		self.modified = True
 		self.check_key(key)
 		self.db[key] = val
 	
 	def del_key(self,key):
 		if self.has_key(key):
 			del self.db[key]
+			self.modified = True
 			return True
 		return False
 			
@@ -71,5 +73,6 @@ class database(portage_db_template.database):
 				pass
 	
 	def close(self):
-		self.db.close()
+		self.sync()
+		self.db = None;
 	

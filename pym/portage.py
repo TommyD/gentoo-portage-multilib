@@ -1559,7 +1559,7 @@ class config:
 		if match and mykey in ["PORTAGE_BINHOST"]:
 			# These require HTTP Encoding
 			try:
-				import urilib
+				import urllib
 				if urllib.unquote(match) != match:
 					writemsg("Note: %s already contains escape codes." % (mykey))
 				else:
@@ -1693,10 +1693,6 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0):
 				else:
 					mymirrors += [x]
 	
-	fetchcommand=mysettings["FETCHCOMMAND"]
-	resumecommand=mysettings["RESUMECOMMAND"]
-	fetchcommand=string.replace(fetchcommand,"${DISTDIR}",mysettings["DISTDIR"])
-	resumecommand=string.replace(resumecommand,"${DISTDIR}",mysettings["DISTDIR"])
 	mydigests=None
 	digestfn=mysettings["FILESDIR"]+"/digest-"+mysettings["PF"]
 	if os.path.exists(digestfn):
@@ -1799,6 +1795,21 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0):
 			if listonly:
 				writemsg(loc+" ")
 				continue
+
+			# allow different fetchcommands per protocol
+			protocol = loc[0:loc.find("://")]
+			if mysettings.has_key("FETCHCOMMAND_"+protocol.upper()):
+				fetchcommand=mysettings["FETCHCOMMAND_"+protocol.upper()]
+			else:
+				fetchcommand=mysettings["FETCHCOMMAND"]
+			if mysettings.has_key("RESUMECOMMAND_"+protocol.upper()):
+				resumecommand=mysettings["RESUMECOMMAND_"+protocol.upper()]
+			else:
+				resumecommand=mysettings["RESUMECOMMAND"]
+			
+			fetchcommand=string.replace(fetchcommand,"${DISTDIR}",mysettings["DISTDIR"])
+			resumecommand=string.replace(resumecommand,"${DISTDIR}",mysettings["DISTDIR"])
+	
 			try:
 				mystat=os.stat(mysettings["DISTDIR"]+"/"+myfile)
 				if mydigests!=None and mydigests.has_key(myfile):
@@ -2177,7 +2188,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	mysettings.setcpv(mycpv,use_cache=use_cache)
 	
 	if mydo not in ["help","clean","prerm","postrm","preinst","postinst",
-	                "config","touch","setup","depend","fetch","digest",
+	                "config","setup","depend","fetch","digest",
 	                "unpack","compile","install","rpm","qmerge","merge",
 	                "package","unmerge", "manifest"]:
 		writemsg("!!! doebuild: Please specify a valid command.\n");
@@ -3465,6 +3476,32 @@ def dep_wordreduce(mydeplist,mydbapi,mode,use_cache=1):
 		mypos=mypos+1
 	return deplist
 
+def getmaskingreason(mycpv):
+	global portdb
+	mysplit = catpkgsplit(mycpv)
+	if not mysplit:
+		raise ValueError("invalid CPV: %s" % mycpv)
+	if not portdb.cpv_exists(mycpv):
+		raise KeyError("CPV %s does not exist" % mycpv)
+	mycp=mysplit[0]+"/"+mysplit[1]
+
+	if settings.pmaskdict.has_key(mycp):
+		for x in settings.pmaskdict[mycp]:
+			if mycpv in portdb.xmatch("match-all", x):
+				pmaskfile = open(settings["PORTDIR"]+"/profiles/package.mask")
+				comment = ""
+				l = "\n"
+				while l != "":
+					l = pmaskfile.readline()
+					if l[0] == "#":
+						comment += l
+					elif l == "\n":
+						comment = ""
+					elif l.strip() == x:
+						return comment
+				pmaskfile.close()
+	return None
+
 def getmaskingstatus(mycpv):
 	global portdb
 	mysplit = catpkgsplit(mycpv)
@@ -4643,7 +4680,7 @@ class portdbapi(dbapi):
 		return self.findname2(mycpv)[0]
 
 	def findname2(self,mycpv):
-		"returns file location for this particular package"
+		"returns file location for this particular package and in_overlay flag"
 		if not mycpv:
 			return "",0
 		mysplit=mycpv.split("/")

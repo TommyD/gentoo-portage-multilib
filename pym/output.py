@@ -1,4 +1,4 @@
-# Copyright 1998-2003 Daniel Robbins, Gentoo Technologies, Inc.
+# Copyright 1998-2004 Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
 # $Header$
 
@@ -14,7 +14,7 @@ codes["bold"]="\x1b[01m"
 codes["teal"]="\x1b[36;06m"
 codes["turquoise"]="\x1b[36;01m"
 
-codes["fuscia"]="\x1b[35;01m"
+codes["fuchsia"]="\x1b[35;01m"
 codes["purple"]="\x1b[35;06m"
 
 codes["blue"]="\x1b[34;01m"
@@ -74,8 +74,10 @@ def turquoise(text):
 def darkteal(text):
 	return turquoise(text)
 
-def fuscia(text):
-	return codes["fuscia"]+text+codes["reset"]
+def fuscia(text): # Don't use this one. It's spelled wrong!
+	return codes["fuchsia"]+text+codes["reset"]
+def fuchsia(text):
+	return codes["fuchsia"]+text+codes["reset"]
 def purple(text):
 	return codes["purple"]+text+codes["reset"]
 

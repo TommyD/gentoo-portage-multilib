@@ -2,21 +2,63 @@
 # Copyright 2000-2004 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+*portage-2.0.51_pre3 (13 Apr 2003): Cleanups and small features.
+
+  13 Apr 2004; Nicholas Jones <carpaski@gentoo.org> portage_db_*: Fixed the
+  permissions issues regarding the umask problems with DB vars.
+
+  13 Apr 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Fix for the
+  import urllib call that was misspelled for PORTAGE_BINHOST. Genone's patch
+  that allows FETCHCOMMAND_${PROTOCOL}. getmaskingreadon() from genone's
+  package.mask display patch.
+
+  13 Apr 2004; Nicholas Jones <carpaski@gentoo.org> output.py: For some reason
+  people have a problem with my bad spelling of semi-common colors, so I added
+  in requested changes for the color 'fuchsia'.
+
+  13 Apr 2004; Nicholas Jones <carpaski@gentoo.org> cnf/make.conf: Comment
+  fixes for the CHOST line. FEATURES modification.
+
+  13 Apr 2004; Nicholas Jones <carpaski@gentoo.org> dispatch-conf.conf: Removed
+  the 'a' option.
+
+  13 Apr 2004; Nicholas Jones <carpaski@gentoo.org> emerge: Catagory searches
+  added if search is prefixed with '@'. jstubbs/spider's fix for binary use
+  flag passing problems worked in. Genone's patch for package.mask comment
+  display. Patch to display warnings when unmerging system packages worked in.
+
+  13 Apr 2004; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Quieted up
+  some output for use/has internally. Added a patch for the help output.
+  Added functionality to pass down IUSE from eclasses. Made several variables
+  readonly inside of ebuilds:
+    P PN PV PVR PR A AA D EBUILD EMERGE_FROM O PPID FILESDIR EBUILD_PHASE
+
+*portage-2.0.51_pre2 (11 Apr 2003): Release Fixes
+
+  11 Apr 2004; Nicholas Jones <carpaski@gentoo.org> emerge: Portage can now
+  match categories if the search is prefixed with an '@' -- @app-portage will
+  list all packages in app-portage... '@portage' will match all in app-portage
+  and will match anything with portage in the title -- It's still a regex.
+
+  11 Apr 2004; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: nostrip in
+  RESTRICT now enables DEBUGBUILD -- stripping and related functionality
+  needs to get cleaned up better.
+
   11 Apr 2004; Masatomo Nakano <nakano@gentoo.org> etc-update, ebuild.sh:
   Fixed infinity loop in etc-update(#19144). Fixed glob problem in 
   ebuild.sh(#37066). Fixed deleting build-info problem with
   FEATURES="keepwork"(#29044).
-	
+  
   10 Apr 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Includes the
-	deadlock breaks marked with 'XXX:' to indicate where fixes are needed. Added
-	HTTP encoding to PORTAGE_BINHOST with checks and fallbacks. Fallback for
-	dbkey settings spawned from ebuild. Exception handling for db classes in
-	the case of random corruption. jstubb's fix for the dep code to handle
-	empty lists, added a notice about that being rude.
+  deadlock breaks marked with 'XXX:' to indicate where fixes are needed. Added
+  HTTP encoding to PORTAGE_BINHOST with checks and fallbacks. Fallback for
+  dbkey settings spawned from ebuild. Exception handling for db classes in
+  the case of random corruption. jstubb's fix for the dep code to handle
+  empty lists, added a notice about that being rude.
 
   10 Apr 2004; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Made more QA
-	notices and made them slightly more pretty 'QA Notice:'. Made the depend
-	phase trap less violent -TERM not -KILL.
+  notices and made them slightly more pretty 'QA Notice:'. Made the depend
+  phase trap less violent -TERM not -KILL.
 
   10 Apr 2004; Masatomo Nakano <nakano@gentoo.org> repoman: Added IUSE missings
   a check(#21544).

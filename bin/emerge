@@ -544,6 +544,7 @@ class search:
 	def execute(self,searchkey):
 		"""Performs the search for the supplied search key"""
 		global myopts
+		match_category = 0
 		self.searchkey=searchkey
 		self.packagematches = []
 		if "--searchdesc" in myopts:
@@ -553,6 +554,10 @@ class search:
 			self.searchdesc=0
 			self.matches = {"pkg":[]}
 		print "Searching...   ",
+
+		if self.searchkey[0] == '@':
+			match_category = 1
+			self.searchkey = self.searchkey[1:]
 		if self.searchkey=="*":
 			#hack for people who aren't regular expression gurus
 			self.searchkey==".*"
@@ -562,9 +567,14 @@ class search:
 		self.searchre=re.compile(self.searchkey.lower(),re.I)
 		for package in portage.portdb.cp_all():
 			update_spinner()
-			package_parts=package.split("/")
+			
+			if match_category:
+				match_string  = package[:]
+			else:
+				match_string  = package.split("/")[-1]
+			
 			masked=0
-			if self.searchre.search(package_parts[1]):
+			if self.searchre.search(match_string):
 				if not portage.portdb.xmatch("match-visible",package):
 					masked=1
 				self.matches["pkg"].append([package,masked])
@@ -926,18 +936,18 @@ class depgraph:
 				elif not "--oneshot" in myopts:
 					myfavorites.append(mykey)
 
-		self.missingbins=0
+		missing=0
 		if "--usepkgonly" in myopts:
 			for x in self.digraph.dict.keys():
 				xs=string.split(x," ")
 				if (xs[0] != "binary") and (xs[3]=="merge"):
-					if self.missingbins == 0:
+					if missing == 0:
 						print
-					self.missingbins+=1
+					missing += 1
 					print "Missing binary for:",xs[2]
 
 		# We're true here unless we are missing binaries.
-		return (not self.missingbins,myfavorites)
+		return (not missing,myfavorites)
 
 	def is_newer_ver_installed(self,myroot,pkg,pkgver):
 		"if there is a version of pkg installed newer than pkgver, return it"
@@ -1008,9 +1018,14 @@ class depgraph:
 						if "--usepkgonly" not in myopts:
 							print "\n!!! "+red("all ebuilds that could satisfy ")+green(xinfo)+red(" have been masked.")
 							print "!!! "+red("possible candidates are:")
+							oldcomment = ""
 							for p in alleb:
 								mreasons = portage.getmaskingstatus(p)
 								print "- "+p+" (masked by: "+string.join(mreasons, ", ")+")"
+								comment = portage.getmaskingreason(p)
+								if comment and comment != oldcomment:
+									print comment
+									oldcomment = comment
 							if myparent:
 								print     "!!!    "+red(xfrom)
 							print
@@ -1152,10 +1167,12 @@ class depgraph:
 
 			#THIS NEXT BUNCH OF CODE NEEDS TO BE REPLACED TO SUPPORT WORLD ANTI-DEPS
 			#if mydep2[0]=="!":, etc.
+			binpkguseflags = None
 			if "--usepkg" in myopts:
 				mypk=portage.db[portage.root]["bintree"].dep_bestmatch(mydep)
 				if myeb==mypk:
 					myk=["binary",portage.root,mypk]
+					binpkguseflags=portage.db[portage.root]["bintree"].get_use(mypk)
 				elif "--usepkgonly" in myopts:
 					if not mypk:
 						self.missingbins += [myeb]
@@ -1166,7 +1183,8 @@ class depgraph:
 					myk=["ebuild",portage.root,myeb]
 			else:
 				myk=["ebuild",portage.root,myeb]
-			if not self.create(myk):
+
+			if not self.create(myk,myuse=binpkguseflags):
 				print
 				print "!!! Problem with",myk[0],myk[2]
 				print "!!! Possibly a DEPEND/*DEPEND problem."
@@ -1714,6 +1732,8 @@ def unmerge(unmerge_action, unmerge_files):
 	candidate_catpkgs=[]
 	global_unmerge=0
 	
+	syslist = getlist("system")
+	
 	global myopts	
 	mysettings = portage.config(clone=portage.settings)
 	
@@ -1819,9 +1839,16 @@ def unmerge(unmerge_action, unmerge_files):
 			pkgmap[mykey]={"protected":[], "selected":[], "omitted":[] }
 		if unmerge_action=="unmerge":
 				for y in mymatch:
-					if not y in pkgmap[mykey]["selected"]:
+					if y not in pkgmap[mykey]["selected"]:
 						pkgmap[mykey]["selected"].append(y)
 						numselected=numselected+len(mymatch)
+				if not (pkgmap[mykey]["protected"] or pkgmap[mykey]["omitted"]) and \
+				   (mykey in syslist+["sys-apps/portage"]):
+					print red("\a\n\n!!! Trying to unmerge package(s) in system profile. '%s'" % (mykey))
+					print yellow("\a!!! This could be damaging to your system.\n")
+					if "--pretend" not in myopts:
+						countdown(10,red("Press Ctrl-C to Stop"))
+
 		else:
 			#unmerge_action in ["prune", clean"]
 			slotmap={}

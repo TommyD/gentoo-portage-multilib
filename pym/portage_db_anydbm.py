@@ -1,8 +1,6 @@
 # $Header$
 
 import anydbm,cPickle,types,os
-from os import chown,path,umask,mkdir
-from os.path import exists
 
 import portage_db_template
 
@@ -14,14 +12,13 @@ class database(portage_db_template.database):
 		self.uid      = uid
 		self.gid      = gid
 		
-		if not exists(self.path):
-			prevmask=os.umask(0)
+		prevmask=os.umask(0)
+		if not os.path.exists(self.path):
 			current_path="/"
 			for mydir in self.path.split("/"):
 				current_path += "/"+mydir
-				if not exists(current_path):
-					mkdir(current_path)
-			umask(prevmask)
+				if not os.path.exists(current_path):
+					os.mkdir(current_path)
 
 		self.filename = self.path + "/" + self.category + ".anydbm"
 		
@@ -31,8 +28,8 @@ class database(portage_db_template.database):
 		except:
 			# Create a new db... DB type not supported anymore?
 			self.db = anydbm.open(self.filename, "n", 0664)
-		#chown(self.filename,self.uid,self.gid)
-		#chmod(self.fullpath, 02664)
+
+		os.umask(prevmask)
 
 	def has_key(self,key):
 		self.check_key(key)
