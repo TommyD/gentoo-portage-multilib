@@ -3,8 +3,8 @@
     if [ ${mynum} -lt 1 ]
     then
 	echo "${0}: at least one argument needed"
-	return
-    fi
+    exit 1
+	fi
     if [ ! -d ${D}${DESTTREE}/share/locale ]
     then
 	install -d ${D}${DESTTREE}/share/locale/

@@ -2,7 +2,7 @@
 if [ ${#} -lt 1 ]
 then
 	echo "doinfo: at least one argument needed"
-	return
+	exit 1 	
 fi
 if [ ! -d ${D}usr/share/info ]
 then

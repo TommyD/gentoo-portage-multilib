@@ -2,8 +2,8 @@
     if [ ${#} -ne 2 ]
     then
 	echo "${0}: two arguments needed"
-	return
-    fi
+    exit 1
+	fi
     target=${1}
     linkname=${2}
     ln -sf ${target} ${D}${linkname}

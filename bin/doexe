@@ -3,8 +3,8 @@
     if [ ${mynum} -lt 1 ]
     then
 	echo "doexe: at least one argument needed"
-	return
-    fi
+   	exit 1
+	fi
     if [ ! -d ${D}${EXEDESTTREE} ]
     then
 	install -d ${D}${EXEDESTTREE}

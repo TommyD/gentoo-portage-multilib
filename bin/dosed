@@ -15,7 +15,7 @@ do
 	    sed -e "${mysed}" ${mysrc} > ${y}
 	else
 	    echo "${y} is not a regular file!"
-	    return
+		exit 1
 	fi
     else
 	mysed=${x}

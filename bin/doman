@@ -2,7 +2,7 @@
 if [ ${#} -lt 1 ]
 then
 	echo "${0}: at least one argument needed"
-	return
+	exit 1
 fi
 
 #doman is now FHS compliant:

@@ -2,8 +2,8 @@
 if [ ${#} -lt 1 ]
     then
 	echo "${0}: at least one argument needed"
-	return
-    fi
+    exit 1
+	fi
     if [ ! -d ${D}${DESTTREE}/sbin ]
     then
 	install -d ${D}${DESTTREE}/sbin
