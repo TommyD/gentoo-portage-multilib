@@ -1,6 +1,8 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-1.8.19 (09 Apr 2002)
+
   08 Apr 2002; Geert Bevin <gbevin@gentoo.org>: emerge:
   Removed --all switch to emerge unmerge and clea.
   Added emerge prune which is the same as old emerge unmerge.
