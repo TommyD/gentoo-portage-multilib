@@ -679,7 +679,7 @@ def fetch(myuris):
 			myfetch=string.replace(locfetch,"${URI}",loc)
 			myfetch=string.replace(myfetch,"${FILE}",myfile)
 			myret=spawn(myfetch,free=1)
-			if mydigests!=None and mydigests.has_key[myfile]:
+			if mydigests!=None and mydigests.has_key(myfile):
 				try:
 					mystat=os.stat(settings["DISTDIR"]+"/"+myfile)
 					if mystat[ST_SIZE]==mydigests[myfile]["size"]:
