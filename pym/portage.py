@@ -58,6 +58,7 @@ stickies=["KEYWORDS_ACCEPT","USE","CFLAGS","CXXFLAGS","MAKEOPTS","EXTRA_ECONF","
 # START OF IMPORTS -- START OF IMPORTS -- START OF IMPORTS -- START OF IMPORT
 # ===========================================================================
 
+
 try:
 	import sys
 except:
@@ -218,9 +219,13 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError):
 	else:
 		cacheMiss += 1
 		cached_mtime, list, ftype = -1, [], []
-	if os.path.isdir(mypath):
-		mtime = os.stat(mypath)[ST_MTIME]
-	else:
+	try:
+		pathstat = os.stat(mypath)
+		if S_ISDIR(pathstat[ST_MODE]):
+			mtime = pathstat[ST_MTIME]
+		else:
+			raise Exception
+	except:
 		if EmptyOnError:
 			return [], []
 		return None, None
@@ -230,9 +235,10 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError):
 		list = os.listdir(mypath)
 		ftype = []
 		for x in list:
-			if os.path.isfile(mypath+"/"+x):
+			pathstat = os.stat(mypath+"/"+x)
+			if S_ISREG(pathstat[ST_MODE]):
 				ftype.append(0)
-			elif os.path.isdir(mypath+"/"+x):
+			elif S_ISDIR(pathstat[ST_MODE]):
 				ftype.append(1)
 			else:
 				ftype.append(2)
@@ -770,7 +776,8 @@ def autouse(myvartree,use_cache=1):
 			if not myvartree.dep_match(mydep,use_cache=True):
 				dep_met = False
 				break
-		myusevars += " "+myuse
+		if dep_met:
+			myusevars += " "+myuse
 	return myusevars
 
 def check_config_instance(test):
@@ -4244,7 +4251,7 @@ class vardbapi(dbapi):
 			# We need to rename the ebuild now.
 			old_eb_path = newpath+"/"+mycpsplit[1]    +"-"+mycpsplit[2]
 			new_eb_path = newpath+"/"+mycpsplit_new[1]+"-"+mycpsplit[2]
-			if mycpsplit[4] != "r0":
+			if mycpsplit[3] != "r0":
 				old_eb_path += "-"+mycpsplit[3]
 				new_eb_path += "-"+mycpsplit[3]
 			if os.path.exists(old_eb_path+".ebuild"):
