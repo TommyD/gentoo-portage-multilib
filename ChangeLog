@@ -1,6 +1,9 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  07 Oct 2002; Mark Guertin <gerk@gentoo.org> man/ebuild.5 :
+  Updated the man page to include missing functions in portage
+
   05 Oct 2002; Mark Guertin <gerk@gentoo.org> cnf/make.conf cnf/make.conf.ppc:
   Fixed typo (missing "/") in make.conf and make.conf.ppc, bug #7944
 
