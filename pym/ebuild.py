@@ -900,7 +900,7 @@ class ebuild_handler:
 						# touch the file.
 						open(mysettings["PORTAGE_LOGFILE"], "w").close()
 					os.chmod(mysettings["PORTAGE_LOGFILE"], 0664)
-					os.chown(mysettings["PORtAGE_LOGFILE"], -1,portage_gid)
+					os.chown(mysettings["PORTAGE_LOGFILE"], -1,portage_gid)
 				except ValueError, e:
 					mysettings["PORT_LOGDIR"]=""
 					print "!!! Unable to chown/chmod PORT_LOGDIR. Disabling logging."
