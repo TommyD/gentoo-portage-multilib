@@ -15,7 +15,7 @@ cacheHit = 0
 cacheMiss = 0
 cacheStale = 0
 
-def cacheddir(my_original_path, EmptyOnError, followSymlinks=True):
+def cacheddir(my_original_path, EmptyOnError):
 	"""return results from cache, updating cache if its stale/incomplete"""
 	global cacheHit, cacheMiss, cacheStale, dircache
 	mypath=portage_file.normpath(my_original_path)
@@ -44,19 +44,20 @@ def cacheddir(my_original_path, EmptyOnError, followSymlinks=True):
 		ftype = []
 		for x in list:
 			try:
-				if followSymlinks:
-					pathstat = os.stat(mypath+"/"+x)
-				else:
-					pathstat = os.lstat(mypath+"/"+x)
+				pathstat = os.lstat(mypath+"/"+x)
 				
 				if stat.S_ISREG(pathstat[stat.ST_MODE]):
 					ftype.append(0)
 				elif stat.S_ISDIR(pathstat[stat.ST_MODE]):
 					ftype.append(1)
 				elif stat.S_ISLNK(pathstat[stat.ST_MODE]):
-					ftype.append(2)
+					pathstat = os.stat(mypath+"/"+x)
+					if stat.S_ISREG(pathstat[stat.ST_MODE]):
+						ftype.append(2)
+					elif stat.S_ISDIR(pathstat[stat.ST_MODE]):
+						ftype.append(3)
 				else:
-					ftype.append(3)
+					ftype.append(4)
 
 			except SystemExit, e:
 				raise
