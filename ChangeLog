@@ -4,7 +4,8 @@
   10 Oct 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
   Bug 8964 -- Fix for read-only traceback in digestgen()
   Bug 8949 -- Fix for read-only traceback in doebuild()
-	Added '~arch' UNSTABILE keywords. '~arch' implies 'arch'
+  Bug 8284 -- Prepend ARCH _after_ use order processing. Prevents -*
+              from killing the ARCH flag.
 
 	10 Oct 2002; Nicholas Jones <carpaski@gentoo.org> emerge:
 	Bug 8552 -- typo fixes

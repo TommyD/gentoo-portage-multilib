@@ -708,10 +708,8 @@ class config:
 						# "-*" is a special "minus" var that means "unset all settings".  so USE="-* gnome" will have *just* gnome enabled.
 						mysetting=[]
 						continue
-					add=[x]
-					if x[0]=="~":
-						add.append(x[1:])
-					elif x[0]=="-":
+					add=x
+					if x[0]=="-":
 						remove=x[1:]
 					else:
 						remove=x
@@ -725,12 +723,15 @@ class config:
 						while y in mysetting:
 							mysetting.remove(y)
 					#now append our new setting
-					for myadd in add:
-						mysetting.append(myadd)
+					if add:
+						mysetting.append(add)
 			#store setting in last element of configlist, the original environment:
 			self.configlist[-1][mykey]=string.join(mysetting," ")
 		#cache split-up USE var in a global
 		usesplit=string.split(self.configlist[-1]["USE"])
+		# Pre-Pend ARCH variable to USE settings so '-*' in env doesn't kill arch.
+		if self.configdict["defaults"]["ARCH"] not in usesplit:
+			usesplit.insert(0,self.configdict["defaults"]["ARCH"])
 	
 	def __getitem__(self,mykey):
 		if mykey=="CONFIG_PROTECT_MASK":
