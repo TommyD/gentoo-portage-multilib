@@ -1,10 +1,14 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  03 Apr 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: Added an
+  indentation fix to prevent merge from dying if a file attempts to install
+  itself on top of an existing directory.  Closes bug #1498.
+
 *portage-1.8.11.1 (03 Apr 2002)
 
   03 Apr 2002; Geert Bevin <gbevin@gentoo.org> portage.py: important fixes
-  for movefile() -- changed the order of ownerchip / permissions settings since
+  for movefile() -- changed the order of ownership / permissions settings since
   suid/guid bits were overwritten, added support back for 'ebuild config' since
   it was accidentally left out
 

@@ -2944,7 +2944,7 @@ class dblink:
 						outfile.write("obj "+myrealdest+" "+mymd5+" "+`mymtime`+"\n")
 					else:
 						zing="!!!"
-				print zing,mydest
+					print zing,mydest
 			else:
 				# we are merging a fifo or device node
 				zing="!!!"
