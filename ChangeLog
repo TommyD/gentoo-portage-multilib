@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  07 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py: Corrected
+  som idiocy I introduced into listdir.
+
   07 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py: buggy logic
   in listdir w/ ignorecvs on. (#70170)
 

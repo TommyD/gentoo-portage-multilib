@@ -207,10 +207,11 @@ def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelis
 		ftype=[]
 
 	if ignorecvs or len(ignorelist):
-		for x in range(0,len(list)):
+		x=0
+		while x < len(list):
 			#we're working with first level entries, no os.path.basename requirement
 			if (ignorecvs and (list[x] in ('CVS','.svn') or list[x].startswith(".#"))) and not \
-				b in ignorelist:
+				list[x] in ignorelist:
 				list.pop(x)
 				ftype.pop(x)
 				continue
@@ -223,13 +224,22 @@ def listdir(mypath, recursive=False, filesonly=False, ignorecvs=False, ignorelis
 		x=0
 		while x<len(ftype):
 			b=os.path.basename(list[x])
-			if ftype[x]==1 and not (ignorecvs and (b in ('CVS','.svn') or b.startswith(".#"))) and not \
-				(b in ignorelist):
+			# if it was cvs, it was filtered already.
+			if ftype[x] == 1:
+
 				l,f = cacheddir(mypath+"/"+list[x],EmptyOnError,followSymlinks=followSymlinks)
-								  
-				l=l[:]
-				for y in range(0,len(l)):
-					l[y]=list[x]+"/"+l[y]
+
+				y=0
+				while y < len(l):
+					# use list comprehension here.
+					if not (ignorecvs and (l[y] in ('CVS','.svn') or l[y].startswith(".#"))) \
+						and not l[y] in ignorelist:
+						l[y]=list[x]+"/"+l[y]
+						y += 1
+					else:
+						l.pop(y)
+						f.pop(y)
+
 				list=list+l
 				ftype=ftype+f
 			x+=1
