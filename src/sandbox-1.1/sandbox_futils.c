@@ -23,9 +23,16 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <fcntl.h>
+
 #include <grp.h>
+#include <pwd.h>
 
 #include "sandbox.h"
+
+/* BEGIN Prototypes */
+int file_security_check(char *filename);
+/* END   Prototypes */
+
 
 /* glibc modified getcwd() functions */
 char *egetcwd(char *, size_t);
@@ -294,6 +301,8 @@ file_open(char *filename, char *mode, int perm_specified, ...)
 	int perm;
 	char *group = NULL;
 	struct group *group_struct;
+	
+	file_security_check(filename);
 
 	if (perm_specified) {
 		va_start(ap, perm_specified);
@@ -302,6 +311,7 @@ file_open(char *filename, char *mode, int perm_specified, ...)
 		va_end(ap);
 	}
 	fd = open(filename, file_getmode(mode));
+	file_security_check(filename);
 	if (-1 == fd) {
 		snprintf(error, 249, ">>> %s file mode: %s open", filename, mode);
 		perror(error);
@@ -327,6 +337,15 @@ file_open(char *filename, char *mode, int perm_specified, ...)
 	}
 	/* Only lock the file if opening succeeded */
 	if (-1 != fd) {
+		if(file_security_check(filename) != 0) {
+		  /* Security violation occured between the last check and the     */
+			/* creation of the file. As SpanKY pointed out there is a race   */
+			/* condition here, so if there is a problem here we'll mesg and  */
+			/* bail out to avoid it until we can work and test a better fix. */
+			fprintf(stderr, "\n\nSECURITY RACE CONDITION: Problem recurred after creation!\nBAILING OUT\n\n");
+			exit(127);
+		}
+
 		if (0 == file_lock(fd, file_locktype(mode), filename)) {
 			close(fd);
 			return -1;
@@ -405,6 +424,97 @@ file_exist(char *filename, int checkmode)
 	}
 
 	return 1;
+}
+
+int file_security_check(char *filename) { /* 0 == fine, >0 == problem */
+	struct stat stat_buf;
+	struct group *group_buf;
+	struct passwd *passwd_buf;
+	
+	passwd_buf = getpwnam("portage");
+	group_buf = getgrnam("portage");
+
+	if((lstat(filename, &stat_buf) == -1) && (errno == ENOENT)) {
+		/* Doesn't exist. */
+		return 0;
+	}
+	else {
+		if((stat_buf.st_nlink) > 1) { /* Security: We are handlinked... */
+			if(unlink(filename)) {
+				fprintf(stderr,
+				   "Unable to delete file in security violation (hardlinked): %s\n",
+					 filename);
+				exit(127);
+			}
+			fprintf(stderr,
+			   "File in security violation (hardlinked): %s\n",
+				 filename);
+			return 1;
+		}
+		else if(S_ISLNK(stat_buf.st_mode)) { /* Security: We are a symlink? */
+			fprintf(stderr,
+			   "File in security violation (symlink): %s\n",
+				 filename);
+			exit(127);
+		}
+		else if(0 == S_ISREG(stat_buf.st_mode)) { /* Security: special file */
+			fprintf(stderr,
+			   "File in security violation (not regular): %s\n",
+				 filename);
+			exit(127);
+		}
+		else if(stat_buf.st_mode & S_IWOTH) { /* Security: We are o+w? */
+			if(unlink(filename)) {
+				fprintf(stderr,
+				   "Unable to delete file in security violation (world write): %s\n",
+					 filename);
+				exit(127);
+			}
+			fprintf(stderr,
+			   "File in security violation (world write): %s\n",
+				 filename);
+			return 1;
+		}
+		else if(
+		   !((stat_buf.st_uid == 0) || (stat_buf.st_uid == getuid()) || ((passwd_buf!=NULL) && (stat_buf.st_uid == passwd_buf->pw_uid))) ||
+			 !((stat_buf.st_gid == 0) || (stat_buf.st_gid == getgid()) || ((group_buf !=NULL) && (stat_buf.st_gid == group_buf->gr_gid)))
+			 ) { /* Security: Owner/Group isn't right. */
+			 
+			/* uid = 0 or myuid or portage */
+			/* gid = 0 or mygid or portage */
+			
+			if(0) {
+				fprintf(stderr, "--1: %d,%d,%d,%d\n--2: %d,%d,%d,%d\n",
+
+					(stat_buf.st_uid == 0),
+					(stat_buf.st_uid == getuid()),
+					(passwd_buf!=NULL),
+					(passwd_buf!=NULL)? (stat_buf.st_uid == passwd_buf->pw_uid) : -1,
+
+				  (stat_buf.st_gid == 0),
+					(stat_buf.st_gid == getgid()),
+					(group_buf !=NULL),
+					(group_buf !=NULL)? (stat_buf.st_gid == group_buf->gr_gid) : -1);
+			}
+			
+			/* manpage: "The return value may point to static area" */
+			/* DO NOT ACTUALLY FREE THIS... It'll segfault.         */
+			/* if(passwd_buf != NULL) { free(passwd_buf); }         */
+			/* if(group_buf  != NULL) { free(group_buf); }          */
+				 
+			if(unlink(filename)) {
+				fprintf(stderr,
+				   "Unable to delete file in security violation (bad owner/group): %s\n",
+					 filename);
+				exit(127);
+			}
+			fprintf(stderr,
+			   "File in security violation (bad owner/group): %s\n",
+				 filename);
+			return 1;
+		}
+	} /* Stat */
+	return 0;
 }
 
 // vim:expandtab noai:cindent ai

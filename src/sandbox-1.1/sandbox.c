@@ -186,7 +186,7 @@ cleanup()
 
 		/* Stat the PIDs file, make sure it exists and is a regular file */
 		if (file_exist(sandbox_pids_file, 1) <= 0) {
-			perror(">>> pids file is not a regular file");
+			fprintf(stderr, ">>> pids file is not a regular file");
 			success = 0;
 			/* We should really not fail if the pidsfile is missing here, but
 			 * rather just exit cleanly, as there is still some cleanup to do */
@@ -798,9 +798,10 @@ main(int argc, char **argv)
 
 		/* Load our PID into PIDs file */
 		success = 1;
+		errno = 0;
 		if (file_exist(sandbox_pids_file, 1) < 0) {
 			success = 0;
-			fprintf(stderr, ">>> %s is not a regular file", sandbox_pids_file);
+			fprintf(stderr, ">>> %s is not a regular file\n", sandbox_pids_file);
 		} else {
 			pids_file = file_open(sandbox_pids_file, "r+", 1, 0664, "portage");
 			if (-1 == pids_file)

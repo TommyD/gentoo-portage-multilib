@@ -2,8 +2,14 @@
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+  04 Apr 2004; Nicholas Jones <carpaski@gentoo.org> libsandbox.c: Added a
+  file_security_check() function to check random potential exploits on files
+  that sandbox is to load and read -- Normally sandboxpids.tmp. This fixes
+  the 'system-crippling' exploits (bug 21923) and catches a few other
+  potential problems.
+
   20 Mar 2004; Nicholas Jones <carpaski@gentoo.org> Makefile: Updates for
-	32/64 bit sandbox. Made CC and LD '?=' values to allow passed in CC to work.
+  32/64 bit sandbox. Made CC and LD '?=' values to allow passed in CC to work.
 
   20 Mar 2004; Nicholas Jones <carpaski@gentoo.org> libsandbox.c:
   bug 42048 -- Fixed the lstat/errno conditions for mkdir <caleb@g.o>.
