@@ -9,6 +9,9 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  21 Jul 2004; Masatomo Nakano <nakano@gentoo.org> bin/emerge: Fixed bug 
+  which blocks a package itself with -U option.
+
   20 Jul 2004; Masatomo Nakano <nakano@gentoo.org> bin/repoman: Fixed
   profile cache problem. (#43601, #56170)
 

@@ -1003,8 +1003,10 @@ class depgraph:
 			if x[0]=="!":
 				# if this package is myself, don't append it to block list.
 				if (myparent):
-					if myparent.split()[2] in portage.portdb.xmatch("match-all", x[1:]):
+					if myparent.split()[2] in portage.portdb.xmatch("list-visible", x[1:]):
+						# myself, so exit.
 						continue
+				# adding block
 				myk=["blocks",myroot,x[1:]]
 			else:
 				#We are not processing a blocker but a normal dependency
