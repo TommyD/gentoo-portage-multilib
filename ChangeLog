@@ -11,6 +11,9 @@
 
 *portage-2.0.51_pre13 (09 Jul 2003): Fixes and Public Readiness
 
+  10 Jul 2004; Jason Stubbs <jstubbs@gentoo.org> man/portage.5:
+  Adjusted documentation for user use.mask to match implementation.
+
   21 Jun 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Included
   ferringb's logic fix for the repoman code. Fix that prevents vardb from
   using all files and directories in the vardb as keys instead of only the
