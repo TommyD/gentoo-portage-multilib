@@ -1,10 +1,12 @@
 #!/bin/bash
-if [ -z "$1" ]
-then
+# Copyright 1999-2002 Gentoo Technologies, Inc.
+# Distributed under the terms of the GNU General Public License v2
+# $Header$
+
+if [ -z "$1" ] ; then
 	rm -f ${D}usr/info/dir
 	gzip -f -9 ${D}usr/info/*
 else
 	rm -f "${D}$1"/info/dir
 	gzip -f -9 "${D}$1"/info/*
 fi
-

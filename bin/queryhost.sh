@@ -1,4 +1,7 @@
 #!/bin/bash
+# Copyright 1999-2002 Gentoo Technologies, Inc.
+# Distributed under the terms of the GNU General Public License v2
+# $Header$
 
 # Ping a single host and collect the round-trip time.  Unfortunately
 # this measures latency, not bandwidth, but it's better than nothing.

@@ -1,4 +1,8 @@
 #!/usr/bin/python2.2
+# Copyright 1999-2002 Gentoo Technologies, Inc.
+# Distributed under the terms of the GNU General Public License v2
+# $Header$
+
 import os
 import sys
 import portage

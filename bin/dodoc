@@ -1,22 +1,21 @@
 #!/bin/bash
-for x in "$@"
-do
-if [ -e "${x}" ]
-then
-	if [ ! -d "${D}usr/share/doc/${PF}" ]
-	then
-		install -d "${D}usr/share/doc/${PF}"
-	fi
-	if [ -z "${DOCDESTTREE}" ]
-	then
-		install -m0644 "${x}" "${D}usr/share/doc/${PF}"
-		gzip -f -9 "${D}usr/share/doc/${PF}/${x##*/}"
+# Copyright 1999-2002 Gentoo Technologies, Inc.
+# Distributed under the terms of the GNU General Public License v2
+# $Header$
+
+for x in "$@" ; do
+	if [ -e "${x}" ] ; then
+		if [ ! -d "${D}usr/share/doc/${PF}" ] ; then
+			install -d "${D}usr/share/doc/${PF}"
+		fi
+		if [ -z "${DOCDESTTREE}" ] ; then
+			install -m0644 "${x}" "${D}usr/share/doc/${PF}"
+			gzip -f -9 "${D}usr/share/doc/${PF}/${x##*/}"
+		else
+			install -m0644 "${x}" "${D}usr/share/doc/${PF}/${DOCDESTTREE}"
+			gzip -f -9 "${D}usr/share/doc/${PF}/${DOCDESTTREE}/${x##*/}"
+		fi
 	else
-		install -m0644 "${x}" "${D}usr/share/doc/${PF}/${DOCDESTTREE}"
-		gzip -f -9 "${D}usr/share/doc/${PF}/${DOCDESTTREE}/${x##*/}"
-	fi
-else
-	echo "${0}: ${x} does not exist."
+		echo "${0}: ${x} does not exist."
 	fi
 done
-

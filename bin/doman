@@ -1,6 +1,9 @@
 #!/bin/bash
-if [ ${#} -lt 1 ]
-then
+# Copyright 1999-2002 Gentoo Technologies, Inc.
+# Distributed under the terms of the GNU General Public License v2
+# $Header$
+
+if [ ${#} -lt 1 ] ; then
 	echo "${0}: at least one argument needed" 1>&2
 	exit 1
 fi
@@ -13,20 +16,19 @@ fi
 BASE="/usr/share"
 OLDBASE="$BASE"
 
-for x in "$@"
-do
+for x in "$@" ; do
 	[ "$x" == "--"     ] && BASE="/usr/share"
 	[ "$x" == "-kde"   ] && BASE="/opt/kde"
 	[ "$x" == "-gnome" ] && BASE="/opt/gnome"
 	[ "$x" == "-x11"   ] && BASE="/usr/X11R6"
-	if [ "${x:0:1}" == "-" ]; then
+	if [ "${x:0:1}" == "-" ] ; then
 		OLDBASE="$BASE"
 		continue
 	fi
 
 	BASE="$OLDBASE"
 	suffix="${x##*.}"
-	if [ "$suffix" = "gz" ]; then
+	if [ "$suffix" = "gz" ] ; then
 		compressed="gz"
 		realname="${x%.*}"
 		suffix="${realname##*.}"
@@ -35,7 +37,7 @@ do
 		compressed=""
 	fi
 
-	if [ "x" == "${suffix:1:1}" ]; then
+	if [ "x" == "${suffix:1:1}" ] ; then
 		OLDBASE="$BASE"
 		BASE="/usr/X11R6"
 	fi
@@ -43,14 +45,14 @@ do
 	mandir=man${suffix:0:1}
 
 	if echo ${mandir} | egrep -q '^man[1-8n]$' -; then
-		if [ -e "${x}" ];	then
-			if [ ! -d "${D}${BASE}/man/${mandir}" ]; then
+		if [ -e "${x}" ] ; then
+			if [ ! -d "${D}${BASE}/man/${mandir}" ] ; then
 				install -d "${D}${BASE}/man/${mandir}"
 			fi
 
 			install -m0644 "${x}" "${D}${BASE}/man/${mandir}"
-	
-			if [ -z "${compressed}" ]; then
+
+			if [ -z "${compressed}" ] ; then
 				gzip -f -9 "${D}${BASE}/man/${mandir}/${x##*/}"
 			fi
 		else

@@ -1,4 +1,7 @@
-#!/bin/sh
+#!/bin/bash
+# Copyright 1999-2002 Gentoo Technologies, Inc.
+# Distributed under the terms of the GNU General Public License v2
+# $Header$
 
 prepallman
 prepallinfo
@@ -6,11 +9,10 @@ prepallstrip
 
 #this should help to ensure that all (most?) shared libraries are executable
 cd "${D}"
-for i in opt/*/lib lib usr/lib usr/X11R6/lib
-do
+for i in opt/*/lib lib usr/lib usr/X11R6/lib ; do
 	[ -d "$i" ] && continue
-	for j in "$i"/*.so.* "$i"/*.so
-	do
+
+	for j in "$i"/*.so.* "$i"/*.so ; do
 		[ ! -e "$j" ] && continue
 		[ -L "$j" ] && continue
 		chmod +x "$j"
@@ -18,18 +20,12 @@ do
 done
 
 # Move aclocals
-for i in `find ${D} -name "aclocal" -type d`
-do
-  if [ "$i" != "" ]
-  then
-    if [  "$i" != "${D}usr/share/aclocal" ]
-    then
-      echo moving aclocal: $i
-      install -d "${D}usr/share/aclocal"
-      mv "${i}"/* "${D}usr/share/aclocal"
-      rm -fr "${i}"
-    fi
-  fi
+for i in `find ${D} -name "aclocal" -type d` ; do
+	[ -z "$i" ] && continue
+	[ "$i" == "${D}usr/share/aclocal" ] && continue
+
+	echo "moving aclocal: $i"
+	install -d "${D}usr/share/aclocal"
+	mv "${i}"/* "${D}usr/share/aclocal"
+	rm -fr "${i}"
 done
-
-

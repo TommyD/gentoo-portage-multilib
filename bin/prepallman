@@ -1,43 +1,36 @@
 #!/bin/bash
+# Copyright 1999-2002 Gentoo Technologies, Inc.
+# Distributed under the terms of the GNU General Public License v2
+# $Header$
 
-for x in ${D}/opt/*/man/* ${D}/usr/share/man/* ${D}/usr/local/man/* ${D}/usr/X11R6/share/man/*
-do
-	if [ ! -d "${x}" ]
-	then
-		continue
-	fi
+for x in ${D}/opt/*/man/* ${D}/usr/share/man/* ${D}/usr/local/man/* ${D}/usr/X11R6/share/man/* ; do
+	[ ! -d "${x}" ] && continue
+
 	w=`echo ${x}/*`
-	for y in ${w}
-	do
-		if [ -L "${y}" ]
-		then
+	for y in ${w} ; do
+		if [ -L "${y}" ] ; then
 			#symlink
 			mylink="${y}"
 			linkto=`readlink ${y}`
-			if [ "${linkto:0:1}" == "/" ]
-			then
+			if [ "${linkto:0:1}" == "/" ] ; then
 				#absolute path; remove any weirdly embedded ${D}'s
 				linkto="${linkto/${D}/}"
 			fi
-			if [ "${linkto##*.}" != "gz" ]
-			then
+			if [ "${linkto##*.}" != "gz" ] ; then
 				linkto="${linkto}.gz"
 			fi
-			if [ "${mylink##*.}" != "gz" ]
-			then
+			if [ "${mylink##*.}" != "gz" ] ; then
 				mylink="${mylink}.gz"
 			fi
+
 			echo "fixing man page symlink: ${mylink##*/}"
 			ln -sf "${linkto}" "${mylink}"
-			if [ "${y}" != "${mylink}" ]
-			then
+			if [ "${y}" != "${mylink}" ] ; then
 				echo "removing old symlink: ${y##*/}"
 				rm "${y}"
 			fi
-		elif [ -f "${y}" ]
-		then
-			if [ "${y##*.}" != "gz" ]
-			then
+		elif [ -f "${y}" ] ; then
+			if [ "${y##*.}" != "gz" ] ; then
 				gzip -f -9 "${y}"
 				echo "gzipping man page: ${y}"
 			fi

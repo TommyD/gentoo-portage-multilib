@@ -1,25 +1,22 @@
 #!/bin/bash
+# Copyright 1999-2002 Gentoo Technologies, Inc.
+# Distributed under the terms of the GNU General Public License v2
+# $Header$
 
-if [ ${#} -lt 1 ]
-then
+if [ ${#} -lt 1 ] ; then
 	echo "${0}: at least one argument needed"
 	exit 1
 fi
 
-if [ ! -d "${D}${DESTTREE}/bin" ]
-then
+if [ ! -d "${D}${DESTTREE}/bin" ] ; then
 	install -d "${D}${DESTTREE}/bin"
 fi
 
-for x in "$@"
-do
-	if [ -x "${x}" ]
-	then
-		if [ -z "$DEBUGBUILD" ]
-		then
+for x in "$@" ; do
+	if [ -x "${x}" ] ; then
+		if [ -z "$DEBUGBUILD" ] ; then
 			MYVAL=`file "${x}" | grep "ELF"` 
-			if [ -n "$MYVAL" ]
-			then
+			if [ -n "$MYVAL" ] ; then
 				strip "${x}"
 			fi
 		fi

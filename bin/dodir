@@ -1,5 +1,8 @@
 #!/bin/bash
-    for x in "$@"
-    do
-    	install -d ${DIROPTIONS} "${D}${x}"
-    done
+# Copyright 1999-2002 Gentoo Technologies, Inc.
+# Distributed under the terms of the GNU General Public License v2
+# $Header$
+
+for x in "$@" ; do
+	install -d ${DIROPTIONS} "${D}${x}"
+done

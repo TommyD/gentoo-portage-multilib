@@ -1,27 +1,25 @@
 #!/bin/bash
-if [ $# -lt 1 ]
-then
+# Copyright 1999-2002 Gentoo Technologies, Inc.
+# Distributed under the terms of the GNU General Public License v2
+# $Header$
+
+if [ $# -lt 1 ] ; then
 	echo "${0}: at least one argument needed"
-	exit
+	exit 1
 fi
-if [ ! -d "${D}${INSDESTTREE}" ]
-	then
+if [ ! -d "${D}${INSDESTTREE}" ] ; then
 	install -d "${D}${INSDESTTREE}"
 fi
-for x in "$@"
-do
-	if [ -L "$x" ]
-	then
-	    cp "$x" "${T}"
-	    mysrc="${T}"/`/usr/bin/basename "${x}"`
-	elif [ -d "$x" ]
-	then
-	    echo "doins: warning, skipping directory ${x}"
+
+for x in "$@" ; do
+	if [ -L "$x" ] ; then
+		cp "$x" "${T}"
+		mysrc="${T}"/`/usr/bin/basename "${x}"`
+	elif [ -d "$x" ] ; then
+		echo "doins: warning, skipping directory ${x}"
 		continue
 	else
-	    mysrc="${x}"
+		mysrc="${x}"
 	fi
         install ${INSOPTIONS} "${mysrc}" "${D}${INSDESTTREE}"
 done
-
-

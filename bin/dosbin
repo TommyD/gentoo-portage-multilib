@@ -1,31 +1,29 @@
 #!/bin/bash
-if [ ${#} -lt 1 ]
-    then
+# Copyright 1999-2002 Gentoo Technologies, Inc.
+# Distributed under the terms of the GNU General Public License v2
+# $Header$
+
+if [ ${#} -lt 1 ] ; then
 	echo "${0}: at least one argument needed"
-    exit 1
-	fi
-    if [ ! -d "${D}${DESTTREE}/sbin" ]
-    then
+	exit 1
+fi
+if [ ! -d "${D}${DESTTREE}/sbin" ] ; then
 	install -d "${D}${DESTTREE}/sbin"
-    fi
-    for x in "$@"
-    do
-	if [ -x "${x}" ]
-	then
-		if [ -z "$DEBUGBUILD" ]
-		then
-	        MYVAL=`file "${x}" | grep "ELF"` 
-	        if [ "$MYVAL" ]
-	        then
+fi
+
+for x in "$@" ; do
+	if [ -x "${x}" ] ; then
+		if [ -z "$DEBUGBUILD" ] ; then
+			MYVAL=`file "${x}" | grep "ELF"`
+			if [ "$MYVAL" ] ; then
 				strip "${x}"
 			fi
-	    fi
-	    #if executable, use existing perms
+		fi
+		#if executable, use existing perms
 		install -m0755 "${x}" "${D}${DESTTREE}/sbin"
 	else
 		#otherwise, use reasonable defaults
 		echo ">>> dosbin: making ${x} executable..."
 		install -m0755 --owner=root --group=root "${x}" "${D}${DESTTREE}/sbin"
 	fi
-    done
-
+done

@@ -1,9 +1,12 @@
 #!/bin/bash
-if [ -n "${DEBUGBUILD}" ]
-then
-	exit
-fi	
-for x in $@
-do
+# Copyright 1999-2002 Gentoo Technologies, Inc.
+# Distributed under the terms of the GNU General Public License v2
+# $Header$
+
+if [ -n "${DEBUGBUILD}" ] ; then
+	exit 0
+fi
+
+for x in "$@" ; do
 	strip "${D}${x}"/*
 done

@@ -1,35 +1,23 @@
 #!/bin/bash
+# Copyright 1999-2002 Gentoo Technologies, Inc.
+# Distributed under the terms of the GNU General Public License v2
+# $Header$
 
-if [ -n "${DEBUGBUILD}" ]
-then
-	exit
-fi	
+if [ -n "${DEBUGBUILD}" ] ; then
+	exit 0
+fi
+
 echo "strip:"
 z=`find ${D} -type f \( -perm -0100 -or -perm -0010 -or -perm -0001 -or -name "*.so" -or -name "*.so.*" \)`
 
-for x in $z
-do
-   f=`file "$x"`
-   if [ "${f/*SB executable*/1}" == "1"  ]
-   then
-	echo $x
-	strip "${x}"
-   fi
-   if [ "${f/*SB shared object*/1}" == "1" ]
-   then
-	echo $x
-	strip --strip-debug "${x}"
-   fi
+for x in $z ; do
+	f=`file "$x"`
+	if [ "${f/*SB executable*/1}" == "1"  ] ; then
+		echo $x
+		strip "${x}"
+	fi
+	if [ "${f/*SB shared object*/1}" == "1" ] ; then
+		echo $x
+		strip --strip-debug "${x}"
+	fi
 done
-
-
-
-
-
-
-
-
-
-
-
-
