@@ -7,6 +7,12 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  05 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> doins: Added vapier's fix
+  for doins changing existing directory permissions. #69896
+
+  04 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> tbz2tool.c: Added include
+  for stdlib.h as per vapier's bug report. #70001
+
   04 Nov 2004; Marius Mauch <genone@gentoo.org> pym/portage.py: Added
   a 'return 0' in treewalk() to avoid the "Unable to run required binary"
   problem.
