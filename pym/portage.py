@@ -1055,9 +1055,8 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 	if not "/usr/lib/portage/bin" in mysplit:
 		settings["PATH"]="/usr/lib/portage/bin:"+settings["PATH"]
 
-	if not settings.has_key("BUILD_PREFIX"):
-		print "!!! Error: BUILD_PREFIX not defined."
-		return 1
+	settings["BUILD_PREFIX"]=settings["PORTAGE_TMPDIR"]+"/portage"
+	settings["PKG_TMPDIR"]=settings["PORTAGE_TMPDIR"]+"/portage-pkg"
 	if mydo!="depend":
 		#depend may be run as non-root
 		settings["BUILDDIR"]=settings["BUILD_PREFIX"]+"/"+settings["PF"]

@@ -1,6 +1,15 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  29 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, make.globals,
+  make.globals.ppc: internalized definitions of BUILDDIR and PKG_TMPDIR in
+  order to make things work as expected when one sets PORTAGE_TMPDIR.  The new
+  config file var expansion algorithm made this change necessary.
+  
+  29 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: fix doebuild()
+  so that pkg_setup() gets called when a .tbz2 package is being built.  This
+  closes bug #3673.
+  
   29 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: tweaked the
   aux_get() code to automatically regenerate cache files if they have the
   incorrect number of entries.

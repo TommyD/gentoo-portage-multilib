@@ -6,21 +6,12 @@ GENTOO_MIRRORS="http://www.ibiblio.org/pub/Linux/distributions/gentoo"
 SYNC="rsync://rsync.gentoo.org/gentoo-portage"
 # Host-type
 CHOST=i686-pc-linux-gnu
-
-#PORTAGE_TMPDIR=${ROOT}/var/tmp
 PORTAGE_TMPDIR=/var/tmp
-#/var/tmp without ${ROOT} seems more appropriate
-
-# Directory used for the build process 
-BUILD_PREFIX=${PORTAGE_TMPDIR}/portage
-PKG_TMPDIR=${PORTAGE_TMPDIR}/portage-pkg
 
 PORTDIR=/usr/portage
 DISTDIR=${PORTDIR}/distfiles
 PKGDIR=${PORTDIR}/packages
 RPMDIR=${PORTDIR}/rpm
-CURRENTFILE=${PORTDIR}/current-packages
-PLATFORM=$CHOST
 CONFIG_PROTECT="/etc /var/qmail/control /usr/share/config /usr/kde/2/share/config /usr/kde/3/share/config"
 CONFIG_PROTECT_MASK="/etc/gconf"
 
@@ -32,8 +23,6 @@ FETCHCOMMAND="/usr/bin/wget -t 5 --passive-ftp \${URI} -P \${DISTDIR}"
 RESUMECOMMAND="/usr/bin/wget -c -t 5 --passive-ftp \${URI} -P \${DISTDIR}"
 
 CFLAGS="-O2 -mcpu=i686 -pipe"
-
-# C++ Compiler flags
 CXXFLAGS=${CFLAGS}
 
 # Debug build -- if defined, binaries won't be stripped
