@@ -776,7 +776,8 @@ for x in scanlist:
 						stats[mykey]=stats[mykey]+1
 						fails[mykey].append(x+"/"+y+".ebuild: "+keyword+" "+repr(mydep[1]))
 
-		if not os.system("egrep '\([^)]*\<die\>' "+checkdir+"/"+y+".ebuild >/dev/null 2>&1"):
+		# this check needs work, it won't catch (\ndie)
+		if not os.system("egrep '^[^#]*\([^)]*\<die\>' "+checkdir+"/"+y+".ebuild >/dev/null 2>&1"):
 			stats["ebuild.nesteddie"]=stats["ebuild.nesteddie"]+1
 			fails["ebuild.nesteddie"].append(x+"/"+y+".ebuild")
 		# uselist checks - global

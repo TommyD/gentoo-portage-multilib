@@ -9,6 +9,12 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  23 Jul 2004; Brian Harring <ferringb@gentoo.org> bin/repoman: Corrected a 
+  false positive on the ebuild.nesteddie check.  Basically it wasn't looking 
+  to see if the line was active or not (fex # (die), bash skips, but repoman 
+  caught).  Aside from that, that check is still capable of missing multiline 
+  ebuild.nesteddie instances.  (#33011)
+
   22 Jul 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild.sh: Re-enabled
   binary QA interceptors, with a minor twist- the QA_INTERCEPTORS is used to 
   specify what QA interceptors will be defined.  These functions are no longer
