@@ -1,14 +1,21 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-2.0.46_pre2 (15 Dec 2002): Feature Prerelease: prelink
+
+  15 Dec 2002; Nicholas Jones <carpaski@gentoo.org> emerge/portage.py:
+  Fixups. PRELINK_MASK code. 'prelink -af' in post_emerge().
+
   15 Dec 2002; Mark Guertin <gerk@gentoo.org> cnf.make.conf.ppc:
   updated incorrect CFLAG option and appended -mabi=altivec info
 
-  15 Dec 2002; Nicholas Jones <carpaski@gentoo.org> portage.py: Counter
-	fixups. More prelink code -- Prelink may have to ignore mtimes...
+*portage-2.0.46_pre1 (15 Dec 2002): Feature Prerelease: prelink
 
-	15 Dec 2002; Nicholas Jones <carpaski@gentoo.org> bin/f*: Made them
-	loop over multiple files instead of just doing one.
+  15 Dec 2002; Nicholas Jones <carpaski@gentoo.org> portage.py: Counter
+  fixups. Prelink code.
+
+  15 Dec 2002; Nicholas Jones <carpaski@gentoo.org> bin/f*: Made them
+  loop over multiple files instead of just doing one.
 
   13 Dec 2002; Nicholas Jones <carpaski@gentoo.org> emerge/portage.py:
   Added disabled prelink code. Needs a little more work. Gave portage the

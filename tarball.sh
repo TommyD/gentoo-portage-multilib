@@ -38,10 +38,21 @@ rm -f ${PKG}-${V}/bin/emerge.py
 tar cjvf ${TMP}/${PKG}-${V}.tar.bz2 ${PKG}-${V}
 
 if [ -L ${TMP}/portage-copy ]; then
+	echo "Copying to portage-copy"
 	cp ${TMP}/${PKG}-${V}.tar.bz2 ${TMP}/portage-copy/
 	cp /usr/portage/sys-apps/portage/portage-2.0.45-r5.ebuild ${TMP}/portage-copy/portage-${V}.ebuild
 fi
 if [ -L ${TMP}/portage-web ]; then
+	echo "Copying to portage-web"
 	cp ${TMP}/${PKG}-${V}.tar.bz2 ${TMP}/portage-web/
 	cp /usr/portage/sys-apps/portage/portage-2.0.45-r5.ebuild ${TMP}/portage-copy/portage-${V}.ebuild
 fi
+if [ -d /usr/portage.cvs/sys-apps/portage/ ]; then
+	cp /usr/portage/sys-apps/portage/portage-2.0.45-r5.ebuild /usr/portage/sys-apps/portage/portage-${V}.ebuild
+	cp /usr/portage/sys-apps/portage/portage-2.0.45-r5.ebuild /usr/portage.cvs/sys-apps/portage/portage-${V}.ebuild
+	rm -f /usr/portage/sys-apps/portage/files/digest-portage-${V}
+	rm -f /usr/portage.cvs/sys-apps/portage/files/digest-portage-${V}
+	ebuild /usr/portage/sys-apps/portage/portage-${V}.ebuild fetch digest
+	cp /usr/portage/sys-apps/portage/files/digest-portage-${V} /usr/portage.cvs/sys-apps/portage/files/digest-portage-${V}
+fi
+	

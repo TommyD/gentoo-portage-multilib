@@ -57,12 +57,13 @@ def listdir(path):
 		dircache[path] = mtime, list
 	return list
 
+
+prelink_capable=0
+prelink_enabled=0
 try:
 	import fchksum
-	def perform_checksum(filename):
-		if not prelink_capable:
-			return fchksum.fmd5t(filename)
-		else:
+	def perform_checksum(filename, calc_prelink=prelink_capable):
+		if calc_prelink and prelink_capable:
 			# Create non-prelinked temporary file to md5sum.
 			# Raw data is returned on stdout, errors on stderr.
 			# Non-prelinks are just returned.
@@ -71,12 +72,14 @@ try:
 			retval = fchksum.fmd5t(prelink_tmpfile)
 			os.unlink(prelink_tmpfile)
 			return retval
+		else:
+			return fchksum.fmd5t(filename)
 except ImportError:
 	import md5
-	def perform_checksum(filename):
+	def perform_checksum(filename, calc_prelink=prelink_capable):
 		prelink_tmpfile="/tmp/portage-prelink.tmp"
 		myfilename=filename
-		if prelink_capable:
+		if calc_prelink and prelink_capable:
 			# Create non-prelinked temporary file to md5sum.
 			# Raw data is returned on stdout, errors on stderr.
 			# Non-prelinks are just returned.
@@ -94,7 +97,7 @@ except ImportError:
 			data = f.read(blocksize)
 		f.close()
 
-		if prelink_capable:
+		if calc_prelink and prelink_capable:
 			os.unlink(prelink_tmpfile)
 		return (sum.hexdigest(),size)
 		#return (md5_to_hex(sum.digest()),size)
@@ -304,7 +307,7 @@ def env_update(makelinks=1):
 			continue
 		pos=pos+1
 
-	specials={"KDEDIRS":[],"PATH":[],"CLASSPATH":[],"LDPATH":[],"MANPATH":[],"INFODIR":[],"INFOPATH":[],"ROOTPATH":[],"CONFIG_PROTECT":[],"CONFIG_PROTECT_MASK":[]}
+	specials={"KDEDIRS":[],"PATH":[],"CLASSPATH":[],"LDPATH":[],"MANPATH":[],"INFODIR":[],"INFOPATH":[],"ROOTPATH":[],"CONFIG_PROTECT":[],"CONFIG_PROTECT_MASK":[],"PRELINK_MASK":[]}
 	env={}
 
 	for x in fns:
@@ -363,10 +366,16 @@ def env_update(makelinks=1):
 		newprelink.write("-l /usr/sbin\n");
 		newprelink.write("-l /lib\n");
 		newprelink.write("-l /usr/lib\n");
-		for x in specials["LDPATH"]:
-			newprelink.write("-h "+x+"\n")
-		for x in specials["PATH"]:
-			newprelink.write("-h "+x+"\n")
+		for x in specials["LDPATH"]+specials["PATH"]:
+			plmasked=0
+			for y in specials["PRELINK_MASK"]:
+				if y[-1]!='/':
+					y=y+"/"
+				if y==x[0:len(y)]:
+					plmasked=1
+					break
+			if not plmasked:
+				newprelink.write("-h "+x+"\n")
 		newprelink.close()
 
 	# We can't update links if we haven't cleaned other versions first, as
@@ -1492,8 +1501,8 @@ def movefile(src,dest,newmtime=None,sstat=None):
 		print "!!! unlink fail 1 on",destorig
 	return returnme 
 
-def perform_md5(x):
-	return perform_checksum(x)[0]
+def perform_md5(x, calc_prelink=0):
+	return perform_checksum(x, calc_prelink)[0]
 
 def merge(mycat,mypkg,pkgloc,infloc,myroot,myebuild=None):
 	mylink=dblink(mycat,mypkg,myroot)
@@ -2972,7 +2981,8 @@ class portdbapi(dbapi):
 			mycent.close()
 		except (IOError, OSError):
 			print "portage: aux_get(): (1) couldn't open cache entry for",mycpv
-			print "(likely caused by syntax error or corruption in the",mycpv,"ebuild.)"
+			print "                    Check for syntax error or corruption in the ebuild."
+			print 
 			raise KeyError
 
 		#We now have the db
@@ -3022,7 +3032,7 @@ class portdbapi(dbapi):
 				mycent=open(mydbkey,"r")
 			except (IOError, OSError):
 				print "portage: aux_get(): (2) couldn't open cache entry for",mycpv
-				print "(likely caused by syntax error or corruption in the",mycpv,"ebuild.)"
+				print "                    Check for syntax error or corruption in the ebuild."
 				raise KeyError
 			mylines=mycent.readlines()
 			mycent.close()
@@ -3518,7 +3528,7 @@ class dblink:
 				if not os.path.isfile(obj):
 					print "--- !obj  ","obj", obj
 					continue
-				mymd5=perform_md5(obj)
+				mymd5=perform_md5(obj, calc_prelink=1)
 				# string.lower is needed because db entries used to be in upper-case.  The
 				# string.lower allows for backwards compatibility.
 				if mymd5 != string.lower(pkgfiles[obj][2]):
@@ -4323,13 +4333,11 @@ thirdpartymirrors=grabdict(settings["PORTDIR"]+"/profiles/thirdpartymirrors")
 #,"porttree":portagetree(root,virts),"bintree":binarytree(root,virts)}
 features=settings["FEATURES"].split()
 
-prelink_capable=0
-prelink_enabled=0
+# Defaults set at the top of perform_checksum.
 if os.system("/usr/sbin/prelink --version > /dev/null 2>&1") == 0:
 	prelink_capable=1
 if prelink_capable and ("prelink" in features):
 	prelink_enabled=1
-prelink_capable=0
 
 dbcachedir=settings["PORTAGE_CACHEDIR"]
 if not dbcachedir:

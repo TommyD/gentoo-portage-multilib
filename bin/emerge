@@ -1319,6 +1319,12 @@ def post_emerge(retval=0):
 	print
 	if "--pretend" in myopts:
 		sys.exit(retval)
+
+	if portage.prelink_enabled:
+		print ">>> Updating prelinks..."
+		emergelog(" >>> Updating prelinks...")
+		os.system("/usr/sbin/prelink -af 2>/tmp/prelink_err.log")
+
 	emergelog(" *** exiting successfully.")
 	root=portage.root
 
@@ -1711,4 +1717,7 @@ else:
 		if portage.settings["AUTOCLEAN"] and "yes"==portage.settings["AUTOCLEAN"]:
 			print ">>> Auto-cleaning packages ..."
 			unmerge("clean", ["world"])
+		if portage.prelink_enabled:
+			print ">>> Updating prelinks..."
+			os.system("/usr/sbin/prelink -af")
 	post_emerge()
