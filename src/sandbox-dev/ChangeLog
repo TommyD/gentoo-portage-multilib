@@ -4,6 +4,9 @@
 
   1 Sep 2002; Martin Schlemmer <azarah@gentoo.org> :
 
+  Fix my braindead 'return 1;' in a void function.  Updated sandbox.c,
+  cleanup() for this.
+
   Change cleanup() in sandbox.c not to exit with fail status if
   the pidsfile is missing.  We really should still display sandbox
   violations if they occured.

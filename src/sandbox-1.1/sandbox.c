@@ -171,14 +171,14 @@ void cleanup()
       success = 0;
       /* We should really not fail if the pidsfile is missing here, but
        * rather just exit cleanly, as there is still some cleanup to do */
-      return 1;
+      return;
     }
 
     pids_file = file_open(PIDS_FILE, "r+", 0);
     if (-1 == pids_file) {
       success = 0;
       /* Nothing more to do here */
-      return 1;
+      return;
     }
 
     /* Load "still active" pids into an array */
@@ -258,7 +258,7 @@ void cleanup()
   }
 
   if (0 == success) {
-    return 1;
+    return;
   }
 }
 
