@@ -582,8 +582,9 @@ class depgraph:
 				myfavkey=mysplit[0]+"/"+mysplit[1]
 				myfavs=portage.grabfile(myroot+"var/cache/edb/world")
 				myfavdict=genericdict(myfavs)
+				mysysdict=genericdict(syslist)
 				#don't record if already in system profile or already recorded
-				if not myfavkey in syslist and myfavdict.has_key(myfavkey):
+				if (not mysysdict.has_key(myfavkey)) and (not myfavdict.has_key(myfavkey)):
 					#we don't have a favorites entry for this package yet; add one
 					myfavdict[myfavkey]=myfavkey
 					print
