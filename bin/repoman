@@ -294,15 +294,18 @@ if mydir[-1] != "/":
 	mydir=mydir + "/"
 
 if not os.path.isdir("CVS"):
-	if mydir[:len(repoman_settings["PORTDIR_OVERLAY"])] == repoman_settings["PORTDIR_OVERLAY"]:
-		myreporoot=os.getcwd();
-		myreporootpath=repoman_settings["PORTDIR_OVERLAY"]
-		isOverlay=True
-	elif mydir[:len(repoman_settings["PORTDIR"])] == repoman_settings["PORTDIR"]:
-		myreporoot=os.getcwd();
-		myreporootpath=repoman_settings["PORTDIR"]
-	else:
-		err("We do not appear to be inside a local repository or a portage tree. Exiting.")
+	for overlay in repoman_settings["PORTDIR_OVERLAY"].split():
+		if mydir[:len(overlay)] == overlay:
+			myreporoot=os.getcwd();
+			myreporootpath=overlay
+			isOverlay=True
+			break
+	if not isOverlay:
+		if mydir[:len(repoman_settings["PORTDIR"])] == repoman_settings["PORTDIR"]:
+			myreporoot=os.getcwd();
+			myreporootpath=repoman_settings["PORTDIR"]
+		else:
+			err("We do not appear to be inside a local repository or a portage tree. Exiting.")
 else:
 	repoman_settings["PORTDIR_OVERLAY"]=""
 	if "cvs" not in portage.features:
