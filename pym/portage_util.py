@@ -144,13 +144,13 @@ def grabdict(myfilename,juststrings=0,empty=0):
 		#into single spaces.
 		if x[0] == "#":
 			continue
-		myline=string.split(x)
+		myline = x.split()
 		if len(myline)<2 and empty==0:
 			continue
 		if len(myline)<1 and empty==1:
 			continue
 		if juststrings:
-			newdict[myline[0]]=string.join(myline[1:])
+			newdict[myline[0]]=" ".join( myline[1:] )
 		else:
 			newdict[myline[0]]=myline[1:]
 	return newdict
@@ -185,10 +185,10 @@ def grabints(myfilename):
 	for x in mylines:
 		#the split/join thing removes leading and trailing whitespace, and converts any whitespace in the line
 		#into single spaces.
-		myline=string.split(x)
+		myline=x.split()
 		if len(myline)!=2:
 			continue
-		newdict[myline[0]]=string.atoi(myline[1])
+		newdict[myline[0]]=int(myline[1])
 	return newdict
 
 def writeints(mydict,myfilename):
@@ -272,17 +272,15 @@ def getconfig(mycfg,tolerant=0):
 #cache expansions of constant strings
 cexpand={}
 def varexpand(mystring,mydict={}):
-	try:
-		return cexpand[" "+mystring]
-	except KeyError:
-		pass
 	"""
 	new variable expansion code.  Removes quotes, handles \n, etc.
 	This code is used by the configfile code, as well as others (parser)
 	This would be a good bunch of code to port to C.
 	"""
-	numvars=0
 	mystring=" "+mystring
+	if mystring in cexpand:
+		return cexpand[mystring]
+	numvars=0
 	#in single, double quotes
 	insing=0
 	indoub=0
@@ -374,14 +372,13 @@ def varexpand(mystring,mydict={}):
 			pos=pos+1
 	if numvars==0:
 		cexpand[mystring]=newstring[1:]
-	return newstring[1:]	
+	return newstring[1:]
 
 def pickle_write(data,filename,debug=0):
 	import cPickle,os
 	try:
 		myf=open(filename,"w")
 		cPickle.dump(data,myf,cPickle.HIGHEST_PROTOCOL)
-		myf.flush()
 		myf.close()
 		writemsg("Wrote pickle: "+str(filename)+"\n",1)
 		os.chown(myefn,uid,portage_gid)
@@ -444,11 +441,11 @@ class ReadOnlyConfig:
 
 def unique_array(array):
 	"""Takes an array and makes sure each element is unique."""
-	mya = []
+	newarray = []
 	for x in array:
-		if x not in mya:
-			mya.append(x)
-	return mya
+		if x not in newarray:
+			newarray.append(x)
+	return newarray
 
 def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 	"""moves a file from src to dest, preserving all permissions and attributes; mtime will
@@ -587,7 +584,7 @@ def flatten(mytokens):
 	a [1,2,3] list and returns it."""
 	newlist=[]
 	for x in mytokens:
-		if type(x)==types.ListType:
+		if type(x)==list:
 			newlist.extend(flatten(x))
 		else:
 			newlist.append(x)

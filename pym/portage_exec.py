@@ -30,7 +30,7 @@ spawned_pids = []
 def cleanup(pids,block_exceptions=True):
 	"""function to go through and reap the list of pids passed to it"""
 	global spawned_pids
-	if type(pids) == types.IntType:
+	if type(pids) == int:
 		pids = [pids]
 	for x in pids:
 		try:

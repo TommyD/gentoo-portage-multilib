@@ -19,6 +19,8 @@ import portage_locks
 import portage_exception
 import portage_exec, sync
 from portage_dep import DependencyGraph
+import portage_dep, portage_versions
+
 
 spinner_msgs = ["Gentoo Rocks ("+os.uname()[0]+")",
                 "Thank you for using Gentoo. :)",
@@ -94,7 +96,7 @@ def userquery(prompt, responses=None, colours=None):
 	colours: a List of Functions taking and returning a String, used to 
 	process the responses for display. Typically these will be functions 
 	like red() but could be e.g. lambda x: "DisplayString".
-	If responses is omitted, defaults to ["Yes, "No"], [green, red].
+	If responses is omitted, defaults to ["Yes", "No"], [green, red].
 	If only colours is omitted, defaults to [bold, ...].
 
 	Returns a member of the List responses. (If called without optional
@@ -109,7 +111,7 @@ def userquery(prompt, responses=None, colours=None):
 	print bold(prompt),
 	try:
 		while True:
-			response=raw_input("["+string.join([colours[i](responses[i]) for i in range(len(responses))],"/")+"] ")
+			response=raw_input("["+"/".join([colour(response) for colour,response in zip(colours,responses)])+"] ")
 			for key in responses:
 				if response.upper()==key[:len(response)].upper():
 					return key
@@ -132,7 +134,7 @@ portage.portdb.freeze()
 
 # Kill noauto as it will break merges otherwise.
 while 'noauto' in portage.features:
-	del portage.features[portage.features.index('noauto')]
+	portage.features.remove('noauto')
 
 #number of ebuilds merged
 merged=0
@@ -200,7 +202,7 @@ tmpcmdline=sys.argv[1:]
 #tmpcmdline.extend(portage.settings["EMERGE_OPTS"].split())
 cmdline=[]
 for x in tmpcmdline:
-	if x[0:1]=="-"and x[1:2]!="-":
+	if x[0:1]=="-" and x[1:2]!="-":
 		for y in x[1:]:
 			if shortmapping.has_key(y):
 				if shortmapping[y]=="--verbose":
@@ -381,9 +383,9 @@ if ("--debug" in myopts):
 CLEAN_DELAY = 5
 EMERGE_WARNING_DELAY = 10
 if portage.settings["CLEAN_DELAY"]:
-	CLEAN_DELAY = string.atoi("0"+portage.settings["CLEAN_DELAY"])
+	CLEAN_DELAY = int("0"+portage.settings["CLEAN_DELAY"])
 if portage.settings["EMERGE_WARNING_DELAY"]:
-	EMERGE_WARNING_DELAY = string.atoi("0"+portage.settings["EMERGE_WARNING_DELAY"])
+	EMERGE_WARNING_DELAY = int("0"+portage.settings["EMERGE_WARNING_DELAY"])
 
 if "inject" == myaction:
 	print
@@ -547,11 +549,11 @@ def getportageversion():
 	libclist += portage.vardbapi(portage.root).match("virtual/glibc")
 	libclist  = portage_util.unique_array(libclist)
 	for x in libclist:
-		xs=portage.portage_versions.catpkgsplit(x)
+		xs=portage_versions.catpkgsplit(x)
 		if libcver:
-			libcver+=","+string.join(xs[1:], "-")
+			libcver+=","+"-".join(xs[1:])
 		else:
-			libcver=string.join(xs[1:], "-")
+			libcver="-".join(xs[1:])
 	if libcver==[]:
 		libcver="unavailable"
 
@@ -598,11 +600,11 @@ if not "--pretend" in myopts:
 	emergelog("Started emerge on: "+time.strftime("%b %d, %Y %H:%M:%S", time.localtime()))
 	myelogstr=""
 	if myopts:
-		myelogstr=string.join(myopts, " ")
+		myelogstr=" ".join(myopts)
 	if myaction:
 		myelogstr+=" "+myaction
 	if myfiles:
-		myelogstr+=" "+string.join(myfiles, " ")
+		myelogstr+=" "+" ".join(myfiles)
 	emergelog(" *** emerge "+myelogstr)
 
 #configure emerge engine parameters
@@ -731,7 +733,7 @@ class search:
 						full_package=portage.best(portage.portdb.xmatch("match-all",match))
 				else:
 					full_package = match
-					match        = portage.portage_versions.pkgsplit(match)[0]
+					match        = portage_versions.pkgsplit(match)[0]
 
 				if full_package:
 					try:
@@ -809,7 +811,7 @@ class search:
 
 	def getVersion(self,full_package,detail):
 		if len(full_package) > 1:
-			package_parts = portage.portage_versions.catpkgsplit(full_package)
+			package_parts = portage_versions.catpkgsplit(full_package)
 			if detail == search.VERSION_RELEASE and package_parts[3] != 'r0':
 				result = package_parts[2]+ "-" + package_parts[3]
 			else:
@@ -836,7 +838,7 @@ def getlist(mode):
 			mylines=[]
 	mynewlines=[]
 	for x in mylines:
-		myline=string.join(string.split(x))
+		myline=" ".join( x.split() )
 		if not len(myline):
 			continue
 		elif myline[0]=="#":
@@ -895,7 +897,7 @@ class depgraph:
 		#"no downgrade" emerge
 		#print "mybigkey:",mybigkey
 		
-		jbigkey=string.join(mybigkey)
+		jbigkey=" ".join(mybigkey)
 		if self.mynewgraph.has_node(jbigkey+" merge") or self.mynewgraph.has_node(jbigkey+" nomerge"):
 			if myparent:
 				if self.mynewgraph.has_node(jbigkey+" merge"):
@@ -918,13 +920,13 @@ class depgraph:
 				# node and not add it to our digraph if it doesn't apply to us.
 				if myparent and (self.mydbapi[myroot].match(mykey) or vardbapi.match(mykey)):
 					mybigkey.append(myparent.split()[2])
-					self.mynewgraph.add_node(string.join(mybigkey))
-					self.mynewgraph.add_relationship(myparent, string.join(mybigkey))
+					self.mynewgraph.add_node(" ".join(mybigkey))
+					self.mynewgraph.add_relationship(myparent, " ".join(mybigkey))
 				return 1
 
 		if myuse == None:
 			self.pkgsettings.setcpv(mykey)
-			myuse=string.split(self.pkgsettings["USE"], " ")
+			myuse=self.pkgsettings["USE"].split()
 
 		self.applied_useflags[mykey] = myuse
 	
@@ -940,9 +942,9 @@ class depgraph:
 				merging=0
 
 			if (merging==0 and "--newuse" in myopts and vardbapi.cpv_exists(mykey)):
-				iuses=string.split(portage.portdb.aux_get(mykey, ["IUSE"])[0])
-				old_use=string.split(vardbapi.aux_get(mykey, ["USE"])[0])
-				now_use=string.split(self.pkgsettings["USE"])
+				iuses=portage.portdb.aux_get(mykey, ["IUSE"])[0].split()
+				old_use=vardbapi.aux_get(mykey, ["USE"])[0].split()
+				now_use=self.pkgsettings["USE"].split()
 				for x in iuses:
 					if (old_use.count(x) and not now_use.count(x)) or (not old_use.count(x) and now_use.count(x)):
 						merging=1
@@ -968,9 +970,9 @@ class depgraph:
 
 		# whatever the case, we need to add the node to our digraph so
 		# that children can depend upon it.
-		self.mynewgraph.add_node(string.join(mybigkey))
+		self.mynewgraph.add_node(" ".join(mybigkey))
 		if myparent:
-			self.mynewgraph.add_relationship(myparent, string.join(mybigkey))
+			self.mynewgraph.add_relationship(myparent, " ".join(mybigkey))
 		if ("deep" not in myparams) and (not merging):
 			return 1
 		elif "recurse" not in myparams:
@@ -978,35 +980,35 @@ class depgraph:
 
 		edepend={}
 		if mytype=="binary":
-			mypkgparts=portage.portage_versions.catpkgsplit(mykey)
-			tbz2name = string.split(mykey, "/")[1]+".tbz2"
+			mypkgparts=portage_versions.catpkgsplit(mykey)
+			tbz2name = mykey.split("/")[1]+".tbz2"
 			if tbz2name in portage.db[portage.root]["bintree"].invalids:
 				sys.stderr.write("\nINVALID PACKAGE (is required to continue): "+str(mykey)+"\n")
 				sys.exit(1)
 			if portage.db[portage.root]["bintree"].isremote(mykey):
 				edepend = portage.db[portage.root]["bintree"].remotepkgs[tbz2name]
 				edepend["DEPEND"] =""
-				edepend["RDEPEND"]=string.join(string.split(edepend["RDEPEND"])," ")
-				edepend["PDEPEND"]=string.join(string.split(edepend["PDEPEND"])," ")
-				edepend["CDEPEND"]=string.join(string.split(edepend["CDEPEND"])," ")
-				edepend["SLOT"]   =string.strip(edepend["SLOT"])
+				edepend["RDEPEND"]=" ".join(edepend["RDEPEND"].split())
+				edepend["PDEPEND"]=" ".join(edepend["PDEPEND"].split())
+				edepend["CDEPEND"]=" ".join(edepend["CDEPEND"].split())
+				edepend["SLOT"]   =edepend["SLOT"].strip()
 				#portage.db[portage.root]["bintree"].gettbz2(mykey)
 			else: # It's local.
 				mytbz2=xpak.tbz2(portage.db[portage.root]["bintree"].getname(mykey))
 				edepend["DEPEND"] =""
-				edepend["RDEPEND"]=string.join(mytbz2.getelements("RDEPEND")," ")
-				edepend["PDEPEND"]=string.join(mytbz2.getelements("PDEPEND")," ")
-				edepend["CDEPEND"]=string.join(mytbz2.getelements("CDEPEND")," ")
+				edepend["RDEPEND"]=" ".join(mytbz2.getelements("RDEPEND"))
+				edepend["PDEPEND"]=" ".join(mytbz2.getelements("PDEPEND"))
+				edepend["CDEPEND"]=" ".join(mytbz2.getelements("CDEPEND"))
 				edepend["SLOT"]   =mytbz2.getfile("SLOT",mypkgparts[2])
 		elif mytype=="ebuild":
 			try:
 				for x in ["DEPEND","RDEPEND","PDEPEND","CDEPEND"]:
-					edepend[x]=string.join(portage.portdb.aux_get(mykey,[x]), " ")
+					edepend[x]=" ".join(portage.portdb.aux_get(mykey,[x]))
 			except (KeyError,IOError):
 				print "emerge: create(): aux_get() error on",mykey+"; aborting..."
 				sys.exit(1)
 		mydep={}	
-		mp=string.join(mybigkey)
+		mp=" ".join(mybigkey)
 
 		if myroot=="/":
 			mydep["/"]=edepend["DEPEND"]+" "+edepend["RDEPEND"]
@@ -1110,7 +1112,7 @@ class depgraph:
 		missing=0
 		if "--usepkgonly" in myopts:
 			for x in self.mynewgraph.get_all_nodes():
-				xs=string.split(x," ")
+				xs=x.split(" ")
 				if (xs[0] != "binary") and (xs[3]=="merge"):
 					if missing == 0:
 						print
@@ -1128,7 +1130,7 @@ class depgraph:
 		if matches:
 			myslot=portage.db["/"]["porttree"].getslot(pkgver)
 			for match in matches:
-				if portage.portage_versions.pkgcmp(portage.portage_versions.catpkgsplit(pkgver)[1:], portage.portage_versions.catpkgsplit(match)[1:]) < 0:
+				if portage_versions.pkgcmp(portage_versions.catpkgsplit(pkgver)[1:], portage_versions.catpkgsplit(match)[1:]) < 0:
 					curslot=portage.db[myroot]["vartree"].getslot(match)
 					if curslot == myslot:
 						return match
@@ -1202,7 +1204,7 @@ class depgraph:
 							oldcomment = ""
 							for p in alleb:
 								mreasons = portage.portdb.getmaskingstatus(p)
-								print "- "+p+" (masked by: "+string.join(mreasons, ", ")+")"
+								print "- "+p+" (masked by: "+", ".join(mreasons)+")"
 								comment = portage.portdb.getmaskingreason(p)
 								if comment and comment != oldcomment:
 									print comment
@@ -1226,12 +1228,13 @@ class depgraph:
 					print "binpkg:",myeb_pkg
 
 				if myeb and myeb_pkg:
-					myeb_s     = portage.portage_versions.catpkgsplit(myeb)
+					myeb_s     = portage_versions.catpkgsplit(myeb)
 					myeb_s     = [myeb_s[0]+"/"+myeb_s[1], myeb_s[2], myeb_s[3]]
-					myeb_pkg_s = portage.portage_versions.catpkgsplit(myeb_pkg)
+					myeb_pkg_s = portage_versions.catpkgsplit(myeb_pkg)
 					myeb_pkg_s = [myeb_pkg_s[0]+"/"+myeb_pkg_s[1], myeb_pkg_s[2], myeb_pkg_s[3]]
 					
-					if portage.portage_versions.pkgcmp(myeb_s, myeb_pkg_s) == 0: # pkg is same version as ebuild
+					if portage_versions.pkgcmp(myeb_s, myeb_pkg_s) == 0:
+						# pkg is same version as ebuild
 						myeb = None
 					else:
 						myeb_pkg = None
@@ -1290,13 +1293,13 @@ class depgraph:
 		mygraph=self.mynewgraph.clone()
 		dolist=["/"]
 		retlist=[]
-		for x in portage.db.keys():
+		for x in portage.db:
 			portage.db[x]["merge"]=[]
 			if x not in dolist:
 				dolist.append(x)
 		while mygraph.get_all_nodes():
 			mycurkey=mygraph.get_leaf_nodes()[0]
-			splitski=string.split(mycurkey)
+			splitski=mycurkey.split()
 			portage.db[splitski[1]]["merge"].append(splitski)	
 			mygraph.remove_node(mycurkey)
 		for x in dolist:
@@ -1370,15 +1373,11 @@ class depgraph:
 
 	def match(self,mydep,myroot=portage.root,mykey=None):
 		# support mutual exclusive deps
-		mydep2=mydep
-		if mydep2[0]=="!":
-			mydep2=mydep[1:]
-
 		if mydep[0]=="!":
 			#add our blocker; it will be ignored later if necessary (if we are remerging the same pkg, for example)
-			myk="blocks "+myroot+" "+mydep2
+			myk="blocks "+myroot+" "+mydep[1:]
 		else:
-			myeb=portage.db[portage.root]["porttree"].dep_bestmatch(mydep2)
+			myeb=portage.db[portage.root]["porttree"].dep_bestmatch(mydep)
 			if not myeb:
 				if not mykey:
 					print "\n!!! Error: couldn't find match for",mydep
@@ -1404,7 +1403,7 @@ class depgraph:
 		totalsize=0
 
 		if verbosity:
-			overlays = string.split(portage.settings['PORTDIR_OVERLAY'])
+			overlays = portage.settings['PORTDIR_OVERLAY'].split()
 		
 		i = 0
 		while i < len(mylist):
@@ -1438,7 +1437,7 @@ class depgraph:
 					else:
 						print
 			else:
-				if (x[0]!="binary") and ("fetch" in string.split(portage.portdb.aux_get(x[2],["RESTRICT"])[0])):
+				if (x[0]!="binary") and ("fetch" in portage.portdb.aux_get(x[2],["RESTRICT"])[0].split()):
 					fetch = red("F")
 					if portage.portdb.fetch_check(x[2], portage.settings):
 						fetch = green("f")
@@ -1453,12 +1452,12 @@ class depgraph:
 						mynewslot=portage.db["/"]["bintree"].getslot(x[2])
 					elif x[0] == "ebuild":
 						mynewslot=portage.db["/"]["porttree"].getslot(x[2])
-					myoldlist=portage.db[x[1]]["vartree"].dbapi.match(portage.portage_versions.pkgsplit(x[2])[0])
+					myoldlist=portage.db[x[1]]["vartree"].dbapi.match(portage_versions.pkgsplit(x[2])[0])
 					myinslotlist=filter((lambda p: portage.db[portage.root]["vartree"].getslot(p)==mynewslot),myoldlist)
 					if myinslotlist:
 						myoldbest=portage.best(myinslotlist)
 						addl="   "+fetch
-						if portage.portage_versions.pkgcmp(portage.portage_versions.pkgsplit(x[2]), portage.portage_versions.pkgsplit(myoldbest)) < 0:
+						if portage_versions.pkgcmp(portage_versions.pkgsplit(x[2]), portage_versions.pkgsplit(myoldbest)) < 0:
 							# Downgrade in slot
 							addl+=turquoise("U")+blue("D")
 						else:
@@ -1471,7 +1470,7 @@ class depgraph:
 					if "--changelog" in myopts:
 						changelogs.extend(self.calc_changelog(
 							portage.portdb.findname(x[2]),
-							portage.db["/"]["vartree"].dep_bestmatch('/'.join(portage.portage_versions.catpkgsplit(x[2])[:2])),
+							portage.db["/"]["vartree"].dep_bestmatch('/'.join(portage_versions.catpkgsplit(x[2])[:2])),
 							x[2]
 							))
 				else:
@@ -1482,9 +1481,9 @@ class depgraph:
 					# iuse verbose
 					try:
 						if x[0] == "binary":
-							iuse_split = string.split(portage.db["/"]["bintree"].dbapi.aux_get(x[2],["IUSE"])[0])
+							iuse_split = portage.db["/"]["bintree"].dbapi.aux_get(x[2],["IUSE"])[0].split()
 						elif x[0] == "ebuild":
-							iuse_split = string.split(portage.portdb.aux_get(x[2],["IUSE"])[0])
+							iuse_split = portage.portdb.aux_get(x[2],["IUSE"])[0].split()
 						else:
 							iuse_split = []
 					except SystemExit, e:
@@ -1501,7 +1500,7 @@ class depgraph:
 						pkg=x[2]
 					if portage.db["/"]["vartree"].dbapi.cpv_exists(pkg):
 						try:
-							old_use=string.split(portage.db["/"]["vartree"].dbapi.aux_get(pkg, ["USE"])[0])
+							old_use=portage.db["/"]["vartree"].dbapi.aux_get(pkg, ["USE"])[0].split()
 						except SystemExit, e:
 							raise # Needed else can't exit
 						except:
@@ -1588,7 +1587,7 @@ class depgraph:
 				indent=""
 
 				if myoldbest:
-					myoldbest=portage.portage_versions.pkgsplit(myoldbest)[1]+"-"+portage.portage_versions.pkgsplit(myoldbest)[2]
+					myoldbest=portage_versions.pkgsplit(myoldbest)[1]+"-"+portage.portage_versions.pkgsplit(myoldbest)[2]
 					if myoldbest[-3:]=="-r0":
 						myoldbest=myoldbest[:-3]
 					myoldbest=blue("["+myoldbest+"]")
@@ -1622,7 +1621,7 @@ class depgraph:
 				p.append(myprint)
 
 			if ("--tree" not in myopts):
-				mysplit=portage.portage_versions.pkgsplit(x[2])
+				mysplit=portage_versions.pkgsplit(x[2])
 	
 				# XXX mysplit _can_ be None.... Why?
 				if mysplit and (len(mysplit)==3):
@@ -1664,9 +1663,9 @@ class depgraph:
 				sys.stdout.write(text)
 
 	def calc_changelog(self,ebuildpath,current,next):
-		current = '-'.join(portage.portage_versions.catpkgsplit(current)[1:])
+		current = '-'.join(portage_versions.catpkgsplit(current)[1:])
 		if current.endswith('-r0'): current = current[:-3]
-		next = '-'.join(portage.portage_versions.catpkgsplit(next)[1:])
+		next = '-'.join(portage_versions.catpkgsplit(next)[1:])
 		if next.endswith('-r0'): next = next[:-3]
 		changelogpath = os.path.join(os.path.split(ebuildpath)[0],'ChangeLog')
 		try:
@@ -1783,12 +1782,12 @@ class depgraph:
 		# We need to yank the harmful-to-new-builds settings from features.
 		myorigfeat=self.pkgsettings["FEATURES"]
 		myfeat=myorigfeat.split()
-		while ("keeptemp" in myfeat):
-			del myfeat[myfeat.index("keeptemp")]
-		while ("keepwork" in myfeat):
-			del myfeat[myfeat.index("keepwork")]
+		while "keeptemp" in myfeat:
+			myfeat.remove("keeptemp")
+		while "keepwork" in myfeat:
+			myfeat.remove("keepwork")
 
-		self.pkgsettings["FEATURES"]=string.join(myfeat)
+		self.pkgsettings["FEATURES"]=" ".join(myfeat)
 		self.thread = None
 
 		# parallel-fetch should only kick in when not pretending, emerge isn't just fetching, 
@@ -2530,7 +2529,7 @@ def unmerge(unmerge_action, unmerge_files):
 				sp_absx = absx.split("/")
 				if sp_absx[-1][-7:] == ".ebuild":
 					del sp_absx[-1]
-					absx = string.join(sp_absx,"/")
+					absx = "/".join(sp_absx)
 
 				sp_absx_len = len(sp_absx)
 
@@ -2558,8 +2557,8 @@ def unmerge(unmerge_action, unmerge_files):
 						print "\n!!!",x,"is not inside "+(portage.root+portage.VDB_PATH)+"; aborting.\n"
 						return 0
 				
-				print "="+string.join(sp_absx[sp_vdb_len:],"/")
-				candidate_catpkgs.append("="+string.join(sp_absx[sp_vdb_len:],"/"))
+				print "="+"/".join(sp_absx[sp_vdb_len:])
+				candidate_catpkgs.append("="+"/".join(sp_absx[sp_vdb_len:]))
 
 	if ("--pretend" in myopts) or ("--ask" in myopts):
 		print darkgreen("\n>>> These are the packages that I would unmerge:")
@@ -2646,10 +2645,10 @@ def unmerge(unmerge_action, unmerge_files):
 			continue
 		print "\n "+white(x)
 		for mytype in ["selected","protected","omitted"]:
-			print string.rjust(mytype,12)+":",
+			print mytype.rjust(12)+":",
 			if pkgmap[x][mytype]:
 				for mypkg in pkgmap[x][mytype]:
-					mysplit=portage.portage_versions.catpkgsplit(mypkg)
+					mysplit=portage_versions.catpkgsplit(mypkg)
 					if mysplit[3]=="r0":
 						myversion=mysplit[2]
 					else:
@@ -2685,7 +2684,7 @@ def unmerge(unmerge_action, unmerge_files):
 		for y in pkgmap[x]["selected"]:
 			print ">>> Unmerging "+y+"..."
 			emergelog("=== Unmerging... ("+y+")")
-			mysplit=string.split(y,"/")
+			mysplit=y.split("/")
 			#unmerge...
 			retval=portage.unmerge(mysplit[0],mysplit[1],portage.root,mysettings,unmerge_action not in ["clean","prune"])
 			if retval:
@@ -2710,9 +2709,8 @@ def post_emerge(retval=0):
 	emergelog(" *** exiting successfully.")
 	root=portage.root
 
-	infodirs=[]
-	infodirs.extend(string.split(portage.settings["INFOPATH"], ":"))
-	infodirs.extend(string.split(portage.settings["INFODIR"], ":"))
+	infodirs =portage.settings["INFOPATH"].split(":")
+	infodirs+=portage.settings["INFODIR"].split(":")
 
 	if os.path.exists("/usr/bin/install-info"):
 		regen_infodirs=[]
@@ -2763,7 +2761,8 @@ def post_emerge(retval=0):
 					if (x[0] == ".") or (x in ["dir","dir.old"]) or (os.path.isdir(inforoot+"/"+x)):
 						continue
 #					myso=commands.getstatusoutput("LANG=C LANGUAGE=C /usr/bin/install-info --dir-file="+inforoot+"/dir "+inforoot+"/"+x)[1]
-					myso=portage_exec.spawn_get_output("LANG=C LANGUAGE=C /usr/bin/install-info --dir-file="+inforoot+"/dir "+inforoot+"/"+x,spawn_type=portage_exec.spawn_bash)[1]
+					mycmd = "LANG=C LANGUAGE=C /usr/bin/install-info --dir-file="+inforoot+"/dir "+inforoot+"/"+x
+					myso=portage_exec.spawn_get_output(mycmd,spawn_type=portage_exec.spawn_bash)[1]
 					existsstr="already exists, for file `"
 					if myso!="":
 						if re.search(existsstr,myso):
@@ -2795,13 +2794,13 @@ def chk_updated_cfg_files():
 	if portage.settings["CONFIG_PROTECT"]:
 		#number of directories with some protect files in them
 		procount=0
-		for x in string.split(portage.settings["CONFIG_PROTECT"]):
+		for x in portage.settings["CONFIG_PROTECT"].split():
 			if os.path.isdir(x):
 				a=portage_exec.spawn_get_output("cd "+x+"; find . -iname '._cfg????_*'",spawn_type=portage_exec.spawn_bash)
 				if a[0]!=0:
 					print " "+red("*")+" error scanning",x
 				else:
-					files=string.split(a[1])
+					files=a[1].split()
 					if files:
 						procount=procount+1
 						print " "+yellow("* IMPORTANT:")+"",len(files),"config files in",x,"need updating."
@@ -2826,7 +2825,7 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 	if not os.path.exists(myportdir):
 		print ">>>",myportdir,"not found, creating it."
 		os.makedirs(myportdir,0755)	
-	syncuri=string.rstrip(portage.settings["SYNC"])
+	syncuri=portage.settings["SYNC"].rstrip()
 	os.umask(0022)
 
 	sync_verbosity=0
@@ -3137,7 +3136,7 @@ elif "info"==myaction:
 	
 	output=portage_exec.spawn_get_output("distcc --version")
 	if not output[0]:
-		print str(string.split(output[1],"\n",1)[0]),
+		print output[1].split("\n",1)[0],
 		if "distcc" in portage.features:
 			print "[enabled]"
 		else:
@@ -3145,19 +3144,19 @@ elif "info"==myaction:
 
 	output=portage_exec.spawn_get_output("ccache -V")
 	if not output[0]:
-		print str(string.split(output[1],"\n",1)[0]),
+		print output[1].split("\n",1)[0],
 		if "ccache" in portage.features:
 			print "[enabled]"
 		else:
 			print "[disabled]"
 
-	ac_vers = string.join(portage.db["/"]["vartree"].dbapi.match("sys-devel/autoconf"), ",")
-	am_vers = string.join(portage.db["/"]["vartree"].dbapi.match("sys-devel/automake"), ",")
-	binutils_vers = string.join(portage.db["/"]["vartree"].dbapi.match("sys-devel/binutils"), ",")
-	header_vers = string.join(portage.db["/"]["vartree"].dbapi.match("virtual/os-headers"), ",")
-	libtool_vers = string.join(portage.db["/"]["vartree"].dbapi.match("sys-devel/libtool"), ",")
-	py_vers = string.join(portage.db["/"]["vartree"].dbapi.match("dev-lang/python"), ",")
-	py_this = string.strip(string.split(sys.version,"\n")[0])
+	ac_vers = ",".join(portage.db["/"]["vartree"].dbapi.match("sys-devel/autoconf"))
+	am_vers = ",".join(portage.db["/"]["vartree"].dbapi.match("sys-devel/automake"))
+	binutils_vers = ",".join(portage.db["/"]["vartree"].dbapi.match("sys-devel/binutils"))
+	header_vers = ",".join(portage.db["/"]["vartree"].dbapi.match("virtual/os-headers"))
+	libtool_vers = ",".join(portage.db["/"]["vartree"].dbapi.match("sys-devel/libtool"))
+	py_vers = ",".join(portage.db["/"]["vartree"].dbapi.match("dev-lang/python"))
+	py_this = sys.version.split("\n")[0].strip()
 
 	print "Autoconf: " + ac_vers
 	print "Automake: " + am_vers
@@ -3204,7 +3203,7 @@ elif "inject"==myaction:
 			print "!!! Must be 'category/package-version' with no other symbols."
 			print
 			continue
-		mycps=portage.portage_versions.catpkgsplit(x)
+		mycps=portage_versions.catpkgsplit(x)
 		if (not mycps) or (mycps[0]=="null"):
 			print "!!!",x,"is not a specific cat/pkg-version, skipping..."
 			continue
@@ -3284,13 +3283,13 @@ elif "depclean"==myaction:
 
 	reallist=[]
 	for x in alldeps:
-		myparts=portage.portage_versions.catpkgsplit(string.split(x)[2])
+		myparts=portage_versions.catpkgsplit(x.split()[2])
 		if not myparts:
 			sys.stderr.write(
 			  red("!!! There appears to be a problem with the following package:\n")+
-				red("!!! "+str(string.split(x)[2])+"\n\n")+
+				red("!!! "+str(x.split()[2])+"\n\n")+
 				    "!!! Please ensure that blocking/conflicting packages are not merged."+
-						"!!! 'emerge -p "+str(string.split(x)[2])+"\n\n")
+						"!!! 'emerge -p "+str(x.split()[2])+"\n\n")
 			if ("--pretend" not in myopts) and ("--ask" not in myopts):
 				countdown(EMERGE_WARNING_DELAY, "*** Continuing")
 			continue
@@ -3306,7 +3305,7 @@ elif "depclean"==myaction:
 				cleanlist.append(x)
 
 	for x in syslist+worldlist:
-		myparts = portage.portage_versions.catpkgsplit(x)
+		myparts = portage_versions.catpkgsplit(x)
 		if myparts:
 			if myparts[0][0] in ('<','>','='):
 				myparts[0] = myparts[0][1:]

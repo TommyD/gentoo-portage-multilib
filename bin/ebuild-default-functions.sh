@@ -752,7 +752,7 @@ inherit() {
 		ECLASS_DEPTH=0
 	fi
 	if hasq $1 $INHERITED && [ "${EBUILD_PHASE}" == "depend" ]; then
-		echo "QA notice: $1 is inherited multiple times: ${CATEGORY}/${PF}" >&2
+		#echo "QA notice: $1 is inherited multiple times: ${CATEGORY}/${PF}" >&2
 		INHERITED_ALREADY=1
 	fi
 	ECLASS_DEPTH=$(($ECLASS_DEPTH + 1))

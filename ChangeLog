@@ -7,6 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  08 Dec 2004; Jason Stubbs <jstubbs@gentoo.org> ebuild-default-functions.sh
+  emerge portageq portage.py portage_dep.py portage_exec.py portage_util.py
+  portage_versions.py: Added Ludal's clean up patch. #69523
+
   05 Dec 2004; Brian Harring <ferringb@gentoo.org> tarball.sh: Yanked
   the script- A) it's specific to nicks setup, B) the tarball/release 
   creation functionality is already handled by the autotooling of portage

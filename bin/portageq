@@ -6,7 +6,7 @@
 import sys
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 
-import portage,types,string, portageq
+import portage,types, portageq
 
 
 #-----------------------------------------------------------------------------
@@ -16,7 +16,7 @@ import portage,types,string, portageq
 
 def usage():
 	rev="$Revision$"
-	ver=string.split(rev, ' ')[1]
+	ver=rev.split(' ')[1]
 	print ">>> Portage information query tool -- version "+ver
 	print ">>> Usage: portageq <command> [<option> ...]"
 	print ""
@@ -43,10 +43,10 @@ def usage():
 			print ""
 			continue
 
-		lines = string.split(doc, '\n')
-		print "   "+name+" "+string.strip(lines[0])
+		lines = doc.split('\n')
+		print "   "+name+" "+lines[0].strip()
 		for line in lines[1:]:
-			print "      "+string.strip(line)
+			print "      "+line.strip()
 
 
 def main():
