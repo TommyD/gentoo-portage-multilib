@@ -1,4 +1,4 @@
-.TH "EBUILD" "5" "Nov 2002" "Portage 2.0.44" "portage"
+.TH "EBUILD" "5" "Dec 2002" "Portage 2.0.45" "portage"
 .SH "NAME"
 ebuild \- the internal format, variables, and functions in an ebuild script
 .SH "DESCRIPTION"
@@ -118,12 +118,12 @@ ${D}.  Do not modify this variable.
 \fBDESCRIPTION\fR = \fI"A happy little package"\fR
 Should contain a short description of the package.
 .TP
-\fBSRC_URI\fR
+\fBSRC_URI\fR = \fI"http://happy.com/little/${P}.tar.gz"\fR
 Contains a list of URI's for the required source files.  It can contain
 multiple URI's for a single source file.  The fastest location is chosen
 if the file was not found at \fIGENTOO_MIRROR\fB\fR.
 .TP
-\fBHOMEPAGE\fR
+\fBHOMEPAGE\fR = \fI"http://happy.com/"\fR
 Should contain a list of URL's for the sources main sites and other further
 package dependent information.
 .TP
@@ -137,7 +137,8 @@ testing by setting ACCEPT_KEYWORDS="~arch" on the command line, or in \fBmake.co
 .TP
 \fBSLOT\fR
 This sets the SLOT for packages that may need to co\-exist.  By default
-you should set SLOT="0" unless you know what you are doing and need to do otherwise.
+you should set \fBSLOT\fR="0" unless you know what you are doing and need to do
+otherwise.  This value should \fINEVER\fR be left undefined.
 .TP
 \fBLICENSE\fR
 This should be a space delimited list of licenses that the package falls
@@ -236,19 +237,15 @@ Initial working directory of $PWD.
 .SH "HELPER FUNCTIONS: GENERAL"
 .TP
 \fBdie\fR \fI[reason]\fR
-Causes the current emerge process to be aborted.  The final display will include \fI[reason]\fR.
+Causes the current emerge process to be aborted.  The final display will include \fIreason\fR.
 .TP
-\fBuse\fR \fI[USE item]\fR
-If \fI[USE item]\fR is in the USE variable, \fI[USE item]\fR will be echoed and the function will return 0.  If \fI[USE item]\fR is not in the USE variable, the function will return 1.
-
-Common examples:
-
-use jpeg \\
-.br
-	&& myconf="${myconf} --enable-jpeg" \\
-.br
-	|| myconf="${myconf} --enabled-jpeg"
-
+\fBuse\fR \fI<USE item>\fR
+If \fIUSE item\fR is in the \fBUSE\fR variable, \fIUSE item\fR will be echoed and the
+function will return 0.  If \fIUSE item\fR is not in the \fBUSE\fR variable, the
+function will return 1.
+.RS
+.TP
+.I Example:
 if [ `use gnome` ] ; then
 .br
 	guiconf="--enable-gui=gnome --with-x"
@@ -268,10 +265,74 @@ else
 	guiconf=""
 .br
 fi
+.RE
+.TP
+\fBuse_with\fR \fI<USE item>\fR \fI[configure option]\fR
+Useful for creating custom options to pass to a configure script.  If \fIUSE item\fR is
+in the \fBUSE\fR variable, then the string \fI--with-[configure option]\fR will be
+echoed.  If \fIUSE item\fR is not in the \fBUSE\fR variable, then the string
+\fI--without-[configure option]\fR will be echoed.  If \fIconfigure option\fR is not
+specified, than \fIUSE item\fR will be used instead.
+.RS
+.TP
+.I Example:
+USE="jpeg"
+.br
+myconf="`use_with jpeg libjpeg`"
+.br
+(myconf now has the value "--with-libjpeg")
+
+USE=""
+.br
+myconf="`use_with jpeg libjpeg`"
+.br
+(myconf now has the value "--without-libjpeg")
+
+USE="pic"
+.br
+myconf="`use_with pic`"
+.br
+(myconf now has the value "--with-pic")
+.RE
+.TP
+\fBuse_enable\fR \fI<USE item>\fR \fI[configure option]\fR
+Useful for creating custom options to pass to a configure script.  If \fIUSE item\fR is
+in the \fBUSE\fR variable, then the string \fI--enable-[configure option]\fR will be
+echoed.  If \fIUSE item\fR is not in the \fBUSE\fR variable, then the string
+\fI--disable-[configure option]\fR will be echoed.  If \fIconfigure option\fR is not
+specified, than \fIUSE item\fR will be used instead.
+.br
+See \fBuse_with\fR for an example.
+.TP
+\fBhas\fR \fI<item>\fR \fI<item list>\fR
+If \fIitem\fR is in \fIitem list\fR, then \fIitem\fR is echoed and \fBhas\fR
+returns 0.  Otherwise, nothing is echoed and 1 is returned.
+.br
+The \fIitem list\fR is delimited by the \fIIFS\fR variable.  This variable has a
+default value of ' ', or a space.  It is a \fBbash\fR(1) setting.
+.TP
+\fBhas_version\fR \fI<category/package-version>\fR
+Check to see if \fIcategory/package-version\fR is installed on the system.  The parameter
+accepts all values that are acceptable in the \fBDEPEND\fR variable.  The function returns
+0 if \fIcategory/package-version\fR is installed, 1 otherwise.
+.TP
+\fBbest_version\fR \fI<package name>\fR
+This function will look up \fIpackage name\fR in the database of currently installed
+programs and echo the "best version" of the package that is currently installed.  The
+function returns 0 if there is a package that matches \fIpackage name\fR.  Otherwise,
+the function will return 1.
+.RS
+.TP
+.I Example:
+VERINS=`best_version net-ftp/glftpd`
+.br
+(VERINS now has the value "net-ftp/glftpd-1.27" if glftpd-1.27 is installed)
+.RE
 .SH "HELPER FUNCTIONS: UNPACK"
 .TP
-\fBunpack\fR \fI[list of sources] \fB
-This function uncompresses and/or untars a list of sources into the current directory.
+\fBunpack\fR \fI<source>\fR \fI[list of more sources]\fR
+This function uncompresses and/or untars a list of sources into the current directory.  The
+function will append \fIsource\fR to the \fBDISTDIR\fR variable.
 .SH "HELPER FUNCTIONS: COMPILE"
 .TP
 \fBeconf\fR \fI[configure options]\fR
@@ -293,14 +354,14 @@ configure \\
 .br
 	--localstatedir=/var/lib \\
 .br
-	\fI[configure options]\fR
+	\fIconfigure options\fR
 
 \fB*Note:\fR There is no need to use '|| \fBdie\fR' because \fBeconf\fR checks for you
 .TP
-\fBemake\fR
-This is used as a replacement for make.  Performs 'make ${MAKEOPTS}'
+\fBemake\fR \fI[make options]\fR
+This is used as a replacement for make.  Performs 'make ${MAKEOPTS} \fImake options\fR'
 (as set in /etc/make.globals), default is \-j2.
-.br
+
 \fB***warning***\fR
 .br
 if you are going to use \fBemake\fR, make sure your build is happy with paralell makes
@@ -325,12 +386,23 @@ make prefix=${D}/usr \\
 .br
             localstatedir=${D}/var/lib \\
 .br
-            \fI[make options]\fR install
+            \fImake options\fR install
 
 \fB*Note:\fR There is no need to use '|| \fBdie\fR' because \fBeinstall\fR checks for you
+
+.PD 0
 .TP
-.B prepall prepalldocs prepallinfo prepallman prepallstrip
-Useful for when a package installs into ${D} via scripts (i.e. makefiles).  If you
+.B prepall
+.TP
+.B prepalldocs
+.TP
+.B prepallinfo
+.TP
+.B prepallman
+.TP
+.B prepallstrip
+.PD 1
+Useful for when a package installs into \fB${D}\fR via scripts (i.e. makefiles).  If you
 want to be sure that libraries are executable, aclocal files are installed into the
 right place, doc/info/man files are all compressed, and that executables are all
 stripped of debugging symbols, then use these suite of functions.
@@ -354,8 +426,18 @@ Compresses all man files in ${D}/usr/share/man.
 .B prepallstrip:
 Strips all executable files of debugging symboles.  This includes libraries.
 .RE
+
 .TP
-\fBprepinfo preplib preplib.so prepman prepstrip\fR \fI[dir]\fR
+\fBprepinfo\fR \fI[dir]\fR
+.TP
+\fBpreplib\fR \fI[dir]\fR
+.TP
+\fBpreplib.so\fR \fI[dir]\fR
+.TP
+\fBprepman\fR \fI[dir]\fR
+.TP
+\fBprepstrip\fR \fI[dir]\fR
+.PD 1
 Similiar to the \fBprepall\fR functions, these are subtle in their differences.
 .RS
 .PD 0
@@ -379,93 +461,133 @@ If a \fIdir\fR is not specified, then \fBprepman\fR will assume the dir \fIusr\f
 .B prepstrip:
 All the files found in ${D}/\fIdir\fR will be stripped.  You may specify multiple directories.
 .RE
+.PD 1
 .TP
-\fBdopython\fR \fI[commands]\fR
-Performs [commands] with python and returns the result.
+\fBdopython\fR \fI<commands>\fR
+Performs \fIcommands\fR with python and returns the result.
 .TP
-\fBdosed\fR \fI "s:orig:change:g" [filename] \fR
-Performs sed (including cp/mv filename) on [filename].
+\fBdosed\fR \fI"s:orig:change:g" <filename>\fR
+Performs sed (including cp/mv \fIfilename\fR) on \fIfilename\fR.
 .br
 \fB\'dosed "s:/usr/local:/usr:g" /usr/bin/some-script'\fR
 runs sed on ${D}/usr/bin/some-script
 .TP
-\fBdodir\fR \fI[path]\fR
+\fBdodir\fR \fI<path>\fR
 Creates a directory inside of ${D}.
 .br
 .BR 'dodir\ /usr/lib/apache'
 creates ${D}/usr/lib/apache
 .TP
-\fBinto\fR \fI[path]\fR
-Sets the root (\fIDESTTREE\fR) for other functions like dobin, dosbin, doman, doinfo, dolib.
+\fBinto\fR \fI<path>\fR
+Sets the root (\fIDESTTREE\fR) for other functions like \fBdobin\fR, \fBdosbin\fR, \fBdoman\fR,
+\fBdoinfo\fR, \fBdolib\fR.
 .br
 The default root is /usr.
 .TP
-\fBdobin\fR \fI[list of binaries]\fR
-Installs a binary or a list of binaries into \fIDESTTREE\fR/bin.  Creates all necessary dirs.
+\fBdobin\fR \fI<binary> [list of more binaries]\fR
+Installs a \fIbinary\fR or a list of binaries into \fIDESTTREE\fR/bin.  Creates all necessary dirs.
 .TP
-\fBdosbin\fR \fI[list of binaries]\fR
-Installs a binary or a list of binaries into \fIDESTTREE\fR/sbin.  Creates all necessary dirs.
+\fBdosbin\fR \fI<binary> [list of more binaries]\fR
+Installs a \fIbinary\fR or a list of binaries into \fIDESTTREE\fR/sbin.  Creates all necessary dirs.
+
+.PD 0
 .TP
-\fBdolib dolib.a dolib.so\fR \fI[list of libraries]\fR
+\fBdolib\fR \fI<library>\fR \fI[list of more libraries]\fR
+.TP
+\fBdolib.a\fR \fI<library>\fR \fI[list of more libraries]\fR
+.TP
+\fBdolib.so\fR \fI<library>\fR \fI[list of more libraries]\fR
+.PD 1
 Installs a library or a list of libraries into \fIDESTTREE\fR/lib.
 Creates all necessary dirs.
 .TP
-\fBdoman\fR \fI[list of man\-pages]\fR
+\fBdoman\fR \fI<man-page> [list of more man\-pages]\fR
 Installs manual\-pages into \fIDESTDIR\fR/man/man[1\-8n] depending on the manual file ending.  
 The files are gzipped if they are not already.  Creates all necessary dirs.  
+
+.PD 0
 .TP
-\fBdohard dosym\fR \fI[filename] [linkname] \fR
+\fBdohard\fR \fI<filename> <linkname>\fR
+.TP
+\fBdosym\fR \fI<filename> <linkname>\fR
+.PD 1
 Performs the ln command as either a hard link or symlink.
 .TP
 \fBdohtml\fR \fI [\-a filetypes] [\-r] [\-x list\-of\-dirs\-to\-ignore] [list\-of\-files\-and\-dirs]\fR
 Installs the files in the list of files (space\-separated list) into /usr/share/doc/${PF}/html provided the file
 ends in .html, .png, .js, .jpg or .css.  Setting \-a limits what types of files will be included, \-A appends to the default list, setting \-x sets which dirs to exclude (CVS excluded by default), \-r sets recursive.
 .TP
-\fBdoinfo\fR \fI[list of info\-files] \fR
+\fBdoinfo\fR \fI<info-file> [list of more info\-files]\fR
 Installs info\-pages into \fIDESTDIR\fR/info.  Files are automatically gzipped.  Creates all necessary dirs.
 .TP
-\fBdojar\fR \fl[list\-of\-files] \fR
+\fBdojar\fR \fI<jar file> [list of more jar files]\fR
 Installs jar files into /usr/share/${PN}/lib and adds them to /usr/share/${PN}/classpath.env.
 .TP
-\fBdomo\fR \fI[list of locale\-files] \fR
+\fBdomo\fR \fI<locale-file> [list of more locale\-files] \fR
 Installs locale\-files into \fIDESTDIR\fR/usr/share/locale/[LANG] depending on local\-file's ending.  Creates all
 necessary dirs.
+
+.PD 0
 .TP
-\fBfowners fperms\fR \fI[permissions] [files]\fR
-Performs chown (fowners) or chmod (fperms), applying [permissions] to [files].
+\fBfowners\fR \fI<permissions> <file> [files]\fR
+.TP
+\fBfperms\fR \fI<permissions> <file> [files]\fR
+.PD 1
+Performs chown (\fBfowners\fR) or chmod (\fBfperms\fR), applying \fIpermissions\fR to \fIfiles\fR.
 .TP
 \fBinsinto\fR \fI[path]\fR
-Sets the root (\fIINSDESTTREE\fR) for the doins function.
+Sets the root (\fIINSDESTTREE\fR) for the \fBdoins\fR function.
 .br
 The default root is /.
 .TP
 \fBinsopts\fR \fI[options for install(1)]\fR
-Can be used to define options for the install function used in doins.  The default is \fI\-m0644\fR.
+Can be used to define options for the install function used in \fBdoins\fR.  The default is \fI\-m0644\fR.
 .TP
-\fBdoins\fR \fI[list of files]\fR
+\fBdoins\fR \fI<file> [list of more files]\fR
 Installs files into \fIINSDESTTREE\fR.  This function uses \fBinstall\fR(1).
 .TP
-\fBexeinto\fR \fI[path}\fR
-Sets the root (\fIEXEDESTTREE\fR) for the doexe function.
+\fBexeinto\fR \fI[path]\fR
+Sets the root (\fIEXEDESTTREE\fR) for the \fBdoexe\fR function.
 .br
 The default root is /.
 .TP
 \fBexeopts\fR \fI[options for install(1)]\fR
-Can be used to define options for the install function used in doexe. The
+Can be used to define options for the install function used in \fBdoexe\fR.  The
 default is \fI\-m0755\fR.
 .TP
-\fBdoexe\fR \fI[list of executables]\fR
+\fBdoexe\fR \fI<executable> [list of more executables]\fR
 Installs a executable or a list of executable into \fIEXEDESTTREE\fR.
-This function uses install(1).
+This function uses \fBinstall\fR(1).
 .TP
-\fBdocinto\fR \fI[path}\fR
-Sets the relative subdir (\fIDOCDESTTREE\fR) used by dodoc.
+\fBdocinto\fR \fI[path]\fR
+Sets the relative subdir (\fIDOCDESTTREE\fR) used by \fBdodoc\fR.
 .TP
-\fBdodoc\fR \fI[list of document]\fR
+\fBdodoc\fR \fI<document> [list of more documents]\fR
 Installs a document or a list of document into /usr/doc/${PV}/\fIDOCDESTTREE\fR.
 Files are automatically gzipped.  Creates all necessary dirs.
+
+.PD 0
 .TP
-\fBnewbin newsbin newlib newlib.so newlib.a newman newinfo newins newexe newdoc\fR \fI[file] [new filename]\fR
+\fBnewnewbin\fR \fI<old file> <new filename>\fR
+.TP
+\fBnewsbin\fR \fI<old file> <new filename>\fR
+.TP
+\fBnewlib\fR \fI<old file> <new filename>\fR
+.TP
+\fBnewlib.so\fR \fI<old file> <new filename>\fR
+.TP
+\fBnewlib.a\fR \fI<old file> <new filename>\fR
+.TP
+\fBnewman\fR \fI<old file> <new filename>\fR
+.TP
+\fBnewinfo\fR \fI<old file> <new filename>\fR
+.TP
+\fBnewins\fR \fI<old file> <new filename>\fR
+.TP
+\fBnewexe\fR \fI<old file> <new filename>\fR
+.TP
+\fBnewdoc\fR \fI<old file> <new filename>\fR
+.PD 1
 All these functions act like the do* functions, but they only work with one
 file and the file is installed as \fI[new filename]\fR.
 .SH "REPORTING BUGS"
