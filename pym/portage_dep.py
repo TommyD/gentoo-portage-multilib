@@ -59,7 +59,7 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0):
 	"""Takes a paren_reduce'd array and reduces the use? conditionals out
 	leaving an array with subarrays
 	"""
-	
+	debugging=False
 	for x in range(1,len(deparray[1:])+1):
 		if deparray[x] in ["||","&&"]:
 			if len(deparray) == x:
@@ -98,13 +98,15 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0):
 		if type(head) == types.ListType:
 			rlist = rlist + [use_reduce(head, uselist, masklist, matchall)]
 		else:
-			matchon = True # Match on true
 			if head[-1] == "?": # Use reduce next group on fail.
 				if head[0] == "!":
 					matchon = False # Inverted... match on false
 					head = head[1:]
+				else:
+					matchon = True # Match on true
 				newdeparray = [mydeparray.pop(0)]
 				while isinstance(newdeparray[-1], str) and newdeparray[-1][-1] == "?":
+
 					if mydeparray:
 						newdeparray.append(mydeparray.pop(0))
 					else:
@@ -112,6 +114,7 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0):
 							sys.stderr.write("Note: Nested use flags without parenthesis! (Deprecated)\n")
 							sys.stderr.write("      "+string.join(map(str,[head]+newdeparray))+"\n")
 						raise ValueError, "Conditional with no target."
+
 				if newdeparray:
 					warned = 0
 					if len(newdeparray[-1]) == 0:
@@ -124,18 +127,32 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0):
 						sys.stderr.write("  --> "+string.join(map(str,[head]+newdeparray))+"\n")
 
 				# Is it a match based on use?
-				matchonMatch = ((head[:-1] in uselist) == matchon)
+
+				matchonMatch = ((head[:-1] in uselist or matchall) == matchon)
+
+
 				# We only exclude positive matches. Negative matches are allowed.
 				# !ppc64? ( tcp? ( sys-apps/tcp-wrappers) )
 				# So we only exclude positive/true matches that are masked.
+
 				maskedMatch = False
 				if matchonMatch and (matchon == True):
 					if (head[:-1] in masklist):
 						maskedMatch = True
 
-				if (matchall and (head[:-1] not in masklist)) or \
+				if debugging:
+					print "head=",head,"matchon=",matchon
+					print "head=",head,"matchonMatch=",matchonMatch
+					print "head=",head,"maskedMatch=",maskedMatch
+					print "head=",head,"masklist=",masklist
+					print "head=",head,"in masklist=",head[:-1] in masklist
+				if (matchall and (head[:-1] not in masklist)==matchon) or \
 				   (matchonMatch and not maskedMatch):
 					# It is set, keep it.
+					if debugging:
+						print "   appending to deps"
+						print "   matchall and (head[:-1]=",(matchall and (head[:-1] not in masklist))
+						print "   matchonMatch and ......=",(matchonMatch and not maskedMatch)
 					if newdeparray: # Error check: if nothing more, then error.
 						rlist += use_reduce(newdeparray, uselist, masklist, matchall)
 					else:

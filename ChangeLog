@@ -9,6 +9,13 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  05 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage_dep.py:
+  What can I say, I can't get enough of bug (#59574).
+  I'm operating under the assumption there still is a bug in the 
+  use_reduce logic, soo I've left a fairly massive amount of debugging 
+  code in place that's currently disabled.  It's *very* useful for 
+  tracking exactly what/how use_reduce decides on a operator node.
+
   05 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py: 
   I introduced a bug in the previous commit, basically 
   portage.settings.archlist list of arch keywords was being actively 
