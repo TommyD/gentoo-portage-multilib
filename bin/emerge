@@ -584,7 +584,7 @@ elif "--help" in myopts:
 	help()
 	sys.exit(0)
 elif portage.secpass!=2:
-	if myaction in ["search", "info", "regen"]:
+	if myaction in ["search", "info", "regen", "metadata"]:
 		pass
 	elif (not myaction) and (not myfiles):
 		pass
@@ -3124,7 +3124,7 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 		try:
 			os.umask(002)
 			os.chown(cachedir, os.getuid(), portage.portage_gid)
-			os.chmod(cachedir, 02775)
+			os.chmod(cachedir, 00775)
 		except SystemExit, e:
 			raise # Needed else can't exit
 		except:

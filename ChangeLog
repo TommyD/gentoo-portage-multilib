@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  09 Mar 2005; Brian Harring <ferringb@gentoo.org> bin/emerge:
+  emerge --metadata can now be ran by non-root users.
+
   09 Mar 2005: Brian Harring <ferringb@gentoo.org> pym/ebuild.py, bin/emerge:
   Don't set 02775 on depcache_dir.
   Ever.
