@@ -8,6 +8,7 @@
 #include <regex.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <assert.h>
 #include "bmh_search.h"
 
 #define USAGE_FAIL	1
@@ -298,6 +299,8 @@ regex_matches(regex_t *re, const char *buff)
 {
     regmatch_t match[1];
     match[0].rm_so = match[0].rm_eo = -1;
+    assert(buff != NULL);
+    assert(re != NULL);
     regexec(re, buff, 1, match, 0);
 //    fprintf(stderr,"result was %i for %s, returning %i\n", match[0].rm_so, buff,i);
     return match[0].rm_so != -1 ? 1 : 0;
@@ -524,8 +527,7 @@ walk_command(const char *p, const char *end, char endchar, const char interpret_
 //	    p=process_scope(NULL,p+1,end,NULL,NULL,'}');
 	    p=walk_command(p+1,end, '}', ESCAPED_PARSING);
 	    // kind of a hack.
-//	    fprintf(stderr, "returned char %c\n", *p);
-	} else if('(' == *p && endchar!='"') {
+	} else if('(' == *p && interpret_level == COMMAND_PARSING) {
 	    p=walk_command(p + 1, end, ')',ESCAPED_PARSING);
 	} else if('`' == *p || '"' == *p) {
 	    p=walk_command(p + 1, end, *p, ESCAPED_PARSING);
