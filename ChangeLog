@@ -1,18 +1,26 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  13 Feb 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Fixes to
+  the aux_get() code for metacache updates to eclass deps. Debug output
+  removal.
+
+  13 Feb 2003; Nicholas Jones <carpaski@gentoo.org> emerge: More fixes
+  to the calls to aux_get() for metacache code. Rearranged the option and
+  action arrays. Added --nospinner flag.
+
   13 Feb 2003; Nicholas Jones <carpaski@gentoo.org> emerge: Reorg of flags.
-	Addition of --noconfmem to prevent portage from yanking already-merged
-	config files. Extra message in --version about missing gcc and sourcing
-	/etc/profile to get it. Yanked the majority of the rsync cachedb update
-	code -- Moved it to aux_get.
+  Addition of --noconfmem to prevent portage from yanking already-merged
+  config files. Extra message in --version about missing gcc and sourcing
+  /etc/profile to get it. Yanked the majority of the rsync cachedb update
+  code -- Moved it to aux_get.
 	
   13 Feb 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Typo fixes.
-	aux_get() now has a metacachedb param for using metadata cache over the
-	initial call to doebuild() -- Should speed up rsync users regen time.
-	Added support for --noconfmem via settings["NOCONFMEM"] in treewalk().
-	Added sys.exit(1) on failure to move files during merge. Comment
-	realignment.
+  aux_get() now has a metacachedb param for using metadata cache over the
+  initial call to doebuild() -- Should speed up rsync users regen time.
+  Added support for --noconfmem via settings["NOCONFMEM"] in treewalk().
+  Added sys.exit(1) on failure to move files during merge. Comment
+  realignment.
 	
   11 Feb 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Fix the
   depcache code by adding in a missing stat call after regeneration.

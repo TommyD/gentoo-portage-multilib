@@ -19,11 +19,12 @@ actions=[
 "regen", "rsync",  "search",   "sync", "system", "unmerge", "world"
 ]
 options=[
-"--autoclean",  "--buildpkg",   "--buildpkgonly", "--changelog",
-"--debug",      "--deep",       "--emptytree",    "--fetchonly", "--help",
-"--noconfmem",  "--nodeps",     "--noreplace",    "--oneshot",   "--onlydeps",
-"--pretend",    "--quiet",      "--searchdesc",   "--selective", "--update",
-"--usepkg",     "--usepkgonly", "--verbose",      "--version"
+"--autoclean", "--buildpkg",   "--buildpkgonly", "--changelog",
+"--debug",     "--deep",       "--emptytree",    "--fetchonly",
+"--help",      "--noconfmem",  "--nodeps",       "--noreplace",
+"--nospinner", "--oneshot",    "--onlydeps",     "--pretend",
+"--quiet",     "--searchdesc", "--selective",    "--update",
+"--usepkg",    "--usepkgonly", "--verbose",      "--version"
 ]
 shortmapping={
 "a":"--autoclean",
@@ -83,14 +84,15 @@ def getportageversion():
 	if glibcver==[]:
 		glibcver="unavailable"
 
-	gccver=commands.getstatusoutput("`which gcc` -dumpversion")
-	if gccver[0]:
+	gccout=commands.getstatusoutput("`which gcc` -dumpversion")
+	if gccout[0]:
 		print "!!! No gcc found. You probably need to 'source /etc/profile' to update"
 		print "!!! the environment of this terminal and possibly other terminals also."
 		print
-		gccver[1]="unavailable"
-	gccver[1]="gcc-"+gccver[1]
-	return "Portage " + portage.VERSION +" ("+profilever+", "+gccver[1]+", glibc-"+glibcver+")"
+		gccver="[unavailable]"
+	else:
+		gccver="gcc-"+gccout[1]
+	return "Portage " + portage.VERSION +" ("+profilever+", "+gccver+", glibc-"+glibcver+")"
 
 
 def help():
@@ -235,7 +237,7 @@ for x in sub:
 
 def update_spinner():
 	global spinner, spinpos
-	if sys.stdout.isatty():
+	if sys.stdout.isatty() and not ("--nospinner" in myopts):
 		sys.stdout.write("\b"+spinner[spinpos])
 		spinpos=(spinpos+1)%8
 		sys.stdout.flush()
@@ -1407,7 +1409,7 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 			mymatches=portage.portdb.xmatch("match-all",x)
 			for y in mymatches:
 				update_spinner()
-				ignored=aux_get(y,[],metacachedir=myportdir+"/metadata/cache")
+				ignored=portage.portdb.aux_get(y,[],metacachedir=myportdir+"/metadata/cache")
 		sys.stdout.write("\b\b  \n\n")
 		sys.stdout.flush()
 elif myaction=="regen":

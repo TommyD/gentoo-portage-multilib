@@ -2976,6 +2976,7 @@ class portdbapi(dbapi):
 		doregen2=0
 		mylines=[]
 		stale=0
+		usingmdcache=0
 		myebuild=self.findname(mycpv)
 		mydbkey=dbcachedir+"/"+mycpv
 		mymdkey=None
@@ -3001,29 +3002,37 @@ class portdbapi(dbapi):
 			emtime=os.stat(myebuild)[ST_MTIME]
 		except:
 			print "!!! Failed to stat ebuild:",myebuild
-			doregen=8
+			return None
+		
 		if dmtime!=emtime:
 			doregen=doregen+1
 		#print "statusline2:",doregen,dmtime,emtime,mycpv
 		if (doregen>1) or (doregen and not eclass(None, mycpv, dmtime)):
 			stale=1
 			#print "doregen:",doregen,mycpv
-			if not mymdkey:
+			if mymdkey and os.access(mymdkey, os.R_OK):
+					#sys.stderr.write("+")
+					#sys.stderr.flush()
+					try:
+						mydir=os.path.dirname(mydbkey)
+						if not os.path.exists(mydir):
+							os.makedirs(mydir, 2775)
+							os.chown(mydir,uid,wheelgid)
+						shutil.copy2(mymdkey, mydbkey)
+						usingmdcache=1
+					except Exception,e:
+						print "!!! Unable to copy '"+mymdkey+"' to '"+mydbkey+"'"
+						print "!!!",e
+			else:
 				if doebuild(myebuild,"depend","/"):
 					#depend returned non-zero exit code...
 					if strict:
 						sys.stderr.write(str(red("\naux_get():")+" (0) Error in",mycpv,"ebuild.\n"))
 						raise KeyError
-			else:
-				if os.access(mymdkey, os.R_OK):
-					try:
-						shutil.copy2(mymdkey, mydbkey)
-					except Exception,e:
-						print "!!! Unable to copy '"+mymdkey+"' to '"+mydbkey+"'"
-						print "!!!",e
 			try:
 				mydbkeystat=os.stat(mydbkey)
 				if mydbkeystat[ST_SIZE] == 0:
+					#print "!!! <-- Size 0 -->"
 					doregen2=1
 					dmtime=0
 				else:
@@ -3062,7 +3071,7 @@ class portdbapi(dbapi):
 			pass
 		elif len(mylines)<len(auxdbkeys) or doregen2:
 			doregen2=1
-			#print "too few auxdbkeys"
+			#print "too few auxdbkeys / invalid generation"
 		elif mylines[auxdbkeys.index("INHERITED")]!="\n":
 			#print "inherits"
 			#Verify if this ebuild is current against the eclasses it uses.
@@ -3076,10 +3085,10 @@ class portdbapi(dbapi):
 				#print myret
 				if myret==None:
 					print red("\n\naux_get():")+' eclass "'+myeclass+'" from',mydbkey,"not found."
-					# Eclass not found.
+					print "!!! Eclass '"+myeclass+"'not found."
 					doregen2=1
 					break
-				if myret==0:
+				if myret==0 and not usingmdcache:
 					#print "((( 002 0"
 					#we set doregen2 to regenerate this entry in case it was fixed
 					#in the ebuild/eclass since the cache entry was created.
@@ -3089,6 +3098,8 @@ class portdbapi(dbapi):
 
 		#print "doregen2: pre"
 		if doregen2:	
+			#sys.stderr.write("-")
+			#sys.stderr.flush()
 			#print "doregen2"
 			stale=1
 			#old cache entry, needs updating (this could raise IOError)
