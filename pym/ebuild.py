@@ -603,6 +603,14 @@ class ebuild_handler:
 		mysettings["PN"] = mysplit[0]
 		mysettings["PV"] = mysplit[1]
 		mysettings["PR"] = mysplit[2]
+
+		# ensure this is set for all phases, setup included.
+		# Should be ok again to set $T, as sandbox does not depend on it
+		mysettings["BUILD_PREFIX"] = mysettings["PORTAGE_TMPDIR"]+"/portage"
+		mysettings["BUILDDIR"]	= mysettings["BUILD_PREFIX"]+"/"+mysettings["PF"]
+		mysettings["T"]		= mysettings["BUILDDIR"]+"/temp"
+		mysettings["WORKDIR"] 	= mysettings["BUILDDIR"]+"/work"
+		mysettings["D"]		= mysettings["BUILDDIR"]+"/image/"
 	
 
 		# bailing now, probably horks a few things up, but neh.
@@ -641,13 +649,11 @@ class ebuild_handler:
 		if PORTAGE_BIN_PATH not in mysplit:
 			mysettings["PATH"]=PORTAGE_BIN_PATH+":"+mysettings["PATH"]
 	
-		mysettings["BUILD_PREFIX"] = mysettings["PORTAGE_TMPDIR"]+"/portage"
 		if tree=="bintree":
 			mysettings["BUILD_PREFIX"] += "-pkg"
 
 		mysettings["HOME"]         = mysettings["BUILD_PREFIX"]+"/homedir"
 		mysettings["PKG_TMPDIR"]   = mysettings["PORTAGE_TMPDIR"]+"/portage-pkg"
-		mysettings["BUILDDIR"]     = mysettings["BUILD_PREFIX"]+"/"+mysettings["PF"]
 
 		if cleanup and os.path.exists(mysettings["BUILDDIR"]):
 			print "cleansing builddir"+mysettings["BUILDDIR"]
@@ -758,9 +764,6 @@ class ebuild_handler:
 		os.chown(mysettings["BUILD_PREFIX"],portage_uid,portage_gid)
 		os.chmod(mysettings["BUILD_PREFIX"],00775)
 
-		# Should be ok again to set $T, as sandbox does not depend on it
-		mysettings["T"]=mysettings["BUILDDIR"]+"/temp"
-
 		if not os.path.exists(mysettings["T"]):
 			print "creating temp dir"
 			os.makedirs(mysettings["T"])
@@ -856,9 +859,6 @@ class ebuild_handler:
 				time.sleep(5)
 				features.remove("distcc")
 				mysettings["DISTCC_DIR"]=""
-
-		mysettings["WORKDIR"]=mysettings["BUILDDIR"]+"/work"
-		mysettings["D"]=mysettings["BUILDDIR"]+"/image/"
 
 		# break off into process_phase
 		if mysettings.has_key("PORT_LOGDIR"):
