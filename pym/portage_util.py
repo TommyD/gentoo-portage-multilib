@@ -301,7 +301,7 @@ def varexpand(mystring,mydict={}):
 						newstring=newstring+chr(011)
 					elif a=='v':
 						newstring=newstring+chr(013)
-					else:
+					elif a!='\n':
 						#remove backslash only, as bash does: this takes care of \\ and \' and \" as well
 						newstring=newstring+mystring[pos-1:pos]
 						continue
