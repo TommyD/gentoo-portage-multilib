@@ -27,7 +27,8 @@
   20 Nov 2004; Brian Harring <ferringb@gentoo.org> <collection-of-files>:
   Portage is now autotool'd, w/ relevant configure.  Needs work, specifically,
   cnf installation isn't there yet- would prefer to add that when the 101 arch 
-  specific make.conf's are collapsed down to one file.
+  specific make.conf's are collapsed down to one file.  Note sandbox was busted 
+  out, and moved into it's own module.
 
   18 Nov 2004; Marius Mauch <genone@gentoo.org> pym/portage_versions.py:
   Fixing version regexp to allow weird package names.
