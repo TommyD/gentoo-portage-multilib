@@ -9,7 +9,7 @@ SRC_URI=""
 HOMEPAGE=""
 
 DEPEND="virtual/glibc
-	=sys-apps/portage-1.8.0"
+	=sys-apps/portage-1.8.1"
 	
 
 src_unpack() {
