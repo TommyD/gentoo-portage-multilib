@@ -32,10 +32,6 @@ MAKEOPTS="-j2"
 # Fetching command (5 tries, passive ftp for firewall compatibility)
 FETCHCOMMAND='/usr/bin/wget -t 5 --passive-ftp ${URI} -P ${DISTDIR}'
 RESUMECOMMAND='/usr/bin/wget -c -t 5 --passive-ftp ${URI} -P ${DISTDIR}'
-#For Prozilla (really rocks) -- you need to merge prozilla first!
-#FETCHCOMMAND="/usr/bin/proz --no-getch -s \${x} -P \${DISTDIR}"
-#For Lukemftp (the FreeBSD fetcher) -- # you need to merge lukemftp first!
-#FETCHCOMMAND="/usr/bin/lukemftp -s -a -o \${DISTDIR}/\${y} \${x}"
 
 # Compile programs with GNOME/SLANG extensions 
 USE="slang readline gpm berkdb gdbm tcpd pam libwww ssl
