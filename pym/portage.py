@@ -1477,7 +1477,6 @@ class config:
 
 			self.pmaskdict = {}
 			for x in pkgmasklines:
-				print x
 				mycatpkg=dep_getkey(x)
 				if self.pmaskdict.has_key(mycatpkg):
 					self.pmaskdict[mycatpkg].append(x)
