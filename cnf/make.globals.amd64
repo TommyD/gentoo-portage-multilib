@@ -31,7 +31,7 @@ MAKEOPTS="-j2"
 FETCHCOMMAND="/usr/bin/wget -t 5 --passive-ftp -P \${DISTDIR} \${URI}"
 RESUMECOMMAND="/usr/bin/wget -c -t 5 --passive-ftp -P \${DISTDIR} \${URI}"
 
-CFLAGS="-O2 -pipe"
+CFLAGS="-march=x86-64 -O2 -pipe"
 CXXFLAGS=${CFLAGS}
 
 # Debug build -- if defined, binaries won't be stripped
