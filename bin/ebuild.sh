@@ -49,12 +49,6 @@ declare -rx EBUILD_PHASE="$*"
 # Make sure it's before everything so we don't mess aliases that follow.
 unalias -a
 
-for dir in ${PROFILE_PATHS}; do
-	if [ -f "${dir}/profile.bashrc" ]; then
-		source "${dir}/profile.bashrc"
-	fi
-done
-
 # Unset some variables that break things.
 unset GZIP BZIP BZIP2 CDPATH GREP_OPTIONS GREP_COLOR GLOBIGNORE
 
@@ -63,6 +57,8 @@ unset GZIP BZIP BZIP2 CDPATH GREP_OPTIONS GREP_COLOR GLOBIGNORE
 shopt -s expand_aliases
 alias die='diefunc "$FUNCNAME" "$LINENO" "$?"'
 alias assert='_pipestatus="${PIPESTATUS[*]}"; [[ "${_pipestatus// /}" -eq 0 ]] || diefunc "$FUNCNAME" "$LINENO" "$_pipestatus"'
+alias save_IFS='[ "${IFS:-unset}" != "unset" ] && old_IFS="${IFS}"'
+alias restore_IFS='if [ "${old_IFS:-unset}" != "unset" ]; then IFS="${old_IFS}"; unset old_IFS; else unset IFS; fi'
 
 OCC="$CC"
 OCXX="$CXX"
@@ -86,6 +82,15 @@ else
 	#Mac OS X
 	source /usr/lib/portage/bin/functions.sh &>/dev/null
 fi
+
+save_IFS
+IFS=$'\n'
+for dir in ${PROFILE_PATHS}; do
+	if [ -f "${dir}/profile.bashrc" ]; then
+		source "${dir}/profile.bashrc"
+	fi
+done
+restore_IFS
 
 esyslog() {
 	# Custom version of esyslog() to take care of the "Red Star" bug.
@@ -1377,25 +1382,21 @@ do_newdepend() {
 
 # this is a function for removing any directory matching a passed in pattern from
 # PATH
-function remove_path_entry() {
-	PREV_IFS="${IFS}"
+remove_path_entry() {
+	save_IFS
 	IFS=":"
 	stripped_path="${PATH}"
 	while [ -n "$1" ]; do
 		cur_path=""
 		for p in ${stripped_path}; do
-			if [ ${p/${1}} == ${p} ]; then
+			if [ "${p/${1}}" == "${p}" ]; then
 				cur_path="${cur_path}:${p}"
 			fi
 		done
 		stripped_path="${cur_path#:*}"
 		shift
 	done
-	if [ ${PREV_IFS} == "" ]; then
-		unset IFS
-	else
-		IFS="${PREV_IFS}"
-	fi
+	restore_IFS
 	PATH="${stripped_path}"
 }
 

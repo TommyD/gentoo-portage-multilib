@@ -2632,7 +2632,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	mysettings["ECLASSDIR"]   = mysettings["PORTDIR"]+"/eclass"
 	mysettings["SANDBOX_LOG"] = mycpv.replace("/", "_-_")
 
-	mysettings["PROFILE_PATHS"] = "'"+PROFILE_PATH+"/' '"+CUSTOM_PROFILE_PATH+"/'"
+	mysettings["PROFILE_PATHS"] = PROFILE_PATH+"\n"+CUSTOM_PROFILE_PATH
 	mysettings["P"]  = mysplit[0]+"-"+mysplit[1]
 	mysettings["PN"] = mysplit[0]
 	mysettings["PV"] = mysplit[1]

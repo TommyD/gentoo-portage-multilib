@@ -9,6 +9,11 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  08 Aug 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild.sh 
+  pym/portage.py: Corrected bug in profile.bashrc support, added aliases 
+  for saving/restoring IFS (remove_path_entry and profile.bashrc loop 
+  adjust IFS temporarily).  Closes #59749.
+
   08 Aug 2004; Brian Harring <ferringb@gentoo.org> dispatch-conf: 
   Converted os.rename calls to shutil.move; the former can't cross fs's,
   the latter can. (#46148)
