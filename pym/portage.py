@@ -2083,7 +2083,7 @@ def digestcheck(myfiles, mysettings, strict=0):
 		print "!!! Failed to parse digest file:",digestfn
 		return 0
 	mymdigests=digestParseFile(manifestfn)
-	if "manifest" not in features:
+	if "strict" not in features:
 		# XXX: Remove this when manifests become mainstream.
 		pass
 	elif mymdigests==None:
@@ -2562,49 +2562,42 @@ def unmerge(cat,pkg,myroot,mysettings,mytrimworld=1):
 def relparse(myver):
 	"converts last version part into three components"
 	number=0
-	p1=0
-	p2=0
+	suffix=0
+	endtype=0
+	endnumber=0
+	
 	mynewver=string.split(myver,"_")
+	myver=mynewver[0]
+
+	#normal number or number with letter at end
+	divider=len(myver)-1
+	if myver[divider:] not in "1234567890":
+		#letter at end
+		suffix=ord(myver[divider:])
+		number=string.atof(myver[0:divider])
+	else:
+		number=string.atof(myver)  
+
 	if len(mynewver)==2:
 		#an endversion
-		number=string.atof(mynewver[0])
-		match=0
 		for x in endversion_keys:
 			elen=len(x)
 			if mynewver[1][:elen] == x:
 				match=1
-				p1=endversion[x]
+				endtype=endversion[x]
 				try:
-					p2=string.atof(mynewver[1][elen:])
+					endnumber=string.atof(mynewver[1][elen:])
 				except:
-					p2=0
+					endnumber=0
 				break
-		if not match:	
-			#normal number or number with letter at end
-			divider=len(myver)-1
-			if myver[divider:] not in "1234567890":
-				#letter at end
-				p1=ord(myver[divider:])
-				number=string.atof(myver[0:divider])
-			else:
-				number=string.atof(myver)		
-	else:
-		#normal number or number with letter at end
-		divider=len(myver)-1
-		if myver[divider:] not in "1234567890":
-			#letter at end
-			p1=ord(myver[divider:])
-			number=string.atof(myver[0:divider])
-		else:
-			number=string.atof(myver)  
-	return [number,p1,p2]
+	return [number,suffix,endtype,endnumber]
 
 #returns 1 if valid version string, else 0
 # valid string in format: <v1>.<v2>...<vx>[a-z,_{endversion}[vy]]
 # ververify doesn't do package rev.
 
 vercache={}
-def ververify(myorigval,silent=1):	
+def ververify(myorigval,silent=1):
 	try:
 		return vercache[myorigval]
 	except KeyError:
@@ -2900,7 +2893,7 @@ def vercmp(val1,val2):
 	for x in range(0,len(val1)):
 		cmp1=relparse(val1[x])
 		cmp2=relparse(val2[x])
-		for y in range(0,3):
+		for y in range(0,4):
 			myret=cmp1[y]-cmp2[y]
 			if myret != 0:
 				vcmpcache[valkey]=myret

@@ -140,7 +140,7 @@ qahelp={
 	"ebuild.nesteddie":"Placing 'die' inside ( ) prints an error, but doesn't stop the ebuild.",
 	"IUSE.invalid":"This build has a variable in IUSE that is not in the use.desc or use.local.desc file",
 	"LICENSE.invalid":"This ebuild is listing a license that doesnt exist in portages license/ dir.",
-	"KEYWORDS.invalid":"This ebuild contains KEYWORDS that are not listed in profiles/keywords.desc",
+	"KEYWORDS.invalid":"This ebuild contains KEYWORDS that are not listed in profiles/arch.list",
 	"ebuild.nostable":"There are no ebuilds that are marked as stable for your ARCH",
 	"ebuild.allmasked":"All ebuilds are masked for this package",
 	"ebuild.majorsyn":"This ebuild has a major syntax error that may cause the ebuild to fail partially or fully",
@@ -468,9 +468,9 @@ if not liclist:
 
 # retrieve list of offical keywords
 try:
-	kwlist=portage.grabfile(repoman_settings["PORTDIR"]+"/profiles/keywords.desc")
+	kwlist=portage.grabfile(repoman_settings["PORTDIR"]+"/profiles/arch.list")
 except:
-	err("Couldn't read KEYWORDS from keywords.desc")
+	err("Couldn't read KEYWORDS from arch.list")
 if not kwlist:
 	kwlist=["alpha","arm","hppa","mips","ppc","sparc","x86"]
 
