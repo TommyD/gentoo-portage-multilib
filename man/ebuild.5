@@ -165,22 +165,22 @@ been emerged, then the latest version available is matched.
 .B Atom Bases
 The base atom is just a full category/packagename.  Hence, these are base atoms:
 
+.nf
 .I sys-apps/sed
-.br
 .I sys-libs/zlib
-.br
 .I net-misc/dhcp
+.fi
 .TP
 .B Atom Versions
 It is nice to be more specific and say that only certain versions of atoms are
 acceptable.  Note that versions must be combined with a prefix (see below).  Hence
 you may add a version number as a postfix to the base:
 
+.nf
 sys-apps/sed\fI-4.0.5\fR
-.br
 sys-libs/zlib\fI-1.1.4-r1\fR
-.br
 net-misc/dhcp\fI-3.0_p2\fR
+.fi
 
 Versions are normally made up of two or three numbers separated by periods, such 
 as 1.2 or 4.5.2.  This string may be followed by a character such as 1.2a or 4.5.2z.  
@@ -193,15 +193,13 @@ you would use something like 1.2_pre3.
 Sometimes you want to be able to depend on general versions rather than specifying
 exact versions all the time.  Hence we provide standard boolean operators:
 
+.nf
 \fI>\fRmedia-libs/libgd-1.6
-.br
 \fI>=\fRmedia-libs/libgd-1.6
-.br
 \fI=\fRmedia-libs/libgd-1.6
-.br
 \fI<=\fRmedia-libs/libgd-1.6
-.br
 \fI<\fRmedia-libs/libgd-1.6
+.fi
 .TP
 .B Extended Atom Prefixes [!~] and Postfixes [*]
 Now to get even fancier, we provide the ability to define blocking packages and
@@ -209,13 +207,12 @@ version range matching.  Also note that these extended prefixes/postfixes may
 be combined in any way with the atom classes defined above.  Here are some common
 examples you may find in the portage tree:
 
+.nf
 \fI!\fRapp-text/dos2unix
-.br
 =dev-libs/glib-2\fI*\fR
-.br
 \fI!\fR=net-fs/samba-2\fI*\fR
-.br
 \fI~\fRnet-libs/libnet-1.0.2a
+.fi
 
 \fI!\fR means block packages from being installed at the same time.
 .br
@@ -263,36 +260,27 @@ That way the default is the superior GTK2 library.
 .B || ( Atom Atom ... )
 When a package can work with a few different packages but a virtual is not 
 appropriate, this syntax can easily be used.
-.br
+.nf
 .B || (
-.br
 .B 	app-games/unreal-tournament
-.br
 .B 	app-games/unreal-tournament-goty
-.br
 .B )
-.br
+.fi
 Here we see that unreal-tournament has a normal version and it has a goty version.  
 Since they provide the same base set of files, another package can use either.  
 Adding a virtual is inappropriate due to the small scope of it.
 .br
 Another good example is when a package can be built with multiple video 
 interfaces, but it can only ever have just one.
-.br
+.nf
 .B || (
-.br
 .B 	sdl? ( media-libs/libsdl )
-.br
 .B 	svga? ( media-libs/svgalib )
-.br
 .B 	opengl? ( virtual/opengl )
-.br
 .B 	ggi? ( media-libs/libggi )
-.br
 .B 	virtual/x11
-.br
 .B )
-.br
+.fi
 Here only one of the packages will be chosen, and the order of preference is 
 determined by the order in which they appear.  So sdl has the best chance of being 
 chosen, followed by svga, then opengl, then ggi, with a default of X if the user 
@@ -413,30 +401,22 @@ include \fIreason\fR.
 If \fIUSE item\fR is in the \fBUSE\fR variable, \fIUSE item\fR will be
 echoed and the function will return 0.  If \fIUSE item\fR is not in the
 \fBUSE\fR variable, the function will return 1. \fBuseq\fR is a non-echoing
-version of \fBuse\fR and should be used as often as possible instead of
-interpreting or handling the output of \fBuse\fR.
+version of \fBuse\fR.
 .RS
 .TP
 .I Example:
+.nf
 if useq gnome ; then
-.br
 	guiconf="--enable-gui=gnome --with-x"
-.br
 elif useq gtk ; then
-.br
 	guiconf="--enable-gui=gtk --with-x"
-.br
 elif useq X ; then
-.br
 	guiconf="--enable-gui=athena --with-x"
-.br
 else
-.br
 	# No gui version will be built
-.br
 	guiconf=""
-.br
 fi
+.fi
 .RE
 .TP
 \fBuse_with\fR \fI<USE item>\fR \fI[configure option]\fR
@@ -450,23 +430,19 @@ used in its place.
 .RS
 .TP
 .I Example:
+.nf
 USE="jpeg"
-.br
 myconf="$(use_with jpeg libjpeg)"
-.br
 (myconf now has the value "--with-libjpeg")
 
 USE=""
-.br
 myconf="$(use_with jpeg libjpeg)"
-.br
 (myconf now has the value "--without-libjpeg")
 
 USE="opengl"
-.br
 myconf="$(use_with opengl")
-.br
 (myconf now has the value "--with-opengl")
+.fi
 .RE
 .TP
 \fBuse_enable\fR \fI<USE item>\fR \fI[configure option]\fR
