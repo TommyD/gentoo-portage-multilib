@@ -2,6 +2,10 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  30 Oct 2003; Daniel Robbins <drobbins@gentoo.org> portage.py: Only
+  run depscan.sh if it exists on disk. This allows Portage to run 
+  inside a stage1 where /sbin/depscan.sh doesn't exist.
+  
   30 Oct 2003; Daniel Robbins <drobbins@gentoo.org> portage.py: Applied
   fix to allow multi-level "use? (   )" in SRC_URI, closing bug #16159.
 

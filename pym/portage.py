@@ -677,8 +677,8 @@ def env_update(makelinks=1):
 			continue
 		outfile.write("setenv "+x+" '"+env[x]+"'\n")
 	outfile.close()
-	
-	spawn("/sbin/depscan.sh",free=1)
+	if os.path.exists("/sbin/depscan.sh"):	
+		spawn("/sbin/depscan.sh",free=1)
 
 def grabfile(myfilename):
 	"""This function grabs the lines in a file, normalizes whitespace and returns lines in a list; if a line
