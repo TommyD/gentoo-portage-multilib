@@ -826,6 +826,7 @@ def merge(mycat,mypkg,myslot,pkgloc,infloc,myroot):
 	
 def unmerge(cat,pkg,slot,myroot):
 	mylink=dblink(cat,pkg,slot,myroot)
+	mylink.makeCompat()
 	if mylink.exists():
 		mylink.unmerge()
 	mylink.delete()
@@ -1999,7 +2000,6 @@ class dblink:
 			pkg_slot = pkg_slot+"-"+slot
 		self.dbdir=myroot+"/var/db/pkg/"+cat+"/"+pkg_slot
 		self.myroot=myroot
-		self.makeCompat()
 
 	# backwards compatibility code to be able to unmerge packages that have been
 	# merged with a previous version of portage
