@@ -1,6 +1,9 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  11 Jan 2003; Jack Morgan <jmorgan@gentoo.org> cnf/make.conf.sparc:
+  updated make.conf.sparc to add CFLAGS for sparc32 and sparc64
+
   08 Jan 2003; Mark Guertin <gerk@gentoo.org> cnf/make.conf.ppc:
   updated make.conf.ppc to remove G3 options for CFLAGS and other
   small tweaks

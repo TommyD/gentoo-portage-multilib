@@ -1,6 +1,5 @@
 # Copyright 2000-2002 Daniel Robbins, Gentoo Technologies, Inc.
 # Contains local system settings for Portage system
-# Please review 'man make.conf' for more information.
 
 # Build-time functionality
 # ========================
@@ -36,7 +35,7 @@
 #	 Ultra10, Ultra60, Ultra80, SunBlade 100, SunBlade 1000, Netra X1,
 # 	 Netra T series, Enterprise 250, 450
 #
-CHOST="sparc-unknown-linux-gnu"
+CHOST=sparc-unknown-linux-gnu
 
 # Host and optimization settings 
 # ==============================
@@ -60,10 +59,13 @@ CHOST="sparc-unknown-linux-gnu"
 #    v9:             ultrasparc
 #
 # Decent examples:
-#
-#CFLAGS="-mcpu=supersparc -O3 -pipe"
-#CFLAGS="-mcpu=ultrasparc -O3 -pipe"
-#CFLAGS="-mcpu=v8 -mtune=v9 -O2 -pipe"
+# For sparc64 machines
+#CFLAGS="-mcpu=ultrasparc -mtune=ultrasparc -O3 -pipe -falign-functions=4 -fprefetch-loop-arrays -ffast-math -fomit-frame-pointer"
+#CFLAGS="-mcpu=v8 -mtune=v9 -O3 -pipe"
+
+# For sparc32 machines
+#CFLAGS=" -mcpu=supersparc -O2 -pipe"
+#CFLAGS=" -O2 -pipe"
 
 # If you set a CFLAGS above, then this line will set your default C++ flags to
 # the same settings. If you don't set CFLAGS above, then comment this line out.
@@ -83,7 +85,7 @@ CXXFLAGS="${CFLAGS}"
 # platforms. DO NOT PUT ANYTHING BUT YOUR SPECIFIC ~ARCHITECTURE IN THE LIST.
 # IF YOU ARE UNSURE OF YOUR ARCH, OR THE IMPLICATIONS, DO NOT MODIFY THIS.
 #
-# ACCEPT_KEYWORDS="sparc ~sparc"
+ACCEPT_KEYWORDS="sparc"
 
 # Portage Directories
 # ===================
@@ -112,13 +114,7 @@ CXXFLAGS="${CFLAGS}"
 # PKGDIR is the location of binary packages that you can have created
 #     with '--buildpkg' or '-b' while emerging a package. This can get
 #     upto several hundred megs, or even a few gigs.
-#PKGDIR=/gentoo/packages
-#
-# PORT_LOGDIR is the location where portage will store all the logs it
-#     creates from each individual merge. They are stored as YYMMDD-$PF.log
-#     in the directory specified. This is disabled until you enable it by
-#     providing a directory. Permissions will be modified as needed.
-#PORT_LOGDIR=/var/log/emerge/
+#PKGDIR=${PORTDIR}/packages
 #
 # PORTDIR_OVERLAY is a directory where local ebuilds may be stored without
 #     concern that they will be deleted by rsync updates. Default is not
@@ -142,13 +138,6 @@ CXXFLAGS="${CFLAGS}"
 #
 # Prozilla (turbo downloader)
 #FETCHCOMMAND='/usr/bin/proz --no-getch -s ${URI} -P ${DISTDIR}'
-#
-# Portage uses GENTOO_MIRRORS to specify mirrors to use for source retrieval.
-# The list is a space seperated list which is read left to right. If you use
-# another mirror we highly recommend leaving the default mirror at the end of
-# the list so that portage will fall back to it if the files cannot be found
-# on your specified mirror.
-#GENTOO_MIRRORS="<your_mirror_here> http://www.ibiblio.org/pub/Linux/distributions/gentoo"
 
 # Advanced Features
 # =================
