@@ -1,7 +1,7 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
-*portage-2.0.41 (20 Oct 2002): Lot O'Bug fix release
+*portage-2.0.41 (20 Oct 2002): Bug fix release
 
   20 Oct 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
   stickies=[] lists the variables that will be kept/used as sticky vars,
@@ -24,7 +24,7 @@
   Bug 9308: Symlinks were being killed by ldconfig, fixed by changing
   how/when ldconfig was allowed to set symlinks.  rsync command touchups,
   --delete-after so that a failed rsync won't leave a user
-  without/with-few packages in portage.
+  without/with-few packages in portage.	More warnings to depclean.
 
   20 Oct 2002; Nicholas Jones <carpaski@gentoo.org> ebuild.sh:
   Added die to gzip in unpack()

@@ -1342,9 +1342,21 @@ elif "unmerge"==myaction or "prune"==myaction or "clean"==myaction:
 elif "depclean"==myaction:
 	# Kill packages that aren't explicitly merged or are required as a
 	# dependancy of another package. World file is explicit.
+
+	print
+	print red("*** WARNING ***")+" : DEPCLEAN CAN SERIOUSLY IMPAIR YOUR SYSTEM IF USED WITHOUT"
+	print red("*** WARNING ***")+" : CAUTION.   ALWAYS VERIFY ALL PACKAGES IN PRETEND LIST FOR"
+	print red("*** WARNING ***")+" : SANITY BEFORE ALLOWING THIS TO EXECUTE. (Cancel: CONTROL-C)"
+	print red("*** WARNING ***")+" : USE FLAGS HAVE AN EXTREME EFFECT ON THE OUTPUT. LIBRARIES"
+	print red("*** WARNING ***")+" : MAY BE IN USE, BUT NOT MENTIONED AS A DEPEND DUE TO USE."
+	print
+	print "Waiting 5 seconds to let you cancel..."
+	time.sleep(5)
+
 	mydepgraph=depgraph(myaction,myopts)
 	syslist=getlist("system")
 	worldlist=getlist("world")
+
 	print "Calculating",myaction,"dependencies  ",
 	if not mydepgraph.xcreate("world"):
 		print "\n!!! Failed to create deptree."
