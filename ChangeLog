@@ -1,11 +1,49 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  15 Jul 2002; Daniel Robbins <drobbins@gentoo.org> ebuild.sh: ccache bug fix;
+  removed extra "!".  Ccache should now get enabled properly.  Also, INHERITED
+  variable is now getting added to the dep cache entries for future
+  eclass-friendly caching.
+  
+  15 Jul 2002: Daniel Robbins <drobbins@gentoo.org> portage.py: Portage now
+  *persistently* caches xmatch() calculations.  This appears to speed things up
+  but we will need to limit the size of the new xcache.p in future versions of
+  Portage.
+
+  15 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, emerge: Portage
+  now has keyword-based masking enabled.  It also has server-side caching
+  enabled to eliminate "emerge pre-Calculating dependencies... delay" for
+  end-users.  There is now an undocumented "regen" option for emerge that tells
+  Portage to ensure that all entries in /var/cache/edb/dep are up-to-date.
+  This is intended mainly for developers, as the server-side caching feature
+  should ensure that all dep cache entries are up-to-date for end-users.
+
+  15 Jul 2002; Daniel Robbins <drobbins@gentoo.org> repoman: repoman now checks
+  for ebuilds that generate output as well as ebuilds that return a non-zero
+  error code when sourced.  For this test to detect all failures, you need to
+  wipe out your /var/cache/edb/dep/* before running repoman.  This design quirk
+  is necessary to preserve existing emerge behavior.
+
+  13 Jul 2002: Daniel Robbins <drobbins@gentoo.org> portage.py: Removed
+  Azarah's ebuildsh() function as it breaks pkg_setup() again.  pkg_setup()
+  needs to be called as part of the same process as any other ebuil.sh command
+  so that environment vars set in pkg_setup() are preserved through the rest of
+  the build process.
+  
+  13 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: changed calling
+  convention for doebuild("depend").
+
+  13 Jul 2002; Daniel Robbins <drobbins@gentoo.org> ebuild.sh: removed
+  erroneous "local dbkeys" that was outside of a function.  This fixes some
+  cache update problems.  Added INHERIT to our cache entries so we can
+  correctly update the cache for eclass ebuilds.
+  
   12 Jul 2002; Dan Armak <danarmak@gentoo.org> make.globals, make.globals.ppc:
   remove default KDE2DIR, KDE3DIR settings and comments. The kde eclasses will
-  now handle the case where they are not defined. This will be used with kde 3.1
-  and later, and the difference between their default value and them not being
-  defined is important.
+  now handle the case where they are not defined. This will be used with kde
+  3.1 and later, and the difference between their default value and them not
+  being defined is important.
 
 *portage-2.0.13 (11 Jul 2002)
 

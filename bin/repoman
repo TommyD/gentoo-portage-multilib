@@ -35,7 +35,7 @@ modeshelp={"scan":"Scan current directory tree for QA issues (default)",
 optionshelp={"--pretend":"Don't actually perform commit or fix steps; just show what would be done.",
 "--help":"Show this screen"
 }
-qacats=["digest.stray","digest.missing","ebuild.invalidname","ebuild.namenomatch","changelog.missing","ebuild.notadded","digest.notadded","ebuild.disjointed","digest.disjointed", "DEPEND.bad","RDEPEND.bad","DEPEND.badmasked","RDEPEND.badmasked"]
+qacats=["digest.stray","digest.missing","ebuild.invalidname","ebuild.namenomatch","changelog.missing","ebuild.notadded","digest.notadded","ebuild.disjointed","digest.disjointed", "DEPEND.bad","RDEPEND.bad","DEPEND.badmasked","RDEPEND.badmasked","ebuild.syntax","ebuild.output"]
 qawarnings=["changelog.missing","ebuild.notadded","digest.notadded","DEPEND.badmasked","RDEPEND.badmasked"]
 missingvars=["KEYWORDS","LICENSE","DESCRIPTION","SLOT"]
 allvars=missingvars[:]
@@ -61,6 +61,8 @@ qahelp={
 	"RDEPEND.bad":"User-visible ebuilds with bad RDEPEND settings (matched against *visible* ebuilds)",
 	"DEPEND.badmasked":"Masked ebuilds with bad DEPEND settings (matched against *all* ebuilds)",
 	"RDEPEND.badmasked":"Masked ebuilds with RDEPEND settings (matched against *all* ebuilds)",
+	"ebuild.syntax":"Error generating cache entry for ebuild; typically caused by ebuild syntax error",
+	"ebuild.output":"A simple sourcing of the ebuild produces output; this breaks ebuild policy."
 }
 
 def err(txt):
@@ -266,7 +268,16 @@ for x in scanlist:
 			print pkgdir,myesplit[0]
 			stats["ebuild.namenomatch"]=stats["ebuild.namenomatch"]+1
 			fails["ebuild.namenomatch"].append(x+"/"+y+".ebuild")
-		myaux=portage.db["/"]["porttree"].dbapi.aux_get(catdir+"/"+y,allvars)	
+		try:
+			myaux=portage.db["/"]["porttree"].dbapi.aux_get(catdir+"/"+y,allvars,strict=1)	
+		except KeyError:
+			stats["ebuild.syntax"]=stats["ebuild.syntax"]+1
+			fails["ebuild.syntax"].append(x+"/"+y+".ebuild")
+			continue
+		except IOError:
+			stats["ebuild.output"]=stats["ebuild.output"]+1
+			fails["ebuild.output"].append(x+"/"+y+".ebuild")
+			continue
 		for pos in range(0,len(missingvars)):
 			if myaux[pos]=="":
 				myqakey=missingvars[pos]+".missing"

@@ -1,5 +1,5 @@
 #!/usr/bin/env python2.2
-import os,sys,portage,xpak,string,re,commands,time,threading,grp
+import os,sys,portage,xpak,string,re,commands,time,threading,grp,shutil
 from stat import *
 from output import *
 
@@ -24,7 +24,8 @@ actions=["clean",
 	"system",
 	"unmerge",
 	"world",
-	"inject"]
+	"inject",
+	"regen"]
 options=["--autoclean",
 	"--clean",
 	"--buildpkg",
@@ -413,7 +414,11 @@ class depgraph:
 				sys.exit(1)
 				mydep={}
 			myebuild=portage.db[myroot]["porttree"].getname(mykey)
-			edepend=portage.db[myroot]["porttree"].dbapi.aux_get(mykey,portage.auxdbkeys)
+			try:
+				edepend=portage.db[myroot]["porttree"].dbapi.aux_get(mykey,portage.auxdbkeys)
+			except (KeyError,IOError):
+				print "emerge: create(): aux_get() error on",mykey+"; aborting..."
+				sys.exit(1)
 		elif mytype=="blocks":
 			edepend=None
 			if not myparent:
@@ -925,7 +930,7 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 		mycommand=mycommand+syncuri+"/* "+myportdir
 		print ">>> starting rsync with "+syncuri+"..."
 	#protect users that did not set a default umask
-		sys.exit(portage.spawn(mycommand,free=1))	
+		portage.spawn(mycommand,free=1)	
 	elif syncuri[:6]=="cvs://":
 		if not os.path.exists("/usr/bin/cvs"):
 			print "!!! /usr/bin/cvs does not exist, so rsync support is disabled."
@@ -955,7 +960,58 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 	else:
 		print "!!! rsync setting: ",syncuri,"not recognized; exiting."
 		sys.exit(1)
-
+	if os.path.exists(myportdir+"/metadata/cache"):
+		print "\n>>> Updating Portage cache...  ",
+		mynodes=portage.portdb.cp_all()
+		for x in mynodes:
+			myxsplit=x.split("/")
+			mycatdir=portage.settings["PORTAGE_CACHEDIR"]+"/"+myxsplit[0]
+			if not os.path.exists(mycatdir):
+				os.makedirs(mycatdir)
+			mymatches=portage.portdb.xmatch("match-all",x)
+			for y in mymatches:
+				sys.stdout.write("\b"+spinner[spinpos])
+				spinpos=(spinpos+1)%8
+				sys.stdout.flush()
+				curdbkey=portage.settings["PORTAGE_CACHEDIR"]+"/"+y
+				newdbkey=myportdir+"/metadata/cache/"+y
+				mysplit=y.split("/")
+				myebuild=myportdir+"/"+myxsplit[0]+"/"+myxsplit[1]+"/"+mysplit[1]+".ebuild"
+				notfound=0
+				try:
+					ebuildtime=os.stat(myebuild)[ST_MTIME]
+				except OSError:
+					notfound=1
+				if notfound:
+					continue
+				curkeytime=0
+				notfound=0
+				try:
+					newkeytime=os.stat(newdbkey)[ST_MTIME]
+				except OSError:
+					notfound=1
+				if notfound:
+					continue
+				try:
+					curkeytime=os.stat(curdbkey)[ST_MTIME]
+				except OSError:
+					pass
+				if (newkeytime>=ebuildtime>curkeytime):
+					shutil.copy2(newdbkey,curdbkey)
+		sys.stdout.write("\b\b  \n\n")
+		sys.stdout.flush()
+elif myaction=="regen":
+	#regenerate cache entries
+	mynodes=portage.portdb.cp_all()
+	for x in mynodes:
+		mymatches=portage.portdb.xmatch("list-visible",x)
+		print "processing",x
+		for y in mymatches:
+			try:
+				foo=portage.portdb.aux_get(y,["DEPEND"])
+			except:
+				print "error processing",y+", continuing..."
+	print "done!"
 elif "--version" in myopts:
 		print "Portage " + portage.VERSION
 		sys.exit(0)

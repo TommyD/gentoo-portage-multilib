@@ -1,5 +1,4 @@
-#!/bin/bash
-
+#!/bin/bash 
 if [ -n "$#" ]
 then
 	ARGS="${*}"	
@@ -124,7 +123,7 @@ if [ "${FEATURES/-ccache/}" = "${FEATURES}" -a "${FEATURES/ccache/}" != "${FEATU
 then
 	#We can enable compiler cache support
 	export PATH="/usr/bin/ccache:${PATH}"
-	if [ ! -z "${CCACHE_DIR}" ]
+	if [ -z "${CCACHE_DIR}" ]
 	then
 		CCACHE_DIR=/root/.ccache
 	fi
@@ -852,11 +851,10 @@ do
 	depend)
 		set -f
 		#the extra `echo` commands remove newlines
-		local dbkey
-		dbkey=/var/cache/edb/dep/${CATEGORY}/${PF}
-		if [ ! -d /var/cache/edb/dep/${CATEGORY} ]
+		dbkey=${PORTAGE_CACHEDIR}/${CATEGORY}/${PF}
+		if [ ! -d ${PORTAGE_CACHEDIR}/${CATEGORY} ]
 		then
-			install -d -g wheel -m2775 /var/cache/edb/dep/${CATEGORY}
+			install -d -g wheel -m2775 ${PORTAGE_CACHEDIR}/${CATEGORY}
 		fi
 		echo `echo "$DEPEND"` > $dbkey
 		echo `echo "$RDEPEND"` >> $dbkey
@@ -867,6 +865,7 @@ do
 		echo `echo "$LICENSE"` >> $dbkey
 		echo `echo "$DESCRIPTION"` >> $dbkey
 		echo `echo "$KEYWORDS"` >> $dbkey
+		echo `echo "$INHERITED"` >> $dbkey
 		set +f
 		#make sure it is writable by our group:
 		chmod g+ws $dbkey

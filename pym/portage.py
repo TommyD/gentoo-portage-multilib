@@ -7,8 +7,7 @@ VERSION="2.0.12"
 from stat import *
 from commands import *
 from select import *
-import string,os,types,sys,shlex,shutil,xpak,fcntl,signal,time,missingos
-import thread
+import string,os,types,sys,shlex,shutil,xpak,fcntl,signal,time,missingos,cPickle,atexit
 
 incrementals=["USE","FEATURES","ACCEPT_KEYWORDS","ACCEPT_LICENSE","CONFIG_PROTECT_MASK"]
 
@@ -71,7 +70,7 @@ sandboxactive=["unpack","compile","clean","install"]
 features=[]
 
 #handle ^C interrupts correctly:
-def exithandler(signum,frame):
+def exithandler(foo,bar):
 	global features
 	print "!!! Portage interrupted by SIGINT; exiting."
 	#disable sandboxing to prevent problems
@@ -108,7 +107,6 @@ if not os.environ.has_key("DEBUG"):
 
 def tokenize(mystring):
 	"""breaks a string like 'foo? (bar) oni? (blah (blah))' into embedded lists; returns None on paren mismatch"""
-	tokens=string.split(mystring)
 	newtokens=[]
 	curlist=newtokens
 	prevlist=None
@@ -619,7 +617,6 @@ class config:
 	def __init__(self):
 		global incrementals
 		self.configlist=[]
-		origenv=os.environ.copy()
 		self.backupenv={}
 		# back up our incremental variables:
 		global profiledir
@@ -815,19 +812,6 @@ def multispawn(mycommand=None,myargs=None):
 	mspawncur=mspawncur+1
 	return mypid
 	
-def ebuildsh(mystring,debug=0):
-	"Spawn ebuild.sh, optionally in a sandbox"
-	mylist=mystring.split()
-	for x in mylist:
-		global buildphase
-		buildphase=x
-		#here we always want to call spawn with free=0,
-		#else the exit handler may not detect things properly
-		retval=spawn("/usr/sbin/ebuild.sh "+x,debug)
-		#reset it again
-		buildphase=""
-		if retval: return retval
-
 def fetch(myuris):
 	"fetch files.  Will use digest file if available."
 	if ("mirror" in features) and ("nomirror" in settings["RESTRICT"].split()):
@@ -860,7 +844,7 @@ def fetch(myuris):
 			myfile=os.path.basename(myuri)
 			try:
 				mystat=os.stat(settings["DISTDIR"]+"/"+myfile)
-			except OSError,IOError:
+			except (OSError,IOError),e:
 				# file does not exist
 				print "!!!",myfile,"not found in",settings["DISTDIR"]+"."
 				gotit=0
@@ -907,7 +891,7 @@ def fetch(myuris):
 				#we don't have the digest file, but the file exists.  Assume it is fully downloaded.
 				docontinue=1
 				pass
-		except OSError,IOError:
+		except (OSError,IOError),e:
 			pass
 		if docontinue:
 			#you can't use "continue" when you're inside a "try" block
@@ -925,7 +909,7 @@ def fetch(myuris):
 					if mystat[ST_SIZE]==mydigests[myfile]["size"]:
 						gotit=1
 						break
-				except OSError,IOError:
+				except (OSError,IOError),e:
 					pass
 			else:
 				if not myret:
@@ -1084,14 +1068,22 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 
 	# if any of these are being called, handle them and stop now.
 	if mydo in ["help","clean","prerm","postrm","preinst","postinst","config","touch","setup"]:
-		return ebuildsh(mydo)
+		return spawn("/usr/sbin/ebuild.sh "+mydo,debug)
 		#initial ebuild.sh bash environment configured
 	
 	# get possible slot information from the deps file
 	if mydo=="depend":
 		myso=getstatusoutput("/usr/sbin/ebuild.sh depend")
-		return 0
-	settings["SLOT"], settings["RESTRICT"], myuris = db["/"]["porttree"].dbapi.aux_get(mykey,["SLOT","RESTRICT","SRC_URI"])
+		if myso[1]:
+			#error; no output should be generated
+			raise IOError
+			#this should be caught by aux_get
+		return myso[0]
+	try: 
+		settings["SLOT"], settings["RESTRICT"], myuris = db["/"]["porttree"].dbapi.aux_get(mykey,["SLOT","RESTRICT","SRC_URI"])
+	except (IOError,KeyError):
+		print "portage.py: doebuild(): aux_get() error; aborting."
+		sys.exit(1)
 	newuris=flatten(evaluate(tokenize(myuris),string.split(settings["USE"])))	
 	alluris=flatten(evaluate(tokenize(myuris),[],1))	
 	alist=[]
@@ -1142,14 +1134,14 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 				}
 	if mydo in actionmap.keys():	
 		if "noauto" in features:
-			return ebuildsh(mydo)
+			return spawn("/usr/sbin/ebuild.sh "+mydo,debug)
 		else:
-			return ebuildsh(actionmap[mydo])
+			return spawn("/usr/sbin/ebuild.sh "+actionmap[mydo],debug)
 	elif mydo=="qmerge": 
 		#qmerge is specifically not supposed to do a runtime dep check
 		return merge(settings["CATEGORY"],settings["PF"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot)
 	elif mydo=="merge":
-		retval=ebuildsh("setup unpack compile install")
+		retval=spawn("/usr/sbin/ebuild.sh setup unpack compile install")
 		if retval: return retval
 		return merge(settings["CATEGORY"],settings["PF"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot,myebuild=settings["EBUILD"])
 	elif mydo=="package":
@@ -1174,7 +1166,7 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 			print
 			return 0
 		else:
-			return ebuildsh("setup unpack compile install package")
+			return spawn("/usr/sbin/ebuild.sh setup unpack compile install package")
 
 expandcache={}
 
@@ -1540,7 +1532,13 @@ def isspecific(mypkg):
 # return a list containing: [ pkgname, pkgversion(norev), pkgrev ].
 # For foo-1.2-1, this list would be [ "foo", "1.2", "1" ].  For 
 # Mesa-3.0, this list would be [ "Mesa", "3.0", "0" ].
+#if os.path.exists("/var/cache/edb/pkgcache.p"):
+#	myxfile=open("/var/cache/edb/pkgcache.p","r")
+#	pkgcache=cPickle.load(myxfile)
+#	myxfile.close()
+#else:
 pkgcache={}
+
 def pkgsplit(mypkg,silent=1):
 	try:
 		return pkgcache[mypkg]
@@ -1876,7 +1874,6 @@ def getvirtuals(myroot):
 
 def dep_getjiggy(mydep):
 	pos=0
-	lastpos=0
 	# first, we fill in spaces where needed (for "()[]" chars)
 	while pos<len(mydep):
 		if (mydep[pos] in "()[]"):
@@ -2091,7 +2088,7 @@ class packagetree:
 		return nolist
 
 	def depcheck(self,mycheck,use="yes"):
-		return dep_check(mycheck,self.dbapi,use="yes")
+		return dep_check(mycheck,self.dbapi,use=use)
 
 	def populate(self):
 		"populates the tree with values"
@@ -2240,8 +2237,6 @@ class portagetree:
 
 	def dep_bestmatch(self,mydep):
 		"compatibility method"
-		#mymatch=best(gvisible(visible(match(mydep,self.dbapi))))
-		#mymatch=best(visible(match(mydep,self.dbapi)))
 		mymatch=self.dbapi.xmatch("bestmatch-visible",mydep)
 		if mymatch==None:
 			return ""
@@ -2249,8 +2244,6 @@ class portagetree:
 
 	def dep_match(self,mydep):
 		"compatibility method"
-		#mymatch=gvisible(visible(match(mydep,self.dbapi)))
-		#mymatch=visible(match(mydep,self.dbapi))
 		mymatch=self.dbapi.xmatch("match-visible",mydep)
 		if mymatch==None:
 			return []
@@ -2544,24 +2537,32 @@ class vartree(packagetree):
 		self.populated=1
 
 	
-auxdbkeys=['DEPEND','RDEPEND','SLOT','SRC_URI','RESTRICT','HOMEPAGE','LICENSE','DESCRIPTION','KEYWORDS']
+auxdbkeys=['DEPEND','RDEPEND','SLOT','SRC_URI','RESTRICT','HOMEPAGE','LICENSE','DESCRIPTION','KEYWORDS','INHERIT']
 auxdbkeylen=len(auxdbkeys)
 class portdbapi(dbapi):
 	"this tree will scan a portage directory located at root (passed to init)"
 	def __init__(self):
 		self.root=settings["PORTDIR"]
 		self.auxcache={}
-		self.xcache={0:{},1:{},2:{}}
-
-	def aux_get(self,mycpv,mylist):
-		global OSError,IOError
+		if os.path.exists("/var/cache/edb/xcache.p"):
+			try:
+				myxfile=open("/var/cache/edb/xcache.p","r")
+				self.xcache=cPickle.load(myxfile)
+				myxfile.close()
+			except:
+				#corrupt?
+				self.xcache={0:{},1:{},2:{}}
+		else:
+			self.xcache={0:{},1:{},2:{}}
+	
+	def aux_get(self,mycpv,mylist,strict=0):
 		"stub code for returning auxilliary db information, such as SLOT, DEPEND, etc."
 		'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
-		'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or [] if mycpv not found'
-		global auxdbkeys,auxdbkeylen
+		'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or raise KeyError if error'
+		global auxdbkeys,auxdbkeylen,dbcachedir
 		dmtime=0
 		regen=0
-		mydbkey="/var/cache/edb/dep/"+mycpv
+		mydbkey=dbcachedir+mycpv
 		mycsplit=catpkgsplit(mycpv)
 		mysplit=mycpv.split("/")
 		myebuild=self.root+"/"+mycsplit[0]+"/"+mycsplit[1]+"/"+mysplit[1]+".ebuild"
@@ -2574,26 +2575,44 @@ class portdbapi(dbapi):
 			if dmtime<emtime:
 				regen=1
 		if regen:
-			doebuild(myebuild,"depend","/")
+			try:
+				if doebuild(myebuild,"depend","/"):
+					#depend returned non-zero exit code...
+					if strict:
+						print "portage: aux_get(): (0) Error in",mycpv,"ebuild."
+						raise KeyError
+			except IOError:
+				if strict:
+					#depend generated output...
+					raise
 		if regen or (not self.auxcache.has_key(mycpv)) or (self.auxcache[mycpv]["mtime"]!=dmtime):
 			#update our internal cache data
 			try: 
 				mycent=open(mydbkey,"r")
-			except IOError,OSError:
-				print "portage: aux_get(): couldn't open cache entry for",mycpv
+			except (IOError, OSError):
+				print "portage: aux_get(): (1) couldn't open cache entry for",mycpv
 				print "(likely caused by syntax error or corruption in the",mycpv,"ebuild.)"
-				sys.exit(1)
+				raise KeyError
 			mylines=mycent.readlines()
 			mycent.close()
-			if len(mylines)!=auxdbkeylen:
-				#old cache entry, needs updating:
-				doebuild(myebuild,"depend","/")
+			if len(mylines)<auxdbkeylen:
+				#old cache entry, needs updating (this could raise IOError)
+				try:
+					if doebuild(myebuild,"depend","/"):
+						#depend returned non-zero exit code...
+						if strict:
+							print "portage: aux_get(): (0) Error in",mycpv,"ebuild."
+							raise KeyError
+				except IOError:
+					if strict:
+						#depend generated output...
+						raise
 				try:
 					mycent=open(mydbkey,"r")
-				except IOError,OSError:
-					print "portage: aux_get(): couldn't open cache entry for",mycpv
+				except ( IOError, OSError):
+					print "portage: aux_get(): (2) couldn't open cache entry for",mycpv
 					print "(likely caused by syntax error or corruption in the",mycpv,"ebuild.)"
-					sys.exit(1)
+					raise KeyError
 				mylines=mycent.readlines()
 				mycent.close()
 			self.auxcache[mycpv]={"mtime":dmtime}
@@ -2631,7 +2650,7 @@ class portdbapi(dbapi):
 			for x in listdir(self.root+"/"+mycp):
 				if x[-7:]==".ebuild":
 					returnme.append(x[:-7])	
-		except OSError,IOError:
+		except (OSError,IOError),e:
 			return []
 		return returnme
 
@@ -2642,13 +2661,12 @@ class portdbapi(dbapi):
 			for x in listdir(self.root+"/"+mycp):
 				if x[-7:]==".ebuild":
 					returnme.append(mysplit[0]+"/"+x[:-7])	
-		except OSError,IOError:
+		except (OSError,IOError),e:
 			return []
 		return returnme
 
 	def xmatch(self,level,origdep,mydep=None,mykey=None,mylist=None):
 		"caching match function; very trick stuff"
-		global KeyError
 		if not mydep:
 			#this stuff only runs on first call of xmatch()
 			#create mydep, mykey from origdep
@@ -2684,8 +2702,9 @@ class portdbapi(dbapi):
 			except KeyError:
 				pass
 		if level=="list-visible":
-			#a list of all visible packages, not called directly (just my xmatch())
-			myval=self.visible(self.cp_list(mykey))
+			#a list of all visible packages, not called directly (just by xmatch())
+			#myval=self.visible(self.cp_list(mykey))
+			myval=self.gvisible(self.visible(self.cp_list(mykey)))
 		elif level=="bestmatch-visible":
 			#dep match -- best match of all visible packages
 			myval=best(self.xmatch("match-visible",None,mydep,mykey))
@@ -2767,8 +2786,13 @@ class portdbapi(dbapi):
 		newlist=[]
 		for mycpv in mylist:
 			#we need to update this next line when we have fully integrated the new db api
-			myaux=db["/"]["porttree"].dbapi.aux_get(mycpv, ["KEYWORDS"])
-			if not myaux:
+			auxerr=0
+			try:
+				myaux=db["/"]["porttree"].dbapi.aux_get(mycpv, ["KEYWORDS"])
+			except (KeyError,IOError):
+				return []
+			if not myaux[0]:
+				#any aux_get errors will make an ebuild visible (get more accurate errors that way)
 				#no ACCEPT_KEYWORDS setting defaults to "*" (for backwards compat.)
 				newlist.append(mycpv)
 				continue
@@ -2782,7 +2806,8 @@ class portdbapi(dbapi):
 					if gp=="*":
 						match=1
 						break
-					elif gp=="-*":
+					elif "-"+gp in groups:
+						match=0
 						break
 					elif gp in groups:
 						match=1
@@ -3175,7 +3200,7 @@ class dblink:
 				else:
 					try:
 						os.unlink(obj)
-					except OSError,IOError:
+					except (OSError,IOError),e:
 						pass		
 					print "<<<       ","obj",obj
 			elif pkgfiles[obj][0]=="fif":
@@ -3200,7 +3225,7 @@ class dblink:
 					continue
 				try:
 					os.unlink(obj)
-				except OSError,IOError:
+				except (OSError,IOError),e:
 					pass
 				print "<<<       ","fif",obj
 			elif pkgfiles[obj][0]=="dev":
@@ -3237,7 +3262,7 @@ class dblink:
 					try:
 						os.unlink(obj)
 						print "<<<       ","sym",obj
-					except OSError,IOError:
+					except (OSError,IOError),e:
 						#immutable?
 						pass
 	
@@ -3258,7 +3283,7 @@ class dblink:
 					try:
 						os.rmdir(obj)
 						print "<<<       ","dir",obj
-					except OSError,IOError:
+					except (OSError,IOError),e:
 						#immutable?
 						pass
 				#else:
@@ -3804,7 +3829,7 @@ if virts:
 		vkeysplit=x.split("/")
 		if not virts_p.has_key(vkeysplit[1]):
 			virts_p[vkeysplit[1]]=virts[x]
-
+del x
 db["/"]={"virtuals":virts,"vartree":vartree("/",virts)}
 if root!="/":
 	virts=getvirtuals(root)
@@ -3817,6 +3842,14 @@ else:
 settings=config()
 #the new standardized db names:
 portdb=portdbapi()
+def store():
+	myxfile=open("/var/cache/edb/xcache.p","w")
+	cPickle.dump(portdb.xcache,myxfile)
+	myxfile.close()
+#	myxfile=open("/var/cache/edb/pkgcache.p","w")
+#	cPickle.dump(pkgcache,myxfile)
+#	myxfile.close()
+atexit.register(store)
 #continue setting up other trees
 db["/"]["porttree"]=portagetree("/",virts)
 db["/"]["bintree"]=binarytree("/",virts)
@@ -3827,6 +3860,10 @@ thirdpartymirrors=grabdict(settings["PORTDIR"]+"/profiles/thirdpartymirrors")
 
 #,"porttree":portagetree(root,virts),"bintree":binarytree(root,virts)}
 features=settings["FEATURES"].split()
+dbcachedir=settings["PORTAGE_CACHEDIR"]
+if not dbcachedir:
+	dbcachedir="/var/cache/edb/dep/"
+	settings["PORTAGE_CACHEDIR"]=dbcachedir
 #create PORTAGE_TMPDIR if it doesn't exist.
 if not os.path.exists(settings["PORTAGE_TMPDIR"]):
 	print "portage: the directory specified in your PORTAGE_TMPDIR variable, \""+settings["PORTAGE_TMPDIR"]+",\""
