@@ -102,7 +102,9 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 				# try for the exclusive lock now.
 				lock(myfd,fcntl.LOCK_EX)
 				link_success = True
-			elif e.errno == errno.ENOLCK:
+
+			#einval should correct a mips n32 bug, bug # would be good here.
+			elif e.errno in (errno.ENOLCK, errno.EINVAL):
 				continue
 			else:
 				raise e
