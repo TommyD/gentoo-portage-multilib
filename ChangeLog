@@ -3,6 +3,13 @@
 
 *portage-2.0.8 (27 Jun 2002)
 
+  27 Jun 2002; Daniel Robbins <drobbins@gentoo.org> emerge: in an attempt to
+  provide a predictable release of Portage, I'm reverting the "emerge
+  --pretend" "fix" in Portage-2.0.6.  It ignores custom USE settings when
+  calculating child deps, which makes things tricky for users.  We'll use the
+  "expected" (old) behavior for now until we have a solution for this USE
+  issue.
+  
   27 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: fixed handling
   of ! deps in match(), closing bug #4219.  Thanks Spidler!
 

@@ -385,9 +385,12 @@ class depgraph:
 					self.digraph.addnode(mybigkey,myparent)
 			return 1
 		mytype,myroot,mykey=string.split(mybigkey)
-		if "--noreplace" in self.myopts:
-			#This next part was removed so that we upgrade *deps* of packages when we are doing an --update
-			#or "--update" in self.myopts:
+		#IMPORTANT: in the next line, ("--update" in self.myopts) should eventually be removed.
+		#It will allow childrean of already-upgraded packages to be upgraded.  Unfortunately, "fixing" this
+		#creates a new problem -- when child deps are calculated, it uses the current USE settings rather than
+		#the settings with which the package was compiled.  Meaning that USE tweaks are overridden.
+		#Too big a change for a stable version of Portage.
+		if ("--noreplace" in self.myopts) or ("--update" in self.myopts):
 			if portage.db[myroot]["vartree"].exists_specific(mykey):
 				#already merged, skip.
 				return 1
