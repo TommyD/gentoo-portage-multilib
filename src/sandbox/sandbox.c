@@ -92,6 +92,7 @@ void cleanup()
 	int			num_of_preloads = 0;
 	
 	FILE*		pids_stream = NULL;
+	struct stat	pids_stat;
 	int			pids_file = -1;
 	char		pid_string[255];
 	int			tmp_pid = 0;
@@ -104,202 +105,211 @@ void cleanup()
 	{
 		cleaned_up = 1;
 		success = 1;
-		pids_stream = fopen(PIDS_FILE, "r+");
-		if (NULL == pids_stream)
+		if (0 == lstat(PIDS_FILE, &pids_stat) &&
+			0 == S_ISREG(pids_stat.st_mode))
 		{
-			perror(">>> pids file fopen");
+			perror(">>> pids file is not a regular file");
 			success = 0;
 		}
 		else
 		{
-			pids_file = fileno(pids_stream);
-			if (pids_file < 0)
+			pids_stream = fopen(PIDS_FILE, "r+");
+			if (NULL == pids_stream)
 			{
-				perror(">>> pids file fileno");
+				perror(">>> pids file fopen");
 				success = 0;
 			}
 			else
 			{
-				if (flock(pids_file, LOCK_EX) < 0)
+				pids_file = fileno(pids_stream);
+				if (pids_file < 0)
 				{
-					perror(">>> pids file lock");
+					perror(">>> pids file fileno");
 					success = 0;
 				}
 				else
 				{
-					/* check which sandbox pids are still running */
-					while (EOF != fscanf(pids_stream, "%d\n", &tmp_pid))
+					if (flock(pids_file, LOCK_EX) < 0)
 					{
-						if (0 == kill(tmp_pid, 0))
-						{
-							if (NULL == pids_array)
-							{
-								pids_array = (int*)malloc(sizeof(int));
-							}
-							else
-							{
-								pids_array = (int*)realloc(pids_array, sizeof(int)*(num_of_pids+1));
-							}
-							pids_array[num_of_pids++] = tmp_pid;
-						}
-					}
-
-					/* clean the /etc/ld.so.preload file if no other sandbox processes are running anymore*/
-					if(num_of_pids == 1)
-					{
-						success = 1;
-						preload_stream = fopen("/etc/ld.so.preload", "r+");
-						if (NULL == preload_stream)
-						{
-							perror(">>> /etc/ld.so.preload file fopen");
-							success = 0;
-						}
-						else
-						{
-							preload_file = fileno(preload_stream);
-							if (preload_file < 0)
-							{
-								perror(">>> /etc/ld.so.preload file fileno");
-								success = 0;
-							}
-							else
-							{
-								if (flock(preload_file, LOCK_EX) < 0)
-								{
-									perror(">>> /etc/ld.so.preload file lock");
-									success = 0;
-								}
-								else
-								{
-									/* only get the entries that don't contain the sandbox library from the /etc/ld.so.preload file */
-									while (EOF != fscanf(preload_stream, "%s\n", preload_entry))
-									{
-										if (NULL == strstr(preload_entry, LIB_NAME))
-										{
-											if (NULL == preload_array)
-											{
-												preload_array = (char**)malloc(sizeof(char*));
-											}
-											else
-											{
-												preload_array = (char**)realloc(pids_array, sizeof(char*)*(num_of_preloads+1));
-											}
-											preload_array[num_of_preloads++] = strdup(preload_entry);
-										}
-									}
-
-									if (fseek(preload_stream, 0, SEEK_SET) < 0)
-									{
-										perror(">>> /etc/ld.so.preload file fseek");
-										success = 0;
-									}
-									else
-									{
-										/* empty the /etc/ld.so.preload file */
-										if (ftruncate(preload_file, 0) < 0)
-										{
-											perror(">>> /etc/ld.so.preload file ftruncate");
-											success = 0;
-										}
-										else
-										{
-											/* store the other preload libraries back into the /etc/ld.so.preload file */
-											if(num_of_preloads > 0)
-											{
-												for (i = 0; i < num_of_preloads; i++)
-												{
-													sprintf(preload_entry, "%s\n", preload_array[i]);
-													if (write(preload_file, preload_entry, strlen(preload_entry)) != strlen(preload_entry))
-													{
-														perror(">>> /etc/ld.so.preload file write");
-														success = 0;
-														break;
-													}
-												}
-											}
-										}
-									}
-
-									if (NULL != preload_array)
-									{
-										for (i = 0; i < num_of_preloads; i++)
-										{
-											free(preload_array[i]);
-											preload_array[i] = NULL;
-										}
-										free(preload_array);
-										preload_array = NULL;
-									}
-
-									if (flock(preload_file, LOCK_UN) < 0)
-									{
-										perror(">>> /etc/ld.so.preload file unlock");
-										success = 0;
-									}
-								}
-							}
-							if (EOF == fclose(preload_stream))
-							{
-								perror(">>> /etc/ld.so.preload file fclose");
-								success = 0;
-							}
-							preload_stream = NULL;
-							preload_file = -1;
-						}
-					}
-
-					if (fseek(pids_stream, 0, SEEK_SET) < 0)
-					{
-						perror(">>> pids file fseek");
+						perror(">>> pids file lock");
 						success = 0;
 					}
 					else
 					{
-						/* empty the pids file */
-						if (ftruncate(pids_file, 0) < 0)
+						/* check which sandbox pids are still running */
+						while (EOF != fscanf(pids_stream, "%d\n", &tmp_pid))
 						{
-							perror(">>> pids file ftruncate");
+							if (0 == kill(tmp_pid, 0))
+							{
+								if (NULL == pids_array)
+								{
+									pids_array = (int*)malloc(sizeof(int));
+								}
+								else
+								{
+									pids_array = (int*)realloc(pids_array, sizeof(int)*(num_of_pids+1));
+								}
+								pids_array[num_of_pids++] = tmp_pid;
+							}
+						}
+	
+						/* clean the /etc/ld.so.preload file if no other sandbox processes are running anymore*/
+						if(num_of_pids == 1)
+						{
+							success = 1;
+							preload_stream = fopen("/etc/ld.so.preload", "r+");
+							if (NULL == preload_stream)
+							{
+								perror(">>> /etc/ld.so.preload file fopen");
+								success = 0;
+							}
+							else
+							{
+								preload_file = fileno(preload_stream);
+								if (preload_file < 0)
+								{
+									perror(">>> /etc/ld.so.preload file fileno");
+									success = 0;
+								}
+								else
+								{
+									if (flock(preload_file, LOCK_EX) < 0)
+									{
+										perror(">>> /etc/ld.so.preload file lock");
+										success = 0;
+									}
+									else
+									{
+										/* only get the entries that don't contain the sandbox library from the /etc/ld.so.preload file */
+										while (EOF != fscanf(preload_stream, "%s\n", preload_entry))
+										{
+											if (NULL == strstr(preload_entry, LIB_NAME))
+											{
+												if (NULL == preload_array)
+												{
+													preload_array = (char**)malloc(sizeof(char*));
+												}
+												else
+												{
+													preload_array = (char**)realloc(pids_array, sizeof(char*)*(num_of_preloads+1));
+												}
+												preload_array[num_of_preloads++] = strdup(preload_entry);
+											}
+										}
+	
+										if (fseek(preload_stream, 0, SEEK_SET) < 0)
+										{
+											perror(">>> /etc/ld.so.preload file fseek");
+											success = 0;
+										}
+										else
+										{
+											/* empty the /etc/ld.so.preload file */
+											if (ftruncate(preload_file, 0) < 0)
+											{
+												perror(">>> /etc/ld.so.preload file ftruncate");
+												success = 0;
+											}
+											else
+											{
+												/* store the other preload libraries back into the /etc/ld.so.preload file */
+												if(num_of_preloads > 0)
+												{
+													for (i = 0; i < num_of_preloads; i++)
+													{
+														sprintf(preload_entry, "%s\n", preload_array[i]);
+														if (write(preload_file, preload_entry, strlen(preload_entry)) != strlen(preload_entry))
+														{
+															perror(">>> /etc/ld.so.preload file write");
+															success = 0;
+															break;
+														}
+													}
+												}
+											}
+										}
+	
+										if (NULL != preload_array)
+										{
+											for (i = 0; i < num_of_preloads; i++)
+											{
+												free(preload_array[i]);
+												preload_array[i] = NULL;
+											}
+											free(preload_array);
+											preload_array = NULL;
+										}
+	
+										if (flock(preload_file, LOCK_UN) < 0)
+										{
+											perror(">>> /etc/ld.so.preload file unlock");
+											success = 0;
+										}
+									}
+								}
+								if (EOF == fclose(preload_stream))
+								{
+									perror(">>> /etc/ld.so.preload file fclose");
+									success = 0;
+								}
+								preload_stream = NULL;
+								preload_file = -1;
+							}
+						}
+	
+						if (fseek(pids_stream, 0, SEEK_SET) < 0)
+						{
+							perror(">>> pids file fseek");
 							success = 0;
 						}
 						else
 						{
-							/* if pids are still running, write only the running pids back to the file */
-							if(num_of_pids > 1)
+							/* empty the pids file */
+							if (ftruncate(pids_file, 0) < 0)
 							{
-								for (i = 0; i < num_of_pids; i++)
+								perror(">>> pids file ftruncate");
+								success = 0;
+							}
+							else
+							{
+								/* if pids are still running, write only the running pids back to the file */
+								if(num_of_pids > 1)
 								{
-									sprintf(pid_string, "%d\n", pids_array[i]);
-									if (write(pids_file, pid_string, strlen(pid_string)) != strlen(pid_string))
+									for (i = 0; i < num_of_pids; i++)
 									{
-										perror(">>> pids file write");
-										success = 0;
-										break;
+										sprintf(pid_string, "%d\n", pids_array[i]);
+										if (write(pids_file, pid_string, strlen(pid_string)) != strlen(pid_string))
+										{
+											perror(">>> pids file write");
+											success = 0;
+											break;
+										}
 									}
 								}
 							}
 						}
-					}
-
-					if (NULL != pids_array)
-					{
-						free(pids_array);
-						pids_array = NULL;
-					}
-
-					if (flock(pids_file, LOCK_UN) < 0)
-					{
-						perror(">>> pids file unlock");
-						success = 0;
+	
+						if (NULL != pids_array)
+						{
+							free(pids_array);
+							pids_array = NULL;
+						}
+	
+						if (flock(pids_file, LOCK_UN) < 0)
+						{
+							perror(">>> pids file unlock");
+							success = 0;
+						}
 					}
 				}
+				if (EOF == fclose(pids_stream))
+				{
+					perror(">>> pids file fclose");
+					success = 0;
+				}
+				pids_stream = NULL;
+				pids_file = -1;
 			}
-			if (EOF == fclose(pids_stream))
-			{
-				perror(">>> pids file fclose");
-				success = 0;
-			}
-			pids_stream = NULL;
-			pids_file = -1;
 		}
 		if (0 == success)
 		{
@@ -346,6 +356,7 @@ int main(int argc, char** argv)
 	char		sandbox_rc[255];
 	struct stat	sandbox_rc_stat;
 
+	struct stat	pids_stat;
 	int			pids_file = -1;
 	char		pid_string[255];
 	
@@ -491,80 +502,88 @@ int main(int argc, char** argv)
 			{
 				/* if the /etc/ld.so.preload file exists, try to open it in read/write mode */
 				success = 1;
-				preload_stream = fopen("/etc/ld.so.preload", "r+");
-				if (NULL == preload_stream)
+				if (0 == S_ISREG(preload_stat.st_mode))
 				{
-					if (EACCES == errno)
-					{
-						/* if access was denied, warn the user about it */
-						preload_adaptable = 0;
-						printf(">>> Couldn't adapt the /etc/ld.so.preload file.\n>>> It's possible that not all function calls are trapped\n");
-					}
-					else
-					{
-						perror(">>> /etc/ld.so.preload file fopen");
-						success = 0;
-					}
+					perror(">>> /etc/ld.so.preload file is not a regular file");
+					success = 0;
 				}
 				else
 				{
-					preload_file = fileno(preload_stream);
-					if (preload_file < 0)
+					preload_stream = fopen("/etc/ld.so.preload", "r+");
+					if (NULL == preload_stream)
 					{
-						perror(">>> /etc/ld.so.preload file fileno");
-						success = 0;
+						if (EACCES == errno)
+						{
+							/* if access was denied, warn the user about it */
+							preload_adaptable = 0;
+							printf(">>> Couldn't adapt the /etc/ld.so.preload file.\n>>> It's possible that not all function calls are trapped\n");
+						}
+						else
+						{
+							perror(">>> /etc/ld.so.preload file fopen");
+							success = 0;
+						}
 					}
 					else
 					{
-						if (flock(preload_file, LOCK_EX) < 0)
+						preload_file = fileno(preload_stream);
+						if (preload_file < 0)
 						{
-							perror(">>> /etc/ld.so.preload file lock");
+							perror(">>> /etc/ld.so.preload file fileno");
 							success = 0;
 						}
 						else
 						{
-							/* check if the sandbox library is already present in the /etc/ld.so.preload file */
-							while (EOF != fscanf(preload_stream, "%s\n", preload_entry))
+							if (flock(preload_file, LOCK_EX) < 0)
 							{
-								if (NULL != strstr(preload_entry, LIB_NAME))
-								{
-									preload_lib_present = 1;
-									break;
-								}
-							}
-
-							/* if it's not present, add the sandbox lib path to the end of the /etc/ld.so.preload file */
-							if (0 == preload_lib_present)
-							{
-								if (fseek(preload_stream, 0, SEEK_END) < 0)
-								{
-									perror(">>> /etc/ld.so.preload file fseek");
-									success = 0;
-								}
-								else
-								{
-									if (write(preload_file, sandbox_lib, strlen(sandbox_lib)) != strlen(sandbox_lib))
-									{
-										perror(">>> /etc/ld.so.preload file write");
-										success = 0;
-									}
-								}
-							}
-
-							if (flock(preload_file, LOCK_UN) < 0)
-							{
-								perror(">>> /etc/ld.so.preload file unlock");
+								perror(">>> /etc/ld.so.preload file lock");
 								success = 0;
 							}
+							else
+							{
+								/* check if the sandbox library is already present in the /etc/ld.so.preload file */
+								while (EOF != fscanf(preload_stream, "%s\n", preload_entry))
+								{
+									if (NULL != strstr(preload_entry, LIB_NAME))
+									{
+										preload_lib_present = 1;
+										break;
+									}
+								}
+	
+								/* if it's not present, add the sandbox lib path to the end of the /etc/ld.so.preload file */
+								if (0 == preload_lib_present)
+								{
+									if (fseek(preload_stream, 0, SEEK_END) < 0)
+									{
+										perror(">>> /etc/ld.so.preload file fseek");
+										success = 0;
+									}
+									else
+									{
+										if (write(preload_file, sandbox_lib, strlen(sandbox_lib)) != strlen(sandbox_lib))
+										{
+											perror(">>> /etc/ld.so.preload file write");
+											success = 0;
+										}
+									}
+								}
+	
+								if (flock(preload_file, LOCK_UN) < 0)
+								{
+									perror(">>> /etc/ld.so.preload file unlock");
+									success = 0;
+								}
+							}
 						}
+						if (EOF == fclose(preload_stream))
+						{
+							perror(">>> /etc/ld.so.preload file fclose");
+							success = 0;
+						}
+						preload_stream = NULL;
+						preload_file = -1;
 					}
-					if (EOF == fclose(preload_stream))
-					{
-						perror(">>> /etc/ld.so.preload file fclose");
-						success = 0;
-					}
-					preload_stream = NULL;
-					preload_file = -1;
 				}
 				if (0 == success)
 				{
@@ -729,40 +748,49 @@ int main(int argc, char** argv)
 				if (1 == preload_adaptable)
 				{
 					success = 1;
-					pids_file = open(PIDS_FILE, O_WRONLY|O_CREAT|O_APPEND, 0644);
-					if (pids_file < 0)
+					if (0 == lstat(PIDS_FILE, &pids_stat) &&
+						0 == S_ISREG(pids_stat.st_mode))
 					{
-						perror(">>> pids file open");
+						perror(">>> pids file is not a regular file");
 						success = 0;
 					}
 					else
 					{
-						if (flock(pids_file, LOCK_EX) < 0)
+						pids_file = open(PIDS_FILE, O_WRONLY|O_CREAT|O_APPEND, 0644);
+						if (pids_file < 0)
 						{
-							perror(">>> pids file lock");
+							perror(">>> pids file open");
 							success = 0;
 						}
 						else
 						{
-							sprintf(pid_string, "%d\n", getpid());
-							if (write(pids_file, pid_string, strlen(pid_string)) != strlen(pid_string))
+							if (flock(pids_file, LOCK_EX) < 0)
 							{
-								perror(">>> pids file write");
+								perror(">>> pids file lock");
 								success = 0;
 							}
+							else
+							{
+								sprintf(pid_string, "%d\n", getpid());
+								if (write(pids_file, pid_string, strlen(pid_string)) != strlen(pid_string))
+								{
+									perror(">>> pids file write");
+									success = 0;
+								}
 
-							if (flock(pids_file, LOCK_UN) < 0)
+								if (flock(pids_file, LOCK_UN) < 0)
+								{
+									perror(">>> pids file unlock");
+									success = 0;
+								}
+							}
+							if (close(pids_file) < 0)
 							{
-								perror(">>> pids file unlock");
+								perror(">>> pids file close");
 								success = 0;
 							}
+							pids_file = -1;
 						}
-						if (close(pids_file) < 0)
-						{
-							perror(">>> pids file close");
-							success = 0;
-						}
-						pids_file = -1;
 					}
 					if (0 == success)
 					{

@@ -1,6 +1,10 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+  11 Feb 2002; G.Bevin <gbevin@gentoo.org> sandbox.c, libsandbox.c :
+  added checks to see if the files where information is written to are really
+  regular files and not symlinks
+
 *portage 1.8.9_pre6 (10 Feb 2002)
 
   10 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge :

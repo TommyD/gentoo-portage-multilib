@@ -644,15 +644,17 @@ int check_access(sbcontext_t* sbcontext, const char* func, const char* path)
 
 int check_syscall(sbcontext_t* sbcontext, const char* func, const char* file)
 {
-	int		result = 1;
-	char*	absolute_path = NULL;
-	char*	tmp_buffer = NULL;
-	char*	log_path = NULL;
-	int 	log_file = 0;
-	char*	debug_log_env = NULL;
-	char*	debug_log_path = NULL;
-	int 	debug_log_file = 0;
-	char 	buffer[512];
+	int			result = 1;
+	char*		absolute_path = NULL;
+	char*		tmp_buffer = NULL;
+	struct stat	log_stat;
+	char*		log_path = NULL;
+	int 		log_file = 0;
+	struct stat	debug_log_stat;
+	char*		debug_log_env = NULL;
+	char*		debug_log_path = NULL;
+	int 		debug_log_file = 0;
+	char 		buffer[512];
 
 	if ('/' == file[0])
 	{
@@ -683,11 +685,19 @@ int check_syscall(sbcontext_t* sbcontext, const char* func, const char* file)
 			if (NULL != log_path)
 			{
 				sprintf(buffer, "%s:%*s%s\n", func, (int)(10-strlen(func)), "", absolute_path);
-				log_file = open(log_path, O_APPEND|O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
-				if(log_file >= 0)
+				if (0 == lstat(log_path, &log_stat) &&
+					0 == S_ISREG(log_stat.st_mode))
 				{
-					write(log_file, buffer, strlen(buffer));
-					close(log_file);
+					fprintf(stderr, "\e[31;01mSECURITY BREACH\033[0m  %s already exists and is not a regular file.\n", log_path);
+				}
+				else
+				{
+					log_file = open(log_path, O_APPEND|O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
+					if(log_file >= 0)
+					{
+						write(log_file, buffer, strlen(buffer));
+						close(log_file);
+					}
 				}
 			}
 		}
@@ -701,11 +711,19 @@ int check_syscall(sbcontext_t* sbcontext, const char* func, const char* file)
 			if (0 != strcmp(absolute_path, debug_log_path))
 			{
 				sprintf(buffer, "%s:%*s%s\n", func, (int)(10-strlen(func)), "", absolute_path);
-				debug_log_file = open(debug_log_path, O_APPEND|O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
-				if(debug_log_file >= 0)
+				if (0 == lstat(debug_log_path, &debug_log_stat) &&
+					0 == S_ISREG(debug_log_stat.st_mode))
 				{
-					write(debug_log_file, buffer, strlen(buffer));
-					close(debug_log_file);
+					fprintf(stderr, "\e[31;01mSECURITY BREACH\033[0m  %s already exists and is not a regular file.\n", log_path);
+				}
+				else
+				{
+					debug_log_file = open(debug_log_path, O_APPEND|O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
+					if(debug_log_file >= 0)
+					{
+						write(debug_log_file, buffer, strlen(buffer));
+						close(debug_log_file);
+					}
 				}
 			}
 		}
