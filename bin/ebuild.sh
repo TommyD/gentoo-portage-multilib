@@ -109,6 +109,14 @@ addpredict()
 	export SANDBOX_PREDICT="$SANDBOX_PREDICT:$1"
 }
 
+#Add ccache support if available
+if [ -d /usr/bin/ccache ]
+then
+	export PATH="/usr/bin/ccache:${PATH}"
+	addread /root/.ccache
+	addwrite /root/.ccache
+fi
+
 unpack() {
 	local x
 	for x in "$@"
