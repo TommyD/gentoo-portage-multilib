@@ -1792,37 +1792,25 @@ class dblink:
 				if mymd5 != string.upper(pkgfiles[obj][2]):
 					print "--- !md5  ","obj", obj
 					continue
-				unlinkme=[obj]
-				copyme=""
 				myppath=""
 				for ppath in self.protect:
 					epath=expandpath(obj)
 					if epath[0:len(ppath)]==ppath:
-						myppath=ppath
+						masked=0
 						#config file management
 						for pmpath in self.protectmask:
 							if epath[0:len(pmpath)]==pmpath:
 								#skip, it's in the mask
-								myppath=""
+								masked=1
 								break
-						if not myppath:
-							break	
-				pfound=0
-				pmatch=os.path.basename(obj)
-				pdir=os.path.dirname(obj)
+						if not masked: 
+							myppath=ppath
+							break
 				if myppath:
-					for pfile in os.listdir(pdir):
-							if pfile[0:5]!="._cfg":
-								continue
-							if pfile[10:]!=pmatch:
-								continue
-							pfound=1
-					if pfound:
-						print "--- cfg   ","obj",obj
-						continue
-				os.unlink(obj)
-				print "<<<       ","obj",obj
-			
+					print "--- cfg   ","obj",obj
+				else:
+					os.unlink(obj)
+					print "<<<       ","obj",obj
 			elif pkgfiles[obj][0]=="fif":
 				if not isfifo(obj):
 					print "--- !fif  ","fif", obj

@@ -233,30 +233,48 @@ def post_emerge(retval=0):
 	elif not os.path.exists("/usr/bin/install-info"):
 		print "    /usr/bin/install-info doesn't exist; skipping info regeneration."
 	else:
-		print ">>> \x1b[32;01mRegenerating GNU info directory index...\x1b[0m"
+		print " \x1b[32;01m*\x1b[0m Regenerating GNU info directory index..."
 		if os.path.exists(root+"usr/share/info/dir"):
 			os.rename(root+"usr/share/info/dir",root+"usr/share/info/dir.old")
 		icount=0
+		badcount=0
 		for x in os.listdir(root+"usr/share/info"):
 			if (x[-5:]==".info") or (x[-8:]==".info.gz"):
 				myso=commands.getstatusoutput("/usr/bin/install-info --dir-file="+root+"usr/share/info/dir "+root+"usr/share/info/"+x)[1]
 				if myso!="":
-					print myso
+					badcount=badcount+1
+					if "--verbose" in myopts:
+						print myso
 				icount=icount+1
-		print "    Processed",icount,"files."
+		if badcount:
+			if "--verbose" not in myopts:
+				print " \x1b[33;01m*\x1b[0m Processed",icount,"info files:",badcount,"errors; type \x1b[32;01memerge --verbose\x1b[0m to view errors."
+			else:
+				print " \x1b[33;01m*\x1b[0m Processed",icount,"info files;",badcount,"errors."
+
+		else:
+			print " \x1b[32;01m*\x1b[0m Processed",icount,"info files."
 	if portage.settings["CONFIG_PROTECT"]:
-		print
-		print ">>> \x1b[32;01mNote:\x1b[0m"
-		print "    Config file protection is enabled."
-		print "    \x1b[32;01mdirs:\x1b[0m "+portage.settings["CONFIG_PROTECT"]
-		print "    \x1b[32;01mmasked-out dirs:\x1b[0m",portage.settings["CONFIG_PROTECT_MASK"]
-		print "    /etc/env.d is hard-coded; type \"emerge --help config\" more information."
+		#number of directories with some protect files in them
+		procount=0
+		for x in string.split(portage.settings["CONFIG_PROTECT"]):
+			if os.path.isdir(x):
+				a=commands.getstatusoutput("cd "+x+"; find -iname '._cfg????_*'")
+				if a[0]!=0:
+					print " \x1b[31;01m*\x1b[0m error scanning",x
+				else:
+					files=string.split(a[1])
+					if files:
+						procount=procount+1
+						print " \x1b[33;01m* IMPORTANT:\x1b[0m",len(files),"config files in",x,"need updating."
+		if procount:
+			print " \x1b[33;01m*\x1b[0m Type \x1b[32;01memerge --help config\x1b[0m to learn how to update config files."
 		print
 	sys.exit(retval)
 
 #number of ebuilds merged
 merged=0
-opts=["--help","--pretend","--buildpkg","--usepkg","--autoclean","--clean","--debug","--fetchonly","--noreplace","--onlydeps"]
+opts=["--help","--pretend","--buildpkg","--usepkg","--autoclean","--clean","--debug","--fetchonly","--noreplace","--onlydeps","--verbose"]
 modes=["rsync","system","update","config"]
 myopts=[]
 mymode=[]
@@ -288,8 +306,8 @@ if "--debug" in myopts:
 if "--help" in myopts:
 	if len(mymode)==0:
 		print
-		print "\x1b[01mYou can also type \"emerge --help system\" and \"emerge --help rsync\" for"
-		print "additional help.\x1b[0m"
+		print "\x1b[01mYou can also type \"emerge --help system\", \"emerge --help rsync\" and"
+		print "\"emerge --help config\" for additional help.\x1b[0m"
 		print
 		print "Usage: \x1b[36;01memerge\x1b[0m [ \x1b[32;01moptions\x1b[0m ] [ \x1b[36;01mebuildfile\x1b[0m | \x1b[36;01mtbz2file\x1b[0m ] | \x1b[36;01mdep\x1b[0m ]..."
 		print "       \x1b[36;01memerge\x1b[0m [ \x1b[32;01moptions\x1b[0m ] \x1b[36;01msystem\x1b[0m"
@@ -300,8 +318,12 @@ if "--help" in myopts:
 		print "              display this help (specify optional \"rsync\" or \"system\" for"
 		print "              more info)"
 		print 
+		print "       \x1b[32;01m--verbose\x1b[0m"
+		print "              Tell emerge to run in verbose mode.  Currently, this causes"
+		print "              emerge to print out GNU info errors, if any."
+		print 
 		print "       \x1b[32;01m--debug\x1b[0m"
-		print "              tell emerge to run the \x1b[36;01mebuild\x1b[0m command in --debug"
+		print "              Tell emerge to run the \x1b[36;01mebuild\x1b[0m command in --debug"
 		print "              mode.  In this mode, the bash build environment will run with"
 		print "              the -x option, causing it to output verbose debug information"
 		print "              to stdout.  --debug is great for finding bash syntax errors."
@@ -381,24 +403,30 @@ if "--help" in myopts:
 		outstuff="""
 \x1b[32;01mConfig file management support (preliminary)\x1b[0m
 
-By default, Portage will \x1b[32;01mnot\x1b[0m overwrite any files inside the directories listed
-in the CONFIG_PROTECT variable in /etc/make.globals (which is set to /etc and
-/var/qmail/control, typically.)  Instead, if Portage is asked to overwrite a
-file in one of these directories (or a subdirectory inside one of these
-directories), it will install the file with an alternate filename, using a
-._cfgXXXX_ prefix (where XXXX is a four-digit number, starting with 0000) so
-that the original config file is preserved.
+Portage has a special feature called "config file protection".  The purpose of
+this feature is to prevent new package installs from clobbering existig
+configuration files.  By default, config file protection is turned on for /etc
+and the KDE configuration dirs; more may be added in the future.
 
-The purpose of this feature is to give the administrator the option to review
-any potential changes to files in these directories before they are applied.
-Soon, we will have a special \"emerge config\" system that will step the
-administrator through an interactive process, allowing him/her to review the
-changes and selectively merge these changes into the  production config files.
-But right now, \"emerge config\" doesn't exist, so users will need to scan /etc
-and protected dirs for any ._cfgXXXX_ files, and then manually review them and
-apply any desired changes to their production files:
+When Portage installs a file into a protected directory tree like /etc, any
+existing files will not be overwritten.  If a file of the same name already
+exists, Portage will change the name of the to-be- installed file from 'foo' to
+'._cfg0000_foo'.  If '._cfg0000_foo' already exists, this name becomes
+'._cfg0001_foo', etc.  In this way, existing files are not overwritten,
+allowing the administrator to manually merge the new config files and avoid any
+unexpected changes.
 
-# find /etc -iname ._cfg????_*
+In addition to protecting overwritten files, Portage will not delete any files
+from a protected directory when a package is unmerged.  While this may be a
+little bit untidy, it does prevent potentially valuable config files from being
+deleted, which is of paramount importance.
+
+Protected directories are set using the CONFIG_PROTECT variable, normally
+defined in /etc/make.globals.  Directory exceptions to the CONFIG_PROTECTed
+directories can be specified using the CONFIG_PROTECT_MASK variable.  To find
+files that need to be updated in /etc, type:
+
+# find /etc -iname '._cfg????_*'
 
 You can disable this feature by setting CONFIG_PROTECT="" in /etc/make.conf.
 Then, Portage will mercilessly auto-update your config files.  Alternatively,
@@ -463,6 +491,9 @@ if ("system" in mymode) or ("update" in mymode):
 		mydepgraph.merge(mydepgraph.altlist())
 	post_emerge()
 mydepgraph=depgraph(mymode,myopts)
+if not myfiles:
+	post_emerge()
+	#we don't have any files to process; skip this step and exit
 print "Calculating dependencies",
 for mypkg in myfiles:
 	if mypkg[-5:]==".tbz2":
