@@ -107,6 +107,9 @@ class depgraph:
 				continue
 			if myline[0]=="#":
 				continue
+			if myline[0]!="*":
+				continue
+			myline=myline[1:]
 			if "update" not in self.mymode:
 				mycheck=self.db[portage.root]["vartree"].depcheck(myline)
 				if mycheck[0]==0:
@@ -345,7 +348,7 @@ if "--help" in myopts:
 		print "       \x1b[36;01memerge\x1b[0m [ \x1b[32;01moptions\x1b[0m ] \x1b[36;01msystem\x1b[0m"
 		print
 		print "       \"emerge system\" is the Portage system update command.  When run, it"
-		print "       will scan the /etc/make.profile/packages file and determine what"
+		print "       will scan the etc/make.profile/packages file and determine what"
 		print "       packages need to be installed so that your system meets the minimum"
 		print "       requirements of your current system profile.  Note that this doesn't"
 		print "       necessarily bring your system up-to-date at all; instead, it just"
@@ -423,21 +426,10 @@ if "rsync" in mymode:
 
 if ("system" in mymode) or ("update" in mymode):
 	#system profile mode
-	if os.path.exists(portage.root+"etc/make.profile/packages"):
-		pfile=portage.root+"etc/make.profile/packages"
-	elif os.path.exists("/etc/make.profile/packages"):
-		print ">>> Couldn't find",portage.root+"/etc/make.profile/packages;"
-		print ">>> Using /etc/make.profile/packages instead."
-		pfile="/etc/make.profile/packages"
-	elif os.path.exists(os.path.normpath(portage.settings["PORTDIR"]+"/profiles/default/packages")):
-		print ">>> Couldn't find",portage.root+"/etc/make.profile/packages;"
-		print ">>> Couldn't find /etc/make.profile/packages;"
-		print ">>> Found default profile in /usr/portage/profiles; using it instead."
-		pfile=os.path.normpath(portage.settings["PORTDIR"]+"/profiles/default/packages")
+	if os.path.exists(portage.profiledir+"/packages"):
+		pfile=portage.profiledir+"/packages"
 	else:
-		print "!!! Couldn't find",portage.root+"/etc/make.profile/packages;"
-		print "!!! Couldn't find /etc/make.profile/packages;"
-		print "!!! Couldn't find /usr/portage/profiles/default/packages;"
+		print "!!! Couldn't find",portage.profiledir+"/packages;"
 		print "\"system\" mode unavailable."
 		sys.exit(1)
 	myfile=open(pfile,"r")

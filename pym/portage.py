@@ -232,6 +232,29 @@ def env_update():
 	
 	#need to add cshrc support
 
+
+def grabfile(myfilename):
+	"""This function grabs the lines in a file, normalizes whitespace and returns lines in a list; if a line
+	begins with a #, it is ignored, as are empty lines"""
+
+	myfile=open(myfilename,"r")
+	if not myfile:
+		#keep it an empty sequence type to be loop friendly
+		return []
+	mylines=myfile.readlines()
+	myfile.close()
+	newlines=[]
+	for x in mylines:
+		#the split/join thing removes leading and trailing whitespace, and converts any whitespace in the line
+		#into single spaces.
+		myline=string.join(string.split(x))
+		if not len(myline):
+			continue
+		if myline[0]=="#":
+			continue
+		newlines.append(myline)
+	return newlines
+	
 def getconfig(mycfg,tolerant=0):
 	mykeys={}
 	f=open(mycfg,'r')
@@ -360,11 +383,7 @@ class config:
 		self.origenv=os.environ.copy()
 		self.populated=0
 	def populate(self):
-		if os.path.exists("/etc/make.profile/make.defaults"):
-			self.configlist=[self.origenv.copy(),getconfig("/etc/make.conf"),getconfig("/etc/make.profile/make.defaults"),getconfig("/etc/make.globals")]
-		else:
-			print ">>> /etc/make.profile/make.defaults not found, continuing anyway..."
-			self.configlist=[self.origenv.copy(),getconfig("/etc/make.conf"),getconfig("/etc/make.globals")]
+		self.configlist=[self.origenv.copy(),getconfig("/etc/make.conf"),getconfig(profiledir+"/make.defaults"),getconfig("/etc/make.globals")]
 		self.populated=1
 	
 	def __getitem__(self,mykey):
@@ -574,6 +593,20 @@ def isdev(x):
 def isfifo(x):
 	mymode=os.stat(x)[ST_MODE]
 	return S_ISFIFO(mymode)
+
+def expandpath(mypath):
+	"""The purpose of this function is to resolve the 'real' path on disk, with all
+	symlinks resolved except for the basename, since we may be installing a symlink
+	and definitely don't want it expanded.  In fact, the file that we want to install
+	doesn't need to exist; just the dirname."""
+	split=string.split(mypath,"/")
+	join=string.join(split[:-1],"/")
+	a=getstatusoutput("/bin/readlink -f	'"+join+"'")
+	if a[0]!=0:
+		#expansion didn't work; probably because the dir didn't exist.  Return original path.
+		return mypath 
+	else:
+		return a[1]+"/"+split[-1]
 
 def movefile(src,dest,unlink=1):
 	"""moves a file from src to dest, preserving all permissions and attributes."""
@@ -1030,10 +1063,10 @@ def dep_frontend(mytype,myebuild,depstring):
 
 # gets virtual package settings
 def getvirtuals(myroot):
-	if not os.path.exists(myroot+"/etc/make.profile/virtuals"):
+	if not os.path.exists(profiledir+"/virtuals"):
 		print ">>>",os.path.normpath(myroot+"/etc/make.profile/virtuals"),"does not exist.  Continuing anyway..."
 		return {}
-	myfile=open(myroot+"/etc/make.profile/virtuals")
+	myfile=open(profiledir+"/virtuals")
 	mylines=myfile.readlines()
 	myvirts={}
 	for x in mylines:
@@ -1329,6 +1362,69 @@ class packagetree:
 					bestmatch=x
 			return bestmatch[0]
 
+	def dep_nomatch(self,mypkgdep):
+		"""dep_nomatch() has a very specific purpose.  You pass it a dep, like =sys-apps/foo-1.0.
+		Then, it scans the sys-apps/foo category and returns a list of sys-apps/foo packages that
+		*don't* match.  This method is used to clean the portagetree using entries in the 
+		make.profile/packages file.  It is only intended to process specific deps, but should
+		be robust enough to pass any type of string to it and have it not die.
+		"""
+		returnme=[]
+		if (mypkgdep[0]=="="):
+			mycp=catpkgsplit(mypkgdep[1:],1)
+			if not mycp:
+				#not a specific pkg, or parse error.  keep silent
+				return []
+			mykey=mycp[0]+"/"+mycp[1]
+			if not self.tree.has_key(mykey):
+				return []
+			x=0
+			while x<len(self.tree[mykey]):
+				if self.tree[mykey][x][0]!=mypkgdep[1:]:
+					returnme.append(self.tree[mykey][x][0])
+				x=x+1
+		elif (mypkgdep[0]==">") or (mypkgdep[0]=="<"):
+			if mypkgdep[1]=="=":
+				cmpstr=mypkgdep[0:2]
+				cpv=mypkgdep[2:]
+			else:
+				cmpstr=mypkgdep[0]
+				cpv=mypkgdep[1:]
+			if not isspecific(cpv):
+				return []
+			mycatpkg=catpkgsplit(cpv,1)
+			if mycatpkg==None:
+				#parse error
+				return []
+			mykey=mycatpkg[0]+"/"+mycatpkg[1]
+			if not self.hasnode(mykey):
+				return []
+			for x in self.getnode(mykey):
+				if not eval("pkgcmp(x[1][1:],mycatpkg[1:])"+cmpstr+"0"):
+					returnme.append(x[0])
+		elif mypkgdep[0]=="~":
+			#"~" implies a "bestmatch"
+			mycp=catpkgsplit(mypkgdep[1:],1)
+			if not mycp:
+				return []
+			mykey=mycp[0]+"/"+mycp[1]
+			if not self.tree.has_key(mykey):
+				return []
+			mymatch=self.dep_bestmatch(mypkgdep)
+			if not mymatch:
+				for x in self.tree[mykey]:
+					returnme.append(x[0])
+			else:
+				x=0
+				while x<len(self.tree[mykey]):
+					if self.tree[mykey][x][0]!=mymatch:
+						returnme.append(self.tree[mykey][x][0])
+					x=x+1
+			#end of ~ section
+		else:
+			return []
+		return returnme
+
 	def dep_match(self,mypkgdep):
 		"""
 		returns a list of all matches for mypkgdep in the tree.  Accepts
@@ -1451,24 +1547,21 @@ class portagetree(packagetree):
 					self.tree[mykey].append([fullpkg,mysplit])
 		#self.populated must be set here, otherwise dep_match will cause recursive populate() calls
 		self.populated=1
-		if os.path.exists("profiles/package.mask"):
-			myfile=open("profiles/package.mask","r")
-			mylines=myfile.readlines()
-			myfile.close()
-			deps=[]
-			for x in mylines:
-				myline=string.join(string.split(x))
-				if not len(myline):
-					continue
-				if myline[0]=="#":
-					continue
-				deps.append(myline)
-			for x in deps:
-				matches=self.dep_match(x)
-				if matches:
-					for y in matches:
-						self.zap(y)
+		mylines=grabfile("profiles/package.mask")
+		for x in mylines:
+			matches=self.dep_match(x)
+			if matches:
+				for y in matches:
+					self.zap(y)
 		os.chdir(origdir)
+		mylines=grabfile(profiledir+"/packages")
+		for x in mylines:
+			if x[0]=="*":
+				x=x[1:]
+			matches=self.dep_nomatch(x)
+			for y in matches:
+				self.zap(y)
+
 	def getdeps(self,pf):
 		"returns list of dependencies, if any"
 		if not self.populated:
@@ -1632,16 +1725,14 @@ class dblink:
 		mykeys.sort()
 		mykeys.reverse()
 		
-				#do some config file management prep
+		#do some config file management prep
 		self.protect=[]
 		for x in string.split(settings["CONFIG_PROTECT"]):
 			ppath=os.path.normpath(self.myroot+"/"+x)+"/"
 			if os.path.isdir(ppath):
 				self.protect.append(ppath)
 				print ">>> Config file management enabled for",ppath
-			else:
-				print "!!! Config file management disabled for",ppath,"(not found)"
-				print ">>> (This is not necessarily an error)"
+			
 		self.protectmask=[]
 		for x in string.split(settings["CONFIG_PROTECT_MASK"]):
 			ppath=os.path.normpath(self.myroot+"/"+x)+"/"
@@ -1693,11 +1784,12 @@ class dblink:
 				copyme=""
 				myppath=""
 				for ppath in self.protect:
-					if obj[0:len(ppath)]==ppath:
+					epath=expandpath(obj)
+					if epath[0:len(ppath)]==ppath:
 						myppath=ppath
 						#config file management
 						for pmpath in self.protectmask:
-							if obj[0:len(pmpath)]==pmpath:
+							if epath[0:len(pmpath)]==pmpath:
 								#skip, it's in the mask
 								myppath=""
 								break
@@ -1821,7 +1913,7 @@ class dblink:
 				try:
 					os.symlink(myto,rootfile)
 					print ">>>",rootfile,"->",myto
-					outfile.write("sym "+relfile+" -> "+myto+" "+getmtime(rootfile)+"\n")
+					outfile.write("sym "+expandpath(relfile)+" -> "+myto+" "+getmtime(rootfile)+"\n")
 				except:
 					print "!!!",rootfile,"->",myto
 			#directory
@@ -1834,7 +1926,7 @@ class dblink:
 					print ">>>",rootfile+"/"
 				else:
 					print "---",rootfile+"/"
-				outfile.write("dir "+relfile+"\n")
+				outfile.write("dir "+expandpath(relfile)+"\n")
 				#enter directory, recurse
 				os.chdir(x)
 				self.merge(mergeroot,inforoot,myroot,mergestart+"/"+x,outfile)
@@ -1846,11 +1938,14 @@ class dblink:
 				myppath=""
 				rootdir=os.path.dirname(rootfile)
 				for ppath in self.protect:
-					if rootfile[0:len(ppath)]==ppath:
+					#the expandpath() means that we will be expanding rootpath first (resolving dir symlinks)
+					#before matching against a protection path.
+					if expandpath(rootfile)[0:len(ppath)]==ppath:
 						myppath=ppath
 						#config file management
 						for pmpath in self.protectmask:
-							if rootfile[0:len(pmpath)]==pmpath:
+							#again, dir symlinks are expanded
+							if expandpath(rootfile)[0:len(pmpath)]==pmpath:
 								#skip, it's in the mask
 								myppath=""
 								break
@@ -1923,7 +2018,7 @@ class dblink:
 					else:
 						zing="!!!"
 					print zing,rootfile
-					outfile.write("obj "+relfile+" "+mymd5+" "+getmtime(rootfile)+"\n")
+					outfile.write("obj "+expandpath(relfile)+" "+mymd5+" "+getmtime(rootfile)+"\n")
 			elif isfifo(x):
 				#fifo
 				zing="!!!"
@@ -1935,7 +2030,7 @@ class dblink:
 					if movefile(x,rootfile):
 						zing=">>>"
 				print zing+" "+rootfile
-				outfile.write("fif "+relfile+"\n")
+				outfile.write("fif "+expandpath(relfile)+"\n")
 			else:
 				#device nodes, the only other possibility
 				if movefile(x,rootfile):
@@ -1943,7 +2038,7 @@ class dblink:
 				else:
 					zing="!!!"
 				print zing+" "+rootfile
-				outfile.write("dev "+relfile+"\n")
+				outfile.write("dev "+expandpath(relfile)+"\n")
 		if mergestart==mergeroot:
 			#restore umask
 			os.umask(prevmask)
@@ -2163,5 +2258,16 @@ if not os.path.exists(root+"var/tmp"):
 os.umask(022)
 settings=config()
 ebuild_initialized=0
-
-
+profiledir=None
+if root!="/":
+	if os.path.exists(root+"etc/make.profile/make.defaults"):
+		profiledir=root+"etc/make.profile"
+	else:
+		print "\n!!!",root+"etc/make.profile/make.defaults not found.\n!!! Defaulting to /etc/make.profile."
+if not profiledir:
+	if os.path.exists("/etc/make.profile/make.defaults"):
+		profiledir="/etc/make.profile"
+	else:
+		print "\n!!! /etc/make.profile/make.defaults not found.\n!!! /etc/make.profile should be a symlink to one of the"
+		print "\n!!! directories in /usr/portage/profiles.  Please fix this."
+		sys.exit(1)
