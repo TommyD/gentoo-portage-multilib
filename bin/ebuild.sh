@@ -228,7 +228,7 @@ keepdir()
 	local x
 	for x in $*
 	do
-		touch ${D}/${x}/.keep
+		[ ! -e ${D}/${x}/.keep -o -w ${D}/${x}/.keep ] && touch ${D}/${x}/.keep
 	done
 }
 

@@ -2,7 +2,7 @@
 # Copyright 1998-2002 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
 
-VERSION="2.0.47_pre1"
+VERSION="2.0.47-r1"
 
 from stat import *
 from commands import *
@@ -1385,192 +1385,82 @@ def movefile(src,dest,newmtime=None,sstat=None):
 	"""moves a file from src to dest, preserving all permissions and attributes; mtime will
 	be preserved even when moving across filesystems.  Returns true on success and false on
 	failure.  Move is atomic."""
-	
-	#implementation note: we may want to try doing a simple rename() first, and fall back
-	#to the "hard link shuffle" only if that doesn't work.	We now do the hard-link shuffle
-	#for everything.
+	#print "movefile("+src+","+dest+","+str(newmtime)+","+str(sstat)+")"
+	try:
+		if not sstat:
+			sstat=os.lstat(src)
+	except Exception, e:
+		print "!!! Stating source file failed... movefile()"
+		print "!!!",e
+		return None
 
+	destexists=1
 	try:
 		dstat=os.lstat(dest)
-		destexists=1
 	except:
-		#stat the directory for same-filesystem testing purposes
 		dstat=os.lstat(os.path.dirname(dest))
 		destexists=0
-	if sstat==None:
-		sstat=os.lstat(src)
-	# symlinks have to be handled special
-	if S_ISLNK(sstat[ST_MODE]):
-		# if destexists, toss it, then call os.symlink, shutil.copystat(src,dest)
-		# *real* src
-		if destexists:
+	if destexists:
+		if S_ISLNK(dstat[ST_MODE]):
+			# XXX Possibly preserve symlinks in config protect dirs here...?
 			try:
 				os.unlink(dest)
-				if os.path.exists(dest):
-					print "WARNING: ",dest,"still exists!"
-			except:
-				print "!!! couldn't unlink",dest
-				# uh oh. oh well
-				return None 
-
-		try:
-			real_src = os.readlink(src)
-		except:
-			print "!!! couldn't readlink",src
-			return None
-		try:
-			os.symlink(real_src,dest)
-			if os.readlink(dest)!=real_src:
-				print "WARNING:",dest,"points to",os.readlink(dest),"instead of",real_src
-		except:
-			print "!!! couldn't symlink",dest,"->",real_src
-			return None 
-		try:
-			missingos.lchown(dest,sstat[ST_UID],sstat[ST_GID])
-		except:
-			print "!!! couldn't set uid/gid on",dest
-		#the mtime of a symbolic link can only be set at create time.
-		#thus, we return the mtime of the symlink (which was set when we created it)
-		#so it can be recorded in the package db if necessary.
-		return os.lstat(dest)[ST_MTIME]
-
-	if not destexists:
-		if sstat[ST_DEV]==dstat[ST_DEV]:
-			try:
-				os.rename(src,dest)
-				if newmtime:
-					os.utime(dest,(newmtime,newmtime))
-					return newmtime
-				else:
-					#renaming doesn't change mtimes, so we can return the source mtime:
-					return sstat[ST_MTIME]
-			except:
-				return None 
-		else:
-			if S_ISCHR(sstat[ST_MODE]) or S_ISBLK(sstat[ST_MODE]) or S_ISFIFO(sstat[ST_MODE]):
-				#we don't yet handle special files across filesystems, so we need to fall back to /bin/mv
-				a=getstatusoutput("/bin/mv -f "+"'"+src+"' '"+dest+"'")
-				if a[0]!=0:
-					return None
-					#failure
-				if newmtime:
-					os.utime(dest, (newmtime,newmtime))
-					return newmtime
-				else:
-					#get actual mtime from copied file, since we can't specify an mtime using mv
-					finalstat=os.lstat(dest)
-					return finalstat[ST_MTIME]
-			#not on same fs and a regular file
-			try:
-				shutil.copyfile(src,dest)
-				try:
-					missingos.lchown(dest, sstat[ST_UID], sstat[ST_GID])
-				except:
-					print "!!! couldn't set uid/gid on",dest
-				# do chmod after chown otherwise the sticky bits are reset
-				os.chmod(dest, S_IMODE(sstat[ST_MODE]))
-				if not newmtime:
-					os.utime(dest, (sstat[ST_ATIME], sstat[ST_MTIME]))
-					returnme=sstat[ST_MTIME]
-				else:
-					os.utime(dest, (newmtime,newmtime))
-					returnme=newmtime
-				os.unlink(src)
-				return returnme 
-			except:
-				#copy failure
+			except Exception, e:
+				print "!!! Failed to unlink:",dest
+				print "!!!",e
 				return None
-	# destination exists, do our "backup plan"
-	destnew=dest+"#new#"
-	destorig=dest+"#orig#"
-	try:
-		# make a hard link backup
-		os.link(dest,destorig)
-	except:
-		#backup failure
-		print "!!! link fail 1 on",dest,"->",destorig
-		destorig=None
-	#copy destnew file into place
-	trycopy=1
+
+	renamefailed=1
 	if sstat[ST_DEV]==dstat[ST_DEV]:
-		#on the same fs; note that a bind mount of the same filesystem will show up
-		#as the same filesystem, but os.rename won't work, so we need to detect this and
-		#fall back to copy, below...
 		try:
-			os.rename(src,destnew)
-			trycopy=0
-		except:
-			pass
-	if trycopy:
-		#not on same fs
+			os.rename(src,dest)
+			renamefailed=0
+		except Exception, e:
+			import errno
+			if e[0]!=errno.EXDEV:
+				# Some random error.
+				print "!!! Failed to move",src,"to",dest
+				print "!!!",e
+				return None
+			# Invalid cross-device-link 'bind' mounted or actually Cross-Device
+
+	if renamefailed:
+		didcopy=0
+		if S_ISREG(sstat[ST_MODE]):
+			try: # For safety copy then move it over.
+				shutil.copyfile(src,dest+"#new")
+				os.unlink(dest)
+				os.rename(dest+"#new",dest)
+				didcopy=1
+			except Exception, e:
+				print '!!! copy',src,'->',dest,'failed.'
+				print "!!!",e
+				return None
+		else:
+			#we don't yet handle special, so we need to fall back to /bin/mv
+			a=getstatusoutput("/bin/mv -f "+"'"+src+"' '"+dest+"'")
+			if a[0]!=0:
+				print "!!! Failed to move special file:"
+				print "!!! '"+src+"' to '"+dest+"'"
+				print "!!!",a
+				return None # failure
 		try:
-			shutil.copyfile(src,destnew)
-		except OSError, details:
-			print '!!! copy',src,'->',destnew,'failed -',details
-			return None 
-		except:
-			#copy failure
-			print "!!! copy fail 1 on",src,"->",destnew
-			# gotta remove destorig *and* destnew
-			if destorig:
-				os.unlink(destorig)
+			if didcopy:
+				missingos.lchown(dest,sstat[ST_UID],sstat[ST_GID])
+				os.chmod(dest, S_IMODE(sstat[ST_MODE])) # Sticky is reset on chown
+				os.unlink(src)
+		except Exception, e:
+			print "!!! Failed to chown/chmod/unlink in movefile()"
+			print "!!!",dest
+			print "!!!",e
 			return None
-		try:
-			os.unlink(src)
-		except:
-			print "!!! unlink fail 1 on",src
-			# gotta remove dest+#orig# *and destnew
-			os.unlink(destnew)
-			if destorig:
-				os.unlink(destorig)
-			return None 
-	#destination exists, destnew file is in place on the same filesystem
-	#update ownership on destnew
-	try:
-		missingos.lchown(destnew, sstat[ST_UID], sstat[ST_GID])
-	except:
-		print "!!! couldn't set uid/gid on",dest
-	#update perms on destnew
-	# do chmod after chown otherwise the sticky bits are reset
-	try:
-		os.chmod(destnew, S_IMODE(sstat[ST_MODE]))
-	except:
-		print "!!! chmod fail on",dest
-	#update times on destnew
-	if not newmtime:
-		try:
-			os.utime(destnew, (sstat[ST_ATIME], sstat[ST_MTIME]))
-		except:
-			print "!!! couldn't set times on",destnew
-		returnme=sstat[ST_MTIME]
+
+	if newmtime:
+		os.utime(dest,(newmtime,newmtime))
 	else:
-		try:
-			os.utime(destnew, (newmtime,newmtime))
-		except:
-			print "!!! couldn't set times on",destnew
-		returnme=newmtime
-	try:
-		os.unlink(dest) # scary!
-	except:
-		# gotta remove destorig *and destnew
-		print "!!! unlink fail 1 on",dest
-		if destorig:
-			os.unlink(destorig)
-		os.unlink(destnew)
-		return None 
-	try:
-		os.rename(destnew,dest)
-	except:
-		#os.rename guarantees to leave dest in place if the rename fails.
-		print "!!! rename fail 2 on",destnew,"->",dest
-		os.unlink(destnew)
-		return None 
-	try:
-		if destorig:
-			os.unlink(destorig)
-	except:
-		print "!!! unlink fail 1 on",destorig
-	return returnme 
+		os.utime(dest, (sstat[ST_ATIME], sstat[ST_MTIME]))
+		newmtime=sstat[ST_MTIME]
+	return newmtime
 
 def perform_md5(x, calc_prelink=0):
 	return perform_checksum(x, calc_prelink)[0]
