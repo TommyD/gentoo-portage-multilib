@@ -2,6 +2,8 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  25 Dec 2003; Masatomo Nakano <nakano@gentoo.org> emerge: Added OVERLAY
+  directories display for --verbose.
 
 *portage-2.0.50_pre8 (24 Dec 2003): API change + enhancements
 

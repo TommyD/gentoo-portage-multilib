@@ -1125,6 +1125,9 @@ class depgraph:
 		p=[]
 		intree=False
 		totalsize=0
+
+		if "--verbose" in myopts:
+			overlays=string.split(portage.settings['PORTDIR_OVERLAY'])
 		
 		for x in mylist:
 			fetch=" "
@@ -1190,9 +1193,9 @@ class depgraph:
 						myoldbest=myoldbest[:-3]
 					myoldbest=blue("["+myoldbest+"]")
 
-				iuse=""
-				mysize=0
+				verboseadd=""
 				if "--verbose" in myopts:
+					# iuse verbose
 					try:
 						iuse_split = string.split(portage.portdb.aux_get(x[2],["IUSE"])[0], " ")
 					except:
@@ -1200,6 +1203,7 @@ class depgraph:
 						portage.writemsg("!!! %s\n" % x)
 						iuse_split = []
 					iuse_split.sort()
+					iuse=""
 					for ebuild_iuse in iuse_split:
 						if not ebuild_iuse:
 							continue
@@ -1209,15 +1213,21 @@ class depgraph:
 							iuse=iuse+blue("-("+ebuild_iuse+")")+" "
 						else:
 							iuse=iuse+blue("-"+ebuild_iuse)+" "
+					verboseadd+=iuse+" "
+
+					# size verbose
+					mysize=0
 					if x[0] == "ebuild":
 						mysize=portage.portdb.getsize(x[2], debug=edebug)
 						if type(mysize) == types.IntType:
 							totalsize+=mysize
+					verboseadd+=format_size(mysize)+" "
 
-				if "--verbose" in myopts:
-					verboseadd=iuse+" "+format_size(mysize)
-				else:
-					verboseadd=iuse
+					# overlay verbose
+					file_name=portage.portdb.findname(x[2])
+					dir_name=os.path.abspath(os.path.dirname(file_name)+"/../..")
+					if (overlays.count(dir_name)>0):
+						verboseadd+="*"+str(overlays.index(dir_name)+1)+" "
 
 				xs=portage.pkgsplit(x[2])
 				if xs[2]=="r0":
@@ -1302,6 +1312,12 @@ class depgraph:
 		if "--verbose" in myopts:
 			print
 			print "Total size of downloads: "+format_size(totalsize)
+			if (overlays):
+				print "OVERLAY:"
+				y=0
+				for x in overlays:
+					y=y+1
+					print " *"+str(y)+":"+x
 		
 		if "--changelog" in myopts:
 			print
