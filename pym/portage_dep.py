@@ -65,7 +65,7 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0):
 	while mydeparray:
 		head = mydeparray.pop(0)
 		if type(head) == types.ListType:
-			rlist = rlist + use_reduce(head, uselist, masklist, matchall)
+			rlist = rlist + [use_reduce(head, uselist, masklist, matchall)]
 		else:
 			matchon = 1 # Match on true
 			if head[-1] == "?": # Use reduce next group on fail.
