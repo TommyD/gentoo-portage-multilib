@@ -5124,7 +5124,7 @@ if not os.environ.has_key("SANDBOX_ACTIVE"):
 		try:
 			mystat=os.lstat(cachedir+"/dep")
 			os.chown(cachedir+"/dep",uid,portage_gid)
-			os.chmod(cachedir+"/dep",02775)
+			os.chmod(cachedir+"/dep",0775)
 			if mystat[stat.ST_GID]!=portage_gid:
 				spawn("chown -R "+str(uid)+":"+str(portage_gid)+" "+cachedir+"/dep",settings,free=1)
 				spawn("chmod -R u+rw,g+rw "+cachedir+"/dep",settings,free=1)
