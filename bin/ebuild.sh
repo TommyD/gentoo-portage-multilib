@@ -8,6 +8,11 @@ esave_ebuild_env() {
 	then
 		# turn off globbing.
 		set -f
+
+		# unset this function, else we get problems on
+		# restore (env stuff do not get saved properly)
+		unset esave_ebuild_env
+		
 		# we do not want to save critical variables
 		set | awk '!/PORTAGE_RESTORE_ENV|PORTAGE_MASTER_PID/ { print $0 }' \
 			> ${T}/saved_ebuild_env_${PORTAGE_MASTER_PID}

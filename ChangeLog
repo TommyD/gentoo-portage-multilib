@@ -3,7 +3,8 @@
 
   06 Aug 2002; Martin Schlemmer <azarah@gentoo.org> ebuild.sh : only save
   the environment of ebuild.sh when $T is valid, else /saved_ebuild_env_
-  is created.
+  is created.  Also unset esave_ebuild_env, else the sourced copy messes
+  saving of the environment.
 
   05 Aug 2002; Phil Bordelon <sunflare@gentoo.org> emerge.1: Updated the
   man page to match the current version of 2.0.25.
