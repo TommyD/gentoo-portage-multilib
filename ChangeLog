@@ -1,4 +1,10 @@
 
+	*ebuild.sh, portage.py
+	You can now use USE variables in SRC_URI to conditionally include archives.
+	In MAINTAINER mode, all archives are automatically included so that maintainers
+	can check SRC_URIs and also generate complete digests.  A new file-based
+	DEPEND and RDEPEND-passing mechanism has been added.
+	
 	*ebuild.sh
 	Now adds filesize to the digest files
 

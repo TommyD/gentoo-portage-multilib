@@ -1,10 +1,10 @@
 # Gentoo Linux Dependency Checking Code
-# Copyright 1998-2001 Daniel Robbins, Gentoo Technologies, Inc.
+# Copyright 1998-2000 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License
 
 # TO-DO:
 # (I'm adding this here because I lose or forget about all my other Portage
-# TO-DO files...)
+# TO-DO files... 
 #
 # rewrite download system
 # -----------------------
@@ -12,67 +12,60 @@
 #
 # subpackages
 # ===========
-# src_install will work as normal, and will create the master image
-# that includes everything in ${D}.  There will be a new function,
-# called src_subpkg that contains instructions for selecting files
-# from ${D} and copying them to subpkg dirs, where they will get
-# seperately packaged.  The function will look something like this:
+#src_install will work as normal, and will create the master image that includes
+#everything in ${D}.  There will be a new function, called src_subpkg that contains
+#instructions for selecting files from ${D} and copying them to subpkg dirs, where
+#they will get seperately packaged.  The function will look something like this:
 #
-# src_subpkg() {
-# 	subpkg bin
-# 	#maybe grab should use regular expressions, not globbing?
-# 	grab /usr/bin/* /usr/sbin/* /usr/lib/*.so
-# 	
-# 	subpkg dev
-# 	grab /usr/lib/*.a (any way to say "everything but *.so"?)
-# }
+#src_subpkg() {
+#	subpkg bin
+#	#maybe grab should use regular expressions, not globbing?
+#	grab /usr/bin/* /usr/sbin/* /usr/lib/*.so
+#	
+#	subpkg dev
+#	grab /usr/lib/*.a (any way to say "everything but *.so"?)
+#}
 #
-# Subpackage naming will work as follows.  For a package foo-1.0,
-# foo-1.0.tbz2 will be the master package and include all subpackages.
-# foo:dev-1.0.tbz2 will be the development package, and
-# foo:run-1.0.tbz2 will be a runtime package, etc.  It should be
-# possible to simply treat them as unique package names with
-# P="foo:dev" and P="foo:run" respectively.
-# 
-# dep resolution needs to be upgraded a bit, though.  "sys-apps/foo"
-# will depend on the foo master package (i.e. foo-1.0.tbz2) for
-# backwards compatibility.  However, it will now also be possible to
-# depend on "sys-apps/foo:dev" or "sys-apps/foo:run", and the dep
-# system needs to be upgraded so that it knows how to satisfy these
-# dependencies.  This should allow the new subpackages system to be
-# integrated seamlessly into our existing dependency hierarchy.
-# 
-# Note: It may also be a good idea to allow a make.conf option so that
-# "sys-apps/foo:run" automatically resolves to the master package (for
-# those who prefer complete packages rather than installing things
-# piecemeal; a great idea for development boxes where many things will
-# depend on "sys-apps/foo:dev" for headers, but the developer may want
-# the whole enchilada. (generally, I prefer this approach, though for
-# runtime-only systems subpackages make a lot of sense).
-# 
-# new dependency functionality
-# ============================
-# 
-# Important new dep functionality:
-# 
-#  ~ IS NOW ADDED
-# 
-# ~sys-apps/foo-1.0 will match the latest rev of foo-1.0.  Useful
-# because the latest rev should be the most stable and reliable
-# version.
-# 
-# Next, sys-apps/foo-1.0* will match the latest package that starts
-# with 1.0; so 1.0.3 will match.  This is an excellent way to depend
-# on libraries where you need a specific major or minor version, but
-# also want to be able to use the latest "really minor" version and
-# rev available.  For example, if your app depends on glib-1.2:
-# 
-# dev-libs/glib-1.2*
-# 
-# This will match glib-1.2, glib-1.2-r1, glib-1.2.1 and
-# glib-1.2.1.1-r1.  Of these four examples, the last will be chosen
-# (most recent) if all are available.  However, glib-1.3 will not be
-# considered for this dependency.
+#Subpackage naming will work as follows.  For a package foo-1.0, foo-1.0.tbz2
+#will be the master package and include all subpackages.  foo:dev-1.0.tbz2 will
+#be the development package, and foo:run-1.0.tbz2 will be a runtime package,
+#etc.  It should be possible to simply treat them as unique package names with
+#P="foo:dev" and P="foo:run" respectively.
+#
+#dep resolution needs to be upgraded a bit, though.  "sys-apps/foo" will depend
+#on the foo master package (i.e. foo-1.0.tbz2) for backwards compatibility.  However,
+#it will now also be possible to depend on "sys-apps/foo:dev" or "sys-apps/foo:run",
+#and the dep system needs to be upgraded so that it knows how to satisfy these 
+#dependencies.  This should allow the new subpackages system to be integrated 
+#seamlessly into our existing dependency hierarchy.
+#
+#Note: It may also be a good idea to allow a make.conf option so that "sys-apps/foo:run"
+#automatically resolves to the master package (for those who prefer complete packages
+#rather than installing things piecemeal; a great idea for development boxes where many
+#things will depend on "sys-apps/foo:dev" for headers, but the developer may want the
+#whole enchilada. (generally, I prefer this approach, though for runtime-only systems
+#subpackages make a lot of sense).
+#
+#new dependency functionality
+#============================
+#
+#Important new dep functionality:
+#
+# ~ IS NOW ADDED
+#
+#~sys-apps/foo-1.0 will match the latest rev of foo-1.0.  Useful because the latest rev
+#should be the most stable and reliable version.
+#
+#Next, sys-apps/foo-1.0* will match the latest package that starts with 1.0; so 1.0.3 will
+#match.  This is an excellent way to depend on libraries where you need a specific major
+#or minor version, but also want to be able to use the latest "really minor" version and
+#rev available.  For example, if your app depends on glib-1.2:
+#
+#dev-libs/glib-1.2*
+#
+#This will match glib-1.2, glib-1.2-r1, glib-1.2.1 and glib-1.2.1.1-r1.  Of these four
+#examples, the last will be chosen (most recent) if all are available.  However, glib-1.3
+#will not be considered for this dependency.
 
 import string,os
 from stat import *
@@ -83,9 +76,9 @@ import shlex
 import shutil
 import xpak
 
-# master category list.  Any new categories should be added to this
-# list to ensure that they all categories are read when we check the
-# portage directory for available ebuilds.
+# master category list.  Any new categories should be added to this list to
+# ensure that they all categories are read when we check the portage directory
+# for available ebuilds.
 
 categories=("app-admin", "app-arch", "app-cdr", "app-crypt", "app-doc",
 "app-editors", "app-emulation", "app-games", "app-misc", "app-office",
@@ -99,13 +92,88 @@ categories=("app-admin", "app-arch", "app-cdr", "app-crypt", "app-doc",
 "x11-base", "x11-libs", "x11-misc", "x11-terms", "x11-wm", "virtual",
 "dev-tcltk")
 
-# beautiful directed graph object
+def tokenize(mystring):
+	"""breaks a string like 'foo? (bar) oni? (blah (blah))' into embedded lists; returns None on paren mismatch"""
+	tokens=string.split(mystring)
+	newtokens=[]
+	curlist=newtokens
+	prevlist=None
+	level=0
+	accum=""
+	for x in mystring:
+		if x=="(":
+			if accum:
+				curlist.append(accum)
+				accum=""
+			newlist=[]
+			curlist.append(newlist)
+			prevlist=curlist
+			curlist=newlist
+			level=level+1
+		elif x==")":
+			if accum:
+				curlist.append(accum)
+				accum=""
+			curlist=prevlist
+			if level==0:
+				return None
+			level=level-1
+		elif x in string.whitespace:
+			if accum:
+				curlist.append(accum)
+				accum=""
+		else:
+			accum=accum+x
+	if level!=0:
+		return None
+	if accum:
+		curlist.append(accum)
+	return newtokens
+
+def evaluate(mytokens,mydefines,allon=0):
+	"""removes tokens based on whether conditional definitions exist or not.  Recognizes !"""
+	pos=0
+	if mytokens==None:
+		return None
+	while pos<len(mytokens):
+		if type(mytokens[pos])==types.ListType:
+			evaluate(mytokens[pos],mydefines)
+			if not len(mytokens[pos]):
+				del mytokens[pos]
+				continue
+		elif mytokens[pos][-1]=="?":
+			cur=mytokens[pos][:-1]
+			del mytokens[pos]
+			if allon:
+				if cur[0]=="!":
+					del mytokens[pos]
+			else:
+				if cur[0]=="!":
+					if ( cur[1:] in mydefines ) and (pos<len(mytokens)):
+						del mytokens[pos]
+						continue
+				elif ( cur not in mydefines ) and (pos<len(mytokens)):
+					del mytokens[pos]
+					continue
+		pos=pos+1
+	return mytokens
+
+def flatten(mytokens):
+	"""convert embedded list into string"""
+	newstring=""
+	for x in mytokens:
+		if type(x)==types.ListType:
+			newstring=newstring+" "+flatten(x)
+		else:
+			newstring=newstring+" "+x
+	return newstring
+
+#beautiful directed graph object
 
 class digraph:
 	def __init__(self):
 		self.dict={}
-		# okeys = keys, in order they were added (to optimize
-		# firstzero() ordering)
+		#okeys = keys, in order they were added (to optimize firstzero() ordering)
 		self.okeys=[]
 	
 	def addnode(self,mykey,myparent):
@@ -155,14 +223,13 @@ class digraph:
 			mygraph.okeys=self.okeys[:]
 		return mygraph
 
-# valid end of version components; integers specify offset from
-# release version pre=prerelease, p=patchlevel (should always be
-# followed by an int), rc=release candidate all but _p (where it is
-# required) can be followed by an optional trailing integer
+# valid end of version components; integers specify offset from release version
+# pre=prerelease, p=patchlevel (should always be followed by an int), rc=release candidate
+# all but _p (where it is required) can be followed by an optional trailing integer
 
 endversion={"pre":-2,"p":0,"alpha":-4,"beta":-3,"rc":-1}
 
-# parse /etc/env.d and generate /etc/profile.env
+#parse /etc/env.d and generate /etc/profile.env
 
 def env_update():
 	global root
@@ -205,25 +272,25 @@ def env_update():
 		myld.close()
 		oldld=[]
 		for x in myldlines:
-			# each line has at least one char (a newline)
+			#each line has at least one char (a newline)
 			if x[0]=="#":
 				continue
 			oldld.append(x[:-1])
 		oldld.sort()
-		# os.rename(root+"etc/ld.so.conf",root+"etc/ld.so.conf.bak")
+	#	os.rename(root+"etc/ld.so.conf",root+"etc/ld.so.conf.bak")
 	# Where is the new ld.so.conf generated? (achim)
 	else:
 		oldld=None
 	specials["LDPATH"].sort()
 	if (oldld!=specials["LDPATH"]):
-		# ld.so.conf needs updating and ldconfig needs to be run
+		#ld.so.conf needs updating and ldconfig needs to be run
 		newld=open(root+"etc/ld.so.conf","w")
 		newld.write("# ld.so.conf autogenerated by env-update; make all changes to\n")
 		newld.write("# contents of /etc/env.d directory\n")
 		for x in specials["LDPATH"]:
 			newld.write(x+"\n")
 		newld.close()
-		# run ldconfig here
+		#run ldconfig here
 	print ">>> Regenerating "+root+"etc/ld.so.cache..."
 	getstatusoutput("/sbin/ldconfig -r "+root)
 	del specials["LDPATH"]
@@ -238,17 +305,17 @@ def env_update():
 			outstring=outstring+x+":"
 		outstring=outstring+specials[path][-1]+"'"
 		outfile.write(outstring+"\n")
-		# get it out of the way
+		#get it out of the way
 		del specials[path]
 	
-	# create /etc/profile.env
+	#create /etc/profile.env
 	for x in env.keys():
 		if type(env[x])!=types.StringType:
 			continue
 		outfile.write("export "+x+"='"+env[x]+"'\n")
 	outfile.close()
 	
-	# need to add cshrc support
+	#need to add cshrc support
 
 
 def grabfile(myfilename):
@@ -257,15 +324,14 @@ def grabfile(myfilename):
 
 	myfile=open(myfilename,"r")
 	if not myfile:
-		# keep it an empty sequence type to be loop friendly
+		#keep it an empty sequence type to be loop friendly
 		return []
 	mylines=myfile.readlines()
 	myfile.close()
 	newlines=[]
 	for x in mylines:
-		# the split/join thing removes leading and trailing
-		# whitespace, and converts any whitespace in the line into
-		# single spaces.
+		#the split/join thing removes leading and trailing whitespace, and converts any whitespace in the line
+		#into single spaces.
 		myline=string.join(string.split(x))
 		if not len(myline):
 			continue
@@ -283,20 +349,20 @@ def getconfig(mycfg,tolerant=0):
 	while 1:
 		key=lex.get_token()
 		if (key==''):
-			# normal end of file
+			#normal end of file
 			break;
 		equ=lex.get_token()
 		if (equ==''):
-			# unexpected end of file
-			# lex.error_leader(self.filename,lex.lineno)
+			#unexpected end of file
+			#lex.error_leader(self.filename,lex.lineno)
 			if not tolerant:
 				print "!!! Unexpected end of config file: variable",key
 				return None
 			else:
 				return mykeys
 		elif (equ!='='):
-			# invalid token
-			# lex.error_leader(self.filename,lex.lineno)
+			#invalid token
+			#lex.error_leader(self.filename,lex.lineno)
 			if not tolerant:
 				print "!!! Invalid token (not \"=\")",equ
 				return None
@@ -304,8 +370,8 @@ def getconfig(mycfg,tolerant=0):
 				return mykeys
 		val=lex.get_token()
 		if (val==''):
-			# unexpected end of file
-			# lex.error_leader(self.filename,lex.lineno)
+			#unexpected end of file
+			#lex.error_leader(self.filename,lex.lineno)
 			if not tolerant:
 				print "!!! Unexpected end of config file: variable",key
 				return None
@@ -322,7 +388,7 @@ def expand(mystring,dictlist=[]):
 	This would be a good bunch of code to port to C.
 	"""
 	mystring=" "+mystring
-	# in single, double quotes
+	#in single, double quotes
 	insing=0
 	indoub=0
 	pos=1
@@ -343,9 +409,9 @@ def expand(mystring,dictlist=[]):
 			pos=pos+1
 			continue
 		if (not insing): 
-			# expansion time
+			#expansion time
 			if (mystring[pos]=="\\"):
-				# backslash expansion time
+				#backslash expansion time
 				if (pos+1>=len(mystring)):
 					newstring=newstring+mystring[pos]
 					break
@@ -367,8 +433,7 @@ def expand(mystring,dictlist=[]):
 					elif a=='v':
 						newstring=newstring+chr(013)
 					else:
-						# remove backslash only, as bash does: this
-						# takes care of \\ and \' and \" as well
+						#remove backslash only, as bash does: this takes care of \\ and \' and \" as well
 						newstring=newstring+mystring[pos-1:pos]
 						continue
 			elif (mystring[pos]=="$") and (mystring[pos-1]!="\\"):
@@ -413,16 +478,14 @@ class config:
 		if not self.populated:
 			self.populate()
 		if mykey=="CONFIG_PROTECT_MASK":
-			# Portage needs to always auto-update these files (so that
-			# builds don't die when remerging gcc)
+			#Portage needs to always auto-update these files (so that builds don't die when remerging gcc)
 			returnme="/etc/env.d "
 		else:
 			returnme=""
 		for x in self.configlist:
 			if x.has_key(mykey):
 				returnme=returnme+expand(x[mykey],self.configlist)
-				# without this break, it concats all settings together
-				# -- interesting!
+				#without this break, it concats all settings together -- interesting!
 				break
 		return returnme		
 	
@@ -471,10 +534,10 @@ def spawn(mystring,debug=0):
 		return
 	retval=os.waitpid(mypid,0)[1]
 	if (retval & 0xff)==0:
-		# return exit code
+		#return exit code
 		return (retval >> 8)
 	else:
-		# interrupted by signal
+		#interrupted by signal
 		return 16
 
 def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
@@ -487,13 +550,13 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 		return 1
 	settings.reset()
 	settings["PORTAGE_DEBUG"]=str(debug)
-	# settings["ROOT"]=root
+	#settings["ROOT"]=root
 	settings["ROOT"]=myroot
 	settings["STARTDIR"]=os.getcwd()
 	settings["EBUILD"]=os.path.abspath(myebuild)
 	settings["O"]=os.path.dirname(settings["EBUILD"])
 	settings["CATEGORY"]=os.path.basename(os.path.normpath(settings["O"]+"/.."))
-	# PEBUILD
+	#PEBUILD
 	settings["FILESDIR"]=settings["O"]+"/files"
 	settings["PF"]=os.path.basename(settings["EBUILD"])[:-7]
 	mysplit=pkgsplit(settings["PF"],0)
@@ -527,21 +590,23 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 	settings["WORKDIR"]=settings["BUILDDIR"]+"/work"
 	settings["D"]=settings["BUILDDIR"]+"/image/"
 	
-	# initial ebuild.sh bash environment configured
+	#initial ebuild.sh bash environment configured
+	myso=getstatusoutput("/usr/sbin/ebuild.sh depend")
+	if myso[0]!=0:
+		print
+		print
+		print "!!! Portage had a problem processing this file:"
+		print "!!!",settings["EBUILD"]
+		print 
+		print myso[1]
+		print
+		print "!!! aborting."
+		print
+		return 1
+	a=open(settings["T"]+"/deps","r")
+	mydeps=a.readlines()
+	a.close()
 	if checkdeps:
-		myso=getstatusoutput("/usr/sbin/ebuild.sh depend")
-		if myso[0]!=0:
-			print
-			print
-			print "!!! Portage had a problem processing this file:"
-			print "!!!",settings["EBUILD"]
-			print 
-			print myso[1]
-			print
-			print "!!! aborting."
-			print
-			return 1
-		mydeps=string.split(myso[1],"\n")
 		if mydo=="depend":
 			return mydeps
 		elif mydo=="check":
@@ -549,8 +614,7 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 		elif mydo=="rcheck":
 			return dep_frontend("runtime",myebuild,mydeps[1])
 		if mydo in ["merge","qmerge","unpack", "compile", "rpm", "package"]:
-			# optional dependency check -- if emerge is merging, this
-			# is skipped
+			#optional dependency check -- if emerge is merging, this is skipped 
 			retval=dep_frontend("build",myebuild,mydeps[0])
 			if (retval): return retval
 	else:
@@ -558,7 +622,19 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 			print "!!! doebuild(): ",mydo,"cannot be called with checkdeps equal to zero."
 			return 1
 		
-	# initial dep checks complete; time to process main commands
+	#initial dep checks complete; time to process main commands
+	
+	a=open(settings["T"]+"/src_uri","r")
+	myuris=a.readline()
+	a.close()
+	newuris=evaluate(tokenize(myuris),string.split(settings["USE"]))	
+	alluris=evaluate(tokenize(myuris),[],1)	
+	a=open(settings["T"]+"/src_uri_new","w")
+	a.write(flatten(newuris))
+	a.close()
+	a=open(settings["T"]+"/src_uri_all","w")
+	a.write(flatten(alluris))
+	a.close()
 	
 	if mydo=="unpack": 
 		return spawn("/usr/sbin/ebuild.sh fetch unpack")
@@ -569,7 +645,7 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 	elif mydo in ["prerm","postrm","preinst","postinst","config","touch","clean","fetch","digest","batchdigest"]:
 		return spawn("/usr/sbin/ebuild.sh "+mydo)
 	elif mydo=="qmerge": 
-		# qmerge is specifically not supposed to do a runtime dep check
+		#qmerge is specifically not supposed to do a runtime dep check
 		return merge(settings["CATEGORY"],settings["PF"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot)
 	elif mydo=="merge":
 		retval=spawn("/usr/sbin/ebuild.sh fetch unpack compile install")
@@ -629,16 +705,15 @@ def expandpath(mypath):
 	join=string.join(split[:-1],"/")
 	a=getstatusoutput("/bin/readlink -f	'"+join+"'")
 	if a[0]!=0:
-		# expansion didn't work; probably because the dir didn't
-		# exist.  Return original path.
+		#expansion didn't work; probably because the dir didn't exist.  Return original path.
 		return mypath 
 	else:
 		return a[1]+"/"+split[-1]
 
 def movefile(src,dest,unlink=1):
 	"""moves a file from src to dest, preserving all permissions and attributes."""
+	#The next 2 lines avoid writing to the target
 	if os.path.islink(dest):
-		# remove dest first to avoid writing to target
 		os.unlink(dest)
 	if dest=="/bin/cp":
 		getstatusoutput("/bin/mv /bin/cp /bin/cp.old")
@@ -672,7 +747,7 @@ def merge(mycat,mypkg,pkgloc,infloc,myroot):
 	mylink=dblink(mycat,mypkg,myroot)
 	if not mylink.exists():
 		mylink.create()
-		# shell error code
+		#shell error code
 	mylink.merge(pkgloc,infloc,myroot)
 	
 def unmerge(cat,pkg,myroot):
@@ -696,7 +771,7 @@ def relparse(myver):
 	p2=0
 	mynewver=string.split(myver,"_")
 	if len(mynewver)==2:
-		# an endversion
+		#an endversion
 		number=string.atof(mynewver[0])
 		match=0
 		for x in endversion.keys():
@@ -710,19 +785,19 @@ def relparse(myver):
 					p2=0
 				break
 		if not match:	
-			# normal number or number with letter at end
+			#normal number or number with letter at end
 			divider=len(myver)-1
 			if myver[divider:] not in "1234567890":
-				# letter at end
+				#letter at end
 				p1=ord(myver[divider:])
 				number=string.atof(myver[0:divider])
 			else:
 				number=string.atof(myver)		
 	else:
-		# normal number or number with letter at end
+		#normal number or number with letter at end
 		divider=len(myver)-1
 		if myver[divider:] not in "1234567890":
-			# letter at end
+			#letter at end
 			p1=ord(myver[divider:])
 			number=string.atof(myver[0:divider])
 		else:
@@ -740,7 +815,7 @@ def revverify(myrev):
 			pass
 	return 0
 
-# returns 1 if valid version string, else 0
+#returns 1 if valid version string, else 0
 # valid string in format: <v1>.<v2>...<vx>[a-z,_{endversion}[vy]]
 # ververify doesn't do package rev.
 
@@ -754,7 +829,7 @@ def ververify(myorigval,silent=1):
 		if not silent:
 			print "!!! Name error: empty version string."
 		return 0
-	# all but the last version must be a numeric
+	#all but the last version must be a numeric
 	for x in myval[:-1]:
 		if not len(x):
 			if not silent:
@@ -775,7 +850,7 @@ def ververify(myorigval,silent=1):
 		return 1
 	except:
 		pass
-	# ok, our last component is not a plain number or blank, let's continue
+	#ok, our last component is not a plain number or blank, let's continue
 	if myval[-1][-1] in string.lowercase:
 		try:
 			foo=string.atoi(myval[-1][:-1])
@@ -783,8 +858,8 @@ def ververify(myorigval,silent=1):
 			# 1a, 2.0b, etc.
 		except:
 			pass
-	# ok, maybe we have a 1_alpha or 1_beta2; let's see
-	# ep="endpart"
+	#ok, maybe we have a 1_alpha or 1_beta2; let's see
+	#ep="endpart"
 	ep=string.split(myval[-1],"_")
 	if len(ep)!=2:
 		if not silent:
@@ -793,21 +868,21 @@ def ververify(myorigval,silent=1):
 	try:
 		foo=string.atoi(ep[0])
 	except:
-		# this needs to be numeric, i.e. the "1" in "1_alpha"
+		#this needs to be numeric, i.e. the "1" in "1_alpha"
 		if not silent:
 			print "!!! Name error in",myorigval+": characters before _ must be numeric"
 		return 0
 	for mye in endversion.keys():
 		if ep[1][0:len(mye)]==mye:
 			if len(mye)==len(ep[1]):
-				# no trailing numeric; ok
+				#no trailing numeric; ok
 				return 1
 			else:
 				try:
 					foo=string.atoi(ep[1][len(mye):])
 					return 1
 				except:
-					# if no endversions work, *then* we return 0
+					#if no endversions work, *then* we return 0
 					pass	
 	if not silent:
 		print "!!! Name error in",myorigval
@@ -853,7 +928,7 @@ def pkgsplit(mypkg,silent=1):
 				for x in myparts[:-2]:
 					if ververify(x):
 						return None
-						# names can't have versiony looking parts
+						#names can't have versiony looking parts
 				return [string.join(myparts[:-2],"-"),myparts[-2],myparts[-1]]
 		else:
 			return None
@@ -894,7 +969,7 @@ def vercmp(val1,val2):
 	if len(val1)==2:
 		val1[0]=val1[0]+"."+val1[1]
 	val1=string.split(val1[0],'.')
-	# add back decimal point so that .03 does not become "3" !
+	#add back decimal point so that .03 does not become "3" !
 	for x in val1[1:]:
 		x="."+x
 	val2=string.split(val2,'-')
@@ -909,8 +984,8 @@ def vercmp(val1,val2):
 	elif len(val1)<len(val2):
 		for x in range(0,len(val2)-len(val1)):
 			val1.append("0")
-	# The above code will extend version numbers out so they
-	# have the same number of digits.
+	#The above code will extend version numbers out so they
+	#have the same number of digits.
 	myval1=[]
 	for x in range(0,len(val1)):
 		cmp1=relparse(val1[x])
@@ -949,7 +1024,7 @@ def dep_parenreduce(mysplit,mypos=0):
 					mypos=firstpos
 					break
 				elif mysplit[mypos]=="(":
-					# recurse
+					#recurse
 					mysplit=dep_parenreduce(mysplit,mypos)
 				mypos=mypos+1
 		mypos=mypos+1
@@ -962,7 +1037,7 @@ def dep_opconvert(mysplit,myuse):
 		if type(mysplit[mypos])==types.ListType:
 			mysplit[mypos]=dep_opconvert(mysplit[mypos],myuse)
 		elif mysplit[mypos]==")":
-			# mismatched paren, error
+			#mismatched paren, error
 			return None
 		elif mysplit[mypos]=="||":
 			if (mypos+1)<len(mysplit):
@@ -975,18 +1050,18 @@ def dep_opconvert(mysplit,myuse):
 					mysplit[mypos+1][0:0]=["||"]
 					del mysplit[mypos]
 			else:
-				# don't end a depstring with || :)
+				#don't end a depstring with || :)
 				return None
 		elif mysplit[mypos][-1]=="?":
-			# uses clause, i.e "gnome? ( foo bar )"
+			#uses clause, i.e "gnome? ( foo bar )"
 			if (mysplit[mypos][:-1]) in myuse:
-				# if the package is installed, just delete the conditional
+				#if the package is installed, just delete the conditional
 				del mysplit[mypos]
 			else:
-				# the package isn't installed, delete conditional and next item
+				#the package isn't installed, delete conditional and next item
 				del mysplit[mypos]
 				del mysplit[mypos]
-				# we don't want to move to the next item, so we perform a quick hack
+				#we don't want to move to the next item, so we perform a quick hack
 				mypos=mypos-1
 		mypos=mypos+1
 	return mysplit
@@ -995,7 +1070,7 @@ def dep_eval(deplist):
 	if len(deplist)==0:
 		return 1
 	if deplist[0]=="||":
-		# or list; we just need one "1"
+		#or list; we just need one "1"
 		for x in deplist[1:]:
 			if type(x)==types.ListType:
 				if dep_eval(x)==1:
@@ -1017,13 +1092,13 @@ def dep_zapdeps(unreduced,reduced):
 	Returned deplist contains steps that must be taken to satisfy dependencies."""
 	if unreduced[0]=="||":
 		if dep_eval(reduced):
-			# deps satisfied, return None
+			#deps satisfied, return None
 			return None
 		else:
 			return unreduced
 	else:
 		if dep_eval(reduced):
-			# deps satisfied, return None
+			#deps satisfied, return None
 			return None
 		else:
 			returnme=[]
@@ -1043,7 +1118,7 @@ def dep_listcleanup(deplist):
 	"remove unnecessary clutter from deplists.  Remove multiple list levels, empty lists"
 	newlist=[]
 	if (len(deplist)==1):
-		# remove multiple-depth lists
+		#remove multiple-depth lists
 		if (type(deplist[0])==types.ListType):
 			for x in deplist[0]:
 				if type(x)==types.ListType:
@@ -1052,7 +1127,7 @@ def dep_listcleanup(deplist):
 				else:
 					newlist.append(x)
 		else:
-			# unembed single nodes
+			#unembed single nodes
 			newlist.append(deplist[0])
 	else:
 		for x in deplist:
@@ -1080,7 +1155,7 @@ def dep_frontend(mytype,myebuild,depstring):
 		print "!!! Error: dependency type",mytype,"not recognized.  Exiting."
 		return 1
 	if myparse[0]==0:
-		# error
+		#error
 		print '!!! '+mytype+' dependency error:',myparse[1]
 		return 1
 	elif myparse[1]==[]:
@@ -1220,18 +1295,17 @@ class packagetree:
 			self.populate()
 		myusesplit=string.split(settings["USE"])
 		mysplit=string.split(depstring)
-		# convert parenthesis to sublists
+		#convert parenthesis to sublists
 		mysplit=dep_parenreduce(mysplit)
-		# mysplit can't be None here, so we don't need to check
+		#mysplit can't be None here, so we don't need to check
 		mysplit=dep_opconvert(mysplit,myusesplit)
-		# if mysplit==None, then we have a parse error (paren mismatch
-		# or misplaced ||) up until here, we haven't needed to look at
-		# the database tree
+		#if mysplit==None, then we have a parse error (paren mismatch or misplaced ||)
+		#up until here, we haven't needed to look at the database tree
 		
 		if mysplit==None:
 			return [0,"Parse Error (parenthesis mismatch or || abuse?)"]
 		elif mysplit==[]:
-			# dependencies were reduced to nothing
+			#dependencies were reduced to nothing
 			return [1,[]]
 		mysplit2=mysplit[:]
 		mysplit2=self.dep_wordreduce(mysplit2)
@@ -1253,7 +1327,7 @@ class packagetree:
 		deplist=mydeplist[:]
 		while mypos<len(deplist):
 			if type(deplist[mypos])==types.ListType:
-				# recurse
+				#recurse
 				deplist[mypos]=self.dep_wordreduce(deplist[mypos])
 			else:
 				if deplist[mypos]=="||":
@@ -1263,7 +1337,7 @@ class packagetree:
 					if mydep!=None:
 						deplist[mypos]=mydep
 					else:
-						# encountered invalid string
+						#encountered invalid string
 						return None
 			mypos=mypos+1
 		return deplist
@@ -1290,7 +1364,7 @@ class packagetree:
 				return None
 			mycatpkg=catpkgsplit(cpv,0)
 			if not mycatpkg:
-				# parse error
+				#parse error
 				return 0
 			mykey=mycatpkg[0]+"/"+mycatpkg[1]
 			if self.hasnode(mykey):
@@ -1352,7 +1426,7 @@ class packagetree:
 			for x in self.getnode(mykey):
 				if eval("pkgcmp(x[1][1:],mycatpkg[1:])"+cmpstr+"0"):
 					mynodes.append(x)
-			# now we have a list of all nodes that qualify
+			#now we have a list of all nodes that qualify
 			if len(mynodes)==0:
 				return ""
 			bestmatch=mynodes[0]
@@ -1404,7 +1478,7 @@ class packagetree:
 		if (mypkgdep[0]=="="):
 			mycp=catpkgsplit(mypkgdep[1:],1)
 			if not mycp:
-				# not a specific pkg, or parse error.  keep silent
+				#not a specific pkg, or parse error.  keep silent
 				return []
 			mykey=mycp[0]+"/"+mycp[1]
 			if not self.tree.has_key(mykey):
@@ -1425,7 +1499,7 @@ class packagetree:
 				return []
 			mycatpkg=catpkgsplit(cpv,1)
 			if mycatpkg==None:
-				# parse error
+				#parse error
 				return []
 			mykey=mycatpkg[0]+"/"+mycatpkg[1]
 			if not self.hasnode(mykey):
@@ -1434,7 +1508,7 @@ class packagetree:
 				if not eval("pkgcmp(x[1][1:],mycatpkg[1:])"+cmpstr+"0"):
 					returnme.append(x[0])
 		elif mypkgdep[0]=="~":
-			# "~" implies a "bestmatch"
+			#"~" implies a "bestmatch"
 			mycp=catpkgsplit(mypkgdep[1:],1)
 			if not mycp:
 				return []
@@ -1451,7 +1525,7 @@ class packagetree:
 					if self.tree[mykey][x][0]!=mymatch:
 						returnme.append(self.tree[mykey][x][0])
 					x=x+1
-			# end of ~ section
+			#end of ~ section
 		else:
 			return []
 		return returnme
@@ -1481,7 +1555,7 @@ class packagetree:
 				return []
 			mycatpkg=catpkgsplit(cpv,0)
 			if mycatpkg==None:
-				# parse error
+				#parse error
 				return []
 			mykey=mycatpkg[0]+"/"+mycatpkg[1]
 			if not self.hasnode(mykey):
@@ -1490,11 +1564,11 @@ class packagetree:
 			for x in self.getnode(mykey):
 				if eval("pkgcmp(x[1][1:],mycatpkg[1:])"+cmpstr+"0"):
 					mynodes.append(x[0])
-			# now we have a list of all nodes that qualify
-			# since we want all nodes that match, return this list
+			#now we have a list of all nodes that qualify
+			#since we want all nodes that match, return this list
 			return mynodes
 		elif mypkgdep[0]=="~":
-			# "~" implies a "bestmatch"
+			#"~" implies a "bestmatch"
 			return self.dep_bestmatch(mypkgdep)
 		elif not isspecific(mypkgdep):
 			if not self.hasnode(mypkgdep):
@@ -1527,8 +1601,7 @@ class vartree(packagetree):
 				continue
 			for y in os.listdir(os.getcwd()+"/"+x):
 				if x=="virtual":
-					# virtual packages don't require versions, if none
-					# is found, add a "1.0" to the end
+					#virtual packages don't require versions, if none is found, add a "1.0" to the end
 					if isjustname(y):
 						fullpkg=x+"/"+y+"-1.0"
 					else:
@@ -1577,8 +1650,7 @@ class portagetree(packagetree):
 						print "!!! Error:",self.portroot+"/"+x+"/"+y,"is not a valid Portage directory, skipping..."
 						continue	
 					self.tree[mykey].append([fullpkg,mysplit])
-		# self.populated must be set here, otherwise dep_match will
-		# cause recursive populate() calls
+		#self.populated must be set here, otherwise dep_match will cause recursive populate() calls
 		self.populated=1
 		mylines=grabfile("profiles/package.mask")
 		for x in mylines:
@@ -1602,7 +1674,7 @@ class portagetree(packagetree):
 		if self.exists_specific(pf):
 			mysplit=catpkgsplit(pf)
 			if mysplit==None:
-				# parse error
+				#parse error
 				return ""
 			mydepfile=self.portroot+"/"+mysplit[0]+"/"+mysplit[1]+"/files/depend-"+string.split(pf,"/")[1]
 			if os.path.exists(mydepfile):
@@ -1641,7 +1713,7 @@ class binarytree(packagetree):
 			mytbz2=xpak.tbz2(self.pkgdir+"/All/"+mypkg)
 			mycat=mytbz2.getfile("CATEGORY")
 			if not mycat:
-				# old-style or corrupt package
+				#old-style or corrupt package
 				continue
 			mycat=string.strip(mycat)
 			fullpkg=mycat+"/"+mypkg[:-5]
@@ -1709,13 +1781,13 @@ class dblink:
 			# (use the ROOT var to allow maintenance on other partitions)
 			mydat[1]=os.path.normpath(root+mydat[1][1:])
 			if mydat[0]=="obj":
-				# format: type, mtime, md5sum
+				#format: type, mtime, md5sum
 				pkgfiles[string.join(mydat[1:-2]," ")]=[mydat[0], mydat[-1], mydat[-2]]
 			elif mydat[0]=="dir":
-				# format: type
+				#format: type
 				pkgfiles[string.join(mydat[1:])]=[mydat[0] ]
 			elif mydat[0]=="sym":
-				# format: type, mtime, dest
+				#format: type, mtime, dest
 				x=len(mydat)-1
 				splitter=-1
 				while(x>=0):
@@ -1727,10 +1799,10 @@ class dblink:
 					return None
 				pkgfiles[string.join(mydat[1:splitter]," ")]=[mydat[0], mydat[-1], string.join(mydat[(splitter+1):-1]," ")]
 			elif mydat[0]=="dev":
-				# format: type
+				#format: type
 				pkgfiles[string.join(mydat[1:]," ")]=[mydat[0] ]
 			elif mydat[0]=="fif":
-				# format: type
+				#format: type
 				pkgfiles[string.join(mydat[1:]," ")]=[mydat[0]]
 			else:
 				return None
@@ -1742,13 +1814,13 @@ class dblink:
 			if not pkgfiles:
 				return
 		
-		# do prerm script
+		#do prerm script
 		a=doebuild(self.dbdir+"/"+self.pkg+".ebuild","prerm",self.myroot)
 		if a:
 			print "!!! pkg_prerm() script failed; exiting."
 			sys.exit(a)
 
-		# we do this so we don't unmerge the ebuild file by mistake
+		#we do this so we don't unmerge the ebuild file by mistake
 		myebuildfile=os.path.normpath(self.dbdir+"/"+self.pkg+".ebuild")
 		if os.path.exists(myebuildfile):
 			if pkgfiles.has_key(myebuildfile):
@@ -1758,7 +1830,7 @@ class dblink:
 		mykeys.sort()
 		mykeys.reverse()
 		
-		# do some config file management prep
+		#do some config file management prep
 		self.protect=[]
 		for x in string.split(settings["CONFIG_PROTECT"]):
 			ppath=os.path.normpath(self.myroot+"/"+x)+"/"
@@ -1771,14 +1843,14 @@ class dblink:
 			ppath=os.path.normpath(self.myroot+"/"+x)+"/"
 			if os.path.isdir(ppath):
 				self.protectmask.append(ppath)
-			# if it doesn't exist, silently skip it
+			#if it doesn't exist, silently skip it
 		
 		for obj in mykeys:
 			obj=os.path.normpath(obj)
 			if not os.path.islink(obj):
-				# we skip this if we're dealing with a symlink
-				# because os.path.exists() will operate on the
-				# link target rather than the link itself.
+				#we skip this if we're dealing with a symlink
+				#because os.path.exists() will operate on the
+				#link target rather than the link itself.
 				if not os.path.exists(obj):
 					print "--- !found", pkgfiles[obj][0], obj
 					continue
@@ -1808,10 +1880,10 @@ class dblink:
 					epath=expandpath(obj)
 					if epath[0:len(ppath)]==ppath:
 						masked=0
-						# config file management
+						#config file management
 						for pmpath in self.protectmask:
 							if epath[0:len(pmpath)]==pmpath:
-								# skip, it's in the mask
+								#skip, it's in the mask
 								masked=1
 								break
 						if not masked: 
@@ -1835,10 +1907,10 @@ class dblink:
 					epath=expandpath(obj)
 					if epath[0:len(ppath)]==ppath:
 						masked=0
-						# config file management
+						#config file management
 						for pmpath in self.protectmask:
 							if epath[0:len(pmpath)]==pmpath:
-								# skip, it's in the mask
+								#skip, it's in the mask
 								masked=1
 								break
 						if not masked: 
@@ -1858,10 +1930,10 @@ class dblink:
 					epath=expandpath(obj)
 					if epath[0:len(ppath)]==ppath:
 						masked=0
-						# config file management
+						#config file management
 						for pmpath in self.protectmask:
 							if epath[0:len(pmpath)]==pmpath:
-								# skip, it's in the mask
+								#skip, it's in the mask
 								masked=1
 								break
 						if not masked: 
@@ -1873,11 +1945,30 @@ class dblink:
 				os.unlink(obj)
 				print "<<<       ","fif",obj
 			elif pkgfiles[obj][0]=="dev":
-				# we now do *not* unlink device nodes, because doing so is dangerous
-				print "--- !dev  ","dev", obj
-				continue
+				if not isdev(obj):
+					print "--- !dev  ","dev", obj
+					continue
+				myppath=""
+				for ppath in self.protect:
+					epath=expandpath(obj)
+					if epath[0:len(ppath)]==ppath:
+						masked=0
+						#config file management
+						for pmpath in self.protectmask:
+							if epath[0:len(pmpath)]==pmpath:
+								#skip, it's in the mask
+								masked=1
+								break
+						if not masked: 
+							myppath=ppath
+							break
+				if myppath:
+					print "--- cfg   ","fif",obj
+					continue
+				os.unlink(obj)
+				print "<<<       ","dev",obj
 
-		# remove provides
+		#remove provides
 		for mycatpkg in self.getelements("PROVIDE"):
 			mycat,mypkg=string.split(mycatpkg,"/")
 			tcatpkg=self.cat+"/"+self.pkg
@@ -1888,17 +1979,17 @@ class dblink:
 			while tcatpkg in myvirts:
 				myvirts.remove(tcatpkg)
 			if not myvirts:
-				# no more virtuals; cleanup time
+				#no more virtuals; cleanup time
 				if mylink.isregular():
-					# just zap the VIRTUAL file, this is also a normal package
+					#just zap the VIRTUAL file, this is also a normal package
 					os.unlink(mylink.dbdir+"/VIRTUAL")
 				else:
-					# this is a pure virtual package, remove the entire db entry
+					#this is a pure virtual package, remove the entire db entry
 					mylink.delete()
 			else:
 				mylink.setelements(myvirts,"VIRTUAL")
 		
-		# do original postrm
+		#do original postrm
 		a=doebuild(self.dbdir+"/"+self.pkg+".ebuild","postrm",self.myroot)
 		if a:
 			print "!!! pkg_postrm() script failed; exiting."
@@ -1906,22 +1997,22 @@ class dblink:
 
 	def merge(self,mergeroot,inforoot,myroot,mergestart=None,outfile=None):
 		global prevmask	
-		# myroot=os.environ["ROOT"]
-		# myroot should be set to the ROOT of where to merge to.
+		#myroot=os.environ["ROOT"]
+		#myroot should be set to the ROOT of where to merge to.
 
 		if mergestart==None:
 			origdir=os.getcwd()
 			if not os.path.exists(self.dbdir):
 				self.create()
-				# open contents file if it isn't already open
+				#open contents file if it isn't already open
 			mergestart=mergeroot
 			print ">>> Updating mtimes..."
-			# before merging, it's *very important* to touch all the files !!!
+			#before merging, it's *very important* to touch all the files !!!
 			os.system("(cd "+mergeroot+"; for x in `find`; do  touch -c $x 2>/dev/null; done)")
 			print ">>> Merging",self.cat+"/"+self.pkg,"to",myroot
 			
 		
-			# get old contents info for later unmerging
+			#get old contents info for later unmerging
 			oldcontents=self.getcontents()
 			a=doebuild(inforoot+"/"+self.pkg+".ebuild","preinst",root)
 			if a:
@@ -1929,7 +2020,7 @@ class dblink:
 				sys.exit(a)
 			outfile=open(inforoot+"/CONTENTS","w")
 		
-			# prep for config file management
+			#prep for config file management
 			self.protect=[]
 			for x in string.split(settings["CONFIG_PROTECT"]):
 				ppath=os.path.normpath(myroot+"/"+x)+"/"
@@ -1942,8 +2033,8 @@ class dblink:
 				ppath=os.path.normpath(myroot+"/"+x)+"/"
 				if os.path.isdir(ppath):
 					self.protectmask.append(ppath)
-				# if it doesn't exist, silently skip it
-				# back up umask, save old one in prevmask (global)
+				#if it doesn't exist, silently skip it
+				#back up umask, save old one in prevmask (global)
 				prevmask=os.umask(0)
 		
 		mergestart=mergestart
@@ -1955,7 +2046,7 @@ class dblink:
 		for x in myfiles:
 			relfile=relstart+"/"+x
 			rootfile=os.path.normpath(myroot+relfile)
-			# symbolic link
+			#symbolic link
 			if os.path.islink(x):
 				myto=os.readlink(x)
 				if os.path.exists(rootfile):
@@ -1969,24 +2060,21 @@ class dblink:
 					outfile.write("sym "+expandpath(relfile)+" -> "+myto+" "+getmtime(rootfile)+"\n")
 				except:
 					print "!!!",rootfile,"->",myto
-			# directory
+			#directory
 			elif os.path.isdir(x):
 				mystat=os.stat(x)
 				if os.path.exists(rootfile):
 					if os.path.islink(rootfile) and os.path.isdir(rootfile):
-						# a symlink to an existing directory will work
-						# for us; keep it:
+						#a symlink to an existing directory will work for us; keep it:
 						print "---",rootfile+"/"
 					elif os.path.isdir(rootfile):
-						# a normal directory will work too
+						#a normal directory will work too
 						print "---",rootfile+"/"
 					else:
-						# a non-directory and
-						# non-symlink-to-directory.  Won't work for
-						# us.  Move out of the way.
+						#a non-directory and non-symlink-to-directory.  Won't work for us.  Move out of the way.
 						movefile(rootfile,rootfile+".backup")
 						print "bak",rootfile,rootfile+".backup"
-						# now create our directory
+						#now create our directory
 						os.mkdir(rootfile)
 						os.chmod(rootfile,mystat[0])
 						os.chown(rootfile,mystat[4],mystat[5])
@@ -1997,27 +2085,26 @@ class dblink:
 					os.chown(rootfile,mystat[4],mystat[5])
 					print ">>>",rootfile+"/"
 				outfile.write("dir "+expandpath(relfile)+"\n")
-				# enter directory, recurse
+				#enter directory, recurse
 				os.chdir(x)
 				self.merge(mergeroot,inforoot,myroot,mergestart+"/"+x,outfile)
-				# return to original path
+				#return to original path
 				os.chdir(mergestart)
-			# regular file
+			#regular file
 			elif os.path.isfile(x):
 				mymd5=md5(x)
 				myppath=""
 				rootdir=os.path.dirname(rootfile)
 				for ppath in self.protect:
-					# the expandpath() means that we will be expanding
-					# rootpath first (resolving dir symlinks)
-					# before matching against a protection path.
+					#the expandpath() means that we will be expanding rootpath first (resolving dir symlinks)
+					#before matching against a protection path.
 					if expandpath(rootfile)[0:len(ppath)]==ppath:
 						myppath=ppath
-						# config file management
+						#config file management
 						for pmpath in self.protectmask:
-							# again, dir symlinks are expanded
+							#again, dir symlinks are expanded
 							if expandpath(rootfile)[0:len(pmpath)]==pmpath:
-								# skip, it's in the mask
+								#skip, it's in the mask
 								myppath=""
 								break
 						if not myppath:
@@ -2025,24 +2112,21 @@ class dblink:
 				moveme=1
 				if os.path.exists(rootfile):
 					if os.path.islink(rootfile):
-						# this is how to cleverly avoid accidentally
-						# processing symlinks as dirs or regular files
+						#this is how to cleverly avoid accidentally processing symlinks as dirs or regular files
 						pass
 					elif os.path.isdir(rootfile):
-						# directories do *not* get replaced by files
+						#directories do *not* get replaced by files
 						moveme=0
 						print "!!!",rootfile
 					elif os.path.isfile(rootfile):
-						# replacing a regular file: we need to do some
-						# cfg file management here let's find the
-						# right filename for rootfile
+						#replacing a regular file: we need to do some cfg file management here
+						#let's find the right filename for rootfile
 						if myppath!="":
-							# if the md5's *do* match, just copy it
-							# over (fall through to movefile(), below)
+							#if the md5's *do* match, just copy it over (fall through to movefile(), below)
 							if mymd5!=md5(rootfile):
 								pnum=-1
 								pmatch=os.path.basename(rootfile)
-								# format:
+								#format:
 								# ._cfg0000_foo
 								# 0123456789012
 								mypfile=""
@@ -2059,40 +2143,39 @@ class dblink:
 									except:
 										continue
 								pnum=pnum+1
-								# this next line specifies the normal
-								# default rootfile (the next available
-								# ._cfgxxxx_ slot
+								#this next line specifies the normal default rootfile (the next available ._cfgxxxx_ slot
 								rootfile=os.path.normpath(rootdir+"/._cfg"+string.zfill(pnum,4)+"_"+pmatch)
-								# but, we can override rootfile in
-								# a special case: if the last
-								# ._cfgxxxx_foo file's md5 matches:
+								#but, we can override rootfile in a special case:
+								#if the last ._cfgxxxx_foo file's md5 matches:
 								if mypfile:
 									pmd5=md5(rootdir+"/"+mypfile)
 									if mymd5==pmd5:
 										rootfile=(rootdir+"/"+mypfile)
-										# then overwrite the last
-										# ._cfgxxxx_foo file rather
-										# than creating a new one (for
-										# cleanliness)
-				elif myppath:
-					# the file we're about to create *doesn't* exist.
-					# If it's in the protection path, we need to
-					# remove any stray ._cfg_ files
-					unlinkme=[]
-					pmatch=os.path.basename(rootfile)
-					mypfile=""
-					for pfile in os.listdir(rootdir):
-						if pfile[0:5]!="._cfg":
-							continue
-						if pfile[10:]!=pmatch:
-							continue
-						unlinkme.append(rootdir+"/"+pfile)
-					for ufile in unlinkme:
-						if os.path.isfile(ufile) and not os.path.islink(ufile):
-							os.unlink(ufile)
-							print "<<<",ufile
+										#then overwrite the last ._cfgxxxx_foo file rather than creating a new one
+										#(for cleanliness)
+				else:
+					#this is mainly for zapping symbolic links that are dead
+					try:
+						os.unlink(rootfile)
+					except OSError:
+						pass
+					
+					if myppath:
+						unlinkme=[]
+						pmatch=os.path.basename(rootfile)
+						mypfile=""
+						for pfile in os.listdir(rootdir):
+							if pfile[0:5]!="._cfg":
+								continue
+							if pfile[10:]!=pmatch:
+								continue
+							unlinkme.append(rootdir+"/"+pfile)
+						for ufile in unlinkme:
+							if os.path.isfile(ufile) and not os.path.islink(ufile):
+								os.unlink(ufile)
+								print "<<<",ufile
 				if moveme:
-					# moveme=0 is used to avoid copying on top of directories
+					#moveme=0 is used to avoid copying on top of directories
 					if movefile(x,rootfile):
 						zing=">>>"
 						outfile.write("obj "+expandpath(relfile)+" "+mymd5+" "+getmtime(rootfile)+"\n")
@@ -2100,7 +2183,7 @@ class dblink:
 						zing="!!!"
 					print zing,rootfile
 			elif isfifo(x):
-				# fifo
+				#fifo
 				zing="!!!"
 				if not os.path.exists(rootfile):	
 					if movefile(x,rootfile):
@@ -2112,7 +2195,7 @@ class dblink:
 				print zing+" "+rootfile
 				outfile.write("fif "+expandpath(relfile)+"\n")
 			else:
-				# device nodes, the only other possibility
+				#device nodes, the only other possibility
 				if movefile(x,rootfile):
 					zing=">>>"
 				else:
@@ -2120,9 +2203,9 @@ class dblink:
 				print zing+" "+rootfile
 				outfile.write("dev "+expandpath(relfile)+"\n")
 		if mergestart==mergeroot:
-			# restore umask
+			#restore umask
 			os.umask(prevmask)
-			# if we opened it, close it	
+			#if we opened it, close it	
 			outfile.close()
 			if (oldcontents):
 				print ">>> Safely unmerging already-installed instance..."
@@ -2133,23 +2216,23 @@ class dblink:
 			for x in os.listdir("."):
 				self.copyfile(x)
 			
-			# create virtual links
+			#create virtual links
 			for mycatpkg in self.getelements("PROVIDE"):
 				mycat,mypkg=string.split(mycatpkg,"/")
 				mylink=dblink(mycat,mypkg,self.myroot)
-				# this will create the link if it doesn't exist
+				#this will create the link if it doesn't exist
 				mylink.create()
 				myvirts=mylink.getelements("VIRTUAL")
 				if not mycat+"/"+mypkg in myvirts:
 					myvirts.append(self.cat+"/"+self.pkg)
 					mylink.setelements(myvirts,"VIRTUAL")
 
-			# do postinst script
+			#do postinst script
 			a=doebuild(self.dbdir+"/"+self.pkg+".ebuild","postinst",root)
 			if a:
 				print "!!! pkg_postinst() script failed; exiting."
 				sys.exit(a)
-			# update environment settings, library paths
+			#update environment settings, library paths
 			env_update()	
 			print ">>>",self.cat+"/"+self.pkg,"merged."
 			os.chdir(origdir)
@@ -2279,17 +2362,16 @@ def pkgmerge(mytbz2,myroot):
 		print "!!! Error extracting",mytbz2
 		cleanup_pkgmerge(mypkg,origdir)
 		return None
-	# the merge takes care of pre/postinst and old instance
-	# auto-unmerge, virtual/provides updates, etc.
+	#the merge takes care of pre/postinst and old instance auto-unmerge, virtual/provides updates, etc.
 	mylink=dblink(mycat,mypkg,myroot)
 	if not mylink.exists():
 		mylink.create()
-		# shell error code
+		#shell error code
 	mylink.merge(pkgloc,infloc,myroot)
 	if not os.path.exists(infloc+"/RDEPEND"):
 		returnme=""
 	else:
-		# get runtime dependencies
+		#get runtime dependencies
 		a=open(infloc+"/RDEPEND","r")
 		returnme=string.join(string.split(a.read())," ")
 		a.close()
@@ -2327,7 +2409,7 @@ if root != "/":
 		print
 		sys.exit(1)
 
-# create tmp and var/tmp if they don't exist; read config
+#create tmp and var/tmp if they don't exist; read config
 os.umask(0)
 if not os.path.exists(root+"tmp"):
 	print ">>> "+root+"tmp doesn't exist, creating it..."
@@ -2346,5 +2428,3 @@ if root!="/":
 if not profiledir:
 	if os.path.exists("/etc/make.profile/make.defaults"):
 		profiledir="/etc/make.profile"
-
-# vim: ts=4

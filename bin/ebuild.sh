@@ -100,7 +100,7 @@ try() {
 
 dyn_touch() {
 	local x
-	for x in ${A} 
+	for x in $AA 
 	do
 		if [ -e ${DISTDIR}/${x} ]
 		then	
@@ -116,7 +116,7 @@ dyn_digest() {
 	if [ ! -d ${FILESDIR} ]
 	then
 		install -d ${FILESDIR}
-		if [ -n "${MAINTAINER}" ]
+		if [ "${MAINTAINER}" = "yes" ]
 		then
 			echo ">>> adding ${FILESDIR} to CVS (just in case it isn't there)"
 			( echo; cd `/usr/bin/dirname ${FILESDIR}`; cvs add `/usr/bin/basename ${FILESDIR}`; echo)
@@ -124,7 +124,7 @@ dyn_digest() {
 	fi
 	rm -f ${FILESDIR}/.digest-${PF}
 	touch ${FILESDIR}/.digest-${PF}
-	for x in ${A}
+	for x in $AA
 	do
 		if [ ! -e ${DISTDIR}/${x} ]
 		then
@@ -138,7 +138,7 @@ dyn_digest() {
 		fi
     done
     mv ${FILESDIR}/.digest-${PF} ${FILESDIR}/digest-${PF}
-    if [ -n "${MAINTAINER}" ]
+    if [ "${MAINTAINER}" = "yes" ]
     then
 		echo ">>> adding digest-${PF} to CVS (just in case it isn't there)"
 		( echo; cd ${FILESDIR}; cvs add digest-${PF}; echo )
@@ -150,7 +150,7 @@ digest_check() {
 	if [ ! -e ${FILESDIR}/digest-${PF} ]
 	then
 		echo '!!!'" No message digest file found."
-		if [ -n "$MAINTAINER" ]
+		if [ "$MAINTAINER" = "yes" ]
 		then
 			echo '>>> Maintainer mode: auto-computing digests.'
 			dyn_digest
@@ -171,7 +171,7 @@ digest_check() {
 	then
 		echo
 		echo '!!!'" No message digest found for ${1}."
-		if [ -n "$MAINTAINER" ]
+		if [ "$MAINTAINER" = "yes" ]
 		then
 			echo '>>> Maintainer mode: auto-computing digests.'
 			dyn_digest
@@ -200,42 +200,9 @@ digest_check() {
 	return 0
 }
 
-dyn_batchdigest() {
-    local x
-    if [ ! -e ${FILESDIR}/digest-${PF} ]
-    then
-	if [ "${A}" != "" ]
-	then
-		echo "${CATEGORY}/${PF} has no digest file."
-	fi
-	exit 1
-    fi
-    	for x in ${A}
-    	do
-		if [ ! -e ${DISTDIR}/${x} ]
-    		then
-			echo "${CATEGORY}/${PF}:${x} does not exist in ${DISTDIR}."
-			continue
-		else
-			local mycdigest=`grep " ${x}" ${FILESDIR}/digest-${PF} | cut -f2 -d" "`
-			if [ -z "$mycdigest" ]
-			then
-				echo "${CATEGORY}/${PF}:${x} digest not yet recorded."
-				continue
-			fi
-    			local mydigest=`md5sum ${DISTDIR}/${x} | cut -f1 -d" "`
-    			if [ "$mycdigest" != "$mydigest" ]
-   			then
-				echo "${CATEGORY}/${PF}:${x} is corrupt or has an invalid digest."
-			fi
-		fi
-	done
-}
-
-
 dyn_fetch() {
 	local y
-	for y in ${A}
+	for y in $AA 
 	do
 		if [ ! -e ${DISTDIR}/${y} ]
 		then
@@ -267,9 +234,9 @@ dyn_fetch() {
 			echo
     	fi	
 	done
-	for y in ${A}
+	for y in $AA
 	do
-		digest_check ${y}
+		digest_check $y
 		if [ $? -ne 0 ]
 		then
 				exit 1
@@ -284,16 +251,10 @@ dyn_unpack() {
 	then
 		local x
 		local checkme
-		if [ -n "${MAINTAINER}" ]
-		then
-			checkme="${DISTDIR}/${A}"
-		else
-			checkme="${DISTDIR}/${A} ${EBUILD}"
-		fi
-		for x in $checkme
+		for x in $AA
 		do
 			echo ">>> Checking ${x}'s mtime..."
-			if [ ${x} -nt ${WORKDIR} ]
+			if [ ${DISTDIR}/${x} -nt ${WORKDIR} ]
 			then
 				echo ">>> ${x} has been updated; recreating WORKDIR..."
 				newstuff="yes"
@@ -301,6 +262,12 @@ dyn_unpack() {
 				break
 			fi
 		done
+		if [ ${EBUILD} -nt ${WORKDIR} ]
+		then
+			echo ">>> ${x} has been updated; recreating WORKDIR..."
+			newstuff="yes"
+			rm -rf ${WORKDIR}
+		fi
 	fi
 	if [ -e ${WORKDIR} ]
 	then
@@ -683,7 +650,7 @@ then
 	if [ "${SRC_URI}" != "" ]
 	then
 		rm -f ${T}/archives.orig
-		for x in ${SRC_URI}
+		for x in `cat ${T}/src_uri_new` 
 		do
 			echo `basename $x` >> ${T}/archives.orig
 		done
@@ -691,7 +658,23 @@ then
 		rm ${T}/archives.orig
 		export A=`cat ${T}/archives`
 		rm ${T}/archives
+		if [ "$MAINTAINER" = "yes" ]
+		then
+			for x in `cat ${T}/src_uri_all` 
+			do
+				echo `basename $x` >> ${T}/archives.orig
+			done
+			cat ${T}/archives.orig | sort | uniq > ${T}/archives
+			rm ${T}/archives.orig
+			export AA=`cat ${T}/archives`
+			rm ${T}/archives
+		else
+			export AA="$A"
+		fi
 	fi
+else
+	export A=""
+	export AA=""
 fi
 
 if [ "${RDEPEND}" = "" ]
@@ -714,7 +697,7 @@ do
 		  set +x
 		fi
 	    ;;
-	unpack|compile|help|batchdigest|touch|clean|fetch|digest|pkginfo|pkgloc|unmerge|merge|package|install|rpm)
+	unpack|compile|help|touch|clean|fetch|digest|pkginfo|pkgloc|unmerge|merge|package|install|rpm)
 	    if [ "$PORTAGE_DEBUG" = "0" ]
 	    then
 	      dyn_${myarg}
@@ -725,8 +708,9 @@ do
 	    fi
 	    ;;
 	depend)
-		echo $DEPEND
-		echo $RDEPEND
+		echo $DEPEND > ${T}/deps
+		echo $RDEPEND >> ${T}/deps
+		echo $SRC_URI > ${T}/src_uri
 		;;
 	*)
 	    echo "Please specify a valid command."
