@@ -111,6 +111,8 @@ dyn_touch() {
 
 dyn_digest() {
 	local x
+	local mymd5
+	local mysize
 	if [ ! -d ${FILESDIR} ]
 	then
 		install -d ${FILESDIR}
@@ -131,7 +133,8 @@ dyn_digest() {
 			exit 1
 		else
 	    	mymd5=`md5sum ${DISTDIR}/${x} | cut -f1 -d" "`
-	    	echo "MD5 $mymd5 $x" >> ${FILESDIR}/.digest-${PF}
+	    	mysize=`du -b ${DISTDIR}/${x} | cut -f1`
+			echo "MD5 $mymd5 $x $mysize" >> ${FILESDIR}/.digest-${PF}
 		fi
     done
     mv ${FILESDIR}/.digest-${PF} ${FILESDIR}/digest-${PF}

@@ -1,3 +1,7 @@
+
+	*ebuild.sh
+	Now adds filesize to the digest files
+
 Portage 1.6.9, released 15 Sep 2001
 ===================================
 
