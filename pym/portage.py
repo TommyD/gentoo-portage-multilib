@@ -841,6 +841,7 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 	#PEBUILD
 	settings["FILESDIR"]=settings["O"]+"/files"
 	settings["PF"]=os.path.basename(settings["EBUILD"])[:-7]
+	settings["ECLASSDIR"]=settings["PORTDIR"]+"/eclass"
 	settings["SANDBOX_LOG"]=settings["PF"]
 	mysplit=pkgsplit(settings["PF"],0)
 	if mysplit==None:

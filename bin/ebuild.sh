@@ -622,9 +622,6 @@ debug-print-section() {
 
 }
 
-# Used by inherit() to locate eclasses
-ECLASSDIR=${PORTDIR}/eclass
-
 # Sources all eclasses in parameters
 inherit() {
     
@@ -634,9 +631,7 @@ inherit() {
 	local location
 	location="${ECLASSDIR}/${1}.eclass"
 	
-	# for now, disable by deafult because it creates a lot extra sourcing. (get debug levels there already!)
-	#. ${ECLASSDIR}/debug.eclass
-	#debug-print "inherit: $1 -> $location"
+	debug-print "inherit: $1 -> $location"
 	
 	source "$location" || die "died sourcing $location in inherit()"
 	
