@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-if [ "${FEATURES//*nostrip*/tree}" == "true" ] || [ "${RESTRICT//*nostrip*/true}" == "true" ] ; then
+if [ "${FEATURES//*nostrip*/true}" == "true" ] || [ "${RESTRICT//*nostrip*/true}" == "true" ] ; then
 	echo "nostrip"
 	exit 0
 fi

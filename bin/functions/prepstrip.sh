@@ -3,7 +3,7 @@
 # $Header$
 
 prepstrip() {
-	if [ "${FEATURES//*nostrip*/tree}" == "true" ] || [ "${RESTRICT//*nostrip*/true}" == "true" ] ; then
+	if [ "${FEATURES//*nostrip*/true}" == "true" ] || [ "${RESTRICT//*nostrip*/true}" == "true" ] ; then
 		echo "nostrip"
 		return 0
 	fi

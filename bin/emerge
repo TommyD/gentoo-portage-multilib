@@ -217,6 +217,11 @@ if ("--debug" in myopts):
 	portage.debug=1
 	portage.settings.lock()
 
+# Python will try to compile the python modules, so we should do
+# it outside of a sandbox first.
+tmpsettings = portage.config(clone=portage.settings)
+portage.spawn("/usr/lib/portage/bin/portageq pkgdir", tmpsettings, free=1)
+
 
 def emergelog(mystr):
 	if "notitles" not in portage.features:
@@ -1894,9 +1899,11 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 				dosyncuri = syncuri
 
 			if (retries==0):
-				print ">>> starting rsync with "+syncuri+"..."
+				emergelog(">>> starting rsync with "+dosyncuri)
+				print ">>> starting rsync with "+dosyncuri+"..."
 			else:
-				print "\n\n>>> Starting retry %d of %d"% (retries,maxretries)
+				emergelog(">>> Starting retry %d of %d with %s" % (retries,maxretries,dosyncuri))
+				print "\n\n>>> Starting retry %d of %d with %s" % (retries,maxretries,dosyncuri)
 
 			print ">>> checking server timestamp ..."
 			mycommand=rsynccommand+" "+dosyncuri+"/metadata/timestamp.chk "+servertimestampdir
@@ -1908,12 +1915,20 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 					servertimestamp = 0
 				
 				if (servertimestamp != 0) and (servertimestamp == mytimestamp):
-					print ">>> cancelling sync because this server timestamp is the same as local timestamp"
+					emergelog(">>> Cancelling sync -- Already current.")
 					print
-					updatecache_flg=False
-					break
+					print ">>>"
+					print ">>> Timestamps on the server and in the local repository are the same."
+					print ">>> Cancelling all further sync action. You are already up to date."
+					print ">>>"
+					print
+					sys.exit(0)
 				elif (servertimestamp != 0) and (servertimestamp < mytimestamp):
-					print ">>> skipping because this server timestamp is older than local timestamp ..."
+					emergelog(">>> Server out of date: %s" % dosyncuri)
+					print
+					print ">>>"
+					print ">>> SERVER OUT OF DATE: %s" % dosyncuri
+					print ">>>"
 					print
 				elif (servertimestamp == 0) or (servertimestamp > mytimestamp):
 					# actual sync
@@ -1935,7 +1950,9 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 				updatecache_flg=False
 				break
 
-		if (exitcode>0):
+		if (exitcode==0):
+			emergelog("=== Sync completed with %s" % dosyncuri)
+		elif (exitcode>0):
 			print
 			if exitcode==1:
 				print darkred("!!!")+green(" Rsync has reported that there is a syntax error. Please ensure")
@@ -1986,6 +2003,8 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 	else:
 		print "!!! rsync setting: ",syncuri,"not recognized; exiting."
 		sys.exit(1)
+
+
 	if os.path.exists(myportdir+"/metadata/cache") and updatecache_flg:
 		print "\n>>> Updating Portage cache...  ",
 		os.umask(0002)

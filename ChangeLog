@@ -2,53 +2,65 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  15 Dec 2003; Nicholas Jones <carpaski@gentoo.org> emerge: Added a call
+	to portageq that causes python to create optimized modules prior to it
+	ending up inside the sandbox. Added more output and logging to sync.
+	
+  15 Dec 2003; Nicholas Jones <carpaski@gentoo.org> prepstrip: 'tree' is not
+	the same as 'true'.
+	
+  15 Dec 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: invalid
+	settings in package.keywords caused a traceback -- fixed with error message.
+	
+*portage-2.0.50_pre1 (12 Dec 2003): API change + enhancements
+
   10 Dec 2003; Nicholas Jones <carpaski@gentoo.org> chkcontents: Uses portage
-	functions to do md5sum calcs.
+  functions to do md5sum calcs.
 
   10 Dec 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Removed try()
-	as it isn't used, and was deprecated for a long while. Genone's fetching
-	size display added for --verbose. License display added. Added a little
-	debug for IUSE so we can figure out the binary package --verbose IUSE
-	issues that are randomly reported. XXXXXXXXXXXXXXXXXXX's 'buildsyspkg'
-	patch for building only system packages into tbz2s. Unmerge fix for new
-	settings instances. RSYNC_RATELIMIT added.
-	
+  as it isn't used, and was deprecated for a long while. Genone's fetching
+  size display added for --verbose. License display added. Added a little
+  debug for IUSE so we can figure out the binary package --verbose IUSE
+  issues that are randomly reported. XXXXXXXXXXXXXXXXXXX's 'buildsyspkg'
+  patch for building only system packages into tbz2s. Unmerge fix for new
+  settings instances. RSYNC_RATELIMIT added.
+  
   10 Dec 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: ADA path
-	variables added to specials for env_update. Error messaeg correction for
-	make.defaults syntax errors. Unmerge now uses the environment file, if it
-	exists, to get the complete environment back to perform unmerge operations.
-	load_infodir() uses pkg settings completely now. Fixed the passing of
-	settings in unmerge and dblink. Fixed an issue regarding unlinking lockfiles
-	while inside of a sandbox.
-	
+  variables added to specials for env_update. Error messaeg correction for
+  make.defaults syntax errors. Unmerge now uses the environment file, if it
+  exists, to get the complete environment back to perform unmerge operations.
+  load_infodir() uses pkg settings completely now. Fixed the passing of
+  settings in unmerge and dblink. Fixed an issue regarding unlinking lockfiles
+  while inside of a sandbox.
+  
   09 Dec 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh, *.sh:
-	Moved helper scripts into bin/functions and made them sourceable -- they
-	now will die in cases where sub-parts fail. dodoc and keepdir are now
-	recursive-capable.
+  Moved helper scripts into bin/functions and made them sourceable -- they
+  now will die in cases where sub-parts fail. dodoc and keepdir are now
+  recursive-capable.
 
   09 Dec 2003; Nicholas Jones <carpaski@gentoo.org> emerge: emerge.log now
-	set as portage:portage with 0660 perms. --debug now enables tracebacks
-	for dep generation instead of moving code out of the try block.
-	
+  set as portage:portage with 0660 perms. --debug now enables tracebacks
+  for dep generation instead of moving code out of the try block.
+  
   09 Dec 2003; Nicholas Jones <carpaski@gentoo.org> g-cpan.pl: rac's patch
-	to get arch list from portage's list of arches in the profiles.
-	
+  to get arch list from portage's list of arches in the profiles.
+  
   09 Dec 2003; Nicholas Jones <carpaski@gentoo.org> repoman: Moved a bit of
-	the existing gpg code around -- it might work as is, but requires 'sign'
-	in features. Fixed a potential for repoman to miss updates that should
-	get a new manifest and commit. Fixed digest/manifest generation for
-	non-packagedir runs of repoman.
-	
+  the existing gpg code around -- it might work as is, but requires 'sign'
+  in features. Fixed a potential for repoman to miss updates that should
+  get a new manifest and commit. Fixed digest/manifest generation for
+  non-packagedir runs of repoman.
+  
   09 Dec 2003; Nicholas Jones <carpaski@gentoo.org> emergehelp.py, make.conf,
-	getbinpkg.py:	Message touch ups.
-	
+  getbinpkg.py:  Message touch ups.
+  
   09 Dec 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: load_infodir()
-	uses pkg settings now instead of env and backup. Genone's custom mirror
-	patch included. Added some missing 'strict' flags for recursion in digest*().
-	Refixed the invalidentry stuff that was lost across patch merges. Fix for
-	pkg-keywords from genone included. Genone's deprecated profile patch for
-	reporting to a user that their current profile is deprecated. Message about
-	missing arch.list instead of spouting invalid keywords messages.
+  uses pkg settings now instead of env and backup. Genone's custom mirror
+  patch included. Added some missing 'strict' flags for recursion in digest*().
+  Refixed the invalidentry stuff that was lost across patch merges. Fix for
+  pkg-keywords from genone included. Genone's deprecated profile patch for
+  reporting to a user that their current profile is deprecated. Message about
+  missing arch.list instead of spouting invalid keywords messages.
 
   08 Dec 2003; Masatomo Nakano <nakano@gentoo.org> repoman:
   Added all arch dependency check. This closes bug #24160.

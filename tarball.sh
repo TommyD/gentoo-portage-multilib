@@ -15,12 +15,12 @@ export V="$1"
 export DEST="${TMP}/${PKG}-${V}"
 export PREVEB="2.0.49_pre2"
 
+./tabcheck.py bin/emerge `find ./ -type f -name '*.py'`
+
 if [ -e $TMP/${PKG}-${V} ]; then
 	echo EXISTS ALREADY
 	exit 1
 fi
-
-tabcheck.py bin/emerge `find ./ -type f -name '*.py'`
 
 rm -rf ${DEST}
 install -d -m0755 ${DEST}

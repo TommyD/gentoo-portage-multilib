@@ -4476,9 +4476,13 @@ class portdbapi(dbapi):
 			pgroups=groups[:]
 			match=0
 			for mykey in pkgdict:
-				if db["/"]["porttree"].dbapi.xmatch("bestmatch-list", mykey, None, None, [mycpv]) \
-				   and (catpkgsplit(dep_getcpv(mykey))[:2] == catpkgsplit(mycpv)[:2]):
-					pgroups.extend(pkgdict[mykey])
+				if db["/"]["porttree"].dbapi.xmatch("bestmatch-list", mykey, None, None, [mycpv]):
+					dkey = catpkgsplit(dep_getcpv(mykey))
+					ckey = catpkgsplit(mycpv)
+					if not dkey:
+						writemsg("--- Invalid depend atom in package.keywords: %s\n" % mykey)
+					elif ckey and (dkey[:2] == ckey[:2]):
+						pgroups.extend(pkgdict[mykey])
 			for gp in mygroups:
 				if gp=="*":
 					writemsg("--- WARNING: Package '%s' uses '*' keyword.\n" % mycpv)
