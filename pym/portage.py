@@ -3999,7 +3999,7 @@ class vardbapi(dbapi):
 	def cpv_inject(self,mycpv):
 		"injects a real package into our on-disk database; assumes mycpv is valid and doesn't already exist"
 		os.makedirs(self.root+VDB_PATH+"/"+mycpv)	
-		counter=db[self.root]["vartree"].dbapi.counter_tick(self.root)
+		counter=db[self.root]["vartree"].dbapi.counter_tick(self.root,mycpv)
 		# write local package counter so that emerge clean does the right thing
 		lcfile=open(self.root+VDB_PATH+"/"+mycpv+"/COUNTER","w")
 		lcfile.write(str(counter))

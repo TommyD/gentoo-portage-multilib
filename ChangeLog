@@ -5,8 +5,7 @@
   12 Feb 2004; Masatomo Nakano <nakano@gentoo.org> emerge, pym/portage.py:
   TGL's patch for correction package size when emerge -v. -- Fixed
   use.default bug. It occurs when package in use.default exists in system
-  and it's virtual package. This should close #40831. -- Fixed trivial
-  --inject bug. This should close #41062.
+  and it's virtual package. This should close #40831. 
 
   12 Feb 2004; Masatomo Nakano <nakano@gentoo.org> emerge: Fixed 
   --ask bugs. It breaks with "--clean". It also breaks when blocker
