@@ -7,13 +7,19 @@ import os,sys
 os.environ["PORTAGE_CALLER"]="emerge"
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 
-import emergehelp,xpak,string,re,commands,time,shutil,traceback,atexit,signal
+import emergehelp,xpak,string,re,commands,time,shutil,traceback,atexit,signal,socket
 from stat import *
 from output import *
 
 import portage
 if (not sys.stdout.isatty()) or (portage.settings["NOCOLOR"] in ["yes","true"]):
 	nocolor()
+
+def normpath(mystr):
+	if mystr and (mystr[0]=='/'):
+		return os.path.normpath("///"+mystr)
+	else:
+		return os.path.normpath(mystr)
 
 if portage.settings.has_key("PORTAGE_NICENESS"):
 	try:
@@ -166,7 +172,11 @@ if ("buildpkg" in portage.features) or ("--buildpkgonly" in myopts):
 		myopts.append("--buildpkg")
 
 # Also allow -S to invoke search action (-sS)
-if ("--searchdesc" in myopts) and (not myaction):
+if ("--searchdesc" in myopts):
+	if myaction != "search":
+		myfiles.append(myaction)
+	if "--search" not in myopts:
+		myopts.append("--search")
 	myaction = "search"
 
 if ("--getbinpkgonly" in myopts) and not ("--usepkgonly" in myopts):
@@ -195,10 +205,12 @@ if ("--changelog" in myopts) and not ("--pretend" in myopts):
 # Set so that configs will be merged regardless of remembered status
 if ("--noconfmem" in myopts):
 	portage.settings["NOCONFMEM"]="1"
+	portage.settings.backup_changes("NOCONFMEM")
 
 # Set various debug markers... They should be merged somehow.
 if ("--debug" in myopts):
 	portage.settings["PORTAGE_DEBUG"]="1"
+	portage.settings.backup_changes("PORTAGE_DEBUG")
 	portage.debug=1
 
 
@@ -605,6 +617,9 @@ class depgraph:
 
 	def __init__(self,myaction,myopts):
 		global olddbapi
+		self.pkgsettings = portage.config(clone=portage.settings)
+		self.applied_useflags = {}
+		
 		self.missingbins=[]
 		self.myaction=myaction
 		self.virts=portage.getvirtuals("/")
@@ -652,7 +667,10 @@ class depgraph:
 
 		mytype,myroot,mykey=mybigkey
 		if myuse == None:
-			myuse=string.split(portage.settings["USE"], " ")
+			self.pkgsettings.setcpv(mykey)
+			myuse=string.split(self.pkgsettings["USE"], " ")
+
+		self.applied_useflags[mykey] = myuse
 	
 		# select the correct /var database that we'll be checking against
 		vardbapi=portage.db[myroot]["vartree"].dbapi
@@ -774,10 +792,10 @@ class depgraph:
 		for x in myfiles:
 			if x[-5:]==".tbz2":
 				if not os.path.exists(x):
-					if os.path.exists(portage.settings["PKGDIR"]+"/All/"+x):
-						x=portage.settings["PKGDIR"]+"/All/"+x
-					elif os.path.exists(portage.settings["PKGDIR"]+"/"+x):
-						x=portage.settings["PKGDIR"]+"/"+x
+					if os.path.exists(self.pkgsettings["PKGDIR"]+"/All/"+x):
+						x=self.pkgsettings["PKGDIR"]+"/All/"+x
+					elif os.path.exists(self.pkgsettings["PKGDIR"]+"/"+x):
+						x=self.pkgsettings["PKGDIR"]+"/"+x
 					else:
 						print "\n\n!!! Binary package '"+str(x)+"' does not exist."
 						print "!!! Please ensure the tbz2 exists as specified.\n"
@@ -797,7 +815,7 @@ class depgraph:
 			else:
 				mykey=portage.dep_expand(x,portage.portdb)
 				# select needs to return 0 on dep_check failure
-				#self.mysd=self.select_dep(portage.root,mykey,arg=x)
+				self.mysd=self.select_dep(portage.root,mykey,arg=x)
 				try:
 					self.mysd=self.select_dep(portage.root,mykey,arg=x)
 				except Exception, e:
@@ -849,7 +867,7 @@ class depgraph:
 			print "Depstring:",depstring
 		if not arg:
 			#processing dependencies
-			mycheck=portage.dep_check(depstring,self.mydbapi[myroot],myuse=myuse)
+			mycheck=portage.dep_check(depstring,self.mydbapi[myroot],self.pkgsettings,myuse=myuse)
 			if not mycheck[0]:
 				return 0
 			mymerge=mycheck[1]
@@ -1146,13 +1164,15 @@ class depgraph:
 
 				iuse=""
 				if "--verbose" in myopts:
-					for ebuild_iuse in string.split(portage.portdb.aux_get(x[2],["IUSE"])[0], " "):
-						try:
-							if (portage.usesplit.index(ebuild_iuse) >= 0) :
-								iuse=iuse+red("+"+ebuild_iuse)+" "
-						except ValueError:
-							if ebuild_iuse != "":
-								iuse=iuse+blue("-"+ebuild_iuse)+" "
+					iuse_split = string.split(portage.portdb.aux_get(x[2],["IUSE"])[0], " ")
+					iuse_split.sort()
+					for ebuild_iuse in iuse_split:
+						if not ebuild_iuse:
+							continue
+						if ebuild_iuse in self.applied_useflags[x[2]]:
+							iuse=iuse+red("+"+ebuild_iuse)+" "
+						else:
+							iuse=iuse+blue("-"+ebuild_iuse)+" "
 
 				xs=portage.pkgsplit(x[2])
 				if xs[2]=="r0":
@@ -1160,8 +1180,8 @@ class depgraph:
 				else:
 					xs[2]="-"+xs[2]
 
-				if portage.settings.has_key("COLUMNWIDTH"):
-					mywidth=int(portage.settings["COLUMNWIDTH"])
+				if self.pkgsettings.has_key("COLUMNWIDTH"):
+					mywidth=int(self.pkgsettings.settings["COLUMNWIDTH"])
 				else:
 					mywidth=130
 				oldlp=mywidth-30
@@ -1334,13 +1354,14 @@ class depgraph:
 			portage.mtimedb["resume"]["mergelist"]=mymergelist[:]
 
 		# We need to yank the harmful-to-new-builds settings from features.
-		myorigfeat=portage.settings["FEATURES"]
+		myorigfeat=self.pkgsettings["FEATURES"]
 		myfeat=myorigfeat.split()
 		while ("keeptemp" in myfeat):
 			del myfeat[myfeat.index("keeptemp")]
 		while ("keepwork" in myfeat):
 			del myfeat[myfeat.index("keepwork")]
-		portage.settings["FEATURES"]=string.join(myfeat)
+
+		self.pkgsettings["FEATURES"]=string.join(myfeat)
 
 		mergecount=0
 		for x in mymergelist:
@@ -1353,9 +1374,12 @@ class depgraph:
 			if not "--pretend" in myopts:
 				print ">>> emerge ("+str(mergecount)+" of "+str(len(mymergelist))+")",x[pkgindex],"to",x[1]
 				emergelog(" >>> emerge ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" to "+x[1])
+			self.pkgsettings["EMERGE_FROM"] = x[0][:]
 			if x[0] in ["ebuild","blocks"]:
-				if ("--fetchonly" in myopts) or (x[0]=="blocks"):
-					retval=portage.doebuild(y,"fetch",myroot,edebug,("--pretend" in myopts),fetchonly=1)
+				if (x[0]=="blocks") and ("--fetchonly" not in myopts):
+					raise Exception, "Merging a blocker"
+				elif ("--fetchonly" in myopts):
+					retval=portage.doebuild(y,"fetch",myroot,self.pkgsettings,edebug,("--pretend" in myopts),fetchonly=1)
 					if retval:
 						print
 						print "!!! Fetch for",y,"failed, continuing..."
@@ -1365,12 +1389,12 @@ class depgraph:
 				elif "--buildpkg" in myopts:
 					#create pkg, then merge pkg
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Cleaning ("+x[pkgindex]+"::"+y+")")
-					retval=portage.doebuild(y,"clean",myroot,edebug)
+					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug)
 					if retval:
 						sys.exit(1)
-					portage.settings["FEATURES"]=myorigfeat # Put back flags.
+					self.pkgsettings["FEATURES"]=myorigfeat # Put back flags.
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Compiling/Packaging ("+x[pkgindex]+"::"+y+")")
-					retval=portage.doebuild(y,"package",myroot,edebug)
+					retval=portage.doebuild(y,"package",myroot,self.pkgsettings,edebug)
 					if retval:
 						sys.exit(1)
 					#dynamically update our database
@@ -1378,17 +1402,18 @@ class depgraph:
 						portage.db[portage.root]["bintree"].inject(x[2])
 						mytbz2=portage.db[portage.root]["bintree"].getname(x[2])
 						emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Merging ("+x[pkgindex]+"::"+y+")")
+						self.pkgsettings["EMERGE_FROM"] = "binary"
 						retval=portage.pkgmerge(mytbz2,myroot)
 						if retval==None:
 							sys.exit(1)
 				else:
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Cleaning ("+x[pkgindex]+"::"+y+")")
-					retval=portage.doebuild(y,"clean",myroot,edebug)
+					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug)
 					if retval:
 						sys.exit(1)
-					portage.settings["FEATURES"]=myorigfeat # Put back flags.
+					self.pkgsettings["FEATURES"]=myorigfeat # Put back flags.
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Compiling/Merging ("+x[pkgindex]+"::"+y+")")
-					retval=portage.doebuild(y,"merge",myroot,edebug)
+					retval=portage.doebuild(y,"merge",myroot,self.pkgsettings,edebug)
 					if retval:
 						sys.exit(1)
 					#dynamically update our database	
@@ -1396,6 +1421,7 @@ class depgraph:
 				if ("--fetchonly" in myopts):
 					# Fetch binaries
 					continue
+				
 				#merge the tbz2
 				mytbz2=portage.db[portage.root]["bintree"].getname(x[2])
 				emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Merging Binary ("+x[pkgindex]+"::"+y+")")
@@ -1420,13 +1446,13 @@ class depgraph:
 
 				if ("noclean" not in portage.features) and (x[0] != "binary"):
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Post-Build Cleaning ("+x[pkgindex]+"::"+y+")")
-					retval=portage.doebuild(y,"clean",myroot,edebug)
+					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug)
 					if retval:
 						sys.exit(1)
 			
 				if ("--pretend" not in myopts) and ("--fetchonly" not in myopts):
 					# Clean the old package that we have merged over top of it.
-					if portage.settings.has_key("AUTOCLEAN") and (portage.settings["AUTOCLEAN"]=="yes"):
+					if self.pkgsettings["AUTOCLEAN"]=="yes":
 						xsplit=portage.pkgsplit(x[2])
 						emergelog(" >>> AUTOCLEAN: "+xsplit[0])
 						if not unmerge("clean", [xsplit[0]]):
@@ -1645,7 +1671,6 @@ def unmerge(unmerge_action, unmerge_files):
 
 
 def post_emerge(retval=0):
-	auxpat=re.compile('\.info(-\d+)?(\.gz|\.bz2)?$')	
 	os.chdir("/")
 	global myopts
 	print
@@ -1664,7 +1689,7 @@ def post_emerge(retval=0):
 		for z in infodirs:
 			if z=='':
 				continue
-			inforoot=root+z
+			inforoot=normpath(root+z)
 			if os.path.isdir(inforoot):
 				try:
 					infomtime=os.stat(inforoot)[ST_MTIME]
@@ -1704,15 +1729,20 @@ def post_emerge(retval=0):
 				if not os.path.isdir(inforoot):
 					continue
 				for x in os.listdir(inforoot):
-					aux=auxpat.search(x)
-					if not aux:
+					if (x[0] == ".") or (x in ["dir","dir.old"]):
 						continue
-					myso=commands.getstatusoutput("/usr/bin/install-info --dir-file="+inforoot+"/dir "+inforoot+"/"+x)[1]
+					myso=commands.getstatusoutput("LANG=C /usr/bin/install-info --dir-file="+inforoot+"/dir "+inforoot+"/"+x)[1]
+					existsstr="already exists, for file `"
 					if myso!="":
-						badcount=badcount+1
-						if "--verbose" in myopts:
-							print myso
+						if re.search(existsstr,myso):
+							# Already exists... Don't increment the count for this.
+							pass
+						else:
+							badcount=badcount+1
+							if "--verbose" in myopts:
+								print myso
 					icount=icount+1
+					
 				#update mtime so we can potentially avoid regenerating.
 				portage.mtimedb["info"][inforoot]=os.stat(inforoot)[ST_MTIME]
 
@@ -1772,26 +1802,88 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 				mytimeout=int(portage.settings["RSYNC_TIMEOUT"])
 			except:
 				pass
-		mycommand="/usr/bin/rsync -rlptDvz --progress --stats --delete --delete-after --timeout="+str(mytimeout)+" --exclude='distfiles/*' --exclude='local/*' --exclude='packages/*' "
+		rsynccommand="/usr/bin/rsync -rlptDvz --progress --stats --delete --delete-after --timeout="+str(mytimeout)+" --exclude='distfiles/*' --exclude='local/*' --exclude='packages/*' "
 		if portage.settings.has_key("RSYNC_EXCLUDEFROM"):
 			if os.path.exists(portage.settings["RSYNC_EXCLUDEFROM"]):
 				mycommand=mycommand+" --exclude-from "+portage.settings["RSYNC_EXCLUDEFROM"]
 			else:
 				print "!!! RSYNC_EXCLUDEFROM specified, but file does not exist."
-		mycommand=mycommand+" "+syncuri+"/* "+myportdir
-		print ">>> starting rsync with "+syncuri+"..."
-		exitcode=portage.spawn(mycommand,free=1)
+
+		servertimestampdir=portage.settings["PORTAGE_TMPDIR"]+"/sync/"
+
+		content=portage.grabfile(myportdir+"/metadata/timestamp.chk")
+		if (content):
+			mytimestamp=time.mktime(time.strptime(content[0], "%a, %d %b %Y %H:%M:%S +0000"))
+		else:
+			mytimestamp=0
+
+		if not os.path.exists(servertimestampdir):
+			os.mkdir(servertimestampdir)
+			os.chown(servertimestampdir, os.getuid(), portage.portage_gid)
+			os.chmod(servertimestampdir, 06775)
+
+		if os.path.exists(servertimestampdir+"/timestamp.chk"):
+			os.unlink(servertimestampdir+"/timestamp.chk")
+
 		#exitcode=0
 		try:
 			maxretries=int(portage.settings["RSYNC_RETRIES"])
 		except:
 			maxretries=3 #default number of retries
-		retries=1
-		while (exitcode not in [0,1,2,3,4,11,14,20,21]) and (retries<=maxretries):
-			print "\n\n>>> Starting retry %d of %d"% (retries,maxretries)
-			time.sleep(11)
+
+		retries=0
+		hostname=re.split("rsync://([^/]*)",syncuri)[1];
+		updatecache_flg=True
+		while (1):
+			try:
+				ip=socket.gethostbyname(hostname)
+				dosyncuri=string.replace("//"+syncuri+"/", "//"+hostname+"/", ip, 1)
+			except Exception, e:
+				print "Notice:",str(e)
+				dosyncuri = syncuri
+
+			if (retries==0):
+				print ">>> starting rsync with "+syncuri+"..."
+			else:
+				print "\n\n>>> Starting retry %d of %d"% (retries,maxretries)
+
+			print ">>> checking server timestamp ..."
+			mycommand=rsynccommand+" "+dosyncuri+"/metadata/timestamp.chk "+servertimestampdir
+			exitcode=portage.spawn(mycommand,portage.settings,free=1)
+			if (exitcode==0):
+				try:
+					servertimestamp = time.mktime(time.strptime(portage.grabfile(servertimestampdir+"/timestamp.chk")[0], "%a, %d %b %Y %H:%M:%S +0000"))
+				except:
+					servertimestamp = 0
+				
+				if (servertimestamp != 0) and (servertimestamp == mytimestamp):
+					print ">>> cancelling sync because this server timestamp is the same as local timestamp"
+					print
+					updatecache_flg=False
+					break
+				elif (servertimestamp != 0) and (servertimestamp < mytimestamp):
+					print ">>> skipping because this server timestamp is older than local timestamp ..."
+					print
+				elif (servertimestamp == 0) or (servertimestamp > mytimestamp):
+					# actual sync
+					mycommand=rsynccommand+" "+dosyncuri+"/* "+myportdir
+					exitcode=portage.spawn(mycommand,portage.settings,free=1)
+					if exitcode in [0,1,2,3,4,11,14,20,21]:
+						break
+			elif exitcode in [0,1,2,3,4,11,14,20,21]:
+				break
+
 			retries=retries+1
-			exitcode=portage.spawn(mycommand,free=1)
+
+			if retries<=maxretries:
+				print ">>> retry ..."
+				time.sleep(11)
+			else:
+				# over retries
+				# exit loop
+				updatecache_flg=False
+				break
+
 		if (exitcode>0):
 			print
 			if exitcode==1:
@@ -1824,13 +1916,13 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 		if not os.path.exists(myportdir+"/CVS"):
 			#initial checkout
 			print ">>> starting initial cvs checkout with "+syncuri+"..."
-			if not portage.spawn("cd "+cvsdir+"; cvs -d "+cvsroot+" login",free=1):
+			if not portage.spawn("cd "+cvsdir+"; cvs -d "+cvsroot+" login",portage.settings,free=1):
 				print "!!! cvs login error; exiting."
 				sys.exit(1)
 			if os.path.exists(cvsdir+"/gentoo-x86"):
 				print "!!! existing",cvsdir+"/gentoo-x86 directory; exiting."
 				sys.exit(1)
-			if not portage.spawn("cd "+cvsdir+"; cvs -z0 -d "+cvsroot+" co gentoo-x86",free=1):
+			if not portage.spawn("cd "+cvsdir+"; cvs -z0 -d "+cvsroot+" co gentoo-x86",portage.settings,free=1):
 				print "!!! cvs checkout error; exiting."
 				sys.exit(1)
 			if cvsdir!=myportdir:
@@ -1839,16 +1931,16 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 		else:
 			#cvs update
 			print ">>> starting cvs update with "+syncuri+"..."
-			sys.exit(portage.spawn("cd "+myportdir+"; cvs -z0 -q update -dP",free=1)) 
+			sys.exit(portage.spawn("cd "+myportdir+"; cvs -z0 -q update -dP",portage.settings,free=1)) 
 	else:
 		print "!!! rsync setting: ",syncuri,"not recognized; exiting."
 		sys.exit(1)
-	if os.path.exists(myportdir+"/metadata/cache"):
+	if os.path.exists(myportdir+"/metadata/cache") and updatecache_flg:
 		print "\n>>> Updating Portage cache...  ",
 		os.umask(0002)
 		portage.db["/"]["porttree"].dbapi.flush_auxcache()
 		if os.path.exists(portage.dbcachedir):
-			portage.spawn("rm -Rf "+portage.dbcachedir,free=1)
+			portage.spawn("rm -Rf "+portage.dbcachedir,portage.settings,free=1)
 		try:
 			os.mkdir(portage.dbcachedir)
 			os.chown(portage.dbcachedir, os.getuid(), portage.portage_gid)
@@ -1873,7 +1965,7 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 					pass
 		portage.eclassdb["modifications_limit"] = 1
 		portage.save_eclassdb(forced=1)
-		portage.spawn("chmod -R g+rw "+portage.dbcachedir, free=1)
+		portage.spawn("chmod -R g+rw "+portage.dbcachedir, portage.settings, free=1)
 		sys.stdout.write("\b\b  ...done!\n\n")
 		sys.stdout.flush()
 
@@ -2178,7 +2270,8 @@ else:
 				for pkgline in mydepgraph.altlist():
 					if pkgline[0]=="ebuild" and pkgline[3]=="merge":
 						y=portage.portdb.findname(pkgline[2])
-						retval=portage.doebuild(y,"digest",portage.root,edebug,("--pretend" in myopts))
+						tmpsettings = portage.config(clone=portage.settings)
+						retval=portage.doebuild(y,"digest",portage.root,tmpsettings,edebug,("--pretend" in myopts))
 			mydepgraph.merge(mydepgraph.altlist())
 
 		if portage.mtimedb.has_key("resume"):

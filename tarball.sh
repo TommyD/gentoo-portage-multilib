@@ -14,6 +14,14 @@ export TMP="/tmp"
 export V="$1"
 export DEST="${TMP}/${PKG}-${V}"
 export PREVEB="2.0.49_pre2"
+
+if [ -e $TMP/${PKG}-${V} ]; then
+	echo EXISTS ALREADY
+	exit 1
+fi
+
+tabcheck.py bin/emerge `find ./ -type f -name '*.py'`
+
 rm -rf ${DEST}
 install -d -m0755 ${DEST}
 #get any binaries out of the way
@@ -38,7 +46,7 @@ cp ChangeLog ${DEST}
 cd ${DEST}
 find -name CVS -exec rm -rf {} \;
 find -name '*~' -exec rm -rf {} \;
-chown -R root.root ${DEST}
+chown -R root:root ${DEST}
 cd $TMP
 rm -f ${PKG}-${V}/bin/emerge.py ${PKG}-${V}/bin/{pmake,sandbox} ${PKG}-${V}/{bin,pym}/*.py[oc]
 tar cjvf ${TMP}/${PKG}-${V}.tar.bz2 ${PKG}-${V}

@@ -194,8 +194,6 @@ use_enable() {
 	fi
 }
 
-#The following diefunc() and aliases come from Aron Griffis -- an excellent bash coder -- thanks! 
-
 diefunc() {
 	local funcname="$1" lineno="$2" exitcode="$3"
 	shift 3
@@ -727,6 +725,7 @@ dyn_compile() {
 	echo "$CXXFLAGS" > CXXFLAGS
 	echo "$DEPEND"   > DEPEND
 	echo "$IUSE"     > IUSE
+	echo "$PKGUSE"   > PKGUSE
 	echo "$LICENSE"  > LICENSE
 	echo "$CATEGORY" > CATEGORY
 	echo "$PDEPEND"  > PDEPEND
@@ -795,20 +794,6 @@ dyn_install() {
 	if [[ $UNSAFE > 0 ]]; then
 		die "There are ${UNSAFE} unsafe files. Portage will not install them."
 	fi
-
-	# Smart FileSystem Permissions
-	if has sfperms $FEATURES; then
-		for i in $(find ${D}/ -type f -perm -4000); do
-			ebegin ">>> SetUID: [chmod go-r] $i "
-			chmod go-r $i
-			eend $?
-		done
-		for i in $(find ${D}/ -type f -perm -2000); do
-			ebegin ">>> SetGID: [chmod o-r] $i "
-			chmod o-r $i
-			eend $?
-		done
-	fi
 	
 	find ${D}/ -user  portage -print0 | $XARGS -0 -n100 chown root
 	if [ "$USERLAND" == "BSD" ]; then
@@ -817,8 +802,54 @@ dyn_install() {
 		find ${D}/ -group portage -print0 | $XARGS -0 -n100 chgrp root
 	fi
 
+	echo ">>> Completed installing into ${D}"
+	echo
+	cd ${BUILDDIR}
+	trap SIGINT SIGQUIT
+}
+
+dyn_preinst() {
+	pkg_preinst
+
+	# set IMAGE depending if this is a binary or compile merge
+	[ "${EMERGE_FROM}" == "binary" ] && IMAGE=${PKG_TMPDIR}/${PF}/bin \
+					|| IMAGE=${D}
+
+	# remove man pages
+	if has noman $FEATURES; then
+		rm -fR ${IMAGE}/usr/share/man
+	fi
+
+	# remove info pages
+	if has noinfo $FEATURES; then
+		rm -fR ${IMAGE}/usr/share/info
+	fi
+
+	# remove docs
+	if has nodoc $FEATURES; then
+		rm -fR ${IMAGE}/usr/share/doc
+	fi
+
+	# Smart FileSystem Permissions
+	if has sfperms $FEATURES; then
+		for i in $(find ${IMAGE}/ -type f -perm -4000); do
+			ebegin ">>> SetUID: [chmod go-r] $i "
+			chmod go-r $i
+			eend $?
+		done
+		for i in $(find ${IMAGE}/ -type f -perm -2000); do
+			ebegin ">>> SetGID: [chmod o-r] $i "
+			chmod o-r $i
+			eend $?
+		done
+	fi
+
+	# SELinux file labeling (needs to always be last in dyn_preinst)
 	if use selinux; then
-		if [ -x /usr/sbin/setfiles ]; then
+		# only attempt to label if setfiles is executable
+		# and 'context' is available on selinuxfs.
+		if [ -f /selinux/context -a -x /usr/sbin/setfiles ]; then
+			echo ">>> Setting SELinux security labels"
 			if [ -f ${POLICYDIR}/file_contexts/file_contexts ]; then
 				cp -f ${POLICYDIR}/file_contexts/file_contexts ${T}
 			else
@@ -826,13 +857,14 @@ dyn_install() {
 			fi
 
 			addwrite /selinux/context
-			/usr/sbin/setfiles -r ${D} ${T}/file_contexts ${D}
+			/usr/sbin/setfiles -r ${IMAGE} ${T}/file_contexts ${IMAGE} \
+				|| die "Failed to set SELinux security labels."
+		else
+			# nonfatal, since merging can happen outside a SE kernel
+			# like during a recovery situation
+			echo "!!! Unable to set SELinux security labels"
 		fi
 	fi
-
-	echo ">>> Completed installing into ${D}"
-	echo
-	cd ${BUILDDIR}
 	trap SIGINT SIGQUIT
 }
 
@@ -1185,6 +1217,14 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ]; then
 		[ -z "${CCACHE_SIZE}" ] && export CCACHE_SIZE="2G"
 		ccache -M ${CCACHE_SIZE} &> /dev/null
 	fi
+else
+
+killparent() {
+	trap INT
+	kill -KILL ${PORTAGE_MASTER_PID}
+}
+trap "killparent" INT
+
 fi # "$*"!="depend" && "$*"!="clean"
 
 export SANDBOX_ON="1"
@@ -1233,7 +1273,7 @@ for myarg in $*; do
 		pkg_nofetch
 		exit 1
 		;;
-	prerm|postrm|preinst|postinst|config)
+	prerm|postrm|postinst|config)
 		export SANDBOX_ON="0"
 		if [ "$PORTAGE_DEBUG" != "1" ]; then
 			pkg_${myarg}
@@ -1262,7 +1302,7 @@ for myarg in $*; do
 		fi
 		export SANDBOX_ON="0"
 		;;
-	help|clean|setup)
+	help|clean|setup|preinst)
 		#pkg_setup needs to be out of the sandbox for tmp file creation;
 		#for example, awking and piping a file in /tmp requires a temp file to be created
 		#in /etc.  If pkg_setup is in the sandbox, both our lilo and apache ebuilds break.

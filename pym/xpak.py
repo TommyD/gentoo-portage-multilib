@@ -54,7 +54,10 @@ def xpak(rootdir,outfile=None):
 	"""(rootdir,outfile) -- creates an xpak segment of the directory 'rootdir'
 	and under the name 'outfile' if it is specified. Otherwise it returns the
 	xpak segment."""
-	origdir=os.getcwd()
+	try:
+		origdir=os.getcwd()
+	except:
+		origdir="/"
 	os.chdir(rootdir)
 	mylist=[]
 
@@ -188,7 +191,10 @@ def getitem(myid,myitem):
 def xpand(myid,mydest):
 	myindex=myid[0]
 	mydata=myid[1]
-	origdir=os.getcwd()
+	try:
+		origdir=os.getcwd()
+	except:
+		origdir="/"
 	os.chdir(mydest)
 	myindexlen=len(myindex)
 	startpos=0
@@ -324,7 +330,10 @@ class tbz2:
 		"""Unpacks all the files from the dataSegment into 'mydest'."""
 		if not self.scan():
 			return 0
-		origdir=os.getcwd()
+		try:
+			origdir=os.getcwd()
+		except:
+			origdir="/"
 		a=open(self.file,"r")
 		if not os.path.exists(mydest):
 			os.makedirs(mydest)

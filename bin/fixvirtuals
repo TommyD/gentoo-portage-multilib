@@ -1,0 +1,31 @@
+#!/usr/bin/python -O
+# Copyright 1999-2003 Gentoo Technologies, Inc.
+# Distributed under the terms of the GNU General Public License v2
+# $Header$
+
+import os,sys
+sys.path = ["/usr/lib/portage/pym"]+sys.path
+
+import portage
+
+if portage.secpass!=2:
+	print "fixvirtuals: root access required."
+	sys.exit(1)
+
+newvirts={}
+myvirts=portage.grabdict("/var/cache/edb/virtuals")
+myprovides=portage.db["/"]["vartree"].get_all_provides()
+
+for myvirt in myprovides.keys():
+	newvirts[myvirt]=[]
+	for mycatpkg in myprovides[myvirt]:
+		mysplit=portage.catpkgsplit(mycatpkg)
+		pkg=mysplit[0]+"/"+mysplit[1]
+
+		try:
+			if (newvirts[myvirt].index(pkg)):
+				pass
+		except:
+			newvirts[myvirt].append(pkg)
+
+portage.writedict(newvirts,"/var/cache/edb/virtuals")

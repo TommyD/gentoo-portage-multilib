@@ -152,6 +152,8 @@ ven_string=ven_cat+'/'+ven_nam+'-'+ven_ver+ven_suf+ven_rev
 valid_ebuild_name_re=re.compile(ven_string+'$', re.I)
 valid_ebuild_filename_re=re.compile(ven_string+'\.ebuild$', re.I)
 
+repoman_settings = portage.config(clone=portage.settings)
+
 def valid_ebuild_name(name):
 	"""(name) --- Checks to ensure that the package name meets portage specs.
 	Return 1 if valid, 0 if not."""
@@ -282,11 +284,6 @@ if mymode=="help" or ("--help" in myoptions):
 	help()
 if mymode=="last" or (mymode=="lfull"):
 	last()
-if portage.settings["PORTDIR"][-1]!="/":
-	portage.settings["PORTDIR"]=portage.settings["PORTDIR"]+"/"
-if portage.settings["PORTDIR_OVERLAY"] and \
-   portage.settings["PORTDIR_OVERLAY"][-1]!="/":
-	portage.settings["PORTDIR_OVERLAY"]=portage.settings["PORTDIR_OVERLAY"]+"/"
 
 isCvs=False
 isOverlay=False
@@ -294,15 +291,14 @@ mydir=os.getcwd()
 if mydir[-1] != "/":
 	mydir=mydir + "/"
 
-
 if not os.path.isdir("CVS"):
-	if mydir[:len(portage.settings["PORTDIR_OVERLAY"])] == portage.settings["PORTDIR_OVERLAY"]:
+	if mydir[:len(repoman_settings["PORTDIR_OVERLAY"])] == repoman_settings["PORTDIR_OVERLAY"]:
 		myreporoot=os.getcwd();
-		myreporootpath=portage.settings["PORTDIR_OVERLAY"]
+		myreporootpath=repoman_settings["PORTDIR_OVERLAY"]
 		isOverlay=True
-	elif mydir[:len(portage.settings["PORTDIR"])] == portage.settings["PORTDIR"]:
+	elif mydir[:len(repoman_settings["PORTDIR"])] == repoman_settings["PORTDIR"]:
 		myreporoot=os.getcwd();
-		myreporootpath=portage.settings["PORTDIR"]
+		myreporootpath=repoman_settings["PORTDIR"]
 	else:
 		err("We do not appear to be inside a local repository or a portage tree. Exiting.")
 else:
@@ -325,11 +321,14 @@ else:
 	except:
 		err("Error grabbing repository information; exiting.")
 
+if myreporootpath[-1] != "/":
+	myreporootpath += "/"
+
 if not "--pretend" in myoptions and not isCvs:
 	print
 	print darkgreen("not in a CVS repository, enabling pretend mode")
 	myoptions.append("--pretend");
-		
+
 if myreporootpath=="/space/cvsroot":
 	print
 	print
@@ -357,9 +356,16 @@ if myreporootpath=="/space/cvsroot":
 	print
 	sys.exit(123)
 
+portdir = repoman_settings["PORTDIR"]
+if portdir[-1] != '/':
+	portdir = portdir + "/"
+	repoman_settings["PORTDIR"] = portdir
+
 try: # Determine if we're in PORTDIR... If not tell portage to accomodate.
 	mydir=os.getcwd()
-	if portage.settings["PORTDIR"]!=mydir[:len(portage.settings["PORTDIR"])]:
+	if mydir[-1] != '/':
+		mydir = mydir + "/"
+	if portdir != mydir[:len(repoman_settings["PORTDIR"])]:
 		# We're not in the PORTDIR
 		print
 		print darkred("We're not in PORTDIR..."),
@@ -379,15 +385,17 @@ except Exception, e:
 	pass
 
 os.environ["PORTAGE_CALLER"]="repoman"
-os.environ["ACCEPT_KEYWORDS"]="-~"+portage.settings["ARCH"]
+os.environ["ACCEPT_KEYWORDS"]="-~"+repoman_settings["ARCH"]
 if isCvs:
-	os.environ["FEATURES"]=portage.settings["FEATURES"]+" cvs"
-reload(portage)
+	os.environ["FEATURES"]=repoman_settings["FEATURES"]+" cvs"
 
-portage.settings.usemask += portage.archlist
-while portage.settings["ARCH"] in portage.settings.usemask:
-	del portage.settings.usemask[portage.settings.usemask.index(portage.settings["ARCH"])]
-portage.settings.regenerate()
+reload(portage)
+repoman_settings = portage.config(clone=portage.settings)
+
+repoman_settings.usemask += portage.archlist
+while repoman_settings["ARCH"] in repoman_settings.usemask:
+	del repoman_settings.usemask[repoman_settings.usemask.index(repoman_settings["ARCH"])]
+repoman_settings.regenerate()
 
 
 
@@ -421,7 +429,7 @@ else:
 # retreive local USE list
 luselist=[]
 try:
-	mylist=portage.grabfile(portage.settings["PORTDIR"]+"/profiles/use.local.desc")
+	mylist=portage.grabfile(repoman_settings["PORTDIR"]+"/profiles/use.local.desc")
 	for mypos in range(0,len(mylist)):
 		mysplit=mylist[mypos].split()[0]
 		myuse=string.split(mysplit,":")
@@ -433,7 +441,7 @@ except:
 # setup a uselist from portage
 uselist=[]
 try:
-	uselist=portage.grabfile(portage.settings["PORTDIR"]+"/profiles/use.desc")
+	uselist=portage.grabfile(repoman_settings["PORTDIR"]+"/profiles/use.desc")
 	for l in range(0,len(uselist)):
 		uselist[l]=string.split(uselist[l])[0]
 except:
@@ -441,14 +449,14 @@ except:
 
 uselist=uselist+luselist
 
-# retreive a list of current licenses in portage
-liclist=portage.listdir(portage.settings["PORTDIR"]+"/licenses")
+# retrieve a list of current licenses in portage
+liclist=portage.listdir(repoman_settings["PORTDIR"]+"/licenses")
 if not liclist:
 	err("Couldn't find licenses?")
 
-# retreive list of offiial keywords
+# retrieve list of offical keywords
 try:
-	kwlist=portage.grabfile(portage.settings["PORTDIR"]+"/profiles/keywords.desc")
+	kwlist=portage.grabfile(repoman_settings["PORTDIR"]+"/profiles/keywords.desc")
 except:
 	err("Couldn't read KEYWORDS from keywords.desc")
 if not kwlist:
@@ -642,7 +650,7 @@ for x in scanlist:
 		for mytype,mypos in [["DEPEND",len(missingvars)],["RDEPEND",len(missingvars)+1]]:
 			mykey=mytype+".bad"+suffix
 			myvalue=string.join(portage.db["/"]["porttree"].dbapi.aux_get(catdir+"/"+y,[ mytype ]))
-			mydep=portage.dep_check(myvalue,portage.db["/"]["porttree"].dbapi,use="all",mode=matchmode)
+			mydep=portage.dep_check(myvalue,portage.db["/"]["porttree"].dbapi,repoman_settings,use="all",mode=matchmode)
 			if mydep[0]==1:
 				if mydep[1]!=[]:
 					#we have some unsolvable deps
@@ -847,9 +855,9 @@ else:
 		del xs[-2]
 		myeb=string.join(xs[:-1],"/")+"/"+xs[-1][7:]
 		if "--pretend" in myoptions:
-			print "(ebuild "+portage.settings["PORTDIR"]+"/"+myeb+".ebuild digest)"
+			print "(ebuild "+repoman_settings["PORTDIR"]+"/"+myeb+".ebuild digest)"
 		else:
-			os.system("ebuild "+portage.settings["PORTDIR"]+"/"+myeb+".ebuild digest")
+			os.system("ebuild "+repoman_settings["PORTDIR"]+"/"+myeb+".ebuild digest")
 	mycvstree=cvstree.getentries("./",recursive=1)
 	if isCvs and not mycvstree:
 		print "!!! It seems we don't have a cvs tree?"
@@ -1015,8 +1023,8 @@ else:
 		myfiles=myheaders+myremoved+mynew
 		mydone=[]
 		if repolevel==3:   # In a package dir
-			portage.settings["O"]="./"
-			portage.digestgen([],manifestonly=1)
+			repoman_settings["O"]="./"
+			portage.digestgen([],repoman_settings,manifestonly=1)
 		elif repolevel==2: # In a category dir
 			for x in myfiles:
 				xs=string.split(x,"/")
@@ -1025,7 +1033,7 @@ else:
 				if xs[0] in mydone:
 					continue
 				mydone.append(xs[0])
-				portage.settings["O"]="./"+xs[0]
+				repoman_settings["O"]="./"+xs[0]
 				portage.digestgen([],manifestonly=1)
 		elif repolevel==1: # repo-cvsroot
 			print green("RepoMan sez:"), "\"You're rather crazy... doing the entire repository.\"\n"
@@ -1036,7 +1044,7 @@ else:
 				if string.join(xs[:2],"/") in mydone:
 					continue
 				mydone.append(string.join(xs[:2],"/"))
-				portage.settings["O"]="./"+string.join(xs[:2],"/")
+				repoman_settings["O"]="./"+string.join(xs[:2],"/")
 				portage.digestgen([],manifestonly=1)
 		else:
 			print red("I'm confused... I don't know where I am!")
@@ -1050,7 +1058,7 @@ else:
 			os.system("/usr/sbin/ebuild "+x+".ebuild digest")
 		y = string.split(x,"/")
 		if "sign" in portage.features:
-			gpgcmd="gpg -ab --yes "+portage.settings["GPG_OPTIONS"]+" "
+			gpgcmd="gpg -ab --yes "+repoman_settings["GPG_OPTIONS"]+" "
 			sigfile=y[:-1]+"/files/digest-"+y[-1]
 			if "--pretend" in myoptions:
 				print "("+gpgcmd+sigfile+")"
