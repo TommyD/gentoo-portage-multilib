@@ -2723,7 +2723,9 @@ class dblink:
 		globalcounterfile.write(str(packagecounter))
 		fcntl.flock(globalcounterfile.fileno(), fcntl.LOCK_UN)
 		globalcounterfile.close()
-		print ">>> Package will have counter",packagecounter
+		#This next line just ends up confusing people and I don't think it's absolutely necessary;
+		#commented out (drobbins)
+		#print ">>> Package will have counter",packagecounter
 		# get old contents info for later unmerging
 		oldcontents=self.getcontents()
 		# run preinst script
