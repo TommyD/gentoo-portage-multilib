@@ -656,8 +656,10 @@ for x in scanlist:
 					continue
 				elif (keyword[0]=="~"):
 					portage.groups=[keyword[1:], keyword]
+					repoman_settings["ARCH"]=keyword[1:]
 				else:
 					portage.groups=[keyword]
+					repoman_settings["ARCH"]=keyword
 
 				mydep=portage.dep_check(myvalue,portage.db["/"]["porttree"].dbapi,repoman_settings,use="all",mode=matchmode)
 				if mydep[0]==1:
