@@ -286,6 +286,12 @@ if (myaction in ["world", "system"]) and myfiles:
 	print "emerge: please specify a package class (\"world\" or \"system\") or individual packages, but not both."
 	sys.exit(1)
 
+for x in myfiles:
+	if os.path.exists(os.path.abspath(x)):
+		print "emerging by path implies --oneshot... adding --oneshot to options."
+		print red("\n*** emerging by path is broken and may not always work!!!\n")
+		break
+
 if ("--tree" in myopts) and ("--columns" in myopts):
 	print "emerge: can't specify both of \"--tree\" and \"--columns\"."
 	sys.exit(1)
@@ -546,15 +552,6 @@ def getportageversion():
 def help():
 	# Move all the help stuff out of this file.
 	emergehelp.help(myaction,myopts,havecolor)
-
-# broken and dangerous feature
-for x in myfiles:
-	if x[-7:] == ".ebuild":
-		print
-		print red("!!! Warning: emerge /path/to/ebuild is broken and considered dangerous.")
-		print red("!!! Don't use it. I'm serious, we're coming after you if you use it.")
-		print
-		countdown(10, "Continuing with emerge /path/to/ebuild")
 
 # check if root user is the current user for the actions where emerge needs this
 if ("--pretend" in myopts) or ("--fetchonly" in myopts or "--fetch-all-uri" in myopts) or (myaction=="search"):
@@ -1010,13 +1007,18 @@ class depgraph:
 						sys.exit(1)
 				mytbz2=xpak.tbz2(x)
 				mykey=mytbz2.getelements("CATEGORY")[0]+"/"+os.path.basename(x)[:-5]
+				if portage.db["/"]["bintree"].getname(mykey) != os.path.abspath(x):
+					print red("\n*** You need to adjust PKGDIR to emerge this package.\n")
+					sys.exit(1)
 				if not self.create(["binary",portage.root,mykey],None,"--onlydeps" not in myopts):
 					return (0,myfavorites)
 				elif not "--oneshot" in myopts:
 					myfavorites.append(mykey)
 			elif x[-7:]==".ebuild":
 				mykey=os.path.basename(os.path.abspath(x+"/../.."))+"/"+os.path.basename(x)[:-7]
-				print mykey
+				if portage.db["/"]["porttree"].dbapi.findname(mykey) != os.path.abspath(x):
+					print red("\n*** You need to adjust PORTDIR or PORTDIR_OVERLAY to emerge this package.\n")
+					sys.exit(1)
 				if not self.create(["ebuild",portage.root,mykey],None,"--onlydeps" not in myopts):
 					return (0,myfavorites)
 				elif not "--oneshot" in myopts:
