@@ -738,6 +738,7 @@ execve(const char *filename, char *const argv[], char *const envp[])
 	int env_len = 0;
 	char canonic[SB_PATH_MAX];
 	char **my_env = NULL;
+	int kill_env = 1;
 	/* We limit the size LD_PRELOAD can be here, but it should be enough */
 	char tmp_str[4096];
 
@@ -749,6 +750,7 @@ execve(const char *filename, char *const argv[], char *const envp[])
 			if (strstr(envp[count], "LD_PRELOAD=") == envp[count]) {
 				if (NULL != strstr(envp[count], sandbox_lib)) {
 					my_env = (char **) envp;
+					kill_env = 0;
 					break;
 				} else {
 					int i = 0;
@@ -808,7 +810,7 @@ execve(const char *filename, char *const argv[], char *const envp[])
 		result = true_execve(filename, argv, my_env);
 		old_errno = errno;
 
-		if (my_env) {
+		if (my_env && kill_env) {
 			free(my_env);
 			my_env = NULL;
 		}

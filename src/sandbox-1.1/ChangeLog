@@ -3,10 +3,14 @@
 # $Header$
 
   04 Apr 2004; Nicholas Jones <carpaski@gentoo.org> libsandbox.c, sandbox.c:
+	Another fix from jstubbs regarding a free() on a stack variable for the
+	environment -- tracking now prevents extraneous free()'s segfault.
+	
+  04 Apr 2004; Nicholas Jones <carpaski@gentoo.org> libsandbox.c, sandbox.c:
 	J. Stubbs tracked down a new bug where mkdir was failing to the patch on
 	the lstat in mkdir... it now only returns 0 or -1 as documented for mkdir.
 	Also remove the errno = ESUCCESS settings as documentation points out that
-	a library isn't allowed to do that. 
+	a library isn't allowed to do that.
 
   04 Apr 2004; Nicholas Jones <carpaski@gentoo.org> libsandbox.c: Added a
   file_security_check() function to check random potential exploits on files
