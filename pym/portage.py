@@ -1207,7 +1207,10 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 				"rpm":"setup unpack compile install rpm"
 				}
 	if mydo in actionmap.keys():	
-		return spawn("/usr/sbin/ebuild.sh "+actionmap[mydo],debug)
+		if "noauto" in features:
+			return spawn("/usr/sbin/ebuild.sh "+mydo,debug)
+		else:
+			return spawn("/usr/sbin/ebuild.sh "+actionmap[mydo],debug)
 	elif mydo=="qmerge": 
 		#qmerge is specifically not supposed to do a runtime dep check
 		return merge(settings["CATEGORY"],settings["PF"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot)

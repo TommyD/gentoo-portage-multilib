@@ -10,7 +10,7 @@ spinpos=0
 #number of ebuilds merged
 merged=0
 params=["selective", "deep", "self", "recurse", "empty"]
-actions=["clean", "config", "help", "prune", "rsync", "search", "sync", "system", "unmerge", "world", "inject", "regen", "depclean"]
+actions=["clean", "config", "help", "info", "prune", "rsync", "search", "sync", "system", "unmerge", "world", "inject", "regen", "depclean"]
 options=["--autoclean", "--deep", "--selective", "--buildpkg", "--debug", "--nodeps", "--emptytree", "--fetchonly", 
 "--noreplace", "--onlydeps", "--pretend", "--usepkg", "--searchdesc", "--verbose", "--update", "--help", "--oneshot", "--version"]
 
@@ -22,6 +22,7 @@ def emergelog(mystr):
 	try:
 		mylogfile=open("/var/log/emerge.log", "a")
 		mylogfile.write(mystr+"\n")
+		mylogfile.flush()
 		mylogfile.close()
 	except:
 		pass
@@ -921,16 +922,21 @@ class depgraph:
 				print "\n!!! Error: the "+x[2]+" package conflicts with this package and both can't be installed on the same system together."
 				sys.exit(1)
 
-		for x in mylist:
-			if x[3]=="nomerge":
-				continue
+		mymergelist=[]
+		for x in range(len(mylist)):
+			if mylist[x][3]!="nomerge":
+				mymergelist.append(mylist[x])
+
+		mergecount=0
+		for x in mymergelist:
+			mergecount+=1
 			myroot=x[1]
 			#the last argument in the portage.doebuild() tells doebuild to *not* do dep checking
 			#(emerge is already handling that)
 			y=portage.portdb.findname(x[2])
 			if not "--pretend" in myopts:
-				print ">>> emerge",x[2],"to",x[1]
-				emergelog(" >>> merging: "+y)
+				print ">>> emerge ("+str(mergecount)+" of "+str(len(mymergelist))+")",x[2],"to",x[1]
+				emergelog(" >>> emerge ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[2]+" to "+x[1])
 			if x[0]=="ebuild":
 				if "--fetchonly" in myopts:
 					retval=portage.doebuild(y,"fetch",myroot,edebug,("--pretend" in myopts))
@@ -1344,6 +1350,22 @@ elif "config"==myaction:
 	emergelog(" === config")
 	print
 	print "Currently, \'config\' is a --help option only."
+	print
+# INFO action
+elif "info"==myaction:
+	try:
+		profilever=string.split(os.readlink("/etc/make.profile"), "/")[-1]
+	except:
+		profilever="unavailable"
+	print
+	print "Portage " + portage.VERSION +" (profile "+profilever+", gcc-"+commands.getstatusoutput("/usr/bin/gcc -dumpversion")[1]+")"
+	print "================================================================="
+	for x in ['USE', 'ARCH', 'COMPILER', 'CHOST', 'CFLAGS', 'CXXFLAGS',
+	          'ACCEPT_KEYWORDS', 'CONFIG_PROTECT', 'CONFIG_PROTECT_MASK',
+						'MAKEOPTS', 'JDK_HOME', 'JAVA_HOME', 'AUTOCLEAN', 'SYNC',
+						'GENTOO_MIRRORS']:
+		print x+'="'+portage.settings[x]+'"'
+	#print portage.settings.keys()
 	print
 # SEARCH action
 elif "search"==myaction:
