@@ -2,6 +2,15 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+*portage-2.0.47-r8 (28 Feb 2003): Fixes -- cvs-src, ebuild.sh, repoman
+
+  28 Feb 2003; Nicholas Jones <carpaski@gentoo.org> *: reorg ebuild.sh again
+	to ensure that aliases are expanded properly. Repoman now determines the
+	proper PORTDIR to set when loading portage to scan the cvs tree. portage.py
+	fixes for cvs-src permission problems with userpriv.
+
+*portage-2.0.47-r7 (27 Feb 2003): Quick fix for eerror() problem.
+
 *portage-2.0.47-r6 (26 Feb 2003): Drop deprecated warnings for new syntax.
 
   26 Feb 2003; Alain Penders <alain@gentoo.org> emerge: Drop deprecated
