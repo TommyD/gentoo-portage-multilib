@@ -23,8 +23,9 @@ options=[
 "--debug",     "--deep",       "--emptytree",    "--fetchonly",
 "--help",      "--noconfmem",  "--nodeps",       "--noreplace",
 "--nospinner", "--oneshot",    "--onlydeps",     "--pretend",
-"--quiet",     "--searchdesc", "--selective",    "--update",
-"--usepkg",    "--usepkgonly", "--verbose",      "--version"
+"--quiet",     "--resume",     "--searchdesc",   "--selective",
+"--update",    "--usepkg",     "--usepkgonly",   "--verbose",
+"--version",   "--columns"
 ]
 shortmapping={
 "a":"--autoclean",
@@ -806,6 +807,7 @@ class depgraph:
 			else:
 				if x[3]=="nomerge":
 					continue
+				
 				#we need to use "--emptrytree" testing here rather than "empty" param testing because "empty"
 				#param is used for -u, where you still *do* want to see when something is being upgraded.
 				myoldbest=""
@@ -841,10 +843,43 @@ class depgraph:
 							if ebuild_iuse != "":
 								iuse=iuse+blue("-"+ebuild_iuse)+" "
 
-				if x[1]!="/":
-					print "["+x[0]+" "+addl+"]",darkgreen(x[2]),myoldbest,darkgreen("to "+x[1]),iuse
+				xs=portage.pkgsplit(x[2])
+				if xs[2]=="r0":
+					xs[2]=""
 				else:
-					print "["+x[0]+" "+addl+"]",darkgreen(x[2]),myoldbest,iuse
+					xs[2]="-"+xs[2]
+
+				if portage.settings.has_key("COLUMNWIDTH"):
+					mywidth=int(portage.settings["COLUMNWIDTH"])
+				else:
+					mywidth=130
+				oldlp=mywidth-30
+				newlp=oldlp-30
+					
+				if x[1]!="/":
+					if "--columns" in myopts:
+						myprint="["+x[0]+" "+addl+"] "+darkgreen(xs[0])
+						if (newlp-len(myprint)) > 0:
+							myprint=myprint+" "*(newlp-len(myprint))
+						myprint=myprint+"["+darkblue(xs[1]+xs[2])+"] "
+						if (oldlp-len(myprint)) > 0:
+							myprint=myprint+" "*(oldlp-len(myprint))
+						myprint=myprint+myoldbest
+						myprint=myprint+darkgreen("  to "+x[1])+" "+iuse
+					else:
+						myprint="["+x[0]+" "+addl+"] "+darkgreen(x[2])+" "+myoldbest+" "+darkgreen("to "+x[1])+" "+iuse
+				else:
+					if "--columns" in myopts:
+						myprint="["+x[0]+" "+addl+"] "+darkgreen(xs[0])
+						if (newlp-len(myprint)) > 0:
+							myprint=myprint+(" "*(newlp-len(myprint)))
+						myprint=myprint+green(" ["+xs[1]+xs[2]+"] ")
+						if (oldlp-len(myprint)) > 0:
+							myprint=myprint+(" "*(oldlp-len(myprint)))
+						myprint=myprint+myoldbest+"  "+iuse
+					else:
+						myprint="["+x[0]+" "+addl+"] "+darkgreen(x[2])+" "+myoldbest+" "+iuse
+				print myprint
 
 			mysplit=portage.pkgsplit(x[2])
 			# XXX mysplit _can_ be None.... Why?
@@ -924,32 +959,42 @@ class depgraph:
 				
 	def merge(self,mylist):
 		returnme=0
+		mymergelist=[]
+
 		#check for blocking dependencies
 		for x in mylist:
 			if x[0]=="blocks":
 				print "\n!!! Error: the "+x[2]+" package conflicts with this package and both can't be installed on the same system together."
 				sys.exit(1)
 
-		mymergelist=[]
-		myfavs=portage.grabfile(portage.root+"var/cache/edb/world")
-		myfavdict=genericdict(myfavs)
-		mysysdict=genericdict(syslist)
-		for x in range(len(mylist)):
-			if mylist[x][3]!="nomerge":
-				# Add to the mergelist
-				mymergelist.append(mylist[x])
-			else:
-				# Add to the world file. Since we won't be able to later.
-				myfavkey=portage.cpv_getkey(mylist[x][2])
-				if (not "--fetchonly" in myopts) and (myfavkey in favorites):
-					#don't record if already in system profile or already recorded
-					if (not mysysdict.has_key(myfavkey)) and (not myfavdict.has_key(myfavkey)):
-						#we don't have a favorites entry for this package yet; add one
-						myfavdict[myfavkey]=myfavkey
-						print ">>> Recording",myfavkey,"in \"world\" favorites file..."
-		portage.writedict(myfavdict,portage.root+"var/cache/edb/world",writekey=0)
+		if ("--resume" in myopts):
+			# We're resuming.
+			print "p.m.r:",portage.mtimedb["resume"]
+			mymergelist=portage.mtimedb["resume"]["mergelist"][:]
+		else:
+			print "not resuming"
+			myfavs=portage.grabfile(portage.root+"var/cache/edb/world")
+			myfavdict=genericdict(myfavs)
+			mysysdict=genericdict(syslist)
+			for x in range(len(mylist)):
+				if mylist[x][3]!="nomerge":
+					# Add to the mergelist
+					mymergelist.append(mylist[x])
+				else:
+					# Add to the world file. Since we won't be able to later.
+					myfavkey=portage.cpv_getkey(mylist[x][2])
+					if (not "--fetchonly" in myopts) and (myfavkey in favorites):
+						#don't record if already in system profile or already recorded
+						if (not mysysdict.has_key(myfavkey)) and (not myfavdict.has_key(myfavkey)):
+							#we don't have a favorites entry for this package yet; add one
+							myfavdict[myfavkey]=myfavkey
+							print ">>> Recording",myfavkey,"in \"world\" favorites file..."
+			portage.writedict(myfavdict,portage.root+"var/cache/edb/world",writekey=0)
+
+			portage.mtimedb["resume"]["mergelist"]=mymergelist
 
 		mergecount=0
+		print mymergelist
 		for x in mymergelist:
 			mergecount+=1
 			myroot=x[1]
@@ -1043,10 +1088,18 @@ class depgraph:
 										myr-=1
 									myr+=1
 								emergelog(" *** RESTARTING emerge via exec() after change of portage version.")
-								os.execv("/usr/lib/portage/bin/emerge", myargv)
+								del portage.mtimedb["resume"]["mergelist"][0]
+								portage.portageexit()
+								os.execv("/usr/lib/portage/bin/emerge", ["emerge","--resume"])
 
 			if ("--pretend" not in myopts) and ("--fetchonly" not in myopts):
 				emergelog(" ::: completed emerge ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[2]+" to "+x[1])
+			
+			# Unsafe for parallel merges
+			del portage.mtimedb["resume"]["mergelist"][0]
+		# We're out of the loop... We're done. Delete the resume data.
+		if portage.mtimedb.has_key("resume"):
+			del portage.mtimedb["resume"]
 
 		if ("--pretend" not in myopts):
 			if ("--fetchonly" not in myopts):
@@ -1440,10 +1493,14 @@ elif "info"==myaction:
 	print getportageversion()
 	print "================================================================="
 	print "System uname: "+unameout
-	for x in ['GENTOO_MIRRORS', 'CONFIG_PROTECT', 'CONFIG_PROTECT_MASK',
-			'PORTDIR', 'DISTDIR', 'PKGDIR', 'PORTAGE_TMPDIR', 'PORTDIR_OVERLAY',
-			'USE', 'COMPILER', 'CHOST', 'CFLAGS', 'CXXFLAGS','ACCEPT_KEYWORDS', 
-			'MAKEOPTS', 'AUTOCLEAN', 'SYNC', 'FEATURES']:
+	if "--verbose" in myopts:
+		myvars=portage.settings.keys()
+	else:
+		myvars=['GENTOO_MIRRORS', 'CONFIG_PROTECT', 'CONFIG_PROTECT_MASK',
+				'PORTDIR', 'DISTDIR', 'PKGDIR', 'PORTAGE_TMPDIR', 'PORTDIR_OVERLAY',
+				'USE', 'COMPILER', 'CHOST', 'CFLAGS', 'CXXFLAGS','ACCEPT_KEYWORDS', 
+				'MAKEOPTS', 'AUTOCLEAN', 'SYNC', 'FEATURES']
+	for x in myvars:
 		print x+'="'+portage.settings[x]+'"'
 	#print portage.settings.keys()
 	print
@@ -1583,40 +1640,69 @@ elif "depclean"==myaction:
 
 # "update", "system", or just process files:
 else:
+	favorites=[]
+	syslist=getlist("system")
 	if ("--pretend" in myopts) and not ("--fetchonly" in myopts):
 		print
 		print darkgreen("These are the packages that I would merge, in order:")
 		print
-	mydepgraph=depgraph(myaction,myopts)
-	favorites=[]
-	syslist=getlist("system")
-	if myaction in ["system","world"]:
-		print "Calculating",myaction,"dependencies  ",
-		if not mydepgraph.xcreate(myaction):
-			sys.exit(1)
-		print "\b\b ...done!"
+	if ("--resume" in myopts) and portage.mtimedb.has_key("resume"):
+		print "doing resume!"
+		myopts=portage.mtimedb["resume"]["myopts"]
+		print myopts,portage.mtimedb["resume"]["myopts"]
+		mydepgraph=depgraph("resume",myopts)
+		if "--resume" not in myopts:
+			myopts+=["--resume"]
+		print myopts,portage.mtimedb["resume"]["myopts"]
 	else:
-		if not myfiles:
-			print "emerge: please tell me what to do."
-			help()
+		if ("--resume" in myopts):
+			del myopts[myopts.index("--resume")]
+			print "*** No data for resuming. Not resuming."
 			sys.exit(1)
-			#we don't have any files to process; skip this step and exit
-		print "Calculating dependencies  ",
-		retval,favorites=mydepgraph.select_files(myfiles)
-		if not retval:
-			print "\n!!! Error calculating dependancies. Please correct."
-			sys.exit(1)
-		print "\b\b ...done!"
-	if ("--pretend" in myopts) and not ("--fetchonly" in myopts):
-		mydepgraph.display(mydepgraph.altlist())
+
+		mydepgraph=depgraph(myaction,myopts)
+		if myaction in ["system","world"]:
+			print "Calculating",myaction,"dependencies  ",
+			if not mydepgraph.xcreate(myaction):
+				sys.exit(1)
+			print "\b\b ...done!"
+		else:
+			if not myfiles:
+				print "emerge: please tell me what to do."
+				help()
+				sys.exit(1)
+				#we don't have any files to process; skip this step and exit
+			print "Calculating dependencies  ",
+			retval,favorites=mydepgraph.select_files(myfiles)
+			if not retval:
+				print "\n!!! Error calculating dependancies. Please correct."
+				sys.exit(1)
+			print "\b\b ...done!"
+
+	if ("--pretend" in myopts) and ("--fetchonly" not in myopts):
+		if ("--resume" in myopts):
+			mydepgraph.display(portage.mtimedb["resume"]["mergelist"])
+		else:
+			mydepgraph.display(mydepgraph.altlist())
 	else:
 		if ("--buildpkgonly" in myopts):
 			if not mydepgraph.digraph.hasallzeros():
 				print "\n!!! --buildpkgonly requires all dependancies to be merged."
 				print "!!! Cannot merge requested packages. Merge deps and try again.\n"
 				sys.exit(1)
-			
-		mydepgraph.merge(mydepgraph.altlist())
+
+		if ("--resume" in myopts):
+			favorites=portage.mtimedb["resume"]["favorites"]
+			mydepgraph.merge(portage.mtimedb["resume"]["mergelist"])
+		else:
+			print "*** Write resume data!"
+			portage.mtimedb["resume"]={}
+			portage.mtimedb["resume"]["myopts"]=myopts
+			portage.mtimedb["resume"]["favorites"]=favorites
+			mydepgraph.merge(mydepgraph.altlist())
+
+		if portage.mtimedb.has_key("resume"):
+			del portage.mtimedb["resume"]
 		if portage.settings["AUTOCLEAN"] and "yes"==portage.settings["AUTOCLEAN"]:
 			print ">>> Auto-cleaning packages ..."
 			unmerge("clean", ["world"])

@@ -1,6 +1,15 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  14 Feb 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Added
+  resume to mtimedbkeys.
+	
+  14 Feb 2003; Nicholas Jones <carpaski@gentoo.org> emerge: --columns
+  flag to support column output in --pretend. --resume support added
+  to restart portage with the package list with which it stopped -- data
+  is stored in mtimedb. Added '--verbose' to 'emerge info' to display
+  all variables in settings.
+
   13 Feb 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Fix to
   distcc and ccache to prevent them from calling themselves if they
   catch themselves in the path -- double path problem.

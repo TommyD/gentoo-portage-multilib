@@ -4313,7 +4313,11 @@ def flushmtimedb(record):
 
 #grab mtimes for eclasses and upgrades
 mtimedb={}
-mtimedbkeys=["updates","eclass","packages","info","version","starttime"]
+mtimedbkeys=[
+"updates", "eclass",  "packages",
+"info",    "version", "starttime",
+"resume"
+]
 mtimedbfile=root+"var/cache/edb/mtimedb"
 try:
 	mtimedb=cPickle.load(open(mtimedbfile))
@@ -4331,7 +4335,7 @@ if mtimedb.has_key("version") and mtimedb["version"]!=VERSION:
 
 for x in mtimedb.keys():
 	if x not in mtimedbkeys:
-		#print "Deleting invalid mtimedb key: "+str(x)
+		print "Deleting invalid mtimedb key: "+str(x)
 		del mtimedb[x]
 
 def do_upgrade(mykey):
@@ -4414,6 +4418,7 @@ def portageexit():
 			if mtimedb and not os.environ.has_key("SANDBOX_ACTIVE"):
 				mtimedb["version"]=VERSION
 				cPickle.dump(mtimedb,open(mymfn,"w"))
+				print "*** Wrote out mtimedb data successfully."
 				os.chown(mymfn,uid,wheelgid)
 				os.chmod(mymfn,0664)
 		except Exception, e:
