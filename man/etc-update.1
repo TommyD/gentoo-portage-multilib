@@ -1,19 +1,19 @@
-.TH etc-update "1" "March 2002" "gentoolkit 0.1.4" 
+.TH "ETC-UPDATE" "1" "March 2002" "portage 2.0.42" "Portage"
 .SH NAME
-etc-update \- manual page for the etc-update program, a program that traverses
-your /etc directory, looking for suitable config file updates
+etc-update \- handle configuration file updates
 .SH SYNOPSIS
 .B etc-update
 .SH DESCRIPTION
 .I etc-update
-is supposed to be run after merging a new package, to see if
-there are updates to the configuration files in /etc. 
-If a new configuration file will override an old one, 
+is supposed to be run after merging a new package to see if
+there are updates to the configuration files.  If a new
+configuration file will override an old one, 
 .I etc-update 
 will prompt the user for a decision.
 .PP
 .I etc-update
-will check all directories in \fI/etc/make.global\fR's \fICONFIG_PROTECT\fR variable.
+will check all directories in the \fICONFIG_PROTECT\fR variable.  See \fBmake.conf\fR(5)
+for more information
 .SH OPTIONS 
 .TP
 None.
@@ -22,6 +22,7 @@ Jochem Kossen and Leo Lipelis, 2002: etc-update
 .br
 Karl Trygve Kalleberg <karltk@gentoo.org>, 2002: man page, fixes
 .SH "SEE ALSO"
-ebuild(5) 
+.BR ebuild (5),
+.BR make.conf (5)
 .TP
 The \fI/usr/sbin/lintool\fR script. 
