@@ -95,11 +95,19 @@ to sync the local portage tree when `emerge rsync` is run.
 \fBCHOST\fR
 This variable is passed by the \fIebuild scripts\fR to the \fIconfigure\fR
 step as \fI\-\-host=${CHOST}\fR.  This way you can force the build\-host.
+
+For more information:
+.br
+http://gcc.gnu.org/onlinedocs/gcc-3.2/gcc/Submodel-Options.html
+.br
+http://gcc.gnu.org/onlinedocs/gcc-2.95.3/gcc_2.html
 .TP
 \fBMAKEOPTS\fR
 Use this variable if you want to use parallel make.  For example, if you
 have a dual\-processor system, set this variable to "\-j2" or "\-j3" for 
 enhanced build performance with many packages.  Suggested setting is #CPUs+1.
+
+For more information, see \fBmake\fR(1).
 .TP
 \fBCFLAGS CXXFLAGS\fR 
 Use these variables to set the desired optimization/CPU instruction settings
