@@ -9,6 +9,10 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  21 Jun 2004; Masatomo Nakano <nakano@gentoo.org> pym/portage.py:
+  Fixed problem that 'emerge something' would install all depeneded pkgs 
+  even if they are already installed.
+  
   21 Jun 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Disabled the
   URL encoding for BINHOST as it will take a lot of work to get it right.
   Execve try/except added to handle missing binaries and such. Changed the

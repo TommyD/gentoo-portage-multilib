@@ -3735,16 +3735,16 @@ def dep_wordreduce(mydeplist,mydbapi,mode,use_cache=1):
 			if mydep!=None:
 				tmp=(len(mydep)>=1)
 				if deplist[mypos][0]=="!":
-					tmp=not tmp
-
-				# This is ad-hoc code. We should rewrite this later.. (See #52377)
-				# The reason is that portage uses fakedb when --update option now.
-				# So portage considers that a block package doesn't exist even if it exists.
-				# Then, #52377 happens.
-				# ==== start
-				if mydbapi.__class__.__name__=="fakedbapi":
+					#tmp=not tmp
+					# This is ad-hoc code. We should rewrite this later.. (See #52377)
+					# The reason is that portage uses fakedb when --update option now.
+					# So portage considers that a block package doesn't exist even if it exists.
+					# Then, #52377 happens.
+					# ==== start
+					# emerge checks if it's block or not, so we can always set tmp=False.
+					# but it's not clean..
 					tmp=False
-				# ==== end
+					# ==== end
 				deplist[mypos]=tmp
 			else:
 				#encountered invalid string
