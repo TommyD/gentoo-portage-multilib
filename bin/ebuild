@@ -29,6 +29,10 @@ for opt in opts:
 		debug=1 
 
 for x in pargs[1:]:
-	a=portage.doebuild(pargs[0],x,getroot(),debug=debug)
+	try:
+		a=portage.doebuild(pargs[0],x,getroot(),debug=debug)
+	except KeyboardInterrupt:
+		print "(interrupted by user -- ctrl-C?)"
+		a=1
 	if a:
 		sys.exit(a)
