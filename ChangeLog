@@ -2,6 +2,15 @@
 # Copyright 2001 Gentoo Technologies, Inc.; Distributed under the GPL
 # Written by Daniel Robbins (drobbins@gentoo.org)
 
+* portage 1.7.1 (30 Oct 2001)
+
+  30 Oct 2001; portage.py; I accidentally broke "=" deps by being sloppy when
+  I added "*" deps.  Trivial fix applied.
+
+* portage 1.7 (29 Oct 2001)
+
+  29 Oct 2001; portage.py: strange typo fix in the empty() digraph method.
+
 * portage 1.6.12 (29 Oct 2001)
 
   29 Oct 2001; portage.py: "*" deps now implemented. "=sys/foo-1*" matches the

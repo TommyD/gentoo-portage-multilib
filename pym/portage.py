@@ -210,7 +210,7 @@ class digraph:
 
 	def empty(self):
 		if len(self.dict)==0:
-			return 0
+			return 1
 		return 0
 
 	def hasnode(self,mynode):
@@ -1443,7 +1443,10 @@ class packagetree:
 						bestmatch=x
 				return bestmatch[0]		
 			else:
-				return self.exists_specific(mypkgdep[1:])
+				if self.exists_specific(mypkgdep[1:]):
+					return mypkgdep[1:]
+				else:
+					return ""
 		elif (mypkgdep[0]==">") or (mypkgdep[0]=="<"):
 			if mypkgdep[1]=="=":
 				cmpstr=mypkgdep[0:2]
