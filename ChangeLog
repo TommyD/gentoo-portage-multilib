@@ -1,6 +1,14 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+  4 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge :
+  most emerge invocation options now have alternative short flags
+  
+  4 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge :
+  emerge now doesn't unmerge the last version of an installed version by
+  default anymore, to really remove all instanced of packages the --all flag
+  has to be used, the --safe flag is deprecated
+  
   3 Feb 2002; G.Bevin <gbevin@gentoo.org> output.py, emerge,make.globals :
   all output can now be turned to black and white by using the functions in 
   output.py, this determines the mode by checking to NOCOLOR variable in
