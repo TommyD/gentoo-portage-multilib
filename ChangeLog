@@ -5,17 +5,17 @@
 *portage-2.0.47-r10 (13 Mar 2003): Fixes -- Winding up 2.0 series.
 
   13 Mar 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Less strict
-	check of permissions when fixing permissions for userpriv -- only requires
-	02070 and group portage instead of 02770 for check.
+  check of permissions when fixing permissions for userpriv -- only requires
+  02070 and group portage instead of 02770 for check.
 
   13 Mar 2003; Nicholas Jones <carpaski@gentoo.org> g-cpan.pl: Fix to the
-	call to portageq.
-	
+  call to portageq.
+  
   13 Mar 2003; Nicholas Jones <carpaski@gentoo.org> etc-update: Fix for
-	deleted files in a CONFIG_PROTECT situation.
+  deleted files in a CONFIG_PROTECT situation.
 
   13 Mar 2003; Nicholas Jones <carpaski@gentoo.org> emerge: fix for keepwork
-	and keeptemp ** MUST ENSURE THAT CLEAN CLEANS BEFORE A FULL MERGE. 
+  and keeptemp ** MUST ENSURE THAT CLEAN CLEANS BEFORE A FULL MERGE. 
 
   12 Mar 2003; Nicholas Jones <carpaski@gentoo.org> emerge: Added more
   conditions on rsync -- Proper error detection. Rsync failures will not

@@ -129,6 +129,11 @@ EPATCH_OPTS=""
 EPATCH_EXCLUDE=""
 # Change the printed message for a single patch.
 EPATCH_SINGLE_MSG=""
+# Force applying bulk patches even if not following the style:
+#
+#   ??_${ARCH}_foo.${EPATCH_SUFFIX}
+#
+EPATCH_FORCE="no"
 
 # This function is for bulk patching, or in theory for just one
 # or two patches.
@@ -186,7 +191,13 @@ epatch() {
 		
 	elif [ -n "$1" -a -d "$1" ]
 	then
-		local EPATCH_SOURCE="$1/*.${EPATCH_SUFFIX}"
+		# Allow no extension if EPATCH_FORCE=yes ... used by vim for example ...
+		if [ "${EPATCH_FORCE}" = "yes" ] && [ -z "${EPATCH_SUFFIX}" ]
+		then
+			local EPATCH_SOURCE="$1/*"
+		else
+			local EPATCH_SOURCE="$1/*.${EPATCH_SUFFIX}"
+		fi
 	else
 		if [ ! -d ${EPATCH_SOURCE} ]
 		then
@@ -236,7 +247,8 @@ epatch() {
 		#   ???_arch_foo.patch
 		#
 		if [ -f ${x} ] && \
-		   [ "${SINGLE_PATCH}" = "yes" -o "${x/_all_}" != "${x}" -o "`eval echo \$\{x/_${ARCH}_\}`" != "${x}" ]
+		   ([ "${SINGLE_PATCH}" = "yes" -o "${x/_all_}" != "${x}" -o "`eval echo \$\{x/_${ARCH}_\}`" != "${x}" ] || \
+		    [ "${EPATCH_FORCE}" = "yes" ])
 		then
 			local count=0
 			local popts="${EPATCH_OPTS}"
