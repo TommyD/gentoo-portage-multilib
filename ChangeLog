@@ -7,6 +7,9 @@
   made 'emerge --unmerge' take binary compatibility slots into account, this
   prevents that packages with different versions but also different slots, are
   being unmerged
+  added support for "--verbose" in "emerge rebuild" and "emerge world" to
+  provide details about packages that aren't in the local tree anymore and to
+  notify the user about which packages don't support slots
 
   9 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge :
   added support for the rebuild mode which rebuilds all the packages on your

@@ -720,6 +720,8 @@ if "--unmerge" in myopts:
 		print
 	else:
 		full_paths={}
+		non_slot_packages=[]
+		
 		var_path=portage.root+"var/db/pkg"
 		# process all arguments, verify if they can be resolved to an installed
 		# ebuild file and add the absolute paths of these ebuild to a list
@@ -807,6 +809,7 @@ if "--unmerge" in myopts:
 						slot_file.close()
 					else:
 						package_slot=package_parts[1]
+						non_slot_packages.append(package_parts[0]+"-"+package_parts[1])
 					package_set=package_parts[0]+"-"+package_slot
 					# create initial latest ebuild information for the current package set if it
 					# doesn't exists yet
@@ -829,6 +832,20 @@ if "--unmerge" in myopts:
 				if latest_ebuilds[package_set][0]:
 					del full_paths[latest_ebuilds[package_set][0]]
 
+		if len(non_slot_packages)>0:
+			if "--verbose" not in myopts:
+				print " "+yellow("*")+" ",len(non_slot_packages),"non slot packages; use "+green("--verbose")+" to view details."
+			else:
+				print " "+yellow("*")+" ",len(non_slot_packages),"non slot packages"
+				print " "+yellow("*")+" These packages have been merged with an old version of portage that didn't"
+				print " "+yellow("*")+" support binary compatibility slots. This means that each package with a"
+				print " "+yellow("*")+" different version number will be considered different and only older versions"
+				print " "+yellow("*")+" of different releases will be unmerged automatically."
+				print " "+yellow("*")+" To get rid of all non slot packages, you can rebuild your system with"
+				print " "+yellow("*")+" "+green("emerge --verbose rebuild")+"."
+				for non_slot_package in non_slot_packages:
+					print "    "+non_slot_package
+			
 		if len(full_paths)==0:
 			print "Couldn't find any matching installed packages."
 		else:
@@ -912,12 +929,17 @@ if "rebuild" in mymode:
 		for mypackage in mypackageskeys:
 			print "[ebuild   "+yellow("R")+" ]",mypackage,"to",portage.root
 		if len(myoutdated):
-			myoutdated.sort()
-			print
-			print "These are the packages that couldn't be found in portage anymore"
-			print
-			for mypackage in myoutdated:
-				print mypackage
+			if "--verbose" not in myopts:
+				print " "+yellow("*")+" ",len(myoutdated),"packages aren't available anymore; use "+green("--verbose")+" to view details."
+			else:
+				print " "+yellow("*")+" ",len(myoutdated),"packages aren't available anymore"
+				print " "+yellow("*")+" You portage tree doesn't contain the ebuilds anymore that correspond to the"
+				print " "+yellow("*")+" following packages. This means that portage is unable to rebuild them."
+				print " "+yellow("*")+" Instead you should upgrade to the latest versions or install possible"
+				print " "+yellow("*")+" alternative packages that provide the same functionalities."
+				myoutdated.sort()
+				for mypackage in myoutdated:
+					print "    "+mypackage
 
 	else:
 		returnme=0
@@ -1027,3 +1049,4 @@ if "--pretend" in myopts:
 else:
 	mydepgraph.merge(mydepgraph.altlist())
 post_emerge()
+
