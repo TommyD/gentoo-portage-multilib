@@ -888,7 +888,13 @@ class ebuild_handler:
 
 		# break off into process_phase
 		if mysettings.has_key("PORT_LOGDIR"):
-			if os.access(mysettings["PORT_LOGDIR"]+"/",os.W_OK):
+			try:
+				st=os.stat(mysettings["PORT_LOGDIR"])
+				if not st.st_gid == portage_gid:
+					os.chown(mysettings["PORT_LOGDIR"], -1, portage_gid)
+				if not st.st_mode & (os.W_OK << 3):
+					os.chmod(mysettings["PORT_LOGDIR"], st.st_mode | (os.W_OK << 3))
+				# by this time, we have write access to the logdir.  or it's bailed.
 				try:
 					os.chown(mysettings["BUILD_PREFIX"],portage_uid,portage_gid)
 					os.chmod(mysettings["PORT_LOGDIR"],00770)
@@ -896,16 +902,14 @@ class ebuild_handler:
 						mysettings["LOG_PF"]=mysettings["PF"]
 						mysettings["LOG_COUNTER"]=str(db[myroot]["vartree"].dbapi.get_counter_tick_core("/"))
 					mysettings["PORTAGE_LOGFILE"]="%s/%s-%s.log" % (mysettings["PORT_LOGDIR"],mysettings["LOG_COUNTER"],mysettings["LOG_PF"])
-					if not os.path.exists(mysettings["PORTAGE_LOGFILE"]):
-						# touch the file.
-						open(mysettings["PORTAGE_LOGFILE"], "w").close()
-					os.chmod(mysettings["PORTAGE_LOGFILE"], 0664)
-					os.chown(mysettings["PORTAGE_LOGFILE"], -1,portage_gid)
+					if os.path.exists(mysettings["PORTAGE_LOGFILE"]):
+						os.chmod(mysettings["PORTAGE_LOGFILE"], 0664)
+						os.chown(mysettings["PORTAGE_LOGFILE"], -1,portage_gid)
 				except ValueError, e:
 					mysettings["PORT_LOGDIR"]=""
 					print "!!! Unable to chown/chmod PORT_LOGDIR. Disabling logging."
 					print "!!!",e
-			else:
+			except (OSError, IOError):
 				print "!!! Cannot create log... No write access / Does not exist"
 				print "!!! PORT_LOGDIR:",mysettings["PORT_LOGDIR"]
 				mysettings["PORT_LOGDIR"]=""
