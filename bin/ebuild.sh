@@ -264,7 +264,7 @@ if [ "$*" != "depend" ]; then
 	if has distcc ${FEATURES} &>/dev/null; then
 		if [ -d /usr/lib/distcc/bin ]; then
 			#We can enable distributed compile support
-			export PATH="/usr/lib/distcc/bin:${PATH}"
+			[ ! -z "${PATH/*distcc*/}" ] && export PATH="/usr/lib/distcc/bin:${PATH}"
 			[ -z "${DISTCC_HOSTS}" ] && DISTCC_HOSTS="localhost"
 			[ ! -z "${DISTCC_LOG}" ] && addwrite "$(dirname ${DISTCC_LOG})"
 			export DISTCC_HOSTS
@@ -276,10 +276,12 @@ if [ "$*" != "depend" ]; then
 
 	if has ccache ${FEATURES} &>/dev/null; then
 		#We can enable compiler cache support
-		if   [ -d /usr/lib/ccache/bin ]; then
-			export PATH="/usr/lib/ccache/bin:${PATH}"
-		elif [ -d /usr/bin/ccache ]; then
-			export PATH="/usr/bin/ccache:${PATH}"
+		if [ ! -z "${PATH/*ccache*/}" ];then
+			if   [ -d /usr/lib/ccache/bin ]; then
+				export PATH="/usr/lib/ccache/bin:${PATH}"
+			elif [ -d /usr/bin/ccache ]; then
+				export PATH="/usr/bin/ccache:${PATH}"
+			fi
 		fi
 		[ -z "${CCACHE_DIR}" ] && export CCACHE_DIR=/root/.ccache
 		addread ${CCACHE_DIR}

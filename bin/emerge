@@ -1410,7 +1410,7 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 			for y in mymatches:
 				update_spinner()
 				ignored=portage.portdb.aux_get(y,[],metacachedir=myportdir+"/metadata/cache")
-		sys.stdout.write("\b\b  \n\n")
+		sys.stdout.write("\b\b  ...done!\n\n")
 		sys.stdout.flush()
 elif myaction=="regen":
 	emergelog(" === regen")

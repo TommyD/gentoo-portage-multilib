@@ -1,6 +1,10 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  13 Feb 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Fix to
+  distcc and ccache to prevent them from calling themselves if they
+  catch themselves in the path -- double path problem.
+
   13 Feb 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Fixes to
   the aux_get() code for metacache updates to eclass deps. Debug output
   removal.
