@@ -7,6 +7,20 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  07 Nov 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild.sh, 
+  bin/ebuild-default-functions.sh, bin/ebuild-function.sh, 
+  bin/ebuild-isolated-functions.sh: Env clean ups, fixups.  Not compatable
+  with doebuild at this commit, since it tries to write back via pipes.  
+  To make it compatible (should a revert occur), define an appropriate speak
+  funciton.  This commit closes out #52652, #51552, #51370, #46223, potential issues
+  from installed ebuilds not functioning correctly due to assuming use/has behave a
+  certain way #40993, ultimately #56408.  Essentially, this is all the required
+  bash modifications to properly save/restore the env, allowing for ebuilds to 
+  be uninstalled despite eclasses/ebuilds no longer existing.  Also contains a 
+  fair amount of protective code, since older env savings were incorrect.  Additionally,
+  it properly restores variables attributes- export fex, shopt, etc.  This is the basis
+  of the ebuild-daemon.
+
   07 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage_util.py: 
   fixed import issue.
 
