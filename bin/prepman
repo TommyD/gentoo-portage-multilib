@@ -12,7 +12,7 @@ fi
 [ ! -d "${z}" ] && exit 0
 
 for x in `find "${z}"/ -type d 2>/dev/null` ; do
-	for y in `find "${x}"/ \( -type f -or -type l -\) ! -name '.keep' -maxdepth 1 -mindepth 1 2>/dev/null` ; do
+	for y in `find "${x}"/ \( -type f -or -type l \) ! -name '.keep' -maxdepth 1 -mindepth 1 2>/dev/null` ; do
 		if [ -L "${y}" ] ; then
 			# Symlink ...
 			mylink="${y}"

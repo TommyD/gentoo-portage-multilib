@@ -382,10 +382,6 @@ if (( ${mode} == 0 )); then
 	PAR=")"
 else
 	PAR=""
-	rm_opts=""
-	mv_opts=""
-	cp_opts=""
-	pager=""
 fi
 
 declare -i count=0

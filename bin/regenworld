@@ -45,7 +45,7 @@ if len(sys.argv) >= 2 and sys.argv[1] in ["-h", "--help"]:
 	sys.exit(0)
 
 worldlist = portage.grabfile(portage.WORLD_FILE)
-syslist = portage.grabfile(portage.profiledir+"/packages")
+syslist = portage.settings.packages
 syslist = filter(issyspkg, syslist)
 
 logfile = portage.grabfile("/var/log/emerge.log")

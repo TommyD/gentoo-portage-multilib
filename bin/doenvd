@@ -4,7 +4,7 @@
 # $Header$
 
 if [ ${#} -lt 1 ] ; then
-	echo "doinfo: at least one argument needed"
+	echo "doenvd: at least one argument needed"
 	exit 1 	
 fi
 

@@ -16,15 +16,19 @@ version="1.2"
 import string,signal,re,pickle,tempfile
 
 import portage
-import portage_dep
 import portage_checksum
+import portage_const
+import portage_dep
 import cvstree
+import time
 from output import *
+#bold, darkgreen, darkred, green, red, turquoise, yellow
+
 from commands import getstatusoutput
-from time import *
 from fileinput import input
 from grp import getgrnam
 from stat import *
+from datetime import datetime
 
 
 def err(txt):
@@ -185,7 +189,7 @@ def help():
 	print
 	print green(exename+" "+version)
 	print " \"Quality is job zero.\""
-	print " Copyright 1999-2004 Gentoo Foundation"
+	print " Copyright 1999-2005 Gentoo Foundation"
 	print " Distributed under the terms of the GNU General Public License v2"
 	print
 	print bold(" Usage:"),turquoise(exename),"[",green("option"),"] [",green("mode"),"]"
@@ -301,26 +305,10 @@ if mymode=="help" or ("--help" in myoptions):
 if mymode=="last" or (mymode=="lfull"):
 	last()
 
-isCvs=False
-isOverlay=False
-mydir=os.getcwd()
-if mydir[-1] != "/":
-	mydir=mydir + "/"
 
-if not os.path.isdir("CVS"):
-	for overlay in repoman_settings["PORTDIR_OVERLAY"].split():
-		if mydir[:len(overlay)] == overlay:
-			myreporoot=os.getcwd();
-			myreporootpath=overlay
-			isOverlay=True
-			break
-	if not isOverlay:
-		if mydir[:len(repoman_settings["PORTDIR"])] == repoman_settings["PORTDIR"]:
-			myreporoot=os.getcwd();
-			myreporootpath=repoman_settings["PORTDIR"]
-		else:
-			err("We do not appear to be inside a local repository or a portage tree. Exiting.")
-else:
+isCvs=False
+myreporoot=None
+if os.path.isdir("CVS"):
 	repoman_settings["PORTDIR_OVERLAY"]=""
 	if "cvs" not in portage.features:
 		print
@@ -347,73 +335,101 @@ else:
 		raise  # Need to propogate this
 	except:
 		err("Error grabbing repository information; exiting.")
-
-myreporootpath=os.path.normpath(myreporootpath)
+	myreporootpath=os.path.normpath(myreporootpath)
+	if myreporootpath=="/space/cvsroot":
+		print
+		print
+		print red("You're using the wrong cvsroot. For Manifests to be correct, you must")
+		print red("use the same base cvsroot path that the servers use. Please try the")
+		print red("following script to remedy this:")
+		print
+		print "cd my_cvs_tree"
+		print
+		print "rm -Rf [a-z]*"
+		print "cvs up"
+		print
+		if portage.userland=="BSD":
+			print "find ./ -type f -regex '.*/CVS/Root$' -print0 | xargs -0 sed \\"
+		else:
+			print "find ./ -type f -regex '.*/CVS/Root$' -print0 | xargs -0r sed \\"
+		fi
+		print "  -i 's:/space/cvsroot$:/home/cvsroot:'"
+		print
+		print red("You must clear and re-update your tree as all header tags will cause")
+		print red("problems in manifests for all rsync and /home/cvsroot users.")
+		print
+		print "You should do this to any other gentoo trees your have as well,"
+		print "excluding the deletions. 'gentoo-src' should be /home/cvsroot."
+		print
+		sys.exit(123)
 
 if not "--pretend" in myoptions and not isCvs:
 	print
-	print darkgreen("not in a CVS repository, enabling pretend mode")
+	print darkgreen("Not in a CVS repository; enabling pretend mode.")
 	myoptions.append("--pretend");
 
-if myreporootpath=="/space/cvsroot":
-	print
-	print
-	print red("You're using the wrong cvsroot. For Manifests to be correct, you must")
-	print red("use the same base cvsroot path that the servers use. Please try the")
-	print red("following script to remedy this:")
-	print
-	print "cd my_cvs_tree"
-	print
-	print "rm -Rf [a-z]*"
-	print "cvs up"
-	print
-	if portage.userland=="BSD":
-		print "find ./ -type f -regex '.*/CVS/Root$' -print0 | xargs -0 sed \\"
+
+def have_profile_dir(path, maxdepth=3):
+	while path != "/" and maxdepth:
+		if os.path.exists(path + "/profiles/package.mask"):
+			return path
+		path = os.path.normpath(path + "/..")
+		maxdepth -= 1
+
+portdir=None
+portdir_overlay=None
+mydir=os.getcwd()
+if mydir[-1] != "/":
+	mydir += "/"
+
+for overlay in repoman_settings["PORTDIR_OVERLAY"].split():
+	if overlay[-1] != "/":
+		overlay += "/"
+	if mydir[:len(overlay)] == overlay:
+		portdir_overlay = overlay
+		subdir = mydir[len(overlay):]
+		if subdir and subdir[-1] != "/":
+			subdir += "/"
+		if have_profile_dir(mydir, subdir.count("/")):
+			portdir = portdir_overlay
+		break
+
+if not portdir_overlay:
+	if (repoman_settings["PORTDIR"]+"/")[:len(mydir)] == mydir:
+		portdir_overlay = repoman_settings["PORTDIR"]
 	else:
-		print "find ./ -type f -regex '.*/CVS/Root$' -print0 | xargs -0r sed \\"
-	fi
-	print "  -i 's:/space/cvsroot$:/home/cvsroot:'"
-	print
-	print red("You must clear and re-update your tree as all header tags will cause")
-	print red("problems in manifests for all rsync and /home/cvsroot users.")
-	print
-	print "You should do this to any other gentoo trees your have as well,"
-	print "excluding the deletions. 'gentoo-src' should be /home/cvsroot."
-	print
-	sys.exit(123)
+		portdir_overlay = have_profile_dir(mydir)
+	portdir = portdir_overlay
 
-portdir = repoman_settings["PORTDIR"]
-if portdir[-1] != '/':
-	portdir = portdir + "/"
+if not portdir_overlay:
+	print darkred("Unable to determine PORTDIR.")
+	sys.exit(1)
 
-try: # Determine if we're in PORTDIR... If not tell portage to accomodate.
-	mydir=os.getcwd()
-	if mydir[-1] != '/':
-		mydir = mydir + "/"
-	if portdir != mydir[:len(repoman_settings["PORTDIR"])]:
-		# We're not in the PORTDIR
-		print
-		print darkred("We're not in PORTDIR..."),
-		while mydir!="/":
-			if os.path.exists(mydir+"/profiles/package.mask"):
-				# mydir == a PORTDIR root... We make PORTDIR = mydir.
-				print darkgreen("setting to:")+" "+bold(mydir)
-				os.environ["PORTDIR"]=mydir
-				portdir=mydir
-				break;
-			else:
-				mydir=os.path.normpath(mydir+"/..")
-		if mydir=="/":
-			print darkred("unable to determine a PORTDIR.")
-except SystemExit, e:
-	raise  # Need to propogate this
-except Exception, e:
-	print "!!! Error when determining valid(ity of) PORTDIR:"
-	print "!!!",e
-	pass
+if not portdir:
+	portdir = repoman_settings["PORTDIR"]
+
+if portdir[-1] == "/":
+	portdir = portdir[:-1]
+if portdir_overlay[-1] == "/":
+	portdir_overlay = portdir_overlay[:-1]
+
+os.environ["PORTDIR"] = portdir
+if portdir_overlay != portdir:
+	os.environ["PORTDIR_OVERLAY"] = portdir_overlay
+else:
+	os.environ["PORTDIR_OVERLAY"] = ""
+
+print "\nSetting paths:"
+print "PORTDIR = \""+os.environ["PORTDIR"]+"\""
+print "PORTDIR_OVERLAY = \""+os.environ["PORTDIR_OVERLAY"]+"\""
+
 
 reload(portage)
 repoman_settings = portage.config(clone=portage.settings)
+
+if not myreporoot:
+	myreporoot = os.path.basename(portdir_overlay)
+	myreporoot += mydir[len(portdir_overlay):-1]
 
 if isCvs:
 	reporoot=None
@@ -435,8 +451,6 @@ if mymode == "commit" and repolevel not in [1,2,3]:
 	print red("***")
 	err("Unable to identify level we're commiting from for %s" % string.join(reposplit,'/'))
 
-if not isCvs:
-	repolevel-=(string.count(myreporootpath,"/"))
 startdir=os.getcwd()
 
 for x in range(0,repolevel-1):
@@ -532,28 +546,26 @@ if os.path.exists(descfile):
 		if len(arch)!=3:
 			print "wrong format: \""+red(x)+"\" in "+descfile
 			continue
-		if not os.path.isdir(portdir+"/profiles/"+arch[1]):
-			print "Invalid "+arch[2]+" profile ("+arch[1]+") for arch "+arch[0]
-			if arch[0] not in badarchs:
-				badarchs.append(arch[0])
-			continue
-		if profiles.has_key(arch[0]) and profiles[arch[0]][1] == "stable":
-			continue
-		if arch[0] in badarchs:
-			print "Switching to "+arch[2]+" profile ("+arch[1]+") for arch "+arch[0]
+ 		if not os.path.isdir(portdir+"/profiles/"+arch[1]):
+ 			print "Invalid "+arch[2]+" profile ("+arch[1]+") for arch "+arch[0]
+ 			continue
+ 		if profiles.has_key(arch[0]):
+ 			print "Ignoring "+profiles[arch[0]][1]+" profile ("+profiles[arch[0]][0]+") for arch "+arch[0]
 		profiles[arch[0]]=[arch[1],arch[2]]
 
 	for x in portage.archlist:
 		if x[0]=="~":
 			continue
 		if not profiles.has_key(x):
-			print yellow("\""+x+"\" doesn't have a valid profile listed in profiles.desc")
-			print yellow("You need to do \"cvs update\" in profiles dir or yell at people.")
+ 			print yellow("\""+x+"\" doesn't have a valid profile listed in profiles.desc.")
+ 			print yellow("You need to either \"cvs update\" your profiles dir or follow this")
+ 			print yellow("up with the "+x+" team.")
 			print
 else:
 	print yellow("profiles.desc does not exist: "+descfile)
 	print yellow("You need to do \"cvs update\" in profiles dir.")
 	print
+	sys.exit(1)
 
 
 stats={}
@@ -577,7 +589,7 @@ else:
 		# if it's been over a week since fetching (or the system clock is fscked), grab an updated copy of metadata.dtd 
 		# clock is fscked or it's been a week. time to grab a new one.
 		ct=os.stat(portage.CACHE_PATH + '/metadata.dtd')[ST_CTIME]
-		if abs(time() - ct) > (60*60*24*7):
+		if abs(time.time() - ct) > (60*60*24*7):
 			# don't trap the exception, we're watching for errno 2 (file not found), anything else is a bug.
 			backup_exists=1
 			os.rename(portage.CACHE_PATH+'/metadata.dtd',portage.CACHE_PATH+'/metadata.dtd.backup')
@@ -623,8 +635,6 @@ else:
 
 
 arch_caches={}
-re_metadata_dtd=re.compile('"[^"]+metadata.dtd"',re.I)
-re_escape_quotes=re.compile('"')
 for x in scanlist:
 	#ebuilds and digests added to cvs respectively.
 	if "--verbose" in myoptions:
@@ -712,45 +722,6 @@ for x in scanlist:
 				mydigests=portage.digestParseFile(checkdir+"/files/"+y)
 				
 				mykey = catdir + "/" + y[7:]
-				myuris = []
-				if mykey in portage.db["/"]["porttree"].dbapi.xmatch("match-all", portage.dep_getkey(mykey)):
-					myuris,myfiles = portage.db["/"]["porttree"].dbapi.getfetchlist(mykey,all=True)
-					for entry in mydigests.keys():
-						if entry not in myfiles:
-							stats["digest.unused"] += 1
-							fails["digest.unused"].append(y+"::"+entry)
-				else:
-					pass # This is a stale digest
-
-				uri_dict = {}
-				for myu in myuris:
-					myubn = os.path.basename(myu)
-					if myubn not in uri_dict:
-						uri_dict[myubn]  = [myu]
-					else:
-						uri_dict[myubn] += [myu]
-
-				for myf in uri_dict:
-					myff = repoman_settings["DISTDIR"] + "/" + myf
-					if not mydigests.has_key(myf):
-						uri_settings = portage.config(clone=repoman_settings)
-						if mymode == "fix":
-							if not portage.fetch(uri_dict[myf], uri_settings):
-								stats["digest.unmatch"] += 1
-								fails["digest.unmatch"].append(y+"::"+myf)
-							else:
-								eb_name,eb_location = portage.db["/"]["porttree"].dbapi.findname2(mykey)
-								portage.doebuild(eb_name, "digest", "/", uri_settings)
-					else:
-						if os.path.exists(myff):
-							if not portage_checksum.verify_all(myff, mydigests[myf]):
-								stats["digest.fail"] += 1
-								fails["digest.fail"].append(y+"::"+myf)
-						else:
-							stats["digest.assumed"] += 1
-							fails["digest.assumed"].append(y+"::"+myf)
-							
-
 				if y[7:] not in ebuildlist:
 					#stray digest
 					if mymode=="fix":
@@ -761,6 +732,40 @@ for x in scanlist:
 					else:
 						stats["digest.stray"]=stats["digest.stray"]+1
 						fails["digest.stray"].append(x+"/files/"+y)
+				else:
+					# We have an ebuild
+					myuris,myfiles = portage.db["/"]["porttree"].dbapi.getfetchlist(mykey,all=True)
+					for entry in mydigests.keys():
+						if entry not in myfiles:
+							stats["digest.unused"] += 1
+							fails["digest.unused"].append(y+"::"+entry)
+					uri_dict = {}
+					for myu in myuris:
+						myubn = os.path.basename(myu)
+						if myubn not in uri_dict:
+							uri_dict[myubn]  = [myu]
+						else:
+							uri_dict[myubn] += [myu]
+
+					for myf in uri_dict:
+						myff = repoman_settings["DISTDIR"] + "/" + myf
+						if not mydigests.has_key(myf):
+							uri_settings = portage.config(clone=repoman_settings)
+							if mymode == "fix":
+								if not portage.fetch(uri_dict[myf], uri_settings):
+									stats["digest.unmatch"] += 1
+									fails["digest.unmatch"].append(y+"::"+myf)
+								else:
+									eb_name,eb_location = portage.db["/"]["porttree"].dbapi.findname2(mykey)
+									portage.doebuild(eb_name, "digest", "/", uri_settings)
+						else:
+							if os.path.exists(myff):
+								if not portage_checksum.verify_all(myff, mydigests[myf]):
+									stats["digest.fail"] += 1
+									fails["digest.fail"].append(y+"::"+myf)
+							else:
+								stats["digest.assumed"] += 1
+								fails["digest.assumed"].append(y+"::"+myf)
 
 		# recurse through files directory
 		# use filesdirlist as a stack, appending directories as needed so people can't hide > 20k files in a subdirectory.
@@ -794,13 +799,7 @@ for x in scanlist:
 	else:
 		#Only carry out if in package directory or check forced
 		if xmllint_capable:
-			myf=open(checkdir+"/metadata.xml")
-			s=string.join(myf.readlines(),'')
-			myf.close()
-			s=re_metadata_dtd.sub('"%s/metadata.dtd"' % portage.CACHE_PATH, s)
-			# this is temporary, till spawn has been modified enough that we can hand a pipe to xmllint, and write on our end of it.
-			s=re_escape_quotes.sub('\\"',s)
-			st=getstatusoutput("echo \"%s\" | xmllint --valid -  2>&1 > /dev/null" % s)
+			st=getstatusoutput("xmllint --noout --valid --dtdvalid %s/metadata.dtd %s/metadata.xml" % (portage.CACHE_PATH, checkdir))
 			if st[0] != 0:
 				for z in st[1].split("\n"):
 					print red("!!! ")+z
@@ -851,6 +850,12 @@ for x in scanlist:
 			stats["ebuild.output"]=stats["ebuild.output"]+1
 			fails["ebuild.output"].append(x+"/"+y+".ebuild")
 			continue
+
+		# Test for negative logic and bad words in the RESTRICT var.
+		#for x in myaux[allvars.index("RESTRICT")].split():
+		#	if x.startswith("no"):
+		#		print "Bad RESTRICT value: %s" % x
+
 		for pos in range(0,len(missingvars)):
 			if portage.db["/"]["porttree"].dbapi.aux_get(catdir+"/"+y, [ missingvars[pos] ] )[0]=="":
 				if missingvars[pos]=="IUSE":
@@ -905,9 +910,9 @@ for x in scanlist:
 
 				if (profiles.has_key(arch)):
 					profdir=portdir+"/profiles/"+profiles[arch][0]
-					if (not os.path.exists(profdir)):
-						continue
 				else:
+ 					# A missing profile will create an error further down
+ 					# during the KEYWORDS verification.
 					continue
 
 				portage.profiledir=profdir
@@ -918,7 +923,7 @@ for x in scanlist:
 					portage.do_vartree(dep_settings)
 					dep_settings.regenerate()
 				else:
-					dep_settings=portage.config(config_profile_path=profdir, config_incrementals=portage.incrementals)
+					dep_settings=portage.config(config_profile_path=profdir, config_incrementals=portage_const.INCREMENTALS)
 					if isCvs:
 						dep_settings["PORTDIR_OVERLAY"]=""
 					dep_settings["ARCH"]=arch
@@ -1023,7 +1028,8 @@ for x in scanlist:
 					fails["KEYWORDS.invalid"].append(x+"/"+y+".ebuild: %s (profile invalid)" % mykey)
 
 		#syntax checks
-		gentoo_copyright = re.compile(r'^# Copyright 1999-' + strftime("%Y", gmtime()) + r' Gentoo Foundation')
+		myear = time.gmtime(os.stat(checkdir+"/"+y+".ebuild")[ST_MTIME])[0]
+		gentoo_copyright = re.compile(r'^# Copyright 1999-' + str(myear) + r' Gentoo Foundation')
 		gentoo_license = re.compile(r'^# Distributed under the terms of the GNU General Public License v2$')
 		cvs_header = re.compile(r'^#\s*\$Header.*\$$')
 		ignore_line = re.compile(r'(^$)|(^(\t)*#)')
@@ -1340,6 +1346,11 @@ else:
 			os.unlink(commitmessagefile)
 		mymsg=open(commitmessagefile,"w")
 		mymsg.write(commitmessage)
+		try:
+			mymsg.write("\n(Portage version: "+str(portage.VERSION)+")")
+		except:
+			print "Failed to insert portage version in message!"
+			mymsg.write("\n(Portage version: Unknown)")
 		mymsg.close()
 
 		try:
@@ -1439,6 +1450,11 @@ else:
 	else:
 		mymsg=open(commitmessagefile,"a")
 		mymsg.write(" (Manifest recommit)")
+		try:
+			mymsg.write("\n(Portage version: "+str(portage.VERSION)+")")
+		except:
+			print "Failed to insert portage version in message!"
+			mymsg.write("\n(Portage version: Unknown)")
 		mymsg.close()
 		retval=os.system("/usr/bin/cvs -q commit -F "+commitmessagefile)
 		if retval:

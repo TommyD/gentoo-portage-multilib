@@ -49,7 +49,7 @@ os.umask(oldmask)
 
 # Ensure the scratch dir is deleted
 def cleanup(mydir=SCRATCH_DIR):
-    shutil.rmtree(SCRATCH_DIR)
+    shutil.rmtree(mydir)
 atexit.register(cleanup)
 
 MANDATORY_OPTS  = [ 'archive-dir', 'diff', 'pager', 'replace-cvs', 'replace-wscomments' ]
@@ -60,7 +60,6 @@ class dispatch:
     def grind (self, config_paths):
         confs = []
         count = 0
-
 
         self.options = dispatch_conf.read_config(MANDATORY_OPTS)
 

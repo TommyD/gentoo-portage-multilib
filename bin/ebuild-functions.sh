@@ -75,8 +75,8 @@ econf() {
 		if hasq autoconfig $FEATURES && ! hasq autoconfig $RESTRICT; then
 			if [ -e /usr/share/gnuconfig/ ]; then
 				local x
-				for x in $(find ${S} -type f -name config.guess -o -name config.sub); do
-					einfo "econf: updating $x with /usr/share/gnuconfig/${x##*/}"
+				for x in $(find ${WORKDIR} -type f -name config.guess -o -name config.sub); do
+					echo " * econf: updating ${x/${WORKDIR}\/} with /usr/share/gnuconfig/${x##*/}"
 					cp "/usr/share/gnuconfig/${x##*/}" "${x}"
 				done
 			fi
@@ -87,16 +87,35 @@ econf() {
 
 		# if the profile defines a location to install libs to aside from default, pass it on.
 		# if the ebuild passes in --libdir, they're responsible for the conf_libdir fun.
-		if [ ! -z "${CONF_LIBDIR}" ] && [ "${*/--libdir}" == "$*" ]; then
-			if [ "${*/--prefix}" == "$*" ]; then
-				CONF_PREFIX="/usr"
-			else
+		LIBDIR_VAR="LIBDIR_${ABI}"
+		if [ -n "${ABI}" -a -n "${!LIBDIR_VAR}" ]; then
+			CONF_LIBDIR="${!LIBDIR_VAR}"
+		fi
+		unset LIBDIR_VAR
+		if [ -n "${CONF_LIBDIR}" ] && [ "${*/--libdir}" == "$*" ]; then
+			if [ "${*/--exec-prefix}" != "$*" ]; then
 				local args="$(echo $*)"
-				local -a pref=($(echo ${args/*--prefix[= ]}))
+				local -a pref=($(echo ${args/*--exec-prefix[= ]}))
 				CONF_PREFIX=${pref}
-			fi
-			export CONF_PREFIX
-			EXTRA_ECONF="--libdir=/${CONF_PREFIX}/${CONF_LIBDIR} ${EXTRA_ECONF}"
+				[ "${CONF_PREFIX:0:1}" != "/" ] && CONF_PREFIX="/${CONF_PREFIX}"
+			elif [ "${*/--prefix}" != "$*" ]; then
+ 				local args="$(echo $*)"
+ 				local -a pref=($(echo ${args/*--prefix[= ]}))
+ 				CONF_PREFIX=${pref}
+				[ "${CONF_PREFIX:0:1}" != "/" ] && CONF_PREFIX="/${CONF_PREFIX}"
+			else
+				CONF_PREFIX="/usr"
+ 			fi
+ 			export CONF_PREFIX
+			[ "${CONF_LIBDIR:0:1}" != "/" ] && CONF_LIBDIR="/${CONF_LIBDIR}"
+
+			CONF_LIBDIR_RESULT="${CONF_PREFIX}${CONF_LIBDIR}"
+			for X in 1 2 3; do
+				# The escaping is weird. It will break if you escape the last one.
+				CONF_LIBDIR_RESULT="${CONF_LIBDIR_RESULT//\/\///}"
+			done
+
+			EXTRA_ECONF="--libdir=${CONF_LIBDIR_RESULT} ${EXTRA_ECONF}"
 		fi
 		local EECONF_CACHE
 		if request_confcache "${T}/local_cache"; then
@@ -114,7 +133,8 @@ econf() {
 			${EECONF_CACHE} \
 			"$@"
 
-		./configure \
+		#XXX: This is "${ECONF_SOURCE}/configure" in stable
+		if ! ./configure \
 			--prefix=/usr \
 			--host=${CHOST} \
 			--mandir=/usr/share/man \
@@ -124,7 +144,16 @@ econf() {
 			--localstatedir=/var/lib \
 			${EXTRA_ECONF} \
 			${EECONF_CACHE} \
-			"$@" || die "econf failed"
+			"$@" ; then
+
+			if [ -s config.log ]; then
+				echo
+				echo "!!! Please attach the config.log to your bug report:"
+				echo "!!! ${PWD}/config.log"
+			fi
+			die "econf failed"
+		fi
+
 		# store the returned exit code.  don't rely on update_confcache returning true.
 		ret=$?
 		update_confcache "${T}/local_cache"
@@ -134,12 +163,29 @@ econf() {
 	fi
 }
 
+strip_duplicate_slashes () { 
+	if [ -n "${1}" ]; then
+		local removed="${1/\/\///}"
+		[ "${removed}" != "${removed/\/\///}" ] && removed=$(strip_duplicate_slashes "${removed}")
+		echo ${removed}
+	fi
+}
+
 einstall() 
 {
 	# CONF_PREFIX is only set if they didn't pass in libdir above
-	if [ ! -z "${CONF_LIBDIR}" ] && [ "${CONF_PREFIX:-unset}" != "unset" ]; then
-		EXTRA_EINSTALL="libdir=${D}/${CONF_PREFIX}/${CONF_LIBDIR} ${EXTRA_EINSTALL}"
+	LIBDIR_VAR="LIBDIR_${ABI}"
+	if [ -n "${ABI}" -a -n "${!LIBDIR_VAR}" ]; then
+		CONF_LIBDIR="${!LIBDIR_VAR}"
 	fi
+	unset LIBDIR_VAR
+	if [ -n "${CONF_LIBDIR}" ] && [ "${CONF_PREFIX:-unset}" != "unset" ]; then
+		EI_DESTLIBDIR="${D}/${CONF_PREFIX}/${CONF_LIBDIR}"
+		EI_DESTLIBDIR="$(strip_duplicate_slashes ${EI_DESTLIBDIR})"
+		EXTRA_EINSTALL="libdir=${EI_DESTLIBDIR} ${EXTRA_EINSTALL}"
+		unset EI_DESTLIBDIR
+	fi
+
 	if [ -f ./[mM]akefile -o -f ./GNUmakefile ] ; then
 		if [ ! -z "${PORTAGE_DEBUG}" ]; then
 			make -n prefix=${D}/usr \
@@ -200,14 +246,14 @@ src_test()
 	if make check -n &> /dev/null; then
 		echo ">>> Test phase [check]: ${CATEGORY}/${PF}"
 		if ! make check; then
-			hasq maketest $FEATURES && die "Make check failed. See above for details."
-			hasq maketest $FEATURES || eerror "Make check failed. See above for details."
+			hasq test $FEATURES && die "Make check failed. See above for details."
+			hasq test $FEATURES || eerror "Make check failed. See above for details."
 		fi
 	elif make test -n &> /dev/null; then
 		echo ">>> Test phase [test]: ${CATEGORY}/${PF}"
 		if ! make test; then
-			hasq maketest $FEATURES && die "Make test failed. See above for details."
-			hasq maketest $FEATURES || eerror "Make test failed. See above for details."
+			hasq test $FEATURES && die "Make test failed. See above for details."
+			hasq test $FEATURES || eerror "Make test failed. See above for details."
 		fi
   else
 		echo ">>> Test phase [none]: ${CATEGORY}/${PF}"

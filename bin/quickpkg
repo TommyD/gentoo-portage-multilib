@@ -15,7 +15,7 @@ if [ "`whoami`" != "root" ] ; then
 fi
 
 export PORTAGE_DB="$(portageq vdb_path)"
-if [ -z $1 ] ; then
+if [ -z $1 ] || [ $1 == "-h" ] || [ $1 == "--help" ] ; then
 	echo "QUICKPKG ver 1.2"
 	echo "USAGE: quickpkg <list of pkgs>"
 	echo "    a pkg can be of the form:"
@@ -43,8 +43,11 @@ source /sbin/functions.sh
 # $1 = package-name w/version
 # $2 = category
 do_pkg() {
+	mkdir -p "${PORTAGE_TMPDIR}/portage-pkg" || exit 1
+	chmod 0750 "${PORTAGE_TMPDIR}/portage-pkg"
 	MYDIR="${PORTAGE_TMPDIR}/portage-pkg/$1"
 	SRCDIR="${PORTAGE_DB}/$2/$1"
+	LOG="${PORTAGE_TMPDIR}/portage-pkg/$1-quickpkglog"
 
 	ebegin "Building package for $1"
 	(
@@ -79,14 +82,14 @@ do_pkg() {
 
 		# cleanup again
 		rm -rf ${MYDIR}
-	) >& ${PORTAGE_TMPDIR}/$1-quickpkglog
+	) >& ${LOG}
 
 	if [ -e ${PKGDIR}/All/$1.tbz2 ] ; then
-		rm -f ${PORTAGE_TMPDIR}/$1-quickpkglog
+		rm -f ${LOG}
 		PKGSTATS="${PKGSTATS}"$'\n'"$(einfo $1: `ls -alh ${PKGDIR}/All/$1.tbz2 | awk '{print $5}'`)"
 		eend 0
 	else
-		cat ${PORTAGE_TMPDIR}/$1-quickpkglog
+		cat ${LOG}
 		PKGSTATS="${PKGSTATS}"$'\n'"$(ewarn $1: not created)"
 		eend 1
 	fi

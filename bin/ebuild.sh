@@ -299,8 +299,11 @@ load_environ() {
 source_profiles() {
 	local dir
 	save_IFS
+	# XXX: Given the following unset, is this set needed?
 	IFS=$'\n'
 	for dir in ${PROFILE_PATHS}; do
+		# Must unset it so that it doesn't mess up assumptions in the RCs.
+		unset IFS
 		if [ -f "${dir}/profile.bashrc" ]; then
 			source "${dir}/profile.bashrc"
 		fi
@@ -560,7 +563,7 @@ execute_phases() {
 					addread "${CCACHE_DIR}"
 					addwrite "${CCACHE_DIR}"
 
-					[ -z "${CCACHE_SIZE}" ] && export CCACHE_SIZE="2G"
+					[ -z "${CCACHE_SIZE}" ] && export CCACHE_SIZE="500M"
 					ccache -M ${CCACHE_SIZE} &> /dev/null
 				fi
 			fi
@@ -700,7 +703,7 @@ fi
 set +f
 
 export XARGS
-if [ `id -nu` == "portage" ] ; then
+if [ "$(id -nu)" == "portage" ] ; then
 	export USER=portage
 fi
 set +H -h

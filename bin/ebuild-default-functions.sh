@@ -100,6 +100,8 @@ unpack() {
 		tarvars="--no-same-owner"	
 	fi	
 
+	[ -z "$*" ] && die "Nothing passed to the 'unpack' command"
+
 	for x in "$@"; do
 		myfail="failure unpacking ${x}"
 		echo ">>> Unpacking ${x} to $(pwd)"
@@ -366,12 +368,13 @@ dyn_test() {
 
 	trap "abort_test" SIGINT SIGQUIT
 
-	if hasq maketest $RESTRICT; then
+	if hasq maketest $RESTRICT || hasq test $RESTRICT; then
 		ewarn "Skipping make test/check due to ebiuld restriction."
 		echo ">>> Test phase [explicitly disabled]: ${CATEGORY}/${PF}"
-	elif ! hasq maketest $FEATURES; then
+	elif ! hasq test $FEATURES; then
 		echo ">>> Test phase [not enabled]; ${CATEGORY}/${PF}"
 	else
+		echo ">>> Test phase [enabled]: ${CATEGORY}/${PF}"
 		MUST_EXPORT_ENV="yes"
 		if [ -d "${S}" ]; then
 			cd "${S}"
@@ -452,22 +455,35 @@ dyn_install() {
 		ewarn "file $file was installed with user portage!"
 		s=$(stat_perms $file)
 		chown root "$file"
+		#XXX: Stable does not have the symlink test
 		[ -h "$file" ] || chmod "$s" "$file"
 	done
 
 	find "${D}/" -group portage -print | while read file; do
-		# Too annoying
-		#ewarn "file $file was installed with group portage!"
+		# Too annoying - uncommenting this as it's a regression
+		ewarn "file $file was installed with group portage!"
 		s=$(stat_perms "$file")
 		if [ "$USERLAND" == "BSD" ]; then
 			chgrp wheel "$file"
 		else
 			chgrp root "$file"
 		fi
+		#XXX: Stable does not have the symlink test
 		[ -h "$file" ] || chmod "$s" "$file"
 	done
 
-	echo ">>> Completed installing into ${D}"
+	if hasq multilib-strict ${FEATURES} && [ -x /usr/bin/file -a -x /usr/bin/find -a \
+	     -n "${MULTILIB_STRICT_DIRS}" -a -n "${MULTILIB_STRICT_DENY}" ]; then
+		MULTILIB_STRICT_EXEMPT=${MULTILIB_STRICT_EXEMPT:-"(perl5|gcc|gcc-lib)"}
+		for dir in ${MULTILIB_STRICT_DIRS}; do
+			[ -d "${D}/${dir}" ] || continue
+			for file in $(find ${D}/${dir} -type f | egrep -v "^${D}/${dir}/${MULTILIB_STRICT_EXEMPT}"); do
+				file ${file} | egrep -q "${MULTILIB_STRICT_DENY}" && die "File ${file} matches a file type that is not allowed in ${dir}"
+			done
+		done
+	fi
+
+	echo ">>> Completed installing ${PF} into ${D}"
 	echo
 	cd ${BUILDDIR}
 	MUST_EXPORT_ENV="yes"
@@ -502,7 +518,7 @@ dyn_preinst() {
 
 	# hopefully this will someday allow us to get rid of the no* feature flags
 	# we don't want globbing for initial expansion, but afterwards, we do
-	#rewrite this to use a while loop instead.
+	#XXX: rewrite this to use a while loop instead.
 	local shopts=$-
 	set -o noglob
 	for no_inst in `echo "${INSTALL_MASK}"` ; do
@@ -969,6 +985,10 @@ remove_path_entry() {
 
 QA_INTERCEPTORS="javac java-config python python-config perl grep egrep fgrep sed gcc g++ cc bash awk nawk pkg-config"
 enable_qa_interceptors() {
+
+	# Turn of extended glob matching so that g++ doesn't get incorrectly matched.
+	shopt -u extglob
+	
 	# QA INTERCEPTORS
 	local FUNC_SRC BIN BODY BIN_PATH
 	for BIN in ${QA_INTERCEPTORS}; do
