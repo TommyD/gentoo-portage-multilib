@@ -2429,7 +2429,7 @@ elif "config"==myaction:
 	print
 # INFO action
 elif "info"==myaction:
-	unameout=commands.getstatusoutput("/bin/uname -mrp")[1]
+	unameout=commands.getstatusoutput("`which uname` -mrp")[1]
 	print getportageversion()
 	print "================================================================="
 	print "System uname: "+unameout
