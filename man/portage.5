@@ -2,7 +2,7 @@
 .SH NAME
 portage \- the heart of Gentoo
 .SH "DESCRIPTION"
-The current portage code uses many different configuration files most of which 
+The current portage code uses many different configuration files, most of which 
 are unknown to users and normal developers.  Here we will try to collect all 
 the odds and ends so as to help users more effectively utilize portage.  This 
 is a reference only for files which do not already have a man page.
@@ -106,7 +106,7 @@ overriding.
 .RS
 .TP 
 .BR deprecated
-The existance of this file marks a profile as deprecated, meaning it is 
+The existence of this file marks a profile as deprecated, meaning it is 
 not supported by Gentoo anymore.  It contains the name of the profile 
 to which users are encouraged to upgrade.
 .TP 
@@ -132,7 +132,7 @@ Distinguish machines classes that have the same \fBARCH\fR.  All sparc
 machines have ARCH=sparc but set this to either 'sparc32' or 'sparc64'.
 .TP 
 .BR STAGE1_USE
-Special USE flags which may be need when bootstrapping from stage1 to stage2.
+Special USE flags which may be needed when bootstrapping from stage1 to stage2.
 .TP 
 .BR GRP_STAGE23_USE
 Special USE flags used by catalyst for building a stage3 and GRP sets.
@@ -153,7 +153,7 @@ list of packages that compose the special \fIsystem\fR class.
 .I Note:
 In a cascading profile setup, you can remove packages in children 
 profiles which were added by parent profiles by prefixing the atom with 
-a '\-'
+a '\-'.
 
 .I Example:
 .nf 
@@ -234,12 +234,13 @@ virtual/aspell\-dict   app\-dicts/aspell\-en
 .RS
 .TP 
 .BR bashrc
-If needed this file can be used to setup a different environment for ebuilds 
-than the root environment.  Syntax is the same as any other bash script.
+If needed, this file can be used to set up a special environment for ebuilds,
+different from the standard root environment.  The syntax is the same as for
+any other bash script.
 .TP 
 .BR package.mask
-List of DEPEND atoms to mask.  Useful if specific versions of packages do not 
-work well for you.  For example, you swear by the Nvidia drivers, but only 
+A list of DEPEND atoms to mask.  Useful if specific versions of packages do
+not work well for you.  For example, you swear by the Nvidia drivers, but only
 versions earlier than 1.0.4496.  No problem!
 
 .I Format:
@@ -257,13 +258,13 @@ versions earlier than 1.0.4496.  No problem!
 .fi 
 .TP 
 .BR package.unmask
-Just like package.mask above except here you list packages you want to 
+Just like package.mask above, except here you list packages you want to 
 unmask.  Useful for overriding the global package.mask file (see 
 below).  Note that this does not override packages that are masked via 
 KEYWORDS.
 .TP 
 .BR package.keywords
-Per package KEYWORDS.  Useful for mixing unstable packages in with a normally 
+Per\-package KEYWORDS.  Useful for mixing unstable packages in with a normally 
 stable machine or vice versa.  This will allow you to augment ACCEPT_KEYWORDS 
 for a single package.
 
@@ -285,14 +286,14 @@ media\-video/mplayer \-~x86
 .TP 
 .BR package.use
 Per\-package USE flags.  Useful for tracking local USE flags or for 
-enabling USE flags for only certain packages.  Perhaps you develop GTK 
+enabling USE flags for certain packages only.  Perhaps you develop GTK 
 and thus you want documentation for it, but you don't want 
 documentation for QT.  Easy as pie my friend!
 
 .I Format:
 .nf 
 \- comments begin with #
-\- one DEPEND atom per line followed by space separated list of USE flags
+\- one DEPEND atom per line with space-separated row of USE flags
 .fi 
 
 .I Example:
@@ -307,8 +308,8 @@ x11\-libs/qt \-mysql
 Whenever portage encounters a mirror:// style URL it will look up the actual 
 hosts here.  If the mirror set is not found here, it will check the global 
 mirrors file at /usr/portage/profiles/thirdpartymirrors.  You may also set a 
-special mirrortype called "local".  This list of mirrors will be checked 
-before GENTOO_MIRRORS and be used even if the package has 
+special mirror type called "local".  This list of mirrors will be checked 
+before GENTOO_MIRRORS and will be used even if the package has 
 RESTRICT="nomirror".
 
 .I Format:
@@ -343,6 +344,7 @@ categories to be created.
 .nf 
 app\-hackers
 media\-other
+.fi
 .TP 
 .BR virtuals
 This controls what packages will provide a virtual by default.  For example, 
@@ -409,7 +411,7 @@ sys\-kernel
 .BR package.mask
 This contains a list of DEPEND atoms for packages that should not be installed 
 in any profile.  Useful for adding the latest KDE betas and making sure no 
-one accidently upgrades to them.  Also useful for quickly masking specific 
+one accidentally upgrades to them.  Also useful for quickly masking specific 
 versions due to security issues.  ALWAYS include a comment explaining WHY the 
 package has been masked and WHO is doing the masking.
 
@@ -476,10 +478,10 @@ description.
 
 .I Example:
 .nf 
-app\-editors/nano:justify \- Toggle the justify option
+app\-editors/nano:justify \- Toggles the justify option
 dev\-games/clanlib:clanJavaScript \- Enables javascript support
-dev\-libs/DirectFB:fusion \- add Multi Application support
-games\-emulation/xmess:net \- Add network support
+dev\-libs/DirectFB:fusion \- Adds Multi Application support
+games\-emulation/xmess:net \- Adds network support
 .fi 
 .TP 
 .BR use.mask

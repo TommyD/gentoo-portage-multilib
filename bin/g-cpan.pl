@@ -129,6 +129,11 @@ sub ebuild_exists {
         || ( -d File::Spec->catfile( $perldev_overlay,  $dir ) )
         || ( -d File::Spec->catfile( $TMP_DEV_PERL_DIR, $dir ) ) );
 
+    # check for ebuilds that have be created by g-cpan.pl
+    for my $ebuild ( @ebuild_list ) {
+        return 1 if ( $ebuild eq $dir );
+    }
+
     return 0;
 }
 

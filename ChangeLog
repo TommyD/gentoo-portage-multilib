@@ -7,6 +7,13 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+*portage-2.0.51 (20 Oct 2004): Everyone loves stable!
+
+  19 Oct 2004; Nicholas Jones <carpaski@gentoo.org> portage.5: patch included
+  to fix a few typos.
+
+  19 Oct 2004; Nicholas Jones <carpaski@gentoo.org> g-cpan.pl patch included
+  that doesn't recreate inherently-created ebuilds.
 
   20 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> repoman: Added check for
   digest entries that aren't used within the corresponding ebuild's SRC_URI.
