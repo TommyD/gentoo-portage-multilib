@@ -1160,7 +1160,7 @@ class config:
 			self.features.append("test")
 
 		self.features.sort()
-		self["FEATURES"] = " ".join(self.features)
+		self["FEATURES"] = " ".join(["-*"]+self.features)
 		self.backup_changes("FEATURES")
 
 		if mycpv:

@@ -6,6 +6,16 @@ cvs_id_string="$Id$"[5:-2]
 import sys,string,shlex,os.path,stat,types
 import shutil
 
+try:
+        #XXX: This should get renamed to bsd_chflags, I think.
+        import chflags
+        bsd_chflags = chflags
+except SystemExit, e:
+        raise
+except:
+        # XXX: This should get renamed to bsd_chflags, I think.
+        bsd_chflags = None
+
 noiselimit = 0
 def writemsg(mystr,noiselevel=0):
 	"""Prints out warning and debug messages based on the noiselimit setting"""
