@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  06 Mar 2005; Brian Harring <ferringb@gentoo.org> autogen.sh:
+  used for autogenerating auto* crap after a checkout.
+
   06 Mar 2005; Brian Harring <ferringb@gentoo.org> bin/emerge, pym/portage_dep.py, 
   pym/portage_file.py, pym/portage_util.py, pym/portage.py, pym/config.py, 
   pym/eclass_cache:
