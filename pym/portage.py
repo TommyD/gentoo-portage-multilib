@@ -3494,8 +3494,8 @@ def getmaskingreason(mycpv):
 				while len(l) > 0:
 					l = pmaskfile.readline()
 					if len(l) == 0:
+						pmaskfile.close()
 						return None
-					print "\'"+l[:-1]+"\'"
 					if l[0] == "#":
 						comment += l
 					elif l == "\n":
