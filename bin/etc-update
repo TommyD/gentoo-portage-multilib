@@ -262,6 +262,7 @@ Please select from the menu above (-1 to ignore this update): "
 		case ${my_input} in
 			1) echo "Replacing ${ofile} with ${file}"
 			   mv ${mv_opts} ${file} ${ofile}
+			   my_input=-1
 			   continue
 			   ;;
 			2) echo "Deleting ${file}"

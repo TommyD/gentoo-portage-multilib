@@ -7,6 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  25 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> etc-update: Added patch
+  from #48218 to continue on to next file when answering "no" to the
+  interactive replace prompt of menu option -3.
+
   25 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> emerge: Fixed the space/tab
   usage through the spinner_msgs definition. Removed COMPILER from emerge info
   output.
