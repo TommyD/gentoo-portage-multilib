@@ -1,5 +1,5 @@
 #!/bin/bash
-if [ -n "${DEBUG}" ]
+if [ -n "${DEBUGBUILD}" ]
 then
 	exit
 fi	

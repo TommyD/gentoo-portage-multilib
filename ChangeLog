@@ -1,12 +1,25 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+  06 Mar 2002; Daniel Robbins <drobbins@gentoo.org> ebuild.sh, others: users
+  can now forcefully disable stripping of their ebuild binaries by adding a
+  RESTRICT="nostrip" to their ebuild.  Additionally, the DEBUG variable has
+  been renamed to DEBUGBUILD to prevent namespace collisions.  This closes
+  bug #868.
+  
+  06 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py : Fixed a
+  long-standing bug where the pkg_preinst() and pkg_postinst() functions being
+  called came from the exisint package ebuild in /var/db/pkg rather than the
+  new ebuild being merged.  pkg_prerm() and pkg_postrm() still use the ebuild
+  in /var/db/pkg, which is correct.  Thanks to Dan Armak for tracking down this
+  bug.
+
 *portage-1.8.9_pre19 (05 Mar 2002)
   
-  05 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py : Fixed two
-  bugs reported by danarmak relating to incomplete (not missing) message
-  digests.  They should now get regenerated automatically is "digest" is
-  in FEATURES and not confuse the fetch code.
+  05 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py : Fixed two bugs
+  reported by Dan Armak relating to incomplete (not missing) message digests.
+  They should now get regenerated automatically is "digest" is in FEATURES and
+  not confuse the fetch code.
 
 *portage-1.8.9_pre18 (04 Mar 2002)
 

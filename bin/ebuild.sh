@@ -298,7 +298,7 @@ insopts() {
     for x in $*
     do
 	#if we have a debug build, let's not strip anything
-	if [ -n "$DEBUG" ] &&  [ "$x" = "-s" ]
+	if [ -n "$DEBUGBUILD" ] &&  [ "$x" = "-s" ]
 	then
 	    continue
         else
@@ -322,7 +322,7 @@ exeopts() {
     for x in $*
     do
 	#if we have a debug build, let's not strip anything
-	if [ -n "$DEBUG" ] &&  [ "$x" = "-s" ]
+	if [ -n "$DEBUGBUILD" ] &&  [ "$x" = "-s" ]
 	then
 	    continue
         else
@@ -337,7 +337,7 @@ libopts() {
     for x in $*
     do
 	#if we have a debug build, let's not strip anything
-	if [ -n "$DEBUG" ] &&  [ "$x" = "-s" ]
+	if [ -n "$DEBUGBUILD" ] &&  [ "$x" = "-s" ]
 	then
 	    continue
         else
@@ -422,9 +422,9 @@ dyn_compile() {
 	echo "$RDEPEND" > RDEPEND
 	echo "$PROVIDE" > PROVIDE
 	cp ${EBUILD} ${PF}.ebuild
-	if [ -n "$DEBUG" ]
+	if [ -n "$DEBUGBUILD" ]
 	then
-		touch DEBUG
+		touch DEBUGBUILD
 	fi
 	trap SIGINT SIGQUIT
 }
@@ -543,7 +543,7 @@ dyn_help() {
 	echo "  c++ flags   : ${CXXFLAGS}" 
 	echo "  make flags  : ${MAKEOPTS}" 
 	echo -n "  build mode  : "
-	if [ -n "${DEBUG}" ]
+	if [ -n "${DEBUGBUILD}" ]
 	then
 	    echo "debug (large)"
 	else
@@ -595,6 +595,10 @@ fi
 if [ "$S" = "" ]
 then
 	S=${WORKDIR}/${P}
+fi
+if [ "${RESTRICT/nostrip/}" != "${RESTRICT}" ]
+then
+	export DEBUGBUILD="yes"
 fi
 
 if [ "${RDEPEND}" = "" ]

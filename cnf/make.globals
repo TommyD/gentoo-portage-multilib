@@ -58,7 +58,7 @@ CFLAGS="-O2 -mcpu=i686 -pipe"
 CXXFLAGS=${CFLAGS}
 
 # Debug build -- if defined, binaries won't be stripped
-#DEBUG=true
+#DEBUGBUILD=true
 
 # Default locations for KDE 2/3; do not change unless you know what you're doing
 # and have read the docs

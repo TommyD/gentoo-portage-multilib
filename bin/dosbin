@@ -12,7 +12,7 @@ if [ ${#} -lt 1 ]
     do
 	if [ -x ${x} ]
 	then
-		if [ -z "$DEBUG" ]
+		if [ -z "$DEBUGBUILD" ]
 		then
 	        MYVAL=`file ${x} | grep "ELF"` 
 	        if [ "$MYVAL" ]

@@ -12,9 +12,9 @@ for x in "$@"
 do
 	if [ -e ${x} ]
 	then
-	    if [ -n "$DEBUG" ]
+	    if [ -z "$DEBUGBUILD" ]
 	    then
-		strip --strip-unneeded ${x}
+			strip --strip-unneeded ${x}
 	    fi
 	    install -m0755 ${x} ${D}${DESTTREE}/lib
 	else
