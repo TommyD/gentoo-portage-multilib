@@ -777,7 +777,8 @@ def fetch(myuris):
 	if ("mirror" in features) and ("nomirror" in settings["RESTRICT"].split()):
 		print ">>> \"mirror\" mode and \"nomirror\" restriction enabled; skipping fetch."
 		return 1
-	mirrors=settings["GENTOO_MIRRORS"].split()
+	global thirdpartymirrors
+	mymirrors=settings["GENTOO_MIRRORS"].split()
 	fetchcommand=settings["FETCHCOMMAND"]
 	resumecommand=settings["RESUMECOMMAND"]
 	fetchcommand=string.replace(fetchcommand,"${DISTDIR}",settings["DISTDIR"])
@@ -813,7 +814,7 @@ def fetch(myuris):
 			print ">>> manually.  See the comments in the ebuild for more information."
 			return 0
 		return 1
-	locations=mirrors[:]
+	locations=mymirrors[:]
 	filedict={}
 	for myuri in myuris:
 		myfile=os.path.basename(myuri)
@@ -821,7 +822,20 @@ def fetch(myuris):
 			filedict[myfile]=[]
 			for y in range(0,len(locations)):
 				filedict[myfile].append(locations[y]+"/distfiles/"+myfile)
-		filedict[myfile].append(myuri)
+		if myuri[:14]=="http://mirror/":
+			for mir in mymirrors:	
+				filedict[myfile].append(mymirrors[0]+"/distfiles/"+myuri[14:])
+			#we no longer default to ibiblio if no GENTOO_MIRROR is specified.  Useful if
+			#you really don't want to touch any mirror
+		elif myuri[:9]=="mirror://":
+			eidx = myuri.find("/", 9)
+			if eidx != -1:
+				mirrorname = myuri[9:eidx]
+				if thirdpartymirrors.has_key(mirrorname):
+					for locmirr in thirdpartymirrors[mirrorname]:
+						filedict[myfile].append(locmirr+"/"+myuri[eidx+1:])		
+		else:
+				filedict[myfile].append(myuri)
 	for myfile in filedict.keys():
 		locfetch=fetchcommand
 		docontinue=0
@@ -850,15 +864,17 @@ def fetch(myuris):
 		for loc in filedict[myfile]:
 			if loc[:14]=="http://mirror/":
 				#generic syntax for a file mirrored directly on a gentoo mirror
-				if len(mirrors):
+				if len(mymirrors):
 					#we have a mirror specified; use it:
-					loci=mirrors[0]+"/distfiles/"+myuri[14:]
+					loci=mymirrors[0]+"/distfiles/"+myuri[14:]
 				else:
 					#no mirrors specified in config files, so use a default:
 					myuri="http://www.ibiblio.org/gentoo/distfiles/"+myuri[14:]
 			print
 			print ">>> Downloading",loc
 			myfetch=string.replace(locfetch,"${URI}",loc)
+			
+			
 			myfetch=string.replace(myfetch,"${FILE}",myfile)
 			myret=spawn(myfetch,free=1)
 			if mydigests!=None and mydigests.has_key(myfile):
@@ -3333,6 +3349,7 @@ db["/"]["bintree"]=binarytree("/",virts)
 if root!="/":
 	db[root]["porttree"]=portagetree(root,virts)
 	db[root]["bintree"]=binarytree(root,virts)
+thirdpartymirrors=grabdict(settings["PORTDIR"]+"/profiles/thirdpartymirrors")
 
 #,"porttree":portagetree(root,virts),"bintree":binarytree(root,virts)}
 features=settings["FEATURES"].split()

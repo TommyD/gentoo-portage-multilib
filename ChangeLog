@@ -1,12 +1,28 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-1.9.11 (11 May 2002)
+
+  13 May 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: addition of 
+  third-party mirroring code.  "mirror://sourceforge/foo.tar.gz" will use the
+  /usr/portage/profiles/thirdpartymirrors file to define the mirror it will
+  download from.  Multiple mirrors for a single keyword can be specified on a
+  single line.  This code was based on the good work of Ryan Phillips.
+  
+  13 May 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: (entry on behalf
+  of jnelson) -- we now have new KV detection/setting code that uses
+  /usr/src/linux/include/linux/version.h to determine the kernel version -- the
+  right way of doing things.  KV is set to "" if the kernel is not available or
+  not configured.
+  
   13 May 2002; Daniel Robbins <drobbins@gentoo.org> emerge: "abspath[x]" =>
-  "abspath(x)" typo fix.  Also added 2-liner to allow for "emerge unmerge"
-  to specify "foo/bar-1.0" rather than requiring "=foo/bar-1.0."  Also fixed
-  problems when specifying the names of actual ebuilds in /var/db/pkg to 
+  "abspath(x)" typo fix.  Also added 2-liner to allow for "emerge unmerge" to
+  specify "foo/bar-1.0" rather than requiring "=foo/bar-1.0."  Also fixed
+  problems when specifying the names of actual ebuilds in /var/db/pkg to
   unmerge.
   
+*portage-1.9.9 (06 May 2002) ??
+
   08 May 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: An empty
   USE_ORDER (due to an out-of-date /etc/make.globals) would cause USE to always
   be empty.  I added a reasonable default USE_ORDER if USE_ORDER is not found
