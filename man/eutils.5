@@ -54,6 +54,17 @@ Checks how many cpu's are present in the system and then sets -j in MAKEOPTS acc
 .TP
 .BR "have_NPTL"
 This function return true if we are using the NPTL pthreads implementation of glibc.
+.TP
+.BR "make_desktop_entry " "\fI<binary>\fR \fI[name]\fR \fI[icon]\fR \fI[type]\fR \fI[path]\fR"
+Make a little shortcut in GNOME/KDE menus for your application.  Just pass the name
+of the binary to execute and the rest will be done for you.  If you want to change
+the name that will show up in the menu, pass the function a \fIname\fR parameter.  If you
+want to specify an \fIicon\fR (default is \fB${PN}\fR.png) then pass a name of a graphic file
+relative to /usr/share/pixmaps/ or the full path to a file.  If you want to specify the
+section of the menu that the icon will install to (rather than the default determined
+by \fB${CATEGORY}\fR) then pass a \fItype\fR value (see http://www.freedesktop.org/standards/menu/draft/menu-spec/menu-spec.html
+for valid values).  Finally, if the application needs to start up in a special directory,
+pass the last value as the full \fIpath\fR name.
 .SH "EPATCH"
 .TP
 .B "ABOUT"
