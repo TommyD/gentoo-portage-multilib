@@ -7,7 +7,7 @@
 # START OF CONSTANTS -- START OF CONSTANTS -- START OF CONSTANTS -- START OF
 # ===========================================================================
 
-VERSION="20041110"
+VERSION="20041207"
 
 INCREMENTALS=["USE","FEATURES","ACCEPT_KEYWORDS","ACCEPT_LICENSE","CONFIG_PROTECT_MASK","CONFIG_PROTECT","PRELINK_PATH","PRELINK_PATH_MASK"]
 incrementals=INCREMENTALS
@@ -5302,7 +5302,7 @@ class dblink:
 					continue
 				i=i+1
 				if i % 1000 == 0:
-					print str(i)+" files checked ..."
+					print "%6d files checked ..." % i
 				if f[0] != "/":
 					f="/"+f
 				isowned = False
@@ -5313,7 +5313,7 @@ class dblink:
 				if not isowned:
 					print "existing file "+f+" is not owned by this package"
 					stopmerge=True
-			print green("*")+" spent "+str(time.time()-starttime)+" seconds checking for file collisions"
+			print green("*")+" spent %.2f seconds checking for file collisions" % (time.time()-starttime)
 			if stopmerge:
 				print red("*")+" This package is blocked because it wants to overwrite"
 				print red("*")+" files belonging to other packages (see messages above)."
@@ -5335,6 +5335,13 @@ class dblink:
 			checklist=[]
 			print
 			print green("*")+ " grabbing %s/%s's binaries/libs" % (self.cat,self.pkg)
+
+			try:
+				mycwd = os.getcwd()
+			except OSError:
+				mycwd="/"
+			os.chdir(srcroot)
+
 			for f in myfilelist:
 				nocheck = False
 				# listdir isn't intelligent enough to exclude symlinked dirs,
@@ -5353,6 +5360,7 @@ class dblink:
 						checklist.append(y[0])
 
 				prelink_bins.append(f)
+			os.chdir(mycwd)
 
 		if "verify-rdepend" in features:
 			starttime=time.time()
@@ -5486,7 +5494,7 @@ class dblink:
 					self.unlockdb()
 					sys.exit(1)
 
-			print green("*")+" spent "+str(time.time()-starttime)+" seconds verifying RDEPEND"
+			print green("*")+" spent %.2f seconds verifying RDEPEND" % (time.time()-starttime)
 
 
 		if do_prelink:
@@ -5510,7 +5518,7 @@ class dblink:
 				except Exception,e:
 					print "caught exception while prelinking",e
 
-			print green("*")+" spent "+str(time.time()-starttime)+" seconds prelinking"
+			print green("*")+" spent %.2f seconds prelinking" % (time.time()-starttime)
 			
 
 		# get old contents info for later unmerging

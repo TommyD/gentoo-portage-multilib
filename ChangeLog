@@ -7,6 +7,11 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  08 Dec 2004; Marius Mauch <genone@gentoo.org> pym/portage.py:
+  Changing CWD back to the original value broke verify-rdepend, fixing it with
+  the same code as used for collision-protect. Also made the time displays in
+  treewalk more readable.
+
   08 Dec 2004; Jason Stubbs <jstubbs@gentoo.org> portage_syntax.py: Inital
   commit. Refactors all of portage_versions.py and some functions from
   portage.py into a CPV class and an Atom class.
