@@ -1199,10 +1199,15 @@ def getvirtuals(myroot):
 	return myvirts
 
 class packagetree:
-	def __init__(self,virtual):
-		self.tree={}
-		self.populated=0
-		self.virtual=virtual
+	def __init__(self,virtual,clone=None):
+		if clone:
+			self.tree=clone.tree.copy()
+			self.populated=clone.populated
+			self.virtual=clone.virtual
+		else:
+			self.tree={}
+			self.populated=0
+			self.virtual=virtual
 	
 	def populate(self):
 		"populates the tree with values"
@@ -1637,9 +1642,12 @@ class packagetree:
 
 class vartree(packagetree):
 	"this tree will scan a var/db/pkg database located at root (passed to init)"
-	def __init__(self,root="/",virtual=None):
-		self.root=root
-		packagetree.__init__(self,virtual)
+	def __init__(self,root="/",virtual=None,clone=None):
+		if clone:
+			self.root=clone.root
+		else:
+			self.root=root
+		packagetree.__init__(self,virtual,clone)
 	def populate(self):
 		"populates the local tree (/var/db/pkg)"
 		prevmask=os.umask(0)
@@ -1674,9 +1682,13 @@ class vartree(packagetree):
 
 class portagetree(packagetree):
 	"this tree will scan a portage directory located at root (passed to init)"
-	def __init__(self,root="/",virtual=None):
-		self.root=root
-		self.portroot=settings["PORTDIR"]
+	def __init__(self,root="/",virtual=None,clone=None):
+		if clone:
+			self.root=clone.root
+			self.portroot=clone.portroot
+		else:
+			self.root=root
+			self.portroot=settings["PORTDIR"]
 		packagetree.__init__(self,virtual)
 	def populate(self):
 		"populates the port tree"
@@ -1752,9 +1764,13 @@ class portagetree(packagetree):
 
 class binarytree(packagetree):
 	"this tree scans for a list of all packages available in PKGDIR"
-	def __init__(self,root="/",virtual=None):
-		self.root=root
-		self.pkgdir=settings["PKGDIR"]
+	def __init__(self,root="/",virtual=None,clone=None):
+		if clone:
+			self.root=clone.root
+			self.pkgdir=clone.pkgdir
+		else:
+			self.root=root
+			self.pkgdir=settings["PKGDIR"]
 		packagetree.__init__(self,virtual)
 	def populate(self):
 		"popules the binarytree"
