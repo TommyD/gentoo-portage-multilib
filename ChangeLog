@@ -1031,7 +1031,7 @@
   Added Michael Stewart's patch correcting optional args being specified 
   via position- bug #61881.
 
-  01 Sep 2004; Brian Harring <ferrignb@gentoo.org> pym/portage.py, 
+  01 Sep 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py, 
   pym/portage_exec.py, pym/portage_checksum.py: Restructured spawn
   so that we don't have two versions; all spawn calls trace back to 
   portage_exec.spawn, either through spawn_bash or spawn_sandbox.
