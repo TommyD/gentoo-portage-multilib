@@ -1,6 +1,11 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  10 Jun 2002; Martin Schlemmer <azarah@gentoo.org> portage.py.ldsopreload,testsandbox.sh :
+  Add support to test if another sandbox is running, if so dont delete
+  /etc/ld.so.preload on kill.  I did not commit this to portage.py, as it is a bit
+  more changes than we originally though.
+
   05 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: doebuild() now
   has proper logic for digest generation.  Digest will now get regenerated if
   "ebuild digest" is run, even if "digest" is in FEATURES.
