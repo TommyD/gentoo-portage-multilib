@@ -1917,10 +1917,19 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 		retries=0
 		hostname=re.split("rsync://([^/]*)",syncuri)[1];
 		updatecache_flg=True
+
+		ips=[]
 		while (1):
+			if ips:
+				del ips[0]
+			if ips==[]:
+				try:
+					ips=socket.gethostbyname_ex(hostname)[2]
+				except Exception, e:
+					print "Notice:",str(e)
+
 			try:
-				ip=socket.gethostbyname(hostname)
-				dosyncuri=string.replace(syncuri, "//"+hostname+"/", "//"+ip+"/", 1)
+				dosyncuri=string.replace(syncuri, "//"+hostname+"/", "//"+ips[0]+"/", 1)
 			except Exception, e:
 				print "Notice:",str(e)
 				dosyncuri = syncuri
