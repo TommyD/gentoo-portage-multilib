@@ -21,7 +21,7 @@
 char *get_sandbox_path(char *argv0)
 {
   char path[255];
-  char *cwd;
+  char *cwd=NULL;
 
   /* ARGV[0] specifies full path */
   if (argv0[0] == '/') {
@@ -32,7 +32,7 @@ char *get_sandbox_path(char *argv0)
       getcwd(cwd, 253);
       sprintf(path, "%s/%s", cwd, argv0);
       if (cwd) free(cwd);
-      cwd = NULL;
+      cwd=NULL;
   }
 
   /* Return just directory */
@@ -340,3 +340,5 @@ int file_exist(char *filename, int checkmode)
   return(1);
 }
 
+
+// vim:expandtab noai:cindent ai

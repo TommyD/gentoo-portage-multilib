@@ -57,3 +57,5 @@ clean:
 	rm -f *.o *~ core
 	rm -f localdecls.h
 
+
+# vim:expandtab noai:cindent ai

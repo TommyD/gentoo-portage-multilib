@@ -187,3 +187,5 @@ erealpath (const char *name, char *resolved)
   return ecanonicalize (name, resolved);
 }
 
+
+// vim:expandtab noai:cindent ai

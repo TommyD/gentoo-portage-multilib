@@ -56,3 +56,5 @@ int file_exist(char *filename, int checkmode);
 
 #endif
 
+
+// vim:expandtab noai:cindent ai

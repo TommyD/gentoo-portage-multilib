@@ -74,6 +74,25 @@
 
 #define PIDS_FILE	"/tmp/sandboxpids.tmp"
 
+#define FUNCTION_SANDBOX_SAFE(func, path) \
+        ((0 == is_sandbox_on()) || (1 == before_syscall(func, path)))
+
+#define FUNCTION_SANDBOX_SAFE_INT(func, path, flags) \
+        ((0 == is_sandbox_on()) || (1 == before_syscall_open_int(func, path, flags)))
+
+#define FUNCTION_SANDBOX_SAFE_CHAR(func, path, mode) \
+        ((0 == is_sandbox_on()) || (1 == before_syscall_open_char(func, path, mode)))
+
+
+/* Macro to check if a wrapper is defined, if not
+ * then try to resolve it again. */
+#define check_dlsym(name) \
+{ \
+  int old_errno=errno; \
+  if (!true_ ## name) true_ ## name=get_dlsym(#name); \
+  errno=old_errno; \
+}
+
 static char sandbox_lib[255];
 
 typedef struct {
@@ -202,13 +221,13 @@ void _init(void)
   /* Get the path and name to this library */
   tmp_string = get_sandbox_lib("/");
   strncpy(sandbox_lib, tmp_string, 254);
+  
   if (tmp_string) free(tmp_string);
   tmp_string = NULL;
 }
 
 static void canonicalize(const char *path, char *resolved_path)
 {
-#if 1
   if(!erealpath(path, resolved_path) && (path[0] != '/')) {
     /* The path could not be canonicalized, append it
      * to the current working directory if it was not
@@ -219,11 +238,6 @@ static void canonicalize(const char *path, char *resolved_path)
     strncat(resolved_path, path, MAXPATHLEN - 1);
 	erealpath(resolved_path, resolved_path);
   }
-#else
-  /* temp solution until I can figure out what
-   * to do with this. */
-  strncpy(resolved_path, path, strlen(path) + 1);
-#endif
 }
 
 static void *get_dlsym(const char *symname)
@@ -254,16 +268,6 @@ static void *get_dlsym(const char *symname)
  * Wrapper Functions
  */
 
-/* Macro to check if a wrapper is defined, if not
- * then try to resolve it again. */
-#define check_dlsym(name) \
-{ \
-  int old_errno=errno; \
-  if (!true_ ## name) true_ ## name=get_dlsym(#name); \
-  errno=old_errno; \
-}
-
-
 int chmod(const char *path, mode_t mode)
 {
   int result = -1;
@@ -271,7 +275,7 @@ int chmod(const char *path, mode_t mode)
 
   canonicalize(path, canonic);
 
-  if (0 == is_sandbox_on() || 1 == before_syscall("chmod", canonic)) {
+  if FUNCTION_SANDBOX_SAFE("chmod", canonic) {
     check_dlsym(chmod);
     result = true_chmod(path, mode);
   }
@@ -286,7 +290,7 @@ int chown(const char *path, uid_t owner, gid_t group)
 
   canonicalize(path, canonic);
 
-  if (0 == is_sandbox_on() || 1 == before_syscall("chown", canonic)) {
+  if FUNCTION_SANDBOX_SAFE("chown", canonic) {
     check_dlsym(chown);
     result = true_chown(path, owner, group);
   }
@@ -302,10 +306,7 @@ int creat(const char *pathname, mode_t mode)
 
   canonicalize(pathname, canonic);
 
-  if (0 == is_sandbox_on() || 1 == before_syscall("creat", canonic)) {
-    /* We need to resolve open() realtime in some cases,
-     * else we get a segfault when running /bin/ps, etc
-     * in a sandbox */
+  if FUNCTION_SANDBOX_SAFE("creat", canonic) {
     check_dlsym(open);
     result = true_open(pathname, O_CREAT | O_WRONLY | O_TRUNC, mode);
   }
@@ -320,7 +321,7 @@ FILE *fopen(const char *pathname, const char *mode)
 
   canonicalize(pathname, canonic);
 
-  if (0 == is_sandbox_on() || 1 == before_syscall_open_char("fopen", canonic, mode)) {
+  if FUNCTION_SANDBOX_SAFE_CHAR("fopen", canonic, mode) {
     check_dlsym(fopen);
     result = true_fopen(pathname,mode);
   }
@@ -336,7 +337,7 @@ int lchown(const char *path, uid_t owner, gid_t group)
 
   canonicalize(path, canonic);
 
-  if (0 == is_sandbox_on() || 1 == before_syscall("lchown", canonic)) {
+  if FUNCTION_SANDBOX_SAFE("lchown", canonic) {
     check_dlsym(chown);
     result = true_chown(path, owner, group);
   }
@@ -352,7 +353,7 @@ int link(const char *oldpath, const char *newpath)
   canonicalize(oldpath, old_canonic);
   canonicalize(newpath, new_canonic);
 
-  if (0 == is_sandbox_on() || 1 == before_syscall("link", new_canonic)) {
+  if FUNCTION_SANDBOX_SAFE("link", new_canonic) {
     check_dlsym(link);
     result = true_link(oldpath, newpath);
   }
@@ -367,7 +368,7 @@ int mkdir(const char *pathname, mode_t mode)
 
   canonicalize(pathname, canonic);
 
-  if (0 == is_sandbox_on() || 1 == before_syscall("mkdir", canonic)) {
+  if FUNCTION_SANDBOX_SAFE("mkdir", canonic) {
     check_dlsym(mkdir);
     result = true_mkdir(pathname, mode);
   }
@@ -384,7 +385,7 @@ int __xmknod(const char *pathname, mode_t mode, dev_t dev)
 
   canonicalize(pathname, canonic);
 
-  if (0 == is_sandbox_on() || 1 == before_syscall("__xmknod", canonic)) {
+  if FUNCTION_SANDBOX_SAFE("__xmknod", canonic) {
     check_dlsym(__xmknod);
     result = true___xmknod(pathname, mode, dev);
   }
@@ -410,7 +411,7 @@ int open(const char *pathname, int flags, ...)
 
   canonicalize(pathname, canonic);
 
-  if (0 == is_sandbox_on() || 1 == before_syscall_open_int("open", canonic, flags)) {
+  if FUNCTION_SANDBOX_SAFE_INT("open", canonic, flags) {
     /* We need to resolve open() realtime in some cases,
 	 * else we get a segfault when running /bin/ps, etc
 	 * in a sandbox */
@@ -429,7 +430,7 @@ int rename(const char *oldpath, const char *newpath)
   canonicalize(oldpath, old_canonic);
   canonicalize(newpath, new_canonic);
 
-  if (0 == is_sandbox_on() || 1 == before_syscall("rename", new_canonic)) {
+  if FUNCTION_SANDBOX_SAFE("rename", new_canonic) {
     check_dlsym(rename);
     result = true_rename(oldpath, newpath);
   }
@@ -444,7 +445,7 @@ int rmdir(const char *pathname)
 
   canonicalize(pathname, canonic);
 
-  if (0 == is_sandbox_on() || 1 == before_syscall("rmdir", canonic)) {
+  if FUNCTION_SANDBOX_SAFE("rmdir", canonic) {
     check_dlsym(rmdir);
     result = true_rmdir(pathname);
   }
@@ -460,7 +461,7 @@ int symlink(const char *oldpath, const char *newpath)
   canonicalize(oldpath, old_canonic);
   canonicalize(newpath, new_canonic);
 
-  if (0 == is_sandbox_on() || 1 == before_syscall("symlink", new_canonic)) {
+  if FUNCTION_SANDBOX_SAFE("symlink", new_canonic) {
     check_dlsym(symlink);
     result = true_symlink(oldpath, newpath);
   }
@@ -475,7 +476,7 @@ int truncate(const char *path, TRUNCATE_T length)
 
   canonicalize(path, canonic);
 
-  if (0 == is_sandbox_on() || 1 == before_syscall("truncate", canonic)) {
+  if FUNCTION_SANDBOX_SAFE("truncate", canonic) {
     check_dlsym(truncate);
     result = true_truncate(path, length);
   }
@@ -490,7 +491,7 @@ int unlink(const char *pathname)
 
   canonicalize(pathname, canonic);
 
-  if (0 == is_sandbox_on() || 1 == before_syscall("unlink", canonic)) {
+  if FUNCTION_SANDBOX_SAFE("unlink", canonic) {
     check_dlsym(unlink);
     result = true_unlink(pathname);
   }
@@ -508,10 +509,7 @@ int creat64(const char *pathname, __mode_t mode)
 
   canonicalize(pathname, canonic);
 
-  if (0 == is_sandbox_on() || 1 == before_syscall("creat64", canonic)) {
-    /* We need to resolve open64() realtime in some cases,
-     * else we get a segfault when running /bin/ps, etc
-     * in a sandbox */
+  if FUNCTION_SANDBOX_SAFE("creat64", canonic) {
     check_dlsym(open64);
     result = true_open64(pathname, O_CREAT | O_WRONLY | O_TRUNC, mode);
   }
@@ -526,7 +524,7 @@ FILE *fopen64(const char *pathname, const char *mode)
 
   canonicalize(pathname, canonic);
 
-  if (0 == is_sandbox_on() || 1 == before_syscall_open_char("fopen64", canonic, mode)) {
+  if FUNCTION_SANDBOX_SAFE_CHAR("fopen64", canonic, mode) {
     check_dlsym(fopen64);
     result = true_fopen(pathname,mode);
   }
@@ -550,10 +548,7 @@ int open64(const char *pathname, int flags, ...)
 
   canonicalize(pathname, canonic);
 
-  if (0 == is_sandbox_on() || 1 == before_syscall_open_int("open64", canonic, flags)) {
-    /* We need to resolve open64() realtime in some cases,
-     * else we get a segfault when running /bin/ps, etc
-     * in a sandbox */
+  if FUNCTION_SANDBOX_SAFE_INT("open64", canonic, flags) {
     check_dlsym(open64);
     result=true_open64(pathname, flags, mode);
   }
@@ -568,7 +563,7 @@ int truncate64(const char *path, __off64_t length)
 
   canonicalize(path, canonic);
 
-  if (0 == is_sandbox_on() || 1 == before_syscall("truncate64", canonic)) {
+  if FUNCTION_SANDBOX_SAFE("truncate64", canonic) {
     check_dlsym(truncate64);
     result = true_truncate64(path, length);
   }
@@ -592,7 +587,7 @@ int execve(const char *filename, char *const argv [], char *const envp[])
 
   canonicalize(filename, canonic);
 
-  if (0 == is_sandbox_on() || 1 == before_syscall("execve", canonic)) {
+  if FUNCTION_SANDBOX_SAFE("execve", canonic) {
     old_errno = errno;
 
     while (envp[count] != NULL) {
@@ -600,27 +595,33 @@ int execve(const char *filename, char *const argv [], char *const envp[])
         if (NULL != strstr(envp[count], sandbox_lib)) {
           break;
         } else {
+          const int max_envp_len=strlen(envp[count]) + strlen(sandbox_lib) + 1;
+          
           /* Backup envp[count], and set it to our own one which
            * contains sandbox_lib */
           old_envp = envp[count];
-          new_envp = (char*)malloc((strlen(old_envp) + strlen(sandbox_lib) + 1) * sizeof(char));
-          strncpy(new_envp, old_envp, strlen(old_envp + 1));
+          new_envp = (char *)malloc((max_envp_len + 1) * sizeof(char));
+          strncpy(new_envp, old_envp, max_envp_len);
 
           /* LD_PRELOAD already have variables other than sandbox_lib,
            * thus we have to add sandbox_lib via a white space. */
           if (0 != strcmp(envp[count], "LD_PRELOAD=")) {
-            strncpy(new_envp + strlen(old_envp), ":", 2);
+            strncpy(new_envp + strlen(old_envp), ":",
+                    max_envp_len - strlen(new_envp));
             strncpy(new_envp + strlen(old_envp) + 1, sandbox_lib,
-                    strlen(sandbox_lib) + 1);
+                    max_envp_len - strlen(new_envp));
           } else {
             strncpy(new_envp + strlen(old_envp), sandbox_lib,
-                    strlen(sandbox_lib) + 1);
+                    max_envp_len - strlen(new_envp));
           }
+
+          /* Valid string? */
+          new_envp[max_envp_len] = '\0';
 
           /* envp[count] = new_envp;
            *
            * Get rid of the "read-only" warnings */
-           memcpy((void *)&envp[count], &new_envp, sizeof(new_envp));
+          memcpy((void *)&envp[count], &new_envp, sizeof(new_envp));
 
           break;
         }
@@ -782,7 +783,6 @@ static void init_env_entries(char*** prefixes_array, int* prefixes_num, char* en
 #else
       token = strtok(buffer, ":");
 #endif
-      
 
       while ((NULL != token) && (strlen(token) > 0)) {
         prefix = (char *)malloc((strlen(token) + 1) * sizeof(char));
@@ -971,15 +971,14 @@ static int check_syscall(sbcontext_t* sbcontext, const char* func, const char* f
   char buffer[512];
 
   if ('/' == file[0]) {
-    absolute_path = (char*)malloc(sizeof(char)*(strlen(file)+1));
+    absolute_path = (char *)malloc((strlen(file) + 1) * sizeof(char));
     sprintf(absolute_path, "%s", file);
-  }
-  else
-  {
+  } else {
     tmp_buffer = get_current_dir_name();
-    absolute_path = (char*)malloc(sizeof(char)*(strlen(tmp_buffer)+1+strlen(file)+1));
+    absolute_path = (char *)malloc((strlen(tmp_buffer) + 1 + strlen(file) + 1) * sizeof(char));
     sprintf(absolute_path,"%s/%s", tmp_buffer, file);
-    free(tmp_buffer);
+    
+    if (tmp_buffer) free(tmp_buffer);
     tmp_buffer = NULL;
   }
   
@@ -987,7 +986,8 @@ static int check_syscall(sbcontext_t* sbcontext, const char* func, const char* f
   debug_log_env = getenv("SANDBOX_DEBUG");
   debug_log_path = getenv("SANDBOX_DEBUG_LOG");
 	
-  if (((NULL == log_path) || (0 != strcmp(absolute_path, log_path))) &&
+  if (((NULL == log_path) ||
+       (0 != strcmp(absolute_path, log_path))) &&
       ((NULL == debug_log_env) ||
        (NULL == debug_log_path) ||
        (0 != strcmp(absolute_path, debug_log_path))) &&
@@ -995,10 +995,10 @@ static int check_syscall(sbcontext_t* sbcontext, const char* func, const char* f
      ) {
     if (1 == sbcontext->show_access_violation) {
       fprintf(stderr, "\e[31;01mACCESS DENIED\033[0m  %s:%*s%s\n",
-              func, (int)(10-strlen(func)), "", absolute_path);
+              func, (int)(10 - strlen(func)), "", absolute_path);
 			
       if (NULL != log_path) {
-        sprintf(buffer, "%s:%*s%s\n", func, (int)(10-strlen(func)), "", absolute_path);
+        sprintf(buffer, "%s:%*s%s\n", func, (int)(10 - strlen(func)), "", absolute_path);
 		
         if ((0 == lstat(log_path, &log_stat)) &&
             (0 == S_ISREG(log_stat.st_mode))
@@ -1008,8 +1008,8 @@ static int check_syscall(sbcontext_t* sbcontext, const char* func, const char* f
                   log_path);
         } else {
           log_file = true_open(log_path,
-                               O_APPEND|O_WRONLY|O_CREAT,
-                               S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
+                               O_APPEND | O_WRONLY | O_CREAT,
+                               S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
           if(log_file >= 0) {
             write(log_file, buffer, strlen(buffer));
             close(log_file);
@@ -1023,7 +1023,8 @@ static int check_syscall(sbcontext_t* sbcontext, const char* func, const char* f
   else if (NULL != debug_log_env) {
     if (NULL != debug_log_path) {
       if (0 != strcmp(absolute_path, debug_log_path)) {
-        sprintf(buffer, "%s:%*s%s\n", func, (int)(10-strlen(func)), "", absolute_path);
+        sprintf(buffer, "%s:%*s%s\n", func, (int)(10 - strlen(func)), "", absolute_path);
+        
         if ((0 == lstat(debug_log_path, &debug_log_stat)) &&
             (0 == S_ISREG(debug_log_stat.st_mode))
            ) {
@@ -1032,8 +1033,8 @@ static int check_syscall(sbcontext_t* sbcontext, const char* func, const char* f
                   log_path);
         } else {
           debug_log_file = true_open(debug_log_path,
-                                     O_APPEND|O_WRONLY|O_CREAT,
-                                     S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
+                                     O_APPEND | O_WRONLY | O_CREAT,
+                                     S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
           if(debug_log_file >= 0) {
             write(debug_log_file, buffer, strlen(buffer));
             close(debug_log_file);
@@ -1042,7 +1043,7 @@ static int check_syscall(sbcontext_t* sbcontext, const char* func, const char* f
       }
     } else {
       fprintf(stderr, "\e[32;01mACCESS ALLOWED\033[0m %s:%*s%s\n",
-              func, (int)(10-strlen(func)), "", absolute_path);
+              func, (int)(10 - strlen(func)), "", absolute_path);
     }
   }
 
@@ -1130,6 +1131,4 @@ static int before_syscall_open_char(const char* func, const char* file, const ch
 }
 
 
-/* 
- * vim:expandtab noai:cindent ai
- */
+// vim:expandtab noai:cindent ai
