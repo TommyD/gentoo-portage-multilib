@@ -2,35 +2,47 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  20 Dec 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Rewrote
+  match_from_list -- Simplified and made pkgcmp and match_from_list
+  properly compare package names.
+
+  20 Dec 2003; Nicholas Jones <carpaski@gentoo.org> repoman: Fix for mysigs
+  traceback when signing.
+  
+  20 Dec 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Added
+  PYTHONPATH to the specials list -- created a colon_seperated list.
+  Fixed reset() in class config so that you can specify keeping the
+  pkg dictionary when resetting the values.
+
   19 Dec 2003; Masatomo Nakano <nakano@gentoo.org> repoman: Added check 
-	 whether "ebuild foo.ebuild digest" succeeds.
+  whether "ebuild foo.ebuild digest" succeeds.
 
   19 Dec 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Fix for
-	pkg settings being maintained after an unmerge.
+  pkg settings being maintained after an unmerge.
 
   19 Dec 2003; Nicholas Jones <carpaski@gentoo.org> pym/portage_db_*: Moved
-	to using cPickle instead of marshal. More standardization of the API.
+  to using cPickle instead of marshal. More standardization of the API.
 
   18 Dec 2003; Masatomo Nakano <nakano@gentoo.org> repoman: Added virtual
-	dependency check on each arch.
+  dependency check on each arch.
 
   17 Dec 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Fixed a
-	permission issue involving $T and userpriv. Lockfile touchup.
-	
-	17  Dec 2003; Nicholas Jones <carpaski@gentoo.org> portage_db_*: Added
-	templates and db for cache interfaces. Presently have a anydbm and a
-	flat file interface working. See the test for operations.
+  permission issue involving $T and userpriv. Lockfile touchup.
+  
+  17  Dec 2003; Nicholas Jones <carpaski@gentoo.org> portage_db_*: Added
+  templates and db for cache interfaces. Presently have a anydbm and a
+  flat file interface working. See the test for operations.
 
   15 Dec 2003; Nicholas Jones <carpaski@gentoo.org> emerge: Added a call
-	to portageq that causes python to create optimized modules prior to it
-	ending up inside the sandbox. Added more output and logging to sync.
-	
+  to portageq that causes python to create optimized modules prior to it
+  ending up inside the sandbox. Added more output and logging to sync.
+  
   15 Dec 2003; Nicholas Jones <carpaski@gentoo.org> prepstrip: 'tree' is not
-	the same as 'true'.
-	
+  the same as 'true'.
+  
   15 Dec 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: invalid
-	settings in package.keywords caused a traceback -- fixed with error message.
-	
+  settings in package.keywords caused a traceback -- fixed with error message.
+  
 *portage-2.0.50_pre1 (12 Dec 2003): API change + enhancements
 
   10 Dec 2003; Nicholas Jones <carpaski@gentoo.org> chkcontents: Uses portage

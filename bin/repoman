@@ -1095,6 +1095,7 @@ else:
 	gpgcmd+= "--default-key "+repoman_settings["PORTAGE_GPG_KEY"]+" "
 
 	mychanges=[]
+	mysigs=[]
 	if myheaders or myupdates or myremoved or mynew:
 		myfiles=myheaders+myupdates+myremoved+mynew
 		mydone=[]
