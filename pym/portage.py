@@ -776,11 +776,10 @@ class config:
 						mysetting.append(add)
 			#store setting in last element of configlist, the original environment:
 			self.configlist[-1][mykey]=string.join(mysetting," ")
-			print mykey,":",self.configlist[-1][mykey]
 		#cache split-up USE var in a global
 		usesplit=string.split(self.configlist[-1]["USE"])
 		# Pre-Pend ARCH variable to USE settings so '-*' in env doesn't kill arch.
-		if (profiledir) and (self.configdict["defaults"]["ARCH"] not in usesplit):
+		if (profiledir) and (self.configdict["defaults"]["ARCH"]) and (self.configdict["defaults"]["ARCH"] not in usesplit):
 			usesplit.insert(0,self.configdict["defaults"]["ARCH"])
 			self.configlist[-1]["USE"]=string.join(usesplit," ")
 	
@@ -3620,6 +3619,8 @@ class dblink:
 		#if we have a file containing previously-merged config file md5sums, grab it.
 		if os.path.exists(destroot+"/var/cache/edb/config"):
 			cfgfiledict=grabdict(destroot+"/var/cache/edb/config")
+		else:
+			cfgfiledict={}
 		# set umask to 0 for merging; back up umask, save old one in prevmask (since this is a global change)
 		mymtime=int(time.time())
 		prevmask=os.umask(0)
