@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  02 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> portage.py: Fixed two bugs
+  in the ExtractKernelVersion changes as per dsd's patch. #67804
+
   02 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> ebuild.sh: Turned off
   shell option extglob as it interferes with the g++ QA interceptor. #69690
 

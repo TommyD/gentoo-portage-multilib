@@ -821,11 +821,11 @@ def ExtractKernelVersion(base_dir):
 
 	# Append the contents of each to the version string, stripping ALL whitespace
 	for lv in localversions:
-		version += string.join(string.split(string.join(grabfile(lv))), "")
+		version += string.join(string.split(string.join(grabfile(base_dir+"/"+lv))), "")
 
 	# Check the .config for a CONFIG_LOCALVERSION and append that too, also stripping whitespace
 	kernelconfig = getconfig(base_dir+"/.config")
-	if kernelconfig.has_key("CONFIG_LOCALVERSION"):
+	if kernelconfig and kernelconfig.has_key("CONFIG_LOCALVERSION"):
 		version += string.join(string.split(kernelconfig["CONFIG_LOCALVERSION"]), "")
 
 	return (version,None)
