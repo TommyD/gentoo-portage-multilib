@@ -385,6 +385,8 @@ setenv_sandbox_predict(char *home_dir)
 		strcat(sandbox_predict_var, "/usr/lib/python2.1/");
 		strcat(sandbox_predict_var, ":");
 		strcat(sandbox_predict_var, "/usr/lib/python2.2/");
+		strcat(sandbox_predict_var, ":");
+		strcat(sandbox_predict_var, "/usr/lib/python2.3/");
 		setenv(ENV_SANDBOX_PREDICT, sandbox_predict_var, 1);
 	}
 }
