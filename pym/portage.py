@@ -758,11 +758,19 @@ def spawn(mystring,debug=0,free=0):
 	if mypid==0:
 		myargs=[]
 		if ("sandbox" in features) and (not free):
-			mycommand="/usr/lib/portage/bin/sandbox"
-			if debug:
-				myargs=["sandbox",mystring]
+			#only run sandbox for the following phases
+			if buildphase in sandboxactive:
+				mycommand="/usr/lib/portage/bin/sandbox"
+				if debug:
+					myargs=["sandbox",mystring]
+				else:
+					myargs=["sandbox",mystring]
 			else:
-				myargs=["sandbox",mystring]
+				mycommand="/bin/bash"
+				if debug:
+					myargs=["bash","-x","-c",mystring]
+				else:
+					myargs=["bash","-c",mystring]
 		else:
 			mycommand="/bin/bash"
 			if debug:
@@ -806,9 +814,18 @@ def multispawn(mycommand=None,myargs=None):
 	mspawncur=mspawncur+1
 	return mypid
 	
-def ebuildsh(mystring):
+def ebuildsh(mystring,debug=0):
 	"Spawn ebuild.sh, optionally in a sandbox"
-	pass
+	mylist=mystring.split()
+	for x in mylist:
+		global buildphase
+		buildphase=x
+		#here we always want to call spawn with free=0,
+		#else the exit handler may not detect things properly
+		retval=spawn("/usr/sbin/ebuild.sh "+x,debug)
+		#reset it again
+		buildphase=""
+		if retval: return retval
 
 def fetch(myuris):
 	"fetch files.  Will use digest file if available."
@@ -1067,7 +1084,7 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 
 	# if any of these are being called, handle them and stop now.
 	if mydo in ["help","clean","prerm","postrm","preinst","postinst","config","touch","setup"]:
-		return spawn("/usr/sbin/ebuild.sh "+mydo)
+		return ebuildsh(mydo)
 		#initial ebuild.sh bash environment configured
 	
 	# get possible slot information from the deps file
@@ -1125,14 +1142,14 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 				}
 	if mydo in actionmap.keys():	
 		if "noauto" in features:
-			return spawn("/usr/sbin/ebuild.sh "+mydo)
+			return ebuildsh(mydo)
 		else:
-			return spawn("/usr/sbin/ebuild.sh "+actionmap[mydo])
+			return ebuildsh(actionmap[mydo])
 	elif mydo=="qmerge": 
 		#qmerge is specifically not supposed to do a runtime dep check
 		return merge(settings["CATEGORY"],settings["PF"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot)
 	elif mydo=="merge":
-		retval=spawn("/usr/sbin/ebuild.sh setup unpack compile install")
+		retval=ebuildsh("setup unpack compile install")
 		if retval: return retval
 		return merge(settings["CATEGORY"],settings["PF"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot,myebuild=settings["EBUILD"])
 	elif mydo=="package":
@@ -1157,7 +1174,7 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 			print
 			return 0
 		else:
-			return spawn("/usr/sbin/ebuild.sh setup unpack compile install package")
+			return ebuildsh("setup unpack compile install package")
 
 expandcache={}
 
