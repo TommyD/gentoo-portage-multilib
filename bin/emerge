@@ -13,6 +13,7 @@ import commands
 import shutil
 import re
 import time
+import copy
 
 spinner="\|/-\|/-"
 spinpos=0
@@ -608,20 +609,26 @@ class depgraph:
 				sys.exit(0)
 
 def unmerge(unmerge_action, unmerge_files):
-	full_paths={}
-	full_ebuild_paths={}
-	full_package_paths={}
+	candidate_ebuild_paths={}
+	candidate_packages={}
+	removed_versions_mapping={}
+	kept_versions_mapping={}
 	current_version_mapping={}
+	global_unmerge=0
 	
+	if not unmerge_files or "world" in unmerge_files or "system" in unmerge_files:
+		global_unmerge=1
+
 	var_path=portage.root+"var/db/pkg"
 	# process all arguments, verify if they can be resolved to an installed
 	# ebuild file and add the absolute paths of these ebuild to a list
-	if ("clean" == unmerge_action and not unmerge_files) or "world" in unmerge_files or "system" in unmerge_files:
+	if global_unmerge:
 		if "--all" in myopts and not "--pretend" in myopts:
 			print red("!!!")+" Thanks to the carefulnes of the Gentoo Linux developers, you were preserved"
 			print "from having erased your entire system. "+bold("emerge --all clean")+" or "
 			print bold("emerge --all unmerge")+" can only be used when specifying explicit packages."
 			print
+			return 0
 		else:
 			mymatches=[]
 			localtree=portage.vartree()
@@ -629,7 +636,7 @@ def unmerge(unmerge_action, unmerge_files):
 				for y in localtree.getallnodes():
 					mymatches.extend(localtree.dep_match(y))
 			elif "system" in unmerge_files:
-				for y in getsyslist():
+				for y in getlist("system"):
 					mymatches.extend(localtree.dep_match(y))
 	
 			# only loops over the matches if they were found
@@ -637,14 +644,14 @@ def unmerge(unmerge_action, unmerge_files):
 				for package in mymatches:
 					full_path=localtree.getebuildpath(package)
 					if os.path.exists(full_path):
-						full_package_paths[full_path]=package
+						candidate_ebuild_paths[full_path]=package
 
 	else:
 		if not unmerge_files:
 			print
 			print "No packages to unmerge have been provided."
 			print
-			sys.exit(1)
+			return 0
 		for x in unmerge_files:
 		# an absolute path has been given
 			if (x[0]=='/'):
@@ -653,20 +660,23 @@ def unmerge(unmerge_action, unmerge_files):
 					print "When providing an absolute path it should be"
 					print "in the following format : "+var_path+"/category/package"
 					print "The path '"+x+"' doesn't respect this."
-					sys.exit(1)
+					print
+					return 0
 				elif not os.path.exists(x):
 					print "The path '"+x+"' doesn't exist."
-					sys.exit(1)
+					print
+					return 0
 				elif -1 == find(x, var_path):
 					print "The path '"+x+"' didn't commence with '"+var_path+"'."
-					sys.exit(1)
+					print
+					return 0
 				else:
 					full_path=strip(x)+"/"+path_parts[5]+".ebuild"
 					if not os.path.exists(full_path):
 						print "The ebuild '"+full_path+"' couldn't be found."
 						print "Your portage installation tree seems to be corrupted."
 					else:
-						full_ebuild_paths[full_path]=path_parts[4]+"/"+path_parts[5]
+						candidate_ebuild_paths[full_path]=path_parts[4]+"/"+path_parts[5]
 	
 			# a category and package name have been given
 			else:
@@ -685,24 +695,25 @@ def unmerge(unmerge_action, unmerge_files):
 							print "The ebuild '"+full_path+"' couldn't be found."
 							print "Your portage installation tree seems to be corrupted."
 						else:
-							full_package_paths[full_path]=package
+							candidate_ebuild_paths[full_path]=package
 
 	if not "--all" in myopts:
-		if len(full_package_paths) > 0:
+		if len(candidate_ebuild_paths) > 0:
 			latest_ebuilds={}
 			old_ebuilds={}
 			# determine the latest installed packages of each cat/pkg key
-			full_paths_keys=full_package_paths.keys()
+			candidate_paths_keys=candidate_ebuild_paths.keys()
 			# sort the ebuild paths
-			full_paths_keys.sort()
+			candidate_paths_keys.sort()
 			previous_package_set=None
-			for full_path in full_paths_keys:
+			for candidate_path in candidate_paths_keys:
 				# construct the key that will be used to determine when a new package set
 				# is being processed, the package slot is taken into account for this
-				package_parts=portage.pkgsplit(full_package_paths[full_path])
+				package_parts=portage.pkgsplit(candidate_ebuild_paths[candidate_path])
+				candidate_packages[package_parts[0]]=1
 				
 				# construct the package slot, even if it was an old package without slot support
-				slot_path=dirname(full_path)+"/SLOT"
+				slot_path=dirname(candidate_path)+"/SLOT"
 				if os.path.exists(slot_path):
 					slot_file=open(slot_path)
 					package_slot=slot_file.readline().strip()
@@ -724,13 +735,13 @@ def unmerge(unmerge_action, unmerge_files):
 					latest_ebuilds[package_set]=["",-1,-1]
 				# get the latest modification time of this package version, which should correspond to
 				# the time when it when installed
-				counter_path=dirname(full_path)+"/COUNTER"
+				counter_path=dirname(candidate_path)+"/COUNTER"
 				package_counter=-1;
 				if os.path.exists(counter_path):
 					counter_file=open(counter_path, "r")
 					package_counter=long(counter_file.readline())
 					counter_file.close()
-				contents_path=dirname(full_path)+"/CONTENTS"
+				contents_path=dirname(candidate_path)+"/CONTENTS"
 				contents_mtime=os.stat(contents_path)[8]
 				# update the latest modified package version
 				if not old_ebuilds.has_key(package_set):
@@ -738,62 +749,85 @@ def unmerge(unmerge_action, unmerge_files):
 				if package_counter > latest_ebuilds[package_set][1] or (package_counter == -1 and latest_ebuilds[package_set][1] == -1 and contents_mtime > latest_ebuilds[package_set][2]):
 					if latest_ebuilds[package_set][0]:
 						old_ebuilds[package_set].append(latest_ebuilds[package_set][0])
-					latest_ebuilds[package_set]=[full_path,package_counter,contents_mtime]
+						package_parts=portage.pkgsplit(candidate_ebuild_paths[latest_ebuilds[package_set][0]])
+						current_package=package_parts[0]
+						current_version=package_parts[1]
+						if not removed_versions_mapping.has_key(current_package):
+							removed_versions_mapping[current_package]=[]
+						removed_versions_mapping[current_package].append(current_version)
+					latest_ebuilds[package_set]=[candidate_path,package_counter,contents_mtime]
 				else:
-					old_ebuilds[package_set].append(full_path)
+					old_ebuilds[package_set].append(candidate_path)
 				# update which package set has just been processed
 				previous_package_set=package_set
 				
 			# remove the latest version of the last processed package set
 			for package_set in latest_ebuilds.keys():
 				if latest_ebuilds[package_set][0]:
-					del full_package_paths[latest_ebuilds[package_set][0]]
+					latest_ebuild_path=latest_ebuilds[package_set][0]
+					package_parts=portage.pkgsplit(candidate_ebuild_paths[latest_ebuild_path])
+					current_package=package_parts[0]
+					current_version=package_parts[1]
+					if not kept_versions_mapping.has_key(current_package):
+						kept_versions_mapping[current_package]=[]
+					kept_versions_mapping[current_package].append(current_version)
+					del candidate_ebuild_paths[latest_ebuild_path]
 					for old_ebuild in old_ebuilds[package_set]:
-						current_version_mapping[old_ebuild]=latest_ebuilds[package_set][0]
+						current_version_mapping[old_ebuild]=latest_ebuild_path
 
-	full_paths=full_ebuild_paths.keys()
-	full_paths.extend(full_package_paths.keys())
-	
-	if len(full_paths)==0:
+	candidate_packages=candidate_packages.keys()
+	candidate_packages.sort()
+
+	if 0==len(candidate_packages):
 		print "Couldn't find any matching installed packages."
-		sys.exit(1)
+		return 0
 	else:
-		if "--pretend" in myopts:
+		if global_unmerge and 0==len(removed_versions_mapping):
 			print
-			print "The are the packages that I would unmerge :"
+			print "No outdated packages were found on your system."
 			print
-		else:
+			return 0
+		elif "--pretend" in myopts:
+			if global_unmerge:
+				print
+				print "This the overview of outdated packages on your system :"
+				print
+			else:
+				print
+				print "These are the packages that I would unmerge :"
+				print
+		elif len(candidate_ebuild_paths)>0:
 			print
 			print "The following packages are going to be unmerged :"
 			print
+		else:
+			print
+			print "No packages will be unmerged."
+			print "Only old packages are taken into account."
+			print "Use "+bold("--pretend")+" to get an overview of the versions that are being kept."
+			print "Use "+bold("--all")+" to remove all installed instances of a package."
+			print
+			return 0
 
-		if len(full_paths) > 0:
-			# this makes revisions come before slot versions
-			# and therefor unmerges the older packages first
-			full_paths.sort()
-			previous_package=None
-			current_package=None
-			kept_packages={}
-			for full_path in full_paths:
-				path_parts=split(full_path, "/")
-				current_package_parts=portage.catpkgsplit(path_parts[4]+"/"+path_parts[5])
-				current_package=current_package_parts[0]+"/"+current_package_parts[1]
+		if len(candidate_packages) > 0:
+			for candidate_package in candidate_packages:
+				if ("--pretend" in myopts and not global_unmerge) or removed_versions_mapping.has_key(candidate_package):
+					print white(candidate_package)
+					print "    Removing:",
+					if removed_versions_mapping.has_key(candidate_package):
+						for version in removed_versions_mapping[candidate_package]:
+							print red(version),
+						print
+					else:
+						print red("none")
+					print "    Keeping :",
+					if kept_versions_mapping.has_key(candidate_package):
+						for version in kept_versions_mapping[candidate_package]:
+							print green(version),
+						print
+					else:
+						print green("none")
 				
-				printCleanSummary(previous_package,current_package,kept_packages)
-				
-				if current_version_mapping.has_key(full_path):
-					kept_package=current_version_mapping[full_path]
-					if kept_package:
-						kept_package_parts=split(kept_package, "/")
-						kept_packages[kept_package_parts[4]+"/"+kept_package_parts[5]]=1
-				removed_version=current_package_parts[2]
-				if current_package_parts[3]!="r0":
-					removed_version = removed_version+"-"+current_package_parts[3]
-				print red(removed_version),
-				previous_package=current_package
-
-			printCleanSummary(previous_package,None,kept_packages)
-			
 		if not "--pretend" in myopts:
 			if portage.settings["CLEAN_DELAY"]:
 				secs=string.atoi(portage.settings["CLEAN_DELAY"])
@@ -809,9 +843,10 @@ def unmerge(unmerge_action, unmerge_files):
 					time.sleep(1)
 					secs = secs-1
 				print secs
-			for full_path in full_paths:
-				print "Unmerging "+os.path.basename(full_path)+" ..."
-				retval=portage.doebuild(full_path,"unmerge",portage.root,edebug)
+			for candidate_path in candidate_ebuild_paths:
+				print "Unmerging "+os.path.basename(candidate_path)+" ..."
+				retval=portage.doebuild(candidate_path,"unmerge",portage.root,edebug)
+	return 1
 
 def post_emerge(retval=0):
 	auxpat=re.compile('^([^-]*)(-\d+)?\.info(-\d+)?(\.gz)?')	
@@ -874,27 +909,6 @@ if "noclean" not in portage.features:
 		myopts.append("--autoclean")
 if "--debug" in myopts:
 	edebug=1
-
-def printCleanSummary(previous_package,current_package,kept_packages):
-	if previous_package!=current_package:
-		if previous_package:
-			print
-			print "    Keeping :",
-			if len(kept_packages) > 0:
-				for kept_package in kept_packages.keys():
-					kept_package_parts=portage.catpkgsplit(kept_package)
-					kept_version=kept_package_parts[2]
-					if kept_package_parts[3]!="r0":
-						kept_version = kept_version+"-"+kept_package_parts[3]
-					print green(kept_version),
-			else:
-				print green("none")
-			print
-		kept_packages.clear()
-		if current_package:
-			print white(current_package)
-			print "    Removing:",
-	return
 
 if myaction in ["sync","rsync"]:
 	rclean=0
@@ -1176,8 +1190,8 @@ elif "search"==myaction:
 			searchinstance.output()
 
 elif "unmerge"==myaction or "clean"==myaction:
-	unmerge(myaction, myfiles)
-	post_emerge()
+	if 1==unmerge(myaction, myfiles):
+		post_emerge()
 	
 # "update", "system", or just process files:
 else:
