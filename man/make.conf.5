@@ -34,21 +34,48 @@ Defines actions portage takes by default.  These options should
 not be changed by anyone but developers and/or maintainers.
 'sandbox' is an important part of features and should not be
 disabled by default.
-.TP 
+.TP
 \fBNOCOLOR\fR = \fI["true" | "false"]\fR
 Defines if color should be disabled by default.
 .br
 Defaults to false.
 .TP
+\fBCLEAN_DELAY\fR = \fIinteger\fR
+Determines how long the countdown delay will be after running `emerge clean`.
+.br
+Defaults to 5 seconds.
+.TP
+\fBAUTOCLEAN\fR = \fI["yes" | "no"]\fR
+Automatically cleans the system by removing outdated packages which will not
+remove functionalities or prevent your system from working.
+.br
+Defaults to no.
+.TP
+\fBUSE_ORDER\fR = \fI"env:conf:auto:defaults"\fR
+Determines precedence for incrementing the setting of the USE variable.
+The above setting will cause the environment (env) to override make.conf
+(conf) to override auto generated values from merged packages (auto) to
+override make.defaults (defaults).
+.br
+\fB***warning***\fR
+.br
+Do not modify this value unless you're a developer and you know what you're doing.
+If you change this and something breaks, we will not help you fix it.
+.br
+Defaults to "env:conf:auto:defaults".
+.TP
 \fBPROXY HTTP_PROXY FTP_PROXY\fR = \fI[host:port]\fR
 These vars are used if the sources must be downloaded from the
 internet by \fBwget\fR(1).  They are only required if you use a proxy server
-for internet access.  Either define \fIPROXY\fR or
-\fIPROXY_FTP\fR and \fIPROXY_HTTP\fR
-.TP 
+for internet access.  Either define \fIPROXY\fR or \fIPROXY_FTP\fR and \fIPROXY_HTTP\fR.
+.TP
 \fBGENTOO_MIRRORS\fR = \fI[URLs]\fR
 Insert your list of local mirrors here.  These locations are used to
 download files before the ones listed in the \fIebuild scripts\fR.
+.TP
+\fBSYNC\fR = \fI[RSYNC]\fR
+Insert your list of local rsync mirrors here.  These rsync servers are used
+to sync the local portage tree when `emerge rsync` is run.
 .TP
 \fBCHOST\fR
 This variable is passed by the \fIebuild scripts\fR to the \fIconfigure\fR
@@ -76,14 +103,18 @@ http://gcc.gnu.org/onlinedocs/gcc-2.95.3/gcc_2.html
 If this is defined, binaries and libraries are not stripped before \fImerge\fR.
 .TP
 \fBUSE\fR
-This variable contains options that control the build behaviour of
+This variable contains options that control the build behavior of
 several packages.  More information in \fBebuild\fR(5).  Possible USE values
 can be found in \fI/usr/portage/profiles/use.desc\fR.
 .TP
 \fBFETCHCOMMAND\fR
 This variable contains the command used for fetching package\-sources from
-the internet. 
-.TP 
+the internet.
+.TP
+\fBRESUMECOMMAND\fR
+This variable contains the command used for resuming package\-sources that
+have been partially downloaded by the \fBFETCHCOMMAND\fR.
+.TP
 \fBPORTAGE_TMPDIR\fR = \fI[path]\fR
 Defines the location of the temporary build directories.
 .br
@@ -119,6 +150,16 @@ Defaults to /usr/portage/packages.
 .TP
 \fBRPMDIR\fR = \fI[path]\fR
 Defines the location where created RPM packages will be stored.
+.br
+Defaults to /usr/portage/rpm.
+.TP
+\fBCONFIG_PROTECT\fR = \fI[space delimited list of dirs]\fR
+All directories that are defined here will have "config file protection"
+enabled for them.  For more information, please see `emerge --help config`.
+.TP
+\fBCONFIG_PROTECT_MASK\fR = \fI[space delimited list of dirs]\fR
+All directories that are defined here will have "config file protection"
+disabled for them.  For more information, please see `emerge --help config`.
 .SH "SEE ALSO"
 .BR ebuild (1),
 .BR ebuild (5)
