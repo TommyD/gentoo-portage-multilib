@@ -470,13 +470,13 @@ walk_command(const char *p, const char *end, char endchar, const char interpret_
 	   (interpret_level == SPACE_PARSING && isspace(*p))) {
 	    if(!escaped)
 		return p;
-	} else if(NO_PARSING==interpret_level) {
-	    p++;
-	    continue;
 	} else if('\\' == *p && !escaped) {
 	    escaped = 1;	p++;	continue;
 	} else if(escaped) {
 	    escaped = 0;
+	} else if(NO_PARSING==interpret_level) {
+	    p++;
+	    continue;
 	} else if('<' == *p) {
 	    here_count++;
 	    if(2 == here_count && interpret_level == COMMAND_PARSING) {
