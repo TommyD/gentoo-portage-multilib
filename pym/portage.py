@@ -383,7 +383,10 @@ class config:
 		self.origenv=os.environ.copy()
 		self.populated=0
 	def populate(self):
-		self.configlist=[self.origenv.copy(),getconfig("/etc/make.conf"),getconfig(profiledir+"/make.defaults"),getconfig("/etc/make.globals")]
+		if os.path.exists(profiledir+"/make.defaults"):
+			self.configlist=[self.origenv.copy(),getconfig("/etc/make.conf"),getconfig(profiledir+"/make.defaults"),getconfig("/etc/make.globals")]
+		else:
+			self.configlist=[self.origenv.copy(),getconfig("/etc/make.conf"),getconfig("/etc/make.globals")]
 		self.populated=1
 	
 	def __getitem__(self,mykey):
@@ -2262,12 +2265,6 @@ profiledir=None
 if root!="/":
 	if os.path.exists(root+"etc/make.profile/make.defaults"):
 		profiledir=root+"etc/make.profile"
-	else:
-		print "\n!!!",root+"etc/make.profile/make.defaults not found.\n!!! Defaulting to /etc/make.profile."
 if not profiledir:
 	if os.path.exists("/etc/make.profile/make.defaults"):
 		profiledir="/etc/make.profile"
-	else:
-		print "\n!!! /etc/make.profile/make.defaults not found.\n!!! /etc/make.profile should be a symlink to one of the"
-		print "\n!!! directories in /usr/portage/profiles.  Please fix this."
-		sys.exit(1)
