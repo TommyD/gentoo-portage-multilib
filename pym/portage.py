@@ -3462,7 +3462,6 @@ class dblink:
 			#next line: we dont rely on mtimes for symlinks anymore.
 			#try:
 			if (pkgfiles[obj][0] not in ("dir","fif","dev","sym")) and (lmtime != pkgfiles[obj][1]):
-				print lmtime,pkgfiles[obj][1]
 				print "--- !mtime", pkgfiles[obj][0], obj
 				continue
 			#except KeyError:
