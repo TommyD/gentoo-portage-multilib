@@ -868,7 +868,6 @@ class depgraph:
 				print "\n!!! Error: the "+x[2]+" package conflicts with this package and both can't be installed on the same system together."
 				sys.exit(1)
 
-		#above line used by --fetchonly
 		for x in mylist:
 			if x[3]=="nomerge":
 				continue
@@ -876,10 +875,11 @@ class depgraph:
 			#the last argument in the portage.doebuild() tells doebuild to *not* do dep checking
 			#(emerge is already handling that)
 			y=portage.portdb.findname(x[2])
-			print ">>> emerge",x[2],"to",x[1]
+			if not "--pretend" in myopts:
+				print ">>> emerge",x[2],"to",x[1]
 			if x[0]=="ebuild":
 				if "--fetchonly" in myopts:
-					retval=portage.doebuild(y,"fetch",myroot,edebug)
+					retval=portage.doebuild(y,"fetch",myroot,edebug,("--pretend" in myopts))
 					if retval:
 						print
 						print "!!! Fetch for",y,"failed, continuing..."
@@ -1326,7 +1326,7 @@ elif "unmerge"==myaction or "prune"==myaction or "clean"==myaction:
 	
 # "update", "system", or just process files:
 else:
-	if "--pretend" in myopts:
+	if ("--pretend" in myopts) and not ("--fetchonly" in myopts):
 		print
 		print "These are the packages that I would merge, in order."
 		print
@@ -1349,7 +1349,7 @@ else:
 		if not retval:
 			sys.exit(1)
 		print "\b\b ...done!"
-	if "--pretend" in myopts:
+	if ("--pretend" in myopts) and not ("--fetchonly" in myopts):
 		mydepgraph.display(mydepgraph.altlist())
 	else:
 		mydepgraph.merge(mydepgraph.altlist())

@@ -814,7 +814,7 @@ def spawn(mystring,debug=0,free=0):
 		#interrupted by signal
 		return 16
 
-def fetch(myuris):
+def fetch(myuris, listonly=0):
 	"fetch files.  Will use digest file if available."
 	if ("mirror" in features) and ("nomirror" in settings["RESTRICT"].split()):
 		print ">>> \"mirror\" mode and \"nomirror\" restriction enabled; skipping fetch."
@@ -878,7 +878,13 @@ def fetch(myuris):
 		else:
 				filedict[myfile].append(myuri)
 	for myfile in filedict.keys():
+		if listonly:
+			fetched=0
+			print ""
 		for loc in filedict[myfile]:
+			if listonly:
+				print loc+" ",
+				continue
 			try:
 				mystat=os.stat(settings["DISTDIR"]+"/"+myfile)
 				if mydigests!=None and mydigests.has_key(myfile):
@@ -920,7 +926,7 @@ def fetch(myuris):
 					if not myret:
 						fetched=2
 						break
-		if fetched!=2:
+		if (fetched!=2) and not listonly:
 			print '!!! Couldn\'t download',myfile+". Aborting."
 			return 0
 	return 1
@@ -1010,7 +1016,7 @@ def digestcheck(myarchives):
 	return 1
 
 # "checkdeps" support has been depreciated.  Relying on emerge to handle it.
-def doebuild(myebuild,mydo,myroot,debug=0):
+def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 	global settings
 	if not os.path.exists(myebuild):
 		print "!!! doebuild:",myebuild,"not found."
@@ -1120,7 +1126,7 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 		fetchme=newuris
 		checkme=alist
 
-	if not fetch(fetchme):
+	if not fetch(fetchme, listonly):
 		return 1
 
 	if mydo=="fetch":
