@@ -669,14 +669,14 @@ class depgraph:
 		myfavorites=[]
 		for x in myfiles:
 			if x[-5:]==".tbz2":
-				mytbz2=xpak.tbz2(mykey)
+				mytbz2=xpak.tbz2(x)
 				mykey=mytbz2.getelements("CATEGORY")[0]+"/"+os.path.basename(x)[:-5]
 				if not self.create(["binary",portage.root,mykey],None,"--onlydeps" not in myopts):
 					return myfavorites
 				elif not "--oneshot" in myopts:
 					myfavorites.append(mykey)
 			elif x[-7:]==".ebuild":
-				mykey=os.path.basename(os.path.abspath(mypkg+"/../.."))+"/"+os.path.basename(x)[:-7]
+				mykey=os.path.basename(os.path.abspath(x+"/../.."))+"/"+os.path.basename(x)[:-7]
 				if not self.create(["ebuild",portage.root,mykey],None,"--onlydeps" not in myopts):
 					return myfavorites
 				elif not "--oneshot" in myopts:
