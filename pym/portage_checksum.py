@@ -1,6 +1,6 @@
 # portage_checksum.py -- core Portage functionality
 # Copyright 1998-2004 Gentoo Foundation
-# Distributed under the GNU Public License v2
+# Distributed under the terms of the GNU General Public License v2
 # $Header$
 
 from portage_const import PRIVATE_PATH,PRELINK_BINARY

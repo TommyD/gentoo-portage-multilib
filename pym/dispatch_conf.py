@@ -1,6 +1,7 @@
 # archive_conf.py -- functionality common to archive-conf and dispatch-conf
-# Copyright 2003 Gentoo Technologies, Inc.
-# Distributed under the GNU Public License v2
+# Copyright 2003-2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header$
 
 # Library by Wayne Davison <gentoo@blorf.net>, derived from code
 # written by Jeremy Wohl (http://igmus.org)

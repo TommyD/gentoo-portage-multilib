@@ -1,7 +1,7 @@
 # portage_contents.py -- (Persistent) Contents File Management
-# Copyright 2004-2004 Gentoo Foundation
-# Distributed under the GNU Public License v2
-# $Id$
+# Copyright 1998-2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header$
 
 import os,string,types,sys,copy
 import portage_exception
