@@ -3472,26 +3472,29 @@ def getmaskingstatus(mycpv):
 		if portdb.xmatch("bestmatch-list", mykey, None, None, [mycpv]):
 			pgroups.extend(pkgdict[mykey])
 
-	kmask = "missing "
-	for gp in mygroups:
-		if gp=="*":
-			kmask = None
-			break
-		if gp=="-*":
-			kmask = "-*"
-			break
-		elif "-"+gp in pgroups:
-			kmask = "-"
-			break
-		elif gp in pgroups:
-			kmask = None
-			break
-		elif "~"+myarch==gp:
-			kmask = "~"
-			break
+	kmask = "missing"
+
+	for keyword in pgroups:
+		if keyword in mygroups:
+			kmask=None
 
 	if kmask:
-		rValue.append(kmask+"keyword")
+		for gp in mygroups:
+			if gp=="*":
+				kmask=None
+				break
+			elif gp=="-*":
+				kmask="-*"
+				break
+			elif gp=="-"+myarch:
+				kmask="-"+myarch
+				break
+			elif gp=="~"+myarch:
+				kmask="~"+myarch
+				break
+
+	if kmask:
+		rValue.append(kmask+" keyword")
 	return rValue
 
 def fixdbentries(old_value, new_value, dbdir):
