@@ -9,7 +9,10 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
-  16 Sep 2004; Jason Stubbs <jstubbs@gentoo.org> portage.py:  Modified
+  21 Sep 2004; Jason Stubbs <jstubbs@gentoo.org> emerge: Added (slightly
+  modified) patch from bug 64682.
+
+  16 Sep 2004; Jason Stubbs <jstubbs@gentoo.org> portage.py: Modified
   getmaskingstatus() to use settings.prevmaskdict rather than reading packages
   directly in support of cascading profiles.
 

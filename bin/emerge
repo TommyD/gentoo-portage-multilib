@@ -1682,6 +1682,7 @@ class depgraph:
 
 			#buildsyspkg: Check if we need to _force_ binary package creation
 			issyspkg = ("buildsyspkg" in myfeat) \
+					and x[0] != "blocks" \
 					and mysysdict.has_key(portage.cpv_getkey(x[2])) \
 					and not ("--buildpkg" in myopts)
 			if x[0] in ["ebuild","blocks"]:
