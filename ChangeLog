@@ -10,14 +10,14 @@
 *portage-2.0.51_rc5 (26 Sep 2004): RC + Lock cleanup, Happy RC #1
 
   26 Sep 2004; Nicholas Jones <carpaski@gentoo.org> emerge: Modified the
-	spinner again, --nospinner provides a basic ticker of one '.' per 100,
-	normal spinner is the twirly one, and the FEATURES=candy spinner is a
-	scrolly message.
-	
+  spinner again, --nospinner provides a basic ticker of one '.' per 100,
+  normal spinner is the twirly one, and the FEATURES=candy spinner is a
+  scrolly message.
+  
   26 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage_locks.py: Fixed it.
-	Discovered that the hardlocks were failing due to the creation of the lock
-	prior to the link operation which was due to the NFS fcntl lock failure.
-	
+  Discovered that the hardlocks were failing due to the creation of the lock
+  prior to the link operation which was due to the NFS fcntl lock failure.
+  
   26 Sep 2004; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Added
   support for per profile package.mask. Included check of packages file
   to ensure that the profile depends on an adequate portage version.
