@@ -1,6 +1,16 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  22 Oct 2002; Nicholas Jones <carpaski@gentoo.org> emerge:
+  Primitive logging via emergelog(). countdown(N,str) function does N second
+  countdowns of the action 'str'. Error messages on dependancy traceback
+  via try/except on select_dep(). Removed the 'unavailable' warning. Message
+  updates.
+
+  22 Oct 2002; Nicholas Jones <carpaski@gentoo.org> prepallstrip:
+  Bug 9508, fix for MSB architectures strip. Previous check assumed only
+  LSB objects could/should be stripped. (*LSB -> *SB) [Joky@#gentoo-sparc]
+
 *portage-2.0.41 (20 Oct 2002): Bug fix release
 
   20 Oct 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
@@ -36,8 +46,8 @@
   Added in large "do not edit" message.
 
   16 Oct 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
-	Fixed an mtimes issue. --update on a package might yank non-cfgprot
-	files during the clean-phase because they didn't have mtimes updated.
+  Fixed an mtimes issue. --update on a package might yank non-cfgprot
+  files during the clean-phase because they didn't have mtimes updated.
 
   15 Oct 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
   Added 'IUSE' to the auxdbkey list. Fixed random aux_get() errors
@@ -118,10 +128,10 @@
   Bug 8949 -- Fix for read-only traceback in doebuild()
   Bug 8284 -- Prepend ARCH _after_ use order processing. Prevents -*
   from killing the ARCH flag. Bug 7596 -- Set an mtime of 0 into
-	CONTENTS if the file already exists on the FS. Allows the entry
-	to be in the CONTENTS file. Condensed the protect/protect-mask
-	code into one function in class dblink. Revised code to allow
-	multi-level protects and masks.
+  CONTENTS if the file already exists on the FS. Allows the entry
+  to be in the CONTENTS file. Condensed the protect/protect-mask
+  code into one function in class dblink. Revised code to allow
+  multi-level protects and masks.
 
   10 Oct 2002; Nicholas Jones <carpaski@gentoo.org> emerge:
   Bug 8552 -- typo fixes
