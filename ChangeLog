@@ -2,6 +2,9 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+  26 Mar 2003; Alain Penders <alain@gentoo.org> portageq: added
+  mass_best_version method to help GUIs resolve best versions.
+
 *portage-2.0.47-r11 (22 Mar 2003): Fixes & Security -- Winding up 2.0 series.
 
   22 Mar 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: listdir()
