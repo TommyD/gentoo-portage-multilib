@@ -964,11 +964,14 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 	if not fetch(fetchme):
 		return 1
 
+	if mydo=="fetch":
+		return 0
+
 	if "digest" in features:
 		#generate digest if it doesn't exist.
 		digestgen(checkme,overwrite=0)
 	
-	if mydo=="fetch":
+	if mydo=="digest":
 		return 0
 		
 	if not digestcheck(checkme):
@@ -2582,7 +2585,7 @@ class dblink:
 					myvirts[mycatpkg][0:0]=[self.cat+"/"+self.pkg]
 				else:
 					myvirts[mycatpkg]=[self.cat+"/"+self.pkg]
-		writedict(myvirts,destroot+"var/cache/edb/virtuals")
+			writedict(myvirts,destroot+"var/cache/edb/virtuals")
 			
 		#do postinst script
 		if myebuild:

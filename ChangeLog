@@ -1,6 +1,12 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-1.8.9_pre34 (28 Mar 2002)
+
+  28 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: Added an indent
+  fix for the new virtuals code, eliminating a traceback.  Tweaked digest handling,
+  fixing a cosmetic error.
+
 *portage-1.8.9_pre33 (28 Mar 2002)
 
   28 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: tweaked digest
