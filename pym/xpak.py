@@ -201,6 +201,7 @@ class tbz2:
 		self.filestat=None
 		self.index=""
 		self.infosize=0
+		self.xpaksize=0
 		self.indexsize=None
 		self.datasize=None
 		self.indexpos=None
@@ -214,8 +215,8 @@ class tbz2:
 		Returns result of upackinfo()."""
 		if not self.scan():
 			raise IOError
-		if cleandir and os.path.exists(datadir):
-			spawn("rm -Rf "+datadir+"/*",free=1)
+		#if cleandir and os.path.exists(datadir):
+		#	spawn("rm -Rf "+datadir+"/*",free=1)
 		return self.unpackinfo(datadir)
 	def compose(self,datadir):
 		"""Alias for recompose()."""
@@ -228,7 +229,7 @@ class tbz2:
 		myfile=open(self.file,"a+")
 		if not myfile:
 			raise IOError
-		myfile.seek(-self.infosize,2) # 0,2 or -0,2 just mean EOF.
+		myfile.seek(-self.xpaksize,2) # 0,2 or -0,2 just mean EOF.
 		myfile.truncate()
 		xpdata=xpak(datadir)
 		myfile.write(xpdata+encodeint(len(xpdata))+"STOP")
@@ -252,6 +253,7 @@ class tbz2:
 		a.seek(-16,2)
 		trailer=a.read()
 		self.infosize=0
+		self.xpaksize=0
 		if trailer[-4:]!="STOP":
 			a.close()
 			return 0
@@ -259,7 +261,8 @@ class tbz2:
 			a.close()
 			return 0
 		self.infosize=decodeint(trailer[8:12])
-		a.seek(-(self.infosize+8),2)
+		self.xpaksize=self.infosize+8
+		a.seek(-(self.xpaksize),2)
 		header=a.read(16)
 		if header[0:8]!="XPAKPACK":
 			a.close()

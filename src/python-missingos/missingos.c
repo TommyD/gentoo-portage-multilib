@@ -1,3 +1,5 @@
+/* $Header$ */
+
 #include "Python.h"
 
 #include <sys/types.h>

@@ -1,4 +1,5 @@
 #! /usr/bin/env python2.2
+# $Header$
 
 from os import chdir, stat
 from distutils.core import setup, Extension

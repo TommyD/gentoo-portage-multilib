@@ -7,18 +7,26 @@ if [ -n "${DEBUGBUILD}" ] ; then
 	exit 0
 fi
 
-for x in $@ ; do
-	if [ -d "${D}${x}" ] ; then
-		for y in `find "${D}${x}"/ -type f \( -perm -0100 -or -perm -0010 -or -perm -0001 -or -name "*.so" -or -name "*.so.*" \) 2>/dev/null` ; do
-			f="`file "${y}"`"
-			if [ "${f/*SB executable*/1}" == "1"  ] ; then
-				echo "${y}"
-				strip "${y}"
-			fi
-			if [ "${f/*SB shared object*/1}" == "1" ] ; then
-				echo "${y}"
-				strip --strip-debug "${y}"
-			fi
-		done
+if [ ! -z "${CBUILD}" ] && [ "${CBUILD}" != "${CHOST}" ]; then
+	STRIP=${CHOST}-strip
+else:
+	STRIP=strip
+fi
+
+for x in "$@"; do # "$@" quotes each element... Plays nice with spaces.
+	if [ -d "${D}${x}" ]; then
+		# We only want files. So make a pass for each directory and call again.
+		find "${D}${x}" -type f \( -perm +0111 -or -regex '\.so$|\.so\.' \) -print0 |
+				sed -r 's:(\d000?)${D}:\1:g' | xargs -0 -r -n500 prepstrip
+	else
+		f=$(file "${x}")
+		if [ -z "${f/*SB executable*/}" ]; then
+			echo "${x}"
+			${STRIP} "${x}"
+		fi
+		if [ -z "${f/*SB shared object*/}" ]; then
+			echo "${x}"
+			${STRIP} --strip-debug "${x}"
+		fi
 	fi
 done

@@ -2,9 +2,61 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+  22 Mar 2003; Nicholas Jones <carpaski@gentoo.org> : Added two scripts to
+  aid portage. 'fixdbentries' takes (old, new, path) and does an inteligent
+  sed on all the db entries that should be changed. Used by global moves and
+  in the tbz2 fixes. 'fixpackages' expires the updates timestamp and reloads
+  portage to force do_updates() to run. Added missing Header lines.
+
+  22 Mar 2003; Nicholas Jones <carpaski@gentoo.org> xpak.py: Correct off-by-8
+  bug in last commit. infosize does not contain the full size... Offset
+  begins _after_ the marker -- Added xpaksize for complete offset from EOF.
+
+  22 Mar 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Fix for
+  die-on-wheel-group-missing bug. The logfiles don't cause the counter
+  to be incremented and now match the merged package's COUNTER value.
+  get_counter_tick_core(root) does not increment the counter. Sandbox is
+  now working in all enabled cases, instead of just usersandbox. /var/db
+  and binaries (assuming they are RW) are now updated to contain the proper
+  info --- Added a 'fixdbentries' script to perform the updates to the data,
+  and added a 'move_ent' function to class binarytree (not fakedbapi). Added
+  a 'ebuild does not exist' error for the case of ebuilds in a wrongly named
+  directory. Added a notice for invalid tbz2's. Removed the 'make.defaults'
+  missing notice :-/. Duplicated the bintree creation so that it would be
+  available for do_update(). Catch when 'updates' is missing from mtimedb.
+
+  22 Mar 2003; Nicholas Jones <carpaski@gentoo.org> output.py: Added xterm
+  title bar function to set the titles... xtermTitle(mystring). Only set
+  if using color and terminal is [axE]term.
+
+  22 Mar 2003; Nicholas Jones <carpaski@gentoo.org> repoman: Additions
+  courtesy of Gerk and Vladamir... Checks all portage variables. Runs
+  a check against invalid (but still parsable) syntax errors in names.
+  Checks for invalid IUSE from use.desc and use.local.desc. Checks that
+  licenses are valid. Checks for legal keywords with a default set or
+  keywords.desc, if available. 'missingvar' tests moved to aux_get() calls.
+
+  22 Mar 2003; Nicholas Jones <carpaski@gentoo.org> prepstrip: Added test
+  to allow cross-compile-stripping to work properly. Rewrite the script to
+  be whitespace-aware and recursively process directories at level 1.
+
+  22 Mar 2003; Nicholas Jones <carpaski@gentoo.org> prepallstrip: Removed
+  all code from this script and made it a call to "prepstrip $D".
+
+  22 Mar 2003; Nicholas Jones <carpaski@gentoo.org> g-cpan.pl: Add in chomps
+  for the portageq calls.
+
+  22 Mar 2003; Nicholas Jones <carpaski@gentoo.org> emerge: Allow
+  --fetchonly of block'd packages.
+
+  22 Mar 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Cleanups and
+  corrections for sandbox which has been disabled and broken for a couple
+  revisions now. use_{enable,with} die messages removed as they are in sub-
+  shells when used and won't kill the merge --- Moved to echo >&2.
+
   21 Mar 2003; Nicholas Jones <carpaski@gentoo.org> xpak.py: Updates to make
-	the xpak code self-sustaining. Added basic documentation to the functions
-	and a description of the format in the comments at the top of the module.
+  the xpak code self-sustaining. Added basic documentation to the functions
+  and a description of the format in the comments at the top of the module.
 
 *portage-2.0.47-r10 (13 Mar 2003): Fixes -- Winding up 2.0 series.
 

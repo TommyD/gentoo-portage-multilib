@@ -4,6 +4,33 @@
 # $Header$
 
 if [ "$*" != "depend" ] && [ "$*" != "clean" ]; then
+	if [ -f ${T}/successful ]; then
+		rm -f ${T}/successful
+	fi
+
+	# Hurray for per-ebuild logging.
+	if [ ! -z "${PORT_LOGDIR}" ]; then
+		if [ -z "${PORT_LOGGING}" ]; then
+			export PORT_LOGGING=1
+			export SANDBOX_WRITE="$SANDBOX_WRITE:${PORT_LOGDIR}"
+			install -d ${PORT_LOGDIR} &>/dev/null
+			chown root:portage ${PORT_LOGDIR} &>/dev/null
+			chmod g+rwxs ${PORT_LOGDIR} &> /dev/null
+			touch "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log" &> /dev/null
+			chmod g+w "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log" &> /dev/null
+			$0 $* 2>&1 | tee -a "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log"
+			if [ "$?" != "0" ]; then
+				exit 1
+			fi
+			if [ -f ${T}/successful ]; then
+				rm -f ${T}/successful
+				exit 0
+			else
+				exit 1
+			fi
+		fi
+	fi
+
 	if [ -f "${T}/environment" ]; then
 		source "${T}/environment" &>/dev/null
 	fi
@@ -83,7 +110,7 @@ has() {
 has_version() {
 	# return shell-true/shell-false if exists.
 	# Takes single depend-type atoms.
-	if /usr/lib/portage/bin/portageq 'has_version' ${ROOT} $1; then
+	if /usr/lib/portage/bin/portageq 'has_version' "${ROOT}" "$1"; then
 		return 0
 	else
 		return 1
@@ -93,12 +120,13 @@ has_version() {
 best_version() {
 	# returns the best/most-current match.
 	# Takes single depend-type atoms.
-	/usr/lib/portage/bin/portageq 'best_version' ${ROOT} $1
+	/usr/lib/portage/bin/portageq 'best_version' "${ROOT}" "$1"
 }
 
 use_with() {
 	if [ -z "$1" ]; then
-		die "use_with() called without parameter."
+		echo "!!! use_with() called without a parameter." >&2
+		return
 	fi
 
 	local UWORD="$2"
@@ -117,7 +145,8 @@ use_with() {
 
 use_enable() {
 	if [ -z "$1" ]; then
-		die "use_with() called without parameter."
+		echo "!!! use_enable() called without a parameter." >&2
+		return
 	fi
 
 	local UWORD="$2"
@@ -670,6 +699,7 @@ dyn_compile() {
 	echo "$CATEGORY" > CATEGORY
 	echo "$PF"       > PF
 	echo "$SLOT"     > SLOT
+	echo "$DEPEND"   > DEPEND
 	echo "$RDEPEND"  > RDEPEND
 	echo "$CDEPEND"  > CDEPEND
 	echo "$PDEPEND"  > PDEPEND
@@ -965,33 +995,6 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ]; then
 	cd ${PORTAGE_TMPDIR} &> /dev/null
 	cd ${BUILD_PREFIX} &> /dev/null
 
-	if [ -f ${T}/successful ]; then
-		rm -f ${T}/successful
-	fi
-
-	# Hurray for per-ebuild logging.
-	if [ ! -z "${PORT_LOGDIR}" ]; then
-		if [ -z "${PORT_LOGGING}" ]; then
-			export PORT_LOGGING=1
-			export SANDBOX_WRITE="$SANDBOX_WRITE:${PORT_LOGDIR}"
-			install -d ${PORT_LOGDIR} &>/dev/null
-			chown root:portage ${PORT_LOGDIR} &>/dev/null
-			chmod g+rwxs ${PORT_LOGDIR} &> /dev/null
-			touch "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log" &> /dev/null
-			chmod g+w "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log" &> /dev/null
-			$0 $* 2>&1 | tee -a "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log"
-			if [ "$?" != "0" ]; then
-				exit 1
-			fi
-			if [ -f ${T}/successful ]; then
-				rm -f ${T}/successful
-				exit 0
-			else
-				exit 1
-			fi
-		fi
-	fi
-
 	if [ `id -nu` == "portage" ] ; then
 		export USER=portage
 	fi
@@ -1168,7 +1171,7 @@ done
 if [ "$myarg" != "clean" ]; then
 	# Save current environment and touch a success file. (echo for success)
 	umask 002
-	set | egrep -v "^SANDBOX" > ${T}/environment 2>/dev/null
+	set | egrep -v "^SANDBOX_" > ${T}/environment 2>/dev/null
 	chown portage:portage ${T}/environment &>/dev/null
 	chmod g+w ${T}/environment &>/dev/null
 fi

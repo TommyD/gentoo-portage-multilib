@@ -294,6 +294,8 @@ sub get_globals {
 
     $OVERLAY_DIR=qx(/usr/lib/portage/bin/portageq portdir_overlay);
     $PORTAGE_DIR=qx(/usr/lib/portage/bin/portageq portdir);
+		chomp $OVERLAY_DIR;
+		chomp $PORTAGE_DIR;
     
     unless ( length $OVERLAY_DIR && -d $OVERLAY_DIR ) {
         $OVERLAY_DIR = "";

@@ -1,3 +1,5 @@
+/* $Header$ */
+
 #define _GNU_SOURCE
 #define _REENTRANT
 

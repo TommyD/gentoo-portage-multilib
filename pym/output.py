@@ -25,6 +25,12 @@ codes["brown"]="\x1b[33;06m"
 codes["red"]="\x1b[31;01m"
 codes["darkred"]="\x1b[31;06m"
 
+def xtermTitle(mystr):
+	if havecolor:
+		myt=os.environ["TERM"]
+		if myt in ["xterm","Eterm","aterm"]:
+			print "\x1b]1;\x07\x1b]2;"+str(mystr)+"\x07"
+
 def nocolor():
 	"turn off colorization"
 	havecolor=0

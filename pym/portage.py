@@ -3,7 +3,7 @@
 # Distributed under the GNU Public License v2
 # $Header$
 
-VERSION="2.0.47-r8"
+VERSION="2.0.47-r11"
 
 from stat import *
 from commands import *
@@ -14,6 +14,7 @@ import string,os,re,types,sys,shlex,shutil,xpak,fcntl,signal,time,missingos,cPic
 #Secpass will be set to 1 if the user is root or in the portage group.
 uid=os.getuid()
 secpass=0
+wheelgid=0
 if uid==0:
 	secpass=2
 try:
@@ -1404,7 +1405,7 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 				os.chmod(settings["PORT_LOGDIR"],06770)
 				if not settings.has_key("LOG_PF") or (settings["LOG_PF"] != settings["PF"]):
 					settings["LOG_PF"]=settings["PF"]
-					settings["LOG_COUNTER"]=str(counter_tick_core("/"))
+					settings["LOG_COUNTER"]=str(get_counter_tick_core("/"))
 			except Exception, e:
 				settings["PORT_LOGDIR"]=""
 				print "!!! Unable to chown/chmod PORT_LOGDIR. Disabling logging."
@@ -1455,6 +1456,7 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 			digestgen(checkme,overwrite=1)
 			return 0
 		else:
+		
 			digestgen(checkme,overwrite=0)
 	elif mydo=="digest":
 		#since we are calling "digest" directly, recreate the digest even if it already exists
@@ -1466,7 +1468,7 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 	
 	#initial dep checks complete; time to process main commands
 
-	nosandbox=("usersandbox" not in features)
+	nosandbox=(("userpriv" in features) and ("usersandbox" not in features))
 	actionmap={
 			  "setup": {                 "args":(1,0)},         # without  / root
 			 "unpack": {"dep":"setup",   "args":(0,1)},         # sandbox  / portage
@@ -2600,7 +2602,7 @@ class fakedbapi(dbapi):
 	
 	def cpv_exists(self,mycpv):
 		return self.cpvdict.has_key(mycpv)
-
+	
 	def cp_list(self,mycp):
 		if not self.cpdict.has_key(mycp):
 			return []
@@ -2614,6 +2616,7 @@ class fakedbapi(dbapi):
 		return returnme
 
 	def cpv_inject(self,mycpv):
+		"""Adds a cpv from the list of available packages."""
 		mycp=cpv_getkey(mycpv)
 		self.cpvdict[mycpv]=1
 		if not self.cpdict.has_key(mycp):
@@ -2621,9 +2624,34 @@ class fakedbapi(dbapi):
 		if not mycpv in self.cpdict[mycp]:
 			self.cpdict[mycp].append(mycpv)
 
-def counter_tick_core(myroot):
+	#def cpv_virtual(self,oldcpv,newcpv):
+	#	"""Maps a cpv to the list of available packages."""
+	#	mycp=cpv_getkey(newcpv)
+	#	self.cpvdict[newcpv]=1
+	#	if not self.virtdict.has_key(mycp):
+	#		self.virtdict[mycp]=[]
+	#	if not mycpv in self.virtdict[mycp]:
+	#		self.virtdict[mycp].append(oldcpv)
+	#	cpv_remove(oldcpv)
+
+	def cpv_remove(self,mycpv):
+		"""Removes a cpv from the list of available packages."""
+		mycp=cpv_getkey(mycpv)
+		if self.cpvdict.has_key(mycpv):
+			del	self.cpvdict[mycpv]
+		if not self.cpdict.has_key(mycp):
+			return
+		while mycpv in self.cpdict[mycp]:
+			del self.cpdict[mycp][self.cpdict[mycp].index(mycpv)]
+		if not len(self.cpdict[mycp]):
+			del self.cpdict[mycp]
+
+def get_counter_tick_core(myroot):
+	return counter_tick_core(myroot,0)+1
+def counter_tick_core(myroot,incrementing=1):
 		"This method will grab the next COUNTER value and record it back to the global file.  Returns new counter value."
 		cpath=myroot+"var/cache/edb/counter"
+		changed=0
 
 		#We write our new counter value to a new file that gets moved into
 		#place to avoid filesystem corruption on XFS (unexpected reboot.)
@@ -2635,6 +2663,7 @@ def counter_tick_core(myroot):
 				try:
 					counter=long(commands.getoutput("for FILE in $(find /var/db/pkg -type f -name COUNTER); do cat ${FILE}; echo; done | sort -n | tail -n1 | tr -d '\n'"))
 					print "portage: COUNTER was corrupted; resetting to value of",counter
+					changed=1
 				except (ValueError,OverflowError):
 					print red("portage:")+" COUNTER data is corrupt in pkg db. The values need to be"
 					print red("portage:")+" corrected/normalized so that portage can operate properly."
@@ -2648,15 +2677,17 @@ def counter_tick_core(myroot):
 			except:
 				print red("portage:")+" Initializing global counter."
 				counter=long(0)
-		#increment counter
-		counter += 1
-		# update new global counter file
-		newcpath=cpath+".new"
-		newcfile=open(newcpath,"w")
-		newcfile.write(str(counter))
-		newcfile.close()
-		# now move global counter file into place
-		os.rename(newcpath,cpath)
+			changed=1
+		if incrementing or changed:
+			#increment counter
+			counter += 1
+			# update new global counter file
+			newcpath=cpath+".new"
+			newcfile=open(newcpath,"w")
+			newcfile.write(str(counter))
+			newcfile.close()
+			# now move global counter file into place
+			os.rename(newcpath,cpath)
 		return counter
 	
 cptot=0
@@ -2737,7 +2768,17 @@ class vardbapi(dbapi):
 				#dest already exists; keep this puppy where it is.
 				continue
 			spawn("/bin/mv "+origpath+" "+newpath, free=1)
+			
+			catfile=open(newpath+"/CATEGORY", "w")
+			catfile.write(mynewcat+"\n")
+			catfile.close()
 
+		mycmd='/usr/lib/portage/bin/fixdbentries'
+		mycmd=mycmd+' "'+origcp+'" '
+		mycmd=mycmd+' "'+newcp+'" '
+		mycmd=mycmd+' "'+self.root+"var/db/pkg/"+'" '
+		spawn(mycmd,free=1)
+		
 	def cp_list(self,mycp):
 		mysplit=mycp.split("/")
 		try:
@@ -3053,6 +3094,8 @@ class portdbapi(dbapi):
 		try:
 			emtime=os.stat(myebuild)[ST_MTIME]
 		except:
+			print "!!! aux_get(): ebuild for '"+mycpv+"' does not exist at:"              
+			print "!!!            "+myebuild
 			raise KeyError
 		
 		# first, we take a look at the size of the ebuild/cache entry to ensure we
@@ -3452,6 +3495,55 @@ class binarytree(packagetree):
 			self.dbapi=fakedbapi()
 			self.populated=0
 			self.tree={}
+
+	def move_ent(self,mylist):
+		if not self.populated:
+			self.populate()
+		origcp=mylist[1]
+		newcp=mylist[2]
+		origmatches=self.dbapi.cp_list(origcp)
+		if not origmatches:
+			return
+		for mycpv in origmatches:
+			mycpsplit=catpkgsplit(mycpv)
+			mynewcpv=newcp+"-"+mycpsplit[2]
+			mynewcat=newcp.split("/")[0]
+			if mycpsplit[3]!="r0":
+				mynewcpv += "-"+mycpsplit[3]
+			if os.path.exists(self.getname(mynewcpv)):
+				print "!!! Cannot update binary: Destination exists."
+				print "!!!",mycpv,"->",mynewcpv
+				continue
+			tbz2path=self.getname(mycpv)
+			if not os.access(tbz2path,os.W_OK):
+				print "!!! Cannot update readonly binary:",mycpv
+				continue
+			
+			print ">>> Updating data in:",mycpv
+			mytmpdir=settings["PORTAGE_TMPDIR"]+"/tbz2"
+			if os.path.exists(mytmpdir):
+				spawn("/bin/rm -Rf "+mytmpdir,free=1)
+			os.makedirs(mytmpdir)
+			mytbz2=xpak.tbz2(tbz2path)
+			mytbz2.decompose(mytmpdir)
+			
+			mycmd='/usr/lib/portage/bin/fixdbentries'
+			mycmd=mycmd+' "'+origcp+'" '
+			mycmd=mycmd+' "'+newcp+'" '
+			mycmd=mycmd+' "'+mytmpdir+'" '
+			spawn(mycmd,free=1)
+
+			catfile=open(mytmpdir+"/CATEGORY", "w")
+			catfile.write(mynewcat+"\n")
+			catfile.close()
+			
+			mytbz2.recompose(mytmpdir)
+			spawn("/bin/rm -Rf "+mytmpdir,free=1)
+			
+			self.dbapi.cpv_remove(mycpv)
+			os.rename(tbz2path,self.getname(mynewcpv))
+			self.dbapi.cpv_inject(mynewcpv)
+			return 1
 	
 	def populate(self):
 		"populates the binarytree"
@@ -3466,6 +3558,7 @@ class binarytree(packagetree):
 			mycat=mytbz2.getfile("CATEGORY")
 			if not mycat:
 				#old-style or corrupt package
+				print "!!! Invalid binary package:",mypkg
 				continue
 			mycat=string.strip(mycat)
 			fullpkg=mycat+"/"+mypkg[:-5]
@@ -4323,10 +4416,7 @@ os.umask(022)
 profiledir=None
 if os.path.exists("/etc/make.profile/make.defaults"):
 	profiledir="/etc/make.profile"
-else:
-	print ">>> Note: /etc/make.profile/make.defaults isn't available."
-	print "          an 'emerge sync' will probably fix this."
-#from here on in we can assume that profiledir is set to something valid
+
 db={}
 
 def do_vartree():
@@ -4427,6 +4517,7 @@ def do_upgrade(mykey):
 	
 	worldlist=grabfile("/var/cache/edb/world")
 	myupd=grabfile(mykey)
+	db["/"]["bintree"]=binarytree("/",virts)
 	for myline in myupd:
 		mysplit=myline.split()
 		if not len(mysplit):
@@ -4440,6 +4531,7 @@ def do_upgrade(mykey):
 			processed=0
 			continue
 		db["/"]["vartree"].dbapi.move_ent(mysplit)
+		db["/"]["bintree"].move_ent(mysplit)
 		
 		#update world entries:
 		for x in range(0,len(worldlist)):
@@ -4466,12 +4558,15 @@ if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
 	#only do this if we're root
 	updpath=os.path.normpath(settings["PORTDIR"]+"/profiles/updates")
 	didupdate=0
+	if not mtimedb.has_key("updates"):
+		mtimedb["updates"]={}
 	try:
 		for myfile in listdir(updpath):
 			mykey=updpath+"/"+myfile
 			if not os.path.isfile(mykey):
 				continue
-			if (not mtimedb["updates"].has_key(mykey)) or (mtimedb["updates"][mykey] != os.stat(mykey)[ST_MTIME]):
+			if (not mtimedb["updates"].has_key(mykey)) or \
+				 (mtimedb["updates"][mykey] != os.stat(mykey)[ST_MTIME]):
 				didupdate=1
 				do_upgrade(mykey)
 	except OSError:
@@ -4526,7 +4621,6 @@ if not dbcachedir:
 	#the auxcache is the only /var/cache/edb/ entry that stays at / even when "root" changes.
 	dbcachedir="/var/cache/edb/dep/"
 	settings["PORTAGE_CACHEDIR"]=dbcachedir
-#create PORTAGE_TMPDIR if it doesn't exist.
 if not os.path.exists(settings["PORTAGE_TMPDIR"]):
 	print "portage: the directory specified in your PORTAGE_TMPDIR variable, \""+settings["PORTAGE_TMPDIR"]+",\""
 	print "does not exist.  Please create this directory or correct your PORTAGE_TMPDIR setting."

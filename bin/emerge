@@ -1093,20 +1093,23 @@ class depgraph:
 		for x in mymergelist:
 			mergecount+=1
 			myroot=x[1]
-			#the last argument in the portage.doebuild() tells doebuild to *not* do dep checking
-			#(emerge is already handling that)
-			y=portage.portdb.findname(x[2])
+			pkgindex=2
+			if x[0]=="blocks":
+				pkgindex=3
+			y=portage.portdb.findname(x[pkgindex])
 			if not "--pretend" in myopts:
-				print ">>> emerge ("+str(mergecount)+" of "+str(len(mymergelist))+")",x[2],"to",x[1]
-				emergelog(" >>> emerge ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[2]+" to "+x[1])
-			if x[0]=="ebuild":
-				if "--fetchonly" in myopts:
+				print ">>> emerge ("+str(mergecount)+" of "+str(len(mymergelist))+")",x[pkgindex],"to",x[1]
+				emergelog(" >>> emerge ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" to "+x[1])
+			if x[0] in ["ebuild","blocks"]:
+				if ("--fetchonly" in myopts) or (x[0]=="blocks"):
 					retval=portage.doebuild(y,"fetch",myroot,edebug,("--pretend" in myopts))
 					if retval:
 						print
 						print "!!! Fetch for",y,"failed, continuing..."
 						print	
 						returnme=1
+					if x[0]=="blocks":
+						continue
 				elif "--buildpkg" in myopts:
 					#create pkg, then merge pkg
 					retval=portage.doebuild(y,"clean",myroot,edebug)
@@ -1685,6 +1688,11 @@ elif "inject"==myaction:
 		print "emerge: the \"inject\" action does not support \"--pretend.\""
 		sys.exit(1)
 	for x in myfiles:
+		if x[0] in [">","<","=","!"]:
+			print "!!! '"+x+"' is an invalid specification."
+			print "!!! Must be 'category/package-version' with no other symbols."
+			print
+			continue
 		mycps=portage.catpkgsplit(x)
 		if (not mycps) or (mycps[0]=="null"):
 			print "!!!",x,"is not a specific cat/pkg-version, skipping..."
