@@ -3227,10 +3227,7 @@ class fakedbapi(dbapi):
 		return self.cpvdict.has_key(mycpv)
 	
 	def cp_list(self,mycp,use_cache=1):
-		if not self.cpdict.has_key(mycp):
-			return []
-		else:
-			return self.cpdict[mycp]
+		return self.cpdict.get(mycp,[])
 
 	def cp_all(self):
 		returnme=[]
@@ -3823,7 +3820,8 @@ class eclass_cache:
 
 		myp = self.packages[location][cat][pkg]
 		for x in eclass_list:
-			if not (x in self.eclasses or myp.has_key(x) or myp[x][0:1] == self.eclasses[x][0:1]):
+			if not (x in self.eclasses and myp.has_key(x) and myp[x][0] == self.eclasses[x][0] and
+				myp[x][1] == self.eclasses[x][1]):
 				return 0
 
 		return 1			
@@ -4357,34 +4355,32 @@ class portdbapi(dbapi):
 
 	def cp_all(self):
 		"returns a list of all keys in our tree"
-		d=dict()
-		for x in self.mysettings.categories:
-			for oroot in self.porttrees:
+		d={}
+		for oroot in self.porttrees:
+			for x in self.mysettings.categories:
 				for y in listdir(os.path.join(oroot, x),ignorecvs=1):
 					mykey=x+"/"+y
 					d[x+"/"+y] = None
 		return d.keys()
 	
 	def p_list(self,mycp):
-		returnme=[]
+		d={}
 		for oroot in self.porttrees:
 			for x in listdir(oroot+"/"+mycp,ignorecvs=1):
 				if x[-7:]==".ebuild":
 					mye=x[:-7]
-					if not mye in returnme:
-						returnme.append(mye)
-		return returnme
+					d[mye] = None
+		return d.keys()
 
 	def cp_list(self,mycp,use_cache=1):
 		mysplit=mycp.split("/")
 		returnme=[]
+		d={}
 		for oroot in self.porttrees:
 			for x in listdir(oroot+"/"+mycp,ignorecvs=1):
 				if x[-7:]==".ebuild":
-					cp=mysplit[0]+"/"+x[:-7]
-					if not cp in returnme:
-						returnme.append(cp)
-		return returnme
+					d[mysplit[0]+"/"+x[:-7]] = None
+		return d.keys()
 
 	def freeze(self):
 		for x in ["list-visible","bestmatch-visible","match-visible","match-all"]:
