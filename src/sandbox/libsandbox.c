@@ -51,7 +51,6 @@ typedef struct {
 	int		num_write_denied_prefixes;
 } sbcontext_t;
 
-void	init_context(sbcontext_t*);
 int 	check_access(sbcontext_t*, const char*, const char*);
 int 	check_syscall(sbcontext_t*, const char*, const char*);
 int 	before_syscall(const char*, const char*);
@@ -59,9 +58,11 @@ int 	before_syscall_open_int(const char*, const char*, int);
 int 	before_syscall_open_char(const char*, const char*, const char*);
 void 	clean_env_entries(char***, int*);
 char*	filter_path(const char*);
-void 	init_env_entries(char***, int*, char*, int);
-int		is_sandbox_pid();
 void*	get_dl_symbol(char*);
+void	init_context(sbcontext_t*);
+void 	init_env_entries(char***, int*, char*, int);
+int		is_sandbox_on();
+int		is_sandbox_pid();
 
 /* Wrapper macros and functions */
 
@@ -92,7 +93,7 @@ rt name(arg1 a1, arg2 a2, arg3 a3)											\
 {																			\
 	rt result = -1;															\
 	int old_errno = errno;													\
-	if (1 == before_syscall(#name, a ## nr))								\
+	if (0 == is_sandbox_on() || 1 == before_syscall(#name, a ## nr))		\
 	{																		\
 		if (!orig_ ## name)													\
 		{																	\
@@ -112,7 +113,7 @@ rt name(arg1 a1, arg2 a2)													\
 {																			\
 	rt result = -1;															\
 	int old_errno = errno;													\
-	if (1 == before_syscall(#name, a ## nr))								\
+	if (0 == is_sandbox_on() || 1 == before_syscall(#name, a ## nr))		\
 	{																		\
 		if (!orig_ ## name)													\
 		{																	\
@@ -132,7 +133,7 @@ rt name(arg1 a1)															\
 {																			\
 	rt result = -1;															\
 	int old_errno = errno;													\
-	if (1 == before_syscall(#name, a ## nr))								\
+	if (0 == is_sandbox_on() || 1 == before_syscall(#name, a ## nr))		\
 	{																		\
 		if (!orig_ ## name)													\
 		{																	\
@@ -152,7 +153,7 @@ rt name(arg1 a1)															\
 {																			\
 	rt result = NULL;														\
 	int old_errno = errno;													\
-	if (1 == before_syscall(#name, a ## nr))								\
+	if (0 == is_sandbox_on() || 1 == before_syscall(#name, a ## nr))		\
 	{																		\
 		if (!orig_ ## name)													\
 		{																	\
@@ -172,7 +173,8 @@ rt name(arg1 a1, arg2 a2, arg3 a3)											\
 {																			\
 	rt result = -1; 														\
 	int old_errno = errno;													\
-	if (1 == before_syscall_open_int(#name, a ## nr, a ## fl))				\
+	if (0 == is_sandbox_on() || 											\
+		1 == before_syscall_open_int(#name, a ## nr, a ## fl))				\
 	{																		\
 		if (!orig_ ## name)													\
 		{																	\
@@ -192,7 +194,8 @@ rt name(arg1 a1, arg2 a2)													\
 {																			\
 	rt result = NULL;														\
 	int old_errno = errno;													\
-	if (1 == before_syscall_open_char(#name, a ## nr, a ## md))				\
+	if (0 == is_sandbox_on() || 											\
+		1 == before_syscall_open_char(#name, a ## nr, a ## md))				\
 	{																		\
 		if (!orig_ ## name)													\
 		{																	\
@@ -212,7 +215,8 @@ rt name(arg1 a1, arg2 a2, arg3 a3)											\
 {																			\
 	rt result = NULL;														\
 	int old_errno = errno;													\
-	if (1 == before_syscall_open_char(#name, a ## nr, a ## md))				\
+	if (0 == is_sandbox_on() || 											\
+		1 == before_syscall_open_char(#name, a ## nr, a ## md))				\
 	{																		\
 		if (!orig_ ## name)													\
 		{																	\
@@ -232,7 +236,7 @@ rt name(arg1 a1, arg2 a2, arg3 a3)											\
 {																			\
 	rt result = -1;															\
 	int old_errno = errno;													\
-	if (1 == before_syscall(#name, a ## nr))								\
+	if (0 == is_sandbox_on() || 1 == before_syscall(#name, a ## nr))		\
 	{																		\
 		if (!orig_ ## name)													\
 		{																	\
@@ -252,7 +256,7 @@ rt name(arg1 a1, arg2 a2)													\
 {																			\
 	rt result = -1;															\
 	int old_errno = errno;													\
-	if (1 == before_syscall(#name, a ## nr))								\
+	if (0 == is_sandbox_on() || 1 == before_syscall(#name, a ## nr))		\
 	{																		\
 		if (!orig_ ## name)													\
 		{																	\
@@ -272,7 +276,7 @@ rt name(arg1 a1, arg2 a2, ...)												\
 {																			\
 	void* result = NULL; 													\
 	int old_errno = errno;													\
-	if (1 == before_syscall(#name, a ## nr))								\
+	if (0 == is_sandbox_on() || 1 == before_syscall(#name, a ## nr))		\
 	{																		\
 		if (!orig_ ## name)													\
 		{																	\
@@ -351,8 +355,7 @@ int execvp(const char* file, char* const* argv)
 	int		num_path_entries = 0;
 	char	constructed_path[255];
 
-	if (NULL != getenv("SANDBOX_ON") &&
-		0 == strcmp(getenv("SANDBOX_ON"), "1"))
+	if (1 == is_sandbox_on())
 	{
 		init_env_entries(&path_entries, &num_path_entries, "PATH", 0);
 		for (i = 0; i < num_path_entries; i++)
@@ -386,6 +389,17 @@ int execvp(const char* file, char* const* argv)
 /* lseek, lseek64, fdopen, fchown, fchmod, fcntl, lockf
    are not wrapped since they can't be used if open is wrapped correctly
    and unaccessible file descriptors are not possible to create */
+
+void* get_dl_symbol(char* symname)
+{
+	void* result = dlsym(RTLD_NEXT, symname);
+	if (0 == result)
+	{
+		fprintf(stderr, "Sandbox : can't resolve %s: %s.\n", symname, dlerror());
+		abort();
+	}
+	return result;
+}
 
 void init_context(sbcontext_t* context)
 {
@@ -520,17 +534,6 @@ void init_env_entries(char*** prefixes_array, int* prefixes_num, char* env, int 
 			free(prefix);
 		}
 	}
-}
-
-void* get_dl_symbol(char* symname)
-{
-	void* result = dlsym(RTLD_NEXT, symname);
-	if (0 == result)
-	{
-		fprintf(stderr, "Sandbox : can't resolve %s: %s.\n", symname, dlerror());
-		abort();
-	}
-	return result;
 }
 
 char* filter_path(const char* path)
@@ -792,6 +795,19 @@ int check_syscall(sbcontext_t* sbcontext, const char* func, const char* file)
 	return result;
 }
 
+int is_sandbox_on()
+{
+	if (NULL != getenv("SANDBOX_ON") &&
+		0 == strcmp(getenv("SANDBOX_ON"), "1"))
+	{
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}
+}
+
 int before_syscall(const char* func, const char* file)
 {
 	int 		result = 1;
@@ -800,21 +816,17 @@ int before_syscall(const char* func, const char* file)
 
 	init_context(&sbcontext);
 
-	if (NULL != getenv("SANDBOX_ON") &&
-		0 == strcmp(getenv("SANDBOX_ON"), "1"))
-	{
-		init_env_entries(&(sbcontext.deny_prefixes), &(sbcontext.num_deny_prefixes), "SANDBOX_DENY", 1);
-		init_env_entries(&(sbcontext.read_prefixes), &(sbcontext.num_read_prefixes), "SANDBOX_READ", 1);
-		init_env_entries(&(sbcontext.write_prefixes), &(sbcontext.num_write_prefixes), "SANDBOX_WRITE", 1);
-		init_env_entries(&(sbcontext.predict_prefixes), &(sbcontext.num_predict_prefixes), "SANDBOX_PREDICT", 1);
+	init_env_entries(&(sbcontext.deny_prefixes), &(sbcontext.num_deny_prefixes), "SANDBOX_DENY", 1);
+	init_env_entries(&(sbcontext.read_prefixes), &(sbcontext.num_read_prefixes), "SANDBOX_READ", 1);
+	init_env_entries(&(sbcontext.write_prefixes), &(sbcontext.num_write_prefixes), "SANDBOX_WRITE", 1);
+	init_env_entries(&(sbcontext.predict_prefixes), &(sbcontext.num_predict_prefixes), "SANDBOX_PREDICT", 1);
 
-		result = check_syscall(&sbcontext, func, file);
+	result = check_syscall(&sbcontext, func, file);
 
-		clean_env_entries(&(sbcontext.deny_prefixes), &(sbcontext.num_deny_prefixes));
-		clean_env_entries(&(sbcontext.read_prefixes), &(sbcontext.num_read_prefixes));
-		clean_env_entries(&(sbcontext.write_prefixes), &(sbcontext.num_write_prefixes));
-		clean_env_entries(&(sbcontext.predict_prefixes), &(sbcontext.num_predict_prefixes));
-	}
+	clean_env_entries(&(sbcontext.deny_prefixes), &(sbcontext.num_deny_prefixes));
+	clean_env_entries(&(sbcontext.read_prefixes), &(sbcontext.num_read_prefixes));
+	clean_env_entries(&(sbcontext.write_prefixes), &(sbcontext.num_write_prefixes));
+	clean_env_entries(&(sbcontext.predict_prefixes), &(sbcontext.num_predict_prefixes));
 	
 	if (0 == result)
 	{
@@ -849,4 +861,3 @@ int before_syscall_open_char(const char* func, const char* file, const char* mod
 		return before_syscall("open_wr", file);
 	}
 }
-

@@ -1,8 +1,13 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  18 Mar 2002; Geert Bevin <gbevin@gentoo.org>: src/sandbox/problems: Added
+  several sample implementations to reproduce reported bugs.
+
   18 Mar 2002; Geert Bevin <gbevin@gentoo.org>: libsandbox.c: All paths are now
-  checked for multiple slashes anywhere in the path, this closes bug 827
+  checked for multiple successive slashes anywhere, this closes bug 827.
+  Performance should be slightly improved for other apps on the system for who
+  the sandbox is not turned on.
   
   14 Mar 2002; Daniel Robbins <drobbins@gentoo.org>: output.py: quick fix to
   turn off white color output -- not good for terminals with white background.
