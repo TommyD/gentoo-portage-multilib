@@ -1784,7 +1784,7 @@ class depgraph:
 						retval=portage.doebuild(y,"fetch",myroot,self.pkgsettings,edebug,("--pretend" in myopts),fetchonly=1,fetchall=1)
 					else:
 						retval=portage.doebuild(y,"fetch",myroot,self.pkgsettings,edebug,("--pretend" in myopts),fetchonly=1)
-					if retval:
+					if (retval == None) or retval:
 						print
 						print "!!! Fetch for",y,"failed, continuing..."
 						print	
@@ -1799,13 +1799,19 @@ class depgraph:
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Clean"
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Cleaning ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
 					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug,cleanup=1)
+					if (retval == None):
+						portage_util.writemsg("Unable to run required binary.\n")
+						sys.exit(127)
 					if retval:
-						sys.exit(1)
+						sys.exit(retval)
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Compile"
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Compiling/Packaging ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
 					retval=portage.doebuild(y,"package",myroot,self.pkgsettings,edebug)
+					if (retval == None):
+						portage_util.writemsg("Unable to run required binary.\n")
+						sys.exit(127)
 					if retval:
-						sys.exit(1)
+						sys.exit(retval)
 					#dynamically update our database
 					if "--buildpkgonly" not in myopts:
 						portage.db[portage.root]["bintree"].inject(x[2])
@@ -1823,13 +1829,19 @@ class depgraph:
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Clean"
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Cleaning ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
 					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug,cleanup=1)
+					if (retval == None):
+						portage_util.writemsg("Unable to run required binary.\n")
+						sys.exit(127)
 					if retval:
-						sys.exit(1)
+						sys.exit(retval)
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Compile"
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Compiling/Merging ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
 					retval=portage.doebuild(y,"merge",myroot,self.pkgsettings,edebug)
+					if (retval == None):
+						portage_util.writemsg("Unable to run required binary.\n")
+						sys.exit(127)
 					if retval:
-						sys.exit(1)
+						sys.exit(retval)
 					#dynamically update our database	
 			elif x[0]=="binary":
 				#merge the tbz2
@@ -1867,8 +1879,11 @@ class depgraph:
 					short_msg = "emerge: ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[pkgindex]+" Clean Post"
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Post-Build Cleaning ("+x[pkgindex]+"::"+y+")", short_msg=short_msg)
 					retval=portage.doebuild(y,"clean",myroot,self.pkgsettings,edebug,cleanup=1)
+					if (retval == None):
+						portage_util.writemsg("Unable to run required binary.\n")
+						sys.exit(127)
 					if retval:
-						sys.exit(1)
+						sys.exit(retval)
 			
 				if ("--pretend" not in myopts) and ("--fetchonly" not in myopts) and ("--fetch-all-uri" not in myopts):
 					# Clean the old package that we have merged over top of it.

@@ -53,5 +53,8 @@ for x in pargs[1:]:
 	except IOError:
 		a=1
 		print "ebuild: this ebuild generated output during the depend phase (bad)"
+	if a == None:
+		portage_util.writemsg("Could not run the required binary?\n")
+		sys.exit(127)
 	if a:
 		sys.exit(a)

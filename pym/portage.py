@@ -6984,12 +6984,16 @@ def do_upgrade(mykey):
 	
 	update_files={}
 	file_contents={}
-	for x in ["package.mask","package.unmask","package.keywords","package.use"]:
+	myxfiles = ["package.mask","package.unmask","package.keywords","package.use"]
+	myxfiles = myxfiles + prefix_array(myxfiles, "profile/")
+	for x in myxfiles:
 		try:
-			myfile=open("/etc/portage/"+x,"r")
+			myfile = open("/etc/portage/"+x,"r")
 			file_contents[x] = myfile.readlines()
 			myfile.close()
 		except IOError:
+			if file_contents.has_key(x):
+				del file_contents[x]
 			continue
 
 	worldlist=grabfile("/"+WORLD_FILE)
