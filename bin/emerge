@@ -1882,7 +1882,7 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 				mytimeout=int(portage.settings["RSYNC_TIMEOUT"])
 			except:
 				pass
-		rsynccommand="/usr/bin/rsync -rlptDvz --progress --stats --delete --delete-after --timeout="+str(mytimeout)+" --exclude='distfiles/*' --exclude='local/*' --exclude='packages/*' --exclude='metadata/local/*'"
+		rsynccommand="/usr/bin/rsync -rlptDvz --progress --stats --delete --delete-after --timeout="+str(mytimeout)+" --exclude='distfiles/*' --exclude='local/*' --exclude='packages/*'"
 		if portage.settings.has_key("RSYNC_EXCLUDEFROM"):
 			if os.path.exists(portage.settings["RSYNC_EXCLUDEFROM"]):
 				rsynccommand=rsynccommand+" --exclude-from "+portage.settings["RSYNC_EXCLUDEFROM"]
@@ -1893,10 +1893,7 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 
 		servertimestampdir=portage.settings["PORTAGE_TMPDIR"]+"/sync/"
 
-		content=portage.grabfile(myportdir+"/metadata/local/timestamp.chk")
-		if (not content):
-			content=portage.grabfile(myportdir+"/metadata/timestamp.chk")
-
+		content=portage.grabfile(myportdir+"/metadata/timestamp.chk")
 		if (content):
 			mytimestamp=time.mktime(time.strptime(content[0], "%a, %d %b %Y %H:%M:%S +0000"))
 		else:
@@ -2080,18 +2077,6 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 		portage.spawn("chmod -R g+rw "+portage.dbcachedir, portage.settings, free=1)
 		sys.stdout.write("\b\b  ...done!\n\n")
 		sys.stdout.flush()
-
-	# store timestamp.chk for checking timestamp in next time.
-	try:
-		if not os.path.isdir(myportdir+"/metadata/local"):
-			os.mkdir(myportdir+"/metadata/local")
-		myfile=open(myportdir+"/metadata/local/timestamp.chk","w")
-		for x in portage.grabfile(myportdir+"/metadata/timestamp.chk"):
-			myfile.write(x+"\n")
-		myfile.close()
-	except Exception, e:
-		print "!!! Failed to store current timestamp."
-		print "!!!",e
 
 	portage.portageexit()
 	reload(portage)
