@@ -1,6 +1,12 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  12 Jul 2002; Dan Armak <danarmak@gentoo.org> make.globals, make.globals.ppc:
+  remove default KDE2DIR, KDE3DIR settings and comments. The kde eclasses will
+  now handle the case where they are not defined. This will be used with kde 3.1
+  and later, and the difference between their default value and them not being
+  defined is important.
+
 *portage-2.0.13 (11 Jul 2002)
 
   11 Jul 2002; Daniel Robbins <drobbins@gentoo.org> tarball.sh: our tarball

@@ -28,11 +28,6 @@ CXXFLAGS=${CFLAGS}
 # Debug build -- if defined, binaries won't be stripped
 #DEBUGBUILD=true
 
-# Default locations for KDE 2/3; do not change unless you know what you're doing
-# and have read the docs
-KDE2DIR="/usr/kde/2"
-KDE3DIR="/usr/kde/3"
-
 # Default maintainer options
 #FEATURES="digest sandbox noclean noauto"
 # Default user options
