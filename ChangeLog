@@ -57,6 +57,7 @@
   for metadata transfers.
   Note all existing cache modules/implementations are now invalidated.  Sorry.  Upgrade em.
   Existing cache's on disk are invalidated also, with the exemption of portdir/metadata/cache.
+  Old cache classes have been banished to the attic.
 
   08 Mar 2005; Marius Mauch <genone@gentoo.org> pym/portage.py, pym/ebuild.py:
   Fixing fetch restriction code. Replace references to PORTAGE_RESTRICT with 
