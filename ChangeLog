@@ -2,6 +2,9 @@
 # Copyright 2000-2004 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  17 Apr 2004; Masatomo Nakano <nakano@gentoo.org> repoman: Fixed for
+  python-2.2 compatibility.
+
 *portage-2.0.51_pre3 (13 Apr 2003): Cleanups and small features.
 
   13 Apr 2004; Nicholas Jones <carpaski@gentoo.org> portage_db_*: Fixed the

@@ -685,7 +685,7 @@ for x in scanlist:
 		for mytype in ["DEPEND","RDEPEND","PDEPEND"]:
 			catpkg = catdir+"/"+y
 			mydepstr = string.join(portage.db["/"]["porttree"].dbapi.aux_get(catpkg, [mytype]))
-			if " ?" in mydepstr:
+			if (string.find(mydepstr, " ?") <> -1):
 				stats[mytype+".syntax"] += 1
 				fails[mytype+".syntax"].append(catpkg+".ebuild "+mytype+": '?' preceded by space")
 				baddepsyntax = True
@@ -1101,7 +1101,7 @@ else:
 			exithandler()
 	if not commitmessagefile:
 		unlinkfile=1
-		commitmessagefile=tempfile.mkstemp("",".repoman.msg.","/tmp",True)[1]
+		commitmessagefile=tempfile.mktemp(".repoman.msg")
 		if os.path.exists(commitmessagefile):
 			os.unlink(commitmessagefile)
 		mymsg=open(commitmessagefile,"w")
