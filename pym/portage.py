@@ -71,10 +71,11 @@ try:
 
 	import portage_versions
 	
-	#assign these to portage's namespace to keep the esearch monkeys happy.
+	#assign these to portage's namespace to keep the tool monkeys happy.
 	catpkgsplit = portage_versions.catpkgsplit
 	pkgsplit = portage_versions.pkgsplit
-
+	pkgcmp = portage_versions.pkgcmp
+	
 	# XXX: This needs to get cleaned up.
 	# XXX: Output's color handling is mildly broken is a few cases.
 	from output import *
