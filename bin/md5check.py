@@ -42,6 +42,15 @@ for mycpv in hugelist:
 		portage.writemsg("Missing digest: %s\n" % mycpv)
 		md5sums = {}
 
+	for x in md5sums.keys():
+		if x[0] == '/':
+			del md5sums[x]
+
+	#portage.writemsg("\n\ndigestpath: %s\n" % digestpath)
+	#portage.writemsg("md5sums: %s\n" % md5sums)
+	#portage.writemsg("newuri: %s\n" % newuri)
+
+	bn_list = []
 	for x in newuri:
 		if not x:
 			continue
@@ -55,6 +64,8 @@ for mycpv in hugelist:
 		mybn = os.path.basename(x)
 		if mybn not in bn_list:
 			bn_list += [mybn]
+		else:
+			continue
 		
 		if mybn not in md5sums.keys():
 			portage.writemsg("Missing md5sum: %s in %s\n" % (mybn, mycpv))
@@ -62,7 +73,13 @@ for mycpv in hugelist:
 			if mybn in md5_list.keys():
 				if (md5_list[mybn][0] != md5sums[mybn][0]) or \
 				   (md5_list[mybn][1] != md5sums[mybn][1]):
-					portage.writemsg("Colliding md5: %s of %s and %s\n" % (mybn,mycpv,md5_list[mybn][2]))
+
+					# This associates teh md5 with each file. [md5/size]
+					md5joins = string.split(md5_list[mybn][2],",")
+					md5joins = string.join(md5joins," ["+md5_list[mybn][0]+"/"+md5_list[mybn][1]+"],")
+					md5joins += " ["+md5_list[mybn][0]+"/"+md5_list[mybn][1]+"]"
+
+					portage.writemsg("Colliding md5: %s of %s [%s/%s] and %s\n" % (mybn,mycpv,md5sums[mybn][0],md5sums[mybn][1],md5joins))
 					col_list += [mybn]
 				else:
 					md5_list[mybn][2] += ","+mycpv
@@ -70,8 +87,11 @@ for mycpv in hugelist:
 				md5_list[mybn] = md5sums[mybn]+[mycpv]
 			del md5sums[mybn]
 		
+	#portage.writemsg(str(bn_list)+"\n")
 	for x in md5sums.keys():
-		portage.writemsg("Extra md5sum: %s in %s\n" % (mybn, mycpv))
+		if x not in bn_list:
+			portage.writemsg("Extra md5sum: %s in %s\n" % (x, mycpv))
+
 
 print col_list
 print
