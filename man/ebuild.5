@@ -13,102 +13,59 @@ can also contain pre/post install/remove commands, as required.
 Here's a simple example ebuild:
 
 .DS
-# Please have a GPL header on all ebuild submissions. Perferably naming
-.br
-# Gentoo Technologies as the owner. It makes the devs lives easier.
-.br
 # Copyright 1999\-2002 Gentoo Technologies, Inc.
 .br
 # Distributed under the terms of the GNU General Public License v2
 .br
-# The following line
+# $Header$
 .br
-# \$Header$
-.br
-.br
-# The next line is a default setting.
-.br
-#S=${WORKDIR}/${P}
-.br
-# This line contains a _useful_ description and keywords for searching.
-.br
+
 DESCRIPTION="Super\-useful stream editor (sed)"
-.br
-# A space\-seperated list of URLs. Duplicate files become alternate links.
 .br
 SRC_URI="ftp://alpha.gnu.org/pub/gnu/sed/${P}.tar.gz"
 .br
-# A reference to the projects homepage or where info can be found.
-.br
 HOMEPAGE="http://www.gnu.org/software/sed/sed.html"
 .br
-# ALL submitted ebuilds only list the ~arch of any verified arch and
-.br
-# may add the ~arch of other previously stable arch's to it as well.
-.br
+
 KEYWORDS="~x86"
 .br
-# This _must_ be defined, and will normally be "0".
 SLOT="0"
-.br
-# This _must_ be a valid license. See \fB/usr/portage/licenses\fR.
 .br
 LICENSE="GPL\-2"
 .br
-# List every non-arch USE variable tested against in this ebuild here.
-.br
 IUSE=""
 .br
-# Specify the minimum requirements to compile/install this package.
-.br
+
 DEPEND="virtual/glibc"
 .br
-# Specify the minimum to install for a binary package. Defaults to
-.br
-# the same value contained in DEPEND if not set.
-.br
-#RDEPEND="virtual/glibc"
+RDEPEND="virtual/glibc"
 .br
 
 src_compile() {
 .br
-	# This provides a convenient way to provide configure with all the
-.br
-	# necessary options. econf() will die if it fails.
-.br
-	econf
-.br
-	# emake works the same way as econf(), passing in default options,
-.br
-	# presently limited to MAKE_OPTS. emake \fBwill not\fR die itself.
+	econf || die "could not configure"
 .br
 	emake || die "emake failed"
 .br
 }
+.br
 
 src_install() {
 .br
-	# Path to install into
 	into /usr
 .br
-	# Denotes '.info' files to install. Sets proper paths after into().
 	doinfo doc/sed.info
 .br
-	# Installs and compresses man pages into the proper directories.
 	doman doc/sed.1
 .br
 	into /
 .br
-	# Installs binaraies, seting them executable.
 	dobin sed/sed
 .br
-	# Creates the /usr/bin dir in the ${D} destination directory.
 	dodir /usr/bin
 .br
-	# Creates symlinks properly inside the ${D} directory.
 	dosym /bin/sed /usr/bin/sed
 .br
-	# Installs documentation and compresses it.
 	dodoc COPYING NEWS README* THANKS TODO AUTHORS BUGS ANNOUNCE
 .br
 }
@@ -124,27 +81,27 @@ between the variable name and the equal sign.
 This variable contains the package name without the ebuild revision.
 This variable must NEVER be modified.
 .br
-.BR 'xfree\-4.2.1\-r2.ebuild'\ \-\-> \fB$P\fR=='\fIxfree\-4.2.1\fR'
+\fBxfree-4.2.1-r2.ebuild\fR --> \fB$P\fR=='\fIxfree-4.2.1\fR'
 .TP
 \fBPN\fR
 Contains the name of the script without the version number.
 .br
-.BR 'xfree\-4.2.1\-r2.ebuild'\ \-\-> \fB$PN\fR=='\fIxfree\fR'
+\fBxfree-4.2.1-r2.ebuild\fR --> \fB$PN\fR=='\fIxfree\fR'
 .TP
 \fBPV\fR
 Contains the version number without the revision.
 .br
-.BR 'xfree\-4.2.1\-r2.ebuild'\ \-\-> \fB$PV\fR=='\fI4.2.1\fR'
+\fBxfree-4.2.1-r2.ebuild\fR --> \fB$PV\fR=='\fI4.2.1\fR'
 .TP
 \fBPR\fR
 Contains the revision number or 'r0' if no revision number exists.
 .br
-.BR 'xfree\-4.2.1\-r2.ebuild'\ \-\-> \fB$PV\fR=='\fIr2\fR'
+\fBxfree-4.2.1-r2.ebuild\fR --> \fB$PR\fR=='\fIr2\fR'
 .TP
 \fBPF\fR
 Contains the full package name \fI[PN]\-[PV]-r[PR]\fR
 .br
-.BR 'xfree\-4.2.1\-r2.ebuild'\ \-\-> \fB$P\fR=='\fIxfree\-4.2.1\-r2\fR'
+\fBxfree-4.2.1-r2.ebuild\fR --> \fB$PF\fR=='\fIxfree-4.2.1-r2\fR'
 .TP
 \fBA\fR
 Contains all source files required for the package.  This variable must
