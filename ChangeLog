@@ -2,7 +2,7 @@
 # Copyright 2001 Gentoo Technologies, Inc.; Distributed under the GPL
 # Written by Daniel Robbins (drobbins@gentoo.org)
 
-*portage 1.8.6-r2 (27 Jan 2002)
+*portage 1.8.7 (27 Jan 2002)
 
   24 Jan 2002; Vitaly Kushneriuk <vitaly@gentoo.org>: Fixed version compare code
   Also added test script to test future versions.
