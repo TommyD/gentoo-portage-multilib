@@ -1,8 +1,8 @@
 #!/bin/bash
-# Gentoo Foundation
-# Brian Harring <ferringb@gentoo.org>
-# this needs a good enema of commented out code
-# potentially a restructuring, although that likely is overkill.
+# ebuild-daemon.sh; core ebuild processor handling code
+# Copyright 2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+$Header$
  
 source /usr/lib/portage/bin/ebuild.sh daemonize
 

@@ -1,6 +1,12 @@
+# parseuri.py; parses a SYNC uri, returning protocol/host_uri
+# Copyright 2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+$Header$
+
 import portage_const
 
 def parseSyncUri(uri):
+	"""parse a SYNC uri, returning a tuple of protocol,host_uri"""
 	u=uri.lower()
 	if u.startswith("rsync") or len(u) == 0:
 		if len(u) <= 5:

@@ -28,7 +28,6 @@ def cleanup(pids,block_exceptions=True):
 		pids = [pids]
 	for x in pids:
 		try:
-#			print "killing pid %i" % x
 			os.kill(x,signal.SIGTERM)
 			if os.waitpid(x,os.WNOHANG)[1] == 0:
 				# feisty bugger, still alive.
@@ -223,7 +222,7 @@ def spawn(mycommand,env={},raw_exit_code=False,opt_name=None,fd_pipes=None,retur
 		# note this order must be preserved- can't change gid/groups if you change uid first.
 		if selinux_capable and selinux_context:
 			import selinux
-			selinux.setcontext(selinux_context)
+			selinux.setexec(selinux_context)
 		if gid:
 			os.setgid(gid)
 		if groups:

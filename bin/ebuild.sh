@@ -1,4 +1,10 @@
 #!/bin/bash
+# ebuild.sh; ebuild phase processing, env handling
+# Copyright 2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+$Header$
+
+#!/bin/bash
 # Gentoo Foundation
 # bugs should be thrown at Brian Harring <ferringb@gentoo.org>
 # ancestry (obviously) of this file is the original vanilla ebuild.sh; it's been heavily restructured, and nailed down for env 

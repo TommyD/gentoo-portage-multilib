@@ -1,3 +1,8 @@
+# rsync.py; module providing an abstraction over the rsync binary
+# Copyright 2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+$Header$
+
 from portage_const import RSYNC_BIN, RSYNC_HOST
 import os, portage_exec
 import portage_exception,socket
@@ -69,9 +74,6 @@ class RsyncHost:
 		0 is absolutely quiet, 1 is quiet, 2 is normal, 3 is noisy.
 		ip is used to control which ip of the host is used.
 		cleanup controls deletion."""
-
-#		import traceback
-#		traceback.print_stack()
 
 		args=[self.__binary,
 			"--recursive",    # Recurse directories
@@ -145,7 +147,9 @@ class RsyncHost:
 		else:
 			args.append("%s%s" % (prefix,host))
 		args.append(local_path)
-		print "options are",args
+
+		# tie a debug option into this
+		#print "options are",args
 
 		ret=portage_exec.spawn(args,fd_pipes=fd_pipes)
 		if ret == 0:

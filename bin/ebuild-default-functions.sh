@@ -1,12 +1,8 @@
 #!/bin/bash
-# Gentoo Foundation
-# Brian Harring <ferringb@gentoo.org>
-
-#ORIG_VARS=`declare | egrep '^[^[:space:]{}()]+=' | cut -s -d '=' -f 1`
-#ORIG_FUNCS=`declare -F | cut -s -d ' ' -f 3`
-
-#echo "ORIG_VARS=${ORIG_VARS}" >&2
-#echo "ORIG_FUNCS=${ORIG_FUNCS}" >&2
+# ebuild-default-functions.sh; default functions for ebuild env that aren't saved- specific to the portage instance.
+# Copyright 2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+$Header$
 
 has_version() {
 	# if there is a predefined portageq call, use it.
@@ -201,24 +197,16 @@ dyn_unpack() {
 			newstuff="yes"
 			rm -rf "${WORKDIR}"
 		elif ! hasq unpack ${COMPLETED_EBUILD_PHASES}; then
-#		elif [ ! -f "${BUILDDIR}/.unpacked" ]; then
 			echo ">>> Not marked as unpacked; recreating WORKDIR..."
 			newstuff="yes"
 			rm -rf "${WORKDIR}"
 		fi
 	fi
-#	if [ -e "${WORKDIR}" ]; then
-#		if [ "$newstuff" == "no" ]; then
-#			echo ">>> WORKDIR is up-to-date, keeping..."
-#			return 0
-#		fi
-#	fi
 	
 	install -m0700 -d "${WORKDIR}" || die "Failed to create dir '${WORKDIR}'"
 	[ -d "$WORKDIR" ] && cd "${WORKDIR}"
 	echo ">>> Unpacking source..."
 	src_unpack
-#	touch "${BUILDDIR}/.unpacked" || die "IO Failure -- Failed 'touch .unpacked' in BUILDIR"
 	echo ">>> Source unpacked."
 	cd "$BUILDDIR"
 	trap SIGINT SIGQUIT
@@ -291,7 +279,6 @@ dyn_compile() {
 	[ "${DISTCC_DIR-unset}"  == "unset" ] && export DISTCC_DIR="${PORTAGE_TMPDIR}/.distcc"
 	[ ! -z "${DISTCC_DIR}" ] && addwrite "${DISTCC_DIR}"
 
-#	if hasq noauto $FEATURES &>/dev/null && [ ! -f ${BUILDDIR}/.unpacked ]; then
 	if hasq noauto $FEATURES &>/dev/null && ! hasq unpack ${COMPLETED_EBUILD_PHASES:-unpack}; then
 		echo
 		echo "!!! We apparently haven't unpacked... This is probably not what you"
@@ -364,12 +351,6 @@ dyn_package() {
 	cd ..
 	xpak build-info inf.xpak
 	tbz2tool join bin.tar.bz2 inf.xpak "${PF}.tbz2"
-#	mv "${PF}.tbz2" "${PKGDIR}/All" || die "Failed to move tbz2 to ${PKGDIR}/All"
-#	rm -f inf.xpak bin.tar.bz2
-#	if [ ! -d "${PKGDIR}/${CATEGORY}" ]; then
-#		install -d "${PKGDIR}/${CATEGORY}"
-#	fi
-#	ln -sf "../All/${PF}.tbz2" "${PKGDIR}/${CATEGORY}/${PF}.tbz2" || die "Failed to create symlink in ${PKGDIR}/${CATEGORY}"
 	echo ">>> Done."
 	cd "${BUILDDIR}"
 	MUST_EXPORT_ENV="yes"
@@ -609,8 +590,6 @@ __END1__
 
 dyn_rpm() {
 	dyn_spec
-#	rpm -bb "${PF}.spec" || die "Failed to integrate rpm spec file"
-#	install -D "/usr/src/redhat/RPMS/i386/${PN}-${PV}-${PR}.i386.rpm" "${RPMDIR}/${CATEGORY}/${PN}-${PV}-${PR}.rpm" || die "Failed to move rpm"
 	MUST_EXPORT_ENV="yes"
 }
 
@@ -790,7 +769,6 @@ inherit() {
 		#turn on glob expansion
 		set +f
 		if type -p eclass_${1}_inherit; then
-#			echo "calling preloaded eclass $1" >&2
 			eclass_${1}_inherit
 		else
 			source "$location" || export ERRORMSG="died sourcing $location in inherit()"

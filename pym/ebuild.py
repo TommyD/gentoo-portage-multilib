@@ -1,13 +1,10 @@
-# these classes kind of suck, but work.
-# a lot of the ebuild process management crap (spawning a new one when all available are locked)
-# should be moved here. for now, it's used as a layer to prevent starting a ebuild-daemon.sh unless needed.
-# the reason for this classes existance, is that if the locks are changed to be thread aware, it would be the basis 
-# for allowing a regen to take advantage of smp systems (currently limited to single proc)
-# also, the portageq hijack allows for a processor to be locked, and have to get the keys from another ebuild.
-# until a bash hack is created to allow the daemon to dynamically store/reload envs (*quickly*), it's quicker to 
-# startup another daemon.
-
 #!/usr/bin/python
+# ebuild.py; Ebuild classes/abstraction of phase processing, and communicating with a ebuild-daemon.sh instance
+# Copyright 2004 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+$Header$
+
+
 import os,sys,traceback
 import portage_const,types
 #still needed?

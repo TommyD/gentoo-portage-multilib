@@ -7,6 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  07 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage_exec.py, sync/rsync.py:
+  Bug fixes for selinux.setexec typo, and noisy rsync.  Aside from that, a collection
+  of header updates.
+
   07 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage_util.py,pym/portage.py:
   tweak to make movefile not implode, and get_preferred_fetcher not implode.
 
