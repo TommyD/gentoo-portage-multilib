@@ -571,7 +571,7 @@ class config:
 						while x[1:] in mysetting:
 							mysetting.remove(x[1:])
 		#inject into configlist[0] *and* origenv so that our settings tweaks are preserved beyond a self.reset()
-		self.hardset(mykey,string.join(mysetting," "))
+		self[mykey]=string.join(mysetting," "))
 	
 	def populate(self):
 		self.configdict["conf"]=getconfig("/etc/make.conf")
@@ -629,18 +629,15 @@ class config:
 			self.populate()
 		self.configlist[0][mykey]=myvalue
 	
-	def hardset(self,mykey,myvalue):
-		"set a value persistently"
-		if not self.populated:
-			self.populate()
-		self.configdict["env"][mykey]=myvalue
-		self.configdict["origenv"][mykey]=myvalue
-
 	def reset(self):
+		"reset environment to original settings"
 		if not self.populated:
 			self.populate()
-		"reset environment to original settings"
 		self.configdict["env"]=self.configdict["origenv"].copy()
+		#new code here
+		self.regenerate("FEATURES",self.configlist)
+		self.use_regenerate()
+
 	def environ(self):
 		"return our locally-maintained environment"
 		mydict={}

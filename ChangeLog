@@ -1,14 +1,18 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  15 Apr 2002; Daniel Robbins <drobbins@gentoo.org>: portage.py: 'USE="-foo"
+  emerge bar' should now work correctly and consistently.  Fixes to the config
+  class.
+  
   15 Apr 2002; Daniel Robbins <drobbins@gentoo.org>: portage.py: applied
   jnelson's patch to properly kill all children when interrupted with ^C
   
-  15 Apr 2002; Donny Davies <woodchip@gentoo.org>: make.conf: added a 
+  15 Apr 2002; Donny Davies <woodchip@gentoo.org>: make.conf: added a
   RESUMECOMMAND for lukemftp.
   
-  15 Apr 2002; Daniel Robbins <drobbins@gentoo.org>: portage.py: fixed up
-  some "zing" logic inside the merge code (fixing variable being used before
+  15 Apr 2002; Daniel Robbins <drobbins@gentoo.org>: portage.py: fixed up some
+  "zing" logic inside the merge code (fixing variable being used before
   assignment errors)
   
   15 Apr 2002; Jon Nelson <jnelson@gentoo.org>: src/sandbox/Makefile,
