@@ -10,40 +10,40 @@ Here's a simple example ebuild:
 
 .DS
 # Copyright 1999\-2002 Gentoo Technologies, Inc.
-.br 
+.br
 # Distributed under the terms of the GNU General Public License v2
 .br
 #\ $Header$
-.br 
+.br
 
 S=${WORKDIR}/${P}
-.br 
+.br
 DESCRIPTION="Super\-useful stream editor"
-.br 
+.br
 SRC_URI="ftp://alpha.gnu.org/pub/gnu/sed/${P}.tar.gz"
-.br 
+.br
 HOMEPAGE="http://www.gnu.org/software/sed/sed.html"
-.br 
-KEYWORDS="x86 ppc sparc sparc64 alpha"
-.br 
+.br
+KEYWORDS="x86 ppc sparc alpha mips hppa"
+.br
 SLOT="0"
-.br 
+.br
 LICENSE="GPL\-2"
-.br 
+.br
 IUSE=""
-.br 
+.br
 
 DEPEND="virtual/glibc"
-.br 
+.br
 RDEPEND="virtual/glibc"
-.br 
+.br
 
 src_compile() {
 .br
 	econf
 .br
 	emake || die "emake failed"
-.br 
+.br
 }
 
 src_install() {
@@ -63,9 +63,10 @@ src_install() {
 	dosym /bin/sed /usr/bin/sed
 .br
 	dodoc COPYING NEWS README* THANKS TODO AUTHORS BUGS ANNOUNCE
-.br 
+.br
 }
 .SH "VARIABLES"
+*Note: PORTAGE* and PORTDIR* variables may be found in \fBmake.conf\fR(5).
 .TP
 \fBP\fR
 This variable contains the package name without the ebuild revision. This variable should NEVER be modified.
@@ -100,6 +101,10 @@ variables.
 \fBWORKDIR\fR = \fI"${PORTAGE_TMPDIR}/portage/${PF}/work"\fR
 Contains the path to the package build root.  Do not modify this variable.
 .TP
+\fBFILESDIR\fR = \fI"${PORTDIR}/${CATEGORY}/${PF}/files"\fR
+Contains the path to the 'files' sub folder in the package specific location in
+the portage tree.  Do not modify this variable.
+.TP
 \fBS\fR = \fI"${WORKDIR}/${P}"\fR
 Contains the path to the temporary \fIbuild directory\fR.  This variable is used by the
 functions \fIsrc_compile\fR and \fIsrc_install\fR.  Both are executed
@@ -127,7 +132,7 @@ if the file was not found at \fIGENTOO_MIRROR\fB\fR.
 Should contain a list of URL's for the sources main sites and other further
 package dependent information.
 .TP
-\fBKEYWORDS\fR = \fI[-~][x86,ppc,sparc,sparc64,alpha]\fR
+\fBKEYWORDS\fR = \fI[-~][x86,ppc,sparc,alpha,mips,hppa]\fR
 Should contain appropriate list of arches that the ebuild is know to work/not work.  By
 default if you do not know if an ebuild runs under a particular arch simply omit that
 KEYWORD.  If the ebuild will not work on that arch include it as \-ppc for example.  If
@@ -148,7 +153,7 @@ If the license does not exist in portage yet you must add it first.
 \fBIUSE\fR
 This should be a list of any and all USE flags that are leveraged within your 
 build script.  The only USE flags that should not be listed here are arch 
-related flags (currently x86 ppc sparc sparc64 alpha).
+related flags (see \fBKEYWORDS\fR).
 .TP
 \fBDEPEND\fR
 This should contain a list of all packages that are required for the
@@ -614,7 +619,7 @@ Contains the default variables for the build\-process, you should edit \fI/etc/m
 Achim Gottinger <achim@gentoo.org>
 .br
 Mark Guertin <gerk@gentoo.org>
-.br 
+.br
 Nicholas Jones <carpaski@gentoo.org>
 .br
 Mike Frysinger <vapier@gentoo.org>
