@@ -80,7 +80,7 @@ import xpak
 # ensure that they all categories are read when we check the portage directory
 # for available ebuilds.
 
-categories=("app-admin", "app-arch", "app-cdr", "app-crypt", "app-doc",
+categories=("app-i18n","app-admin", "app-arch", "app-cdr", "app-crypt", "app-doc",
 "app-editors", "app-emulation", "app-games", "app-misc", "app-office",
 "app-shells", "app-text", "dev-db", "dev-java", "dev-lang", "dev-libs",
 "dev-perl", "dev-python", "dev-ruby", "dev-util", "gnome-apps", "gnome-base",
