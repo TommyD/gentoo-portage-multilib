@@ -41,7 +41,7 @@ src_install() {
 	doinfo doc/sed.info
 	doman doc/sed.1
 	into /
-	dobin sed/sed
+	dobin sed/sed || die "dobin sed failed"
 	dodir /usr/bin
 	dosym /bin/sed /usr/bin/sed
 	dodoc NEWS README* THANKS TODO AUTHORS BUGS ANNOUNCE
@@ -108,9 +108,10 @@ Contains the path to a \fItemporary directory\fR.  You may use this for
 whatever you like.
 .TP
 \fBD\fR = \fI"${PORTAGE_TMPDIR}/portage/${PF}/image"\fR
-Contains the path to the temporary \fIinstall directory\fR.  Every write
-operation that does not involve the helper tools and functions (found
-below) should be prefixed with ${D}.  Do not modify this variable.
+Contains the path to the temporary \fIinstall directory\fR.  Every write 
+operation that does not involve the helper tools and functions (found below) 
+should be prefixed with ${D}.  Do not modify this variable.  This will not be 
+available inside of the pkg_* functions.
 .TP
 \fBDESCRIPTION\fR = \fI"A happy little package"\fR
 Should contain a short description of the package.
@@ -216,9 +217,9 @@ examples you may find in the portage tree:
 
 \fI!\fR means block packages from being installed at the same time.
 .br
-\fI*\fR means match any version of the package so long as the specified 
-base is matched.  So with a version of '2*', we can match '2.1', '2.2', 
-'2.2.1', etc... and not match version '1.0', '3.0', '4.1', etc...
+\fI*\fR means match any version of the package so long as the specified base 
+is matched.  So with a version of '2*', we can match '2.1', '2.2', '2.2.1', 
+etc... and not match version '1.0', '3.0', '4.1', etc...
 .br
 \fI~\fR means match any revision of the base version specified.  So in the 
 above example, we would match versions '1.0.2a', '1.0.2a-r1', '1.0.2a-r2', 
@@ -425,7 +426,7 @@ Useful for creating custom options to pass to a configure script. If
 \fI--with-[configure option]\fR will be echoed.  If \fIUSE item\fR is
 not in the \fBUSE\fR variable, then the string
 \fI--without-[configure option]\fR will be echoed.  If
-\fIconfigure option\fR is not specified, than \fIUSE item\fR will be
+\fIconfigure option\fR is not specified, then \fIUSE item\fR will be
 used in its place.
 .RS
 .TP
@@ -451,7 +452,7 @@ Useful for creating custom options to pass to a configure script. If
 \fI--enable-[configure option]\fR will be echoed.  If \fIUSE item\fR is
 not in the \fBUSE\fR variable, then the string
 \fI--disable-[configure option]\fR will be echoed. If \fIconfigure option\fR
-is not specified, than \fIUSE item\fR will be used in its place.
+is not specified, then \fIUSE item\fR will be used in its place.
 .br
 See \fBuse_with\fR for an example.
 .TP
@@ -520,9 +521,8 @@ writers.  If you wish to pass more options to configure, just pass the
 extra arguements to \fBeconf\fR.
 .TP
 \fBemake\fR \fI[make options]\fR
-This is used as a replacement for make.  Performs
-'make ${MAKEOPTS} \fImake options\fR' (as set in /etc/make.globals),
-default is MAKEOPTS="\-j2".
+This is used as a replacement for make.  Performs 'make ${MAKEOPTS} 
+\fImake options\fR' (as set in /etc/make.globals), default is MAKEOPTS="\-j2".
 
 \fB***warning***\fR
 .br
@@ -542,11 +542,12 @@ make \\
 	mandir=${D}/usr/share/man \\
 	sysconfdir=${D}/etc \\
 	\fI${EXTRA_EINSTALL}\fR \\
-	\fImake options\fR install
+	\fImake options\fR \\
+	install
 .fi
-Please do not use this in place of 'make install DESTDIR=${D}'.  That
-is the preferred way of installing make-based packages.  Also, do not 
-utilize the \fIEXTRA_EINSTALL\fR variable since it is for users.
+Please do \fBnot\fR use this in place of 'make install DESTDIR=${D}'.  
+That is the preferred way of installing make-based packages.  Also, do 
+not utilize the \fIEXTRA_EINSTALL\fR variable since it is for users.
 
 .PD 0
 .TP

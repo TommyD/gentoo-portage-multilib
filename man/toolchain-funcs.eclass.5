@@ -1,13 +1,13 @@
 .TH "TOOLCHAIN-FUNCS.ECLASS" "5" "Jun 2003" "Portage 2.0.51" "portage"
 .SH "NAME"
-toolchain-funcs \- functions to get commonly needed info about the 
+toolchain-funcs.eclass \- functions to get commonly needed info about the 
 toolchain (binutils/gcc/glibc/etc...)
 .SH "DESCRIPTION"
 The \fBtoolchain-funcs\fR eclass contains a suite of functions that are 
 used to glean information about the toolchain that is used to compile.  
-This allows developers to worry about gcc specs rather than figuring
+This allows developers to worry about gcc specs rather than figuring 
 out how to find the specs in the first place.
-.SH "FUNCTIONS"
+.SH "TOOL FUNCTIONS"
 .TP
 .B tc-getAR
 Returns the name of the binutils archiver.  Usually 'ar'.
@@ -26,6 +26,12 @@ Returns the name of the C compiler binary.  Usually 'gcc'.
 .B tc-getCXX
 Returns the name of the C++ compiler binary.  Usually 'g++'.
 .TP
+.B tc-getF77
+Returns the name of the fortran compiler.
+.TP
+.B tc-getGCJ
+Returns the name of the java compiler.  Usually 'gcj'.
+.TP
 .B tc-getLD
 Returns the name of the linker.  Usually 'ld'.
 .TP
@@ -34,6 +40,31 @@ Returns the name of the symbol/object thingy.  Usually 'nm'.
 .TP
 .B tc-getRANLIB
 Returns the name of the archiver indexer.  Usually 'ranlib'.
+.SH "MISC FUNCTIONS"
+.TP
+\fBtc-arch\fR [\fITARGET\fR]
+Echo the portage $ARCH that the current toolchain represents.  
+Basically this is a drop-in replacment for $ARCH usage.  If no 
+\fITARGET\fR is specified, then CHOST will be used.
+.TP
+\fBtc-arch-kernel\fR [\fITARGET\fR]
+Echo the kernel $ARCH that the current toolchain represents.  If no 
+\fITARGET\fR is specified, then CHOST will be used.
+.TP
+\fBtc-endian\fR [\fITARGET\fR]
+Echo 'little' or 'big' based upon what the current toolchain represents.  
+If no \fITARGET\fR is specified, then CHOST will be used.
+.TP
+\fBtc-export\fR <\fBlist of variables\fR>
+Quickly export \fBlist of variables\fR to the environment.  Much easier 
+than exporting each idividual variable at a time.
+
+For example: \fBtc-export\fR CC CXX AR RANLIB
+.TP
+.B tc-is-cross-compiler
+Return shell true/false based upon whether the current building 
+setup is for a cross compiler.
+.SH "VERSION FUNCTIONS"
 .TP
 .B gcc-fullversion
 Returns the version as by `$CC -dumpversion`.

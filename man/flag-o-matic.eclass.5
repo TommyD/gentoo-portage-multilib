@@ -1,6 +1,6 @@
 .TH "FLAG-O-MATIC.ECLASS" "5" "Jun 2003" "Portage 2.0.51" "portage"
 .SH "NAME"
-flag\-o\-matic \- manipulate CFLAGS/CXXFLAGS easily and reliably
+flag\-o\-matic.eclass \- manipulate CFLAGS/CXXFLAGS easily and reliably
 .SH "DESCRIPTION"
 The \fBflag\-o\-matic\fR eclass contains a suite of functions to
 manipulate the CFLAGS/CXXFLAGS variables.
@@ -48,15 +48,29 @@ will leave the user with -mfpmath=386.
 .BR "append-ldflags " "\fI<flags>\fR"
 Add extra \fIflags\fR to the current LDFLAGS.
 .TP
+.BR "filter-ldflags " "\fI<flags>\fR"
+Remove particular \fIflags\fR from LDFLAGS.  This function
+will only match complete flags.
+.TP
+.BR "filter-lfs-flags"
+Remove flags that enable Large File Support.
+.TP
+.BR "append-lfs-flags"
+Add flags that enable Large File Support.
+.TP
 .BR "strip-flags"
-Strip CFLAGS/CXXFLAGS of everything except for flags known to
-be good flags.  Users of stable profile are limited to these flags:
+Strip CFLAGS/CXXFLAGS of everything except for flags known to 
+be good flags, or are flags that affect the ABI.  Users of stable 
+profile are limited to these flags:
 .br
 .I "-O -O1 -O2 -mcpu -march -mtune -fstack-protector -pipe -g"
 .br
 Users of unstable profile are allowed the above flags and these flags:
 .br
 .I "-Os -O3 -freorder-blocks -fprefetch-loop-arrays"
+.TP
+.BR "test_flag " "\fI<flag>\fR"
+Tests to see if \fIflag\fR is supported by the active toolchain.
 .SH "REPORTING BUGS"
 Please report bugs via http://bugs.gentoo.org/
 .SH "SEE ALSO"

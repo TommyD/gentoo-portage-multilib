@@ -41,41 +41,48 @@ Scan current directory tree for QA issues.  If OK, commit via cvs.
 .BR CVS/Entries.IO_error
 While attempting to commit, a CVS/Entries directory wasn't found- either the cvs co is damaged, or permissions block repoman from reading the file.
 .TP
-.BR digest.stray
-Digest files were found that do not have a corresponding ebuild.
+.BR digest.assumed
+Files listed in the digest were not found in your $DISTDIR so the existing 
+digest entries are assumed to be correct.
+.TP
+.BR digest.disjointed
+The digests were not added to cvs when the matching ebuild had already been 
+added.
 .TP
 .BR digest.missing
 Ebuild files were found that do not have a corresponding digest.
 .TP
+.BR digest.notadded
+The digests were found but have not been added to cvs.
+.TP
+.BR digest.stray
+Digest files were found that do not have a corresponding ebuild.
+.TP
+.BR ebuild.disjointed
+The ebuilds were not added to cvs when the matching digest had already been 
+added.
+.TP
 .BR ebuild.invalidname
 The ebuild has a filename that is not-parseable by portage.
-.TP
-.BR ebuild.namenomatch
-The euild has a filename that does not have the same name as the parent directory.
 .TP
 .BR changelog.missing
 The ChangeLog file was not found.
 .TP
+.BR ebuild.namenomatch
+The euild has a filename that does not have the same name as the parent 
+directory.
+.TP
 .BR ebuild.notadded
 The ebuilds were found but have not been added to cvs.
 .TP
-.BR digest.notadded
-The digests were found but have not been added to cvs.
-.TP
-.BR ebuild.disjointed
-The ebuilds were not added to cvs when the matching digest had already been added.
-.TP
-.BR digest.disjointed
-The digests were not added to cvs when the matching ebuild had already been added.
-.TP
-.BR filedir.missing
-The package lacks a files directory.
+.BR file.executable
+The file has the executable bit set, when it's not needed- check is limited to ebuilds, digests, Manifest, ChangeLog, and metadata.xml.
 .TP
 .BR file.size
 The file's size exceeds 20k, current policy is no files over 20k in a packages files directory.
 .TP
-.BR file.executable
-The file has the executable bit set, when it's not needed- check is limited to ebuilds, digests, Manifest, ChangeLog, and metadata.xml.
+.BR filedir.missing
+The package lacks a files directory.
 .TP
 .BR DEPEND.bad
 User-visible ebuilds with bad DEPEND settings (matched against *visible* ebuilds).

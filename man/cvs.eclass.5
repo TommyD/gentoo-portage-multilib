@@ -1,7 +1,7 @@
-.TH "CVS.ECLASS" "5" "Jun 2003" "Portage 2.0.51" "portage"
-.SH "NAME"
-cvs \- provides generic cvs fetching functions
-.SH "DESCRIPTION"
+.TH CVS.ECLASS 5 "Nov 2004" "Portage 2.0.51" portage
+.SH NAME
+cvs.eclass \- provides generic cvs fetching functions
+.SH DESCRIPTION
 The \fBcvs\fR eclass contains a suite of functions that are used to
 create 'live' cvs ebuilds.  These ebuilds are called 'live' because
 they will checkout a cvs repository at the time of emerge and compile
@@ -9,11 +9,10 @@ the source from the checkout.  This eclass usually generates pretty
 unstable ebuilds ... but you can't get anymore bleeding edge than
 a live cvs checkout :).
 
-.br
 Common usage of this eclass involves setting \fBECVS_SERVER\fR and
 \fBECVS_MODULE\fR to grab the relevant cvs sources, and then letting
 the eclass define \fBsrc_unpack\fR for you.
-.SH "VARIABLES"
+.SH VARIABLES
 .TP
 .B "ECVS_CVS_COMMAND" = \fI"cvs -q -f -z4"\fR
 The command to run in order to checkout the module from the cvs
@@ -56,7 +55,7 @@ The module to checkout from the cvs server.  Please note that you
 The branch to checkout the sources from.  The common targets are
 HEAD (current 'stable' cvs code) and SPLIT (current 'unstable' cvs
 code).
-.SH "FUNCTIONS"
+.SH FUNCTIONS
 .TP
 .B cvs_fetch
 This function will setup \fBECVS_TOP_DIR\fR and any other pre-checkout
@@ -69,13 +68,13 @@ This function will determine where the cvs files need to be saved and
 then where they need to be placed after the checkout.  The final result
 is that you will have a copy of \fBECVS_MODULE\fR in \fB${WORKDIR}\fR.  Thus
 you will usually set \fB${S}\fR to be \fB${WORKDIR}/${ECVS_MODULE}\fR.
-.SH "REPORTING BUGS"
+.SH REPORTING BUGS
 Please report bugs via http://bugs.gentoo.org/
-.SH "SEE ALSO"
+.SH SEE ALSO
 .BR ebuild (5)
-.SH "FILES"
+.SH FILES
 .BR /usr/portage/eclass/cvs.eclass
-.SH "AUTHORS"
+.SH AUTHORS
 Mike Frysinger <vapier@gentoo.org>
-.SH "CVS HEADER"
+.SH CVS HEADER
 $Header$

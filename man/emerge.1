@@ -210,10 +210,10 @@ As an example, this catches updates in libraries that are not directly
 listed in the dependencies of a package.
 .TP
 .BR "\-\-emptytree " (\fB\-e\fR)
-Virtually tweaks the tree of installed packages to only contain libc;
-this is great to use together with \fB\-\-pretend\fR.  This allows developers
-to get a complete overview of the complete dependency tree of a package,
-and it enables complete trees to be rebuilt using the latest libraries.
+Reinstalls all world packages and their dependencies to the current USE 
+specifications while differing from the installed set of packages as 
+little as possible.  You should run with \fB\-\-pretend\fR first to make 
+sure the result is what you expect.
 .TP
 .BR "\-\-fetchonly " (\fB\-f\fR)
 Instead of doing any package building, just perform fetches for all
@@ -243,7 +243,7 @@ on that subject.  The internal \fBemerge\fR help documentation is
 updated more frequently than this man page; check it out if you
 are having problems that this man page does not help resolve.
 .TP
-.BR "\-\-newuse"
+.BR "\-\-newuse " (\fB\-N\fR)
 Tells emerge to include installed packages where USE flags have changed
 since compilation. An asterisk marks when a USE flag has changed since
 the package was compiled.
@@ -270,7 +270,7 @@ not remerge dependencies by default.
 Disables the spinner for the session.  The spinner is active when the
 terminal device is determined to be a TTY.  This flag disables it regardless.
 .TP
-.BR "\-\-oneshot"
+.BR "\-\-oneshot " (\fB\-1\fR)
 Emerge as normal, but do not add the packages to the world profile
 for later updating.
 .TP
@@ -419,30 +419,28 @@ when the previous version emerged was injected (see \fBinject\fR for more info)
 or very outdated (so old that \fBSLOT\fR did not exist).  Either way, a newer version
 of Xfree is availabe for your updating delight.
 .TP
-.B [ebuild     U ] sys\-devel/distcc\-2.16 [2.13\-r1] \-gnome \-gtk +ipv6* (\-selinux)
-The \-gtk and \-gnome reflect the status of \fBUSE\fR variables when emerging distcc.  Here
-we see that distcc can use the \fBUSE\fR variables gtk and gnome, but that your current
-settings have gtk and gnome disabled.  This means optional support for gtk and gnome will
-not be enabled in distcc when you emerge it.
-An asterisk shows that the \fBUSE\fR flags have changed since the package was last installed.  
-In this case, ipv6 is enabled but was previously disabled.  A \fBUSE\fR flag in brackets, like 
-(\-selinux), is always disabled and shows that the flag is not available for the current system 
-profile.
-.br 
-\fB*Note:\fR The \fBUSE\fR status is only displayed when you use the \fB\-\-pretend\fR
-and \fB\-\-verbose\fR options.
+.B [ebuild     U ] sys\-devel/distcc\-2.16 [2.13\-r1] \-gtk +ipv6* (\-selinux)
+The \-gtk reflects the status of \fBUSE\fR variables when emerging distcc.  
+Here we see that distcc can use the \fBUSE\fR variable gtk, but that your 
+current settings have gtk disabled.  This means optional support for gtk will
+not be enabled in distcc when you emerge it.  An asterisk shows that the 
+\fBUSE\fR flags have changed since the package was last installed.  In this 
+case, ipv6 is enabled but was previously disabled.  A \fBUSE\fR flag in 
+pparenthesis, like (\-selinux), is always disabled and shows that the flag is 
+not available for the current system profile.
+.br
+\fB*Note:\fR The \fBUSE\fR status is only displayed when you use the 
+\fB\-\-pretend\fR and \fB\-\-verbose\fR options.
 .SH "NOTES"
-You should almost always precede any package install or update
-attempt with a \fB\-\-pretend\fR install or update.  This lets
-you see how much will be done, and shows you any blocking
-packages that you will have to rectify.  This goes doubly so
-for the \fBsystem\fR and \fBworld\fR classes, which can
-update a large number of packages if the portage tree has
-been particularly active.
+You should almost always precede any package install or update attempt with a 
+\fB\-\-pretend\fR install or update.  This lets you see how much will be 
+done, and shows you any blocking packages that you will have to rectify.  
+This goes doubly so for the \fBsystem\fR and \fBworld\fR classes, which can 
+update a large number of packages if the portage tree has been particularly 
+active.
 .LP
-You also want to typically use \fB\-\-update\fR, which ignores
-packages that are already fully updated but upgrades those that
-are not.
+You also want to typically use \fB\-\-update\fR, which ignores packages that 
+are already fully updated but upgrades those that are not.
 .LP
 When you install a package with uninstalled dependencies and do
 not explicitly state those dependencies in the list of parameters,
@@ -492,12 +490,9 @@ proven to be "stable", are masked with a tilde (\fB~\fR) in front of the
 architecture name.  \fBemerge\fR examines the \fBACCEPT_KEYWORDS\fR environment 
 variable to allow or disallow the emerging of a package masked by \fBKEYWORDS\fR.  
 To inform \fBemerge\fR that it should build these 'testing' versions 
-of packages, you may set \fBACCEPT_KEYWORDS\fR to "\fB~arch\fR", where 
-\fBarch\fR is one of: \fIx86 ppc sparc mips alpha arm hppa\fR.  For example, 
-\fBACCEPT_KEYWORDS="~x86" emerge xfree\fR will cause \fBemerge\fR to consider 
-\fBKEYWORDS\fR\-masked versions of XFree as potentional upgrade 
-candidates.  \fBWARNING:\fR Do \fInot\fR set this variable to anything 
-other than the value corresponding to your architecture.
+of packages, you should update your \fI/etc/portage/package.keywords\fR file 
+to list the packages you want the 'testing' version.  See \fBportage\fR(5) for 
+more information.
 .SH "REPORTING BUGS"
 Please report any bugs you encounter through our website:
 .LP
@@ -571,4 +566,4 @@ Mike Frysinger <vapier@gentoo.org>
 Marius Mauch <genone@gentoo.org>
 .br 
 .SH "CVS HEADER"
-$Id$
+$Header$
