@@ -9,10 +9,15 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  26 Jul 2004; Brian Harring <ferringb@gentoo.org> bin/repoman:
+  Added check to ensure manifest recommit is at least possible when 
+  committing, and corrected handling of CVS/Root files for OSX machines.
+  Removed readline import, doesn't seem to be used at all.
+
   26 Jul 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge pym/portage.py:
   Refactored slot code into portage.py to remove usage off portage_dep.
 
-  25 Jul 2004; Brian Harring <ferringb@gentoo.org> bin/dohtml ChangeLog:
+  25 Jul 2004; Brian Harring <ferringb@gentoo.org> bin/dohtml:
   Corrected a bug in dohtml where it was unable to install files with a space 
   in their name (#58258)
 

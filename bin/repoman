@@ -13,7 +13,7 @@ os.environ["PORTAGE_CALLER"]="repoman"
 sys.path = ["/usr/lib/portage/pym"]+sys.path
 version="1.2"	
 
-import string,signal,readline,portage,portage_dep,re,cvstree,pickle,tempfile
+import string,signal,portage,portage_dep,re,cvstree,pickle,tempfile
 from output import *
 from commands import getstatusoutput
 from time import *
@@ -330,11 +330,18 @@ else:
 		myrepofile=open("CVS/Root")
 		myreporootpath=string.split(myrepofile.readline()[:-1], ":")[-1]
 		myrepofile.close()
+		if myreporootpath == myreporoot[:len(myreporootpath)]:
+			# goofy os x cvs co.
+			myreporoot = myreporoot[len(myreporootpath):]		
 	except:
 		err("Error grabbing repository information; exiting.")
 
 if myreporootpath and (myreporootpath[-1] != "/"):
 	myreporootpath += "/"
+
+# ensure no leading / for myreporoot, this screws up repolevel detection if a prefixed slash slips by
+if myreporoot[0] == "/":
+	myreporoot = myreporoot[1:]
 
 if not "--pretend" in myoptions and not isCvs:
 	print
@@ -408,6 +415,16 @@ if isCvs:
 		err("Couldn't recognize repository type.  Supported repositories:\n"+repr(REPOROOTS))
 reposplit=string.split(myreporoot,"/")
 repolevel=len(reposplit)
+
+# check if it's in $PORTDIR/$CATEGORY/$PN , otherwise bail if commiting.
+# Reason for this is if they're trying to commit in just $FILESDIR/*, the Manifest needs updating.
+# this check ensure that repoman knows where it is, and the manifest recommit is at least possible.
+if mymode == "commit" and repolevel not in [1,2,3]:
+	print red("***")+" Commit attempts *must* be from within a cvs co, category, or package directory."
+	print red("***")+" Attempting to commit from a packages files directory will be blocked for instance."
+	print red("***")+" This is intended behaviour, to ensure the manifest is recommited for a package."
+	print red("***")
+	err("Unable to identify level we're commiting from for %s" % string.join(reposplit,'/'))
 
 if not isCvs:
 	repolevel-=(string.count(myreporootpath,"/") - 1)
