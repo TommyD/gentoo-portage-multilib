@@ -53,6 +53,7 @@ if [ -d /usr/portage.cvs/sys-apps/portage/ ]; then
 	cp /usr/portage/sys-apps/portage/portage-${PREVEB}.ebuild /usr/portage.cvs/sys-apps/portage/portage-${V}.ebuild
 	rm -f /usr/portage/sys-apps/portage/files/digest-portage-${V}
 	rm -f /usr/portage.cvs/sys-apps/portage/files/digest-portage-${V}
+	rm -f $(python -c "import portage; print portage.settings['DISTDIR']+\"/${PKG}-${V}.tar.bz2\"")
 	ebuild /usr/portage/sys-apps/portage/portage-${V}.ebuild fetch digest
 	cp /usr/portage/sys-apps/portage/files/digest-portage-${V} /usr/portage.cvs/sys-apps/portage/files/digest-portage-${V}
 fi
