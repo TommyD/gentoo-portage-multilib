@@ -9,6 +9,10 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  14 Jun 2004; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py:
+  Fixed bug in portdbapi.aux_get where a problem ebuild would cause a lock
+  to not be released.
+
   09 Jun 2004; Marius Mauch <genone@gentoo.org> bin/emerge:
   Changed emerge --info to reflect libc versions other than glibc.  
 

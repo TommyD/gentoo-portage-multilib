@@ -5091,6 +5091,7 @@ class portdbapi(dbapi):
 				myret=doebuild(myebuild,"depend","/",self.mysettings,dbkey=mydbkey)
 				if myret:
 					unlockfile(mylock)
+					self.lock_held = 0
 					#depend returned non-zero exit code...
 					writemsg(str(red("\naux_get():")+" (0) Error in "+mycpv+" ebuild. ("+str(myret)+")\n"
          	   "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
