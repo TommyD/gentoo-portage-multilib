@@ -1915,7 +1915,9 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 			maxretries=3 #default number of retries
 
 		retries=0
-		hostname=re.split("rsync://([^/]*)",syncuri)[1];
+		hostname, port=re.split("rsync://([^:/]*)(:[0-9]+)?", syncuri)[1:3];
+		if port==None:
+			port=""
 		updatecache_flg=True
 
 		ips=[]
@@ -1927,12 +1929,14 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 					ips=socket.gethostbyname_ex(hostname)[2]
 				except Exception, e:
 					print "Notice:",str(e)
+					dosyncuri=syncuri
 
-			try:
-				dosyncuri=string.replace(syncuri, "//"+hostname+"/", "//"+ips[0]+"/", 1)
-			except Exception, e:
-				print "Notice:",str(e)
-				dosyncuri = syncuri
+			if ips:
+				try:
+					dosyncuri=string.replace(syncuri, "//"+hostname+port+"/", "//"+ips[0]+port+"/", 1)
+				except Exception, e:
+					print "Notice:",str(e)
+					dosyncuri=syncuri
 
 			if (retries==0):
 				emergelog(">>> starting rsync with "+dosyncuri)
