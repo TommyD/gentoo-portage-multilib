@@ -595,7 +595,7 @@ def env_update(makelinks=1):
 			mtimedb["ldpath"][x]=newldpathtime
 			ld_cache_update=True
 
-	if (ld_cache_update):
+	if (ld_cache_update or makelinks):
 		# We can't update links if we haven't cleaned other versions first, as
 		# an older package installed ON TOP of a newer version will cause ldconfig
 		# to overwrite the symlinks we just made. -X means no links. After 'clean'
@@ -5905,6 +5905,10 @@ class dblink:
 		# This blocks until we can get the dirs to ourselves.
 		self.lockdb()
 
+		otherversions=[]
+		for v in db[self.myroot]["vartree"].dbapi.cp_list(self.mysplit[0]):
+			otherversions.append(v.split("/")[1])
+
 		# check for package collisions
 		if "collision-protect" in features:
 			myfilelist = listdir(srcroot, recursive=1, filesonly=1)
@@ -5918,11 +5922,7 @@ class dblink:
 			i=0
 
 			otherpkg=[]
-			otherversions=[]
 			mypkglist=[]
-
-			for v in db[self.myroot]["vartree"].dbapi.cp_list(self.mysplit[0]):
-				otherversions.append(v.split("/")[1])
 
 			if self.pkg in otherversions:
 				otherversions.remove(self.pkg)	# we already checked this package
@@ -6112,9 +6112,14 @@ class dblink:
 		if a != 0:
 			writemsg("!!! FAILED postinst: "+str(a)+"\n")
 			sys.exit(123)
-	
+
+		downgrade = False
+		for v in otherversions:
+			if pkgcmp(catpkgsplit(self.pkg)[1:], catpkgsplit(v)[1:]) < 0:
+				downgrade = True
+
 		#update environment settings, library paths. DO NOT change symlinks.
-		env_update(makelinks=0)
+		env_update(makelinks=(not downgrade))
 		#dircache may break autoclean because it remembers the -MERGING-pkg file
 		global dircache
 		if dircache.has_key(self.dbcatdir):
