@@ -7,6 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  04 Nov 2004; Marius Mauch <genone@gentoo.org> pym/portage.py: Added
+  a 'return 0' in treewalk() to avoid the "Unable to run required binary"
+  problem.
+
   03 Nov 2004; Brian Harring <ferringb@gentoo.org> portage_dep.py: Bug in
   paren_reduce where it was returning a tuple, not a list.
 
