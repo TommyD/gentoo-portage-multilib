@@ -327,12 +327,7 @@ else:
 	except:
 		err("Error grabbing repository information; exiting.")
 
-if myreporootpath and (myreporootpath[-1] != "/"):
-	myreporootpath += "/"
-
-# ensure no leading / for myreporoot, this screws up repolevel detection if a prefixed slash slips by
-if myreporoot[0] == "/":
-	myreporoot = myreporoot[1:]
+myreporootpath=os.path.normpath(myreporootpath)
 
 if not "--pretend" in myoptions and not isCvs:
 	print
@@ -418,7 +413,7 @@ if mymode == "commit" and repolevel not in [1,2,3]:
 	err("Unable to identify level we're commiting from for %s" % string.join(reposplit,'/'))
 
 if not isCvs:
-	repolevel-=(string.count(myreporootpath,"/") - 1)
+	repolevel-=(string.count(myreporootpath,"/"))
 startdir=os.getcwd()
 
 for x in range(0,repolevel-1):
