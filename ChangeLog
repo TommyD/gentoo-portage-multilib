@@ -7,6 +7,23 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  07 Nov 2004; Brian Harring <ferringb@gentoo.org> sync/__init__.py, 
+  sync/parseuri.py, sync/cvs.py, sync/rsync.py, sync/snapshot.py, 
+  bin/emerge-webrsync: Rewrite of Marius Mauch's (genone) sync refactoring code.  
+  Relies on the transport refactoring for snapshots module.  This obsoletes 
+  emerge-webrsync.  Supports old SYNC format for cvs, and new- new being
+  SYNC="cvs://[CVS_RSH:]user@host:cvsroot:cvs-module".  New is preferred, otherwise
+  have to assume CVS_RSH=ssh, and cvs-module=gentoo-x86.  Example of new-
+  SYNC="cvs://ssh:ferringb@cvs.gentoo.org:/var/cvsroot:gentoo-x86"
+  The snapshot uri is a bit odd, possible to rework it I'd think- either
+  SYNC="snapshot"
+  which pulls a mirror to use from portage.thirdpartymirrors["gentoo"], or explicitly
+  SYNC="snapshot-[mirror-uri]".  fex
+  SYNC="snapshot-http://gentoo.chem.wisc.edu/gentoo/snapshots" would use 
+  snapshots from gentoo.chem.wisc.edu. Sync uri for rsync is unchanged.
+  This is just the requisite code, the conversion to emerge to use it shall follow.
+  (#35535).
+
   07 Nov 2004; Brian Harring <ferringb@gentoo.org> transports/__init__.py,
   transports/bundled_lib.py, transports/fetchcommand.py: Fetch refactoring.
   Basically, a rewrite of portions of getbinpkg in httpConnection, and ftpConnection.
