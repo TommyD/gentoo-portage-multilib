@@ -611,7 +611,7 @@ if "--debug" in myopts:
 
 # process modes that aren't in the universal emerge interface format first
 # this format is 'emerge --action --option --option [packageset]'
-if "rsync" in mymode and not myaction:
+if "rsync" in mymode and (not myaction or myaction=="--clean"):
 	if not os.path.exists("/usr/bin/rsync"):
 		print "!!! /usr/bin/rsync does not exist, so rsync support is disabled."
 		sys.exit(1)
