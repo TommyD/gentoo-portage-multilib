@@ -4,17 +4,18 @@
 codes={}
 codes["reset"]="\x1b[0m"
 codes["bold"]="\x1b[01m"
-codes["teal"]="\x1b[36;03m"
+codes["teal"]="\x1b[36;06m"
 codes["turquoise"]="\x1b[36;01m"
 codes["fuscia"]="\x1b[35;01m"
-codes["purple"]="\x1b[35;03m"
+codes["purple"]="\x1b[35;06m"
 codes["blue"]="\x1b[34;01m"
-codes["darkblue"]="\x1b[34;03m"
+codes["darkblue"]="\x1b[34;06m"
 codes["yellow"]="\x1b[33;01m"
-codes["brown"]="\x1b[33;03m"
+codes["brown"]="\x1b[33;06m"
 codes["green"]="\x1b[32;01m"
-codes["darkgreen"]="\x1b[32;03m"
+codes["darkgreen"]="\x1b[32;06m"
 codes["red"]="\x1b[31;01m"
+codes["darkred"]="\x1b[31;06m"
 
 def nocolor():
 	"turn off colorization"
