@@ -934,7 +934,7 @@ def getconfig(mycfg,tolerant=0):
 			#lex.error_leader(self.filename,lex.lineno)
 			if not tolerant:
 				writemsg("!!! Unexpected end of config file: variable "+str(key)+"\n")
-				return None
+				raise Exception("ParseError: Unexpected EOF: "+str(mycfg)+": on/before line "+str(lex.lineno))
 			else:
 				return mykeys
 		elif (equ!='='):
@@ -942,7 +942,7 @@ def getconfig(mycfg,tolerant=0):
 			#lex.error_leader(self.filename,lex.lineno)
 			if not tolerant:
 				writemsg("!!! Invalid token (not \"=\") "+str(equ)+"\n")
-				return None
+				raise Exception("ParseError: Invalid token (not '='): "+str(mycfg)+": line "+str(lex.lineno))
 			else:
 				return mykeys
 		val=lex.get_token()
@@ -951,7 +951,7 @@ def getconfig(mycfg,tolerant=0):
 			#lex.error_leader(self.filename,lex.lineno)
 			if not tolerant:
 				writemsg("!!! Unexpected end of config file: variable "+str(key)+"\n")
-				return None
+				raise Exception("ParseError: Unexpected EOF: "+str(mycfg)+": line "+str(lex.lineno))
 			else:
 				return mykeys
 		mykeys[key]=varexpand(val,mykeys)
@@ -1109,7 +1109,7 @@ def ExtractKernelVersion(base_dir):
 
 aumtime=0
 
-def autouse(myvartree):
+def autouse(myvartree,use_cache=1):
 	"returns set of USE variables auto-enabled due to packages being installed"
 	global usedefaults
 	if profiledir==None:
@@ -1118,7 +1118,7 @@ def autouse(myvartree):
 	for myuse in usedefaults:
 		mydep = string.join(usedefaults[myuse])
 		#check dependencies; tell depcheck() to ignore settings["USE"] since we are still forming it.
-		myresult=dep_check(mydep,myvartree.dbapi,None,use="no")
+		myresult=dep_check(mydep,myvartree.dbapi,None,use="no",use_cache=use_cache)
 		if myresult[0]==1 and not myresult[1]:
 			#deps satisfied, add USE variable...
 			myusevars=myusevars+" "+myuse
@@ -1220,9 +1220,12 @@ class config:
 			self.usemask  = grab_stacked("use.mask", self.profiles, grabfile, incremental_lines=1)
 			self.use_defs = grab_stacked("use.defaults", self.profiles, grabdict)
 
-			self.mygcfg  = grab_stacked("make.globals", self.profiles+["/etc"], getconfig)
-			if self.mygcfg==None:
-				writemsg("!!! Parse error in /etc/make.globals. NEVER EDIT THIS FILE.\n")
+			try:
+				self.mygcfg  = grab_stacked("make.globals", self.profiles+["/etc"], getconfig)
+				if self.mygcfg == None:
+					self.mygcfg = {}
+			except Exception, e:
+				writemsg("!!! %s\n" % (e))
 				writemsg("!!! Incorrect multiline literals can cause this. Do not use them.\n")
 				writemsg("!!! Errors in this file should be reported on bugs.gentoo.org.\n")
 				sys.exit(1)
@@ -1231,9 +1234,12 @@ class config:
 
 			self.mygcfg = {}
 			if self.profiles:
-				self.mygcfg = grab_stacked("make.defaults", self.profiles, getconfig)
-				if self.mygcfg==None:
-					writemsg("!!! Parse error in /etc/make.profile/make.defaults. Never modify this file.\n")
+				try:
+					self.mygcfg = grab_stacked("make.defaults", self.profiles, getconfig)
+					if self.mygcfg == None:
+						self.mygcfg = {}
+				except Exception, e:
+					writemsg("!!! %s\n" % (e))
 					writemsg("!!! 'rm -Rf /usr/portage/profiles; emerge sync' may fix this. If it does\n")
 					writemsg("!!! not then please report this to bugs.gentoo.org and, if possible, a dev\n")
 					writemsg("!!! on #gentoo (irc.freenode.org)\n")
@@ -1241,9 +1247,12 @@ class config:
 			self.configlist.append(self.mygcfg)
 			self.configdict["defaults"]=self.configlist[-1]
 
-			self.mygcfg=getconfig("/etc/make.conf")
-			if self.mygcfg==None:
-				writemsg("!!! Parse error in /etc/make.conf.\n")
+			try:
+				self.mygcfg=getconfig("/etc/make.conf")
+				if self.mygcfg == None:
+					self.mygcfg = {}
+			except Exception, e:
+				writemsg("!!! %s\n" % (e))
 				writemsg("!!! Incorrect multiline literals can cause this. Do not use them.\n")
 				sys.exit(1)
 			self.configlist.append(self.mygcfg)
@@ -1313,7 +1322,7 @@ class config:
 		else:
 			raise KeyError, "No such key defined in environment: %s" % key
 	
-	def reset(self,keeping_pkg=0):
+	def reset(self,keeping_pkg=0,use_cache=1):
 		"reset environment to original settings"
 		for x in self.configlist[-1].keys():
 			if x not in self.backupenv.keys():
@@ -1326,7 +1335,7 @@ class config:
 		if not keeping_pkg:
 			for x in self.configdict["pkg"].keys():
 				del self.configdict["pkg"][x]
-		self.regenerate()
+		self.regenerate(use_cache=use_cache)
 
 	def load_infodir(self,infodir):
 		if self.configdict.has_key("pkg"):
@@ -1356,7 +1365,7 @@ class config:
 			return 1
 		return 0
 
-	def setcpv(self,mycpv):
+	def setcpv(self,mycpv,use_cache=1):
 		self.modifying()
 		self.mycpv = mycpv
 		self.pusekey = best_match_to_list(self.mycpv, self.pusedict.keys())
@@ -1366,9 +1375,9 @@ class config:
 			self.puse = ""
 		self.configdict["pkg"]["PKGUSE"] = self.puse[:] # For saving to PUSE file
 		self.configdict["pkg"]["USE"]    = self.puse[:] # this gets appended to USE
-		self.reset(keeping_pkg=1)
+		self.reset(keeping_pkg=1,use_cache=use_cache)
 
-	def regenerate(self,useonly=0):
+	def regenerate(self,useonly=0,use_cache=1):
 		global incrementals,usesplit,profiledir
 
 		if useonly:
@@ -1380,7 +1389,7 @@ class config:
 				mydbs=self.uvlist
 				# XXX Global usage of db... Needs to go away somehow.
 				if db.has_key(root) and db[root].has_key("vartree"):
-					self.configdict["auto"]["USE"]=autouse(db[root]["vartree"])
+					self.configdict["auto"]["USE"]=autouse(db[root]["vartree"],use_cache=use_cache)
 				else:
 					self.configdict["auto"]["USE"]=""
 			else:
@@ -2047,7 +2056,7 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0):
 				actionmap[mydo]["args"][0],
 				actionmap[mydo]["args"][1])
 
-def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,cleanup=0,dbkey=None):
+def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,cleanup=0,dbkey=None,use_cache=1):
 	global db
 	
 	ebuild_path = os.path.abspath(myebuild)
@@ -2061,8 +2070,8 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		writemsg("!!! Error: PF is null '%s'; exiting.\n" % mypv)
 		return 1
 
-	mysettings.reset()
-	mysettings.setcpv(mycpv)
+	mysettings.reset(use_cache=use_cache)
+	mysettings.setcpv(mycpv,use_cache=use_cache)
 	
 	if mydo not in ["help","clean","prerm","postrm","preinst","postinst",
 	                "config","touch","setup","depend","fetch","digest",
@@ -3248,7 +3257,7 @@ def dep_expand(mydep,mydb=None,use_cache=1):
 		mydep=mydep[1:]
 	return prefix+cpv_expand(mydep,mydb,use_cache=use_cache)+postfix
 
-def dep_check(depstring,mydbapi,mysettings,use="yes",mode=None,myuse=None):
+def dep_check(depstring,mydbapi,mysettings,use="yes",mode=None,myuse=None,use_cache=1):
 	"""Takes a depend string and parses the condition."""
 
 	#check_config_instance(mysettings)
@@ -3283,14 +3292,14 @@ def dep_check(depstring,mydbapi,mysettings,use="yes",mode=None,myuse=None):
 	mysplit=dep_virtual(mysplit)
 	#if mysplit==None, then we have a parse error (paren mismatch or misplaced ||)
 	#up until here, we haven't needed to look at the database tree
-	
+
 	if mysplit==None:
 		return [0,"Parse Error (parentheses mismatch?)"]
 	elif mysplit==[]:
 		#dependencies were reduced to nothing
 		return [1,[]]
 	mysplit2=mysplit[:]
-	mysplit2=dep_wordreduce(mysplit2,mydbapi,mode)
+	mysplit2=dep_wordreduce(mysplit2,mydbapi,mode,use_cache=use_cache)
 	if mysplit2==None:
 		return [0,"Invalid token"]
 	myeval=dep_eval(mysplit2)
@@ -3304,21 +3313,21 @@ def dep_check(depstring,mydbapi,mysettings,use="yes",mode=None,myuse=None):
 			mydict[x]=1
 		return [1,mydict.keys()]
 
-def dep_wordreduce(mydeplist,mydbapi,mode):
+def dep_wordreduce(mydeplist,mydbapi,mode,use_cache=1):
 	"Reduces the deplist to ones and zeros"
 	mypos=0
 	deplist=mydeplist[:]
 	while mypos<len(deplist):
 		if type(deplist[mypos])==types.ListType:
 			#recurse
-			deplist[mypos]=dep_wordreduce(deplist[mypos],mydbapi,mode)
+			deplist[mypos]=dep_wordreduce(deplist[mypos],mydbapi,mode,use_cache=use_cache)
 		elif deplist[mypos]=="||":
 			pass
 		else:
 			if mode:
 				mydep=mydbapi.xmatch(mode,deplist[mypos])
 			else:
-				mydep=mydbapi.match(deplist[mypos])
+				mydep=mydbapi.match(deplist[mypos],use_cache=use_cache)
 			if mydep!=None:
 				tmp=(len(mydep)>=1)
 				if deplist[mypos][0]=="!":
@@ -4323,6 +4332,10 @@ class eclass_cache:
 		
 		self.update_eclasses()
 
+	def flush_cache(self):
+		self.packages = {}
+		self.eclasses = {}
+		self.update_eclasses()
 
 	def update_eclasses(self):
 		self.eclasses = {}
@@ -4423,6 +4436,11 @@ class portdbapi(dbapi):
 		self.frozen=0
 		#overlays="overlay roots"
 		self.overlays=[]
+
+	def flush_cache(self):
+		self.metadb = {}
+		self.auxdb  = {}
+		self.eclassdb.flush_cache()
 		
 	def finddigest(self,mycpv):
 		try:
@@ -5231,7 +5249,7 @@ class dblink:
 
 		#do prerm script
 		if myebuildpath and os.path.exists(myebuildpath):
-			a=doebuild(myebuildpath,"prerm",self.myroot,self.settings,cleanup=cleanup)
+			a=doebuild(myebuildpath,"prerm",self.myroot,self.settings,cleanup=cleanup,use_cache=0)
 			# XXX: Decide how to handle failures here.
 			if a != 0:
 				writemsg("!!! FAILED prerm: "+str(a)+"\n")
@@ -5448,7 +5466,7 @@ class dblink:
 		if myebuildpath and os.path.exists(myebuildpath):
 			# XXX: This should be the old config, not the current one.
 			# XXX: Use vardbapi to load up env vars.
-			a=doebuild(myebuildpath,"postrm",self.myroot,self.settings)
+			a=doebuild(myebuildpath,"postrm",self.myroot,self.settings,use_cache=0)
 			# XXX: Decide how to handle failures here.
 			if a != 0:
 				writemsg("!!! FAILED postrm: "+str(a)+"\n")
@@ -5484,9 +5502,9 @@ class dblink:
 		if myebuild:
 			# if we are merging a new ebuild, use *its* pre/postinst rather than using the one in /var/db/pkg 
 			# (if any).
-			a=doebuild(myebuild,"preinst",root,self.settings,cleanup=cleanup)
+			a=doebuild(myebuild,"preinst",root,self.settings,cleanup=cleanup,use_cache=0)
 		else:
-			a=doebuild(inforoot+"/"+self.pkg+".ebuild","preinst",root,self.settings,cleanup=cleanup)
+			a=doebuild(inforoot+"/"+self.pkg+".ebuild","preinst",root,self.settings,cleanup=cleanup,use_cache=0)
 
 		# XXX: Decide how to handle failures here.
 		if a != 0:
@@ -5608,9 +5626,9 @@ class dblink:
 		if myebuild:
 			# if we are merging a new ebuild, use *its* pre/postinst rather than using the one in /var/db/pkg 
 			# (if any).
-			a=doebuild(myebuild,"postinst",root,self.settings)
+			a=doebuild(myebuild,"postinst",root,self.settings,use_cache=0)
 		else:
-			a=doebuild(inforoot+"/"+self.pkg+".ebuild","postinst",root,self.settings)
+			a=doebuild(inforoot+"/"+self.pkg+".ebuild","postinst",root,self.settings,use_cache=0)
 
 		# XXX: Decide how to handle failures here.
 		if a != 0:
@@ -6411,9 +6429,11 @@ for group in groups:
 # Clear the cache
 dircache={}
 
-if not os.path.islink("/etc/make.profile"):
-	writemsg("!!! /etc/make.profile is not a symlink and will probably prevent most merges.")
-	writemsg("!!! It should point into a profile within %s/profiles/" % settings["PORTDIR"])
+if not os.path.islink("/etc/make.profile") and os.path.exists(settings["PORTDIR"]+"/profiles"):
+	writemsg(red("\a\n\n!!! /etc/make.profile is not a symlink and will probably prevent most merges.\n"))
+	writemsg(red("!!! It should point into a profile within %s/profiles/\n" % settings["PORTDIR"]))
+	writemsg(red("!!! (You can safely ignore this message when syncing. It's harmless.)\n\n\n"))
+	time.sleep(3)
 
 # Defaults set at the top of perform_checksum.
 if spawn("/usr/sbin/prelink --version > /dev/null 2>&1",settings,free=1) == 0:

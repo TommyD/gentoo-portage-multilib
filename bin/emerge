@@ -693,6 +693,10 @@ class depgraph:
 	def __init__(self,myaction,myopts):
 		global olddbapi
 		self.pkgsettings = portage.config(clone=portage.settings)
+		if not self.pkgsettings["ARCH"]:
+			portage.writemsg(red("\a!!! ARCH is not set... Are you missing the /etc/make.profile symlink?\n"))
+			portage.writemsg(red("\a!!! Is the symlink correct? Is your portage tree complete?\n\n"))
+			sys.exit(9)
 		self.applied_useflags = {}
 		
 		self.missingbins=[]
@@ -2219,7 +2223,7 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 			print "!!! Failed to save current timestamp."
 			print "!!!",e
 
-		portage.portdb.eclassdb.update_eclasses()
+		portage.portdb.flush_cache()
 
 		try:
 			os.umask(002)

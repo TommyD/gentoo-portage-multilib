@@ -2,6 +2,22 @@
 # Copyright 2000-2004 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+*portage-2.0.50-r1 (09 Feb 2003): Release Fixes
+
+  09 Jan 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Fix the config
+  code so that it doesn't fail when the profile does not exist -- allows
+  sync'ing without a tree like it should. Parser returns an exception with
+  the parse error now for getconfig(). TGL's patch for another cache issue
+  in class config. Modified the /etc/make.profile message. Fix for the
+  "eclass does not exist" messages on sync.
+
+  09 Jan 2004; Nicholas Jones <carpaski@gentoo.org> repoman: Fix the repopath
+  so that it cna be run outside of cvs repos. 
+
+  09 Jan 2004; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Add portage's
+  pym path to SANDBOX_PREDICT to stunt any further .pyc/.pyo problems. Add
+  nofetch to the 'successful' kill list to stop the $T definition woes.
+
   08 Feb 2004; Masatomo Nakano <nakano@gentoo.org> repoman: repoman should
   read each arch virtual file. This should close #40813.
 
@@ -17,7 +33,7 @@
   06 Jan 2004; Nicholas Jones <carpaski@gentoo.org> *: repoman got a quick fix
   from genone. Ed's fix for ask/pretend. Made sure that emerge force-updated
   the eclass cache before trying to update all the metadata. masking type
-	patch from Genone. masking info patch and regenworld patch added.
+  patch from Genone. masking info patch and regenworld patch added.
 
 *portage-2.0.50_pre22 (04 Feb 2003): Cleanups and stablizing
 

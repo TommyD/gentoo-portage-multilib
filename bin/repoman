@@ -333,7 +333,7 @@ else:
 	except:
 		err("Error grabbing repository information; exiting.")
 
-if myreporootpath[-1] != "/":
+if myreporootpath and (myreporootpath[-1] != "/"):
 	myreporootpath += "/"
 
 if not "--pretend" in myoptions and not isCvs:
