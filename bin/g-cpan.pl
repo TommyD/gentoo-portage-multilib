@@ -292,8 +292,8 @@ sub get_globals {
     # let's not beat around the bush here, make.conf isn't the
     # only place these variables can be defined
 
-    OVERLAY_DIR=$(/usr/lib/portage/bin/portageq portdir_overlay)
-    PORTAGE_DIR=$(/usr/lib/portage/bin/portageq portdir)
+    $OVERLAY_DIR=qx(/usr/lib/portage/bin/portageq portdir_overlay);
+    $PORTAGE_DIR=qx(/usr/lib/portage/bin/portageq portdir);
     
     unless ( length $OVERLAY_DIR && -d $OVERLAY_DIR ) {
         $OVERLAY_DIR = "";
