@@ -46,7 +46,7 @@
 #whole enchilada. (generally, I prefer this approach, though for runtime-only systems
 #subpackages make a lot of sense).
 
-VERSION="1.8.9.1"
+VERSION="@portage_version@"
 
 import string,os
 from stat import *
@@ -59,7 +59,7 @@ import xpak
 import re
 import copy
 import signal
-
+import time
 #handle ^C interrupts correctly:
 def exithandler(signum,frame):
 	print "!!! Portage interrupted by SIGINT; exiting."
@@ -1051,10 +1051,15 @@ def expandpath(realroot,mypath):
 	expandcache[join]=os.path.realpath(join)
 	return expandcache[join]
 
-def movefile(src,dest):
+def movefile(src,dest,newmtime=None,sstat=None):
 	"""moves a file from src to dest, preserving all permissions and attributes; mtime will
 	be preserved even when moving across filesystems.  Returns true on success and false on
 	failure.  Move is atomic."""
+	
+	#implementation note: we may want to try doing a simple rename() first, and fall back
+	#to the "hard link shuffle" only if that doesn't work.  We now do the hard-link shuffle
+	#for everything.
+
 	try:
 		dstat=os.lstat(dest)
 		destexists=1
@@ -1062,7 +1067,8 @@ def movefile(src,dest):
 		#stat the directory for same-filesystem testing purposes
 		dstat=os.lstat(os.path.dirname(dest))
 		destexists=0
-	sstat=os.lstat(src)
+	if sstat==None:
+		sstat=os.lstat(src)
 	# symlinks have to be handled special
 	if S_ISLNK(sstat[ST_MODE]):
 		# if destexists, toss it, then call os.symlink, shutil.copystat(src,dest)
@@ -1073,81 +1079,86 @@ def movefile(src,dest):
 			except:
 				print "!!! couldn't unlink",dest
 				# uh oh. oh well
-				return 0
+				return None 
 
 		try:
 			real_src = os.readlink(src)
 		except:
 			print "!!! couldn't readlink",src
-			return 0
+			return None 
 		try:
 			os.symlink(real_src,dest)
 		except:
 			print "!!! couldn't symlink",real_src,"->",dest
-			return 0
-		# update the good stuff
-		if 0:
-			# don't try this - it might just change
-			# the file the symlink points to - we don't want that.
-			try:
-				# taken from shutil.copystat
-				os.utime(dest, (sstat[ST_ATIME], sstat[ST_MTIME]))
-			except:
-				print "!!! couldn't utime",dest
-				return 0
-			try:
-				os.chmod(dest, S_IMODE(sstat[ST_MODE]))
-			except:
-				raise
-				print "!!! couldn't chmod",dest
-				return 0
-		return 1
+			return None 
+		try:
+			os.chown(dest,sstat[ST_UID],sstat[ST_GID])
+		except:
+			print "!!! couldn't set uid/gid on",dest
+		#the mtime of a symbolic link can only be set at create time.
+		#thus, we return the mtime of the symlink (which was set when we created it)
+		#so it can be recorded in the package db if necessary.
+		return os.lstat(dest)[ST_MTIME]
 
 	if not destexists:
 		if sstat[ST_DEV]==dstat[ST_DEV]:
 			try:
 				os.rename(src,dest)
-				return 1
+				if newmtime:
+					os.utime(dest,(newmtime,newmtime))
+					return newmtime
+				else:
+					#renaming doesn't change mtimes, so we can return the source mtime:
+					return sstat[ST_MTIME]
 			except:
-				return 0
+				return None 
 		else:
 			#not on same fs
 			try:
-				shutil.copy2(src,dest)
+				shutil.copyfile(src,dest)
+				os.chmod(dest, S_IMODE(sstat[ST_MODE]))
+				if not newmtime:
+					os.utime(dest, (sstat[ST_ATIME], sstat[ST_MTIME]))
+					returnme=sstat[ST_MTIME]
+				else:
+					os.utime(dest, (newmtime,newmtime))
+					returnme=newmtime
 				os.unlink(src)
-				return 1
+				return returnme 
 			except:
 				#copy failure
-				return 0
+				return None
+	# destination exists, do our "backup plan"
 	try:
 		# make a hard link
 		os.link(dest,dest+"#orig#")
 	except:
 		#backup failure
 		print "!!! link fail 1 on",dest,"->",dest+"#orig#"
-		return 0
+		return None
 
 	if sstat[ST_DEV]==dstat[ST_DEV]:
+		#on the same fs
 		try:
 			os.rename(src,dest+"#new#")
 		except:
 			# gotta remove the dest+#orig# code
 			print "!!! rename fail 1 on",src,"->",dest+"#new#"
 			os.unlink(dest+"#orig")
-			return 0
+			return None 
 	else:
 		#not on same fs
 		try:
-			shutil.copy2(src,dest+"#new#")
+			shutil.copyfile(src,dest+"#new#")
 		except OSError, details:
 			print '!!! copy',src,'->',dest+'#new#','failed -',details
-			return 0
+			return None 
 		except:
 			#copy failure
 			print "!!! copy fail 1 on",src,"->",dest+"#new#"
 			# gotta remove dest+#orig# *and dest+#new#
 			os.unlink(dest+"#orig#")
-			return 0
+			return None
 		try:
 			os.unlink(src)
 		except:
@@ -1155,7 +1166,8 @@ def movefile(src,dest):
 			# gotta remove dest+#orig# *and dest+#new#
 			os.unlink(dest+"#new#")
 			os.unlink(dest+"#orig#")
-			return 0
+			return None 
+	#destination exists final
 	try:
 		os.unlink(dest) # scary!
 	except:
@@ -1163,22 +1175,29 @@ def movefile(src,dest):
 		print "!!! unlink fail 1 on",dest
 		os.unlink(dest+"#orig#")
 		os.unlink(dest+"#new#")
-		return 0
+		return None 
 
 	try:
 		os.rename(dest+"#new#",dest)
+		os.chmod(dest, S_IMODE(sstat[ST_MODE]))
+		if not newmtime:
+			os.utime(dest, (sstat[ST_ATIME], sstat[ST_MTIME]))
+			returnme=sstat[ST_MTIME]
+		else:
+			os.utime(dest, (newmtime,newmtime))
+			returnme=newmtime
 	except:
 		# uh oh. gotta at least attempt to put dest back
 		print "!!! rename fail 2 on",dest+"#new#","->",dest
 		os.rename(dest+"#orig#",dest) # if this fails, we are in big trouble
 		os.unlink(dest+"#new#")
-		return 0
+		return None 
 	try:
 		os.unlink(dest+"#orig#")
 	except:
 		print "!!! unlink fail 1 on",dest+"#orig#"
 		pass
-	return 1
+	return returnme 
 
 def getmtime(x):
 	 return `os.lstat(x)[-2]`
@@ -2629,10 +2648,10 @@ class dblink:
 		"this is going to be the new merge code"
 		if not os.path.exists(self.dbdir):
 			self.create()
-		print ">>> Updating mtimes..."
+		# print ">>> Updating mtimes..."
 		# before merging, it's *very important* to touch all the files
 		# this ensures that their mtime is current and unmerging works correctly
-		spawn("(cd "+srcroot+"; for x in `find`; do  touch -c $x 2>/dev/null; done)",free=1)
+		# spawn("(cd "+srcroot+"; for x in `find`; do  touch -c $x 2>/dev/null; done)",free=1)
 		print ">>> Merging",self.cat+"/"+self.pkg,"to",destroot
 		# get old contents info for later unmerging
 		oldcontents=self.getcontents()
@@ -2662,11 +2681,12 @@ class dblink:
 			if os.path.isdir(ppath):
 				self.protectmask.append(ppath)
 		# set umask to 0 for merging; back up umask, save old one in prevmask (since this is a global change)
+		mymtime=int(time.time())
 		prevmask=os.umask(0)
 		secondhand=[]	
 		# we do a first merge; this will recurse through all files in our srcroot but also build up a
 		# "second hand" of symlinks to merge later
-		self.mergeme(srcroot,destroot,outfile,secondhand,"")
+		self.mergeme(srcroot,destroot,outfile,secondhand,"",mymtime)
 		# now, it's time for dealing our second hand; we'll loop until we can't merge anymore.	The rest are
 		# broken symlinks.  We'll merge them too.
 		lastlen=0
@@ -2674,7 +2694,7 @@ class dblink:
 			# clear the thirdhand.	Anything from our second hand that couldn't get merged will be
 			# added to thirdhand.
 			thirdhand=[]
-			self.mergeme(srcroot,destroot,outfile,thirdhand,secondhand)
+			self.mergeme(srcroot,destroot,outfile,thirdhand,secondhand,mymtime)
 			#swap hands
 			lastlen=len(secondhand)
 			# our thirdhand now becomes our secondhand.  It's ok to throw away secondhand since 
@@ -2682,7 +2702,7 @@ class dblink:
 			secondhand=thirdhand
 		if len(secondhand):
 			# force merge of remaining symlinks (broken or circular; oh well)
-			self.mergeme(srcroot,destroot,outfile,None,secondhand)
+			self.mergeme(srcroot,destroot,outfile,None,secondhand,mymtime)
 			
 		#restore umask
 		os.umask(prevmask)
@@ -2729,7 +2749,7 @@ class dblink:
 		env_update()	
 		print ">>>",self.cat+"/"+self.pkg,"merged."
 
-	def mergeme(self,srcroot,destroot,outfile,secondhand,stufftomerge):
+	def mergeme(self,srcroot,destroot,outfile,secondhand,stufftomerge,thismtime=None):
 		# this is supposed to merge a list of files.  There will be 2 forms of argument passing.
 		if type(stufftomerge)==types.StringType:
 			#A directory is specified.  Figure out protection paths, listdir() it and process it.
@@ -2764,7 +2784,6 @@ class dblink:
 			# stat file once, test using S_* macros many times (faster that way)
 			mystat=os.lstat(mysrc)
 			mymode=mystat[ST_MODE]
-			mymtime=mystat[ST_MTIME]
 			# handy variables; mydest is the target object on the live filesystems;
 			# mysrc is the source object in the temporary install dir 
 			try:
@@ -2794,7 +2813,8 @@ class dblink:
 					secondhand.append(mysrc[len(srcroot):])
 					continue
 				# unlinking no longer necessary; "movefile" will overwrite symlinks atomically and correctly
-				if movefile(mysrc,mydest):
+				mymtime=movefile(mysrc,mydest,thismtime,mystat)
+				if mymtime!=None:
 					print ">>>",mydest,"->",myto
 					outfile.write("sym "+myrealdest+" -> "+myto+" "+`mymtime`+"\n")
 				else:
@@ -2823,7 +2843,7 @@ class dblink:
 					print ">>>",mydest+"/"
 				outfile.write("dir "+myrealdest+"\n")
 				# recurse and merge this directory
-				self.mergeme(srcroot,destroot,outfile,secondhand,offset+x+"/")
+				self.mergeme(srcroot,destroot,outfile,secondhand,offset+x+"/",thismtime)
 			elif S_ISREG(mymode):
 				# we are merging a regular file
 				mymd5=md5(mysrc)
@@ -2879,18 +2899,20 @@ class dblink:
 									# we need to install.  Set mydest to this new value.
 									mydest=os.path.normpath(mydestdir+"/._cfg"+string.zfill(pnum,4)+"_"+pmatch)
 				# whether config protection or not, we merge the new file the same way.  Unless moveme=0 (blocking directory)
-				if moveme and movefile(mysrc,mydest):
-					zing=">>>"
-					outfile.write("obj "+myrealdest+" "+mymd5+" "+`mymtime`+"\n")
-				else:
-					zing="!!!"
+				if moveme:
+					mymtime=movefile(mysrc,mydest,thismtime,mystat)
+					if mymtime!=None:
+						zing=">>>"
+						outfile.write("obj "+myrealdest+" "+mymd5+" "+`mymtime`+"\n")
+					else:
+						zing="!!!"
 				print zing,mydest
 			else:
 				# we are merging a fifo or device node
 				zing="!!!"
 				if mydmode==None:
 					#destination doesn't exist
-					if movefile(mysrc,mydest):
+					if movefile(mysrc,mydest,thismtime,mystat)!=None:
 						zing=">>>"
 						if S_ISFIF(mymode):
 							#we don't record device nodes in CONTENTS, although we do merge them.
