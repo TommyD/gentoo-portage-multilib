@@ -3,11 +3,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-for x in ${D}/opt/*/man/* ${D}/usr/share/man/* ${D}/usr/local/man/* ${D}/usr/X11R6/share/man/* ; do
-	[ ! -d "${x}" ] && continue
-
-	w=`echo ${x}/*`
-	for y in ${w} ; do
+for x in `find ${D}/opt/*/man/ ${D}/usr/share/man/ ${D}/usr/local/man/ ${D}/usr/X11R6/share/man/ -type d 2>/dev/null` ; do
+	for y in `find ${x} -type f -maxdepth 1 -mindepth 1 2>/dev/null` ; do
 		if [ -L "${y}" ] ; then
 			#symlink
 			mylink="${y}"

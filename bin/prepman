@@ -3,8 +3,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-if [ -z "$1" ] ; then
-	z="${D}usr/man"
+if [ -z "$1" ] ; then 
+	z="${D}usr/share/man"
 else
 	z="${D}$1/man"
 fi

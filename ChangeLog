@@ -1,6 +1,40 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-2.0.45 (02 Dec 2002): More bug fixes for stable.
+
+  02 Dec 2002; Nicholas Jones <carpaski@gentoo.org> portage.py, output.py:
+  Added several color options and functions to output.py. 'DO NOT EDIT'
+  notices added to .env generated profile settings files. Touchups and
+  nofetch() call for restricted fetches. Moved some file IO code for
+  SLOTs into a try/catch. { mtimedb fixups. Eclass aux_get() error fix.
+  aux_get() error fix via try/catch with magically-missing ebuild when
+  doing stat on it. Enabled full eclass()/inherit code. Added code to
+  flushmtimedb() entries by key name. } <-- aux_get() fixups. Made
+  starttime into a long... time.time() is apparently overflowing int().
+	
+  02 Dec 2002; Nicholas Jones <carpaski@gentoo.org> bin/*:
+  prep*: Fixed missed man pages and corrected loops to be fairly complete
+  in the included files. quickpkg: Loop to do each in $@ (Peter Sharp).
+
+  02 Dec 2002; Nicholas Jones <carpaski@gentoo.org> emerge:
+  Yank '++' from searches and make it '\+\+' so that it works. Reformated
+  'all ebuilds are masked' message to be a little more obvious. env_update()
+  AFTER autoclean... not in autoclean -- Fixes ldconfig issues. Typo fixes.
+
+  02 Dec 2002; Nicholas Jones <carpaski@gentoo.org> ebuild.sh:
+  Added has(), general use()-like function -- 'has this_thing $VAR' returns
+  shell true or false. Added has_version(), portage call to determine if
+  a specified DEPEND-atom is installed -- 'has_version ">=mozilla-1.2"'
+  returns shell true or false. Added best_version(), portage call to
+  get the best/most-recently-merged version of a DEPEND-atom statement --
+  'best_version ">=mozilla-1.0"' prints a string. pkg_nofetch() displays
+  SRC_URIs by default on RESTRICT -- Can be redefined to display custom
+  messages. die() on unpack() failure added. Courtasy of SpanKY: Added
+  use_with() and use_enable() for --with-thing and --enable-thing.
+  'use_with gd libgd' would print --with-libgd if gd was in USE and
+  --without-libgd if not.
+
   19 Nov 2002; Martin Schlemmer <azarah@gentoo.org> cnf/etc-update.conf:
   Add 'menu' config item and note about it needing dev-utils/dialog, as
   a lot of users do not know about this nifty feature.

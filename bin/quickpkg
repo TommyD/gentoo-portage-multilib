@@ -11,23 +11,27 @@
 # Copyright (C) 2001 - Terry Chan.  GNU GPL
 #
 export PKGDIR="`python2.2 -c 'import portage; print portage.settings["PKGDIR"];'`"
+
 if [ -z $1 ]; then
-  echo "QUICKPKG ver 1.0"
+  echo "QUICKPKG ver 1.1"
   echo "Example Usage:  quickpkg /var/db/pkg/net-www/prozilla-1.3.6/"
   exit 1
 fi
-PF=`cat $1/PF`
-MYDIR="/tmp/portage/${PF}"
-rm -r ${MYDIR}/temp
-mkdir -p ${MYDIR}/temp
-cp $1/* ${MYDIR}/temp
-cut -f 2 -d " " $1/CONTENTS >${MYDIR}/filelist
-tar cjvf ${MYDIR}/bin.tar.bz2 --files-from=${MYDIR}/filelist --no-recursion
-rm ${MYDIR}/temp/CONTENTS
-xpak ${MYDIR}/temp ${MYDIR}/inf.xpak
-tbz2tool join ${MYDIR}/bin.tar.bz2 ${MYDIR}/inf.xpak ${MYDIR}/${PF}.tbz2
-[ -d ${PKGDIR}/All ] ||  mkdir -p ${PKGDIR}/All
-mv ${MYDIR}/${PF}.tbz2 ${PKGDIR}/All
-rm ${MYDIR}/temp/*
-rm ${MYDIR}/bin.tar.bz2 ${MYDIR}/inf.xpak ${MYDIR}/filelist
+
+for x in $@; do
+	PF=`cat ${x}/PF`
+	MYDIR="/tmp/portage/${PF}"
+	rm -r ${MYDIR}/temp
+	mkdir -p ${MYDIR}/temp
+	cp ${x}/* ${MYDIR}/temp
+	cut -f 2 -d " " ${x}/CONTENTS >${MYDIR}/filelist
+	tar cjvf ${MYDIR}/bin.tar.bz2 --files-from=${MYDIR}/filelist --no-recursion
+	rm ${MYDIR}/temp/CONTENTS
+	xpak ${MYDIR}/temp ${MYDIR}/inf.xpak
+	tbz2tool join ${MYDIR}/bin.tar.bz2 ${MYDIR}/inf.xpak ${MYDIR}/${PF}.tbz2
+	[ -d ${PKGDIR}/All ] ||  mkdir -p ${PKGDIR}/All
+	mv ${MYDIR}/${PF}.tbz2 ${PKGDIR}/All
+	rm ${MYDIR}/temp/*
+	rm ${MYDIR}/bin.tar.bz2 ${MYDIR}/inf.xpak ${MYDIR}/filelist
+done
 

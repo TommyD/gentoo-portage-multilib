@@ -21,6 +21,79 @@ use() {
 	return 1
 }
 
+has() {
+	local x
+
+	local me
+	me=$1
+	shift
+	
+	for x in $@
+	do
+		if [ "${x}" = "${me}" ]
+		then
+			echo "${x}"
+			return 0
+		fi
+	done
+	return 1
+}
+
+has_version() {
+	# return shell-true/shell-false if exists.
+	# Takes single depend-type atoms.
+	# XXX DO NOT ALIGN THIS -- PYTHON WILL NOT BE HAPPY XXX #
+	if python -c "import portage,sys
+mylist=portage.db[\"${ROOT}\"][\"vartree\"].dbapi.match(\"$1\")
+if mylist:
+	sys.exit(0)
+else:
+	sys.exit(1)
+"; then
+		return 0
+	else
+		return 1
+	fi
+}
+
+best_version() {
+	# returns the best/most-current match.
+	# Takes single depend-type atoms.
+	# XXX DO NOT ALIGN THIS -- PYTHON WILL NOT BE HAPPY XXX #
+	echo $(python -c "import portage
+mylist=portage.db[\"${ROOT}\"][\"vartree\"].dbapi.match(\"$1\")
+print portage.best(mylist)
+")
+}
+
+use_with() {
+	if [ -z "$1" ]; then
+		die "use_with() called without parameter."
+	fi
+	
+	if use $1; then
+		echo "--with-$2"
+		return 0
+	else
+		echo "--without-$2"
+		return 1
+	fi
+}
+
+use_enable() {
+	if [ -z "$1" ]; then
+		die "use_with() called without parameter."
+	fi
+	
+	if use $1; then
+		echo "--enable-$2"
+		return 0
+	else
+		echo "--disable-$2"
+		return 1
+	fi
+}
+
 #we need this next line for "die" and "assert"
 shopt -s expand_aliases
 source /etc/profile.env > /dev/null 2>&1
@@ -215,10 +288,21 @@ pkg_setup()
 	return 
 }
 
+pkg_nofetch()
+{
+	[ -z "${SRC_URI}" ] && return
+
+	echo "!!! The following are listed in SRC_URI for ${PN}:"
+	for MYFILE in `echo ${SRC_URI}`; do
+		echo "!!!   $MYFILE"
+	done
+	return 
+}
+
 src_unpack() { 
 	if [ "${A}" != "" ]
 	then
-		unpack ${A}
+		unpack ${A} || die "unpack failed"
 	fi	
 }
 
@@ -802,6 +886,9 @@ set +f
 for myarg in $*
 do
 	case $myarg in
+	nofetch)
+		pkg_nofetch
+		;;
 	prerm|postrm|preinst|postinst|config)
 		export SANDBOX_ON="0"
 		if [ "$PORTAGE_DEBUG" = "0" ]

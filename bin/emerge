@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-import os,sys,portage,xpak,string,re,commands,time,threading,shutil
+import os,sys,portage,xpak,string,re,commands,time,threading,shutil,traceback
 from stat import *
 from output import *
 if (not sys.stdout.isatty()) or (portage.settings["NOCOLOR"] in ["yes","true"]):
@@ -472,6 +472,9 @@ class search:
 		if self.searchkey=="*":
 			#hack for people who aren't regular expression gurus
 			self.searchkey==".*"
+		if re.search("\+\+", self.searchkey):
+			#hack for people who aren't regular expression gurus
+			self.searchkey=re.sub("\+\+","\+\+",self.searchkey)
 		for package in portage.portdb.cp_all():
 			update_spinner()
 			package_parts=package.split("/")
@@ -817,10 +820,11 @@ class depgraph:
 					else:
 						xinfo='"'+arg+'"'
 					if myparent:
-						xinfo += " (from "+myparent+")"
+						xfrom = '(dependency required by '+green('"'+myparent.split()[2]+'"')+red(' ['+myparent.split()[0]+"])")
 					alleb=portage.portdb.xmatch("match-all",x)
 					if alleb:
-						print "\n\nemerge: all ebuilds that could satisfy "+xinfo+" have been masked."
+						print "\n\n!!! "+red("all ebuilds that could satisfy ")+green(xinfo)+red(" have been masked.")
+						print     "!!!    "+red(xfrom)
 					else:
 						print "\n\nemerge: there are no masked or unmasked ebuilds to satisfy "+xinfo+"."
 					return 0
@@ -888,7 +892,7 @@ class depgraph:
 			worldlist=getlist("world")
 			sysdict=genericdict(syslist)
 			worlddict=genericdict(worldlist)
-			#we're yffectively upgrading sysdict to contain all new deps from worlddict
+			#we're effectively upgrading sysdict to contain all new deps from worlddict
 			for x in worlddict.keys():
 				#only add the world node if the package is:
 				#actually installed -- this prevents the remerging of already unmerged packages when we do a world --update;
@@ -1075,6 +1079,9 @@ class depgraph:
 					if not unmerge("clean", [xsplit[0]]):
 						emergelog(" --- AUTOCLEAN: Nothing unmerged.")
 				emergelog(" ::: completed emerge ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[2]+" to "+x[1])
+
+		if ("--pretend" not in myopts) and (mergecount>0):
+			portage.env_update()
 
 		#my doing an exit this way, --fetchonly can continue to try to
 		#fetch everything even if a particular download fails.
@@ -1367,7 +1374,7 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 		mycommand="/usr/bin/rsync -rlptDvz --progress --stats --delete --delete-after --exclude='distfiles/*' --exclude='packages/*' "
 		mycommand=mycommand+syncuri+"/* "+myportdir
 		print ">>> starting rsync with "+syncuri+"..."
-	#protect users that did not set a default umask
+		#protect users that did not set a default umask
 		exitcode=portage.spawn(mycommand,free=1)
 		#if the exit code of rsync is 12 retry to rsync till
 		#we have reached RSYNC_RETRIES or the default of 3 retries
@@ -1486,12 +1493,13 @@ elif "search"==myaction:
 	if not myfiles:
 		print "emerge: no search terms provided."
 	else:
+		
 		searchinstance = search()
 		for mysearch in myfiles:
 			try:
 				searchinstance.execute(mysearch)
 			except re.error, comment:
-				print "!!! Regular expression error in \"%s\": %s" % ( mysearch, comment )
+				print "\n!!! Regular expression error in \"%s\": %s" % ( mysearch, comment )
 				sys.exit(1)
 			searchinstance.output()
 elif "inject"==myaction:
