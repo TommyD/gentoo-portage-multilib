@@ -822,12 +822,7 @@ def fetch(myuris):
 			filedict[myfile]=[]
 			for y in range(0,len(locations)):
 				filedict[myfile].append(locations[y]+"/distfiles/"+myfile)
-		if myuri[:14]=="http://mirror/":
-			for mir in mymirrors:	
-				filedict[myfile].append(mymirrors[0]+"/distfiles/"+myuri[14:])
-			#we no longer default to ibiblio if no GENTOO_MIRROR is specified.  Useful if
-			#you really don't want to touch any mirror
-		elif myuri[:9]=="mirror://":
+		if myuri[:9]=="mirror://":
 			eidx = myuri.find("/", 9)
 			if eidx != -1:
 				mirrorname = myuri[9:eidx]
@@ -862,19 +857,9 @@ def fetch(myuris):
 			continue
 		gotit=0
 		for loc in filedict[myfile]:
-			if loc[:14]=="http://mirror/":
-				#generic syntax for a file mirrored directly on a gentoo mirror
-				if len(mymirrors):
-					#we have a mirror specified; use it:
-					loci=mymirrors[0]+"/distfiles/"+myuri[14:]
-				else:
-					#no mirrors specified in config files, so use a default:
-					myuri="http://www.ibiblio.org/gentoo/distfiles/"+myuri[14:]
 			print
 			print ">>> Downloading",loc
 			myfetch=string.replace(locfetch,"${URI}",loc)
-			
-			
 			myfetch=string.replace(myfetch,"${FILE}",myfile)
 			myret=spawn(myfetch,free=1)
 			if mydigests!=None and mydigests.has_key(myfile):

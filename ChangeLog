@@ -1,6 +1,10 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  15 May 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: fixed up some
+  quirks in the new fetch code which were reported by Wout Mertens.  Thanks
+  Wout!
+
 *portage-1.9.11 (11 May 2002)
 
   13 May 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: addition of 
