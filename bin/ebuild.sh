@@ -737,20 +737,26 @@ debug-print-section() {
 
 # Sources all eclasses in parameters
 inherit() {
+
+	# Do not source the eclasses if we restore the saved environment,
+	# as this will cause them to effect the current env multiple times.
+	if [ "${PORTAGE_RESTORE_ENV}" != "1" ]; then
     
-    while [ "$1" ]; do
+	    while [ "$1" ]; do
     
-	# any future resolution code goes here
-	local location
-	location="${ECLASSDIR}/${1}.eclass"
+		# any future resolution code goes here
+		local location
+		location="${ECLASSDIR}/${1}.eclass"
 	
-	debug-print "inherit: $1 -> $location"
+		debug-print "inherit: $1 -> $location"
 	
-	source "$location" || die "died sourcing $location in inherit()"
+		source "$location" || die "died sourcing $location in inherit()"
 	
-	shift
+		shift
 	
-    done
+	    done
+
+	fi
 
 }
 
