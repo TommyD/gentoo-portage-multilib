@@ -2,9 +2,21 @@
 # Copyright 2001 Gentoo Technologies, Inc.; Distributed under the GPL
 # Written by Daniel Robbins (drobbins@gentoo.org)
 
+* portage 1.7.2 (13 Nov 2001)
+
+  13 Nov 2001; Aron Griffis (agriffis@gentoo.org): emake will now try to build
+  in parallel, and if it fails, will retry in non-parallel mode.
+  
+  13 Nov 2001; ebuild.sh: an ebuild that used an archive with a name that was
+  part of another archive would cause Portage to mess up the digest check.  No
+  longer.
+
+  31 Oct 2001; Donny Davies (woodchip@gentoo.org): make.conf, make.globals:
+  comments about merging the fetch programs before trying to use them.
+
 * portage 1.7.1 (30 Oct 2001)
 
-  30 Oct 2001; portage.py; I accidentally broke "=" deps by being sloppy when
+  30 Oct 2001; portage.py: I accidentally broke "=" deps by being sloppy when
   I added "*" deps.  Trivial fix applied.
 
 * portage 1.7 (29 Oct 2001)
