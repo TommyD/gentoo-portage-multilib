@@ -1047,14 +1047,13 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 	alluris=flatten(evaluate(tokenize(myuris),[],1))	
 	alist=[]
 	aalist=[]
-	for x in alluris:
-		mya=os.path.basename(x)
-		if not mya in alist:
-			alist.append(mya)
-	for x in newuris:
-		mya=os.path.basename(x)
-		if not mya in aalist:
-			aalist.append(mya)
+	#uri processing list
+	upl=[[newuris,alist],[alluris,aalist]]
+	for myl in upl:
+		for x in myl[0]:
+			mya=os.path.basename(x)
+			if not mya in myl[1]:
+				myl[1].append(mya)
 	settings["A"]=string.join(alist," ")
 	settings["AA"]=string.join(aalist," ")
 	if "cvs" in features:

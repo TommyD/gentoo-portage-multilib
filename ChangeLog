@@ -1,11 +1,16 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-1.9.12 (16 May 2002)
+
+  16 May 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: the settings
+  for A and AA were swapped; this has now been fixed, closing bug #1634.
+  
   15 May 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: fixed up some
   quirks in the new fetch code which were reported by Wout Mertens.  Thanks
   Wout!
 
-*portage-1.9.11 (11 May 2002)
+*portage-1.9.11 (13 May 2002)
 
   13 May 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: addition of 
   third-party mirroring code.  "mirror://sourceforge/foo.tar.gz" will use the
