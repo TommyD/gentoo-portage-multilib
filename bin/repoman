@@ -1146,7 +1146,6 @@ else:
 
 	# Setup the GPG commands
 	def gpgsign(filename):
-		print "in signing function"
 		gpgcmd = "gpg --sign --clearsign --yes "
 		gpgcmd+= "--default-key "+repoman_settings["PORTAGE_GPG_KEY"]
 		if repoman_settings.has_key("PORTAGE_GPG_DIR"):
