@@ -7,13 +7,15 @@
 
 GENTOO_MIRRORS="$(/usr/lib/portage/bin/portageq gentoo_mirrors)"
 PORTDIR="$(/usr/lib/portage/bin/portageq portdir)"
-syncpath="/var/tmp/emerge-webrsync"
+FETCHCOMMAND="$(/usr/lib/portage/bin/portageq envvar FETCHCOMMAND)"
+USERLAND="$(/usr/lib/portage/bin/portageq envvar USERLAND)"
+DISTDIR="/var/tmp/emerge-webrsync"
 
-if [ ! -d $syncpath ] ; then
-	mkdir -p $syncpath
+if [ ! -d $DISTDIR ] ; then
+	mkdir -p $DISTDIR
 fi
 
-cd $syncpath
+cd "$DISTDIR"
 
 found=0
 attempts=0
@@ -21,7 +23,13 @@ download=1
 if [ "$1" == "-v" ] ; then
 	wgetops=
 else	
-	wgetops=-q
+	#this sucks.  probably better to do 1> /dev/null
+	#that said, waiting on the refactoring.
+	if [ "${FETCHCOMMAND/wget}" != "${FETCHCOMMAND}" ]; then
+		wgetops="-q"
+	elif [ "${FETCHCOMMAND/curl}" != "${FETCHCOMMAND}" ]; then
+		wgetops="-s -f"
+	fi
 fi
 
 if [ "$1" == "-n" ] ; then
@@ -30,37 +38,48 @@ fi
 
 sync_local() {
 	echo Syncing local tree...
-	tar jxf $file
-	rm -f $file
+	tar jxf $FILE
+	rm -f $FILE
 	# Make sure user and group file ownership is root
-	chown -R root:root portage
+	chown -R 0:0 portage
 	cd portage
 	rsync -av --progress --stats --delete --delete-after \
 	--exclude='distfiles/*' --exclude='packages/*' . ${PORTDIR%%/}
 	cd ..
+	echo "cleaning up"
 	rm -rf portage
+	echo "transferring metadata/cache"
+	emerge metadata
 }
 
 echo "Fetching most recent snapshot"
 
 while (( $attempts <  40 )) ; do
 
-	day=`date -d "-$attempts day" +"%d"`
-	month=`date -d "-$attempts day" +"%m"`
-	year=`date -d "-$attempts day" +"%Y"`
+	#this too, sucks.  it works in the interim though.
+	if [ "$USERLAND" == "BSD" ] ; then
+		daysbefore=$(expr $(date +"%s") - 86400 \* $attempts)
+		day=$(date -r $daysbefore +"%d")
+		month=$(date -r $daysbefore +"%m")
+		year=$(date -r $daysbefore +"%Y")
+	else
+		day=$(date -d "-$attempts day" +"%d")
+		month=$(date -d "-$attempts day" +"%m")
+		year=$(date -d "-$attempts day" +"%Y")
+	fi
 
-	file="portage-${year}${month}${day}.tar.bz2"
+	FILE="portage-${year}${month}${day}.tar.bz2"
 
-	if [ -f $file ] && [ $download == 0 ] ; then
+	if [ -f "$FILE" ] && [ $download == 0 ] ; then
 		sync_local
 		exit 0
 	fi
 
 	for i in $GENTOO_MIRRORS ; do 
-		url="${i}/snapshots/$file"
-		rm -f $file
+		URI="${i}/snapshots/$FILE"
+		rm -f "$FILE"
 		
-		if (wget $wgetops $url) && [ -s $file ] ; then
+		if (eval "$FETCHCOMMAND $wgetops") && [ -s "$FILE" ]; then
 			sync_local
 			echo
 			echo " *** Completed websync, please now perform a normal rsync if possible."
