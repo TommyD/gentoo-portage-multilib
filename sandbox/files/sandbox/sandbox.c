@@ -138,7 +138,7 @@ void cleanup()
 						}
 					}
 
-					/* clean the /etc/ld.so.preload file if no sandbox processes are running anymore*/
+					/* clean the /etc/ld.so.preload file if no other sandbox processes are running anymore*/
 					if(num_of_pids == 1)
 					{
 						success = 1;
