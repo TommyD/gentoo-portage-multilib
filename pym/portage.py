@@ -1181,12 +1181,14 @@ def digestgen(myarchives,overwrite=1):
 		return
 	print ">>> Generating digest file..."
 
-	for x in range(0,len(myarchives)):
-		myarchives[x]=settings["DISTDIR"]+"/"+myarchives[x]
 	myfiles=listdir(settings["FILESDIR"],recursive=1,filesonly=1)
 	for x in range(len(myfiles)-1,-1,-1):
 		if len(myfiles[x])>len("/files/digest-"):
 			if myfiles[x][:len("/files/digest-")]=="/files/digest-":
+				del myfiles[x]
+				continue
+		if len(myfiles[x])>len("/files/.digest-"):
+			if myfiles[x][:len("/files/.digest-")]=="/files/.digest-":
 				del myfiles[x]
 				continue
 		myfiles[x]="/files/"+myfiles[x]
@@ -1200,6 +1202,7 @@ def digestgen(myarchives,overwrite=1):
 		return
 	
 	for x in myfiles+myarchives:
+		print "<<<",x
 		if x[0]=="/":
 			myfile=settings["O"]+"/"+x
 		else:
@@ -1257,9 +1260,12 @@ def digestcheck(myarchives):
 				print "!!!   ebuild /usr/portage/category/package/package-version.ebuild digest" 
 				return 0
 		if x[0]=="/":
-			mymd5=perform_md5(settings["O"]+"/"+x)
+			mfile=settings["O"]+"/"+x
 		else:
-			mymd5=perform_md5(settings["DISTDIR"]+"/"+x)
+			mfile=settings["DISTDIR"]+"/"+x
+		if not os.path.exists(mfile):
+			continue
+		mymd5=perform_md5(mfile)
 		if mymd5 != mydigests[x][0]:
 			print
 			print red("!!! A file is corrupt or incomplete. (Digests do not match)")
@@ -1524,7 +1530,7 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 		#since we are calling "digest" directly, recreate the digest even if it already exists
 		digestgen(checkme,overwrite=1)
 		return 0
-		
+	
 	if not digestcheck(checkme):
 		return 1
 	
