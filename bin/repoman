@@ -427,14 +427,16 @@ else:
 	print green("RepoMan scours the neighborhood...")
 
 # retreive local USE list
-luselist=[]
+luselist={}
 try:
 	mylist=portage.grabfile(portdir+"/profiles/use.local.desc")
 	for mypos in range(0,len(mylist)):
 		mysplit=mylist[mypos].split()[0]
 		myuse=string.split(mysplit,":")
 		if len(myuse)==2:
-			luselist.append(myuse[1])
+			if not luselist.has_key(myuse[0]):
+				luselist[myuse[0]] = []
+			luselist[myuse[0]].append(myuse[1])
 except:
 	err("Couldn't read from use.local.desc")
 
@@ -446,8 +448,6 @@ try:
 		uselist[l]=string.split(uselist[l])[0]
 except:
 	err("Couldn't read USE flags from use.desc")
-
-uselist=uselist+luselist
 
 # retrieve a list of current licenses in portage
 liclist=portage.listdir(portdir+"/licenses")
@@ -686,8 +686,8 @@ for x in scanlist:
 					arches.append([keyword, keyword, [keyword]])
 
 		baddepsyntax = False
+		catpkg = catdir+"/"+y
 		for mytype in ["DEPEND","RDEPEND","PDEPEND"]:
-			catpkg = catdir+"/"+y
 			mydepstr = string.join(portage.db["/"]["porttree"].dbapi.aux_get(catpkg, [mytype]))
 			if (string.find(mydepstr, " ?") <> -1):
 				stats[mytype+".syntax"] += 1
@@ -780,12 +780,20 @@ for x in scanlist:
 		if not os.system("egrep '\([^)]*\<die\>' "+checkdir+"/"+y+".ebuild >/dev/null 2>&1"):
 			stats["ebuild.nesteddie"]=stats["ebuild.nesteddie"]+1
 			fails["ebuild.nesteddie"].append(x+"/"+y+".ebuild")
-		# uselist checks - global and local
+		# uselist checks - global
 		myuse=string.split(portage.db["/"]["porttree"].dbapi.aux_get(catdir+"/"+y,["IUSE"])[0])
-		for mypos in range(0,len(myuse)):
-			if myuse[mypos] and (myuse[mypos] not in uselist):
-				stats["IUSE.invalid"]=stats["IUSE.invalid"]+1
-				fails["IUSE.invalid"].append(x+"/"+y+".ebuild: %s" % myuse[mypos])	
+		for mypos in range(len(myuse)-1,-1,-1):
+			if myuse[mypos] and (myuse[mypos] in uselist):
+				del myuse[mypos]
+		# uselist checks - local
+		mykey = portage.dep_getkey(catpkg)
+		if luselist.has_key(mykey):
+			for mypos in range(len(myuse)-1,-1,-1):
+				if myuse[mypos] and (myuse[mypos] in luselist[mykey]):
+					del myuse[mypos]
+		for mypos in range(len(myuse)):
+			stats["IUSE.invalid"]=stats["IUSE.invalid"]+1
+			fails["IUSE.invalid"].append(x+"/"+y+".ebuild: %s" % myuse[mypos])	
 		#license checks
 		myuse=string.split(portage.db["/"]["porttree"].dbapi.aux_get(catdir+"/"+y,["LICENSE"])[0])
 		for mypos in range(0,len(myuse)):

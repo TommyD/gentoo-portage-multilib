@@ -9,6 +9,10 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  17 Jul 2004; Jason Stubbs <jstubbs@gentoo.org> bin/repoman: Added patch from
+  #49126 that makes repoman check that a USE flag from use.local.desc applies
+  to the packages that make use of it.
+
   14 Jul 2004; Marius Mauch <genone@gentoo.org> bin/emerge:
   added a deprecation warning for --upgradeonly
 
