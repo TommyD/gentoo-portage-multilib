@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  07 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/ebuild.py: forgot to commit this
+  in the last commit.  Kind of required. :)
+
   07 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py, bin/emerge, 
   bin/env-update, bin/repoman, cnf/make.conf, pym/ebuild.py, bin/affect-fakeroot-perms.sh:  Merge of the 
   ebuild-daemon code (ebuild.py), along with massive shifts/cleanup/fixes.  At this
