@@ -50,20 +50,20 @@ CHOST="powerpc-unknown-linux-gnu"
 # Optimized for G4; "cat /proc/cpuinfo" to get your CPU model number and
 # substitute it for the "7400" below (could be "7400", "7450"):
 #
-#CFLAGS="-O3 -pipe -mcpu=7400 -maltivec -mpowerpc-gfxopt -fsigned-char"
+#CFLAGS="-O2 -pipe -mcpu=7400 -maltivec -mpowerpc-gfxopt -fsigned-char"
 #
 # Optimized for G3; "cat /proc/cpuinfo" to get your CPU model number and
 # substitute it for the "750" below (may not be necessary to change this number
 # but is safe):
 #
 #
-#CFLAGS="-O3 -pipe -mcpu=750 -mpowerpc-gfxopt -fsigned-char"
+#CFLAGS="-O2 -pipe -mcpu=750 -mpowerpc-gfxopt -fsigned-char"
 #
 # All other processors should use these options (don't use -mcpu) these should
 # be safe for all processors and build generic code that will run on all PPC's,
-# if you use BootX to boot you should select this option
+# if you use BootX to boot you should probably select this option
 #
-#CFLAGS="-03 -pipe -fsigned-char"
+#CFLAGS="-02 -pipe -fsigned-char"
 
 # Recommended settings for GCC 2.95.3 only (Gentoo 1.2 or older):
 #
