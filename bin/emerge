@@ -813,17 +813,9 @@ class depgraph:
 		update_spinner()
 
 		mytype,myroot,mykey=mybigkey
-		if myuse == None:
-			self.pkgsettings.setcpv(mykey)
-			myuse=string.split(self.pkgsettings["USE"], " ")
-
-		self.applied_useflags[mykey] = myuse
-	
 		# select the correct /var database that we'll be checking against
 		vardbapi=portage.db[myroot]["vartree"].dbapi
 
-		merging=1
-		# this is where we add the node to the list of packages to merge
 		if addme:
 			# if the package is already on the system, we add a "nomerge"
 			# directive, otherwise we add a "merge" directive.
@@ -834,6 +826,16 @@ class depgraph:
 					mybigkey.append(myparent.split()[2])
 					self.digraph.addnode(string.join(mybigkey),myparent)
 				return 1
+
+		if myuse == None:
+			self.pkgsettings.setcpv(mykey)
+			myuse=string.split(self.pkgsettings["USE"], " ")
+
+		self.applied_useflags[mykey] = myuse
+	
+		merging=1
+		if addme:
+		# this is where we add the node to the list of packages to merge
 			if not myparent:
 				# command-line specified or part of a world list...
 				if ("self" not in myparams) or (("selective" in myparams) and vardbapi.cpv_exists(mykey)):
