@@ -1100,7 +1100,11 @@ def fetch(myuris, listonly=0):
 								html404=re.compile("<title>.*(not found|404).*</title>",re.I|re.M)
 								try:
 									if html404.search(open(settings["DISTDIR"]+"/"+myfile).read()):
-										os.unlink(settings["DISTDIR"]+"/"+myfile)
+										try:
+											os.unlink(settings["DISTDIR"]+"/"+myfile)
+											print ">>> Deleting invalid distfile. (Improper 404 redirect from server.)"
+										except:
+											pass
 								except:
 									pass
 							continue
@@ -1322,6 +1326,15 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 		if debug:
 			print myso[1]
 		return myso[0]
+
+	if settings.has_key("PORT_LOGDIR"):
+		if os.access(settings["PORT_LOGDIR"]+"/",os.W_OK):
+			settings["LOG_COUNTER"]=str(counter_tick_core("/"))
+		else:
+			print "!!! Cannot create log... No write access / Does not exist"
+			print "!!! PORT_LOGDIR:",settings["PORT_LOGDIR"]
+			settings["PORT_LOGDIR"]=""
+	
 	try: 
 		settings["SLOT"], settings["RESTRICT"], myuris = db["/"]["porttree"].dbapi.aux_get(mykey,["SLOT","RESTRICT","SRC_URI"])
 	except (IOError,KeyError):
@@ -1470,6 +1483,17 @@ def movefile(src,dest,newmtime=None,sstat=None):
 				didcopy=1
 			except Exception, e:
 				print '!!! copy',src,'->',dest,'failed.'
+				print "!!!",e
+				return None
+		elif S_ISLNK(sstat[ST_MODE]):
+			try:
+				target=os.readlink
+				os.unlink(dest)
+				os.symlink(target,dest)
+				missingos.lchown(dest,sstat[ST_UID],sstat[ST_GID])
+			except Exception,e:
+				print "!!! failed to properly create symlink:"
+				print "!!!",dest,"->",target
 				print "!!!",e
 				return None
 		else:
