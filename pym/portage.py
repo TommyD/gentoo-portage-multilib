@@ -906,7 +906,7 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 	elif mydo=="merge":
 		retval=spawn("/usr/sbin/ebuild.sh setup unpack compile install")
 		if retval: return retval
-		return merge(settings["CATEGORY"],settings["PF"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot)
+		return merge(settings["CATEGORY"],settings["PF"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot,myebuild=settings["EBUILD"])
 	elif mydo=="package":
 		retval=spawn("/usr/sbin/ebuild.sh setup")
 		if retval:
@@ -980,12 +980,12 @@ def pathstrip(x,mystart):
     cpref=os.path.commonprefix([x,mystart])
     return [root+x[len(cpref)+1:],x[len(cpref):]]
 
-def merge(mycat,mypkg,pkgloc,infloc,myroot):
+def merge(mycat,mypkg,pkgloc,infloc,myroot,myebuild=None):
 	mylink=dblink(mycat,mypkg,myroot)
 	if not mylink.exists():
 		mylink.create()
 		#shell error code
-	mylink.merge(pkgloc,infloc,myroot)
+	mylink.merge(pkgloc,infloc,myroot,myebuild)
 	
 def unmerge(cat,pkg,myroot):
 	mylink=dblink(cat,pkg,myroot)
@@ -2352,7 +2352,7 @@ class dblink:
 			print "!!! pkg_postrm() script failed; exiting."
 			sys.exit(a)
 	
-	def treewalk(self,srcroot,destroot,inforoot):
+	def treewalk(self,srcroot,destroot,inforoot,myebuild):
 		# srcroot = ${D}; destroot=where to merge, ie. ${ROOT}, inforoot=root of db entry,
 		# secondhand = list of symlinks that have been skipped due to their target not existing (will merge later),
 		"this is going to be the new merge code"
@@ -2366,7 +2366,12 @@ class dblink:
 		# get old contents info for later unmerging
 		oldcontents=self.getcontents()
 		# run preinst script
-		a=doebuild(inforoot+"/"+self.pkg+".ebuild","preinst",root)
+		if myebuild:
+			# if we are merging a new ebuild, use *its* pre/postinst rather than using the one in /var/db/pkg 
+			# (if any).
+			a=doebuild(myebuild,"preinst",root)
+		else:
+			a=doebuild(inforoot+"/"+self.pkg+".ebuild","preinst",root)
 		if a:
 			print "!!! pkg_preinst() script failed; exiting."
 			sys.exit(a)
@@ -2428,7 +2433,12 @@ class dblink:
 				mylink.setelements(myvirts,"VIRTUAL")
 
 		#do postinst script
-		a=doebuild(self.dbdir+"/"+self.pkg+".ebuild","postinst",root)
+		if myebuild:
+			# if we are merging a new ebuild, use *its* pre/postinst rather than using the one in /var/db/pkg 
+			# (if any).
+			a=doebuild(myebuild,"postinst",root)
+		else:
+			a=doebuild(inforoot+"/"+self.pkg+".ebuild","postinst",root)
 		if a:
 			print "!!! pkg_postinst() script failed; exiting."
 			sys.exit(a)
@@ -2604,8 +2614,8 @@ class dblink:
 						zing="!!!"
 				print zing+" "+mydest
 	
-	def merge(self,mergeroot,inforoot,myroot,mergestart=None,outfile=None):
-		self.treewalk(mergeroot,myroot,inforoot)
+	def merge(self,mergeroot,inforoot,myroot,myebuild=None):
+		self.treewalk(mergeroot,myroot,inforoot,myebuild)
 
 	def getstring(self,name):
 		"returns contents of a file with whitespace converted to spaces"
