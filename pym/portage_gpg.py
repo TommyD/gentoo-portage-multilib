@@ -38,7 +38,12 @@ class FileChecker:
 		self.keyringStats     = None
 		self.keyringIsTrusted = False
 		if home==None:
-			home=os.environ("HOME")
+			try:
+				home=os.environ["HOME"]
+			except KeyError:
+				import traceback
+				traceback.print_stack()
+				raise Exception("no home var specified, and it ain't in the env. we're screwed")
 		self.home=home
 	
 		if (keydir != None):
