@@ -3,7 +3,7 @@
 # Distributed under the GNU Public License v2
 # $Header$
 
-VERSION="2.0.47-r1"
+VERSION="2.0.47-r3"
 
 from stat import *
 from commands import *
@@ -65,7 +65,7 @@ def abssymlink(symlink):
 dircache={}
 def listdir(path):
 	"""List directory contents, using cache. (from dircache module; streamlined by drobbins)
-	Exceptions will be propogated to the caller."""
+	Exceptions will be propagated to the caller."""
 	try:
 		cached_mtime, list = dircache[path]
 	except KeyError:
@@ -133,7 +133,7 @@ starttime=long(time.time())
 features=[]
 
 def exithandler(foo,bar):
-	"""Handles ^C interupts in a sane manner"""
+	"""Handles ^C interrupts in a sane manner"""
 	global features,secpass
 	#remove temp sandbox files
 #	if (secpass==2) and ("sandbox" in features):
@@ -457,7 +457,7 @@ def env_update(makelinks=1):
 		outfile.write("export "+x+"='"+env[x]+"'\n")
 	outfile.close()
 	
-	#creat /etc/csh.env for (t)csh support
+	#create /etc/csh.env for (t)csh support
 	outfile=open(root+"/etc/csh.env","w")
 	outfile.write(cenvnotice)
 	
@@ -816,6 +816,11 @@ class config:
 		#backup-env (for recording our calculated incremental variables:)
 		self.configlist.append(self.backupenv)
 		self.configlist.append(os.environ.copy())
+		
+		# ~/.bashrc by non-root/sudo/su users can cause problems. Force.
+		self.configlist[-1]["BASH_ENV"]="/root/.bashrc"
+		self.configlist[-1]["HOME"]="/root"
+		
 		self.configdict["env"]=self.configlist[-1]
 		self.lookuplist=self.configlist[:]
 		self.lookuplist.reverse()
@@ -944,7 +949,7 @@ def spawn(mystring,debug=0,free=0,droppriv=0):
 	signal handling.  Using spawn allows our Portage signal handler
 	to work."""
 
-	# usefull if an ebuild or so needs to get the pid of our python process
+	# useful if an ebuild or so needs to get the pid of our python process
 	settings["PORTAGE_MASTER_PID"]=str(os.getpid())
 	droppriv=(droppriv and ("userpriv" in features))
 
@@ -1276,7 +1281,7 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 	settings["PKG_TMPDIR"]=settings["PORTAGE_TMPDIR"]+"/portage-pkg"
 	settings["BUILDDIR"]=settings["BUILD_PREFIX"]+"/"+settings["PF"]
 
-	#set up KV variable -- DEP SPEEDUP :: Don't waste time. Keep var persistant.
+	#set up KV variable -- DEP SPEEDUP :: Don't waste time. Keep var persistent.
 	if (mydo!="depend") or not settings.has_key("KV"):
 		mykv,err1=ExtractKernelVersion(root+"usr/src/linux")
 		if mykv:
@@ -1424,9 +1429,15 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 			"compile": {"dep":"unpack",  "args":(nosandbox,1)}, # optional / portage
 			"install": {"dep":"compile", "args":(0,0)},         # sandbox  / root
 			    "rpm": {"dep":"install", "args":(0,0)},         # sandbox  / root
+    	"package": {"dep":"install", "args":(0,0)},         # sandbox  / root
 	}
 
 	if mydo in actionmap.keys():	
+		if mydo=="package":
+			for x in ["","/"+settings["CATEGORY"],"/All"]:
+				if not os.path.exists(settings["PKGDIR"]+x):
+					os.makedirs(settings["PKGDIR"]+x)
+		# REBUILD CODE FOR TBZ2 --- XXXX
 		return spawnebuild(mydo,actionmap,debug)
 	elif mydo=="qmerge": 
 		#qmerge is specifically not supposed to do a runtime dep check
@@ -1435,33 +1446,9 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 		retval=spawnebuild("install",actionmap,debug,1)
 		if retval: return retval
 		return merge(settings["CATEGORY"],settings["PF"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot,myebuild=settings["EBUILD"])
-	elif mydo=="package":
-		for x in ["","/"+settings["CATEGORY"],"/All"]:
-			if not os.path.exists(settings["PKGDIR"]+x):
-				os.makedirs(settings["PKGDIR"]+x)
-
-		# XXX: This is annoying as it never considers changes.  #
-		# XXX: Removing until we get a few things updated like  #
-		# XXX: rebuild-on-use and others to notice the changes. #
-		#pkgloc=settings["PKGDIR"]+"/All/"+settings["PF"]+".tbz2"
-		rebuild=1
-		#if os.path.exists(pkgloc):
-		#	for x in [settings["A"],settings["EBUILD"]]:
-		#		if not os.path.exists(x):
-		#			continue
-		#		if os.path.getmtime(x)>os.path.getmtime(pkgloc):
-		#			rebuild=1
-		#			break
-		#else:	
-		#	rebuild=1
-		if not rebuild:
-			print
-			print ">>> Package",settings["PF"]+".tbz2 appears to be up-to-date."
-			print ">>> To force rebuild, touch",os.path.basename(settings["EBUILD"])
-			print
-			return 0
-		else:
-			return spawn("/usr/sbin/ebuild.sh setup unpack compile install package")
+	else:
+		print "!!! Unknown mydo:",mydo
+		sys.exit(1)
 
 expandcache={}
 
@@ -1867,7 +1854,7 @@ def vercmp(val1,val2):
 		if val2[x][0] == '0' :
 			val2[x]='.' + val2[x]
 
-	# extend varion numbers
+	# extend version numbers
 	if len(val2)<len(val1):
 		val2.extend(["0"]*(len(val1)-len(val2)))
 	elif len(val1)<len(val2):
@@ -1944,7 +1931,7 @@ def dep_opconvert(mysplit,myuse):
 			try:
 				mynew=dep_opconvert(mysplit[mypos+1],myuse)
 			except Exception, e:
-				print "!!! Unable to satisfy OR dependancy:",string.join(mysplit," || ")
+				print "!!! Unable to satisfy OR dependency:",string.join(mysplit," || ")
 				raise e
 			mynew[0:0]=["||"]
 			newsplit.append(mynew)
@@ -2435,7 +2422,7 @@ class dbapi:
 		return
 
 	def aux_get(self,mycpv,mylist):
-		"stub code for returning auxilliary db information, such as SLOT, DEPEND, etc."
+		"stub code for returning auxiliary db information, such as SLOT, DEPEND, etc."
 		'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
 		'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or [] if mycpv not found'
 		pass
@@ -3138,6 +3125,14 @@ class portdbapi(dbapi):
 			#print "doregen2"
 			stale=1
 			#old cache entry, needs updating (this could raise IOError)
+
+			try:
+				# Can't set the mtime of a file we don't own, so to ensure that it
+				# is owned by the running user, we delete the file so we recreate it.
+				os.unlink(mydbkey)
+			except:
+				pass
+			
 			if doebuild(myebuild,"depend","/"):
 				#depend returned non-zero exit code...
 				if strict:
@@ -3413,7 +3408,7 @@ class binarytree(packagetree):
 			self.tree={}
 	
 	def populate(self):
-		"popules the binarytree"
+		"populates the binarytree"
 		if (not os.path.isdir(self.pkgdir)):
 			return 0
 		if (not os.path.isdir(self.pkgdir+"/All")):
@@ -4485,11 +4480,11 @@ if not dbcachedir:
 #create PORTAGE_TMPDIR if it doesn't exist.
 if not os.path.exists(settings["PORTAGE_TMPDIR"]):
 	print "portage: the directory specified in your PORTAGE_TMPDIR variable, \""+settings["PORTAGE_TMPDIR"]+",\""
-	print "does not exist.  Please create this directory or correct your PORTAGE_TMPDIR settting."
+	print "does not exist.  Please create this directory or correct your PORTAGE_TMPDIR setting."
 	sys.exit(1)
 if not os.path.isdir(settings["PORTAGE_TMPDIR"]):
 	print "portage: the directory specified in your PORTAGE_TMPDIR variable, \""+settings["PORTAGE_TMPDIR"]+",\""
-	print "is not a directory.  Please correct your PORTAGE_TMPDIR settting."
+	print "is not a directory.  Please correct your PORTAGE_TMPDIR setting."
 	sys.exit(1)
 
 #getting categories from an external file now
