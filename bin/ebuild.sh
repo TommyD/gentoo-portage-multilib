@@ -58,7 +58,7 @@ done
 # Unset some variables that break things.
 unset GZIP BZIP BZIP2 CDPATH GREP_OPTIONS GREP_COLOR GLOBIGNORE
 
-# We need this next line for "die" and "assert". It expands 
+# We need this next line for "die" and "assert". It expands
 # It _must_ preceed all the calls to die and assert.
 shopt -s expand_aliases
 alias die='diefunc "$FUNCNAME" "$LINENO" "$?"'
@@ -371,26 +371,26 @@ unpack() {
 		y="${y##*.}"
 
 		case "${x##*.}" in
-			tar) 
+			tar)
 				tar ${tarvars} -xf "${DISTDIR}/${x}" || die "$myfail"
 				;;
-			tgz) 
+			tgz)
 				tar ${tarvars} -xzf "${DISTDIR}/${x}" || die "$myfail"
 				;;
-			tbz2) 
+			tbz2)
 				bzip2 -dc "${DISTDIR}/${x}" | tar ${tarvars} -xf - || die "$myfail"
 				;;
-			ZIP|zip) 
+			ZIP|zip)
 				unzip -qo "${DISTDIR}/${x}" || die "$myfail"
 				;;
-			gz|Z|z) 
+			gz|Z|z)
 				if [ "${y}" == "tar" ]; then
 					tar ${tarvars} -xzf "${DISTDIR}/${x}" || die "$myfail"
 				else
 					gzip -dc "${DISTDIR}/${x}" > ${x%.*} || die "$myfail"
 				fi
 				;;
-			bz2) 
+			bz2)
 				if [ "${y}" == "tar" ]; then
 					bzip2 -dc "${DISTDIR}/${x}" | tar ${tarvars} -xf - || die "$myfail"
 				else
@@ -410,26 +410,26 @@ econf() {
 			EXTRA_ECONF="--build=${CBUILD} ${EXTRA_ECONF}"
 		fi
 		echo ./configure \
-		    --prefix=/usr \
-		    --host=${CHOST} \
-		    --mandir=/usr/share/man \
-		    --infodir=/usr/share/info \
-		    --datadir=/usr/share \
-		    --sysconfdir=/etc \
-		    --localstatedir=/var/lib \
-				${EXTRA_ECONF} \
-		    "$@"
+			--prefix=/usr \
+			--host=${CHOST} \
+			--mandir=/usr/share/man \
+			--infodir=/usr/share/info \
+			--datadir=/usr/share \
+			--sysconfdir=/etc \
+			--localstatedir=/var/lib \
+			${EXTRA_ECONF} \
+			"$@"
 
 		./configure \
-		    --prefix=/usr \
-		    --host=${CHOST} \
-		    --mandir=/usr/share/man \
-		    --infodir=/usr/share/info \
-		    --datadir=/usr/share \
-		    --sysconfdir=/etc \
-		    --localstatedir=/var/lib \
-				${EXTRA_ECONF} \
-		    "$@" || die "econf failed" 
+			--prefix=/usr \
+			--host=${CHOST} \
+			--mandir=/usr/share/man \
+			--infodir=/usr/share/info \
+			--datadir=/usr/share \
+			--sysconfdir=/etc \
+			--localstatedir=/var/lib \
+			${EXTRA_ECONF} \
+			"$@" || die "econf failed"
 	else
 		die "no configure script found"
 	fi
@@ -439,20 +439,20 @@ einstall() {
 	if [ -f ./[mM]akefile -o -f ./GNUmakefile ] ; then
 		if [ ! -z "${PORTAGE_DEBUG}" ]; then
 			make -n prefix=${D}/usr \
-			    datadir=${D}/usr/share \
-			    infodir=${D}/usr/share/info \
-		  	  localstatedir=${D}/var/lib \
-			    mandir=${D}/usr/share/man \
-			    sysconfdir=${D}/etc \
-			    "$@" install
+				datadir=${D}/usr/share \
+				infodir=${D}/usr/share/info \
+				localstatedir=${D}/var/lib \
+				mandir=${D}/usr/share/man \
+				sysconfdir=${D}/etc \
+				"$@" install
 		fi
 		make prefix=${D}/usr \
-		    datadir=${D}/usr/share \
-		    infodir=${D}/usr/share/info \
-		    localstatedir=${D}/var/lib \
-		    mandir=${D}/usr/share/man \
-		    sysconfdir=${D}/etc \
-		    "$@" install || die "einstall failed" 
+			datadir=${D}/usr/share \
+			infodir=${D}/usr/share/info \
+			localstatedir=${D}/var/lib \
+			mandir=${D}/usr/share/man \
+			sysconfdir=${D}/etc \
+			"$@" install || die "einstall failed"
 	else
 		die "no Makefile found"
 	fi
@@ -460,7 +460,7 @@ einstall() {
 
 pkg_setup()
 {
-	return 
+	return
 }
 
 pkg_nofetch()
@@ -473,23 +473,23 @@ pkg_nofetch()
 	done
 }
 
-src_unpack() { 
+src_unpack() {
 	if [ "${A}" != "" ]; then
 		unpack ${A}
 	fi	
 }
 
-src_compile() { 
+src_compile() {
 	if [ -x ./configure ]; then
-		econf 
+		econf
 	fi
 	if [ -f Makefile ] || [ -f GNUmakefile ] || [ -f makefile ]; then
 		emake || die "emake failed"
 	fi
 }
 
-src_test() 
-{ 
+src_test()
+{
 	addpredict /
 	if make check -n &> /dev/null; then
 		echo ">>> Test phase [check]: ${CATEGORY}/${PF}"
@@ -503,15 +503,15 @@ src_test()
 			hasq maketest $FEATURES && die "Make test failed. See above for details."
 			hasq maketest $FEATURES || eerror "Make test failed. See above for details."
 		fi
-  else
+	else
 		echo ">>> Test phase [none]: ${CATEGORY}/${PF}"
 	fi
 	SANDBOX_PREDICT="${SANDBOX_PREDICT%:/}"
 }
 
-src_install() 
-{ 
-	return 
+src_install()
+{
+	return
 }
 
 pkg_preinst()
@@ -688,7 +688,7 @@ insopts() {
 		#if we have a debug build, let's not strip anything
 		if hasq nostrip $FEATURES $RESTRICT && [ "$x" == "-s" ]; then
 			continue
- 		else
+		else
 			INSOPTIONS="$INSOPTIONS $x"
 		fi
 	done
@@ -736,8 +736,8 @@ abort_handler() {
 	else
 		msg="${EBUILD}: ${1} failed; exiting."
 	fi
-	echo 
-	echo "$msg" 
+	echo
+	echo "$msg"
 	echo
 	eval ${3}
 	#unset signal handler
@@ -828,8 +828,8 @@ dyn_compile() {
 	#some packages use an alternative to $S to build in, cause
 	#our libtool to create problematic .la files
 	export PWORKDIR="$WORKDIR"
-	src_compile 
-	#|| abort_compile "fail" 
+	src_compile
+	#|| abort_compile "fail"
 	cd "${BUILDDIR}"
 	touch .compiled
 	cd build-info
@@ -919,7 +919,7 @@ dyn_install() {
 	#some packages uses an alternative to $S to build in, cause
 	#our libtool to create problematic .la files
 	export PWORKDIR="$WORKDIR"
-	src_install 
+	src_install
 	#|| abort_install "fail"
 	prepall
 	cd "${D}"
@@ -938,7 +938,7 @@ dyn_install() {
 		die "There are ${UNSAFE} unsafe files. Portage will not install them."
 	fi
 	
-	find "${D}/" -user  portage -print0 | $XARGS -0 -n100 chown root
+	find "${D}/" -user portage -print0 | $XARGS -0 -n100 chown root
 	if [ "$USERLAND" == "BSD" ]; then
 		find "${D}/" -group portage -print0 | $XARGS -0 -n100 chgrp wheel
 	else
@@ -973,10 +973,10 @@ dyn_preinst() {
 		rm -fR "${IMAGE}/usr/share/doc"
 	fi
 
-  # remove share dir if unnessesary
-  if hasq nodoc $FEATURES -o hasq noman $FEATURES -o hasq noinfo $FEATURES; then
-    rmdir "${IMAGE}/usr/share" &> /dev/null
-  fi
+	# remove share dir if unnessesary
+	if hasq nodoc $FEATURES -o hasq noman $FEATURES -o hasq noinfo $FEATURES; then
+		rmdir "${IMAGE}/usr/share" &> /dev/null
+	fi
 
 	# Smart FileSystem Permissions
 	if hasq sfperms $FEATURES; then
@@ -1090,10 +1090,10 @@ dyn_rpm() {
 dyn_help() {
 	echo
 	echo "Portage"
-	echo "Copyright 2002 Gentoo Technologies, Inc."
-	echo 
+	echo "Copyright 1999-2004 Gentoo Foundation"
+	echo
 	echo "How to use the ebuild command:"
-	echo 
+	echo
 	echo "The first argument to ebuild should be an existing .ebuild file."
 	echo
 	echo "One or more of the following options can then be specified.  If more"
@@ -1122,25 +1122,25 @@ dyn_help() {
 	echo
 	echo "The following settings will be used for the ebuild process:"
 	echo
-	echo "  package     : ${PF}" 
-	echo "  slot        : ${SLOT}" 
-	echo "  category    : ${CATEGORY}" 
+	echo "  package     : ${PF}"
+	echo "  slot        : ${SLOT}"
+	echo "  category    : ${CATEGORY}"
 	echo "  description : ${DESCRIPTION}"
-	echo "  system      : ${CHOST}" 
-	echo "  c flags     : ${CFLAGS}" 
-	echo "  c++ flags   : ${CXXFLAGS}" 
-	echo "  make flags  : ${MAKEOPTS}" 
+	echo "  system      : ${CHOST}"
+	echo "  c flags     : ${CFLAGS}"
+	echo "  c++ flags   : ${CXXFLAGS}"
+	echo "  make flags  : ${MAKEOPTS}"
 	echo -n "  build mode  : "
-	if hasq nostrip $FEATURES $RESTRICT;	then
+	if hasq nostrip $FEATURES $RESTRICT; then
 		echo "debug (large)"
 	else
 		echo "production (stripped)"
 	fi
-	echo "  merge to    : ${ROOT}" 
+	echo "  merge to    : ${ROOT}"
 	echo
 	if [ -n "$USE" ]; then
 		echo "Additionally, support for the following optional features will be enabled:"
-		echo 
+		echo
 		echo "  ${USE}"
 	fi
 	echo
@@ -1156,7 +1156,7 @@ dyn_help() {
 
 # in the future might use e* from /etc/init.d/functions.sh if i feel like it
 debug-print() {
-	# if $T isn't defined, we're in dep calculation mode and 
+	# if $T isn't defined, we're in dep calculation mode and
 	# shouldn't do anything
 	[ -z "$T" ] && return 0
 
@@ -1181,7 +1181,7 @@ debug-print() {
 # The following 2 functions are debug-print() wrappers
 
 debug-print-function() {
-	str="$1: entering function" 
+	str="$1: entering function"
 	shift
 	debug-print "$str, parameters: $*"
 }
@@ -1281,7 +1281,7 @@ inherit() {
 		[ "${B_PDEPEND-unset}" != "unset" ] || unset PDEPEND
 
 		#turn on glob expansion
- 		set +f
+		set +f
 		
 		hasq $1 $INHERITED || export INHERITED="$INHERITED $1"
 
@@ -1302,7 +1302,7 @@ EXPORT_FUNCTIONS() {
 		exit 1
 	fi
 	while [ "$1" ]; do
-		debug-print "EXPORT_FUNCTIONS: ${1} -> ${ECLASS}_${1}" 
+		debug-print "EXPORT_FUNCTIONS: ${1} -> ${ECLASS}_${1}"
 		eval "$1() { ${ECLASS}_$1 "\$@" ; }" > /dev/null
 		shift
 	done
@@ -1375,7 +1375,7 @@ do_newdepend() {
 	done
 }
 
-# this is a function for removing any directory matching a passed in pattern from 
+# this is a function for removing any directory matching a passed in pattern from
 # PATH
 function remove_path_entry() {
 	PREV_IFS="${IFS}"
