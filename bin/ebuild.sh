@@ -50,7 +50,7 @@ unalias -a
 # It _must_ preceed all the calls to die and assert.
 shopt -s expand_aliases
 alias die='diefunc "$FUNCNAME" "$LINENO" "$?"'
-alias assert='_retval=$?; [ $_retval = 0 ] || diefunc "$FUNCNAME" "$LINENO" "$_retval"'
+alias assert='_pipestatus="${PIPESTATUS[*]}"; [[ "${_pipestatus// /}" -eq 0 ]] || diefunc "$FUNCNAME" "$LINENO" "$_pipestatus"'
 
 OCC="$CC"
 OCXX="$CXX"

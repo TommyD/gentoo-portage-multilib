@@ -2,6 +2,12 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  15 Aug 2003; Nicholas Jones <carpaski@gentoo.org> *: Fix to emerge -V
+  and related output. Typo fixes. Parent thread no longer drops root in
+  userpriv. 'autoaddcvs' feature now determines if portage will auto-add
+  files to cvs. Virtuals fix for an empty key line. Added user categories
+  file as /etc/portage/categories.
+
 *portage-2.0.49_pre17 (30 Jul 2003): Resuming/wget GRP, Sandbox updates
 
   30 Jul 2003; Nicholas Jones <carpaski@gentoo.org> *: GRP updates to

@@ -1055,16 +1055,6 @@ def spawn(mystring,debug=0,free=0,droppriv=0):
 	settings["BASH_ENV"]="/etc/portage/bashrc"
 
 	myargs=[]
-	if droppriv:
-		if portage_gid and portage_uid:
-			#drop root privileges, become the 'portage' user
-			os.setgid(portage_gid)
-			os.setgroups([portage_gid])
-			os.setuid(portage_uid)
-			os.umask(002)
-		else:
-			sys.stderr.write("portage: Unable to drop root for "+str(mystring)+"\n")
-
 	if ("sandbox" in features) and (not free):
 		mycommand="/usr/lib/portage/bin/sandbox"
 		myargs=["["+settings["PF"]+"] sandbox",mystring]
@@ -1077,6 +1067,16 @@ def spawn(mystring,debug=0,free=0,droppriv=0):
 
 	mypid=os.fork()
 	if mypid==0:
+		if droppriv:
+			if portage_gid and portage_uid:
+				#drop root privileges, become the 'portage' user
+				os.setgid(portage_gid)
+				os.setgroups([portage_gid])
+				os.setuid(portage_uid)
+				os.umask(002)
+			else:
+				sys.stderr.write("portage: Unable to drop root for "+str(mystring)+"\n")
+
 		os.execve(mycommand,myargs,settings.environ())
 		# If the execve fails, we need to report it, and exit
 		# *carefully* --- report error here
@@ -1289,8 +1289,11 @@ def digestgen(myarchives,overwrite=1,manifestonly=0):
 
 		if ("cvs" in features) and os.path.exists(pbasedir+"/CVS"):
 			if not cvstree.isadded(mycvstree,"files"):
-				print ">>> Auto-adding files/ dir to CVS..."
-				spawn("cd "+pbasedir+"; cvs add files",free=1)
+				if "autoaddcvs" in features:
+					print ">>> Auto-adding files/ dir to CVS..."
+					spawn("cd "+pbasedir+"; cvs add files",free=1)
+				else:
+					print "--- Warning: files/ is not added to cvs."
 
 		if (not overwrite) and os.path.exists(digestfn):
 			return 1
@@ -1357,8 +1360,11 @@ def digestgen(myarchives,overwrite=1,manifestonly=0):
 			else:
 				myunaddedfiles+=manifestfn
 		if myunaddedfiles:
-			print blue(">>> Auto-adding digest file(s) to CVS...")
-			spawn("cd "+pbasedir+"; cvs add "+myunaddedfiles,free=1)
+			if "autoaddcvs" in features:
+				print blue(">>> Auto-adding digest file(s) to CVS...")
+				spawn("cd "+pbasedir+"; cvs add "+myunaddedfiles,free=1)
+			else:
+				print "--- Warning: digests are not yet added into CVS."
 	print darkgreen(">>> Computed message digests.")
 	print
 	return 1
@@ -3627,9 +3633,7 @@ class portdbapi(dbapi):
 		"returns a list of all keys in our tree"
 		biglist=[]
 		for x in categories:
-			for y in listdir(self.root+"/"+x,EmptyOnError=1):
-				if y=="CVS":
-					continue
+			for y in listdir(self.root+"/"+x,EmptyOnError=1,ignorecvs=1):
 				biglist.append(x+"/"+y)
 			for oroot in self.overlays:
 				for y in listdir(oroot+"/"+x,EmptyOnError=1,ignorecvs=1):
@@ -4323,7 +4327,7 @@ class dblink:
 				newvirts[myvirt]=[]
 				for mykey in myvirts[myvirt]:
 					if mykey == self.cat+"/"+pkgsplit(self.pkg)[0]:
-						if mykey in myprovides[myvirt]:
+						if myprovides.has_key(myvirt) and (mykey in myprovides[myvirt]):
 							newvirts[myvirt].append(mykey)
 							sys.stderr.write("--- Leaving virtual '"+mykey+"' from '"+myvirt+"'\n")
 						else:
@@ -5132,20 +5136,18 @@ if not os.path.isdir(settings["PORTAGE_TMPDIR"]):
 	sys.exit(1)
 
 #getting categories from an external file now
-if os.path.exists(settings["PORTDIR"]+"/profiles/categories"):
-	categories=grabfile(settings["PORTDIR"]+"/profiles/categories")
-else:
-	categories=[]
+categories  = grabfile(settings["PORTDIR"]+"/profiles/categories")
+categories += grabfile("/etc/portage/categories")
 
-pkgmasklines=grabfile(settings["PORTDIR"]+"/profiles/package.mask")
-pkgmasklines+=grabfile("/etc/portage/package.mask")
+pkgmasklines  = grabfile(settings["PORTDIR"]+"/profiles/package.mask")
+pkgmasklines += grabfile("/etc/portage/package.mask")
 
-pkgunmasklines=grabfile("/etc/portage/package.unmask");
+pkgunmasklines = grabfile("/etc/portage/package.unmask");
 
 if profiledir:
-	pkglines=grabfile(profiledir+"/packages")
+	pkglines = grabfile(profiledir+"/packages")
 else:
-	pkglines=[]
+	pkglines = []
 
 unmaskdict={}
 for x in pkgunmasklines:

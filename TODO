@@ -10,18 +10,21 @@ Legend:
  '*' Just do it.        '#' Tricky
  '!' Difficult          '@' Restricted in some way
 
-
 # STICKIES and related enhancements:
   bug 9379, bug 13616, Aether's config code
 
-# Determine file lock status before starting downloads -- Prevent races.
-  Patches exist for this. Integrate and find all colliding descriptors.
+# Determine file lock status before starting downloads -- Prevent races/deletes
+  Patches exist for this. Integrate and find all colliding descriptors/cmds.
+	Create a fileIO layer? (wget and other external calls are a problem)
 
 * Add category support to searches... emerge -s @catgory
 
 @ rsync - track changes based in subtrees to reduce filetree expense.
   Possible plans:
-	  Use md5's of tree file list + md5 of subtree -- client-side burden.
-		Maintain hash of changes on rsync1 -- Server-side burden. **
-		Implement CVSUP. **
+    Use md5's of tree file list + md5 of subtree -- client-side burden.
+    Maintain hash of changes on rsync1 -- Server-side burden. **
+    Implement CVSUP. **
+
+# 'emerge sync' timestamp awareness -- Make sure IP is associated and not
+  used at random as servers may differ. bug 21794
 

@@ -231,10 +231,7 @@ def countdown(secs=5, doing="Starting"):
 
 def getportageversion():
 	try:
-		profilestr=os.readlink("/etc/make.profile")
-		if profilestr[-1]=="/":
-			profilestr=profilestr[:-1]
-		profilever=string.split(profilestr, "/")[-1]
+		profilever=os.path.basename(os.path.normpath(os.readlink("/etc/make.profile")))
 	except:
 		profilever="unavailable"
 	glibcver=[]
@@ -255,7 +252,10 @@ def getportageversion():
 		gccver="[unavailable]"
 	else:
 		gccver="gcc-"+gccout[1]
-	return "Portage " + portage.VERSION +" ("+profilever+", "+gccver+", glibc-"+glibcver+")"
+
+	unameout=commands.getstatusoutput("uname -r")[1]
+
+	return "Portage " + portage.VERSION +" ("+profilever+", "+gccver+", glibc-"+glibcver+", "+unameout+")"
 
 def help():
 	# Move all the help stuff out of this file.
@@ -1873,8 +1873,8 @@ elif "depclean"==myaction:
 	print red("*** WARNING ***")+" :"
 	print red("*** WARNING ***")+" : Packages  in the list  that are  desired  may be added"
 	print red("*** WARNING ***")+" : directly to the world file to cause them to be ignored"
-	print red("*** WARNING ***")+" : by declean and maintained in the future. BREAKAGES DUE"
-	print red("*** WARNING ***")+" : TO UNMERGING AN  IN-USE  LIBRARIES  MAY BE REPAIRED BY"
+	print red("*** WARNING ***")+" : by depclean and maintained in the future. BREAKAGES DUE"
+	print red("*** WARNING ***")+" : TO UNMERGING AN  ==IN-USE LIBRARY==  MAY BE REPAIRED BY"
 	print red("*** WARNING ***")+" : MERGING  *** THE PACKAGE THAT COMPLAINS ***  ABOUT THE"
 	print red("*** WARNING ***")+" : MISSING LIBRARY."
 	print
