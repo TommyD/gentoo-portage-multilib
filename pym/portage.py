@@ -88,6 +88,8 @@ except ImportError:
 			data = f.read(blocksize)
 		return (md5_to_hex(sum.digest()),size)
 
+starttime=int(time.time())
+
 #handle ^C interrupts correctly:
 def exithandler(signum,frame):
 	print "!!! Portage interrupted by SIGINT; exiting."
@@ -912,10 +914,10 @@ def digestcheck(myarchives):
 def doebuild(myebuild,mydo,myroot,debug=0):
 	global settings
 	if not os.path.exists(myebuild):
-		print "!!!",myebuild,"not found."
+		print "!!! doebuild:",myebuild,"not found."
 		return 1
 	if myebuild[-7:]!=".ebuild":
-		print "!!!",myebuild,"does not appear to be an ebuild file."
+		print "!!! doebuild: ",myebuild,"does not appear to be an ebuild file."
 		return 1
 	settings.reset()
 	settings["PORTAGE_DEBUG"]=str(debug)
@@ -2329,6 +2331,36 @@ class vartree(packagetree):
 					continue
 			self.tree[mynewkey].append([fullpkg,mysplit])
 
+	def getslot(self,mycatpkg):
+		"""Get a slot for a catpkg; assume it exists."""
+		if not os.path.exists(self.root+"var/db/pkg/"+mycatpkg+"/SLOT"):
+			return ""
+		myslotfile=open(self.root+"var/db/pkg/"+mycatpkg+"/SLOT","r")
+		myslotvar=string.split(myslotfile.readline())
+		myslotfile.close()
+		if len(myslotvar):
+			return myslotvar[0]
+		else:
+			return ""
+	
+	def gettimeval(self,mycatpkg):
+		"""Get an integer time value that can be used to compare against other catpkgs; the timeval will try to use
+		COUNTER but will also take into account the start time of Portage and use mtimes of CONTENTS files if COUNTER
+		doesn't exist.  The algorithm makes it safe to compare the timeval values of COUNTER-enabled and non-COUNTER
+		db entries.  Assumes mycatpkg exists."""
+		global starttime	
+		rootp=self.root+"var/db/pkg/"+mycatpkg
+		if not os.path.exists(rootp+"/COUNTER"):
+			if not os.path.exists(rootp+"/CONTENTS"):
+				return 0
+			else:
+				return os.stat(rootp+"/CONTENTS")[ST_MTIME]	
+		else:
+			mycounterfile=open(rootp+"/COUNTER","r")
+			mycountervar=string.atoi(string.split(mycounterfile.readline())[0])
+			mycounterfile.close()
+			return starttime+mycountervar
+	
 	def populate(self):
 		"populates the local tree (/var/db/pkg)"
 		prevmask=os.umask(0)
@@ -2574,12 +2606,15 @@ class dblink:
 			pkgfiles=self.getcontents()
 			if not pkgfiles:
 				return
-		
+		myebuildpath=self.dbdir+"/"+self.pkg+".ebuild"
+		if not os.path.exists(myebuildpath):
+			myebuildpath=None
 		#do prerm script
-		a=doebuild(self.dbdir+"/"+self.pkg+".ebuild","prerm",self.myroot)
-		if a:
-			print "!!! pkg_prerm() script failed; exiting."
-			sys.exit(a)
+		if myebuildpath:
+			a=doebuild(myebuildpath,"prerm",self.myroot)
+			if a:
+				print "!!! pkg_prerm() script failed; exiting."
+				sys.exit(a)
 
 		#we do this so we don't unmerge the ebuild file by mistake
 		myebuildfile=os.path.normpath(self.dbdir+"/"+self.pkg+".ebuild")
@@ -2739,10 +2774,11 @@ class dblink:
 		writedict(newvirts,self.myroot+"var/cache/edb/virtuals")
 		
 		#do original postrm
-		a=doebuild(self.dbdir+"/"+self.pkg+".ebuild","postrm",self.myroot)
-		if a:
-			print "!!! pkg_postrm() script failed; exiting."
-			sys.exit(a)
+		if myebuildpath:
+			a=doebuild(myebuildpath,"postrm",self.myroot)
+			if a:
+				print "!!! pkg_postrm() script failed; exiting."
+				sys.exit(a)
 	
 	def treewalk(self,srcroot,destroot,inforoot,myebuild):
 		# srcroot = ${D}; destroot=where to merge, ie. ${ROOT}, inforoot=root of db entry,
