@@ -10,7 +10,7 @@ do
 	cp -ax $x ${DEST}
 done
 cp ${DEST}/pym/portage.py ${DEST}/pym/portage.py.orig
-sed "s/@portage_version@/${V}/" < ${DEST}/pym/portage.py.orig > ${DEST}/pym/portage.py
+sed '/^VERSION=/s/^.*$/VERSION="'${V}'"/' < ${DEST}/pym/portage.py.orig > ${DEST}/pym/portage.py
 rm ${DEST}/pym/portage.py.orig
 cp ChangeLog ${DEST}
 cd ${DEST}

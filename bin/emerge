@@ -405,13 +405,25 @@ class depgraph:
 			mydb.close()
 		elif mytype=="blocks":
 			edepend=None
+			print "DEBUG mykey",mykey
+			print "DEBUG myparent",myparent
 			parenttype,parentroot,parentkey=string.split(myparent)
-			mykeyparts=portage.catpkgsplit(mykey)
-			parentkeyparts=portage.catpkgsplit(parentkey)
-			# only add blocking deps that aren't from the same package that is installing
-			if mykeyparts[0]!=parentkeyparts[0] or mykeyparts[1]!=parentkeyparts[1]:
-				self.digraph.addnode(mybigkey,myparent)
-		
+			print "DEBUG res1", portage.db[myroot]["vartree"].resolve_key(mykey)
+			print "DEBUG res2", portage.db[myroot]["vartree"].resolve_key(parentkey)
+			if portage.isspecific(mykey):
+				if portage.db[myroot]["vartree"].exists_specific(mykey):
+					if portage.db[myroot]["vartree"].resolve_key(mykey) != portage.db[myroot]["vartree"].resolve_key(parentkey):
+						self.digraph.addnode(mybigkey,myparent)
+			else:
+				if portage.db[myroot]["vartree"].hasnode(mykey):
+					parentsplit=portage.catpkgsplit(parentkey)
+					parentkey=parentsplit[0]+"/"+parentsplit[1]
+					print "DEBUG res1", portage.db[myroot]["vartree"].resolve_key(mykey)
+					print "DEBUG res2", portage.db[myroot]["vartree"].resolve_key(parentkey)
+					if portage.db[myroot]["vartree"].resolve_key(mykey) != portage.db[myroot]["vartree"].resolve_key(parentkey):
+						self.digraph.addnode(mybigkey,myparent)
+					else:
+						print "OK!"
 		if edepend:
 			mydep={}	
 			if myroot=="/":
@@ -494,6 +506,7 @@ class depgraph:
 	
 	def match(self,mydep,myroot=portage.root,mykey=None):
 		# support mutual exclusive deps
+		print "DEBUG match",mydep
 		mydep2=mydep
 		if mydep2[0]=="!":
 			mydep2=mydep[1:]
@@ -515,7 +528,8 @@ class depgraph:
 			#return None
 
 		if mydep[0]=="!":
-			myk="blocks "+myroot+" "+myeb
+			print "DEBUG myeb",myeb
+			myk="blocks "+myroot+" "+mydep2
 		else:
 			if "--usepkg" in self.myopts:
 				mypk=portage.db[portage.root]["bintree"].dep_bestmatch(mydep)
@@ -530,9 +544,14 @@ class depgraph:
 	
 	def display(self,mylist):
 		for x in mylist:
+			print "DEBUG:",x
 			if x[0]=="blocks":
 				addl=""+red("B")+"    "
-				print "["+x[0]+" "+addl+"]",red(x[2])
+				myspeckey=portage.db[x[1]]["vartree"].resolve_key(x[2])
+				if myspeckey!=x[2]:
+					print "["+x[0]+" "+addl+"]",red(x[2]+" ("+myspeckey+")")
+				else:
+					print "["+x[0]+" "+addl+"]",red(x[2])
 			else:
 				if portage.db[x[1]]["vartree"].exists_specific(x[2]):
 					addl="  "+yellow("R")+"  "

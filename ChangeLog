@@ -1,6 +1,21 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  24 Apr 2002; Daniel Robbins <drobbins@gentoo.org> tarball.sh: no longer
+  necessary for VERSION to equal "@portage_version@" to get the version
+  auto-set.  VERSION can now be set to anything and tarball.sh will get it
+  right.
+  
+  24 Apr 2002; Daniel Robbins <drobbins@gentoo.org> emerge: I've started work
+  on revamping/improving the "blocks" system to get ready to fix bug #1891.
+  Already fixed a bug where "blocks" ("!" deps) print out the wrong blocking
+  package name. This is now fixed.  Blocks need additional testing.
+  
+  24 Apr 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, ebuild.sh, use:
+  "use" is now a bash builtin function rather than an external python-based
+  command.  This appears to fix the USE inconstencies, as it should, thereby
+  closing bug #2000.
+
 *portage-1.9.3 (24 Apr 2002)
 
   24 Apr 2002; Jon Nelson <jnelson@gentoo.org>: portage.py, chkcontents:

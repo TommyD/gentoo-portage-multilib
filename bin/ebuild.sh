@@ -1,5 +1,23 @@
 #!/bin/bash
 
+use() {
+	local x
+	local y
+	for y in $*
+	do
+		for x in $USE
+		do
+			if [ "$x" = "$y" ]
+			then
+				echo "$x"
+			else
+				return 1
+			fi
+		done
+	done
+	return 0 
+}
+
 #we need this next line for "die" and "assert"
 shopt -s expand_aliases
 source /etc/profile.env > /dev/null 2>&1

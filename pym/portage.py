@@ -564,6 +564,11 @@ class config:
 	def __init__(self):
 		self.configdict={}
 		self.configdict["origenv"]=os.environ.copy()
+		self.configdict["backupenv"]={}
+		if os.environ.has_key("FEATURES"):
+			self.configdict["backupenv"]["FEATURES"]=os.environ["FEATURES"]
+		if os.environ.has_key("USE"):
+			self.configdict["backupenv"]["USE"]=os.environ["USE"]
 		self.populated=0
 	
 	def use_regenerate(self):
@@ -579,6 +584,8 @@ class config:
 		
 	def regenerate(self,mykey,myorigdb):
 		"dynamically regenerate a cumulative variable that may have changed"
+		if self.configdict["backupenv"].has_key(mykey):
+			self.configdict["env"][mykey]=self.configdict["backupenv"][mykey]
 		mysetting=[]
 		#copy our myorigdb so we don't modify it.
 		mydb=myorigdb[:]
@@ -598,7 +605,6 @@ class config:
 					else:
 						while x[1:] in mysetting:
 							mysetting.remove(x[1:])
-		#inject into configlist[0] *and* origenv so that our settings tweaks are preserved beyond a self.reset()
 		self[mykey]=string.join(mysetting," ")
 	
 	def populate(self):
