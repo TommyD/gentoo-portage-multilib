@@ -625,11 +625,11 @@ class ebuild_handler:
 
 		if mydo!="depend":
 			try:
-				mysettings["INHERITED"],mysettings["PORTAGE_RESTRICT"] = db[root][tree].dbapi.aux_get(
+				mysettings["INHERITED"],mysettings["RESTRICT"] = db[root][tree].dbapi.aux_get(
 					mycpv,["INHERITED","RESTRICT"])
 
-				mysettings["PORTAGE_RESTRICT"]=string.join(flatten(portage_dep.use_reduce(
-					portage_dep.paren_reduce(mysettings["PORTAGE_RESTRICT"]), 
+				mysettings["RESTRICT"]=string.join(flatten(portage_dep.use_reduce(
+					portage_dep.paren_reduce(mysettings["RESTRICT"]), 
 					uselist=mysettings["USE"].split() )),' ')
 
 			except SystemExit, e:

@@ -818,10 +818,12 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				mystat=os.stat(mysettings["DISTDIR"]+"/"+myfile)
 			except (OSError,IOError),e:
 				# file does not exist
-				writemsg(_("!!! %(file)s not found in %(dir)s." % {"file":myfile, "dir":mysettings["DISTDIR"]}),verbosity)
+				# FIXME: gettext doesn't work yet
+				# writemsg(_("!!! %(file)s not found in %(dir)s." % {"file":myfile, "dir":mysettings["DISTDIR"]}),verbosity)
+				writemsg("!!! %(file)s not found in %(dir)s." % {"file":myfile, "dir":mysettings["DISTDIR"]},verbosity)
 				gotit=0
 		if not gotit:
-			writemsg("\n!!!",mysettings["CATEGORY"]+"/"+mysettings["PF"],"has fetch restriction turned on.\n"+
+			writemsg("\n!!!"+mysettings["CATEGORY"]+"/"+mysettings["PF"]+"has fetch restriction turned on.\n"+
 				"!!! This probably means that this ebuild's files must be downloaded\n"+
 				"!!! manually.  See the comments in the ebuild for more information.\n\n",
 				verbosity)
