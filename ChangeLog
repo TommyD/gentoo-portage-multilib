@@ -9,6 +9,9 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  31 Jul 2004; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Removed
+  USE-based SLOT support. (Kept USE-based PROVIDE support)
+
   29 Jul 2004; Brian Harring <ferringb@gentoo.org> bin/repoman: Added check for
   files over 20k in a packages files directory.  file.size, repoman treats it 
   as a a failure.  Added the repoman manpage entries for file.size, and 

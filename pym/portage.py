@@ -4343,8 +4343,6 @@ class portagetree:
 		myslot = ""
 		try:
 			myslotvar=self.dbapi.aux_get(mycatpkg,["SLOT"])[0]
-			if myslotvar:
-				myslot = string.join(portage_dep.use_reduce(portage_dep.paren_reduce(myslotvar), uselist))
 		except Exception, e:
 			pass
 		return myslot
@@ -4920,10 +4918,6 @@ class vartree(packagetree):
 		myslot = ""
 		try:
 			myslotvar=string.join(grabfile(self.root+VDB_PATH+"/"+mycatpkg+"/SLOT"))
-			if myslotvar:
-				myuse = grabfile(self.root+VDB_PATH+"/"+mycatpkg+"/USE")
-				myuse = string.split(string.join(myuse))
-				myslot = string.join(portage_dep.use_reduce(portage_dep.paren_reduce(myslotvar), myuse))
 		except Exception, e:
 			pass
 		return myslot
@@ -5820,9 +5814,7 @@ class binarytree(packagetree):
 		"Get a slot for a catpkg; assume it exists."
 		myslot = ""
 		try:
-			[myslotvar,uselist]=self.dbapi.aux_get(mycatpkg,["SLOT","USE"])[0]
-			if myslotvar:
-				myslot = string.join(portage_dep.use_reduce(portage_dep.paren_reduce(myslotvar), uselist.split()))
+			myslot=self.dbapi.aux_get(mycatpkg,["SLOT"])[0]
 		except Exception, e:
 			pass
 		return myslot
