@@ -3,3 +3,4 @@
 
 * Determine file lock status before starting downloads -- Prevent races.
 
+* Add category support to searches... emerge -s @catgory
