@@ -204,14 +204,18 @@ if ("--changelog" in myopts) and not ("--pretend" in myopts):
 
 # Set so that configs will be merged regardless of remembered status
 if ("--noconfmem" in myopts):
+	portage.settings.unlock()
 	portage.settings["NOCONFMEM"]="1"
 	portage.settings.backup_changes("NOCONFMEM")
+	portage.settings.lock()
 
 # Set various debug markers... They should be merged somehow.
 if ("--debug" in myopts):
+	portage.settings.unlock()
 	portage.settings["PORTAGE_DEBUG"]="1"
 	portage.settings.backup_changes("PORTAGE_DEBUG")
 	portage.debug=1
+	portage.settings.lock()
 
 
 def emergelog(mystr):
@@ -817,7 +821,7 @@ class depgraph:
 				# select needs to return 0 on dep_check failure
 				self.mysd=self.select_dep(portage.root,mykey,arg=x)
 				try:
-					self.mysd=self.select_dep(portage.root,mykey,arg=x)
+					self.select_dep(portage.root,mykey,arg=x)
 				except Exception, e:
 					print "\n!!! Problem in",mykey,"dependencies."
 					print "!!!",e

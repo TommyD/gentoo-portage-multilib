@@ -1121,7 +1121,6 @@ class config:
 								self[filename] = "-* "+mydata
 							else:
 								self[filename] = mydata
-							self.backup_changes(filename)
 					except:
 						writemsg("!!! Unable to read file: %s\n" % infodir+"/"+filename)
 						pass

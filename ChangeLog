@@ -2,6 +2,11 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  07 Dec 2003; Masatomo Nakano <nakano@gentoo.org> emerge,portage.py:
+	Fixed bugs. 1.--debug doesn't work 2.Portage breaks files
+	in /var/db/*/*. 3.No stop if dependency problem happens.
+	They are only cvs version problems.
+
   01 Dec 2003; Masatomo Nakano <nakano@gentoo.org> emerge: Fixed bug which 
 	always remakes info dir file.
 
