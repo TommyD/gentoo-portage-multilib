@@ -103,6 +103,14 @@ use() {
 	return 1
 }
 
+usev() {
+	if useq ${1}; then
+		echo "${1}"
+		return 0
+	fi
+	return 1
+}
+
 useq() {
 	local u="${1}"
 	local neg=0
