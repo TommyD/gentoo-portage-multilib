@@ -3,8 +3,8 @@
 
 *portage-2.0.35 (03 Sep 2002): Gentoo Linux 1.4_rc1 version 
 
-  03 Sep 2002: Daniel Robbins <drobbins@gentoo.org> etc-update: new program for
-  updating config files.
+  03 Sep 2002: Daniel Robbins <drobbins@gentoo.org> etc-update,
+  man/etc-update.1: new program for updating config files.
   
   03 Sep 2002; Daniel Robbins <drobbins@gentoo.org> ebuild.sh: upgraded
   inherit() to support $PORTDIR_OVERLAY, closing bug #6033.
