@@ -1728,7 +1728,7 @@ class config:
 		#dirVirtuals = stack_dicts(dvirts, incremental=1)
 		#dirVirtuals = grab_stacked("virtuals",myvirtdirs,grabdict)
 		# User settings and profile settings take precedence over tree.
-		val = stack_dictlist(dirVirtuals+[treeVirtuals]+[userVirtuals],incremental=1)
+		val = stack_dictlist([userVirtuals]+[treeVirtuals]+dirVirtuals,incremental=1)
 		for x in val.keys():
 			val[x].reverse()
 		return val 
