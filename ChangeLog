@@ -2,6 +2,10 @@
 # Copyright 2000-2004 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  09 Apr 2004; Masatomo Nakano <nakano@gentoo.org> repoman: Added
+  jstubbs's patch to add a check invalid DEPEND format to repoman.
+  This should fix #36857.
+
   09 Apr 2004; Masatomo Nakano <nakano@gentoo.org> emerge, portage.py,
   output.py: Fixed some bugs. See #45164, #24299, #34967.
 	
