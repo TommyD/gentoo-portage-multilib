@@ -2,6 +2,11 @@
 # Copyright 2000-2004 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  01 Mar 2004; Marius Mauch <genone@gentoo.org> bin/emerge,
+  bin/emergehelp.py, man/emerge.1:
+  Updated docs for --update and removed the "help" action (wasn't working
+  anyway).
+
   29 Feb 2004; Masatomo Nakano <nakano@gentoo.org> portage.py: Fixed 
   wrong USE in 'emerge info'. This should fix #34260.
 	

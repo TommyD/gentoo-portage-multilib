@@ -80,7 +80,7 @@ merged=0
 params=["selective", "deep", "self", "recurse", "empty"]
 actions=[
 "clean", "config", "depclean",
-"help",  "info",   "inject",   "metadata",
+"info",   "inject",   "metadata",
 "prune", "regen",  "rsync",    "search",
 "sync",  "system", "unmerge",  "world",
 ]
@@ -441,7 +441,7 @@ elif "--help" in myopts:
 	help()
 	sys.exit(0)
 elif portage.secpass!=2:
-	if myaction in ["search", "help", "info", "regen"]:
+	if myaction in ["search", "info", "regen"]:
 		pass
 	elif (not myaction) and (not myfiles):
 		pass

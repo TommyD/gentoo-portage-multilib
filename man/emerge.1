@@ -100,13 +100,6 @@ Re\-emerge the complaining package to fix this issue.
 \fBNote that changes in USE flags can drastically affect the
 output of depclean.\fR
 .TP 
-.BR "help " (\fB\-h\fR)
-Displays help information for emerge.  Adding one of the additional
-arguments listed above will give you more specific help information
-on that subject.  The internal \fBemerge\fR help documentation is
-updated more frequently than this man page; check it out if you
-are having problems that this man page does not help resolve.
-.TP 
 .BR info
 This is a list of information to include in bug reports which aids
 the developers with fixing any problems you may report.  \fBPlease
@@ -163,7 +156,7 @@ it may remove packages necessary for the proper operation of your
 system.  Its arguments can be \fIebuilds\fR, \fIclasses\fR, or
 \fIdependencies\fR \-\- see \fBclean\fR above for examples.
 .SH "OPTIONS"
-.TP
+.TP 
 .BR "\-\-ask " (\fB\-a\fR)
 Before performing the merge, display what ebuilds and tbz2s will
 be installed, in the same format as when using \fB\-\-pretend\fR; then
@@ -216,6 +209,13 @@ and it enables complete trees to be rebuilt using the latest libraries.
 .BR "\-\-fetchonly " (\fB\-f\fR)
 Instead of doing any package building, just perform fetches for all
 packages (the main package as well as all dependencies.)
+.TP 
+.BR "\-\-help " (\fB\-h\fR)
+Displays help information for emerge.  Adding one of the additional
+arguments listed above will give you more specific help information
+on that subject.  The internal \fBemerge\fR help documentation is
+updated more frequently than this man page; check it out if you
+are having problems that this man page does not help resolve.
 .TP 
 .BR "\-\-noconfmem"
 Causes portage to disregard merge records indicating that a config file
@@ -284,9 +284,11 @@ Only really useful in combination with \fB\-\-emptytree\fR, \fB\-\-update\fR
 or \fB\-\-deep\fR.
 .TP 
 .BR "\-\-update " (\fB\-u\fR)
-Updates packages to the most recent version available.  \fBNote that \-\-update does not have full 
-functionality yet\fR.  It will not automatically update dependencies of packages in the \fBworld\fR file, 
-unless they too are in the \fBworld\fR file.
+Updates packages to the best version available, which may not
+always be the highest version number due to masking for testing
+and development. This will also update direct dependencies which
+may not what you want. In general use this option only in combination with 
+the world or system target.
 .TP 
 .BR "\-\-upgradeonly " (\fB\-U\fR)
 Updates packages, but excludes updates that would result in a
