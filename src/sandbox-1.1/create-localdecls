@@ -41,7 +41,7 @@ fi
 
 echo -n 'Checking libc version... '
 gcc -Wall -o libctest libctest.c
-VERSION=`ldd libctest | grep libc\\.so | awk '{print $1}'`
+VERSION=`ldd libctest | grep libc\\.so | grep -v 'ld-uClibc' | awk '{print $1}'`
 rm libctest
 echo $VERSION
 echo "#define LIBC_VERSION \"$VERSION\"" >> $OUTFILE
