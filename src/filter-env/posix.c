@@ -162,6 +162,7 @@ main(int argc, const char **argv)
 	exit(PARSE_FAILURE);
     }
 */
+    free_regexes();
     free((void*)fsr);	free((void*)vsr);
     free(file_buff);
     exit(0);
