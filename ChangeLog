@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  07 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portageq.py: 
+  Isolated functions from bin/portageq.
+
   07 Nov 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild: missing
   portage_util import.  Only exposed when intentionally bailing out of a
   phase that is executing.
