@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  23 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> portage.py portage_util.py:
+  Added syntax checking for package.mask, package.unmask and packages files.
+
   23 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> dohtml: Reimplemented the
   option processing to remove the dependency on optparse.
 

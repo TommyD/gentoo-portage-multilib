@@ -162,6 +162,17 @@ def grabdict_package(myfilename,juststrings=0):
 			writemsg("--- Invalid atom in %s: %s\n" % (myfilename, x))
 	return pkgs
 
+def grabfile_package(myfilename,compatlevel=0):
+	pkgs=grabfile(myfilename,compatlevel)
+	for x in range(len(pkgs)-1,-1,-1):
+		pkg = pkgs[x]
+		if pkg[0] == "*": # Kill this so we can deal the "packages" file too
+			pkg = pkg[1:]
+		if not isvalidatom(pkg):
+			writemsg("--- Invalid atom in %s: %s\n" % (myfilename, pkgs[x]))
+			del(pkgs[x])
+	return pkgs
+
 def grabints(myfilename):
 	newdict={}
 	try:
