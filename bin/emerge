@@ -551,7 +551,7 @@ class depgraph:
 			if "--update" in myopts:
 				self.mydbapi[portage.root]=self.fakedbapi
 			else:
-				self.mydbapi=portage.db[portage.root]["vartree"].dbapi
+				self.mydbapi[portage.root]=portage.db[portage.root]["vartree"].dbapi
 		if "--usepkg" in myopts:
 			portage.db["/"]["bintree"].populate()
 

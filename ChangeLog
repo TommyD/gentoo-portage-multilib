@@ -1,10 +1,9 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
-  02 Sep 2002; Hannes Mehnert <hannes@gentoo.org>: cnf/make.globals,
-  cnf/make.globals.ppc: added /usr/kde/3.1/share/config to CONFIG_PROTECT,
-  fixes #7359.
-  
+  02 Sep 2002; Daniel Robbins <drobbins@gentoo.org> emerge: fixed a logic error
+  that resulted in non-root emerge failure. This closes bug #7389.
+
 *portage-2.0.34 (01 Sep 2002): Gentoo Linux 1.4_rc1 version 
 
   01 Sep 2002; Daniel Robbins <drobbins@gentoo.org>: portage.py, ebuild.sh:
