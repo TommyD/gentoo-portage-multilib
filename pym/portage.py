@@ -1,5 +1,5 @@
 # portage.py -- core Portage functionality
-# Copyright 1998-2004 Gentoo Foundation
+# Copyright 1998-2003 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
 # $Header$
 
@@ -102,6 +102,10 @@ try:
 	import getbinpkg
 	import portage_dep
 	from output import *
+	from portage_data import *
+	import portage_util
+	import portage_exception
+	import portage_gpg
 except Exception, e:
 	sys.stderr.write("\n\n")
 	sys.stderr.write("!!! Failed to complete portage imports. There are internal modules for\n")
@@ -122,14 +126,6 @@ except Exception, e:
 
 
 signal.signal(signal.SIGCHLD, signal.SIG_DFL)
-
-noiselimit = 0
-def writemsg(mystr,noiselevel=0):
-	"""Prints out warning and debug messages based on the noiselimit setting"""
-	global noiselimit
-	if noiselevel <= noiselimit:
-		sys.stderr.write(mystr)
-		sys.stderr.flush()
 
 def load_mod(name):
 	modname = string.join(string.split(name,".")[:-1],".")
@@ -271,77 +267,6 @@ def unique_array(array):
 			mya.append(x)
 	return mya
 									
-
-ostype=os.uname()[0]
-if ostype=="Linux":
-	userland="GNU"
-
-	if "lchown" in dir(os):
-		# Included in python-2.3
-		lchown=os.lchown
-	else:
-		import missingos
-		lchown=missingos.lchown
-
-	os.environ["XARGS"]="xargs -r"
-elif ostype=="Darwin":
-	userland="BSD"
-	lchown=os.chown
-	os.environ["XARGS"]="xargs"	
-elif ostype=="OpenBSD":
-	userland="BSD"
-	lchown=os.chown
-	os.environ["XARGS"]="xargs"	
-else:
-	writemsg(red("Operating system")+" \""+ostype+"\" "+red("currently unsupported. Exiting.")+"\n")
-	sys.exit(1)
-	
-os.environ["USERLAND"]=userland
-
-#Secpass will be set to 1 if the user is root or in the portage group.
-uid=os.getuid()
-secpass=0
-wheelgid=0
-if uid==0:
-	secpass=2
-try:
-	wheelgid=grp.getgrnam("wheel")[2]
-	if (not secpass) and (wheelgid in os.getgroups()):
-		secpass=1
-except KeyError:
-	writemsg("portage initialization: your system doesn't have a 'wheel' group.\n")
-	writemsg("Please fix this as it is a normal system requirement. 'wheel' is GID 10\n")
-	writemsg("'emerge baselayout' and an 'etc-update' should remedy this problem.\n")
-	pass
-
-#Discover the uid and gid of the portage user/group
-try:
-	portage_uid=pwd.getpwnam("portage")[2]
-	portage_gid=grp.getgrnam("portage")[2]
-	if (secpass==0):
-		secpass=1
-except KeyError:
-	portage_uid=0
-	portage_gid=wheelgid
-	writemsg("\n")
-	writemsg(  red("portage: 'portage' user or group missing. Please update baselayout\n"))
-	writemsg(  red("         and merge portage user(250) and group(250) into your passwd\n"))
-	writemsg(  red("         and group files. Non-root compilation is disabled until then.\n"))
-	writemsg(      "         Also note that non-root/wheel users will need to be added to\n")
-	writemsg(      "         the portage group to do portage commands.\n")
-	writemsg("\n")
-	writemsg(      "         For the defaults, line 1 goes into passwd, and 2 into group.\n")
-	writemsg(green("         portage:x:250:250:portage:/var/tmp/portage:/bin/false\n"))
-	writemsg(green("         portage::250:portage\n"))
-	writemsg("\n")
-
-if (uid!=0) and (portage_gid not in os.getgroups()):
-	writemsg("\n")
-	writemsg(red("*** You are not in the portage group. You may experience cache problems\n"))
-	writemsg(red("*** due to permissions preventing the creation of the on-disk cache.\n"))
-	writemsg(red("*** Please add this user to the portage group if you wish to use portage.\n"))
-	writemsg("\n")
-
 def getcwd():
 	"this fixes situations where the current directory doesn't exist"
 	try:
@@ -1665,6 +1590,10 @@ class config:
 			self.backup_changes("PORTDIR_OVERLAY")
 
 		self.regenerate()
+		
+		self.features = portage_util.unique_array(self["FEATURES"].split())
+		self.features.sort()
+		
 		if mycpv:
 			self.setcpv(mycpv)
 
@@ -4531,7 +4460,7 @@ class dbapi:
 		"stub code for returning auxiliary db information, such as SLOT, DEPEND, etc."
 		'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
 		'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or [] if mycpv not found'
-		pass
+		raise NotImplementedError
 
 	def match(self,origdep,use_cache=1):
 		mydep=dep_expand(origdep,self)
@@ -5245,6 +5174,21 @@ class portdbapi(dbapi):
 		else:
 			self.mysettings = config(clone=settings)
 
+		self.manifestVerifyLevel = None
+		self.manifestVerifier    = None
+		self.manifestCache       = {}    # {location: [stat, md5]}
+
+		if "gpg" in self.mysettings.features:
+			self.manifestVerifyLevel   = portage_gpg.EXISTS
+			if "strict" in self.mysettings.features:
+				self.manifestVerifyLevel = portage_gpg.MARGINAL
+				self.manifestVerifier = portage_gpg.FileChecker(porttree_root+"/metadata", "gentoo.gpg", minimumTrust=self.manifestVerifyLevel)
+			elif "severe" in self.mysettings.features:
+				self.manifestVerifyLevel = portage_gpg.TRUSTED
+				self.manifestVerifier = portage_gpg.FileChecker(porttree_root+"/metadata", "gentoo.gpg", requireSignedRing=True, minimumTrust=self.manifestVerifyLevel)
+			else:
+				self.manifestVerifier = portage_gpg.FileChecker(porttree_root+"/metadata", "gentoo.gpg", minimumTrust=self.manifestVerifyLevel)
+
 		#self.root=settings["PORTDIR"]
 		self.porttree_root = porttree_root
 		
@@ -5351,6 +5295,33 @@ class portdbapi(dbapi):
 			writemsg("!!! aux_get(): ebuild for '%s' does not exist at:\n" % mycpv)
 			writemsg("!!!            %s\n" % myebuild)
 			raise KeyError, "'%s' at %s" % (mycpv,myebuild)
+
+		if "gpg" in self.mysettings.features:
+			try:
+				myManifestPath = string.join(myebuild.split("/")[:-1],"/")+"/Manifest"
+				mys = portage_gpg.fileStats(myManifestPath)
+				if (myManifestPath in self.manifestCache) and \
+				   (self.manifestCache[myManifestPath] == mys):
+					pass
+				elif self.manifestVerifier:
+					if not self.manifestVerifier.verify(myManifestPath):
+						# Verification failed the desired level.
+						raise portage_exception.UntrustedSignature, "Untrusted Manifest: %s" % (myManifestPath)
+
+				if ("severe" in self.mysettings.features) and \
+				   (mys != portage_gpg.fileStats(myManifestPath)):
+					raise portage_exception.SecurityViolation, "Manifest changed: "+myManifestPath
+				
+			except portage_exception.InvalidSignature, e:
+				if ("strict" in self.mysettings.features) or \
+				   ("severe" in self.mysettings.features):
+					raise
+				writemsg("!!! INVALID MANIFEST SIGNATURE DETECTED: %s\n" % (myManifestPath))
+			except portage_exception.MissingSignature, e:
+				if ("severe" in self.mysettings.features):
+					raise
+				if ("strict" in self.mysettings.features):
+					writemsg("!!! WARNING: Missing signature in: %s\n" % (myManifestPath))
 
 		if mylocation not in self.auxdb:
 			self.auxdb[mylocation] = {}

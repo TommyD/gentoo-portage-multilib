@@ -1,4 +1,12 @@
-import string,shlex,os.path
+import sys,string,shlex,os.path
+
+noiselimit = 0
+def writemsg(mystr,noiselevel=0):
+	"""Prints out warning and debug messages based on the noiselimit setting"""
+	global noiselimit
+	if noiselevel <= noiselimit:
+		sys.stderr.write(mystr)
+		sys.stderr.flush()
 
 def grabfile(myfilename):
 	"""This function grabs the lines in a file, normalizes whitespace and returns lines in a list; if a line
@@ -330,7 +338,7 @@ def varexpand(mystring,mydict={}):
 	return newstring[1:]	
 
 def pickle_write(data,filename,debug=0):
-	import cPickle
+	import cPickle,os
 	try:
 		myf=open(filename,"w")
 		cPickle.dump(data,myf)
@@ -391,3 +399,10 @@ class ReadOnlyConfig:
 	def has_key(self,key):
 		return self.__mydict.has_key(key)
 
+def unique_array(array):
+	"""Takes an array and makes sure each element is unique."""
+	mya = []
+	for x in array:
+		if x not in mya:
+			mya.append(x)
+	return mya
