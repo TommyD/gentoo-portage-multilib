@@ -10,6 +10,10 @@ Legend:
  '*' Just do it.        '#' Tricky
  '!' Difficult          '@' Restricted in some way
 
+# Stop using mtimes for packages. Have portage look up all files in the
+# vardb to ensure that a file isn't duplicated and unmerge it if not.
+# Potentially slow... Need some way to speed it up... hash of filenames?
+
 # Virtuals. /var/cache/edb/virtuals -- Effectively remove it.
 # /etc/portage/virtuals is a user-modifiable version that acts like an
 # incremental applied on top of an ON-DEMAND virtual calculation system.

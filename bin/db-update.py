@@ -1,12 +1,13 @@
-#!/usr/bin/python2.2
+#!/usr/bin/python
 # Copyright 1999-2003 Gentoo Technologies, Inc.
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-import os
-import sys
+import os,sys,string
+sys.path += ["/usr/lib/portage/pym"]
+
 import portage
-import string
+
 os.chdir(portage.root+"var/db/pkg")
 myvirts=portage.grabdict(portage.root+"var/cache/edb/virtuals")
 mypvirts={}

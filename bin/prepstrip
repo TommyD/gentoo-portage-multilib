@@ -29,6 +29,14 @@ for x in "$@"; do # "$@" quotes each element... Plays nice with spaces.
 		if [ -z "${f/*SB shared object*/}" ]; then
 			echo "   ${x:${#D}:${#x}}"
 			${STRIP} --strip-debug "${x}"
+
+			# etdyn binaries are shared objects, but not really. Non-relocatable.
+			if [ -x /usr/bin/isetdyn ]; then
+				if [ "`/usr/bin/isetdyn '${x}'`" == "${x}" ]; then
+					${STRIP} "${x}"
+				fi
+			fi
+
 		fi
 	fi
 done

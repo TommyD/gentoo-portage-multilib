@@ -46,6 +46,9 @@ fi
 # Make sure it's before everything so we don't mess aliases that follow.
 unalias -a
 
+# Unset some variables that break things.
+unset GZIP BZIP BZIP2
+
 # We need this next line for "die" and "assert". It expands 
 # It _must_ preceed all the calls to die and assert.
 shopt -s expand_aliases
@@ -99,13 +102,24 @@ use() {
 has() {
 	local x
 
-	local me
-	me=$1
+	local me=$1
 	shift
 	
+	# All the TTY checks really only help out depend. Which is nice.
+	# Logging kills all this anyway. Everything becomes a pipe. --NJ
 	for x in "$@"; do
 		if [ "${x}" == "${me}" ]; then
-			tty --quiet < /dev/stdout || echo "${x}"
+			if [ -r /proc/self/fd/1 ]; then
+				tty --quiet < /proc/self/fd/1 || echo "${x}"
+			elif [ -r /dev/fd/1 ]; then
+				echo "/dev/fd/1" >&2
+				tty --quiet < /dev/fd/1 || echo "${x}"
+			elif [ -r /dev/stdout ]; then
+				echo "/dev/stdout" >&2
+				tty --quiet < /dev/stdout || echo "${x}"
+			else
+				echo "${x}"
+			fi
 			return 0
 		fi
 	done

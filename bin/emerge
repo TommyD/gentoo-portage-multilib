@@ -1,12 +1,13 @@
-#!/usr/bin/env python2.2
+#!/usr/bin/python
 # Copyright 1999-2003 Gentoo Technologies, Inc.
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-import os
+import os,sys
 os.environ["PORTAGE_CALLER"]="emerge"
+sys.path += ["/usr/lib/portage/pym"]
 
-import sys,emergehelp,xpak,string,re,commands,time,shutil,traceback,atexit,signal
+import emergehelp,xpak,string,re,commands,time,shutil,traceback,atexit,signal
 from stat import *
 from output import *
 
@@ -1358,6 +1359,9 @@ class depgraph:
 						sys.exit(1)
 					#dynamically update our database	
 			elif x[0]=="binary":
+				if ("--fetchonly" in myopts):
+					# Fetch binaries
+					continue
 				#merge the tbz2
 				mytbz2=portage.db[portage.root]["bintree"].getname(x[2])
 				emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Merging Binary ("+x[pkgindex]+"::"+y+")")
@@ -1576,8 +1580,8 @@ def unmerge(unmerge_action, unmerge_files):
 					print "none",
 			print
 	
-	print "\n>>> Packages in",red("red"),"are slated for removal."
-	print ">>> Packages in",green("green"),"will not be removed.\n"
+	print "\n>>>",red("'Selected'"),"packages are slated for removal."
+	print ">>>",green("'Protected'"),"and",green("'omitted'"),"packages will not be removed.\n"
 	
 	if "--pretend" in myopts:
 		#we're done... return
@@ -1883,7 +1887,8 @@ elif "info"==myaction:
 	print getportageversion()
 	print "================================================================="
 	print "System uname: "+unameout
-
+	os.system("cat /etc/gentoo-release")
+	
 	output=commands.getstatusoutput("`which distcc` --version")
 	if not output[0]:
 		print str(string.split(output[1],"\n",1)[0]),
@@ -2077,6 +2082,8 @@ else:
 		print
 	if ("--resume" in myopts) and portage.mtimedb.has_key("resume"):
 		myresumeopts=portage.mtimedb["resume"]["myopts"][:]
+		if "--skipfirst" in myresumeopts:
+			del myresumeopts["--skipfirst"]
 		for myopt in myopts:
 			if myopt not in myresumeopts:
 				myresumeopts.append(myopt)

@@ -1,9 +1,19 @@
-# portage.py -- core Portage functionality 
+# portage.py -- core Portage functionality
 # Copyright 1998-2003 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
 # $Header$
 
-VERSION="2.0.49"
+VERSION="2.0.49-r10"
+
+import sys
+
+noiselimit = 0
+def writemsg(mystr,noiselevel=0):
+	"""Prints out warning and debug messages based on the noiselimit setting"""
+	global noiselimit
+	if noiselevel <= noiselimit:
+		sys.stderr.write(mystr)
+		sys.stderr.flush()
 
 from stat import *
 from commands import *
@@ -11,28 +21,34 @@ from select import *
 from output import *
 from time import sleep
 from random import shuffle
-import string,sys,os
+import string,os
+
+import re,types,sys,shlex,shutil,xpak,fcntl,signal,time,cPickle,atexit,grp,traceback,commands,pwd,cvstree
+signal.signal(signal.SIGCHLD, signal.SIG_DFL)
 
 import getbinpkg
 
 ostype=os.uname()[0]
 if ostype=="Linux":
 	userland="GNU"
-	import missingos
-	lchown=missingos.lchown
+
+	if "lchown" in dir(os):
+		# Included in python-2.3
+		lchown=os.lchown
+	else:
+		import missingos
+		lchown=missingos.lchown
+
 	os.environ["XARGS"]="xargs -r"
 elif ostype=="Darwin":
 	userland="BSD"
 	lchown=os.chown
 	os.environ["XARGS"]="xargs"	
 else:
-	sys.stderr.write(red("Operating system")+" \""+ostype+"\" "+red("currently unsupported. Exiting.")+"\n")
+	writemsg(red("Operating system")+" \""+ostype+"\" "+red("currently unsupported. Exiting.")+"\n")
 	sys.exit(1)
 	
 os.environ["USERLAND"]=userland
-
-import re,types,sys,shlex,shutil,xpak,fcntl,signal,time,cPickle,atexit,grp,traceback,commands,pwd,cvstree
-signal.signal(signal.SIGCHLD, signal.SIG_DFL)
 
 #Secpass will be set to 1 if the user is root or in the portage group.
 uid=os.getuid()
@@ -45,9 +61,9 @@ try:
 	if (not secpass) and (wheelgid in os.getgroups()):
 		secpass=1
 except KeyError:
-	sys.stderr.write("portage initialization: your system doesn't have a 'wheel' group.\n")
-	sys.stderr.write("Please fix this as it is a normal system requirement. 'wheel' is GID 10\n")
-	sys.stderr.write("'emerge baselayout' and an 'etc-update' should remedy this problem.\n")
+	writemsg("portage initialization: your system doesn't have a 'wheel' group.\n")
+	writemsg("Please fix this as it is a normal system requirement. 'wheel' is GID 10\n")
+	writemsg("'emerge baselayout' and an 'etc-update' should remedy this problem.\n")
 	pass
 
 #Discover the uid and gid of the portage user/group
@@ -59,24 +75,24 @@ try:
 except KeyError:
 	portage_uid=0
 	portage_gid=wheelgid
-	sys.stderr.write("\n")
-	sys.stderr.write(  red("portage: 'portage' user or group missing. Please update baselayout\n"))
-	sys.stderr.write(  red("         and merge portage user(250) and group(250) into your passwd\n"))
-	sys.stderr.write(  red("         and group files. Non-root compilation is disabled until then.\n"))
-	sys.stderr.write(      "         Also note that non-root/wheel users will need to be added to\n")
-	sys.stderr.write(      "         the portage group to do portage commands.\n")
-	sys.stderr.write("\n")
-	sys.stderr.write(      "         For the defaults, line 1 goes into passwd, and 2 into group.\n")
-	sys.stderr.write(green("         portage:x:250:250:portage:/var/tmp/portage:/bin/false\n"))
-	sys.stderr.write(green("         portage::250:portage\n"))
-	sys.stderr.write("\n")
+	writemsg("\n")
+	writemsg(  red("portage: 'portage' user or group missing. Please update baselayout\n"))
+	writemsg(  red("         and merge portage user(250) and group(250) into your passwd\n"))
+	writemsg(  red("         and group files. Non-root compilation is disabled until then.\n"))
+	writemsg(      "         Also note that non-root/wheel users will need to be added to\n")
+	writemsg(      "         the portage group to do portage commands.\n")
+	writemsg("\n")
+	writemsg(      "         For the defaults, line 1 goes into passwd, and 2 into group.\n")
+	writemsg(green("         portage:x:250:250:portage:/var/tmp/portage:/bin/false\n"))
+	writemsg(green("         portage::250:portage\n"))
+	writemsg("\n")
 
 if (uid!=0) and (portage_gid not in os.getgroups()):
-	sys.stderr.write("\n")
-	sys.stderr.write(red("*** You are not in the portage group. You may experience cache problems\n"))
-	sys.stderr.write(red("*** due to permissions preventing the creation of the on-disk cache.\n"))
-	sys.stderr.write(red("*** Please add this user to the portage group if you wish to use portage.\n"))
-	sys.stderr.write("\n")
+	writemsg("\n")
+	writemsg(red("*** You are not in the portage group. You may experience cache problems\n"))
+	writemsg(red("*** due to permissions preventing the creation of the on-disk cache.\n"))
+	writemsg(red("*** Please add this user to the portage group if you wish to use portage.\n"))
+	writemsg("\n")
 
 incrementals=["USE","FEATURES","ACCEPT_KEYWORDS","ACCEPT_LICENSE","CONFIG_PROTECT_MASK","CONFIG_PROTECT","PRELINK_PATH","PRELINK_PATH_MASK"]
 stickies=["KEYWORDS_ACCEPT","USE","CFLAGS","CXXFLAGS","MAKEOPTS","EXTRA_ECONF","EXTRA_EMAKE"]
@@ -147,7 +163,9 @@ def listdir(mypath,recursive=0,filesonly=0,ignorecvs=0,ignorelist=[],EmptyOnErro
 	if recursive:
 		x=0
 		while x<len(ftype):
-			if ftype[x]==1 and not (ignorecvs and (len(list[x])>=3) and (("/"+list[x][-3:])=="/CVS")):
+			if ftype[x]==1 and \
+			   not (ignorecvs and (len(list[x])>=3) and (("/"+list[x][-3:])=="/CVS")) and \
+				 not (ignorecvs and (len(list[x])>=4) and (("/"+list[x][-4:])=="/.svn")):
 				ignored=listdir(mypath+"/"+list[x],recursive,filesonly,ignorecvs,ignorelist,EmptyOnError)
 				m,l,f = dircache[mypath+"/"+list[x]]
 				l=l[:]
@@ -172,22 +190,25 @@ try:
 	def perform_checksum(filename, calc_prelink=prelink_capable):
 		if calc_prelink and prelink_capable:
 			# Create non-prelinked temporary file to md5sum.
+			mylock = lockfile("/tmp/portage-prelink.tmp", wantnewlockfile=1)
 			prelink_tmpfile="/tmp/portage-prelink.tmp"
 			try:
 				shutil.copy2(filename,prelink_tmpfile)
 			except Exception,e:
-				sys.stderr.write("!!! Unable to copy file '"+str(filename)+"'.\n")
-				sys.stderr.write("!!! "+str(e)+"\n")
+				writemsg("!!! Unable to copy file '"+str(filename)+"'.\n")
+				writemsg("!!! "+str(e)+"\n")
 				sys.exit(1)
 			spawn("/usr/sbin/prelink --undo "+prelink_tmpfile+" &>/dev/null", free=1)
 			retval = fchksum.fmd5t(prelink_tmpfile)
 			os.unlink(prelink_tmpfile)
+			unlockfile(mylock)
 			return retval
 		else:
 			return fchksum.fmd5t(filename)
 except ImportError:
 	import md5
 	def perform_checksum(filename, calc_prelink=prelink_capable):
+		mylock = lockfile("/tmp/portage-prelink.tmp", wantnewlockfile=1)
 		prelink_tmpfile="/tmp/portage-prelink.tmp"
 		myfilename=filename
 		if calc_prelink and prelink_capable:
@@ -197,8 +218,8 @@ except ImportError:
 			try:
 				shutil.copy2(filename,prelink_tmpfile)
 			except Exception,e:
-				sys.stderr.write("!!! Unable to copy file '"+str(filename)+"'.\n")
-				sys.stderr.write("!!! "+str(e)+"\n")
+				writemsg("!!! Unable to copy file '"+str(filename)+"'.\n")
+				writemsg("!!! "+str(e)+"\n")
 				sys.exit(1)
 			spawn("/usr/sbin/prelink --undo "+prelink_tmpfile+" &>/dev/null", free=1)
 			myfilename=prelink_tmpfile
@@ -216,12 +237,13 @@ except ImportError:
 
 		if calc_prelink and prelink_capable:
 			os.unlink(prelink_tmpfile)
+		unlockfile(mylock)
 		return (sum.hexdigest(),size)
 
 starttime=long(time.time())
 features=[]
 
-def exithandler(foo,bar):
+def exithandler(signum,frame):
 	"""Handles ^C interrupts in a sane manner"""
 	global features,secpass
 	#remove temp sandbox files
@@ -272,7 +294,7 @@ def tokenize(mystring):
 				curlist.append(accum)
 				accum=""
 			if level==0:
-				sys.stderr.write("!!! tokenizer: Unmatched left parenthesis in:\n'"+str(mystring)+"'\n")
+				writemsg("!!! tokenizer: Unmatched left parenthesis in:\n'"+str(mystring)+"'\n")
 				return None
 			newlist=curlist
 			curlist=prevlists.pop()
@@ -287,7 +309,7 @@ def tokenize(mystring):
 	if accum:
 		curlist.append(accum)
 	if (level!=0):
-		sys.stderr.write("!!! tokenizer: Exiting with unterminated parenthesis in:\n'"+str(mystring)+"'\n")
+		writemsg("!!! tokenizer: Exiting with unterminated parenthesis in:\n'"+str(mystring)+"'\n")
 		return None
 	return newtokens
 
@@ -446,7 +468,7 @@ def env_update(makelinks=1):
 			continue
 		myconfig=getconfig(root+"etc/env.d/"+x)
 		if myconfig==None:
-			sys.stderr.write("!!! Parsing error in "+str(root)+"etc/env.d/"+str(x)+"\n")
+			writemsg("!!! Parsing error in "+str(root)+"etc/env.d/"+str(x)+"\n")
 			#parse error
 			continue
 		# process PATH, CLASSPATH, LDPATH
@@ -511,7 +533,7 @@ def env_update(makelinks=1):
 	# an older package installed ON TOP of a newer version will cause ldconfig
 	# to overwrite the symlinks we just made. -X means no links. After 'clean'
 	# we can safely create links.
-	sys.stderr.write(">>> Regenerating "+str(root)+"etc/ld.so.cache...\n")
+	writemsg(">>> Regenerating "+str(root)+"etc/ld.so.cache...\n")
 	if makelinks:
 		getstatusoutput("cd / ; /sbin/ldconfig -r "+root)
 	else:
@@ -648,7 +670,7 @@ def writedict(mydict,myfilename,writekey=1):
 	try:
 		myfile=open(myfilename,"w")
 	except IOError:
-		sys.stderr.write("Failed to open file for writedict(): "+str(myfilename)+"\n")
+		writemsg("Failed to open file for writedict(): "+str(myfilename)+"\n")
 		return 0
 	if not writekey:
 		for x in mydict.values():
@@ -667,7 +689,7 @@ def getconfig(mycfg,tolerant=0):
 	try:
 		f=open(mycfg,'r')
 	except IOError:
-		sys.stderr.write("Could not open \""+mycfg+"\"; exiting.\n")
+		writemsg("Could not open \""+mycfg+"\"; exiting.\n")
 		sys.exit(1)
 	lex=shlex.shlex(f)
 	lex.wordchars=string.digits+string.letters+"~!@#$%*_\:;?,./-+{}"     
@@ -682,7 +704,7 @@ def getconfig(mycfg,tolerant=0):
 			#unexpected end of file
 			#lex.error_leader(self.filename,lex.lineno)
 			if not tolerant:
-				sys.stderr.write("!!! Unexpected end of config file: variable "+str(key)+"\n")
+				writemsg("!!! Unexpected end of config file: variable "+str(key)+"\n")
 				return None
 			else:
 				return mykeys
@@ -690,7 +712,7 @@ def getconfig(mycfg,tolerant=0):
 			#invalid token
 			#lex.error_leader(self.filename,lex.lineno)
 			if not tolerant:
-				sys.stderr.write("!!! Invalid token (not \"=\") "+str(equ)+"\n")
+				writemsg("!!! Invalid token (not \"=\") "+str(equ)+"\n")
 				return None
 			else:
 				return mykeys
@@ -699,7 +721,7 @@ def getconfig(mycfg,tolerant=0):
 			#unexpected end of file
 			#lex.error_leader(self.filename,lex.lineno)
 			if not tolerant:
-				sys.stderr.write("!!! Unexpected end of config file: variable "+str(key)+"\n")
+				writemsg("!!! Unexpected end of config file: variable "+str(key)+"\n")
 				return None
 			else:
 				return mykeys
@@ -879,9 +901,9 @@ class config:
 
 		self.mygcfg=getconfig("/etc/make.globals")
 		if self.mygcfg==None:
-			sys.stderr.write("!!! Parse error in /etc/make.globals. NEVER EDIT THIS FILE.\n")
-			sys.stderr.write("!!! Incorrect multiline literals can cause this. Do not use them.\n")
-			sys.stderr.write("!!! Errors in this file should be reported on bugs.gentoo.org.\n")
+			writemsg("!!! Parse error in /etc/make.globals. NEVER EDIT THIS FILE.\n")
+			writemsg("!!! Incorrect multiline literals can cause this. Do not use them.\n")
+			writemsg("!!! Errors in this file should be reported on bugs.gentoo.org.\n")
 			sys.exit(1)
 		self.configlist.append(self.mygcfg)
 		self.configdict["globals"]=self.configlist[-1]
@@ -889,17 +911,17 @@ class config:
 		if profiledir:
 			self.mygcfg=getconfig("/etc/make.profile/make.defaults")
 			if self.mygcfg==None:
-				sys.stderr.write("!!! Parse error in /etc/make.defaults. Never modify this file.\n")
-				sys.stderr.write("!!! 'emerge sync' may fix this. If it does not then please report\n")
-				sys.stderr.write("!!! this to bugs.gentoo.org and, if possible, a dev on #gentoo (IRC)\n")
+				writemsg("!!! Parse error in /etc/make.defaults. Never modify this file.\n")
+				writemsg("!!! 'emerge sync' may fix this. If it does not then please report\n")
+				writemsg("!!! this to bugs.gentoo.org and, if possible, a dev on #gentoo (IRC)\n")
 				sys.exit(1)
 			self.configlist.append(self.mygcfg)
 			self.configdict["defaults"]=self.configlist[-1]
 
 		self.mygcfg=getconfig("/etc/make.conf")
 		if self.mygcfg==None:
-			sys.stderr.write("!!! Parse error in /etc/make.conf.\n")
-			sys.stderr.write("!!! Incorrect multiline literals can cause this. Do not use them.\n")
+			writemsg("!!! Parse error in /etc/make.conf.\n")
+			writemsg("!!! Incorrect multiline literals can cause this. Do not use them.\n")
 			sys.exit(1)
 		self.configlist.append(self.mygcfg)
 		self.configdict["conf"]=self.configlist[-1]
@@ -912,7 +934,7 @@ class config:
 		self.configdict["auto"]=self.configlist[-1]
 		#backup-env (for recording our calculated incremental variables:)
 		self.configlist.append(self.backupenv)
-		self.configlist.append(os.environ.copy())
+		self.configlist.append(os.environ)
 		self.configdict["env"]=self.configlist[-1]
 		self.lookuplist=self.configlist[:]
 		self.lookuplist.reverse()
@@ -982,10 +1004,10 @@ class config:
 			if x not in self.usemask:
 				usesplit.append(x)
 
-		if self.configlist[-1].has_key("USE_EXPAND"):
-			for var in string.split(self.configlist[-1]["USE_EXPAND"]):
-				if self.configlist[-1].has_key(var):
-					for x in string.split(self.configlist[-1][var]):
+		if self.has_key("USE_EXPAND"):
+			for var in string.split(self["USE_EXPAND"]):
+				if self.has_key(var):
+					for x in string.split(self[var]):
 						mystr = string.lower(var)+"_"+x
 						if mystr not in usesplit:
 							usesplit.append(mystr)
@@ -1006,7 +1028,7 @@ class config:
 			suffix=""
 		for x in self.lookuplist:
 			if x == None:
-				sys.stderr.write("!!! lookuplist is null.\n")
+				writemsg("!!! lookuplist is null.\n")
 			elif x.has_key(mykey):
 				return x[mykey]+suffix
 		return suffix
@@ -1042,7 +1064,7 @@ class config:
 		for x in self.keys(): 
 			mydict[x]=self[x]
 		if not mydict.has_key("HOME") and mydict.has_key("BUILD_PREFIX"):
-			sys.stderr.write("*** HOME not set. Setting to "+mydict["BUILD_PREFIX"]+"\n")
+			writemsg("*** HOME not set. Setting to "+mydict["BUILD_PREFIX"]+"\n")
 			mydict["HOME"]=mydict["BUILD_PREFIX"]
 		return mydict
 	
@@ -1081,7 +1103,7 @@ def spawn(mystring,debug=0,free=0,droppriv=0):
 				os.setuid(portage_uid)
 				os.umask(002)
 			else:
-				sys.stderr.write("portage: Unable to drop root for "+str(mystring)+"\n")
+				writemsg("portage: Unable to drop root for "+str(mystring)+"\n")
 
 		os.execve(mycommand,myargs,settings.environ())
 		# If the execve fails, we need to report it, and exit
@@ -1165,11 +1187,11 @@ def fetch(myuris, listonly=0, fetchonly=0):
 					try:
 						shuffle(thirdpartymirrors[mirrorname])
 					except:
-						sys.stderr.write(red("!!! YOU HAVE A BROKEN PYTHON/GLIBC.\n"))
-						sys.stderr.write(    "!!! You are most likely on a pentium4 box and have specified -march=pentium4\n")
-						sys.stderr.write(    "!!! or -fpmath=sse2. GCC was generating invalid sse2 instructions in versions\n")
-						sys.stderr.write(    "!!! prior to 3.2.3. Please merge the latest gcc or rebuid python with either\n")
-						sys.stderr.write(    "!!! -march=pentium3 or set -mno-sse2 in your cflags.\n\n\n")
+						writemsg(red("!!! YOU HAVE A BROKEN PYTHON/GLIBC.\n"))
+						writemsg(    "!!! You are most likely on a pentium4 box and have specified -march=pentium4\n")
+						writemsg(    "!!! or -fpmath=sse2. GCC was generating invalid sse2 instructions in versions\n")
+						writemsg(    "!!! prior to 3.2.3. Please merge the latest gcc or rebuid python with either\n")
+						writemsg(    "!!! -march=pentium3 or set -mno-sse2 in your cflags.\n\n\n")
 						time.sleep(10)
 						
 					for locmirr in thirdpartymirrors[mirrorname]:
@@ -1179,10 +1201,10 @@ def fetch(myuris, listonly=0, fetchonly=0):
 	for myfile in filedict.keys():
 		if listonly:
 			fetched=0
-			sys.stderr.write("\n")
+			writemsg("\n")
 		for loc in filedict[myfile]:
 			if listonly:
-				sys.stderr.write(loc+" ")
+				writemsg(loc+" ")
 				continue
 			try:
 				mystat=os.stat(settings["DISTDIR"]+"/"+myfile)
@@ -1199,11 +1221,11 @@ def fetch(myuris, listonly=0, fetchonly=0):
 							# Check md5sum's at each fetch for fetchonly.
 							mymd5=perform_md5(settings["DISTDIR"]+"/"+myfile)
 							if mymd5 != mydigests[myfile]["md5"]:
-								sys.stderr.write("!!! Previously fetched file: "+str(myfile)+" MD5 FAILED! Refetching...\n")
+								writemsg("!!! Previously fetched file: "+str(myfile)+" MD5 FAILED! Refetching...\n")
 								os.unlink(settings["DISTDIR"]+"/"+myfile)
 								fetched=0
 							else:
-								sys.stderr.write(">>> Previously fetched file: "+str(myfile)+" MD5 ;-)\n")
+								writemsg(">>> Previously fetched file: "+str(myfile)+" MD5 ;-)\n")
 								fetched=2
 								break #No need to keep looking for this file, we have it!
 				else:
@@ -1216,12 +1238,12 @@ def fetch(myuris, listonly=0, fetchonly=0):
 				#you can't use "continue" when you're inside a "try" block
 				if fetched==1:
 					#resume mode:
-					sys.stderr.write(">>> Resuming download...\n")
+					writemsg(">>> Resuming download...\n")
 					locfetch=resumecommand
 				else:
 					#normal mode:
 					locfetch=fetchcommand
-				sys.stderr.write(">>> Downloading "+str(loc)+"\n")
+				writemsg(">>> Downloading "+str(loc)+"\n")
 				myfetch=string.replace(locfetch,"${URI}",loc)
 				myfetch=string.replace(myfetch,"${FILE}",myfile)
 				myret=spawn(myfetch,free=1)
@@ -1241,7 +1263,7 @@ def fetch(myuris, listonly=0, fetchonly=0):
 									if html404.search(open(settings["DISTDIR"]+"/"+myfile).read()):
 										try:
 											os.unlink(settings["DISTDIR"]+"/"+myfile)
-											sys.stderr.write(">>> Deleting invalid distfile. (Improper 404 redirect from server.)\n")
+											writemsg(">>> Deleting invalid distfile. (Improper 404 redirect from server.)\n")
 										except:
 											pass
 								except:
@@ -1257,11 +1279,11 @@ def fetch(myuris, listonly=0, fetchonly=0):
 							# from another mirror...
 							mymd5=perform_md5(settings["DISTDIR"]+"/"+myfile)
 							if mymd5 != mydigests[myfile]["md5"]:
-								sys.stderr.write("!!! Fetched file: "+str(myfile)+" MD5 FAILED! Removing corrupt distfile...\n")
+								writemsg("!!! Fetched file: "+str(myfile)+" MD5 FAILED! Removing corrupt distfile...\n")
 								os.unlink(settings["DISTDIR"]+"/"+myfile)
 								fetched=0
 							else:
-								sys.stderr.write(">>> "+str(myfile)+" MD5 ;-)\n")
+								writemsg(">>> "+str(myfile)+" MD5 ;-)\n")
 								fetched=2
 								break
 					except (OSError,IOError),e:
@@ -1271,7 +1293,7 @@ def fetch(myuris, listonly=0, fetchonly=0):
 						fetched=2
 						break
 		if (fetched!=2) and not listonly:
-			sys.stderr.write("!!! Couldn't download "+str(myfile)+". Aborting.\n")
+			writemsg("!!! Couldn't download "+str(myfile)+". Aborting.\n")
 			return 0
 	return 1
 
@@ -1532,18 +1554,18 @@ def spawnebuild(mydo,actionmap,debug,alwaysdep=0):
 				actionmap[mydo]["args"][1])
 
 def doebuild(myebuild,mydo,myroot,debug=0,listonly=0,fetchonly=0):
-	global settings
+	global settings,db
 	if mydo not in ["help","clean","prerm","postrm","preinst","postinst",
 	                "config","touch","setup","depend","fetch","digest",
 	                "unpack","compile","install","rpm","qmerge","merge",
 	                "package","unmerge", "manifest"]:
-		sys.stderr.write("!!! doebuild: Please specify a valid command.\n");
+		writemsg("!!! doebuild: Please specify a valid command.\n");
 		return 1
 	if not os.path.exists(myebuild):
-		sys.stderr.write("!!! doebuild: "+str(myebuild)+" not found for "+str(mydo)+"\n")
+		writemsg("!!! doebuild: "+str(myebuild)+" not found for "+str(mydo)+"\n")
 		return 1
 	if myebuild[-7:]!=".ebuild":
-		sys.stderr.write("!!! doebuild: "+str(myebuild)+" does not appear to be an ebuild file.\n")
+		writemsg("!!! doebuild: "+str(myebuild)+" does not appear to be an ebuild file.\n")
 		return 1
 
 	settings.reset()
@@ -1682,17 +1704,16 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0,fetchonly=0):
 				if not os.path.exists(settings["DISTCC_DIR"]):
 					os.makedirs(settings["DISTCC_DIR"])
 					os.chown(settings["DISTCC_DIR"],portage_uid,portage_gid)
-					os.chmod(settings["DISTCC_DIR"],0644)
+					os.chmod(settings["DISTCC_DIR"],02775)
 				for x in ("/lock", "/state"):
 					if not os.path.exists(settings["DISTCC_DIR"]+x):
 						os.mkdir(settings["DISTCC_DIR"]+x)
 						os.chown(settings["DISTCC_DIR"]+x,portage_uid,portage_gid)
-						os.chmod(settings["DISTCC_DIR"]+x,0644)
+						os.chmod(settings["DISTCC_DIR"]+x,02775)
 			except OSError, e:
-				sys.stderr.write("\n!!! File system problem when setting DISTCC_DIR directory permissions.\n")
-				sys.stderr.write(  "!!! DISTCC_DIR="+str(settings["DISTCC_DIR"]+"\n"))
-				sys.stderr.write(  "!!! "+str(e)+"\n\n")
-				sys.stderr.flush()
+				writemsg("\n!!! File system problem when setting DISTCC_DIR directory permissions.\n")
+				writemsg(  "!!! DISTCC_DIR="+str(settings["DISTCC_DIR"]+"\n"))
+				writemsg(  "!!! "+str(e)+"\n\n")
 				time.sleep(5)
 				features.remove("distcc")
 				settings["DISTCC_DIR"]=""
@@ -1710,8 +1731,8 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0,fetchonly=0):
 					os.chmod(settings["PORT_LOGDIR"],06770)
 					if not settings.has_key("LOG_PF") or (settings["LOG_PF"] != settings["PF"]):
 						settings["LOG_PF"]=settings["PF"]
-						settings["LOG_COUNTER"]=str(get_counter_tick_core("/"))
-				except Exception, e:
+						settings["LOG_COUNTER"]=str(db[myroot]["vartree"].dbapi.get_counter_tick_core("/"))
+				except ValueError, e:
 					settings["PORT_LOGDIR"]=""
 					print "!!! Unable to chown/chmod PORT_LOGDIR. Disabling logging."
 					print "!!!",e
@@ -1935,9 +1956,6 @@ def perform_md5(x, calc_prelink=0):
 
 def merge(mycat,mypkg,pkgloc,infloc,myroot,myebuild=None):
 	mylink=dblink(mycat,mypkg,myroot)
-	if not mylink.exists():
-		mylink.create()
-		#shell error code
 	return mylink.merge(pkgloc,infloc,myroot,myebuild)
 	
 def unmerge(cat,pkg,myroot,mytrimworld=1):
@@ -2939,6 +2957,73 @@ class dbapi:
 		else:
 			return []
 
+	def counter_tick(self,myroot,mycpv=None):
+		return self.counter_tick_core(myroot,1,mycpv)
+
+	def get_counter_tick_core(self,myroot,mycpv=None):
+		return self.counter_tick_core(myroot,0,mycpv)+1
+
+	def counter_tick_core(self,myroot,incrementing=1,mycpv=None):
+		"This method will grab the next COUNTER value and record it back to the global file.  Returns new counter value."
+		cpath=myroot+"var/cache/edb/counter"
+		changed=0
+		
+		min_counter = 0
+		if mycpv:
+			mysplit = pkgsplit(mycpv)
+			for x in self.match(mysplit[0]+"/"+mysplit[1]):
+				try:
+					old_counter = long(self.aux_get(x,["COUNTER"])[0])
+					writemsg("COUNTER '%d' '%s'\n" % (old_counter, x))
+				except:
+					old_counter = 0
+					writemsg("COUNTER '!%d' '%s'\n" % (old_counter, x))
+				if old_counter > min_counter:
+					min_counter = old_counter
+
+		#We write our new counter value to a new file that gets moved into
+		#place to avoid filesystem corruption on XFS (unexpected reboot.)
+		if os.path.exists(cpath):
+			cfile=open(cpath, "r")
+			try:
+				counter=long(cfile.readline())
+			except (ValueError,OverflowError):
+				try:
+					counter=long(commands.getoutput("for FILE in $(find /var/db/pkg -type f -name COUNTER); do echo $(<${FILE}); done | sort -n | tail -n1 | tr -d '\n'"))
+					print "portage: COUNTER was corrupted; resetting to value of",counter
+					changed=1
+				except (ValueError,OverflowError):
+					print red("portage:")+" COUNTER data is corrupt in pkg db. The values need to be"
+					print red("portage:")+" corrected/normalized so that portage can operate properly."
+					print red("portage:")+" A simple solution is not yet available so try #gentoo on IRC."
+					sys.exit(2)
+			cfile.close()
+		else:
+			try:
+				counter=long(commands.getoutput("for FILE in $(find /var/db/pkg -type f -name COUNTER); do echo $(<${FILE}); done | sort -n | tail -n1 | tr -d '\n'"))
+				print red("portage:")+" Global counter missing. Regenerated from counter files to:",counter
+			except:
+				print red("portage:")+" Initializing global counter."
+				counter=long(0)
+			changed=1
+
+		if counter < min_counter:
+			counter = min_counter+1000
+			changed = 1
+
+		if incrementing or changed:
+			#increment counter
+			counter += 1
+			# update new global counter file
+			newcpath=cpath+".new"
+			newcfile=open(newcpath,"w")
+			newcfile.write(str(counter))
+			newcfile.close()
+			# now move global counter file into place
+			os.rename(newcpath,cpath)
+		return counter
+	
+
 
 class fakedbapi(dbapi):
 	"This is a dbapi to use for the emptytree function.  It's empty, but things can be added to it."
@@ -2946,11 +3031,6 @@ class fakedbapi(dbapi):
 		self.cpvdict={}
 		self.cpdict={}
 
-	#this needs to be here for emerge --emptytree that uses fakedbapi for /var
-	#we should remove this requirement soon.
-	def counter_tick(self):
-		return counter_tick_core("/")
-	
 	def cpv_exists(self,mycpv):
 		return self.cpvdict.has_key(mycpv)
 	
@@ -2997,50 +3077,6 @@ class fakedbapi(dbapi):
 		if not len(self.cpdict[mycp]):
 			del self.cpdict[mycp]
 
-def get_counter_tick_core(myroot):
-	return counter_tick_core(myroot,0)+1
-def counter_tick_core(myroot,incrementing=1):
-		"This method will grab the next COUNTER value and record it back to the global file.  Returns new counter value."
-		cpath=myroot+"var/cache/edb/counter"
-		changed=0
-
-		#We write our new counter value to a new file that gets moved into
-		#place to avoid filesystem corruption on XFS (unexpected reboot.)
-		if os.path.exists(cpath):
-			cfile=open(cpath, "r")
-			try:
-				counter=long(cfile.readline())
-			except (ValueError,OverflowError):
-				try:
-					counter=long(commands.getoutput("for FILE in $(find /var/db/pkg -type f -name COUNTER); do echo $(<${FILE}); done | sort -n | tail -n1 | tr -d '\n'"))
-					print "portage: COUNTER was corrupted; resetting to value of",counter
-					changed=1
-				except (ValueError,OverflowError):
-					print red("portage:")+" COUNTER data is corrupt in pkg db. The values need to be"
-					print red("portage:")+" corrected/normalized so that portage can operate properly."
-					print red("portage:")+" A simple solution is not yet available so try #gentoo on IRC."
-					sys.exit(2)
-			cfile.close()
-		else:
-			try:
-				counter=long(commands.getoutput("for FILE in $(find /var/db/pkg -type f -name COUNTER); do echo $(<${FILE}); done | sort -n | tail -n1 | tr -d '\n'"))
-				print red("portage:")+" Global counter missing. Regenerated from counter files to:",counter
-			except:
-				print red("portage:")+" Initializing global counter."
-				counter=long(0)
-			changed=1
-		if incrementing or changed:
-			#increment counter
-			counter += 1
-			# update new global counter file
-			newcpath=cpath+".new"
-			newcfile=open(newcpath,"w")
-			newcfile.write(str(counter))
-			newcfile.close()
-			# now move global counter file into place
-			os.rename(newcpath,cpath)
-		return counter
-	
 cptot=0
 class vardbapi(dbapi):
 	def __init__(self,root):
@@ -3056,9 +3092,6 @@ class vardbapi(dbapi):
 	def cpv_exists(self,mykey):
 		"Tells us whether an actual ebuild exists on disk (no masking)"
 		return os.path.exists(self.root+"var/db/pkg/"+mykey)
-
-	def counter_tick(self):
-		return counter_tick_core(self.root)
 
 	def cpv_counter(self,mycpv):
 		"This method will grab the COUNTER. Returns a counter value."
@@ -3078,10 +3111,26 @@ class vardbapi(dbapi):
 				corrupted=1
 			cfile.close()
 		elif os.path.exists(cdir):
-			sys.stderr.write("!!! COUNTER file is missing for "+str(mycpv)+" in /var/db.\n")
-			sys.stderr.write("!!! Please run /usr/lib/portage/bin/fix-db.pl\n")
-			sys.stderr.flush()
-			sys.exit(1)
+			mys = pkgsplit(mycpv)
+			myl = self.match(mys[0])
+			print mys,myl
+			if len(myl) == 1:
+				try:
+					# Only one package... Counter doesn't matter.
+					myf = open(cpath, "w")
+					myf.write("1")
+					myf.flush()
+					myf.close()
+					counter = 1
+				except Exception, e:
+					writemsg("!!! COUNTER file is missing for "+str(mycpv)+" in /var/db.\n")
+					writemsg("!!! Please run /usr/lib/portage/bin/fix-db.pl or unmerge this exact version.\n")
+					writemsg("!!! %s\n" % e)
+					sys.exit(1)
+			else:
+				writemsg("!!! COUNTER file is missing for "+str(mycpv)+" in /var/db.\n")
+				writemsg("!!! Please run /usr/lib/portage/bin/fix-db.pl or remerge the package.\n")
+				sys.exit(1)
 		else:
 			counter=long(0)
 		if corrupted:
@@ -3097,7 +3146,7 @@ class vardbapi(dbapi):
 	def cpv_inject(self,mycpv):
 		"injects a real package into our on-disk database; assumes mycpv is valid and doesn't already exist"
 		os.makedirs(self.root+"var/db/pkg/"+mycpv)	
-		counter=db[self.root]["vartree"].dbapi.counter_tick()
+		counter=db[self.root]["vartree"].dbapi.counter_tick(self.root)
 		# write local package counter so that emerge clean does the right thing
 		lcfile=open(self.root+"var/db/pkg/"+mycpv+"/COUNTER","w")
 		lcfile.write(str(counter))
@@ -3118,8 +3167,7 @@ class vardbapi(dbapi):
 			origpath=self.root+"var/db/pkg/"+mycpv
 			if not os.path.exists(origpath):
 				continue
-			sys.stderr.write("@")
-			sys.stderr.flush()
+			writemsg("@")
 			if not os.path.exists(self.root+"var/db/pkg/"+mynewcat):
 				#create the directory
 				os.makedirs(self.root+"var/db/pkg/"+mynewcat)	
@@ -3155,6 +3203,9 @@ class vardbapi(dbapi):
 			return []
 		returnme=[]
 		for x in list:
+			if x[0] == '-':
+				#writemsg(red("INCOMPLETE MERGE:")+str(x[len("-MERGING-"):])+"\n")
+				continue
 			ps=pkgsplit(x)
 			if not ps:
 				print "!!! Invalid db entry:",self.root+"var/db/pkg/"+mysplit[0]+"/"+x
@@ -3178,6 +3229,9 @@ class vardbapi(dbapi):
 		for y in mylist:
 			mysplit=catpkgsplit(y)
 			if not mysplit:
+				if re.search(".*/-MERGING-",y):
+					#writemsg(red("INCOMPLETE MERGE:")+str(y)+"\n")
+					continue
 				print "!!! Invalid db entry:",self.root+"var/db/pkg/"+y
 				continue
 			mykey=mysplit[0]+"/"+mysplit[1]
@@ -3205,6 +3259,25 @@ class vardbapi(dbapi):
 		self.mtdircache[mycat]=curmtime
 		self.matchcache[mydep]=mymatch
 		return mymatch
+	
+	def aux_get(self, mycpv, wants):
+		global auxdbkeys
+		results = []
+		if not self.cpv_exists(mycpv):
+			return []
+		for x in wants:
+			myfn = self.root+"var/db/pkg/"+str(mycpv)+"/"+str(x)
+			if os.access(myfn,os.R_OK):
+				myf = open(myfn, "r")
+				myd = myf.read()
+				myf.close()
+				myd = re.sub("[\n\r\t]+"," ",myd)
+				myd = re.sub(" +"," ",myd)
+				myd = string.strip(myd)
+			else:
+				myd = ""
+			results.append(myd)
+		return results
 		
 
 class vartree(packagetree):
@@ -3592,8 +3665,7 @@ class portdbapi(dbapi):
 		                    self.auxcache[cat][pkg]["mtime"] == emtime
 		if auxcache_is_valid:
 			if debug > 1:
-				sys.stderr.write("auxcache is valid: "+str(auxcache_is_valid)+" "+str(pkg)+"\n")
-				sys.stderr.flush()
+				writemsg("auxcache is valid: "+str(auxcache_is_valid)+" "+str(pkg)+"\n")
 			dmtime = emtime
 		elif os.access(mydbkey, os.R_OK):
 			# Don't need to setup a try, as we don't expect it to fail now.
@@ -3629,11 +3701,10 @@ class portdbapi(dbapi):
 					dmtime=emtime
 			else:
 				if debug:
-					sys.stderr.write("Generating cache entry(0) for: "+str(myebuild)+"\n")
-					sys.stderr.flush()
+					writemsg("Generating cache entry(0) for: "+str(myebuild)+"\n")
 				if doebuild(myebuild,"depend","/"):
 					#depend returned non-zero exit code...
-					sys.stderr.write(str(red("\naux_get():")+" (0) Error in "+mycpv+" ebuild.\n"
+					writemsg(str(red("\naux_get():")+" (0) Error in "+mycpv+" ebuild.\n"
              "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
 					raise KeyError
 
@@ -3642,8 +3713,7 @@ class portdbapi(dbapi):
 					mydbkeystat=os.stat(mydbkey)
 					if mydbkeystat[ST_SIZE] == 0:
 						if debug:
-							sys.stderr.write("File size zero: "+str(mydbkey)+"\n")
-							sys.stderr.flush()
+							writemsg("File size zero: "+str(mydbkey)+"\n")
 						doregen2=5
 					else:
 						#print "!!! <-- Size != 0 -->"
@@ -3651,8 +3721,7 @@ class portdbapi(dbapi):
 						doregen2=0
 				except OSError:
 					if debug:
-						sys.stderr.write("Failed to create depend file: "+str(mydbkey)+"\n")
-						sys.stderr.flush()
+						writemsg("Failed to create depend file: "+str(mydbkey)+"\n")
 					doregen2=6
 					pass
 			
@@ -3680,7 +3749,7 @@ class portdbapi(dbapi):
 				mylines=mycent.readlines()
 				mycent.close()
 			except (IOError, OSError):
-				sys.stderr.write(str(red("\naux_get():")+" (1) Error in "+mycpv+" ebuild.\n"
+				writemsg(str(red("\naux_get():")+" (1) Error in "+mycpv+" ebuild.\n"
 				  "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
 				raise KeyError
 
@@ -3718,8 +3787,7 @@ class portdbapi(dbapi):
 
 			#print "doregen2: pre"
 			if doregen2:	
-				#sys.stderr.write("-")
-				#sys.stderr.flush()
+				#writemsg("-")
 				#print "doregen2"
 				stale=1
 				#old cache entry, needs updating (this could raise IOError)
@@ -3732,18 +3800,17 @@ class portdbapi(dbapi):
 					pass
 			
 				if debug:
-					sys.stderr.write("Generating cache entry(2) for: "+str(myebuild)+"\n")
-					sys.stderr.flush()
+					writemsg("Generating cache entry(2) for: "+str(myebuild)+"\n")
 				if doebuild(myebuild,"depend","/"):
 					#depend returned non-zero exit code...
-					sys.stderr.write(str(red("\naux_get():")+" (2) Error in "+mycpv+" ebuild.\n"
+					writemsg(str(red("\naux_get():")+" (2) Error in "+mycpv+" ebuild.\n"
 					  "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
 					raise KeyError
 				try:
 					os.utime(mydbkey,(emtime,emtime))
 					mycent=open(mydbkey,"r")
 				except (IOError, OSError):
-					sys.stderr.write(str(red("\naux_get():")+" (3) Error in "+mycpv+" ebuild.\n"
+					writemsg(str(red("\naux_get():")+" (3) Error in "+mycpv+" ebuild.\n"
 					  "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
 					raise KeyError
 				mylines=mycent.readlines()
@@ -3766,8 +3833,7 @@ class portdbapi(dbapi):
 					if os.access(mydbkey, os.W_OK):
 						os.unlink(mydbkey)
 					else:
-						sys.stderr.write("!!! Cannot delete dbkey: "+str(mydbkey)+"\n")
-						sys.stderr.flush()
+						writemsg("!!! Cannot delete dbkey: "+str(mydbkey)+"\n")
 					sys.exit(1)
 				for myeclass in myeclasses:
 					if eclass(myeclass,mycpv,emtime)==None:
@@ -4019,12 +4085,12 @@ class binarytree(packagetree):
 			if mycpsplit[3]!="r0":
 				mynewcpv += "-"+mycpsplit[3]
 			if (mynewpkg != myoldpkg) and os.path.exists(self.getname(mynewcpv)):
-				sys.stderr.write("!!! Cannot update binary: Destination exists.\n")
-				sys.stderr.write("!!! "+mycpv+" -> "+mynewcpv+"\n")
+				writemsg("!!! Cannot update binary: Destination exists.\n")
+				writemsg("!!! "+mycpv+" -> "+mynewcpv+"\n")
 				continue
 			tbz2path=self.getname(mycpv)
 			if os.path.exists(tbz2path) and not os.access(tbz2path,os.W_OK):
-				sys.stderr.write("!!! Cannot update readonly binary: "+mycpv+"\n")
+				writemsg("!!! Cannot update readonly binary: "+mycpv+"\n")
 				continue
 			
 			#print ">>> Updating data in:",mycpv
@@ -4062,11 +4128,10 @@ class binarytree(packagetree):
 		for mycpv in self.dbapi.cp_all():
 			tbz2path=self.getname(mycpv)
 			if os.path.exists(tbz2path) and not os.access(tbz2path,os.W_OK):
-				sys.stderr.write("!!! Cannot update readonly binary: "+mycpv+"\n")
+				writemsg("!!! Cannot update readonly binary: "+mycpv+"\n")
 				continue
 			#print ">>> Updating binary data:",mycpv
-			sys.stderr.write("*")
-			sys.stderr.flush()
+			writemsg("*")
 			mytmpdir=settings["PORTAGE_TMPDIR"]+"/tbz2"
 			mytbz2=xpak.tbz2(tbz2path)
 			mytbz2.decompose(mytmpdir,cleanup=1)
@@ -4097,7 +4162,7 @@ class binarytree(packagetree):
 				mycat=mytbz2.getfile("CATEGORY")
 				if not mycat:
 					#old-style or corrupt package
-					sys.stderr.write("!!! Invalid binary package: "+mypkg+"\n")
+					writemsg("!!! Invalid binary package: "+mypkg+"\n")
 					self.invalids.append(mypkg)
 					continue
 				mycat=string.strip(mycat)
@@ -4110,7 +4175,7 @@ class binarytree(packagetree):
 					continue
 
 		if getbinpkgs and not settings["PORTAGE_BINHOST"]:
-			sys.stderr.write(red("!!! PORTAGE_BINHOST unset, but use is requested.\n"))
+			writemsg(red("!!! PORTAGE_BINHOST unset, but use is requested.\n"))
 
 		if getbinpkgs and settings["PORTAGE_BINHOST"] and not self.remotepkgs:
 			try:
@@ -4120,14 +4185,14 @@ class binarytree(packagetree):
 			except:
 				chunk_size = 3000
 
-			sys.stderr.write(green("Fetching binary packages info...\n"))
+			writemsg(green("Fetching binary packages info...\n"))
 			self.remotepkgs = getbinpkg.dir_get_metadata(settings["PORTAGE_BINHOST"], chunk_size=chunk_size)
-			sys.stderr.write(green("  -- DONE!\n\n"))
+			writemsg(green("  -- DONE!\n\n"))
 
 			for mypkg in self.remotepkgs.keys():
 				if not self.remotepkgs[mypkg].has_key("CATEGORY"):
 					#old-style or corrupt package
-					sys.stderr.write("!!! Invalid remote binary package: "+mypkg+"\n")
+					writemsg("!!! Invalid remote binary package: "+mypkg+"\n")
 					del self.remotepkgs[mypkg]
 					continue
 				mycat=string.strip(self.remotepkgs[mypkg]["CATEGORY"])
@@ -4139,7 +4204,7 @@ class binarytree(packagetree):
 					self.dbapi.cpv_inject(fullpkg)
 					#print "  -- Injected"
 				except:
-					sys.stderr.write("!!! Failed to inject remote binary package:"+str(fullpkg)+"\n")
+					writemsg("!!! Failed to inject remote binary package:"+str(fullpkg)+"\n")
 					del self.remotepkgs[mypkg]
 					continue
 		self.populated=1
@@ -4193,7 +4258,7 @@ class binarytree(packagetree):
 			if (tbz2name not in self.invalids):
 				return
 			else:
-				sys.stderr.write("Resuming download of this tbz2, but it is possible that it is corrupt.\n")
+				writemsg("Resuming download of this tbz2, but it is possible that it is corrupt.\n")
 		try:
 			os.makedirs(settings["PKGDIR"]+"/All/", 0775)
 		except:
@@ -4208,9 +4273,17 @@ class dblink:
 	"this class provides an interface to the standard text package database"
 	def __init__(self,cat,pkg,myroot):
 		"create a dblink object for cat/pkg.  This dblink entry may or may not exist"
-		self.cat=cat
-		self.pkg=pkg
-		self.dbdir=os.path.normpath(myroot+"///var/db/pkg/"+cat+"/"+pkg)
+		self.cat     = cat
+		self.pkg     = pkg
+		self.mycpv   = self.cat+"/"+self.pkg
+		self.mysplit = pkgsplit(self.mycpv)
+	
+		self.dbroot   = os.path.normpath(myroot+"///var/db/pkg")
+		self.dbcatdir = self.dbroot+"/"+cat
+		self.dbpkgdir = self.dbcatdir+"/"+pkg
+		self.dbtmpdir = self.dbcatdir+"/-MERGING-"+pkg
+		self.dbdir    = self.dbpkgdir
+	
 		self.myroot=myroot
 		self.updateprotect()
 
@@ -4224,6 +4297,8 @@ class dblink:
 	
 	def create(self):
 		"create the skeleton db directory structure.  No contents, virtuals, provides or anything.  Also will create /var/db/pkg if necessary."
+		# XXXXX Delete this eventually
+		raise Exception, "This is bad. Don't use it."
 		if not os.path.exists(self.dbdir):
 			os.makedirs(self.dbdir)
 	
@@ -4327,10 +4402,13 @@ class dblink:
 		global dircache
 		dircache={}
 		
+		mydbdir_lock = lockdir(self.dbdir)
+
 		if not pkgfiles:
 			print "No package files given... Grabbing a set."
 			pkgfiles=self.getcontents()
 			if not pkgfiles:
+				unlockdir(mydbdir_lock)
 				return
 		# Now, don't assume that the name of the ebuild is the same as the
 		# name of the dir; the package may have been moved.
@@ -4451,10 +4529,14 @@ class dblink:
 			while pos<len(mydirs):
 				obj=mydirs[pos]
 				objld=listdir(obj)
+				if objld == None:
+					print "mydirs["+str(pos)+"]",mydirs[pos]
+					print "obj",obj
+					print "objld",objld
 				if len(objld)>0:
 					#we won't remove this directory (yet), continue
-						pos += 1
-						continue
+					pos += 1
+					continue
 				elif (objld != None):
 					#zappo time
 					del mydirs[pos]
@@ -4526,9 +4608,9 @@ class dblink:
 							 (len(myprovides[myvirt]) > 1):
 							if mykey not in newvirts[myvirt]:
 								newvirts[myvirt].append(mykey)
-							sys.stderr.write("--- Leaving virtual '"+mykey+"' from '"+myvirt+"'\n")
+							writemsg("--- Leaving virtual '"+mykey+"' from '"+myvirt+"'\n")
 						else:
-							sys.stderr.write("<<< Removing virtual '"+mykey+"' from '"+myvirt+"'\n")
+							writemsg("<<< Removing virtual '"+mykey+"' from '"+myvirt+"'\n")
 					else:
 						if mykey not in newvirts[myvirt]:
 							newvirts[myvirt].append(mykey)
@@ -4540,27 +4622,38 @@ class dblink:
 		if myebuildpath and os.path.exists(myebuildpath):
 			a=doebuild(myebuildpath,"postrm",self.myroot)
 
+		unlockdir(mydbdir_lock)
+
 	def treewalk(self,srcroot,destroot,inforoot,myebuild):
-		global settings
-		# srcroot = ${D}; destroot=where to merge, ie. ${ROOT}, inforoot=root of db entry,
-		# secondhand = list of symlinks that have been skipped due to their target not existing (will merge later),
-		"this is going to be the new merge code"
-		if not os.path.exists(self.dbdir):
-			self.create()
+		global settings,db
+		# srcroot  = ${D};
+		# destroot = where to merge, ie. ${ROOT},
+		# inforoot = root of db entry,
+		# secondhand = list of symlinks that have been skipped due to
+		#              their target not existing (will merge later),
+
+		# get old contents info for later unmerging
+		oldcontents=self.getcontents()
+
+		# This blocks until we can get the dir to ourselves.
+		if not os.path.exists(self.dbcatdir):
+			os.makedirs(self.dbcatdir)
+		mytmpdir_lock = lockdir(self.dbtmpdir)
+		self.dbdir = self.dbtmpdir
+		self.delete()
+		if not os.path.exists(self.dbtmpdir):
+			os.makedirs(self.dbtmpdir)
 		
-		# before merging, it's *very important* to touch all the files
-		# this ensures that their mtime is current and unmerging works correctly
-		# spawn("(cd "+srcroot+"; for x in `find`; do  touch -c $x 2>/dev/null; done)",free=1)
 		print ">>> Merging",self.cat+"/"+self.pkg,"to",destroot
+
 		# get current counter value (counter_tick also takes care of incrementing it)
 		# XXX Need to make this destroot, but it needs to be initialized first. XXX
-		counter=db["/"]["vartree"].dbapi.counter_tick()
+		counter=db["/"]["vartree"].dbapi.counter_tick(self.myroot,self.cat+"/"+self.pkg)
 		# write local package counter for recording
 		lcfile=open(inforoot+"/COUNTER","w")
 		lcfile.write(str(counter))
 		lcfile.close()
-		# get old contents info for later unmerging
-		oldcontents=self.getcontents()
+
 		# run preinst script
 		if myebuild:
 			# if we are merging a new ebuild, use *its* pre/postinst rather than using the one in /var/db/pkg 
@@ -4615,11 +4708,22 @@ class dblink:
 		print
 		if (oldcontents):
 			print ">>> Safely unmerging already-installed instance..."
+			olddbdir = self.dbdir
+			self.dbdir = self.dbpkgdir
 			self.unmerge(oldcontents,trimworld=0)
+			self.dbdir = olddbdir
 			print ">>> original instance of package unmerged safely."	
 		# copy "info" files (like SLOT, CFLAGS, etc.) into the database
 		for x in listdir(inforoot):
 			self.copyfile(inforoot+"/"+x)
+
+		# Now we lock the real directory, and move to it. Atomic.
+		mypkgdir_lock = lockdir(self.dbpkgdir)
+		self.dbdir = self.dbpkgdir
+		self.delete()
+		movefile(self.dbtmpdir, self.dbpkgdir)
+		unlockdir(mytmpdir_lock)
+		unlockdir(mypkgdir_lock)
 
 		#write out our collection of md5sums
 		if cfgfiledict.has_key("IGNORE"):
@@ -4732,22 +4836,22 @@ class dblink:
 			try:
 				mystat=os.lstat(mysrc)
 			except OSError, e:
-				sys.stderr.write("\n")
-				sys.stderr.write(red("!!! ERROR: There appears to be ")+bold("FILE SYSTEM CORRUPTION.")+red(" A file that is listed\n"))
-				sys.stderr.write(red("!!!        as existing is not capable of being stat'd. If you are using an\n"))
-				sys.stderr.write(red("!!!        experimental kernel, please boot into a stable one, force an fsck,\n"))
-				sys.stderr.write(red("!!!        and ensure your filesystem is in a sane state. ")+bold("'shutdown -Fr now'\n"))
-				sys.stderr.write(red("!!!        File:  ")+str(mysrc)+"\n")
-				sys.stderr.write(red("!!!        Error: ")+str(e)+"\n")
+				writemsg("\n")
+				writemsg(red("!!! ERROR: There appears to be ")+bold("FILE SYSTEM CORRUPTION.")+red(" A file that is listed\n"))
+				writemsg(red("!!!        as existing is not capable of being stat'd. If you are using an\n"))
+				writemsg(red("!!!        experimental kernel, please boot into a stable one, force an fsck,\n"))
+				writemsg(red("!!!        and ensure your filesystem is in a sane state. ")+bold("'shutdown -Fr now'\n"))
+				writemsg(red("!!!        File:  ")+str(mysrc)+"\n")
+				writemsg(red("!!!        Error: ")+str(e)+"\n")
 				sys.exit(1)
 			except Exception, e:
-				sys.stderr.write("\n")
-				sys.stderr.write(red("!!! ERROR: An unknown error has occurred during the merge process.\n"))
-				sys.stderr.write(red("!!!        A stat call returned the following error for the following file:"))
-				sys.stderr.write(    "!!!        Please ensure that your filesystem is intact, otherwise report\n")
-				sys.stderr.write(    "!!!        this as a portage bug at bugs.gentoo.org. Append 'emerge info'.\n")
-				sys.stderr.write(    "!!!        File:  "+str(mysrc)+"\n")
-				sys.stderr.write(    "!!!        Error: "+str(e)+"\n")
+				writemsg("\n")
+				writemsg(red("!!! ERROR: An unknown error has occurred during the merge process.\n"))
+				writemsg(red("!!!        A stat call returned the following error for the following file:"))
+				writemsg(    "!!!        Please ensure that your filesystem is intact, otherwise report\n")
+				writemsg(    "!!!        this as a portage bug at bugs.gentoo.org. Append 'emerge info'.\n")
+				writemsg(    "!!!        File:  "+str(mysrc)+"\n")
+				writemsg(    "!!!        Error: "+str(e)+"\n")
 				sys.exit(1)
 				
 				
@@ -4807,11 +4911,11 @@ class dblink:
 					# destination exists
 					if not os.access(mydest, os.W_OK):
 						pkgstuff = pkgsplit(self.pkg)
-						sys.stderr.write("\n!!! Cannot write to '"+mydest+"'.\n")
-						sys.stderr.write("!!! Please check permissions and directories for broken symlinks.\n")
-						sys.stderr.write("!!! You may start the merge process again by using ebuild:\n")
-						sys.stderr.write("!!! ebuild "+settings["PORTDIR"]+"/"+self.cat+"/"+pkgstuff[0]+"/"+self.pkg+".ebuild merge\n")
-						sys.stderr.write("!!! And finish by running this: env-update\n\n")
+						writemsg("\n!!! Cannot write to '"+mydest+"'.\n")
+						writemsg("!!! Please check permissions and directories for broken symlinks.\n")
+						writemsg("!!! You may start the merge process again by using ebuild:\n")
+						writemsg("!!! ebuild "+settings["PORTDIR"]+"/"+self.cat+"/"+pkgstuff[0]+"/"+self.pkg+".ebuild merge\n")
+						writemsg("!!! And finish by running this: env-update\n\n")
 						return 1
 
 					if S_ISLNK(mydmode) or S_ISDIR(mydmode):
@@ -4940,8 +5044,6 @@ class dblink:
 		return string.join(mydata," ")
 	
 	def copyfile(self,fname):
-		if not os.path.exists(self.dbdir):
-			self.create()
 		shutil.copyfile(fname,self.dbdir+"/"+os.path.basename(fname))
 	
 	def getfile(self,fname):
@@ -4953,8 +5055,6 @@ class dblink:
 		return mydata
 
 	def setfile(self,fname,data):
-		if not os.path.exists(self.dbdir):
-			self.create()
 		myfile=open(self.dbdir+"/"+fname,"w")
 		myfile.write(data)
 		myfile.close()
@@ -4972,8 +5072,6 @@ class dblink:
 		return myreturn
 	
 	def setelements(self,mylist,ename):
-		if not os.path.exists(self.dbdir):
-			self.create()
 		myelement=open(self.dbdir+"/"+ename,"w")
 		for x in mylist:
 			myelement.write(x+"\n")
@@ -5026,9 +5124,6 @@ def pkgmerge(mytbz2,myroot):
 	# the merge takes care of pre/postinst and old instance
 	# auto-unmerge, virtual/provides updates, etc.
 	mylink=dblink(mycat,mypkg,myroot)
-	if not mylink.exists():
-		mylink.create()
-		#shell error code
 	mylink.merge(pkgloc,infloc,myroot,myebuild)
 	if not os.path.exists(infloc+"/RDEPEND"):
 		returnme=""
@@ -5051,21 +5146,21 @@ else:
 	root="/"
 if root != "/":
 	if not os.path.exists(root[:-1]):
-		sys.stderr.write("!!! Error: ROOT "+root+" does not exist.  Please correct this.\n")
-		sys.stderr.write("!!! Exiting.\n\n")
+		writemsg("!!! Error: ROOT "+root+" does not exist.  Please correct this.\n")
+		writemsg("!!! Exiting.\n\n")
 		sys.exit(1)
 	elif not os.path.isdir(root[:-1]):
-		sys.stderr.write("!!! Error: ROOT "+root[:-1]+" is not a directory. Please correct this.\n")
-		sys.stderr.write("!!! Exiting.\n\n")
+		writemsg("!!! Error: ROOT "+root[:-1]+" is not a directory. Please correct this.\n")
+		writemsg("!!! Exiting.\n\n")
 		sys.exit(1)
 
 #create tmp and var/tmp if they don't exist; read config
 os.umask(0)
 if not os.path.exists(root+"tmp"):
-	sys.stderr.write(">>> "+root+"tmp doesn't exist, creating it...\n")
+	writemsg(">>> "+root+"tmp doesn't exist, creating it...\n")
 	os.mkdir(root+"tmp",01777)
 if not os.path.exists(root+"var/tmp"):
-	sys.stderr.write(">>> "+root+"var/tmp doesn't exist, creating it...\n")
+	writemsg(">>> "+root+"var/tmp doesn't exist, creating it...\n")
 	try:
 		os.mkdir(root+"var",0755)
 	except (OSError,IOError):
@@ -5073,7 +5168,7 @@ if not os.path.exists(root+"var/tmp"):
 	try:
 		os.mkdir(root+"var/tmp",01777)
 	except:
-		sys.stderr.write("portage: couldn't create /var/tmp; exiting.\n")
+		writemsg("portage: couldn't create /var/tmp; exiting.\n")
 		sys.exit(1)
 
 os.umask(022)
@@ -5117,10 +5212,10 @@ if 'selinux' in settings["USE"].split(" "):
 		import selinux
 		selinux_enabled=1
 	except OSError, e:
-		sys.stderr.write(red("!!! SELinux not loaded: ")+str(e)+"\n")
+		writemsg(red("!!! SELinux not loaded: ")+str(e)+"\n")
 		selinux_enabled=0
 	except ImportError:
-		sys.stderr.write(red("!!! SELinux module not found.")+" Please verify that it was installed.\n")
+		writemsg(red("!!! SELinux module not found.")+" Please verify that it was installed.\n")
 		selinux_enabled=0
 else:
 	selinux_enabled=0
@@ -5132,10 +5227,10 @@ if not os.environ.has_key("SANDBOX_ACTIVE"):
 	for cachedir in cachedirs:
 		if not os.path.exists(cachedir):
 			os.makedirs(cachedir,0755)
-			sys.stderr.write(">>> "+cachedir+" doesn't exist, creating it...\n")
+			writemsg(">>> "+cachedir+" doesn't exist, creating it...\n")
 		if not os.path.exists(cachedir+"/dep"):
 			os.makedirs(cachedir+"/dep",2755)
-			sys.stderr.write(">>> "+cachedir+"/dep doesn't exist, creating it...\n")
+			writemsg(">>> "+cachedir+"/dep doesn't exist, creating it...\n")
 		try:
 			os.chown(cachedir,uid,portage_gid)
 			os.chmod(cachedir,0775)
@@ -5157,7 +5252,7 @@ def flushmtimedb(record):
 			del mtimedb[record]
 			#print "mtimedb["+record+"] is cleared."
 		else:
-			sys.stderr.write("Invalid or unset record '"+record+"' in mtimedb.\n")
+			writemsg("Invalid or unset record '"+record+"' in mtimedb.\n")
 
 #grab mtimes for eclasses and upgrades
 mtimedb={}
@@ -5182,7 +5277,7 @@ except:
 
 for x in mtimedb.keys():
 	if x not in mtimedbkeys:
-		sys.stderr.write("Deleting invalid mtimedb key: "+str(x)+"\n")
+		writemsg("Deleting invalid mtimedb key: "+str(x)+"\n")
 		del mtimedb[x]
 
 
@@ -5194,10 +5289,10 @@ portdb=portdbapi()
 do_upgrade_packagesmessage=0
 def do_upgrade(mykey):
 	global do_upgrade_packagesmessage
-	sys.stderr.write("\n\n")
-	sys.stderr.write(green("Performing Global Updates: ")+bold(mykey)+"\n")
-	sys.stderr.write("(Could take a couple minutes if you have a lot of binary packages.)\n")
-	sys.stderr.write("  "+bold(".")+"='update pass'  "+bold("*")+"='binary update'  "+bold("@")+"='/var/db move'\n")
+	writemsg("\n\n")
+	writemsg(green("Performing Global Updates: ")+bold(mykey)+"\n")
+	writemsg("(Could take a couple minutes if you have a lot of binary packages.)\n")
+	writemsg("  "+bold(".")+"='update pass'  "+bold("*")+"='binary update'  "+bold("@")+"='/var/db move'\n")
 	processed=1
 	#remove stale virtual entries (mappings for packages that no longer exist)
 	myvirts=grabdict("/var/cache/edb/virtuals")
@@ -5210,11 +5305,11 @@ def do_upgrade(mykey):
 		if not len(mysplit):
 			continue
 		if mysplit[0]!="move":
-			sys.stderr.write("portage: Update type \""+mysplit[0]+"\" not recognized.\n")
+			writemsg("portage: Update type \""+mysplit[0]+"\" not recognized.\n")
 			processed=0
 			continue
 		if len(mysplit)!=3:
-			sys.stderr.write("portage: Update command \""+myline+"\" invalid; skipping.\n")
+			writemsg("portage: Update command \""+myline+"\" invalid; skipping.\n")
 			processed=0
 			continue
 		sys.stdout.write(".")
@@ -5302,9 +5397,9 @@ if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
 			do_vartree()
 			if do_upgrade_packagesmessage and \
 				 listdir(settings["PKGDIR"]+"/All/",EmptyOnError=1):
-				sys.stderr.write("\n\n\n ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the")
-				sys.stderr.write("\n    tbz2's in the packages directory. "+bold("Note: This can take a very long time."))
-				sys.stderr.write("\n"); sys.stderr.flush()
+				writemsg("\n\n\n ** Skipping packages. Run 'fixpackages' or set it in FEATURES to fix the")
+				writemsg("\n    tbz2's in the packages directory. "+bold("Note: This can take a very long time."))
+				writemsg("\n")
 		
 
 
@@ -5313,7 +5408,7 @@ if overlays:
 	portdb.overlays = overlays[:]
 	for ov in overlays:
 		if not os.path.isdir(ov):
-			sys.stderr.write(red("!!! Invalid PORTDIR_OVERLAY (not a dir): "+ov+"\n"))
+			writemsg(red("!!! Invalid PORTDIR_OVERLAY (not a dir): "+ov+"\n"))
 			portdb.overlays.remove(ov)
 	os.environ["PORTDIR_OVERLAY"] = string.join(portdb.overlays)
 	settings["PORTDIR_OVERLAY"] = string.join(portdb.overlays)
@@ -5340,12 +5435,12 @@ if not dbcachedir:
 	dbcachedir="/var/cache/edb/dep/"
 	settings["PORTAGE_CACHEDIR"]=dbcachedir
 if not os.path.exists(settings["PORTAGE_TMPDIR"]):
-	sys.stderr.write("portage: the directory specified in your PORTAGE_TMPDIR variable, \""+settings["PORTAGE_TMPDIR"]+",\"\n")
-	sys.stderr.write("does not exist.  Please create this directory or correct your PORTAGE_TMPDIR setting.\n")
+	writemsg("portage: the directory specified in your PORTAGE_TMPDIR variable, \""+settings["PORTAGE_TMPDIR"]+",\"\n")
+	writemsg("does not exist.  Please create this directory or correct your PORTAGE_TMPDIR setting.\n")
 	sys.exit(1)
 if not os.path.isdir(settings["PORTAGE_TMPDIR"]):
-	sys.stderr.write("portage: the directory specified in your PORTAGE_TMPDIR variable, \""+settings["PORTAGE_TMPDIR"]+",\"\n")
-	sys.stderr.write("is not a directory.  Please correct your PORTAGE_TMPDIR setting.\n")
+	writemsg("portage: the directory specified in your PORTAGE_TMPDIR variable, \""+settings["PORTAGE_TMPDIR"]+",\"\n")
+	writemsg("is not a directory.  Please correct your PORTAGE_TMPDIR setting.\n")
 	sys.exit(1)
 
 #getting categories from an external file now
@@ -5396,10 +5491,14 @@ for myarch in grabfile(settings["PORTDIR"]+"/profiles/arch.list"):
 	archlist += [myarch,"~"+myarch]
 for group in groups:
 	if (group not in archlist) and group[0]!='-':
-		sys.stderr.write("\n"+red("!!! INVALID ACCEPT_KEYWORDS: ")+str(group)+"\n")
+		writemsg("\n"+red("!!! INVALID ACCEPT_KEYWORDS: ")+str(group)+"\n")
 
 # Clear the cache that we probably won't need anymore.
 dircache={}
+
+if not os.path.islink("/etc/make.profile"):
+	writemsg("!!! /etc/make.profile is not a symlink and will probably prevent most merges.")
+	writemsg("!!! It should point into a profile within %s/profiles/" % settings["PORTDIR"])
 
 def pickle_write(data,filename,debug=0):
 	import cPickle
@@ -5408,9 +5507,7 @@ def pickle_write(data,filename,debug=0):
 		cPickle.dump(data,myf)
 		myf.flush()
 		myf.close()
-		if debug:
-			sys.stderr.write("Wrote pickle: "+str(filename)+"\n")
-			sys.stderr.flush()
+		writemsg("Wrote pickle: "+str(filename)+"\n",1)
 		os.chown(myefn,uid,portage_gid)
 		os.chmod(myefn,0664)
 	except Exception, e:
@@ -5420,9 +5517,7 @@ def pickle_write(data,filename,debug=0):
 def pickle_read(filename,default=None,debug=0):
 	import cPickle,os
 	if not os.access(filename, os.R_OK):
-		if debug:
-			sys.stderr.write("pickle_read(): File not readable. '"+filename+"'\n")
-			sys.stderr.flush()
+		writemsg("pickle_read(): File not readable. '"+filename+"'\n",1)
 		return default
 	data = None
 	try:
@@ -5432,16 +5527,91 @@ def pickle_read(filename,default=None,debug=0):
 		data = mypickle.load()
 		myf.close()
 		del mypickle,myf
-		if debug:
-			sys.stderr.write("pickle_read(): Loaded pickle. '"+filename+"'\n")
-			sys.stderr.flush()
+		writemsg("pickle_read(): Loaded pickle. '"+filename+"'\n",1)
 	except Exception, e:
-		if debug:
-			sys.stderr.write("!!! Failed to load pickle: "+str(e)+"\n")
-			sys.stderr.flush()
+		writemsg("!!! Failed to load pickle: "+str(e)+"\n",1)
 		data = default
 	return data
 
 
+def lockdir(mydir):
+	return lockfile(mydir,wantnewlockfile=1)
+def unlockdir(mylock):
+	return unlockfile(mylock)
 
+def lockfile(mypath,wantnewlockfile=0):
+	"""Creates all dirs upto, the given dir. Creates a lockfile
+	for the given directory as the file: directoryname+'.portage_lockfile'."""
+	import fcntl
 
+	if not mypath:
+		raise ValueError, "Empty path given"
+
+	if mypath[-1] == '/':
+		mypath = mypath[:-1]
+
+	if type(mypath) == types.IntType:
+		lockfilename    = '[Only fd given]'
+		wantnewlockfile = 0
+		unlinkfile      = 0
+	elif wantnewlockfile:
+		lockfilename = mypath+".portage_lockfile"
+		unlinkfile   = 1
+	else:
+		lockfilename = mypath
+		unlinkfile = 0
+	
+	if type(mypath) == types.StringType:
+		if not os.path.exists(os.path.dirname(mypath)):
+			raise IOError, "Base path does not exist '%s'" % os.path.dirname(mypath)
+		myfd = os.open(lockfilename, os.O_CREAT|os.O_WRONLY,0600)
+
+	elif type(mypath) == types.IntType:
+		myfd = mypath
+
+	else:
+		raise ValueError, "Unknown type passed in '%s': '%s'" % (type(mypath),mypath)
+
+	fcntl.flock(myfd,fcntl.LOCK_EX)
+	if not os.path.exists(lockfilename):
+		# The file was deleted on us... Keep trying to make one...
+		os.close(myfd)
+		writemsg("lockfile recurse",1)
+		lockfilename,myfd,unlinkfile = lockfile(mypath,wantnewlockfile)
+
+	writemsg(str((lockfilename,myfd,unlinkfile)),1)
+	return (lockfilename,myfd,unlinkfile)
+
+def unlockfile(mytuple):
+	import fcntl
+
+	lockfilename,myfd,unlinkfile = mytuple
+	
+	if not os.path.exists(lockfilename):
+		writemsg("lockfile does not exist '%s'\n" % lockfile,1)
+		return None
+
+	try:
+		fcntl.flock(myfd,fcntl.LOCK_UN)
+	except Exception, e:
+		raise IOError, "Failed to unlock file '%s'\n" % lockfilename
+
+	try:
+		fcntl.flock(myfd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+		# We won the lock, so there isn't competition for it.
+		# We can safely delete the file.
+		writemsg("Got the lockfile...\n",1)
+		if unlinkfile:
+			#writemsg("Unlinking...\n")
+			os.unlink(lockfilename)
+			writemsg("Unlinked lockfile...\n",1)
+		fcntl.flock(myfd,fcntl.LOCK_UN)
+	except Exception, e:
+		# We really don't care... Someone else has the lock.
+		# So it is their problem now.
+		writemsg("Failed to get lock... someone took it.\n",1)
+		writemsg(str(e)+"\n",1)
+		pass
+	os.close(myfd)
+			
+	return 1

@@ -1,8 +1,12 @@
 #!/usr/bin/python
 
 import os,sys,re
+sys.path += ["/usr/lib/portage/pym"]
+
 from stat import *
 from output import *
+from portage import lockfile,unlockfile
+
 
 mylog = open("/var/log/emerge_fix-db.log", "a")
 def writemsg(msg):
@@ -12,6 +16,14 @@ def writemsg(msg):
 	sys.stderr.flush()
 	mylog.write(msg)
 	mylog.flush()
+
+def fix_global_counter(value):
+	myf = open("/var/cache/edb/counter")
+	newvalue = value+1000
+	myf.write(str(newvalue))
+	myf.flush()
+	myf.close()
+	return newvalue
 
 bad = {}
 counters = {}
@@ -75,6 +87,9 @@ for cat in os.listdir(vardbdir):
 		else:
 			try:
 				counters[catpkg] = long(open(pkgdir+"COUNTER").read().strip())
+				if counters[catpkg] > real_counter:
+					writemsg("ERROR: Global counter is lower than the '%s' COUNTER." % catpkg)
+					real_counter = fix_global_counter(counters[catpkg])
 			except:
 				bad[catpkg] += ["COUNTER is corrupt"]
 				counters[catpkg] = -1
@@ -104,6 +119,7 @@ for cat in os.listdir(vardbdir):
 			del bad[catpkg]
 
 
+actions = {}
 writemsg("\n\n")
 for catpkg in bad.keys():
 	bad[catpkg].sort()
@@ -114,9 +130,37 @@ for catpkg in bad.keys():
 
 	if bad[catpkg] == ["CONTENTS is missing", "SLOT is missing"]:
 		writemsg("%s: (possibly injected)\n%s\n" % (green(catpkg), mystr))
+		actions[catpkg] = ["ignore"]
 	elif bad[catpkg] == ["SLOT is empty"]:
-		writemsg("%s: (old package)\n%s\n" % (yellow(catpkg), mystr))
+		writemsg("%s: (old package) []\n%s\n" % (yellow(catpkg), mystr))
+		actions[catpkg] = ["remerge"]
 	else:
-		writemsg("%s:\n%s\n" % (red(catpkg), mystr))
+		writemsg("%s: (damaged/invalid) []\n%s\n" % (red(catpkg), mystr))
+		actions[catpkg] = ["merge exact"]
+
+if (len(sys.argv) > 1) and (sys.argv[1] == "--fix"):
+	writemsg("These are only directions, at the moment.")
+	for catpkg in actions.keys():
+		action = actions[catpkg]
+		writemsg("We will now '%s' '%s'..." % (action, catpkg))
+		if action == 
+else:
+	#writemsg("Run with '--fix' to attempt automatic correction.")
+	pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

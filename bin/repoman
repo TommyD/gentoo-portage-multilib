@@ -1,4 +1,4 @@
-#!/usr/bin/python2.2
+#!/usr/bin/python
 # Copyright 1999-2003 Gentoo Technologies, Inc.
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
@@ -10,6 +10,7 @@
 import os,sys
 exename=os.path.basename(sys.argv[0])	
 os.environ["PORTAGE_CALLER"]="repoman"
+sys.path += ["/usr/lib/portage/pym"]
 version="1.2"	
 
 import string,signal,readline,portage,re,cvstree,pickle
@@ -18,6 +19,7 @@ from commands import getstatusoutput
 from time import *
 from fileinput import input
 from grp import getgrnam
+from stat import *
 
 if "cvs" not in portage.features:
 	print
@@ -49,13 +51,14 @@ modeshelp={
 "last"	:"Remember report from last run",
 "lfull"	:"Remember report from last run (full listing)"
 }
-options=["--pretend","--help","--commitmsg","--commitmsgfile"]
-shortoptions={"-m":"--commitmsg","-M":"--commitmsgfile","-p":"--pretend"}
+options=["--pretend","--help","--commitmsg","--commitmsgfile","--verbose"]
+shortoptions={"-m":"--commitmsg","-M":"--commitmsgfile","-p":"--pretend","-v":"--verbose"}
 optionshelp={
-"--pretend":"Don't actually perform commit or fix steps; just show what would be done.",
+"--pretend":"Don't actually perform commit or fix steps; just show what would be done (always enabled when not started in a CVS tree).",
 "--help"   :"Show this screen",
 "--commitmsg"    :"Adds a commit message via the command line.",
-"--commitmsgfile":"Adds a commit message from a file given on the command line."
+"--commitmsgfile":"Adds a commit message from a file given on the command line.",
+"--verbose":"Displays every package name while checking"
 }
 qacats=[
 "digest.stray","digest.missing",
@@ -276,18 +279,54 @@ if mymode=="help" or ("--help" in myoptions):
 	help()
 if mymode=="last" or (mymode=="lfull"):
 	last()
-if not os.path.isdir("CVS"):
-	err("We do not appear to be inside a local repository. Exiting.")
-try:
-	myrepofile=open("CVS/Repository")
-	myreporoot=myrepofile.readline()[:-1]
-	myrepofile.close()
-	myrepofile=open("CVS/Root")
-	myreporootpath=string.split(myrepofile.readline()[:-1], ":")[-1]
-	myrepofile.close()
-except:
-	err("Error grabbing repository information; exiting.")
+if portage.settings["PORTDIR"][-1]!="/":
+	portage.settings["PORTDIR"]=portage.settings["PORTDIR"]+"/"
+if portage.settings["PORTDIR_OVERLAY"] and \
+   portage.settings["PORTDIR_OVERLAY"][-1]!="/":
+	portage.settings["PORTDIR_OVERLAY"]=portage.settings["PORTDIR_OVERLAY"]+"/"
 
+isCvs=False
+isOverlay=False
+mydir=os.getcwd()
+if mydir[-1] != "/":
+	mydir=mydir + "/"
+
+
+if not os.path.isdir("CVS"):
+	if mydir[:len(portage.settings["PORTDIR_OVERLAY"])] == portage.settings["PORTDIR_OVERLAY"]:
+		myreporoot=os.getcwd();
+		myreporootpath=portage.settings["PORTDIR_OVERLAY"]
+		isOverlay=True
+	elif mydir[:len(portage.settings["PORTDIR"])] == portage.settings["PORTDIR"]:
+		myreporoot=os.getcwd();
+		myreporootpath=portage.settings["PORTDIR"]
+	else:
+		err("We do not appear to be inside a local repository or a portage tree. Exiting.")
+else:
+	if "cvs" not in portage.features:
+		print
+		print
+		print red('!!! You do not have ')+bold('FEATURES="cvs" ')+red("enabled...")
+		print red("!!! ")+bold("Digests may be incorrect!")
+		print
+		sleep(5)
+
+	try:
+		isCvs=True
+		myrepofile=open("CVS/Repository")
+		myreporoot=myrepofile.readline()[:-1]
+		myrepofile.close()
+		myrepofile=open("CVS/Root")
+		myreporootpath=string.split(myrepofile.readline()[:-1], ":")[-1]
+		myrepofile.close()
+	except:
+		err("Error grabbing repository information; exiting.")
+
+if not "--pretend" in myoptions and not isCvs:
+	print
+	print darkgreen("not in a CVS repository, enabling pretend mode")
+	myoptions.append("--pretend");
+		
 if myreporootpath=="/space/cvsroot":
 	print
 	print
@@ -317,8 +356,6 @@ if myreporootpath=="/space/cvsroot":
 
 try: # Determine if we're in PORTDIR... If not tell portage to accomodate.
 	mydir=os.getcwd()
-	if portage.settings["PORTDIR"][-1]!="/":
-		portage.settings["PORTDIR"]=portage.settings["PORTDIR"]+"/"
 	if portage.settings["PORTDIR"]!=mydir[:len(portage.settings["PORTDIR"])]:
 		# We're not in the PORTDIR
 		print
@@ -337,24 +374,39 @@ except Exception, e:
 	print "!!! Error when determining valid(ity of) PORTDIR:"
 	print "!!!",e
 	pass
+
 os.environ["PORTAGE_CALLER"]="repoman"
-os.environ["FEATURES"]=portage.settings["FEATURES"]+" cvs"
 os.environ["ACCEPT_KEYWORDS"]="-~"+portage.settings["ARCH"]
+if isCvs:
+	os.environ["FEATURES"]=portage.settings["FEATURES"]+" cvs"
 reload(portage)
 
-reporoot=None
-for x in REPOROOTS:
-	if myreporoot[0:len(x)]==x:
-		reporoot=myreporoot
-if not reporoot:
-	err("Couldn't recognize repository type.  Supported repositories:\n"+repr(REPOROOTS))
+portage.settings.usemask += portage.archlist
+while portage.settings["ARCH"] in portage.settings.usemask:
+	del portage.settings.usemask[portage.settings.usemask.index(portage.settings["ARCH"])]
+portage.settings.regenerate()
+
+
+
+if isCvs:
+	reporoot=None
+	for x in REPOROOTS:
+		if myreporoot[0:len(x)]==x:
+			reporoot=myreporoot
+	if not reporoot:
+		err("Couldn't recognize repository type.  Supported repositories:\n"+repr(REPOROOTS))
 reposplit=string.split(myreporoot,"/")
 repolevel=len(reposplit)
+
+if not isCvs:
+	repolevel-=(string.count(myreporootpath,"/") - 1)
 startdir=os.getcwd()
+
 for x in range(0,repolevel-1):
 	os.chdir("..")
 repodir=os.getcwd()
 os.chdir(startdir)
+
 def caterror(mycat):
 	err(mycat+" is not an official category.  Skipping QA checks in this directory.\nPlease ensure that you add "+catdir+" to "+repodir+"/profiles/categories\nif it is a new category.")
 print
@@ -435,6 +487,8 @@ for x in qacats:
 	fails[x]=[]
 for x in scanlist:
 	#ebuilds and digests added to cvs respectively.
+	if "--verbose" in myoptions:
+		print "checking package " + x
 	eadded=[]
 	dadded=[]
 	cladded=0
@@ -446,36 +500,39 @@ for x in scanlist:
 		if y[-7:]==".ebuild":
 			ebuildlist.append(y[:-7])
 	digestlist=[]
-	try:
-		myf=open(checkdir+"/CVS/Entries","r")
-		myl=myf.readlines()
-		for l in myl:
-			if l[0]!="/":
-				continue
-			splitl=l[1:].split("/")
-			if not len(splitl):
-				continue
-			objsadded.append(splitl[0])
-			if splitl[0][-7:]==".ebuild":
-				eadded.append(splitl[0][:-7])
-			if splitl[0]=="ChangeLog":
-				cladded=1
-	except IOError:
-		continue
-	try:
-		myf=open(checkdir+"/files/CVS/Entries","r")
-		myl=myf.readlines()
-		for l in myl:
-			if l[0]!="/":
-				continue
-			splitl=l[1:].split("/")
-			if not len(splitl):
-				continue
-			objsadded.append(splitl[0])
-			if splitl[0][:7]=="digest-":
-				dadded.append(splitl[0][7:])
-	except IOError:
-		continue
+	if isCvs:
+		try:
+			myf=open(checkdir+"/CVS/Entries","r")
+			myl=myf.readlines()
+			for l in myl:
+				if l[0]!="/":
+					continue
+				splitl=l[1:].split("/")
+				if not len(splitl):
+					continue
+				objsadded.append(splitl[0])
+				if splitl[0][-7:]==".ebuild":
+					eadded.append(splitl[0][:-7])
+				if splitl[0]=="ChangeLog":
+					cladded=1
+		except IOError:
+			continue
+
+		try:
+			myf=open(checkdir+"/files/CVS/Entries","r")
+			myl=myf.readlines()
+			for l in myl:
+				if l[0]!="/":
+					continue
+				splitl=l[1:].split("/")
+				if not len(splitl):
+					continue
+				objsadded.append(splitl[0])
+				if splitl[0][:7]=="digest-":
+					dadded.append(splitl[0][7:])
+		except IOError:
+			continue
+
 	if os.path.exists(checkdir+"/files"):
 		filesdirlist=os.listdir(checkdir+"/files")
 		for y in filesdirlist:
@@ -514,9 +571,6 @@ for x in scanlist:
 	if "ChangeLog" not in checkdirlist:
 		stats["changelog.missing"]+=1
 		fails["changelog.missing"].append(x+"/ChangeLog")
-	if not cladded:
-		stats["changelog.notadded"]+=1
-		fails["changelog.notadded"].append(x+"/ChangeLog")
 	
 	#metadata.xml file check
 	if "metadata.xml" not in checkdirlist:
@@ -697,10 +751,12 @@ savef.close()
 savef=open('/var/cache/edb/repo.fails','w')
 pickle.dump(fails,savef)
 savef.close()
-os.chown('/var/cache/edb/repo.stats',os.geteuid(),getgrnam('portage')[2])
-os.chmod('/var/cache/edb/repo.stats',0664)
-os.chown('/var/cache/edb/repo.fails',os.geteuid(),getgrnam('portage')[2])
-os.chmod('/var/cache/edb/repo.fails',0664)
+if not (os.stat('/var/cache/edb/repo.stats')[ST_GID] == getgrnam('portage')[2]):
+	os.chown('/var/cache/edb/repo.stats',os.geteuid(),getgrnam('portage')[2])
+	os.chmod('/var/cache/edb/repo.stats',0664)
+if not (os.stat('/var/cache/edb/repo.fails')[ST_GID] == getgrnam('portage')[2]):
+	os.chown('/var/cache/edb/repo.fails',os.geteuid(),getgrnam('portage')[2])
+	os.chmod('/var/cache/edb/repo.fails',0664)
 print
 #dofail will be set to 1 if we have failed in at least one non-warning category
 dofail=0
@@ -709,6 +765,8 @@ dowarn=0
 #dofull will be set if we should print a "repoman full" informational message
 dofull=0
 for x in qacats:
+	if not isCvs and (string.find(x, "notadded") != -1 or string.find(x, "digest") != -1):
+		stats[x] = 0
 	if stats[x]:
 		dowarn=1
 		if x not in qawarnings:
@@ -779,9 +837,8 @@ else:
 			print "(ebuild "+portage.settings["PORTDIR"]+"/"+myeb+".ebuild digest)"
 		else:
 			os.system("ebuild "+portage.settings["PORTDIR"]+"/"+myeb+".ebuild digest")
-
 	mycvstree=cvstree.getentries("./",recursive=1)
-	if not mycvstree:
+	if isCvs and not mycvstree:
 		print "!!! It seems we don't have a cvs tree?"
 		sys.exit(3)
 
@@ -826,7 +883,7 @@ else:
 		print
 		sys.exit(1)
 
-	mymissing=cvstree.findmissing(mycvstree,recursive=1,basedir="./")
+	mymissing=None
 	if mymissing:
 		print "The following files are obviously missing from your cvs tree"
 		print "and are being fetched so we can continue:"
@@ -842,8 +899,10 @@ else:
 			sys.exit(retval)
 		del mymissing
 
-	print "Performing a "+green("cvs -n up")+" with a little magic grep to check for updates."
-	retval=getstatusoutput("/usr/bin/cvs -n up 2>&1 | egrep '^[^\?] .*' | egrep -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'")
+	retval=["",""]
+	if isCvs:
+		print "Performing a "+green("cvs -n up")+" with a little magic grep to check for updates."
+		retval=getstatusoutput("/usr/bin/cvs -n up 2>&1 | egrep '^[^\?] .*' | egrep -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'")
 		
 	mylines=string.split(retval[1], "\n")
 	myupdates=[]
@@ -870,17 +929,18 @@ else:
 			print "!!! cvs exited with an error. Terminating."
 			sys.exit(retval)
 	
-	mycvstree=cvstree.getentries("./",recursive=1)
-	mychanged=cvstree.findchanged(mycvstree,recursive=1,basedir="./")
-	mynew=cvstree.findnew(mycvstree,recursive=1,basedir="./")
-	myremoved=cvstree.findremoved(mycvstree,recursive=1,basedir="./")
-	if not (mychanged or mynew or myremoved):
-		print
-		print green("RepoMan sez:"), "\"Doing nothing is not always good for QA.\"\n"
-		print
-		print "(Didn't find any changed files...)"
-		print
-		sys.exit(0)
+	if isCvs:
+		mycvstree=cvstree.getentries("./",recursive=1)
+		mychanged=cvstree.findchanged(mycvstree,recursive=1,basedir="./")
+		mynew=cvstree.findnew(mycvstree,recursive=1,basedir="./")
+		myremoved=cvstree.findremoved(mycvstree,recursive=1,basedir="./")
+		if not (mychanged or mynew or myremoved):
+			print
+			print green("RepoMan sez:"), "\"Doing nothing is not always good for QA.\"\n"
+			print
+			print "(Didn't find any changed files...)"
+			print
+			sys.exit(0)
 
 	myupdates=mychanged+mynew
 	myheaders=[]
@@ -913,29 +973,29 @@ else:
 		mymsg.write(commitmessage)
 		mymsg.close()
 
-	try:
-		mymsg=open(commitmessagefile,"r")
-		commitmessage=mymsg.read()
-		mymsg.close()
-	except Exception,e:
-		print "!!! Failed to open commit message file."
-		print "!!!",e
-		sys.exit(1)
-	print
-	print green("Using commit message:")
-	print green("------------------------------------------------------------------------------")
-	print commitmessage
-	print green("------------------------------------------------------------------------------")
-	print
+		try:
+			mymsg=open(commitmessagefile,"r")
+			commitmessage=mymsg.read()
+			mymsg.close()
+		except Exception,e:
+			print "!!! Failed to open commit message file."
+			print "!!!",e
+			sys.exit(1)
+		print
+		print green("Using commit message:")
+		print green("------------------------------------------------------------------------------")
+		print commitmessage
+		print green("------------------------------------------------------------------------------")
+		print
 
-	if "--pretend" in myoptions:
-		print "(/usr/bin/cvs -q commit -F "+commitmessagefile+")"
-		retval=0
-	else:
-		retval=os.system("/usr/bin/cvs -q commit -F "+commitmessagefile)
-	if retval:
-		print "!!! Exiting on cvs (shell) error code:",retval
-		sys.exit(retval)
+		if "--pretend" in myoptions:
+			print "(/usr/bin/cvs -q commit -F "+commitmessagefile+")"
+			retval=0
+		else:
+			retval=os.system("/usr/bin/cvs -q commit -F "+commitmessagefile)
+		if retval:
+			print "!!! Exiting on cvs (shell) error code:",retval
+			sys.exit(retval)
 
 	mychanges=[]
 	if myheaders or myremoved or mynew:
@@ -979,13 +1039,12 @@ else:
 		if "sign" in portage.features:
 			gpgcmd="gpg -ab --yes "+portage.settings["GPG_OPTIONS"]+" "
 			sigfile=y[:-1]+"/files/digest-"+y[-1]
-			os.system(gpgcmd+sigfile)
-			mysigs+=[sigfile]
+			if "--pretend" in myoptions:
+				print "("+gpgcmd+sigfile+")"
+			else:
+				os.system(gpgcmd+sigfile)
+				mysigs+=[sigfile]
 	
-	if "sign" in portage.features:
-		if os.system("/usr/bin/cvs -q add "+string.join(mysigs)):
-			print red("!!! Seem to have had a problem adding the signatures...")
-
 	if "--pretend" in myoptions:
 		print "(/usr/bin/cvs -q commit -F "+commitmessagefile+")"
 	else:
@@ -997,7 +1056,10 @@ else:
 	if unlinkfile:
 		os.unlink(commitmessagefile)
 	print
-	print "CVS commit complete."
+	if isCvs:
+		print "CVS commit complete."
+	else:
+		print "repoman was too scared by not seeing any familiar cvs file that he forgot to commit anything"
 	print green("RepoMan sez:"), "\"If everyone were like you, I'd be out of business!\"\n"
 sys.exit(0)
 
