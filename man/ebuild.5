@@ -188,21 +188,48 @@ Initial working directory of $PWD.
 This function should contain optional basic configuration steps.
 .br
 Initial working directory of $PWD.
-.SH "HELPER FUNCTIONS: UNPACK"
+.SH "HELPER FUNCTIONS: GENERAL"
 .TP
-\fBunpack\fR \fI[list of sources] \fB
-This function uncompresses and/or untars a list of sources into the current directory.
-.SH "HELPER FUNCTIONS: COMPILE"
+\fBuse\fR \fI[USE item]\fB
+If [USE item] is in the USE variable, [USE item] will be echoed and the function will return 1.  If [USE item] is not
+in the USE variable, the function will return 0.
+
+use jpeg \\
+.br
+	&& myconf="${myconf} --enable-jpeg" \\
+.br
+	|| myconf="${myconf} --enabled-jpeg"
+
+if [ `use gnome` ] ; then
+.br
+	guiconf="--enable-gui=gnome --with-x"
+.br
+elif [ `use gtk` ] ; then
+.br
+	guiconf="--enable-gui=gtk --with-x"
+.br
+elif [ `use X` ] ; then
+.br
+	guiconf="--enable-gui=athena --with-x"
+.br
+else
+.br
+	# No gui version will be built
+.br
+	guiconf=""
+.br
+fi
 .TP
 \fBdopython\fR \fI[commands]\fR
 Performs [commands] with python and returns the result.
 .TP
 \fBdosed\fR \fI "s:orig:change:g" [filename] \fR
 Performs sed (including cp/mv filename) on [filename].
+.SH "HELPER FUNCTIONS: UNPACK"
 .TP
-\fBemake\fR
-This is used as a replacement for make.  Performs 'make ${MAKEOPTS}'
-(as set in /etc/make.globals), default is \-j2.
+\fBunpack\fR \fI[list of sources] \fB
+This function uncompresses and/or untars a list of sources into the current directory.
+.SH "HELPER FUNCTIONS: COMPILE"
 .TP
 \fBeconf\fR \fI[configure options]\fR
 This is used as a replacement for configure.  Performs:
@@ -224,6 +251,16 @@ configure \\
 	--localstatedir=/var/lib \\
 .br
 	\fI[configure options]\fR
+.TP
+\fBemake\fR
+This is used as a replacement for make.  Performs 'make ${MAKEOPTS}'
+(as set in /etc/make.globals), default is \-j2.
+.br
+\fB***warning***\fR
+.br
+if you are going to use emake, make sure your build is happy with paralell makes
+(make \-j2). It should be tested thoroughly as paralell makes are notorious
+for failing _sometimes_ but not alway
 .SH "HELPER FUNCTIONS: INSTALL"
 .TP
 \fBdodir\fR \fI[path]\fR
@@ -280,7 +317,7 @@ The default root is /.
 Can be used to define options for the install function used in doins.  The default is \fI\-m0644\fR.
 .TP
 \fBdoins\fR \fI[list of files]\fR
-Installs files into \fIINSDESTTREE\fR.  This function uses install(1).
+Installs files into \fIINSDESTTREE\fR.  This function uses \fBinstall\fR(1).
 .TP
 \fBexeinto\fR \fI[path}\fR
 Sets the root (\fIEXEDESTTREE\fR) for the doexe function.
@@ -307,7 +344,7 @@ All these functions acct like the do* functions, but they only work with one
 file and the file gets installed as \fI[new filename]\fR.
 .SH "SEE ALSO"
 .BR ebuild (1),
-.BR make.defaults (5),
+.BR make.globals (5),
 .BR make.conf (5)
 .TP
 The \fI/usr/sbin/ebuild.sh\fR script.
@@ -316,11 +353,10 @@ The helper apps in \fI/usr/lib/portage/bin\fR.
 .SH "FILES"
 .TP
 \fB/etc/make.conf\fR 
-Contains variables for the build\-process and overrides those in make.defaults
+Contains variables for the build\-process and overrides those in \fI/etc/make.globals\fR.
 .TP
-\fB/etc/make.defaults\fR 
-Contains the default variables for the build\-process, 
-you should edit \fI/etc/make.conf\fR instead.
+\fB/etc/make.globals\fR
+Contains the default variables for the build\-process, you should edit \fI/etc/make.conf\fR instead.
 .SH "AUTHORS"
 Achim Gottinger <achim@gentoo.org>
 .br
