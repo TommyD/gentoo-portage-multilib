@@ -1332,6 +1332,15 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 		os.chown(settings["T"],portage_uid,portage_gid)
 		os.chmod(settings["T"],06770)
 
+		if not os.path.exists(settings["DISTDIR"]):
+			os.makedirs(settings["DISTDIR"])
+		if not os.path.exists(settings["DISTDIR"]+"/cvs-src"):
+			os.makedirs(settings["DISTDIR"]+"/cvs-src")
+		os.chown(settings["DISTDIR"]+"/cvs-src",0,portage_gid)
+		os.chmod(settings["DISTDIR"]+"/cvs-src",06770)
+		spawn("chgrp -R "+str(portage_gid)+" "+settings["DISTDIR"]+"/cvs-src", free=1)
+		spawn("chmod -R g+rw "+settings["DISTDIR"]+"/cvs-src", free=1)
+
 		if ("userpriv" in features) and ("ccache" in features):
 			if (not settings.has_key("CCACHE_DIR")) or (settings["CCACHE_DIR"]==""):
 				settings["CCACHE_DIR"]=settings["PORTAGE_TMPDIR"]+"/ccache"
