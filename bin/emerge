@@ -888,21 +888,21 @@ elif "--zap"==myaction:
 								else:
 									full_package_paths[full_path]=package
 	
-				# determine what the non slot packages are
-				if len(full_package_paths) > 0:
-					# determine the latest installed packages of each cat/pkg key
-					full_paths_keys=full_package_paths.keys()
-					# sort the ebuild paths
-					full_paths_keys.sort()
-					previous_package_set=None
-					for full_path in full_paths_keys:
-						# construct the key that will be used to determine when a new package set
-						# is being processed, the package slot is taken into account for this
-						package_parts=portage.pkgsplit(full_package_paths[full_path])
-						slot_path=dirname(full_path)+"/SLOT"
-						if not os.path.exists(slot_path):
-							package_slot=package_parts[1]
-							non_slot_packages.append(package_parts[0]+"-"+package_parts[1])
+			# determine what the non slot packages are
+			if len(full_package_paths) > 0:
+				# determine the latest installed packages of each cat/pkg key
+				full_paths_keys=full_package_paths.keys()
+				# sort the ebuild paths
+				full_paths_keys.sort()
+				previous_package_set=None
+				for full_path in full_paths_keys:
+					# construct the key that will be used to determine when a new package set
+					# is being processed, the package slot is taken into account for this
+					package_parts=portage.pkgsplit(full_package_paths[full_path])
+					slot_path=dirname(full_path)+"/SLOT"
+					if not os.path.exists(slot_path):
+						package_slot=package_parts[1]
+						non_slot_packages.append(package_parts[0]+"-"+package_parts[1])
 
 		full_paths=full_ebuild_paths.keys()
 		full_paths.extend(full_package_paths.keys())

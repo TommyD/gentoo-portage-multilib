@@ -1,6 +1,10 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+  11 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge :
+  changed indentation of a code part that wasn't at the right level. It got the
+  count of the non slot packages during --zap completely wrong
+
 *portage 1.8.9_pre7 (11 Feb 2002)
 
   11 Feb 2002; G.Bevin <gbevin@gentoo.org> portage.py :
