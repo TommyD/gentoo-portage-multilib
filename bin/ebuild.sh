@@ -433,10 +433,10 @@ econf() {
 		# if the profile defines a location to install libs to aside from default, pass it on.
 		# if the ebuild passes in --libdir, they're responsible for the conf_libdir fun.
 		if [ ! -z "${CONF_LIBDIR}" ] && [ "${*/--libdir}" == "$*" ]; then
-			if [ "${*/--prefix}" == "${EXTRA_ECONF}" ]; then
+			if [ "${*/--prefix}" == "$*" ]; then
 				CONF_PREFIX="/usr"
 			else
-				local args="$(echo $@)"
+				local args="$(echo $*)"
 				local -a pref=($(echo ${args/*--prefix[= ]}))
 				CONF_PREFIX=${pref}
 			fi
