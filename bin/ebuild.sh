@@ -943,7 +943,46 @@ inherit() {
 			olocation="${PORTDIR_OVERLAY}/eclass/${1}.eclass"
 			if [ -e "$olocation" ]; then
 				location="${olocation}"
+		
+		#We need to back up the value of DEPEND and RDEPEND to B_DEPEND and B_RDEPEND
+		#(if set).. and then restore them after the inherit call.
+	
+		#turn off glob expansion
+		set -f
+		unset B_RDEPEND B_DEPEND
+		if [ "${RDEPEND-unset}" != "unset" ]; then
+			export B_RDEPEND="${RDEPEND}"
+		fi
+		if [ "${DEPEND-unset}" != "unset" ]; then
+			export B_DEPEND="${DEPEND}"
+		fi
+		unset DEPEND RDEPEND
+		#turn on glob expansion
+		set +f
+		
 			fi
+
+		#turn off glob expansion
+		set -f
+		if [ "${RDEPEND-unset}" != "unset" ]; then
+			export E_RDEPEND="${E_RDEPEND} ${RDEPEND}"
+		fi
+		if [ "${DEPEND-unset}" != "unset" ]; then
+			export E_DEPEND="${E_DEPEND} ${DEPEND}"
+		fi
+		if [ "${B_RDEPEND-unset}" != "unset" ]; then
+			export RDEPEND="${B_RDEPEND}"
+		else
+			unset RDEPEND
+		fi
+		if [ "${B_DEPEND-unset}" != "unset" ]; then
+			export DEPEND="${B_DEPEND}"
+		else
+			unset DEPEND
+		fi
+		#turn on glob expansion
+		set +f
+			
 		fi
 		debug-print "inherit: $1 -> $location"
 		source "$location" || die "died sourcing $location in inherit()"
@@ -974,26 +1013,30 @@ EXPORT_FUNCTIONS() {
 	done
 }
 
-# adds all parameters to DEPEND and RDEPEND
+# adds all parameters to E_DEPEND and E_RDEPEND, which get added to DEPEND and RDEPEND
+# after the ebuild has been processed. This is important to allow users to use DEPEND="foo"
+# without frying dependencies added by an earlier inherit. It also allows RDEPEND to work
+# properly, since a lot of ebuilds assume that an unset RDEPEND gets its value from DEPEND.
+# Without eclasses, this is true. But with them, the eclass may set RDEPEND itself (or at
+# least used to) which would prevent RDEPEND from getting its value from DEPEND. This is
+# a side-effect that made eclasses have unreliable dependencies.
+
 newdepend() {
 	debug-print-function newdepend $*
-	debug-print "newdepend: DEPEND=$DEPEND RDEPEND=$RDEPEND"
+	debug-print "newdepend: E_DEPEND=$E_DEPEND E_RDEPEND=$E_RDEPEND"
 
 	while [ -n "$1" ]; do
 		case $1 in
 		"/autotools")
-			DEPEND="${DEPEND} sys-devel/autoconf sys-devel/automake sys-devel/make"
+			E_DEPEND="${E_DEPEND} sys-devel/autoconf sys-devel/automake sys-devel/make"
 			;;
 		"/c")
-			DEPEND="${DEPEND} sys-devel/gcc virtual/glibc"
-			RDEPEND="${RDEPEND} virtual/glibc"
+			E_DEPEND="${E_DEPEND} sys-devel/gcc virtual/glibc"
+			E_RDEPEND="${E_RDEPEND} virtual/glibc"
 			;;
 		*)
-			DEPEND="$DEPEND $1"
-			if [ -z "$RDEPEND" ] && [ "${RDEPEND-unset}" == "unset" ]; then
-				export RDEPEND="$DEPEND"
-			fi
-			RDEPEND="$RDEPEND $1"
+			E_DEPEND="$E_DEPEND $1"
+			E_RDEPEND="$E_RDEPEND $1"
 			;;
 		esac
 		shift
@@ -1056,6 +1099,7 @@ export SANDBOX_ON="1"
 export S=${WORKDIR}/${P}
 source ${EBUILD} || die "error sourcing ebuild"
 #a reasonable default for $S
+unset DEPEND RDEPEND E_RDEPEND E_DEPEND
 if [ "$S" = "" ]; then
 	export S=${WORKDIR}/${P}
 fi
@@ -1073,6 +1117,9 @@ if [ "${RDEPEND-unset}" == "unset" ]; then
 fi
 set +f
 
+#add in dependency info from eclasses
+RDEPEND="$RDEPEND $E_RDEPEND"
+DEPEND="$DEPEND $E_DEPEND"
 for myarg in $*
 do
 	case $myarg in
