@@ -2,6 +2,13 @@
 # Copyright 2001 Gentoo Technologies, Inc.; Distributed under the GPL
 # Written by Daniel Robbins (drobbins@gentoo.org)
 
+*portage 1.8.0 (22 Dec 2001)
+
+  22 Dec 2001; I messed up the "transparent .so library" update.  Included
+  is the correct fix, which seems to allow glibc to update on my system
+  without any tricks.  I just merged a new glibc while in X, without using
+  any of glibc's old pkg_postinst/pkg_preinst hacks.
+  
   21 Dec 2001; man/make.defaults.5, make.conf.5.  Moved make.defaults.5
   to make.conf.5 and updated contents.
 
