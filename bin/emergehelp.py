@@ -170,8 +170,10 @@ def help(myaction,myopts,havecolor=1):
 		print "              ebuilds and tbz2s *would* have been installed if --pretend"
 		print "              weren't used.  Using --pretend is strongly recommended before"
 		print "              installing an unfamiliar package.  In the printout, N = new,"
-		print "              U = upgrading, R = replacing, B = blocked by an already installed"
-		print "              package."
+		print "              U = updating, R = replacing, B = blocked by an already installed"
+		print "              package, D = possible downgrading. --verbose causes affecting"
+		print "              use flags to be printed out accompanied by a '+' for enabled"
+		print "              and a '-' for disabled flags."
 		print
 		print "       "+green("--changelog")+" ("+green("-l")+" short option)"
 		print "              When pretending, also display the ChangeLog entries for packages"
@@ -186,7 +188,9 @@ def help(myaction,myopts,havecolor=1):
 		print "                emerge -S 'perl.*module'"
 		print
 		print "       "+green("--update")+" ("+green("-u")+" short option)"
-		print "              Updates packages to the most recent version available."
+		print "              Updates packages to the best version available, which may not"
+		print "              always be the highest version number due to masking for testing"
+		print "              and development."
 		print
 		print "       "+green("--deep")
 		print "              When used in conjunction with --update, this flag forces emerge"
@@ -209,8 +213,7 @@ def help(myaction,myopts,havecolor=1):
 		print "              available at the time of dependancy calculation."
 		print
 		print "       "+green("--verbose")+" ("+green("-v")+" short option)"
-		print "              Tell emerge to run in verbose mode.  Currently, this causes"
-		print "              emerge to print out GNU info errors, if any."
+		print "              Tell emerge to run in verbose mode."
 	elif myaction in ["rsync","sync"]:
 		print
 		print bold("Usage: ")+turquoise("emerge")+" "+turquoise("sync")

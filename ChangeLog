@@ -1,6 +1,20 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  07 Feb 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Move
+	logdir check/generation code so that it's created before 'clean'. Fix
+	the usemask/archkeys bug and a related bug with the var enabled.
+
+  07 Feb 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Make per-
+	ebuild logs use the counter to get a chronilogical list instead of a
+	timestamp based one.
+	
+  07 Feb 2003; Nicholas Jones <carpaski@gentoo.org> emerge: If a package
+	is requested to be updated but is not merged, still add it to world.
+	
+  07 Feb 2003; Nicholas Jones <carpaski@gentoo.org> *: Update to help.
+	Mostly comments on --verbose. Clarification on make.conf* mirrorselect.
+		
 *portage-2.0.46-r11 (04 Feb 2003): Fixups
 
   04 Feb 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: distcc

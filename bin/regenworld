@@ -1,0 +1,65 @@
+#!/usr/bin/env python2.2
+# Copyright 1999-2002 Gentoo Technologies, Inc.
+# Distributed under the terms of the GNU General Public License v2
+# $Header$
+
+import portage,commands,sys,string
+
+def getlist(mode):
+	if mode=="system":
+		if portage.profiledir:
+			pfile=portage.profiledir+"/packages"
+		else:
+			print "!!! No profile directory; system mode unavailable."
+			sys.exit(1)
+	elif mode=="world":
+		pfile="/var/cache/edb/world"
+	try:
+		myfile=open(pfile,"r")
+		mylines=myfile.readlines()
+		myfile.close()
+	except OSError:
+		print "!!! Couldn't open "+pfile+"; exiting."
+		sys.exit(1)
+	except IOError:
+		#world file doesn't exist
+		mylines=[]
+	mynewlines=[]
+	for x in mylines:
+		myline=string.join(string.split(x))
+		if not len(myline):
+			continue
+		elif myline[0]=="#":
+			continue
+		elif mode=="system":
+			if myline[0]!="*":
+				continue
+			myline=myline[1:]
+		mynewlines.append(myline.strip())
+	return mynewlines
+
+biglist=string.split(commands.getstatusoutput("/usr/lib/portage/bin/regenworld.sh")[1])
+worldlist=portage.grabfile("/var/cache/edb/world")
+osyslist=getlist("system")
+syslist=[]
+for mykey in osyslist:
+	print "candidate:",mykey
+	mylist=portage.db["/"]["vartree"].dbapi.match(mykey)
+	if mylist:
+		mykey=portage.cpv_getkey(mylist[0])
+		if mykey not in syslist:
+			syslist.append(mykey)
+
+for mykey in biglist:
+	#print "checking:",mykey
+	mylist=portage.db["/"]["vartree"].dbapi.match(mykey)
+	if mylist:
+		#print "mylist:",mylist
+		myfavkey=portage.cpv_getkey(mylist[0])
+		if (myfavkey not in syslist) and (myfavkey not in worldlist):
+			print "add to world:",myfavkey
+			worldlist.append(myfavkey)
+
+myfile=open("/var/cache/edb/world", "w")
+myfile.write(string.join(worldlist, '\n')+'\n')
+myfile.close()

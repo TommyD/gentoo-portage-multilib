@@ -18,9 +18,9 @@ if [ "$*" != "depend" ]; then
 			install -d ${PORT_LOGDIR} &>/dev/null
 			chown root:portage ${PORT_LOGDIR} &>/dev/null
 			chmod g+rwxs ${PORT_LOGDIR} &> /dev/null
-			touch "${PORT_LOGDIR}/$(date +%y%m%d)-${PF}.log" &> /dev/null
-			chmod g+w "${PORT_LOGDIR}/$(date +%y%m%d)-${PF}.log" &> /dev/null
-			$0 $* 2>&1 | tee -a "${PORT_LOGDIR}/$(date +%y%m%d)-${PF}.log"
+			touch "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log" &> /dev/null
+			chmod g+w "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log" &> /dev/null
+			$0 $* 2>&1 | tee -a "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log"
 			if [ "$?" != "0" ]; then
 				echo "Problem creating logfile in ${PORT_LOGDIR}"
 				exit 1

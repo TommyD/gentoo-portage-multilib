@@ -1316,10 +1316,6 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 		myso=getstatusoutput("uname -r")
 		settings["KVERS"]=myso[1]
 
-	# if any of these are being called, handle them -- running them out of the sandbox -- and stop now.
-	if mydo in ["help","clean","setup","prerm","postrm","preinst","postinst","config"]:
-		return spawn("/usr/sbin/ebuild.sh "+mydo,debug,free=1)
-	
 	# get possible slot information from the deps file
 	if mydo=="depend":
 		myso=getstatusoutput("/usr/sbin/ebuild.sh depend")
@@ -1334,6 +1330,10 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 			print "!!! Cannot create log... No write access / Does not exist"
 			print "!!! PORT_LOGDIR:",settings["PORT_LOGDIR"]
 			settings["PORT_LOGDIR"]=""
+	
+	# if any of these are being called, handle them -- running them out of the sandbox -- and stop now.
+	if mydo in ["help","clean","setup","prerm","postrm","preinst","postinst","config"]:
+		return spawn("/usr/sbin/ebuild.sh "+mydo,debug,free=1)
 	
 	try: 
 		settings["SLOT"], settings["RESTRICT"], myuris = db["/"]["porttree"].dbapi.aux_get(mykey,["SLOT","RESTRICT","SRC_URI"])
@@ -1921,9 +1921,11 @@ def dep_opconvert(mysplit,myuse,usemask=[]):
 			if (len(myuse)==1) and (myuse[0]=="*"):
 				# enable it even if it's ! (for repoman) but kill it if it's
 				# an arch variable that isn't for this arch. XXX Sparc64?
-				if (mysplit[mypos][:-1] not in usemask) or \
+				if (mysplit[mypos][:-1] not in settings.usemask) or \
 						(mysplit[mypos][:-1]==settings["ARCH"]):
 					enabled=1
+				else:
+					enabled=0
 			else:
 				if mysplit[mypos][0]=="!":
 					myusevar=mysplit[mypos][1:-1]

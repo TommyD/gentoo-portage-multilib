@@ -493,6 +493,7 @@ class depgraph:
 			edepend["DEPEND"] =""
 			edepend["RDEPEND"]=string.join(mytbz2.getelements("RDEPEND")," ")
 			edepend["PDEPEND"]=string.join(mytbz2.getelements("PDEPEND")," ")
+			edepend["CDEPEND"]=string.join(mytbz2.getelements("CDEPEND")," ")
 			edepend["REBUILD"]=string.join(mytbz2.getelements("REBUILD")," ")
 			edepend["SLOT"]   =mytbz2.getfile("SLOT",mypkgparts[2])
 		elif mytype=="ebuild":
@@ -895,9 +896,23 @@ class depgraph:
 				sys.exit(1)
 
 		mymergelist=[]
+		myfavs=portage.grabfile(portage.root+"var/cache/edb/world")
+		myfavdict=genericdict(myfavs)
+		mysysdict=genericdict(syslist)
 		for x in range(len(mylist)):
 			if mylist[x][3]!="nomerge":
+				# Add to the mergelist
 				mymergelist.append(mylist[x])
+			else:
+				# Add to the world file. Since we won't be able to later.
+				myfavkey=portage.cpv_getkey(mylist[x][2])
+				if (not "--fetchonly" in myopts) and (myfavkey in favorites):
+					#don't record if already in system profile or already recorded
+					if (not mysysdict.has_key(myfavkey)) and (not myfavdict.has_key(myfavkey)):
+						#we don't have a favorites entry for this package yet; add one
+						myfavdict[myfavkey]=myfavkey
+						print ">>> Recording",myfavkey,"in \"world\" favorites file..."
+		portage.writedict(myfavdict,portage.root+"var/cache/edb/world",writekey=0)
 
 		mergecount=0
 		for x in mymergelist:
