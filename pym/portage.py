@@ -76,9 +76,9 @@ def abssymlink(symlink):
 	return os.path.normpath(mylink)
 
 dircache={}
-def listdir(mypath,recursive=0,filesonly=0,ignorecvs=0,ignorelist=[]):
+def listdir(mypath,recursive=0,filesonly=0,ignorecvs=0,ignorelist=[],EmptyOnError=0):
 	"""List directory contents, using cache.
-	Exceptions will be propagated to the caller."""
+	Returns none unless EmptyOnError is non-zero"""
 	if dircache.has_key(mypath):
 		cached_mtime, list, ftype = dircache[mypath]
 	else:
@@ -86,12 +86,15 @@ def listdir(mypath,recursive=0,filesonly=0,ignorecvs=0,ignorelist=[]):
 	if os.path.isdir(mypath):
 		mtime = os.stat(mypath)[ST_MTIME]
 	else:
+		if EmptyOnError:
+			return []
 		return None
 	if mtime != cached_mtime:
 		list = os.listdir(mypath)
 		ftype = []
 		for x in range(len(list)-1,-1,-1):
-			if list[x] in ignorelist:
+			if (list[x] in ignorelist) or \
+			   (ignorecvs and (len(list[x]) > 2) and (list[x][:2]==".#")):
 				del list[x]
 				continue
 			if os.path.isfile(mypath+"/"+list[x]):
@@ -109,7 +112,7 @@ def listdir(mypath,recursive=0,filesonly=0,ignorecvs=0,ignorelist=[]):
 		x=0
 		while x<len(ftype):
 			if ftype[x]==1 and not (ignorecvs and (len(list[x])>=3) and (("/"+list[x][-3:])=="/CVS")):
-				ignored=listdir(mypath+"/"+list[x],recursive,filesonly,ignorecvs)
+				ignored=listdir(mypath+"/"+list[x],recursive,filesonly,ignorecvs,EmptyOnError)
 				m,l,f = dircache[mypath+"/"+list[x]]
 				l=l[:]
 				for y in range(0,len(l)):
@@ -384,7 +387,7 @@ def env_update(makelinks=1):
 		prevmask=os.umask(0)
 		os.makedirs(root+"etc/env.d",0755)
 		os.umask(prevmask)
-	fns=listdir(root+"etc/env.d")
+	fns=listdir(root+"etc/env.d",EmptyOnError=1)
 	fns.sort()
 	pos=0
 	while (pos<len(fns)):
@@ -1236,7 +1239,7 @@ def digestgen(myarchives,overwrite=1,manifestonly=0):
 			print e
 
 	print green(">>> Generating manifest file...")
-	mypfiles=listdir(pbasedir,recursive=1,filesonly=1,ignorecvs=1)
+	mypfiles=listdir(pbasedir,recursive=1,filesonly=1,ignorecvs=1,EmptyOnError=1)
 	if "Manifest" in mypfiles:
 		del mypfiles[mypfiles.index("Manifest")]
 
@@ -1379,7 +1382,7 @@ def digestcheck(myfiles,strict=0):
 				return 0
 	else:
 		# Check the portage-related files here.
-		mymfiles=listdir(pbasedir,recursive=1,filesonly=1,ignorecvs=1)
+		mymfiles=listdir(pbasedir,recursive=1,filesonly=1,ignorecvs=1,EmptyOnError=1)
 		for x in range(len(mymfiles)-1,-1,-1):
 			if mymfiles[x]=='Manifest': # We don't want the manifest in out list.
 				del mymfiles[x]
@@ -1789,10 +1792,10 @@ def merge(mycat,mypkg,pkgloc,infloc,myroot,myebuild=None):
 		#shell error code
 	return mylink.merge(pkgloc,infloc,myroot,myebuild)
 	
-def unmerge(cat,pkg,myroot):
+def unmerge(cat,pkg,myroot,mytrimworld=1):
 	mylink=dblink(cat,pkg,myroot)
 	if mylink.exists():
-		mylink.unmerge()
+		mylink.unmerge(trimworld=mytrimworld)
 	mylink.delete()
 
 def relparse(myver):
@@ -1961,7 +1964,7 @@ def pkgsplit(mypkg,silent=1):
 	myparts=string.split(mypkg,'-')
 	if len(myparts)<2:
 		if not silent:
-			print "!!! Name error in",mypkg+": missing a version or name part." 
+			print "!!! Name error in",mypkg+": missing a version or name part."
 		pkgcache[mypkg]=None
 		return None
 	for x in myparts:
@@ -2979,10 +2982,7 @@ class vardbapi(dbapi):
 			cpc=self.cpcache[mycp]
 			if cpc[0]==mystat:
 				return cpc[1]
-		try:
-			list=listdir(self.root+"var/db/pkg/"+mysplit[0])
-		except OSError:
-			return []
+		list=listdir(self.root+"var/db/pkg/"+mysplit[0])
 		if (list==None):
 			return []
 		returnme=[]
@@ -2999,10 +2999,7 @@ class vardbapi(dbapi):
 	def cp_all(self):
 		returnme=[]
 		for x in categories:
-			try:
-				mylist=listdir(self.root+"var/db/pkg/"+x)
-			except OSError:
-				mylist=[]
+			mylist=listdir(self.root+"var/db/pkg/"+x,EmptyOnError=1)
 			for y in mylist:
 				mysplit=pkgsplit(y)
 				if not mysplit:
@@ -3081,10 +3078,7 @@ class vartree(packagetree):
 		a=catpkgsplit(cpv)
 		if not a:
 			return 0
-		try:
-			mylist=listdir(self.root+"var/db/pkg/"+a[0])
-		except OSError:
-			return 0
+		mylist=listdir(self.root+"var/db/pkg/"+a[0],EmptyOnError=1)
 		for x in mylist:
 			b=pkgsplit(x)
 			if not b:
@@ -3103,10 +3097,7 @@ class vartree(packagetree):
 		if not mykey:
 			return []
 		mysplit=mykey.split("/")
-		try:
-			mydirlist=listdir(self.root+"var/db/pkg/"+mysplit[0])
-		except:
-			return []
+		mydirlist=listdir(self.root+"var/db/pkg/"+mysplit[0],EmptyOnError=1)
 		returnme=[]
 		for x in mydirlist:
 			mypsplit=pkgsplit(x)
@@ -3135,10 +3126,7 @@ class vartree(packagetree):
 		"""Does the particular node (cat/pkg key) exist?"""
 		mykey=key_expand(mykey,self.dbapi)
 		mysplit=mykey.split("/")
-		try:
-			mydirlist=listdir(self.root+"var/db/pkg/"+mysplit[0])
-		except:
-			return 0
+		mydirlist=listdir(self.root+"var/db/pkg/"+mysplit[0],EmptyOnError=1)
 		for x in mydirlist:
 			mypsplit=pkgsplit(x)
 			if not mypsplit:
@@ -3253,6 +3241,11 @@ class portdbapi(dbapi):
 		if not mycpv:
 			return ""
 		mysplit=mycpv.split("/")
+		if mysplit[0]=="virtual":
+			print "!!! Cannot resolve a virtual package to an ebuild."
+			print "!!! This is a bug, please report it. ("+mycpv+")"
+			sys.exit(1)
+		
 		psplit=pkgsplit(mysplit[1])
 		if self.oroot:
 			myloc=self.oroot+"/"+mysplit[0]+"/"+psplit[0]+"/"+mysplit[1]+".ebuild"
@@ -3491,67 +3484,48 @@ class portdbapi(dbapi):
 		"returns a list of all keys in our tree"
 		biglist=[]
 		for x in categories:
-			try:
-				for y in listdir(self.root+"/"+x):
+			for y in listdir(self.root+"/"+x,EmptyOnError=1):
+				if y=="CVS":
+					continue
+				biglist.append(x+"/"+y)
+			if self.oroot:
+				for y in listdir(self.oroot+"/"+x,EmptyOnError=1):
 					if y=="CVS":
 						continue
-					biglist.append(x+"/"+y)
-			except:
-				#category directory doesn't exist
-				pass
-			if self.oroot:
-				try:
-					for y in listdir(self.oroot+"/"+x):
-						if y=="CVS":
-							continue
-						mykey=x+"/"+y
-						if not mykey in biglist:
-							biglist.append(mykey)
-				except:
-					pass
+					mykey=x+"/"+y
+					if not mykey in biglist:
+						biglist.append(mykey)
 		return biglist
 	
 	def p_list(self,mycp):
 		returnme=[]
-		try:
-			for x in listdir(self.root+"/"+mycp):
-				if x[-7:]==".ebuild":
-					returnme.append(x[:-7])	
-		except (OSError,IOError),e:
-			pass
+		for x in listdir(self.root+"/"+mycp,EmptyOnError=1):
+			if x[-7:]==".ebuild":
+				returnme.append(x[:-7])	
 		if self.oroot:
-			try:
-				for x in listdir(self.oroot+"/"+mycp):
-					if x[-7:]==".ebuild":
-						mye=x[:-7]
-						if not mye in returnme:
-							returnme.append(mye)
-			except (OSError,IOError),e:
-				pass
+			for x in listdir(self.oroot+"/"+mycp,EmptyOnError=1):
+				if x[-7:]==".ebuild":
+					mye=x[:-7]
+					if not mye in returnme:
+						returnme.append(mye)
 		return returnme
 
 	def cp_list(self,mycp):
 		mysplit=mycp.split("/")
 		returnme=[]
-		try:
-			list=listdir(self.root+"/"+mycp)
+		list=listdir(self.root+"/"+mycp,EmptyOnError=1)
+		if list:
+			for x in list:
+				if x[-7:]==".ebuild":
+					returnme.append(mysplit[0]+"/"+x[:-7])	
+		if self.oroot:
+			list=listdir(self.oroot+"/"+mycp,EmptyOnError=1)
 			if list:
 				for x in list:
 					if x[-7:]==".ebuild":
-						returnme.append(mysplit[0]+"/"+x[:-7])	
-		except (OSError,IOError),e:
-			pass
-		if self.oroot:
-			try:
-				list=listdir(self.oroot+"/"+mycp)
-				if list:
-					for x in list:
-						if x[-7:]==".ebuild":
-							mycp=mysplit[0]+"/"+x[:-7]
-							if not mycp in returnme:
-								returnme.append(mycp)
-			except (OSError,IOError),e:
-				pass
+						mycp=mysplit[0]+"/"+x[:-7]
+						if not mycp in returnme:
+							returnme.append(mycp)
 		return returnme
 
 	def freeze(self):
@@ -3956,10 +3930,10 @@ class dblink:
 			pkgfiles=self.getcontents()
 			if not pkgfiles:
 				return
-		#Now, don't assume that the name of the ebuild is the same as the name of the dir;
-		#the package may have been moved.
+		# Now, don't assume that the name of the ebuild is the same as the
+		# name of the dir; the package may have been moved.
 		myebuildpath=None
-		mystuff=listdir(self.dbdir)
+		mystuff=listdir(self.dbdir,EmptyOnError=1)
 		for x in mystuff:
 			if x[-7:]==".ebuild":
 				myebuildpath=self.dbdir+"/"+x
@@ -4122,7 +4096,7 @@ class dblink:
 				del newvirts[myvirt]
 		writedict(newvirts,self.myroot+"var/cache/edb/virtuals")
 	
-		#new code to remove stuff from the world file when it's unmerged.
+		# New code to remove stuff from the world and virtuals files when unmerged.
 		if trimworld:
 			worldlist=grabfile(self.myroot+"var/cache/edb/world")
 			mycpv=self.cat+"/"+self.pkg
@@ -4147,6 +4121,24 @@ class dblink:
 			for x in newworldlist:
 				myworld.write(x+"\n")
 			myworld.close()
+			
+			# Now we need to cleanup the virtuals table.
+			myvkey=self.cat+"/"+pkgsplit(self.pkg)[0]
+			myvirts=grabdict(destroot+"var/cache/edb/virtuals")
+			for mycatpkg in self.getelements("PROVIDE"):
+				if isspecific(mycatpkg):
+					#convert a specific virtual like dev-lang/python-2.2 to dev-lang/python
+					mysplit=catpkgsplit(mycatpkg)
+					if not mysplit:
+						print "unmerge(): skipping invalid PROVIDE entry:",mycatpkg
+						continue
+					mycatpkg=mysplit[0]+"/"+mysplit[1]
+				if myvirts.has_key(mycatpkg):
+					while (myvkey in myvers[mycatpkg]):
+						del myvirts[mycatpkg][myvirts[mycatpkg].index(myvkey)]
+					if not myvirts[mycatpkg]:
+						del myvirts[mycatpkg]
+			writedict(myvirts,destroot+"var/cache/edb/virtuals")
 
 		#do original postrm
 		if myebuildpath and os.path.exists(myebuildpath):
@@ -4805,7 +4797,7 @@ if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
 		if not mtimedb.has_key("updates"):
 			mtimedb["updates"]={}
 		try:
-			for myfile in listdir(updpath):
+			for myfile in listdir(updpath,EmptyOnError=1):
 				mykey=updpath+"/"+myfile
 				if not os.path.isfile(mykey):
 					continue

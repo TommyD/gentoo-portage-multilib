@@ -40,6 +40,7 @@ options=[
 "--onlydeps",     "--pretend",
 "--quiet",        "--resume",
 "--searchdesc",   "--selective",
+"--skipfirst",
 "--update",       "--upgradeonly",
 "--usepkg",       "--usepkgonly",
 "--verbose",      "--version"
@@ -93,6 +94,8 @@ for x in tmpcmdline:
 
 # process the command arguments
 for x in cmdline:
+	if not x:
+		continue
 	if len(x)>=2 and x[0:2]=="--":
 			if x in options:
 				myopts.append(x)
@@ -162,6 +165,11 @@ if ("--usepkgonly" in myopts) and not ("--usepkg" in myopts):
 if ("--upgradeonly" in myopts) and not ("--update" in myopts):
 	print ">>> --upgradeonly implies --update... adding --update to options."
 	myopts.append("--update")
+
+# Also allow -l to apply --pretend/-p
+if ("--changelog" in myopts) and not ("--pretend" in myopts):
+	print ">>> --changelog implies --pretend... adding --pretend to options."
+	myopts.append("--pretend")
 
 # Set so that configs will be merged regardless of remembered status
 if ("--noconfmem" in myopts):
@@ -537,6 +545,8 @@ class depgraph:
 		#SLOT-aware emerge
 		#IUSE-aware emerge
 		#"no downgrade" emerge
+		#print "mybigkey:",mybigkey
+				
 		jbigkey=string.join(mybigkey)
 		if self.digraph.hasnode(jbigkey+" merge") or self.digraph.hasnode(jbigkey+" nomerge"):
 			#this conditional is needed to prevent infinite recursion on already-processed deps
@@ -665,7 +675,7 @@ class depgraph:
 				try:
 					self.mysd=self.select_dep(portage.root,mykey,arg=x)
 				except Exception, e:
-					print "\n!!! Problem in",mykey,"dependancies."
+					print "\n!!! Problem in",mykey,"dependencies."
 					print "!!!",e
 					sys.exit(1)
 
@@ -1016,7 +1026,7 @@ class depgraph:
 						if mysplit[1]+mysplit[2]!=portage.VERSION:
 							if mylist.index(x)<len(mylist)-1:
 								print red("*** Portage will stop merging at this point and reload itself,")
-								print red("    recalculate dependancies, and complete the merge.")
+								print red("    recalculate dependencies, and complete the merge.")
 								if "--update" not in myopts:
 									print darkgreen("    You may avoid the remerging of packages by updating portage on its own.")
 								print
@@ -1101,6 +1111,8 @@ class depgraph:
 			print green("*** Resuming merge...")
 			emergelog(" *** Resuming merge...")
 			mymergelist=portage.mtimedb["resume"]["mergelist"][:]
+			if ("--skipfirst" in myopts) and mymergelist:
+				del mymergelist[0]
 		else:
 			myfavs=portage.grabfile(portage.root+"var/cache/edb/world")
 			myfavdict=genericdict(myfavs)
@@ -1421,7 +1433,7 @@ def unmerge(unmerge_action, unmerge_files):
 			emergelog("=== Unmerging... ("+y+")")
 			mysplit=string.split(y,"/")
 			#unmerge...
-			retval=portage.unmerge(mysplit[0],mysplit[1],portage.root)
+			retval=portage.unmerge(mysplit[0],mysplit[1],portage.root,unmerge_action not in ["clean","prune"])
 			if retval:
 				emergelog(" !!! unmerge FAILURE: "+y)
 			else:
@@ -1799,18 +1811,18 @@ elif "depclean"==myaction:
 	if not myvarlist:
 		print "!!! You have no /var/db tree. This is a problem."
 	if not alldeps:
-		print "!!! You have no dependancies. Impossible. Bug."
+		print "!!! You have no dependencies. Impossible. Bug."
 
 	if not (syslist and worldlist and myvarlist and alldeps):
 		print
 		sys.exit(1)
 
 	reallist=[]
-	for x in range(len(alldeps)-1):
-		myparts=portage.catpkgsplit(string.split(alldeps[x])[2])
+	for x in alldeps:
+		myparts=portage.catpkgsplit(string.split(x)[2])
 		catpack=myparts[0]+"/"+myparts[1]
 		if catpack not in reallist:
-			reallist.append(myparts[0]+"/"+myparts[1])
+			reallist.append(catpack)
 
 	cleanlist=[]
 	for x in myvarlist:
@@ -1891,7 +1903,7 @@ else:
 			print "Calculating dependencies  ",
 			retval,favorites=mydepgraph.select_files(myfiles)
 			if not retval:
-				print "\n!!! Error calculating dependancies. Please correct."
+				print "\n!!! Error calculating dependencies. Please correct."
 				sys.exit(1)
 			print "\b\b ...done!"
 
@@ -1903,7 +1915,7 @@ else:
 	else:
 		if ("--buildpkgonly" in myopts):
 			if not mydepgraph.digraph.hasallzeros():
-				print "\n!!! --buildpkgonly requires all dependancies to be merged."
+				print "\n!!! --buildpkgonly requires all dependencies to be merged."
 				print "!!! Cannot merge requested packages. Merge deps and try again.\n"
 				sys.exit(1)
 

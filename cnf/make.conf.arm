@@ -135,7 +135,7 @@ CHOST="armv4l-unknown-linux-gnu"
 #RESUMECOMMAND="/usr/bin/wget -c -t 5 --passive-ftp \${URI} -P \${DISTDIR}"
 #
 # Using wget, ratelimiting downloads
-#FETCHCOMMAND="/usr/bin/wget -t 5 --passive-ftp \${URI} -P \${DISTDIR}"
+#FETCHCOMMAND="/usr/bin/wget -t 5 --passive-ftp --limit-rate=200k \${URI} -P \${DISTDIR}"
 #RESUMECOMMAND="/usr/bin/wget -c -t 5 --passive-ftp --limit-rate=200k \${URI} -P \${DISTDIR}"
 #
 # Lukemftp (BSD ftp):

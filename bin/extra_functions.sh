@@ -242,7 +242,7 @@ epatch() {
 	fi
 	for x in ${EPATCH_SOURCE}
 	do
-		# New ARCH dependant patch naming scheme...
+		# New ARCH dependent patch naming scheme...
 		#
 		#   ???_arch_foo.patch
 		#

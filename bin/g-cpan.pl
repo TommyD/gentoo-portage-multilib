@@ -45,7 +45,7 @@
 #
 
 # modules to use - these will need to be marked as
-# dependancies, and installable by portage
+# dependencies, and installable by portage
 use strict;
 use File::Spec;
 use File::Path;

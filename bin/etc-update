@@ -185,6 +185,8 @@ function do_file() {
 
 			if (( ${my_input} == 0 )); then
 				my_input=1
+			elif (( ${my_input} == -1 )); then
+				return
 			elif (( ${my_input} == ${fcount} )); then
 				break
 			fi
@@ -222,11 +224,17 @@ function do_cfg() {
 		if [ "${OVERWRITE_ALL}" == "yes" ]; then
 			my_input=1
 		else
-			( echo "Showing differences between ${ofile} and ${file}"
-			  `echo "${diff_command}" |
-			   sed -e "s:%file1:${ofile}:" \
-				   -e "s:%file2:${file}:"` )
-				   # | ${pager}
+		  showdiffcmd=$(echo "${diff_command}" |
+				sed -e "s:%file1:${ofile}:" -e "s:%file2:${file}:")
+				
+			if [ "${using_editor}" == 1 ]; then
+				${showdiffcmd}
+			else
+				(
+					echo "Showing differences between ${ofile} and ${file}"
+					${showdiffcmd}
+				) | ${pager}
+			fi
 			echo -n "1) Replace original with update
 2) Delete update, keeping original as is
 3) Interactively merge original with update
@@ -340,6 +348,7 @@ mv_opts=`get_config mv_opts`
 cp_opts=`get_config cp_opts`
 pager=`get_config pager`
 diff_command=`get_config diff_command`
+using_editor=`get_config using_editor`
 merge_command=`get_config merge_command`
 declare -i mode=`get_config mode`
 [ -z ${mode} ] && mode=0

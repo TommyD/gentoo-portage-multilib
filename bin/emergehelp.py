@@ -129,7 +129,7 @@ def help(myaction,myopts,havecolor=1):
 		print
 		print "       "+green("--buildpkgonly")+" ("+green("-B")+" short option)"
 		print "              Creates binary a binary package, but does not merge it to the"
-		print "              system. This has the restriction that unsatisfied dependancies"
+		print "              system. This has the restriction that unsatisfied dependencies"
 		print "              must not exist for the desired package as they cannot be used if"
 		print "              they do not exist on the system."
 		print
