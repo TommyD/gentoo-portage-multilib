@@ -1643,6 +1643,13 @@ def unmerge(unmerge_action, unmerge_files):
 			mymatch=localtree.dep_match(x)
 		except KeyError:
 			mymatch=None
+		except ValueError, errpkgs:
+			print "\n\n!!! The short ebuild name \"" + x + "\" is ambiguous.  Please specify"
+			print "!!! one of the following fully-qualified ebuild names instead:\n"
+			for i in errpkgs[0]:
+				print "    " + green(i)
+			print
+			sys.exit(1)
 
 		if not mymatch and x[0] not in "<>=~":
 			#add a "=" if missing
@@ -1893,6 +1900,8 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 
 		servertimestampdir  = portage.settings["PORTAGE_CACHEDIR"]+"/"
 		servertimestampfile = portage.settings["PORTAGE_CACHEDIR"]+"/timestamp.chk"
+		tmpservertimestampdir  = portage.settings["PORTAGE_TMPDIR"]+"/"
+		tmpservertimestampfile = portage.settings["PORTAGE_TMPDIR"]+"/timestamp.chk"
 
 		# We only use the backup if a timestamp exists in the portdir.
 		content=None
@@ -1910,9 +1919,6 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 			os.mkdir(servertimestampdir)
 			os.chown(servertimestampdir, os.getuid(), portage.portage_gid)
 			os.chmod(servertimestampdir, 02775)
-
-		if os.path.exists(servertimestampfile):
-			os.unlink(servertimestampfile)
 
 		#exitcode=0
 		try:
@@ -1952,11 +1958,11 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 				print "\n\n>>> Starting retry %d of %d with %s" % (retries,maxretries,dosyncuri)
 
 			print ">>> checking server timestamp ..."
-			mycommand=rsynccommand+" "+dosyncuri+"/metadata/timestamp.chk "+servertimestampdir
+			mycommand=rsynccommand+" "+dosyncuri+"/metadata/timestamp.chk "+tmpservertimestampdir
 			exitcode=portage.spawn(mycommand,portage.settings,free=1)
 			if (exitcode==0):
 				try:
-					servertimestamp = time.mktime(time.strptime(portage.grabfile(servertimestampfile)[0], "%a, %d %b %Y %H:%M:%S +0000"))
+					servertimestamp = time.mktime(time.strptime(portage.grabfile(tmpservertimestampfile)[0], "%a, %d %b %Y %H:%M:%S +0000"))
 				except:
 					servertimestamp = 0
 				
@@ -2065,6 +2071,14 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 			portage.spawn("rm -Rf "+cachedir+"/*",portage.settings,free=1)
 		else:
 			os.mkdir(cachedir)
+
+		# save timestamp.chk for next timestamp check.
+		try:
+			portage.movefile(tmpservertimestampfile, servertimestampfile)
+		except Exception, e:
+			print "!!! Failed to save current timestamp."
+			print "!!!",e
+
 		try:
 			os.umask(002)
 			os.chown(cachedir, os.getuid(), portage.portage_gid)

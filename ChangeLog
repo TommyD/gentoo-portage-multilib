@@ -2,6 +2,10 @@
 # Copyright 2000-2004 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  24 Jan 2004; <nakano@gentoo.org> emerge: Improved timestamp check 
+  when 'emerge sync'. Added catching amiguous error when unmerge.
+  This closes #24325.
+
   23 Jan 2004; <nakano@gentoo.org> emerge, portage.py: Fixed 2 bugs. 
   Portage doesn't read local virtuals file, which happens on only cvs
   version. package is blocked by itself.
