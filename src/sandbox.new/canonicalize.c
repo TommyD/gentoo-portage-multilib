@@ -104,8 +104,6 @@ ecanonicalize (const char *name, char *resolved)
 
   for (start = end = name; *start; start = end)
     {
-      struct stat64 st;
-
       /* Skip sequence of multiple path-separators.  */
       while (*start == '/')
 	++start;
@@ -159,13 +157,12 @@ ecanonicalize (const char *name, char *resolved)
 	  dest = __mempcpy (dest, start, end - start);
 	  *dest = '\0';
 
-	  if (__lxstat64 (_STAT_VER, rpath, &st) < 0)
-	    goto error;
-
-	}
+	  }
     }
+#if 0
   if (dest > rpath + 1 && dest[-1] == '/')
     --dest;
+#endif
   *dest = '\0';
 
   return resolved ? memcpy (resolved, rpath, dest - rpath + 1) : rpath;
