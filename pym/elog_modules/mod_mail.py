@@ -35,6 +35,7 @@ def process(mysettings, cpv, logentries, fulltext):
 		mymessage = email.Message.Message()
 		mymessage.set_unixfrom("portage")
 		mymessage.set_payload(fulltext)
+		mymessage["To"] = myrecipient
 		mymessage["Subject"] = "[portage] Ebuild log for %s" % cpv
 				
 		if int(mymailport) > 100000:
