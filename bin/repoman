@@ -728,7 +728,9 @@ for x in scanlist:
 					dep_settings["ARCH"]=arch
 					portage.do_vartree(dep_settings)
 					dep_settings.regenerate()
-					portage.portdb=portage.portdbapi(portdir, dep_settings)
+					# The next line results in a huge memory usage and doesn't seem
+					# to be used anywhere. Levaing it just in case it has a use.
+					#portage.portdb=portage.portdbapi(portdir, dep_settings)
 					arch_caches[arch]=[dep_settings, portage.portdb]
 
 				portage.db["/"]["porttree"]=portage.portagetree("/",dep_settings.getvirtuals("/"))
