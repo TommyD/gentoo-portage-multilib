@@ -1707,14 +1707,12 @@ def post_emerge(retval=0):
 					aux=auxpat.search(x)
 					if not aux:
 						continue
-					auxgroups=aux.groups()	
-					if not (auxgroups[1] or auxgroups[2]):
-						myso=commands.getstatusoutput("/usr/bin/install-info --dir-file="+inforoot+"/dir "+inforoot+"/"+x)[1]
-						if myso!="":
-							badcount=badcount+1
-							if "--verbose" in myopts:
-								print myso
-						icount=icount+1
+					myso=commands.getstatusoutput("/usr/bin/install-info --dir-file="+inforoot+"/dir "+inforoot+"/"+x)[1]
+					if myso!="":
+						badcount=badcount+1
+						if "--verbose" in myopts:
+							print myso
+					icount=icount+1
 				#update mtime so we can potentially avoid regenerating.
 				portage.mtimedb["info"][inforoot]=os.stat(inforoot)[ST_MTIME]
 
