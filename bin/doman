@@ -4,10 +4,24 @@ then
 	echo "${0}: at least one argument needed"
 	return
 fi
+
+#doman is now FHS compliant:
+#
+# /usr/share/man
+# /usr/X11R6/man
+# /opt/gnome/man
+# /opt/kde/man
+
 myloc=$DESTTREE
 if [ "$myloc" = "" ]
 then
 	myloc=/usr
+fi
+if [ "$myloc" = "/usr" ]
+then
+	myext=/share
+else
+	myext=""
 fi
 for x in "$@"
 do
@@ -15,12 +29,12 @@ do
 	mandir=man${md:0:1}
 	if [ -e ${x} ]
 	then
-		if [ ! -d ${D}${myloc}/share/man/${mandir} ]
+		if [ ! -d ${D}${myloc}${myext}/man/${mandir} ]
 	    	then
-			install -d ${D}${myloc}/share/man/${mandir}
+			install -d ${D}${myloc}${myext}/man/${mandir}
 	    	fi
-	    	install -m0644 ${x} ${D}${myloc}/share/man/${mandir}
-	    	gzip -f -9 ${D}${myloc}/share/man/${mandir}/${x##*/}
+	    	install -m0644 ${x} ${D}${myloc}${myext}/man/${mandir}
+	    	gzip -f -9 ${D}${myloc}${myext}/man/${mandir}/${x##*/}
 	else
 	    	echo "doman: ${x} does not exist."
 	fi
