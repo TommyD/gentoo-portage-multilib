@@ -437,5 +437,21 @@ Support mirroring from a set of pre-defined mirrors:
 We need to take advantage of filesizes in digests to detect partial downloads, and restart them.
 We need a way of recording official mirrors (profiles/mirrors?) and selecting our preferred mirror
 from the set (/etc/make.conf?)
+
+Another thing that would be great to add is a way to auto-bind a shell variable
+to a particular filename.  Something like this:
+
+	A1~mirror://gnu/path
+or
+	A1=mirror://gnu/path
+
+Then, later in the build, you can do:
+
+src_unpack() {
+	unpack $A1
+}
+
+This would be a totally *gorgeous* feature.
+
 """
 
