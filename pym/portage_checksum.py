@@ -2,6 +2,7 @@
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
+cvs_id_string="$Id$"[5:-2]
 
 from portage_const import PRIVATE_PATH,PRELINK_BINARY
 import os

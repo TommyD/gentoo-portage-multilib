@@ -712,11 +712,23 @@ class ebuild_handler:
 			mysettings["A"]=string.join(alist," ")
 			mysettings["AA"]=string.join(aalist," ")
 			if ("mirror" in features) or fetchall:
-				fetchme=alluris
-				checkme=aalist
+				fetchme=alluris[:]
+				checkme=aalist[:]
+			elif mydo=="digest":
+				fetchme=alluris[:]
+				checkme=aalist[:]
+				digestfn=mysettings["FILESDIR"]+"/digest-"+mysettings["PF"]
+				if os.path.exists(digestfn):
+					mydigests=digestParseFile(digestfn)
+					if mydigests:
+						for x in mydigests:
+							while x in checkme:
+								i = checkme.index(x)
+								del fetchme[i]
+								del checkme[i]
 			else:
-				fetchme=newuris
-				checkme=alist
+				fetchme=newuris[:]
+				checkme=alist[:]
 
 			try:
 				if not os.path.exists(mysettings["DISTDIR"]):
@@ -782,10 +794,13 @@ class ebuild_handler:
 		os.chmod(logdir, 0770)
 	
 		try:
-			if ("nouserpriv" not in string.split(mysettings["RESTRICT"])):
-				if ("userpriv" in features) and (portage_uid and portage_gid):
+			#XXX: negative restrict
+			myrestrict = mysettings["RESTRICT"].split()
+			if ("nouserpriv" not in myrestrict and "userpriv" not in myrestrict):
+				if ("userpriv" in mysettings.features) and (portage_uid and portage_gid):
 					if (secpass==2):
 						if os.path.exists(mysettings["HOME"]):
++							# XXX: Potentially bad, but held down by HOME replacement above.
 							portage_exec.spawn("rm -Rf "+mysettings["HOME"])
 						if not os.path.exists(mysettings["HOME"]):
 							os.makedirs(mysettings["HOME"])
@@ -909,7 +924,7 @@ class ebuild_handler:
 		try: 
 			mysettings["SLOT"], mysettings["RESTRICT"] = db["/"]["porttree"].dbapi.aux_get(mycpv,["SLOT","RESTRICT"])
 		except (IOError,KeyError):
-			print red("doebuild():")+" aux_get() error; aborting."
+			print red("doebuild():")+" aux_get() error reading "+mycpv+"; aborting."
 			sys.exit(1)
 
 		#initial dep checks complete; time to process main commands

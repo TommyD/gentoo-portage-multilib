@@ -1,9 +1,10 @@
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
+cvs_id_string="$Id$"[5:-2]
 
 import os,sys
-from output import *
+from output import bold, turquoise, green
 
 def shorthelp():
 	print
@@ -168,7 +169,7 @@ def help(myaction,myopts,havecolor=1):
 		print "              used in combination with --pretend all the SRC_URIs will be"
 		print "              displayed multiple mirrors per line, one line per file."
 		print
-		print "       "+green("--fetch-all-uri")
+		print "       "+green("--fetch-all-uri")+" ("+green("-F")+" short option)"
 		print "              Same as --fetchonly except that all package files, including those"
 		print "              not required to build the package, will be processed."
 		print

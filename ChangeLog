@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  26 Feb 2005; Jason Stubbs <jstubbs@gentoo.org> pym/*: Brought forward
+  changes from portage_2_0.
+
   26 Feb 2005; Jason Stubbs <jstubbs@gentoo.org> bin/*: Brought forward
   changes from portage_2_0. Repoman is broken until pym/* is updated.
 

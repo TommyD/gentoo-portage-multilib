@@ -1,6 +1,7 @@
 #
 # Changes and extensions by Carlos Castillo...
 #
+cvs_id_string="$Id$"[5:-2]
 
 #
 # Module: dialog.py

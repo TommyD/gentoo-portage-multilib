@@ -2,6 +2,7 @@
 # Copyright 2003-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
+cvs_id_string="$Id$"[5:-2]
 
 from output import *
 import htmllib,HTMLParser,string,formatter,sys,os,xpak,time,tempfile,cPickle,base64

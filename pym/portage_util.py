@@ -1,6 +1,7 @@
 # Copyright 2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
+cvs_id_string="$Id$"[5:-2]
 
 import sys,string,shlex,os.path,stat,types
 import shutil
@@ -73,16 +74,16 @@ def stack_dictlist(original_dicts, incremental=0, incrementals=[], ignore_none=0
 			if not kill_list.has_key(y):
 				kill_list[y] = []
 			
+			mydict[y].reverse()
 			for thing in mydict[y]:
-				if thing and (thing not in kill_list[y]):
+				if thing and (thing not in kill_list[y]) and ("*" not in kill_list[y]):
 					if (incremental or (y in incrementals)) and thing[0] == '-':
 						if thing[1:] not in kill_list[y]:
 							kill_list[y] += [thing[1:]]
-#						while(thing[1:] in final_dict[y]):
-#							del final_dict[y][final_dict[y].index(thing[1:])]
 					else:
 						if thing not in final_dict[y]:
-							final_dict[y].insert(0,thing[:])
+							final_dict[y].append(thing[:])
+			mydict[y].reverse()
 			if final_dict.has_key(y) and not final_dict[y]:
 				del final_dict[y]
 	return final_dict
@@ -167,9 +168,11 @@ def grabfile_package(myfilename,compatlevel=0):
 	pkgs=grabfile(myfilename,compatlevel)
 	for x in range(len(pkgs)-1,-1,-1):
 		pkg = pkgs[x]
+		if pkg[0] == "-":
+			pkg = pkg[1:]
 		if pkg[0] == "*": # Kill this so we can deal the "packages" file too
 			pkg = pkg[1:]
-		if not isvalidatom(pkg):
+		if not isvalidatom(pkg): #XXX: isvalidatom is not available from this context
 			writemsg("--- Invalid atom in %s: %s\n" % (myfilename, pkgs[x]))
 			del(pkgs[x])
 	return pkgs
@@ -221,7 +224,7 @@ def writedict(mydict,myfilename,writekey=1):
 	myfile.close()
 	return 1
 
-def getconfig(mycfg,tolerant=0):
+def getconfig(mycfg,tolerant=0,allow_sourcing=False):
 	mykeys={}
 	try:
 		f=open(mycfg,'r')
@@ -231,6 +234,8 @@ def getconfig(mycfg,tolerant=0):
 		lex=shlex.shlex(f)
 		lex.wordchars=string.digits+string.letters+"~!@#$%*_\:;?,./-+{}"     
 		lex.quotes="\"'"
+		if allow_sourcing:
+			lex.source="source"
 		while 1:
 			key=lex.get_token()
 			if (key==''):
@@ -460,6 +465,13 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 	try:
 		if not sstat:
 			sstat=os.lstat(src)
+		if bsd_chflags:
+			sflags=bsd_chflags.lgetflags(src)
+			if sflags < 0:
+				# Problem getting flags...
+				print "!!! Couldn't get flags for "+dest+"\n"
+				return None
+			
 	except SystemExit, e:
 		raise
 	except Exception, e:
@@ -475,6 +487,24 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 	except:
 		dstat=os.lstat(os.path.dirname(dest))
 		destexists=0
+
+	if bsd_chflags:
+		# Check that we can actually unset schg etc flags...
+		# Clear the flags on source and destination; we'll reinstate them after merging
+		if(destexists):
+			if bsd_chflags.lchflags(dest, 0) < 0:
+				print "!!! Couldn't clear flags on file being merged: \n"
+		# We might have an immutable flag on the parent dir; save and clear.
+		pflags=bsd_chflags.lgetflags(os.path.dirname(dest))
+		bsd_chflags.lchflags(os.path.dirname(dest), 0)
+		
+		# Don't bother checking the return value here; if it fails then the next line will catch it.
+		bsd_chflags.lchflags(src, 0)
+		
+		if bsd_chflags.lhasproblems(src)>0 or (destexists and bsd_chflags.lhasproblems(dest)>0) or bsd_chflags.lhasproblems(os.path.dirname(dest))>0:
+			# This is bad: we can't merge the file with these flags set.
+			print "!!! Can't merge file "+dest+" because of flags set\n"
+			return None		
 
 	if destexists:
 		if stat.S_ISLNK(dstat[stat.ST_MODE]):
@@ -500,8 +530,12 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 			else:
 				os.symlink(target,dest)
 			lchown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
-			return os.lstat(dest)[stat.ST_MTIME]
-			lchown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
+			if bsd_chflags:
+				# Restore the flags we saved before moving
+				if bsd_chflags.lchflags(dest, sflags) < 0 or bsd_chflags.lchflags(os.path.dirname(dest), pflags) < 0:
+					writemsg("!!! Couldn't restore flags ("+str(flags)+") on " + dest+":\n")
+					writemsg("!!! %s\n" % str(e))
+					return None
 			return os.lstat(dest)[stat.ST_MTIME]
 		except SystemExit, e:
 			raise
@@ -577,6 +611,13 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 	else:
 		os.utime(dest, (sstat[stat.ST_ATIME], sstat[stat.ST_MTIME]))
 		newmtime=sstat[stat.ST_MTIME]
+
+	if bsd_chflags:
+		# Restore the flags we saved before moving
+		if bsd_chflags.lchflags(dest, sflags) < 0 or bsd_chflags.lchflags(os.path.dirname(dest), pflags) < 0:
+			writemsg("!!! Couldn't restore flags ("+str(sflags)+") on " + dest+":\n")
+			return None
+		
 	return newmtime
 
 def flatten(mytokens):

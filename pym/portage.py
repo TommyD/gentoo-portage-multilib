@@ -3,18 +3,9 @@
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
+cvs_id_string="$Id$"[5:-2]
 
-# ===========================================================================
-# START OF CONSTANTS -- START OF CONSTANTS -- START OF CONSTANTS -- START OF
-# ===========================================================================
-
-VERSION="20041207"
-
-INCREMENTALS=["USE","FEATURES","ACCEPT_KEYWORDS","ACCEPT_LICENSE","CONFIG_PROTECT_MASK","CONFIG_PROTECT","PRELINK_PATH","PRELINK_PATH_MASK"]
-incrementals=INCREMENTALS
-STICKIES=["KEYWORDS_ACCEPT","USE","CFLAGS","CXXFLAGS","MAKEOPTS","EXTRA_ECONF","EXTRA_EINSTALL","EXTRA_EMAKE"]
-stickies=STICKIES
-
+VERSION="$Revision$"[11:-2] + "-cvs"
 
 # ===========================================================================
 # START OF IMPORTS -- START OF IMPORTS -- START OF IMPORTS -- START OF IMPORT
@@ -63,7 +54,16 @@ except:
 
 
 try:
-	from portage_const import *
+	#XXX: This should get renamed to bsd_chflags, I think.
+	import chflags
+	bsd_chflags = chflags
+except SystemExit, e:
+	raise
+except:
+	# XXX: This should get renamed to bsd_chflags, I think.
+	bsd_chflags = None
+
+try:
 	import ebuild
 	import cvstree
 	import xpak
@@ -78,8 +78,20 @@ try:
 	pkgcmp = portage_versions.pkgcmp
 	
 	# XXX: This needs to get cleaned up.
-	# XXX: Output's color handling is mildly broken is a few cases.
-	from output import *
+	import output
+	from output import blue, bold, brown, darkblue, darkgreen, darkred, darkteal, \
+	  darkyellow, fuchsia, fuscia, green, purple, red, teal, turquoise, white, \
+	  xtermTitle, xtermTitleReset, yellow
+
+	import portage_const
+	from portage_const import VDB_PATH, PRIVATE_PATH, CACHE_PATH, DEPCACHE_PATH, \
+	  USER_CONFIG_PATH, MODULES_FILE_PATH, CUSTOM_PROFILE_PATH, PORTAGE_BASE_PATH, \
+	  PORTAGE_BIN_PATH, PORTAGE_PYM_PATH, PROFILE_PATH, LOCALE_DATA_PATH, \
+	  EBUILD_SH_BINARY, SANDBOX_BINARY, DEPSCAN_SH_BINARY, BASH_BINARY, \
+	  MOVE_BINARY, PRELINK_BINARY, WORLD_FILE, MAKE_CONF_FILE, MAKE_DEFAULTS_FILE, \
+	  DEPRECATED_PROFILE_FILE, USER_VIRTUALS_FILE, EBUILD_SH_ENV_FILE, \
+	  INVALID_ENV_FILE, CUSTOM_MIRRORS_FILE, SANDBOX_PIDS_FILE, CONFIG_MEMORY_FILE,\
+	  INCREMENTALS, STICKIES
 
 	from portage_data import ostype, lchown, userland, secpass, uid, wheelgid, \
 	                         portage_uid, portage_gid
@@ -107,7 +119,7 @@ except Exception, e:
 	sys.stderr.write("!!! portage and failure here indicates that you have a problem with your\n")
 	sys.stderr.write("!!! installation of portage. Please try a rescue portage located in the\n")
 	sys.stderr.write("!!! portage tree under '/usr/portage/sys-apps/portage/files/' (default).\n")
-	sys.stderr.write("!!! There is a README.rescue file that details the steps required to perform\n")
+	sys.stderr.write("!!! There is a README.RESCUE file that details the steps required to perform\n")
 	sys.stderr.write("!!! a recovery of portage.\n")
 	
 	sys.stderr.write("    "+str(e)+"\n\n")
@@ -552,6 +564,8 @@ def env_update(root,makelinks=1):
 		for x in specials["LDPATH"]+specials["PATH"]+specials["PRELINK_PATH"]:
 			if not x:
 				continue
+			if x[-1] != "/":
+				x += "/"
 			plmasked=0
 			for y in specials["PRELINK_PATH_MASK"]:
 				if y[-1]!='/':
@@ -718,6 +732,8 @@ def grabfile_package(myfilename,compatlevel=0):
 	pkgs=grabfile(myfilename,compatlevel)
 	for x in range(len(pkgs)-1,-1,-1):
 		pkg = pkgs[x]
+		if pkg[0] == "-":
+			pkg = pkg[1:]
 		if pkg[0] == "*":
 			pkg = pkg[1:]
 		if not portage_dep.isvalidatom(pkg):
@@ -784,7 +800,6 @@ def ExtractKernelVersion(base_dir):
 
 	return (version,None)
 
-aumtime=0
 
 def check_config_instance(test):
 	if not test or (str(test.__class__) != 'portage.config'):
@@ -794,6 +809,7 @@ class config:
 	def clone(self, clone):
 		self.incrementals = copy.deepcopy(clone.incrementals)
 		self.profile_path = copy.deepcopy(clone.profile_path)
+		self.user_profile_dir = copy.deepcopy(clone.user_profile_dir)
 
 		self.module_priority = copy.deepcopy(clone.module_priority)
 		self.modules         = copy.deepcopy(clone.modules)
@@ -802,6 +818,10 @@ class config:
 
 		self.packages = copy.deepcopy(clone.packages)
 		self.virtuals = copy.deepcopy(clone.virtuals)
+
+		self.treeVirtuals = copy.deepcopy(clone.treeVirtuals)
+		self.userVirtuals = copy.deepcopy(clone.userVirtuals)
+		self.negVirtuals  = copy.deepcopy(clone.negVirtuals)
 
 		self.use_defs = copy.deepcopy(clone.use_defs)
 		self.usemask  = copy.deepcopy(clone.usemask)
@@ -827,7 +847,6 @@ class config:
 		self.uvlist     = copy.deepcopy(clone.uvlist)
 		self.dirVirtuals = copy.deepcopy(clone.dirVirtuals)
 		self.treeVirtuals = copy.deepcopy(clone.treeVirtuals)
-		self.userVirtuals = copy.deepcopy(clone.userVirtuals)
 
 	def __init__(self, clone=None, mycpv=None, config_profile_path=PROFILE_PATH, config_incrementals=None):
 
@@ -840,6 +859,15 @@ class config:
 	
 		self.virtuals = {}
 		self.v_count  = 0
+
+		# Virtuals obtained from the vartree
+		self.treeVirtuals = {}
+		# Virtuals by user specification. Includes negatives.
+		self.userVirtuals = {}
+		# Virtual negatives from user specifications.
+		self.negVirtuals  = {}
+
+		self.user_profile_dir = None
 
 		if clone:
 			self.clone( clone )
@@ -896,7 +924,8 @@ class config:
 			else:
 				# XXX: This should depend on ROOT?
 				if os.path.exists("/"+CUSTOM_PROFILE_PATH):
-					self.profiles.append("/"+CUSTOM_PROFILE_PATH)
+					self.user_profile_dir = os.path.normpath("/"+"///"+CUSTOM_PROFILE_PATH)
+					self.profiles.append(self.user_profile_dir[:])
 
 			self.packages_list = grab_multiple("packages", self.profiles, grabfile_package)
 			self.packages      = stack_lists(self.packages_list, incremental=1)
@@ -922,7 +951,7 @@ class config:
 
 			try:
 				mygcfg_dlists = grab_multiple("make.globals", self.profiles+["/etc"], getconfig)
-				self.mygcfg   = stack_dicts(mygcfg_dlists, incrementals=INCREMENTALS, ignore_none=1)
+				self.mygcfg   = stack_dicts(mygcfg_dlists, incrementals=self.incrementals, ignore_none=1)
 
 				if self.mygcfg == None:
 					self.mygcfg = {}
@@ -940,8 +969,7 @@ class config:
 			if self.profiles:
 				try:
 					mygcfg_dlists = grab_multiple("make.defaults", self.profiles, getconfig)
-					self.mygcfg   = stack_dicts(mygcfg_dlists, incrementals=self.incrementals[:], ignore_none=1)
-					#self.mygcfg = grab_stacked("make.defaults", self.profiles, getconfig)
+					self.mygcfg   = stack_dicts(mygcfg_dlists, incrementals=self.incrementals, ignore_none=1)
 					if self.mygcfg == None:
 						self.mygcfg = {}
 				except SystemExit, e:
@@ -957,7 +985,7 @@ class config:
 
 			try:
 				# XXX: Should depend on root?
-				self.mygcfg=getconfig("/"+MAKE_CONF_FILE)
+				self.mygcfg=getconfig("/"+MAKE_CONF_FILE,allow_sourcing=True)
 				if self.mygcfg == None:
 					self.mygcfg = {}
 			except SystemExit, e:
@@ -1043,15 +1071,7 @@ class config:
 			self.loadVirtuals('/')
 					
 			#package.mask
-			# Don't enable per profile package.mask unless the profile
-			# specifically depends on the >=portage-2.0.51 using
-			# <portage-2.0.51 syntax.
-			# don't hardcode portage versions into portage.  It's not nice.
-			if self.profiles and (">=sys-apps/portage-2.0.51" in self.packages \
-                                      or "*>=sys-apps/portage-2.0.51" in self.packages):
-				pkgmasklines = grab_multiple("package.mask", self.profiles + locations, grabfile_package)
-			else:
-				pkgmasklines = grab_multiple("package.mask", locations, grabfile_package)
+			pkgmasklines = grab_multiple("package.mask", self.profiles + locations, grabfile_package)
 			pkgmasklines = stack_lists(pkgmasklines, incremental=1)
 
 			self.pmaskdict = {}
@@ -1128,18 +1148,21 @@ class config:
 
 		self.regenerate()
 		
-		
 		self.features = portage_util.unique_array(self["FEATURES"].split())
-		self.features.sort()
 
 		#XXX: Should this be temporary? Is it possible at all to have a default?
 		if "gpg" in self.features:
 			if not os.path.exists(self["PORTAGE_GPG_DIR"]) or not os.path.isdir(self["PORTAGE_GPG_DIR"]):
 				writemsg("PORTAGE_GPG_DIR is invalid. Removing gpg from FEATURES.\n")
 				self.features.remove("gpg")
-				self["FEATURES"] = " ".join(self.features)
-				self.backup_changes("FEATURES")
 		
+		if "maketest" in self.features and "test" not in self.features:
+			self.features.append("test")
+
+		self.features.sort()
+		self["FEATURES"] = " ".join(self.features)
+		self.backup_changes("FEATURES")
+
 		if mycpv:
 			self.setcpv(mycpv)
 
@@ -1261,12 +1284,11 @@ class config:
 			virt = dep_getkey(virt)
 			if not self.treeVirtuals.has_key(virt):
 				self.treeVirtuals[virt] = []
+			# XXX: Is this bad? -- It's a permanent modification
 			self.treeVirtuals[virt] = portage_util.unique_array(self.treeVirtuals[virt]+[cp])
-		# Reconstruct the combined virtuals.
-		val = stack_dictlist( [self.userVirtuals, self.treeVirtuals]+self.dirVirtuals, incremental=1)
-		for v in val.values():
-			v.reverse()
-		self.virtuals = val
+
+		self.virtuals = self.__getvirtuals_compile()
+
 	
 	def regenerate(self,useonly=0,use_cache=1):
 		global usesplit
@@ -1345,11 +1367,10 @@ class config:
 							usesplit.append(mystr)
 
 		# Pre-Pend ARCH variable to USE settings so '-*' in env doesn't kill arch.
-		if profiledir:
-			if self.configdict["defaults"].has_key("ARCH"):
-				if self.configdict["defaults"]["ARCH"]:
-					if self.configdict["defaults"]["ARCH"] not in usesplit:
-						usesplit.insert(0,self.configdict["defaults"]["ARCH"])
+		if self.configdict["defaults"].has_key("ARCH"):
+			if self.configdict["defaults"]["ARCH"]:
+				if self.configdict["defaults"]["ARCH"] not in usesplit:
+					usesplit.insert(0,self.configdict["defaults"]["ARCH"])
 
 		self.configlist[-1]["USE"]=" ".join(usesplit)
 
@@ -1363,47 +1384,97 @@ class config:
 		# from. So the only ROOT prefixed dir should be local configs.
 		#myvirtdirs  = prefix_array(self.profiles,myroot+"/")
 		myvirtdirs = copy.deepcopy(self.profiles)
+
+		while self.user_profile_dir in myvirtdirs:
+			myvirtdirs.remove(self.user_profile_dir)
 		
 		self.treeVirtuals = {}
 
-		# Repoman should ignore these.
-		user_profile_dir = None
-		if os.environ.get("PORTAGE_CALLER","") != "repoman":
-			user_profile_dir = myroot+USER_CONFIG_PATH
-		
-		# XXX: Removing this as virtuals and profile/virtuals behave
-		# differently. portage/profile/virtuals overrides the default
-		# virtuals but are overridden by installed virtuals whereas
-		# portage/virtuals overrides everything.
-		
-		#if os.path.exists("/etc/portage/virtuals"):
-		#	writemsg("\n\n*** /etc/portage/virtuals should be moved to /etc/portage/profile/virtuals\n")
-		#	writemsg("*** Please correct this by merging or moving the file. (Deprecation notice)\n\n")
-		#	time.sleep(1)
-		
+		# Rules
+		# R1: Collapse profile virtuals
+		# R2: Extract user-negatives.
+		# R3: Collapse user-virtuals.
+		# R4: Apply user negatives to all except user settings.
+
+		# Order of preference:
+		# 1. user-declared that are installed
+		# 3. installed and in profile
+		# 4. installed
+		# 2. user-declared set
+		# 5. profile
 		
 		self.dirVirtuals = grab_multiple("virtuals", myvirtdirs, grabdict)
 		self.dirVirtuals.reverse()
-		self.userVirtuals = {}
-		if user_profile_dir and os.path.exists(user_profile_dir+"/virtuals"):
-			self.userVirtuals = grabdict(user_profile_dir+"/virtuals")
 
-		# User settings and profile settings take precedence over tree.
-		profile_virtuals = stack_dictlist([self.userVirtuals]+self.dirVirtuals,incremental=1)
+		if self.user_profile_dir and os.path.exists(self.user_profile_dir+"/virtuals"):
+			self.userVirtuals = grabdict(self.user_profile_dir+"/virtuals")
 		
-		# repoman doesn't need local virtuals
+		# Store all the negatives for later.
+		for x in self.userVirtuals.keys():
+			self.negVirtuals[x] = []
+			for y in self.userVirtuals[x]:
+				if y[0] == '-':
+					self.negVirtuals[x].append(y[:])
+
+		# Collapse the user virtuals so that we don't deal with negatives.
+		self.userVirtuals = stack_dictlist([self.userVirtuals],incremental=1)
+
+		# Collapse all the profile virtuals including user negations.
+		self.dirVirtuals = stack_dictlist([self.negVirtuals]+self.dirVirtuals,incremental=1)
+
+		# Repoman does not use user or tree virtuals.
 		if os.environ.get("PORTAGE_CALLER","") != "repoman":
-			temp_vartree = vartree(myroot,profile_virtuals,categories=self.categories)
+			# XXX: vartree does not use virtuals, does user set matter?
+			temp_vartree = vartree(myroot,self.dirVirtuals,categories=self.categories)
+			# Reduce the provides into a list by CP.
 			myTreeVirtuals = map_dictlist_vals(getCPFromCPV,temp_vartree.get_all_provides())
-			for x,v in myTreeVirtuals.items():
-				self.treeVirtuals[x] = portage_util.unique_array(v)
-			
-		# User settings and profile settings take precedence over tree
-		val = stack_dictlist([self.userVirtuals,self.treeVirtuals]+self.dirVirtuals,incremental=1)
 		
-		for x in val.values():
-			x.reverse()
-		return val
+		return self.__getvirtuals_compile()
+
+
+	def __getvirtuals_compile(self):
+ 		"""Actually generate the virtuals we have collected.
+		The results are reversed so the list order is left to right.
+		Given data is [Best,Better,Good] sets of [Good, Better, Best]"""
+		# Virtuals by profile+tree preferences.
+		ptVirtuals   = {}
+		# Virtuals by user+tree preferences.
+		utVirtuals   = {}
+
+		# If a user virtual is already installed, we preference it.
+		for x in self.userVirtuals.keys():
+			utVirtuals[x] = []
+			if self.treeVirtuals.has_key(x):
+				for y in self.userVirtuals[x]:
+					if y in self.treeVirtuals[x]:
+						utVirtuals[x].append(y)
+			#print "F:",utVirtuals
+			#utVirtuals[x].reverse()
+			#print "R:",utVirtuals
+
+		# If a profile virtual is already installed, we preference it.
+		for x in self.dirVirtuals.keys():
+			ptVirtuals[x] = []
+			if self.treeVirtuals.has_key(x):
+				for y in self.dirVirtuals[x]:
+					if y in self.treeVirtuals[x]:
+						ptVirtuals[x].append(y)
+
+		# UserInstalled, ProfileInstalled, Installed, User, Profile
+		biglist = [utVirtuals, ptVirtuals, self.treeVirtuals,
+		           self.userVirtuals, self.dirVirtuals]
+
+		# We reverse each dictlist so that the order matches everything
+		# else in portage. [-*, a, b] [b, c, d] ==> [b, a]
+		for dictlist in biglist:
+			for key in dictlist:
+				dictlist[key].reverse()
+
+ 		# User settings and profile settings take precedence over tree.
+		val = stack_dictlist(biglist,incremental=1)
+ 		
+ 		return val
+
 	
 	def __delitem__(self,mykey):
 		for x in self.lookuplist:
@@ -1505,8 +1576,10 @@ def spawn(mystring,mysettings,debug=0,free=0,droppriv=0,fd_pipes=None,**keywords
 		keywords["opt_name"]="[%s]" % mysettings["PF"]
 
 
-	droppriv=(droppriv and ("userpriv" in features) and \
-		("nouserpriv" not in mysettings["RESTRICT"].split()))
+	# XXX: Negative RESTRICT word
+	myrestrict = mysettings["RESTRICT"].split()
+	droppriv=(droppriv and "userpriv" in mysettings.features and
+		 "nouserpriv" not in myrestrict and "userpriv" not in myrestrict)
 
 	if ("sandbox" in features) and (not free):
 		keywords["opt_name"] += " sandbox"
@@ -1519,10 +1592,17 @@ def spawn(mystring,mysettings,debug=0,free=0,droppriv=0,fd_pipes=None,**keywords
 
 def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",use_locks=1, try_mirrors=1,verbosity=0):
 	"fetch files.  Will use digest file if available."
-	if ("mirror" in features) and ("nomirror" in mysettings["RESTRICT"].split()):
-		if verbosity:
-			print ">>> \"mirror\" mode and \"nomirror\" restriction enabled; skipping fetch."
-		return 1
+
+	# 'nomirror' is bad/negative logic. You Restrict mirroring, not no-mirroring.
+	myrestrict = mysettings["RESTRICT"].split()
+	if "mirror" in myrestrict or "nomirror" in myrestrict:
+		if ("mirror" in mysettings.features) and ("lmirror" not in mysettings.features):
+			# lmirror should allow you to bypass mirror restrictions.
+			# XXX: This is not a good thing, and is temporary at best.
+			if verbosity:
+				print ">>> \"mirror\" mode desired and \"mirror\" restriction found; skipping fetch."
+			return 1
+
 	global thirdpartymirrors
 	
 	check_config_instance(mysettings)
@@ -1599,6 +1679,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		return 1
 	locations=mymirrors[:]
 	filedict={}
+	primaryuri_indexes={}
 	for myuri in myuris:
 		myfile=os.path.basename(myuri)
 		if not filedict.has_key(myfile):
@@ -1641,6 +1722,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 				writemsg("Invalid mirror definition in SRC_URI:\n",verbosity)
 				writemsg("  %s\n" % (myuri),verbosity)
 		else:
+			if "primaryuri" in mysettings["RESTRICT"].split():
+				# Use the source site first.
+				if primaryuri_indexes.has_key(myfile):
+					primaryuri_indexes[myfile] += 1
+				else:
+					primaryuri_indexes[myfile] = 0
+				filedict[myfile].insert(primaryuri_indexes[myfile], myuri)
+			else:
 				filedict[myfile].append(myuri)
 
 	missingSourceHost = False
@@ -1885,8 +1974,8 @@ def digestCreate(myfiles,basedir,oldDigest={}):
 				print "!!! Given file does not appear to be readable. Does it exist?"
 				print "!!! File:",myfile
 				return None
-			mysize = os.stat(myfile)[stat.ST_SIZE]
-			mysums = portage_checksum.perform_all(myfile)
+			mydigests[x] = portage_checksum.perform_all(myfile)
+			mysize       = os.stat(myfile)[stat.ST_SIZE]
 		else:
 			if x in oldDigest:
 				# DeepCopy because we might not have a unique reference.
@@ -1897,7 +1986,6 @@ def digestCreate(myfiles,basedir,oldDigest={}):
 				print "!!! File:",myfile
 				return None
 			
-		mydigests[x] = mysums
 		if "size" in mydigests[x] and (mydigests[x]["size"] != mysize):
 			raise portage_exception.DigestException, "Size mismatch during checksums"
 		mydigests[x]["size"] = mysize
@@ -4312,7 +4400,7 @@ class portdbapi(dbapi):
 		try:
 			myuris = self.aux_get(mypkg,["SRC_URI"])[0]
 		except (IOError,KeyError):
-			print red("getfetchlist():")+" aux_get() error; aborting."
+			print red("getfetchlist():")+" aux_get() error reading "+mypkg+"; aborting."
 			sys.exit(1)
 
 		useflags = mysettings["USE"].split()
@@ -4563,8 +4651,8 @@ class portdbapi(dbapi):
 			cp = dep_getkey(mycpv)
 			if cp in pkgdict:
 				matches = match_to_list(mycpv, pkgdict[cp].keys())
-				for match in matches:
-					pgroups.extend(pkgdict[cp][match])
+				for atom in matches:
+					pgroups.extend(pkgdict[cp][atom])
 			match=0
 			for gp in mygroups:
 				if gp=="*":
@@ -5247,6 +5335,17 @@ class dblink:
 				else:
 					#this doesn't match the package we're unmerging; keep it.
 					newworldlist.append(x)
+
+			# if the base dir doesn't exist, create it.
+			# (spanky noticed bug)
+			# XXX: dumb question, but abstracting the root uid might be wise/useful for
+			# 2nd pkg manager installation setups.
+			if not os.path.exists(os.path.dirname(self.myroot+WORLD_FILE)):
+				pdir = os.path.dirname(self.myroot + WORLD_FILE)
+				os.makedirs(pdir, mode=0755)
+				os.chown(pdir, 0, portage_gid)
+				os.chmod(pdir, 02770)
+
 			myworld=open(self.myroot+WORLD_FILE,"w")
 			for x in newworldlist:
 				myworld.write(x+"\n")
@@ -5822,6 +5921,13 @@ class dblink:
 				# we are merging a directory
 				if mydmode!=None:
 					# destination exists
+
+					if bsd_chflags:
+						# Save then clear flags on dest.
+						dflags=bsd_chflags.lgetflags(mydest)
+						if(bsd_chflags.lchflags(mydest, 0)<0):
+							writemsg("!!! Couldn't clear flags on '"+mydest+"'.\n")
+					
 					if not os.access(mydest, os.W_OK):
 						pkgstuff = portage_versions.pkgsplit(self.pkg)
 						writemsg("\n!!! Cannot write to '"+mydest+"'.\n")
@@ -5834,6 +5940,8 @@ class dblink:
 					if stat.S_ISLNK(mydmode) or stat.S_ISDIR(mydmode):
 						# a symlink to an existing directory will work for us; keep it:
 						print "---",mydest+"/"
+						if bsd_chflags:
+							bsd_chflags.lchflags(mydest, dflags)
 					else:
 						# a non-directory and non-symlink-to-directory.  Won't work for us.  Move out of the way.
 						if movefile(mydest,mydest+".backup", mysettings=self.settings) == None:
@@ -5846,6 +5954,8 @@ class dblink:
 							selinux.secure_mkdir(mydest,sid)
 						else:
 							os.mkdir(mydest)
+						if bsd_chflags:
+							bsd_chflags.lchflags(mydest, dflags)
 						os.chmod(mydest,mystat[0])
 						lchown(mydest,mystat[4],mystat[5])
 						print ">>>",mydest+"/"
@@ -5857,6 +5967,8 @@ class dblink:
 					else:
 						os.mkdir(mydest)
 					os.chmod(mydest,mystat[0])
+					if bsd_chflags:
+						bsd_chflags.lchflags(mydest, bsd_chflags.lgetflags(mysrc))
 					lchown(mydest,mystat[4],mystat[5])
 					print ">>>",mydest+"/"
 				outfile.write("dir "+myrealdest+"\n")
@@ -6149,9 +6261,13 @@ if not os.path.exists(root+"var/tmp"):
 		writemsg("portage: couldn't create /var/tmp; exiting.\n")
 		sys.exit(1)
 
+
+#####################################
+# Deprecation Checks
+
 os.umask(022)
 profiledir=None
-if os.path.exists(MAKE_DEFAULTS_FILE):
+if os.path.isdir(PROFILE_PATH):
 	profiledir = PROFILE_PATH
 	if os.access(DEPRECATED_PROFILE_FILE, os.R_OK):
 		deprecatedfile = open(DEPRECATED_PROFILE_FILE, "r")
@@ -6167,6 +6283,14 @@ if os.path.exists(MAKE_DEFAULTS_FILE):
 				writemsg(myline)
 			writemsg("\n\n")
 
+if os.path.exists(USER_VIRTUALS_FILE):
+	writemsg(red("\n!!! /etc/portage/virtuals is deprecated in favor of\n"))
+	writemsg(red("!!! /etc/portage/profile/virtuals. Please move it to\n"))
+	writemsg(red("!!! this new location.\n\n"))
+
+#
+#####################################
+
 db={}
 
 # =============================================================================
@@ -6174,7 +6298,7 @@ db={}
 # -----------------------------------------------------------------------------
 # We're going to lock the global config to prevent changes, but we need
 # to ensure the global settings are right.
-settings=config(config_profile_path=PROFILE_PATH,config_incrementals=incrementals)
+settings=config(config_profile_path=PROFILE_PATH,config_incrementals=portage_const.INCREMENTALS)
 
 # useful info
 settings["PORTAGE_MASTER_PID"]=str(os.getpid())

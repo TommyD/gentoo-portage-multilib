@@ -1,44 +1,106 @@
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
+cvs_id_string="$Id$"[5:-2]
 
 import os,sys,re
 
 havecolor=1
 dotitles=1
 
+esc_seq = "\x1b["
+
+g_attr = {}
+g_attr["normal"]       =  0
+
+g_attr["bold"]         =  1
+g_attr["faint"]        =  2
+g_attr["standout"]     =  3
+g_attr["underline"]    =  4
+g_attr["blink"]        =  5
+g_attr["overline"]     =  6  # Why is overline actually useful?
+g_attr["reverse"]      =  7
+g_attr["invisible"]    =  8
+
+g_attr["no-attr"]      = 22
+g_attr["no-standout"]  = 23
+g_attr["no-underline"] = 24
+g_attr["no-blink"]     = 25
+g_attr["no-overline"]  = 26
+g_attr["no-reverse"]   = 27
+# 28 isn't defined?
+# 29 isn't defined?
+g_attr["black"]        = 30
+g_attr["red"]          = 31
+g_attr["green"]        = 32
+g_attr["yellow"]       = 33
+g_attr["blue"]         = 34
+g_attr["magenta"]      = 35
+g_attr["cyan"]         = 36
+g_attr["white"]        = 37
+# 38 isn't defined?
+g_attr["default"]      = 39
+g_attr["bg_black"]     = 40
+g_attr["bg_red"]       = 41
+g_attr["bg_green"]     = 42
+g_attr["bg_yellow"]    = 43
+g_attr["bg_blue"]      = 44
+g_attr["bg_magenta"]   = 45
+g_attr["bg_cyan"]      = 46
+g_attr["bg_white"]     = 47
+g_attr["bg_default"]   = 49
+
+
+# make_seq("blue", "black", "normal")
+def color(fg, bg="default", attr=["normal"]):
+	mystr = esc_seq[:] + "%02d" % g_attr[fg]
+	for x in [bg]+attr:
+		mystr += ";%02d" % g_attr[x]
+	return mystr+"m"
+
+
+
 codes={}
-codes["reset"]="\x1b[0m"
-codes["bold"]="\x1b[01m"
+codes["reset"]     = esc_seq + "39;49;00m"
+ 
+codes["bold"]      = esc_seq + "01m"
+codes["faint"]     = esc_seq + "02m"
+codes["standout"]  = esc_seq + "03m"
+codes["underline"] = esc_seq + "04m"
+codes["blink"]     = esc_seq + "05m"
+codes["overline"]  = esc_seq + "06m"  # Who made this up? Seriously.
+ 
+codes["teal"]      = esc_seq + "36m"
+codes["turquoise"] = esc_seq + "36;01m"
+ 
+codes["fuchsia"]   = esc_seq + "35;01m"
+codes["purple"]    = esc_seq + "35m"
+ 
+codes["blue"]      = esc_seq + "34;01m"
+codes["darkblue"]  = esc_seq + "34m"
+ 
+codes["green"]     = esc_seq + "32;01m"
+codes["darkgreen"] = esc_seq + "32m"
+ 
+codes["yellow"]    = esc_seq + "33;01m"
+codes["brown"]     = esc_seq + "33m"
 
-codes["teal"]="\x1b[36;06m"
-codes["turquoise"]="\x1b[36;01m"
-
-codes["fuchsia"]="\x1b[35;01m"
-codes["purple"]="\x1b[35;06m"
-
-codes["blue"]="\x1b[34;01m"
-codes["darkblue"]="\x1b[34;06m"
-
-codes["green"]="\x1b[32;01m"
-codes["darkgreen"]="\x1b[32;06m"
-
-codes["yellow"]="\x1b[33;01m"
-codes["brown"]="\x1b[33;06m"
-
-codes["red"]="\x1b[31;01m"
-codes["darkred"]="\x1b[31;06m"
+codes["red"]       = esc_seq + "31;01m"
+codes["darkred"]   = esc_seq + "31m"
 
 def nc_len(mystr):
-	tmp = re.sub("\x1b[^m]+m", "", mystr);
+	tmp = re.sub(esc_seq + "^m]+m", "", mystr);
 	return len(tmp)
 
 def xtermTitle(mystr):
-	if havecolor and dotitles and os.environ.has_key("TERM"):
+	if havecolor and dotitles and os.environ.has_key("TERM") and sys.stderr.isatty():
 		myt=os.environ["TERM"]
 		legal_terms = ["xterm","Eterm","aterm","rxvt","screen","kterm","rxvt-unicode"]
-		if (myt in legal_terms) or myt.startswith("xterm"):
+		if (myt in legal_terms) or myt.startswith("xterm") or myt.startswith("screen"):
 			sys.stderr.write("\x1b]2;"+str(mystr)+"\x07")
+			sys.stderr.flush()
+		if (myt.startswith("screen")):
+			sys.stderr.write("\x1bk"+str(mystr)+"\x1b\\")
 			sys.stderr.flush()
 
 def xtermTitleReset():
