@@ -6083,9 +6083,9 @@ class dblink:
 
 			# this is a ugly hack to get the other versions of the same package,
 			# feel free to improve
-			if os.path.exists(self.myroot+"var/db/pkg/"+self.cat):
-				for mydir in os.listdir(self.myroot+"var/db/pkg/"+self.cat):
-					if os.path.isdir(self.myroot+"var/db/pkg/"+self.cat+mydir):
+			if os.path.exists(self.myroot+VDB_PATH+"/"+self.cat):
+				for mydir in os.listdir(self.myroot+VDB_PATH+"/"+self.cat):
+					if os.path.isdir(self.myroot+VDB_PATH+"/"+self.cat+mydir):
 						otherpkg.append(self.cat+"/"+mydir.split("/")[-1])
 			for p in otherpkg:
 				# the new package doesn't have a category, this can create problems
