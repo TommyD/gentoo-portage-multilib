@@ -10,6 +10,11 @@ Legend:
  '*' Just do it.        '#' Tricky
  '!' Difficult          '@' Restricted in some way
 
+# Virtuals. /var/cache/edb/virtuals -- Effectively remove it.
+# /etc/portage/virtuals is a user-modifiable version that acts like an
+# incremental applied on top of an ON-DEMAND virtual calculation system.
+# Virtuals should be calculated from /var/db/pkg EVERY time it is requested.
+
 # Repoman needs to ignore all user-set info in /etc/portage
 # It's not relevant to deployed users and will probably be a general gotcha.
 
