@@ -7103,9 +7103,13 @@ def do_upgrade(mykey):
 			db["/"]["bintree"].move_slot_ent(mysplit,settings["PORTAGE_TMPDIR"]+"/tbz2")
 
 	for x in update_files:
-		cfg_protect_file=new_protect_filename("/etc/portage/"+x)
+		mydblink = dblink('','','/',settings)
+		if mydblink.isprotected("/etc/portage/"+x):
+			updating_file=new_protect_filename("/etc/portage/"+x)[0]
+		else:
+			updating_file="/etc/portage/"+x
 		try:
-			myfile=open(cfg_protect_file[0],"w")
+			myfile=open(updating_file,"w")
 			myfile.writelines(file_contents[x])
 			myfile.close()
 		except IOError:
