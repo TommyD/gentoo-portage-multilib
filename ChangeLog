@@ -1,6 +1,18 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-1.9.6_pre2 (01 May 2002)
+
+  01 May 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: config file
+  protection upgrade; we now record md5sums of previously-merged config protect
+  files in /var/cache/edb/config; we use this information to avoid merging
+  files that have been merged by us before (if it is safe to do so).  This 
+  doesn't solve the problem of rolling back to a previously-merged version of
+  a config file; we need to add cvs headers to every config file to get that
+  to work.
+  
+*portage-1.9.6_pre1 (01 May 2002)
+
   01 May 2002; Daniel Robbins <drobbins@gentoo.org> emerge: added "inject"
   capability to artificially satisfy a dep -- for situations when you don't
   want Portage to do it for you because you've taken care of it already.

@@ -46,7 +46,7 @@
 #whole enchilada. (generally, I prefer this approach, though for runtime-only systems
 #subpackages make a lot of sense).
 
-VERSION="1.9.4"
+VERSION="1.9.6_pre1"
 
 import string,os
 from stat import *
@@ -2692,7 +2692,7 @@ class dblink:
 							myppath=ppath
 							break
 				if myppath:
-					print "--- cfg	 ","sym",obj
+					print "--- cfgpro  ","sym",obj
 					continue
 				try:
 					os.unlink(obj)
@@ -2724,7 +2724,7 @@ class dblink:
 							myppath=ppath
 							break
 				if myppath:
-					print "--- cfg	 ","obj",obj
+					print "--- cfgpro  ","obj",obj
 				else:
 					try:
 						os.unlink(obj)
@@ -2749,7 +2749,7 @@ class dblink:
 							myppath=ppath
 							break
 				if myppath:
-					print "--- cfg	 ","fif",obj
+					print "--- cfgpro  ","fif",obj
 					continue
 				try:
 					os.unlink(obj)
@@ -2846,13 +2846,17 @@ class dblink:
 			ppath=os.path.normpath(destroot+"/"+x)+"/"
 			if os.path.isdir(ppath):
 				self.protectmask.append(ppath)
+		cfgfiledict={}
+		#if we have a file containing previously-merged config file md5sums, grab it.
+		if os.path.exists(destroot+"/var/cache/edb/config"):
+			cfgfiledict=grabdict(destroot+"/var/cache/edb/config")
 		# set umask to 0 for merging; back up umask, save old one in prevmask (since this is a global change)
 		mymtime=int(time.time())
 		prevmask=os.umask(0)
 		secondhand=[]	
 		# we do a first merge; this will recurse through all files in our srcroot but also build up a
 		# "second hand" of symlinks to merge later
-		self.mergeme(srcroot,destroot,outfile,secondhand,"",mymtime)
+		self.mergeme(srcroot,destroot,outfile,secondhand,"",cfgfiledict,mymtime)
 		# now, it's time for dealing our second hand; we'll loop until we can't merge anymore.	The rest are
 		# broken symlinks.  We'll merge them too.
 		lastlen=0
@@ -2860,7 +2864,7 @@ class dblink:
 			# clear the thirdhand.	Anything from our second hand that couldn't get merged will be
 			# added to thirdhand.
 			thirdhand=[]
-			self.mergeme(srcroot,destroot,outfile,thirdhand,secondhand,mymtime)
+			self.mergeme(srcroot,destroot,outfile,thirdhand,secondhand,cfgfiledict,mymtime)
 			#swap hands
 			lastlen=len(secondhand)
 			# our thirdhand now becomes our secondhand.  It's ok to throw away secondhand since 
@@ -2868,7 +2872,7 @@ class dblink:
 			secondhand=thirdhand
 		if len(secondhand):
 			# force merge of remaining symlinks (broken or circular; oh well)
-			self.mergeme(srcroot,destroot,outfile,None,secondhand,mymtime)
+			self.mergeme(srcroot,destroot,outfile,None,secondhand,cfgfiledict,mymtime)
 			
 		#restore umask
 		os.umask(prevmask)
@@ -2882,7 +2886,10 @@ class dblink:
 		# copy "info" files (like SLOT, CFLAGS, etc.) into the database
 		for x in os.listdir(inforoot):
 			self.copyfile(inforoot+"/"+x)
-			
+		
+		#write out our collection of md5sums
+		writedict(cfgfiledict,destroot+"/var/cache/edb/config")
+		
 		#create virtual links
 		myprovides=self.getelements("PROVIDE")
 		if myprovides:
@@ -2914,7 +2921,7 @@ class dblink:
 		env_update()	
 		print ">>>",self.cat+"/"+self.pkg,"merged."
 
-	def mergeme(self,srcroot,destroot,outfile,secondhand,stufftomerge,thismtime=None):
+	def mergeme(self,srcroot,destroot,outfile,secondhand,stufftomerge,cfgfiledict,thismtime):
 		# this is supposed to merge a list of files.  There will be 2 forms of argument passing.
 		if type(stufftomerge)==types.StringType:
 			#A directory is specified.  Figure out protection paths, listdir() it and process it.
@@ -3008,13 +3015,14 @@ class dblink:
 					print ">>>",mydest+"/"
 				outfile.write("dir "+myrealdest+"\n")
 				# recurse and merge this directory
-				self.mergeme(srcroot,destroot,outfile,secondhand,offset+x+"/",thismtime)
+				self.mergeme(srcroot,destroot,outfile,secondhand,offset+x+"/",cfgfiledict,thismtime)
 			elif S_ISREG(mymode):
 				# we are merging a regular file
 				mymd5=perform_md5(mysrc)
 				# calculate config file protection stuff
 				mydestdir=os.path.dirname(mydest)	
 				moveme=1
+				zing="!!!"
 				if mydmode!=None:
 					# destination file exists
 					if S_ISDIR(mydmode):
@@ -3027,7 +3035,30 @@ class dblink:
 						# we only need to tweak mydest if cfg file management is in play.
 						if myppath:
 							# we have a protection path; enable config file management.
-							if mymd5!=perform_md5(mydest):
+							destmd5=perform_md5(mydest)
+							if cfgfiledict.has_key(myrealdest):
+								#this file has been merged in the past, either as the original file or as a ._cfg extension of original.
+								#we can skip the merging of this file.  But we need to do one thing first, called "cycling".  Let's say that 
+								#since the last merge on this file, the user has copied /etc/._cfg0000_foo to /etc/foo.  The ._cfg had
+								#position 4 in our md5 list (in cfgfiledict).  Now that the file has been moved into place, we want to
+								#*throw away* md5s 0-3.  Reasoning?  By doing this, we discard expired md5sums, and also allow a *new*
+								#package to merge a "classic" version of the file (consider if the new version was buggy, so we reverted
+								#to the original... without this important code, the new "original" would not get merged since it had
+								#been merged before.
+								if destmd5 in cfgfiledict[myrealdest]:
+									cfgfiledict[myrealdest]=cfgfiledict[myrealdest][cfgfiledict[myrealdest].index(destmd5):]
+							if mymd5==destmd5:
+								#file already in place (somehow) ... no need to merge this file -- avoid clutter....
+								zing="---"
+								moveme=0
+							elif cfgfiledict.has_key(myrealdest) and (mymd5 in cfgfiledict[myrealdest]):
+								#ok, now that we've cycled cfgfiledict (see big paragraph above), it's safe to simply not merge this file
+								#if it has been merged by us in the past.  Thanks to the cycling, we can be do this with some assurance
+								#that we are not being overly zealous in our desire to avoid merging files unnecessarily.
+								zing="---"
+								moveme=0
+							else:	
+								#don't overwrite --
 								# the files are not identical (from an md5 perspective); we cannot simply overwrite.
 								pnum=-1
 								# set pmatch to the literal filename only
@@ -3060,11 +3091,19 @@ class dblink:
 										mydest=(mydestdir+"/"+mypfile)
 										cleanup=1
 								if not cleanup:
+									# md5sums didn't match, so we create a new filename for merging.
 									# we now have pnum set to the official 4-digit config that should be used for the file
 									# we need to install.  Set mydest to this new value.
 									mydest=os.path.normpath(mydestdir+"/._cfg"+string.zfill(pnum,4)+"_"+pmatch)
+								#add to our md5 list for future reference (will get written to /var/cache/edb/config)
+								if not cfgfiledict.has_key(myrealdest):
+									cfgfiledict[myrealdest]=[]
+								if mymd5 not in cfgfiledict[myrealdest]:
+									cfgfiledict[myrealdest].append(mymd5)
+								#don't record more than 16 md5sums
+								if len(cfgfiledict[myrealdest])>16:
+									del cfgfiledict[myrealdest][0]
 				# whether config protection or not, we merge the new file the same way.  Unless moveme=0 (blocking directory)
-				zing="!!!"
 				if moveme:
 					mymtime=movefile(mysrc,mydest,thismtime,mystat)
 					if mymtime!=None:
