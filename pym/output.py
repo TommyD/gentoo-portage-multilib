@@ -32,7 +32,7 @@ codes["darkred"]="\x1b[31;06m"
 def xtermTitle(mystr):
 	if havecolor and dotitles and os.environ.has_key("TERM"):
 		myt=os.environ["TERM"]
-		if myt in ["xterm","Eterm","aterm","rxvt"]:
+		if myt in ["xterm","Eterm","aterm","rxvt","screen"]:
 			sys.stderr.write("\x1b]1;\x07\x1b]2;"+str(mystr)+"\x07")
 			sys.stderr.flush()
 
