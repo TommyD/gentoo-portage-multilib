@@ -129,6 +129,8 @@ except:
 
 try: # Determine if we're in PORTDIR... If not tell portage to accomodate.
 	mydir=os.getcwd()
+	if portage.settings["PORTDIR"][-1]!="/":
+		portage.settings["PORTDIR"]=portage.settings["PORTDIR"]+"/"
 	if portage.settings["PORTDIR"]!=mydir[:len(portage.settings["PORTDIR"])]:
 		# We're not in the PORTDIR
 		print

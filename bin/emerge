@@ -833,6 +833,10 @@ class depgraph:
 			else:
 				myk=["ebuild",portage.root,myeb]
 			if not self.create(myk):
+				print
+				print "!!! Problem with",myk[0],myk[2]
+				print "!!! Possibly a DEPEND/*DEPEND problem."
+				print
 				return 0
 		return 1
 
@@ -1516,14 +1520,21 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 		except:
 			maxretries=3 #default number of retries
 		retries=1
-		while ((exitcode==12) or (exitcode==10)) and retries<=maxretries:
+		exitcode=1
+		while (exitcode!=0) and (retries<=maxretries):
 			print ">>> Starting retry %d of %d"% (retries,maxretries)
+			time.sleep(11)
 			retries=retries+1
 			exitcode=portage.spawn(mycommand,free=1)
-		if exitcode==30:
-			print "!!! Rsync has timed out while connecting. Please try again."
+		if (exitcode>0):
 			print
-			sys.exit(1)
+			print darkred("!!!")+green(" Rsync has not successfully finished. It is recommended that you keep")
+			print darkred("!!!")+green(" trying or that you use the 'emerge-webrsync' option if you are unable")
+			print darkred("!!!")+green(" to use rsync due to firewall or other restrictions. This should be a")
+			print darkred("!!!")+green(" temporary problem unless complications exist with your network")
+			print darkred("!!!")+green(" (and possibly your system's filesystem) configuration.")
+			print
+			sys.exit(exitcode)
 	elif syncuri[:6]=="cvs://":
 		if not os.path.exists("/usr/bin/cvs"):
 			print "!!! /usr/bin/cvs does not exist, so rsync support is disabled."
@@ -1796,6 +1807,7 @@ else:
 		if myaction in ["system","world"]:
 			print "Calculating",myaction,"dependencies  ",
 			if not mydepgraph.xcreate(myaction):
+				print "!!! Depgraph creation failed."
 				sys.exit(1)
 			print "\b\b ...done!"
 		else:

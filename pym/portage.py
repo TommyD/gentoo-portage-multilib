@@ -1402,6 +1402,7 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 				os.chown(settings["BUILD_PREFIX"],portage_uid,portage_gid)
 				os.chmod(settings["PORT_LOGDIR"],06770)
 				if not settings.has_key("LOG_PF") or (settings["LOG_PF"] != settings["PF"]):
+					settings["LOG_PF"]=settings["PF"]
 					settings["LOG_COUNTER"]=str(counter_tick_core("/"))
 			except Exception, e:
 				settings["PORT_LOGDIR"]=""

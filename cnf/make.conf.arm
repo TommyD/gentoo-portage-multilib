@@ -110,8 +110,9 @@ CHOST="armv4l-unknown-linux-gnu"
 # PORT_LOGDIR is the location where portage will store all the logs it
 #     creates from each individual merge. They are stored as YYMMDD-$PF.log
 #     in the directory specified. This is disabled until you enable it by
-#     providing a directory. Permissions will be modified as needed.
-#PORT_LOGDIR=/var/log/emerge
+#     providing a directory. Permissions will be modified as needed IF the
+#     directory exists, otherwise logging will be disabled.
+#PORT_LOGDIR=/var/log/portage
 #
 # PORTDIR_OVERLAY is a directory where local ebuilds may be stored without
 #     concern that they will be deleted by rsync updates. Default is not

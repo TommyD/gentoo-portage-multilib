@@ -3,6 +3,12 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
+if [ "$*" != "depend" ] && [ "$*" != "clean" ]; then
+	if [ -f "${T}/environment" ]; then
+		source "${T}/environment" &>/dev/null
+	fi
+fi
+
 if [ -n "$#" ]
 then
 	ARGS="${*}"
@@ -27,6 +33,9 @@ source /etc/profile.env > /dev/null 2>&1
 export PATH="/sbin:/usr/sbin:/usr/lib/portage/bin:/bin:/usr/bin:${ROOTPATH}"
 [ ! -z "$PREROOTPATH" ] && export PATH="${PREROOTPATH%%:}:$PATH"
 
+# Grab our new utility functions.
+source /usr/lib/portage/bin/extra_functions.sh
+
 if [ -e /etc/init.d/functions.sh ]; then
 	source /etc/init.d/functions.sh > /dev/null 2>&1
 elif [ -e /etc/rc.d/config/functions ];	then
@@ -44,6 +53,7 @@ use() {
 	do
 		if [ "${x}" = "${1}" ]
 		then
+			#tty --quiet < /dev/stdout || echo "${x}"
 			echo "${x}"
 			return 0
 		fi
@@ -62,6 +72,7 @@ has() {
 	do
 		if [ "${x}" = "${me}" ]
 		then
+			#tty --quiet < /dev/stdout || echo "${x}"
 			echo "${x}"
 			return 0
 		fi
@@ -269,9 +280,7 @@ einstall() {
 	if [ -f ./[mM]akefile -o -f ./GNUmakefile ] ; then
 		make prefix=${D}/usr \
 		    datadir=${D}/usr/share \
-		    incdir=${D}/usr/include \
 		    infodir=${D}/usr/share/info \
-		    libdir=${D}/usr/lib \
 		    localstatedir=${D}/var/lib \
 		    mandir=${D}/usr/share/man \
 		    sysconfdir=${D}/etc \
@@ -363,7 +372,7 @@ END
 
 dyn_setup()
 {
-	# The next bit is to easy the broken pkg_postrm()'s
+	# The next bit is to ease the broken pkg_postrm()'s
 	# some of the gcc ebuilds have that nuke the new
 	# /lib/cpp and /usr/bin/cc wrappers ...
 	
@@ -436,16 +445,21 @@ dyn_unpack() {
 }
 
 dyn_clean() {
-	rm -rf ${WORKDIR} 
 	rm -rf ${BUILDDIR}/image
 	rm -rf ${BUILDDIR}/build-info
-	rm -rf ${BUILDDIR}/.compiled
+
 	if ! has keeptemp $FEATURES; then
 		rm -rf ${T}/*
 	fi
-	if [ -f ${BUILDDIR}/.unpacked ]; then
+
+	if ! has keepwork $FEATURES; then
+		rm -rf ${BUILDDIR}/.compiled
 		rm -rf ${BUILDDIR}/.unpacked
-		find ${BUILDDIR} -type d | sort -r | xargs rmdir &>/dev/null
+		rm -rf ${WORKDIR} 
+	fi
+
+	if [ -f ${BUILDDIR}/.unpacked ]; then
+		find ${BUILDDIR} -type d ! -regex "^${WORKDIR}" | sort -r | xargs rmdir &>/dev/null
 	fi
 	true
 }
@@ -690,7 +704,6 @@ dyn_package() {
 }
 
 dyn_install() {
-	local ROOT
 	trap "abort_install" SIGINT SIGQUIT
 	rm -rf ${BUILDDIR}/image
 	mkdir ${BUILDDIR}/image
@@ -979,10 +992,6 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ]; then
 		fi
 	fi
 
-	if [ -f "${WORKDIR}/environment" ]; then
-		source "${WORKDIR}/environment"
-	fi
-
 	if [ `id -nu` == "portage" ] ; then
 		export USER=portage
 	fi
@@ -1159,7 +1168,7 @@ done
 if [ "$myarg" != "clean" ]; then
 	# Save current environment and touch a success file. (echo for success)
 	umask 002
-	set > ${T}/environment 2>/dev/null
+	set | egrep -v "^SANDBOX" > ${T}/environment 2>/dev/null
 	chown portage:portage ${T}/environment &>/dev/null
 	chmod g+w ${T}/environment &>/dev/null
 fi

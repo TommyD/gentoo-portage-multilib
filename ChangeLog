@@ -4,15 +4,43 @@
 
 *portage-2.0.47-r8 (02 Mar 2003): Fixes -- cvs-src, ebuild.sh, repoman
 
+  10 Mar 2003; Nicholas Jones <carpaski@gentoo.org> make.conf*: Adjusted
+  the LOGDIR message and change the default location to /var/log/portage.
+
+  10 Mar 2003; Nicholas Jones <carpaski@gentoo.org> repoman: One more fix
+  for the PORTDIR setting -- '/usr/portage' was matching '/usr/portage.cvs'.
+  
+  10 Mar 2003; Nicholas Jones <carpaski@gentoo.org> etc-update: Added the
+  capability to automerge all files in the list -- with out without prompts.
+  
+  10 Mar 2003; Nicholas Jones <carpaski@gentoo.org> emerge: Added messages
+  on failure to create a depgraph -- Helps with bad DEPEND detection. Made
+  'emerge sync' stop if it fails, and not update cache.
+  
+  10 Mar 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: added an
+  external extra_functions.sh file with extra functions for portage --
+  it is flag-o-matic and pieces of eutils presently. Removed libdir/incdir
+  from einstall(). Added 'keepwork' to keep the source code after a package
+  is merged. Removed the 'local' declaration of ROOT in dyn_install() --
+  this fixes has_version in src_install(). Fixed the sourcing of environment
+  so that variables are peristent across stages of a merge. Removed the
+  SANDBOX vars from the environment file, as that upsets SANDBOX.
+  
+  10 Mar 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Fixes to
+  permission problems with cvs-src and ccache (removed nested try's). Log
+  counter fix -- One log per package now.
+
+*portage-2.0.47-r8 (02 Mar 2003): Fixes -- cvs-src, ebuild.sh, repoman
+
   02 Mar 2003; Nicholas Jones <carpaski@gentoo.org> *: Fixes to eclass
-	errors and messages -- raise on not found. emerge --debug works for
-	ebuilds with syntax errors now -- needs better implimentation though,
-	debug=0 in params can't be used due to scope limits.
+  errors and messages -- raise on not found. emerge --debug works for
+  ebuilds with syntax errors now -- needs better implimentation though,
+  debug=0 in params can't be used due to scope limits.
 
   28 Feb 2003; Nicholas Jones <carpaski@gentoo.org> *: reorg ebuild.sh again
-	to ensure that aliases are expanded properly. Repoman now determines the
-	proper PORTDIR to set when loading portage to scan the cvs tree. portage.py
-	fixes for cvs-src permission problems with userpriv.
+  to ensure that aliases are expanded properly. Repoman now determines the
+  proper PORTDIR to set when loading portage to scan the cvs tree. portage.py
+  fixes for cvs-src permission problems with userpriv.
 
 *portage-2.0.47-r7 (27 Feb 2003): Quick fix for eerror() problem.
 

@@ -84,13 +84,7 @@ function scan() {
 
 function sel_file() {
 	local -i isfirst=0
-	until [ -f ${TMP}/files/${input} ] || [ ${input} == -1 ]; do
-		if (( ${mode} == 0 )); then
-			echo "The following is the list of files which need updating, each 
-configuration file is followed by a list of possible replacement files."
-		else
-			local my_title="Please select a file to update"
-		fi
+	until [ -f ${TMP}/files/${input} ] || [ ${input} == -1 ] || [ ${input} == -3 ]; do
 		for file in `ls ${TMP}/files|sort -n`; do
 			if (( ${isfirst} == 0 )); then
 				isfirst=${file}
@@ -104,16 +98,38 @@ configuration file is followed by a list of possible replacement files."
 				head -n1 ${TMP}/files/${file}
 			fi
 		done > ${TMP}/menuitems
-		if (( ${mode} == 0 )); then
-			cat ${TMP}/menuitems
-			echo -n "Please select a file to edit by entering the corresponding number (-1 to exit): "
-			read input
+
+		if [ "${OVERWRITE_ALL}" == "yes" ]; then
+			input=0
 		else
-			dialog --title "${title}" --menu "${my_title}" \
-				0 0 0 `echo "-1 Exit";cat ${TMP}/menuitems` \
-				2> ${TMP}/input
-			input=`cat ${TMP}/input`
-		fi		
+			if (( ${mode} == 0 )); then
+				echo "The following is the list of files which need updating, each 
+configuration file is followed by a list of possible replacement files."
+			else
+				local my_title="Please select a file to update"
+			fi
+
+			if (( ${mode} == 0 )); then
+				cat ${TMP}/menuitems
+				echo    "Please select a file to edit by entering the corresponding number."
+				echo    "              (-1 to exit) (-3 to auto merge all remaining files)"
+				echo -n "                           (-5 to auto-merge AND not use 'mv -i'): "
+				read input
+			else
+				dialog --title "${title}" --menu "${my_title}" \
+					0 0 0 `echo "-1 Exit";cat ${TMP}/menuitems` \
+					2> ${TMP}/input
+				input=`cat ${TMP}/input`
+			fi
+			if (( ${input} == -5 )); then
+				input=-3
+				export mv_opts=""
+			fi
+			if (( ${input} == -3 )); then
+				input=0
+				export OVERWRITE_ALL="yes"
+			fi
+		fi # -3 automerge
 		if (( ${input} == 0 )); then
 			input=${isfirst}
 		fi
@@ -131,29 +147,36 @@ function do_file() {
 		fi
 		until (( ${my_input} > 0 )) && (( ${my_input} < `cat ${TMP}/files/${input}|wc -l` )); do
 			fcount=0
-			for line in `cat ${TMP}/files/${input}`; do
-				if (( ${fcount} > 0 )); then
-					echo -n "${fcount}${PAR} "
-					echo "${line}"
-				else
-					if (( ${mode} == 0 )); then
-						echo "Below are the new config files for ${line}:"
-					else
-						local my_title="Please select a file to process for ${line}"
-					fi
-				fi
-				fcount=${fcount}+1
-			done > ${TMP}/menuitems
-			if (( ${mode} == 0 )); then
-				cat ${TMP}/menuitems
-				echo -n "Please select a file to process (-1 to exit this file): "
-				read my_input
+
+			if [ "${OVERWRITE_ALL}" == "yes" ]; then
+				my_input=0
 			else
-				dialog --title "${title}" --menu "${my_title}" \
-					0 0 0 `cat ${TMP}/menuitems;echo "${fcount} Exit"` \
-					2> ${TMP}/input
-				my_input=`cat ${TMP}/input`
-			fi
+				for line in `cat ${TMP}/files/${input}`; do
+					if (( ${fcount} > 0 )); then
+						echo -n "${fcount}${PAR} "
+						echo "${line}"
+					else
+						if (( ${mode} == 0 )); then
+							echo "Below are the new config files for ${line}:"
+						else
+							local my_title="Please select a file to process for ${line}"
+						fi
+					fi
+					fcount=${fcount}+1
+				done > ${TMP}/menuitems
+
+				if (( ${mode} == 0 )); then
+					cat ${TMP}/menuitems
+					echo -n "Please select a file to process (-1 to exit this file): "
+					read my_input
+				else
+					dialog --title "${title}" --menu "${my_title}" \
+						0 0 0 `cat ${TMP}/menuitems;echo "${fcount} Exit"` \
+						2> ${TMP}/input
+					my_input=`cat ${TMP}/input`
+				fi
+			fi # OVERWRITE_ALL
+
 			if (( ${my_input} == 0 )); then
 				my_input=1
 			elif (( ${my_input} == ${fcount} )); then
@@ -190,17 +213,22 @@ function do_cfg() {
 	local -i my_input=0
 	
 	until (( ${my_input} == -1 )) || [ ! -f ${file} ]; do
-		( echo "Showing differences between ${ofile} and ${file}"
-		  `echo "${diff_command}" |
-		   sed -e "s:%file1:${ofile}:" \
-			   -e "s:%file2:${file}:"` )
-			   # | ${pager}
-		echo -n "1) Replace original with update
+		if [ "${OVERWRITE_ALL}" == "yes" ]; then
+			my_input=1
+		else
+			( echo "Showing differences between ${ofile} and ${file}"
+			  `echo "${diff_command}" |
+			   sed -e "s:%file1:${ofile}:" \
+				   -e "s:%file2:${file}:"` )
+				   # | ${pager}
+			echo -n "1) Replace original with update
 2) Delete update, keeping original as is
 3) Interactively merge original with update
 4) Show differences again
 Please select from the menu above (-1 to ignore this update): "
-		read my_input
+			read my_input
+		fi
+		
 		case ${my_input} in
 			1) echo "Replacing ${ofile} with ${file}"
 			   mv ${mv_opts} ${file} ${ofile}
