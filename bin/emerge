@@ -352,8 +352,11 @@ class depgraph:
 		if "--emptytree" in myopts:
 			portage.db["/"]["vartree"].tree=self.emptytree.tree
 			portage.db["/"]["vartree"].populated=1
-			portage.db["/"]["vartree"].inject("sys-libs/glibc-1.0")
+			#The root needs to be set to "None" to enable "empty" mode
+			#And this needs to be done before the inject() below, since inject causes recalc.
+			#of USE variables, which causes our tree to become partially populated
 			portage.db["/"]["vartree"].root=None
+			portage.db["/"]["vartree"].inject("sys-libs/glibc-1.0")
 			portage.db["/"]["vartree"].virtual={"virtual/glibc":"sys-libs/glibc"}
 		self.outdatedpackages=[]
 
