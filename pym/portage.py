@@ -493,6 +493,12 @@ class config:
 		else:
 			self.configlist=[self.origenv.copy(),getconfig("/etc/make.conf"),getconfig("/etc/make.globals")]
 		self.populated=1
+		if settings.has_key("MAINTAINER"):
+			if settings["MAINTAINER"]=="yes":
+				settings["MAINTAINER"]=settings["MAINTAINER_DEFAULT"]
+			maintainerparts=string.split(settings["MAINTAINER"],' ')
+			for x in maintainerparts:
+				settings["MAINTAINER_"+x]="1"
 	
 	def __getitem__(self,mykey):
 		if not self.populated:
@@ -546,7 +552,7 @@ def spawn(mystring,debug=0):
 	mypid=os.fork()
 	if mypid==0:
 		myargs=[]
-		if settings["MAINTAINER"]=="yes":
+		if settings["MAINTAINER_sandbox"]=="1":
 			mycommand="/usr/lib/portage/bin/sandbox"
 			if debug:
 				myargs=["sandbox",mystring]
@@ -679,7 +685,7 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 	elif mydo=="compile":
 		return spawn("/usr/sbin/ebuild.sh fetch unpack compile")
 	elif mydo=="install":
-		if settings["MAINTAINER"]=="yes":
+		if settings["MAINTAINER_noauto"]=="1":
 			return spawn("/usr/sbin/ebuild.sh install")
 		return spawn("/usr/sbin/ebuild.sh fetch unpack compile install")
 	elif mydo in ["prerm","postrm","preinst","postinst","config","touch","clean","fetch","digest","batchdigest"]:
@@ -944,7 +950,7 @@ def isspecific(mypkg):
 		if not isjustname(mysplit[1]):
 			return 1
 	return 0
-	
+
 # This function can be used as a package verification function, i.e.
 # "pkgsplit("foo-1.2-1") will return None if foo-1.2-1 isn't a valid
 # package (with version) name.  If it is a valid name, pkgsplit will

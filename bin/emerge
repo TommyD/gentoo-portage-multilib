@@ -328,7 +328,7 @@ for x in sys.argv[1:]:
 					myfiles.append(x[:-1])
 				else:
 					myfiles.append(x)
-if not portage.settings.has_key("MAINTAINER"):
+if not portage.settings.has_key("MAINTAINER_noclean"):
 	if not "--autoclean" in myopts:
 		myopts.append("--autoclean")
 if "--debug" in myopts:

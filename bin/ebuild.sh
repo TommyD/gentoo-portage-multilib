@@ -1,6 +1,47 @@
 #!/bin/bash
 
-# disable the sandbox for now ...
+#we need this next line for "die" and "assert"
+shopt -s expand_aliases
+source /etc/profile.env > /dev/null 2>&1
+export PATH="/sbin:/usr/sbin:/usr/lib/portage/bin:/bin:/usr/bin:${ROOTPATH}"
+if [ -e /etc/init.d/functions.sh ]
+then
+	source /etc/init.d/functions.sh > /dev/null 2>&1
+elif [ -e /etc/rc.d/config/functions ]
+then
+	source /etc/rc.d/config/functions > /dev/null 2>&1
+fi
+	
+# fine grained maintainer options, convert previous 'yes' to new format
+if [ "$MAINTAINER" = "yes" ]
+then
+	MAINTAINER="$MAINTAINER_DEFAULT"
+fi
+# create seperate maintainer env vars
+MAINTAINER_ARRAY=( $MAINTAINER )
+maint_array_count=${#MAINTAINER_ARRAY[@]}
+maint_array_index=0
+while [ "$maint_array_index" -lt "$maint_array_count" ]
+do
+	export MAINTAINER_${MAINTAINER_ARRAY[$maint_array_index]}=1
+	let "maint_array_index = $maint_array_index + 1"
+done
+
+#if no perms are specified, dirs/files will have decent defaults
+#(not secretive, but not stupid)
+umask 022
+export DESTTREE=/usr
+export INSDESTTREE=""
+export EXEDESTTREE=""
+export DOCDESTTREE=""
+export INSOPTIONS="-m0644"
+export EXEOPTIONS="-m0755"	
+export LIBOPTIONS="-m0644"
+export DIROPTIONS="-m0755"
+export MOPREFIX=${PN}
+export KVERS=`uname -r`
+
+# the sandbox is disabled by default except when overridden in the relevant stages
 export SANDBOX_ON="0"
 
 # sandbox support functions
@@ -23,33 +64,6 @@ addpredict()
 {
 	export SANDBOX_PREDICT="$SANDBOX_PREDICT:$1"
 }
-
-#we need this next line for "die" and "assert"
-shopt -s expand_aliases
-source /etc/profile.env > /dev/null 2>&1
-export PATH="/sbin:/usr/sbin:/usr/lib/portage/bin:/bin:/usr/bin:${ROOTPATH}"
-if [ -e /etc/init.d/functions.sh ]
-then
-	source /etc/init.d/functions.sh > /dev/null 2>&1
-elif [ -e /etc/rc.d/config/functions ]
-then
-	source /etc/rc.d/config/functions > /dev/null 2>&1
-fi
-	
-#if no perms are specified, dirs/files will have decent defaults
-#(not secretive, but not stupid)
-umask 022
-export DESTTREE=/usr
-export INSDESTTREE=""
-export EXEDESTTREE=""
-export DOCDESTTREE=""
-export INSOPTIONS="-m0644"
-export EXEOPTIONS="-m0755"	
-export LIBOPTIONS="-m0644"
-export DIROPTIONS="-m0755"
-export MOPREFIX=${PN}
-export KVERS=`uname -r`
-
 
 unpack() {
 	local x
@@ -178,7 +192,7 @@ dyn_digest() {
 	if [ ! -d ${FILESDIR} ]
 	then
 		install -d ${FILESDIR}
-		if [ "${MAINTAINER}" = "yes" ]
+		if [ "${MAINTAINER_cvs}" = "1" ]
 		then
 			echo ">>> adding ${FILESDIR} to CVS (just in case it isn't there)"
 			( echo; cd `/usr/bin/dirname ${FILESDIR}`; cvs add `/usr/bin/basename ${FILESDIR}`; echo)
@@ -200,7 +214,7 @@ dyn_digest() {
 		fi
     done
     mv ${FILESDIR}/.digest-${PF} ${FILESDIR}/digest-${PF}
-    if [ "${MAINTAINER}" = "yes" ]
+    if [ "${MAINTAINER_cvs}" = "1" ]
     then
 		echo ">>> adding digest-${PF} to CVS (just in case it isn't there)"
 		( echo; cd ${FILESDIR}; cvs add digest-${PF}; echo )
@@ -212,7 +226,7 @@ digest_check() {
 	if [ ! -e ${FILESDIR}/digest-${PF} ]
 	then
 		echo '!!!'" No message digest file found."
-		if [ "$MAINTAINER" = "yes" ]
+		if [ "$MAINTAINER_digest" = "1" ]
 		then
 			echo '>>> Maintainer mode: auto-computing digests.'
 			dyn_digest
@@ -233,7 +247,7 @@ digest_check() {
 	then
 		echo
 		echo '!!!'" No message digest found for ${1}."
-		if [ "$MAINTAINER" = "yes" ]
+		if [ "$MAINTAINER_cvs" = "1" ]
 		then
 			echo '>>> Maintainer mode: auto-computing digests.'
 			dyn_digest
