@@ -1,4 +1,4 @@
-.TH "emerge" "1" "July 21, 2002" "portage 2.0.22" ""
+.TH "emerge" "1" "July 21, 2002" "portage 2.0.23" ""
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -10,7 +10,7 @@ emerge \- Command\-line interface to the Portage system
 [\fIoptions\fR] [\fIaction\fR] \fBebuildfile\fR
 .TP 
 \fBemerge\fR
-[\fI\-\-clean \-c\fR] \fBsync\fR | \fBrsync\fR
+\fBsync\fR | \fBrsync\fR
 .TP 
 \fBemerge\fR
 \fI\-\-help \-h\fR [\fBsystem\fR | \fBconfig\fR | \fBsync\fR]
@@ -112,9 +112,7 @@ for any package that starts with "kde"; \fBemerge search "gcc$"\fR searches for 
 .TP 
 \fBsync\fR
 Initiates a portage tree update with one of the rsync.gentoo.org mirrors.  \fBNote that any changes
-you have made to the portage tree will be erased\fR.  It is generally a good idea to use \fBsync\fR with
-the \fB\-\-clean\fR option, as that gets rid of stale files that are no longer considered pertinent.
-Except for in special circumstances, this uses \fBrsync\fR to do the update.
+you have made to the portage tree will be erased\fR.  Except for in special circumstances, this uses \fBrsync\fR to do the update.
 .TP 
 \fBunmerge\fR (\fB\-C\fR)
 \fBWARNING: This action can remove important packages!\fR Removes all matching packages.  This does

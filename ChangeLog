@@ -1,6 +1,10 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  04 Aug 2002; Phil Bordelon <sunflare@lsu.edu> emerge.1: The emerge man
+  page now reflects the fact that emerge sync|rsync always does a --clean
+  now.  Also bumped the release number to 2.0.23.
+
 *portage-2.0.23 (01 Aug 2002)
 
   01 Aug 2002; Daniel Robbins <drobbins@gentoo.org> portage.py:
