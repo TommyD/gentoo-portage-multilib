@@ -15,7 +15,7 @@ Legend:
 
 # Determine file lock status before starting downloads -- Prevent races/deletes
   Patches exist for this. Integrate and find all colliding descriptors/cmds.
-	Create a fileIO layer? (wget and other external calls are a problem)
+  Create a fileIO layer? (wget and other external calls are a problem)
 
 * Add category support to searches... emerge -s @catgory
 
@@ -27,4 +27,10 @@ Legend:
 
 # 'emerge sync' timestamp awareness -- Make sure IP is associated and not
   used at random as servers may differ. bug 21794
+
+! Rename all undocumented variables used in bash to prefixed values that
+  are not easy to accidently duplicate. BUILDDIR --> PORTAGE_BUILDDIR or
+  something like that. Prevent ebuilds from clobbering system variables.
+
+
 
