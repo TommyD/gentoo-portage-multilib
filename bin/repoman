@@ -129,7 +129,7 @@ except:
 
 try: # Determine if we're in PORTDIR... If not tell portage to accomodate.
 	mydir=os.getcwd()
-	if mydir!=portage.settings["PORTDIR"][:len(mydir)]:
+	if portage.settings["PORTDIR"]!=mydir[:len(portage.settings["PORTDIR"])]:
 		# We're not in the PORTDIR
 		print
 		print darkred("We're not in PORTDIR..."),
