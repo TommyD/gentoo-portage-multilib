@@ -6625,8 +6625,8 @@ def get_preferred_fetcher():
 		if usable:
 			if selinux_enabled:
 				selinux_context=selinux.getcontext()
-				selinux_context=selinux_context.replace(mysettings["PORTAGE_T"], \
-					mysettings["PORTAGE_FETCH_T"])
+				selinux_context=selinux_context.replace(settings["PORTAGE_T"], \
+					settings["PORTAGE_FETCH_T"])
 			else:
 				selinux_context = None
 

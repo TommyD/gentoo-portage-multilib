@@ -456,8 +456,8 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 	failure.  Move is atomic."""
 	#print "movefile("+str(src)+","+str(dest)+","+str(newmtime)+","+str(sstat)+")"
 	global lchown
-	from portage_exec import selinux_enabled
-	if selinux_enabled:
+	from portage_exec import selinux_capable
+	if selinux_capable:
 		import selinux
 	from portage_data import lchown
 	try:
@@ -497,7 +497,7 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 					target=target[len(mysettings["D"]):]
 			if destexists and not stat.S_ISDIR(dstat[stat.ST_MODE]):
 				os.unlink(dest)
-			if selinux_enabled:
+			if selinux_capable:
 				sid = selinux.get_lsid(src)
 				selinux.secure_symlink(target,dest,sid)
 			else:
@@ -515,9 +515,9 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 			return None
 
 	renamefailed=1
-	if sstat[stat.ST_DEV]==dstat[stat.ST_DEV] or selinux_enabled:
+	if sstat[stat.ST_DEV]==dstat[stat.ST_DEV] or selinux_capable:
 		try:
-			if selinux_enabled:
+			if selinux_capable:
 				ret=selinux.secure_rename(src,dest)
 			else:
 				ret=os.rename(src,dest)
@@ -536,7 +536,7 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 		didcopy=0
 		if stat.S_ISREG(sstat[stat.ST_MODE]):
 			try: # For safety copy then move it over.
-				if selinux_enabled:
+				if selinux_capable:
 					selinux.secure_copy(src,dest+"#new")
 					selinux.secure_rename(dest+"#new",dest)
 				else:
@@ -551,7 +551,7 @@ def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
 				return None
 		else:
 			#we don't yet handle special, so we need to fall back to /bin/mv
-			if selinux_enabled:
+			if selinux_capable:
 				a=portage_exec.spawn_get_output(MOVE_BINARY+" -c -f '%s' '%s'" % (src,dest))
 			else:
 				a=portage_exec.spawn_get_output(MOVE_BINARY+" -f '%s' '%s'" % (src,dest))

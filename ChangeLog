@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  07 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage_util.py,pym/portage.py:
+  tweak to make movefile not implode, and get_preferred_fetcher not implode.
+
   07 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage_metadata.py, 
   pym/orig_dict_cache.py, pym/portage.py, pym/portage_util.py: Added missing 
   metadata module (contributed via solar iirc), and corrected circular dependency
