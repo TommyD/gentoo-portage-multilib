@@ -2,6 +2,13 @@
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+  22 Aug 2002; Martin Schlemmer <azarah@gentoo.org> :
+
+  Add copyrights to sandbox.h and sandbox_futils.h.  If wrong, the
+  parties involved should please contact me so that we can fix it.
+
+  Add opendir wrapper to libsandbox.c.
+
   21 Aug 2002; Martin Schlemmer <azarah@gentoo.org> :
 
   Do some more cleanups to ecanonicalize(), as it dropped filenames in

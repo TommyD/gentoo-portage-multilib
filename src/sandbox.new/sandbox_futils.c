@@ -1,5 +1,10 @@
 /*
+ * Copyright (C) 2002 Brad House <brad@mainstreetsoftworks.com>
+ * Distributed under the terms of the GNU General Public License, v2 or later 
+ * Author: Brad House <brad@mainstreetsoftworks.com>
+ *
  * $Header$
+ * 
  */
 
 #include <errno.h>

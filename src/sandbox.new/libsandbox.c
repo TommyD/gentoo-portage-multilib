@@ -1,40 +1,40 @@
 /*	
-**	Path sandbox for the gentoo linux portage package system, initially
-**	based on the ROCK Linux Wrapper for getting a list of created files
-**
-**  to integrate with bash, bash should have been built like this
-**
-**  ./configure --prefix=<prefix> --host=<host> --without-gnu-malloc
-**
-**  it's very important that the --enable-static-link option is NOT specified
-**	
-**	Copyright (C) 2001 Geert Bevin, Uwyn, http://www.uwyn.com
-**	Distributed under the terms of the GNU General Public License, v2 or later 
-**	Author : Geert Bevin <gbevin@uwyn.com>
-**
-**  Post Bevin leaving Gentoo ranks:
-**  --------------------------------
-**    Ripped out all the wrappers, and implemented those of InstallWatch.
-**    Losts of cleanups and bugfixes.  Implement a execve that forces $LIBSANDBOX
-**    in $LD_PRELOAD.  Reformat the whole thing to look  somewhat like the reworked
-**    sandbox.c from Brad House <brad@mainstreetsoftworks.com>.
-**
-**    Martin Schlemmer <azarah@gentoo.org> (18 Aug 2002)
-**
-**  Partly Copyright (C) 1998-9 Pancrazio `Ezio' de Mauro <p@demauro.net>,
-**  as some of the InstallWatch code was used.
-**
-**
-**  $Header$
-*/
+ *  Path sandbox for the gentoo linux portage package system, initially
+ *  based on the ROCK Linux Wrapper for getting a list of created files
+ *
+ *  to integrate with bash, bash should have been built like this
+ *
+ *  ./configure --prefix=<prefix> --host=<host> --without-gnu-malloc
+ *
+ *  it's very important that the --enable-static-link option is NOT specified
+ *	
+ *  Copyright (C) 2001 Geert Bevin, Uwyn, http://www.uwyn.com
+ *  Distributed under the terms of the GNU General Public License, v2 or later 
+ *  Author : Geert Bevin <gbevin@uwyn.com>
+ *
+ *  Post Bevin leaving Gentoo ranks:
+ *  --------------------------------
+ *    Ripped out all the wrappers, and implemented those of InstallWatch.
+ *    Losts of cleanups and bugfixes.  Implement a execve that forces $LIBSANDBOX
+ *    in $LD_PRELOAD.  Reformat the whole thing to look  somewhat like the reworked
+ *    sandbox.c from Brad House <brad@mainstreetsoftworks.com>.
+ *
+ *    Martin Schlemmer <azarah@gentoo.org> (18 Aug 2002)
+ *
+ *  Partly Copyright (C) 1998-9 Pancrazio `Ezio' de Mauro <p@demauro.net>,
+ *  as some of the InstallWatch code was used.
+ *
+ *
+ *  $Header$
+ *
+ */
 
 /* Uncomment below to enable wrapping of mknod().
  * This is broken currently. */
 /* #define WRAP_MKNOD */
 
-/* Uncomment below to enable the use of strtok_r().
- * This is broken currently. */
-/* #define REENTRANT_STRTOK */
+/* Uncomment below to enable the use of strtok_r(). */
+#define REENTRANT_STRTOK
 
 
 #define open   xxx_open
@@ -142,6 +142,8 @@ extern int link(const char *, const char *);
 static int(*true_link)(const char *, const char *);
 extern int mkdir(const char *, mode_t);
 static int(*true_mkdir)(const char *, mode_t);
+extern DIR *opendir(const char *);
+static DIR *(*true_opendir)(const char *);
 #ifdef WRAP_MKNOD
 extern int __xmknod(const char *, mode_t, dev_t);
 static int(*true___xmknod)(const char *, mode_t, dev_t);
@@ -199,6 +201,7 @@ void _init(void)
   true_lchown = dlsym(libc_handle, "lchown");
   true_link = dlsym(libc_handle, "link");
   true_mkdir = dlsym(libc_handle, "mkdir");
+  true_opendir = dlsym(libc_handle, "opendir");
 #ifdef WRAP_MKNOD
   true___xmknod = dlsym(libc_handle, "__xmknod");
 #endif
@@ -373,6 +376,21 @@ int mkdir(const char *pathname, mode_t mode)
     result = true_mkdir(pathname, mode);
   }
 	
+  return result;
+}
+
+DIR *opendir(const char *name)
+{
+  DIR *result = NULL;
+  char canonic[MAXPATHLEN];
+
+  canonicalize(name, canonic);
+
+  if FUNCTION_SANDBOX_SAFE("opendir", canonic) {
+    check_dlsym(opendir);
+    result = true_opendir(name);
+  }
+
   return result;
 }
 
@@ -595,7 +613,7 @@ int execve(const char *filename, char *const argv [], char *const envp[])
         if (NULL != strstr(envp[count], sandbox_lib)) {
           break;
         } else {
-          const int max_envp_len=strlen(envp[count]) + strlen(sandbox_lib) + 1;
+          const int max_envp_len = strlen(envp[count]) + strlen(sandbox_lib) + 1;
           
           /* Backup envp[count], and set it to our own one which
            * contains sandbox_lib */
@@ -773,7 +791,7 @@ static void init_env_entries(char*** prefixes_array, int* prefixes_num, char* en
     if (num_delimiters > 0) {
       buffer = (char *)malloc((prefixes_env_length + 1) * sizeof(char));
 #ifdef REENTRANT_STRTOK
-      *strtok_buf = (char *)malloc((prefixes_env_length + 1) * sizeof(char));
+      strtok_buf = (char **)malloc((prefixes_env_length + 1) * sizeof(char));
 #endif
       *prefixes_array = (char **)malloc((num_delimiters + 1) * sizeof(char *));
 
@@ -789,8 +807,7 @@ static void init_env_entries(char*** prefixes_array, int* prefixes_num, char* en
         strncpy(prefix, token, strlen(token) + 1);
         (*prefixes_array)[(*prefixes_num)++] = filter_path(prefix);
         
-        if (prefix) free(prefix);
-        prefix = NULL;
+        if (prefix) free(prefix); prefix = NULL;
 #ifdef REENTRANT_STRTOK
         token = strtok_r(NULL, ":", strtok_buf);
 #else
@@ -798,11 +815,9 @@ static void init_env_entries(char*** prefixes_array, int* prefixes_num, char* en
 #endif
       }
       
-      if (buffer) free(buffer);
-      buffer = NULL;
+      if (buffer) free(buffer); buffer = NULL;
 #ifdef REENTRANT_STRTOK
-      if (strtok_buf) free(strtok_buf);
-      strtok_buf = NULL;
+      if (strtok_buf) free(strtok_buf); strtok_buf = NULL;
 #endif
     }
     else if (prefixes_env_length > 0) {
@@ -812,8 +827,7 @@ static void init_env_entries(char*** prefixes_array, int* prefixes_num, char* en
       strncpy(prefix, prefixes_env, prefixes_env_length + 1);
       (*prefixes_array)[(*prefixes_num)++] = filter_path(prefix);
       
-      if (prefix) free(prefix);
-      prefix = NULL;
+      if (prefix) free(prefix); prefix = NULL;
     }
   }
 }
