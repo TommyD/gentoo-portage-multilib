@@ -47,6 +47,10 @@ This variable is passed by the \fIebuild scripts\fR to the \fIconfigure\fR
 as \fI\-\-build=${CBUILD}\fR only if it is defined. Presently HPPA is the
 only arch to require this.
 .TP
+\fBCCACHE_SIZE\fR = \fI"size"\fR
+This controls the space use limitations for ccache.  The default is 2 gigabytes 
+('2G').  Sizes are specified with 'G', 'M', or 'K'.
+.TP
 \fBCFLAGS CXXFLAGS\fR 
 Use these variables to set the desired optimization/CPU instruction settings
 for applications that you compile.  Nearly all ebuild files will take advantage
