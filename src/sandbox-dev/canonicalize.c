@@ -29,8 +29,10 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <stddef.h>
-
-#define __set_errno(val) errno = (val)
+                     
+#ifndef __set_errno
+# define __set_errno(val) errno = (val)
+#endif
 
 /* Return the canonical absolute name of file NAME.  A canonical name
    does not contain any `.', `..' components nor any repeated path
@@ -61,9 +63,9 @@ ecanonicalize (const char *name, char *resolved)
   if (name == NULL)
     {
       /* As per Single Unix Specification V2 we must return an error if
-	 either parameter is a null pointer.  We extend this to allow
-	 the RESOLVED parameter to be NULL in case the we are expected to
-	 allocate the room for the return value.  */
+         either parameter is a null pointer.  We extend this to allow
+         the RESOLVED parameter to be NULL in case the we are expected to
+         allocate the room for the return value.  */
       __set_errno (EINVAL);
       return NULL;
     }
@@ -71,7 +73,7 @@ ecanonicalize (const char *name, char *resolved)
   if (name[0] == '\0')
     {
       /* As per Single Unix Specification V2 we must return an error if
-	 the name argument points to an empty string.  */
+         the name argument points to an empty string.  */
       __set_errno (ENOENT);
       return NULL;
     }
@@ -90,10 +92,10 @@ ecanonicalize (const char *name, char *resolved)
   if (name[0] != '/')
     {
       if (!getcwd (rpath, path_max))
-	{
-	  rpath[0] = '\0';
-	  goto error;
-	}
+        {
+          rpath[0] = '\0';
+          goto error;
+        }
       dest = strchr (rpath, '\0');
     }
   else
@@ -106,58 +108,58 @@ ecanonicalize (const char *name, char *resolved)
     {
       /* Skip sequence of multiple path-separators.  */
       while (*start == '/')
-	++start;
+        ++start;
 
       /* Find end of path component.  */
       for (end = start; *end && *end != '/'; ++end)
-	/* Nothing.  */;
+        /* Nothing.  */;
 
       if (end - start == 0)
-	break;
+        break;
       else if (end - start == 1 && start[0] == '.')
-	/* nothing */;
+        /* nothing */;
       else if (end - start == 2 && start[0] == '.' && start[1] == '.')
-	{
-	  /* Back up to previous component, ignore if at root already.  */
-	  if (dest > rpath + 1)
-	    while ((--dest)[-1] != '/');
-	}
+        {
+          /* Back up to previous component, ignore if at root already.  */
+          if (dest > rpath + 1)
+            while ((--dest)[-1] != '/');
+        }
       else
-	{
-	  size_t new_size;
+        {
+          size_t new_size;
 
-	  if (dest[-1] != '/')
-	    *dest++ = '/';
+          if (dest[-1] != '/')
+            *dest++ = '/';
 
-	  if (dest + (end - start) >= rpath_limit)
-	    {
-	      ptrdiff_t dest_offset = dest - rpath;
+          if (dest + (end - start) >= rpath_limit)
+            {
+              ptrdiff_t dest_offset = dest - rpath;
 
-	      if (resolved)
-		{
-		  __set_errno (ENAMETOOLONG);
-		  if (dest > rpath + 1)
-		    dest--;
-		  *dest = '\0';
-		  goto error;
-		}
-	      new_size = rpath_limit - rpath;
-	      if (end - start + 1 > path_max)
-		new_size += end - start + 1;
-	      else
-		new_size += path_max;
-	      rpath = realloc (rpath, new_size);
-	      rpath_limit = rpath + new_size;
-	      if (rpath == NULL)
-		return NULL;
+              if (resolved)
+                {
+                  __set_errno (ENAMETOOLONG);
+                  if (dest > rpath + 1)
+                    dest--;
+                  *dest = '\0';
+                  goto error;
+                }
+              new_size = rpath_limit - rpath;
+              if (end - start + 1 > path_max)
+                new_size += end - start + 1;
+              else
+                new_size += path_max;
+              rpath = realloc (rpath, new_size);
+              rpath_limit = rpath + new_size;
+              if (rpath == NULL)
+                return NULL;
 
-	      dest = rpath + dest_offset;
-	    }
+              dest = rpath + dest_offset;
+            }
 
-	  dest = __mempcpy (dest, start, end - start);
-	  *dest = '\0';
+          dest = __mempcpy (dest, start, end - start);
+          *dest = '\0';
 
-	  }
+          }
     }
 #if 0
   if (dest > rpath + 1 && dest[-1] == '/')

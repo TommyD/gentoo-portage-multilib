@@ -1,5 +1,5 @@
-/*	
- *  Path sandbox for the gentoo linux portage package system, initially
+/*
+S *  Path sandbox for the gentoo linux portage package system, initially
  *  based on the ROCK Linux Wrapper for getting a list of created files
  *
  *  to integrate with bash, bash should have been built like this
@@ -7,7 +7,7 @@
  *  ./configure --prefix=<prefix> --host=<host> --without-gnu-malloc
  *
  *  it's very important that the --enable-static-link option is NOT specified
- *	
+ *
  *  Copyright (C) 2001 Geert Bevin, Uwyn, http://www.uwyn.com
  *  Distributed under the terms of the GNU General Public License, v2 or later 
  *  Author : Geert Bevin <gbevin@uwyn.com>
@@ -72,7 +72,7 @@
 #include "localdecls.h"
 #include "sandbox.h"
 
-#define PIDS_FILE	"/tmp/sandboxpids.tmp"
+#define PIDS_FILE "/tmp/sandboxpids.tmp"
 
 #define FUNCTION_SANDBOX_SAFE(func, path) \
         ((0 == is_sandbox_on()) || (1 == before_syscall(func, path)))
@@ -184,7 +184,7 @@ static int (*true_execve)(const char *, char *const [], char *const []);
 
 static void init_wrappers(void)
 {
-  void *libc_handle;
+  void *libc_handle = NULL;
 
 #ifdef BROKEN_RTLD_NEXT
 //  printf ("RTLD_LAZY");
@@ -224,6 +224,7 @@ static void init_wrappers(void)
   
 void _init(void)
 {
+  int old_errno = errno;
   char *tmp_string = NULL;
 
   init_wrappers();
@@ -234,10 +235,14 @@ void _init(void)
   
   if (tmp_string) free(tmp_string);
   tmp_string = NULL;
+
+  errno = old_errno;
 }
 
 static void canonicalize(const char *path, char *resolved_path)
 {
+  int old_errno = errno;
+  
   if(!erealpath(path, resolved_path) && (path[0] != '/')) {
     /* The path could not be canonicalized, append it
      * to the current working directory if it was not
@@ -246,8 +251,10 @@ static void canonicalize(const char *path, char *resolved_path)
     getcwd(resolved_path, MAXPATHLEN - 2);
     strcat(resolved_path, "/");
     strncat(resolved_path, path, MAXPATHLEN - 1);
-	erealpath(resolved_path, resolved_path);
+    erealpath(resolved_path, resolved_path);
   }
+
+  errno = old_errno;
 }
 
 static void *get_dlsym(const char *symname)
@@ -289,7 +296,7 @@ int chmod(const char *path, mode_t mode)
     check_dlsym(chmod);
     result = true_chmod(path, mode);
   }
-	
+   
   return result;
 }
 
@@ -304,7 +311,7 @@ int chown(const char *path, uid_t owner, gid_t group)
     check_dlsym(chown);
     result = true_chown(path, owner, group);
   }
-	
+   
   return result;
 }
 
@@ -335,7 +342,7 @@ FILE *fopen(const char *pathname, const char *mode)
     check_dlsym(fopen);
     result = true_fopen(pathname,mode);
   }
-	
+   
   return result;
 }
 
@@ -351,7 +358,7 @@ int lchown(const char *path, uid_t owner, gid_t group)
     check_dlsym(chown);
     result = true_chown(path, owner, group);
   }
-	
+   
   return result;
 }
 
@@ -367,7 +374,7 @@ int link(const char *oldpath, const char *newpath)
     check_dlsym(link);
     result = true_link(oldpath, newpath);
   }
-	
+   
   return result;
 }
 
@@ -382,7 +389,7 @@ int mkdir(const char *pathname, mode_t mode)
     check_dlsym(mkdir);
     result = true_mkdir(pathname, mode);
   }
-	
+   
   return result;
 }
 
@@ -438,8 +445,8 @@ int open(const char *pathname, int flags, ...)
 
   if FUNCTION_SANDBOX_SAFE_INT("open", canonic, flags) {
     /* We need to resolve open() realtime in some cases,
-	 * else we get a segfault when running /bin/ps, etc
-	 * in a sandbox */
+    * else we get a segfault when running /bin/ps, etc
+    * in a sandbox */
     check_dlsym(open);
     result=true_open(pathname, flags, mode);
   }
@@ -459,7 +466,7 @@ int rename(const char *oldpath, const char *newpath)
     check_dlsym(rename);
     result = true_rename(oldpath, newpath);
   }
-	
+   
   return result;
 }
 
@@ -474,7 +481,7 @@ int rmdir(const char *pathname)
     check_dlsym(rmdir);
     result = true_rmdir(pathname);
   }
-	
+   
   return result;
 }
 
@@ -490,7 +497,7 @@ int symlink(const char *oldpath, const char *newpath)
     check_dlsym(symlink);
     result = true_symlink(oldpath, newpath);
   }
-	
+   
   return result;
 }
 
@@ -505,7 +512,7 @@ int truncate(const char *path, TRUNCATE_T length)
     check_dlsym(truncate);
     result = true_truncate(path, length);
   }
-	
+   
   return result;
 }
 
@@ -520,7 +527,7 @@ int unlink(const char *pathname)
     check_dlsym(unlink);
     result = true_unlink(pathname);
   }
-	
+   
   return result;
 }
 
@@ -538,7 +545,7 @@ int creat64(const char *pathname, __mode_t mode)
     check_dlsym(open64);
     result = true_open64(pathname, O_CREAT | O_WRONLY | O_TRUNC, mode);
   }
-	
+   
   return result;
 }
 
@@ -553,7 +560,7 @@ FILE *fopen64(const char *pathname, const char *mode)
     check_dlsym(fopen64);
     result = true_fopen(pathname,mode);
   }
-	
+   
   return result;
 }
 
@@ -592,7 +599,7 @@ int truncate64(const char *path, __off64_t length)
     check_dlsym(truncate64);
     result = true_truncate64(path, length);
   }
-	
+   
   return result;
 }
 
@@ -604,8 +611,9 @@ int truncate64(const char *path, __off64_t length)
 
 int execve(const char *filename, char *const argv [], char *const envp[])
 {
+  int old_errno = errno;
   int result = -1;
-  int count = 0, old_errno = 0;
+  int count = 0;
   char canonic[MAXPATHLEN];
   char *old_envp = NULL;
   char *new_envp = NULL;
@@ -613,8 +621,6 @@ int execve(const char *filename, char *const argv [], char *const envp[])
   canonicalize(filename, canonic);
 
   if FUNCTION_SANDBOX_SAFE("execve", canonic) {
-    old_errno = errno;
-
     while (envp[count] != NULL) {
       if (strstr(envp[count], "LD_PRELOAD=") == envp[count]) {
         if (NULL != strstr(envp[count], sandbox_lib)) {
@@ -625,8 +631,7 @@ int execve(const char *filename, char *const argv [], char *const envp[])
           /* Backup envp[count], and set it to our own one which
            * contains sandbox_lib */
           old_envp = envp[count];
-          new_envp = (char *)malloc((max_envp_len + 1) * sizeof(char));
-          strncpy(new_envp, old_envp, max_envp_len);
+          new_envp = strndupa(old_envp, max_envp_len - 1);
 
           /* LD_PRELOAD already have variables other than sandbox_lib,
            * thus we have to add sandbox_lib via a white space. */
@@ -666,12 +671,9 @@ int execve(const char *filename, char *const argv [], char *const envp[])
       memcpy((void *)&envp[count], &old_envp, sizeof(old_envp));
       old_envp = NULL;
     }
-    if (new_envp) {
-      free(new_envp);
-      new_envp = NULL;
-    }
-    errno = old_errno;
   }
+
+  errno = old_errno;
 
   return result;
 }
@@ -715,6 +717,7 @@ static void init_context(sbcontext_t* context)
 
 static int is_sandbox_pid()
 {
+  int old_errno = errno;
   int result = 0;
   FILE* pids_stream = NULL;
   int pids_file = -1;
@@ -751,11 +754,14 @@ static int is_sandbox_pid()
     pids_file = -1;
   }
 
+  errno = old_errno;
+
   return result;
 }
 
 static void clean_env_entries(char*** prefixes_array, int* prefixes_num)
 {
+  int old_errno = errno;
   int i = 0;
   
   if (NULL != *prefixes_array) {
@@ -769,10 +775,13 @@ static void clean_env_entries(char*** prefixes_array, int* prefixes_num)
     *prefixes_array = NULL;
     *prefixes_num = 0;
   }
+
+  errno = old_errno;
 }
 
 static void init_env_entries(char*** prefixes_array, int* prefixes_num, char* env, int warn)
 {
+  int old_errno = errno;
   char* prefixes_env = getenv(env);
 
   if (NULL == prefixes_env) {
@@ -781,9 +790,6 @@ static void init_env_entries(char*** prefixes_array, int* prefixes_num, char* en
             env);
   } else {
     char* buffer = NULL;
-#ifdef REENTRANT_STRTOK
-    char** strtok_buf = NULL;
-#endif
     int prefixes_env_length = strlen(prefixes_env);
     int i = 0;
     int num_delimiters = 0;
@@ -797,158 +803,158 @@ static void init_env_entries(char*** prefixes_array, int* prefixes_num, char* en
     }
 
     if (num_delimiters > 0) {
-      buffer = (char *)malloc((prefixes_env_length + 1) * sizeof(char));
-#ifdef REENTRANT_STRTOK
-      strtok_buf = (char **)malloc((prefixes_env_length + 1) * sizeof(char));
-#endif
       *prefixes_array = (char **)malloc((num_delimiters + 1) * sizeof(char *));
-
-      strncpy(buffer, prefixes_env, prefixes_env_length + 1);
+      buffer = strndupa(prefixes_env, prefixes_env_length);
+      
 #ifdef REENTRANT_STRTOK
-      token = strtok_r(buffer, ":", strtok_buf);
+      token = strtok_r(buffer, ":", &buffer);
 #else
       token = strtok(buffer, ":");
 #endif
 
       while ((NULL != token) && (strlen(token) > 0)) {
-        prefix = (char *)malloc((strlen(token) + 1) * sizeof(char));
-        strncpy(prefix, token, strlen(token) + 1);
+        prefix = strndup(token, strlen(token));
         (*prefixes_array)[(*prefixes_num)++] = filter_path(prefix);
         
-        if (prefix) free(prefix);
-        prefix = NULL;
 #ifdef REENTRANT_STRTOK
-        token = strtok_r(NULL, ":", strtok_buf);
+        token = strtok_r(NULL, ":", &buffer);
 #else
         token = strtok(NULL, ":");
 #endif
+
+        if (prefix) free(prefix);
+        prefix = NULL;
       }
-      
-      if (buffer) free(buffer);
-      buffer = NULL;
-#ifdef REENTRANT_STRTOK
-      if (strtok_buf) free(strtok_buf);
-      strtok_buf = NULL;
-#endif
     }
     else if (prefixes_env_length > 0) {
       (*prefixes_array) = (char **)malloc(sizeof(char *));
-			
-      prefix = (char *)malloc((prefixes_env_length + 1) * sizeof(char));
-      strncpy(prefix, prefixes_env, prefixes_env_length + 1);
+         
+      prefix = strndupa(prefixes_env, prefixes_env_length);
       (*prefixes_array)[(*prefixes_num)++] = filter_path(prefix);
-      
-      if (prefix) free(prefix);
-      prefix = NULL;
     }
   }
+
+  errno = old_errno;
 }
 
 static char* filter_path(const char* path)
 {
+  int old_errno = errno;
   char* filtered_path = (char *)malloc(MAXPATHLEN * sizeof(char));
 
   canonicalize(path, filtered_path);
+
+  errno = old_errno;
 
   return filtered_path;
 }
 
 static int check_access(sbcontext_t* sbcontext, const char* func, const char* path)
 {
+  int old_errno = errno;
   int result = -1;
   int i = 0;
   char* filtered_path = filter_path(path);
 
   if ('/' != filtered_path[0]) {
+    errno = old_errno;
     return 0;
   }
 
-  if ((0 == strcmp(filtered_path, "/etc/ld.so.preload")) && (is_sandbox_pid())) {
+  if ((0 == strncmp(filtered_path, "/etc/ld.so.preload", 18)) && (is_sandbox_pid())) {
     result = 1;
   }
-	
+   
   if (-1 == result) {
     if (NULL != sbcontext->deny_prefixes) {
       for (i = 0; i < sbcontext->num_deny_prefixes; i++) {
-        if (0 == strncmp(filtered_path,
-                         sbcontext->deny_prefixes[i],
-                         strlen(sbcontext->deny_prefixes[i]))) {
-          result = 0;
-          break;
+        if (NULL != sbcontext->deny_prefixes[i]) {
+          if (0 == strncmp(filtered_path,
+                           sbcontext->deny_prefixes[i],
+                           strlen(sbcontext->deny_prefixes[i]))) {
+            result = 0;
+            break;
+          }
         }
       }
     }
 
     if (-1 == result) {
       if ((NULL != sbcontext->read_prefixes) &&
-          ((0 == strcmp(func, "open_rd")) ||
-           (0 == strcmp(func, "popen")) ||
-           (0 == strcmp(func, "opendir")) ||
-           (0 == strcmp(func, "system")) ||
-           (0 == strcmp(func, "execl")) ||
-           (0 == strcmp(func, "execlp")) ||
-           (0 == strcmp(func, "execle")) ||
-           (0 == strcmp(func, "execv")) ||
-           (0 == strcmp(func, "execvp")) ||
-           (0 == strcmp(func, "execve"))
+          ((0 == strncmp(func, "open_rd", 7)) ||
+           (0 == strncmp(func, "popen", 5)) ||
+           (0 == strncmp(func, "opendir", 7)) ||
+           (0 == strncmp(func, "system", 6)) ||
+           (0 == strncmp(func, "execl", 5)) ||
+           (0 == strncmp(func, "execlp", 6)) ||
+           (0 == strncmp(func, "execle", 6)) ||
+           (0 == strncmp(func, "execv", 5)) ||
+           (0 == strncmp(func, "execvp", 6)) ||
+           (0 == strncmp(func, "execve", 6))
           )
          ) {
         for (i = 0; i < sbcontext->num_read_prefixes; i++) {
-          if (0 == strncmp(filtered_path,
-                           sbcontext->read_prefixes[i],
-                           strlen(sbcontext->read_prefixes[i]))) {
-            result = 1;
-            break;
+          if (NULL != sbcontext->read_prefixes[i]) {
+            if (0 == strncmp(filtered_path,
+                             sbcontext->read_prefixes[i],
+                             strlen(sbcontext->read_prefixes[i]))) {
+              result = 1;
+              break;
+            }
           }
         }
       }
       else if ((NULL != sbcontext->write_prefixes) &&
-               ((0 == strcmp(func, "open_wr")) ||
-                (0 == strcmp(func, "creat")) ||
-                (0 == strcmp(func, "creat64")) ||
-                (0 == strcmp(func, "mkdir")) ||
-                (0 == strcmp(func, "mknod")) ||
-                (0 == strcmp(func, "mkfifo")) ||
-                (0 == strcmp(func, "link")) ||
-                (0 == strcmp(func, "symlink")) ||
-                (0 == strcmp(func, "rename")) ||
-                (0 == strcmp(func, "utime")) ||
-                (0 == strcmp(func, "utimes")) ||
-                (0 == strcmp(func, "unlink")) ||
-                (0 == strcmp(func, "rmdir")) ||
-                (0 == strcmp(func, "chown")) ||
-                (0 == strcmp(func, "lchown")) ||
-                (0 == strcmp(func, "chmod")) ||
-                (0 == strcmp(func, "truncate")) ||
-                (0 == strcmp(func, "ftruncate")) ||
-                (0 == strcmp(func, "truncate64")) ||
-                (0 == strcmp(func, "ftruncate64"))
+               ((0 == strncmp(func, "open_wr", 7)) ||
+                (0 == strncmp(func, "creat", 5)) ||
+                (0 == strncmp(func, "creat64", 7)) ||
+                (0 == strncmp(func, "mkdir", 5)) ||
+                (0 == strncmp(func, "mknod", 5)) ||
+                (0 == strncmp(func, "mkfifo", 6)) ||
+                (0 == strncmp(func, "link", 4)) ||
+                (0 == strncmp(func, "symlink", 7)) ||
+                (0 == strncmp(func, "rename", 6)) ||
+                (0 == strncmp(func, "utime", 5)) ||
+                (0 == strncmp(func, "utimes", 6)) ||
+                (0 == strncmp(func, "unlink", 6)) ||
+                (0 == strncmp(func, "rmdir", 5)) ||
+                (0 == strncmp(func, "chown", 5)) ||
+                (0 == strncmp(func, "lchown", 6)) ||
+                (0 == strncmp(func, "chmod", 5)) ||
+                (0 == strncmp(func, "truncate", 8)) ||
+                (0 == strncmp(func, "ftruncate", 9)) ||
+                (0 == strncmp(func, "truncate64", 10)) ||
+                (0 == strncmp(func, "ftruncate64", 11))
                )
               ) {
         struct stat tmp_stat;
 
         for (i = 0; i < sbcontext->num_write_denied_prefixes; i++) {
-          if (0 == strncmp(filtered_path,
-                           sbcontext->write_denied_prefixes[i],
-                           strlen(sbcontext->write_denied_prefixes[i]))) {
-            result = 0;
-            break;
+          if (NULL != sbcontext->write_denied_prefixes[i]) {
+            if (0 == strncmp(filtered_path,
+                             sbcontext->write_denied_prefixes[i],
+                             strlen(sbcontext->write_denied_prefixes[i]))) {
+              result = 0;
+              break;
+            }
           }
         }
 
         if (-1 == result) {
           for (i = 0; i < sbcontext->num_write_prefixes; i++) {
-            if (0 == strncmp(filtered_path,
-                             sbcontext->write_prefixes[i],
-                             strlen(sbcontext->write_prefixes[i]))) {
-              result = 1;
-              break;
+            if (NULL != sbcontext->write_prefixes[i]) {
+              if (0 == strncmp(filtered_path,
+                               sbcontext->write_prefixes[i],
+                               strlen(sbcontext->write_prefixes[i]))) {
+                result = 1;
+                break;
+              }
             }
           }
 
           if (-1 == result) {
             /* hack to prevent mkdir of existing dirs to show errors */
-            if (strcmp(func, "mkdir") == 0) {
+            if (0 == strncmp(func, "mkdir", 5)) {
               if (0 == stat(filtered_path, &tmp_stat)) {
                 sbcontext->show_access_violation = 0;
                 result = 0;
@@ -957,12 +963,14 @@ static int check_access(sbcontext_t* sbcontext, const char* func, const char* pa
 
             if (-1 == result) {
               for (i = 0; i < sbcontext->num_predict_prefixes; i++) {
-                if (0 == strncmp(filtered_path,
-                                 sbcontext->predict_prefixes[i],
-                                 strlen(sbcontext->predict_prefixes[i]))) {
-                  sbcontext->show_access_violation = 0;
-                  result = 0;
-                  break;
+                if (NULL != sbcontext->predict_prefixes[i]) {
+                  if (0 == strncmp(filtered_path,
+                                   sbcontext->predict_prefixes[i],
+                                   strlen(sbcontext->predict_prefixes[i]))) {
+                    sbcontext->show_access_violation = 0;
+                    result = 0;
+                    break;
+                  }
                 }
               }
             }
@@ -971,7 +979,7 @@ static int check_access(sbcontext_t* sbcontext, const char* func, const char* pa
       }
     }
   }
-	
+   
   if (-1 == result) {
     result = 0;
   }
@@ -979,11 +987,14 @@ static int check_access(sbcontext_t* sbcontext, const char* func, const char* pa
   if (filtered_path) free(filtered_path);
   filtered_path = NULL;
 
+  errno = old_errno;
+
   return result;
 }
 
 static int check_syscall(sbcontext_t* sbcontext, const char* func, const char* file)
 {
+  int old_errno = errno;
   int result = 1;
   struct stat log_stat;
   char* log_path = NULL;
@@ -1013,21 +1024,21 @@ static int check_syscall(sbcontext_t* sbcontext, const char* func, const char* f
   log_path = getenv("SANDBOX_LOG");
   debug_log_env = getenv("SANDBOX_DEBUG");
   debug_log_path = getenv("SANDBOX_DEBUG_LOG");
-	
+   
   if (((NULL == log_path) ||
-       (0 != strcmp(absolute_path, log_path))) &&
+       (0 != strncmp(absolute_path, log_path, strlen(log_path)))) &&
       ((NULL == debug_log_env) ||
        (NULL == debug_log_path) ||
-       (0 != strcmp(absolute_path, debug_log_path))) &&
+       (0 != strncmp(absolute_path, debug_log_path, strlen(debug_log_path)))) &&
       (0 == check_access(sbcontext, func, absolute_path))
      ) {
     if (1 == sbcontext->show_access_violation) {
       fprintf(stderr, "\e[31;01mACCESS DENIED\033[0m  %s:%*s%s\n",
               func, (int)(10 - strlen(func)), "", absolute_path);
-			
+         
       if (NULL != log_path) {
         sprintf(buffer, "%s:%*s%s\n", func, (int)(10 - strlen(func)), "", absolute_path);
-		
+      
         if ((0 == lstat(log_path, &log_stat)) &&
             (0 == S_ISREG(log_stat.st_mode))
            ) {
@@ -1050,7 +1061,7 @@ static int check_syscall(sbcontext_t* sbcontext, const char* func, const char* f
   }
   else if (NULL != debug_log_env) {
     if (NULL != debug_log_path) {
-      if (0 != strcmp(absolute_path, debug_log_path)) {
+      if (0 != strncmp(absolute_path, debug_log_path, strlen(debug_log_path))) {
         sprintf(buffer, "%s:%*s%s\n", func, (int)(10 - strlen(func)), "", absolute_path);
         
         if ((0 == lstat(debug_log_path, &debug_log_stat)) &&
@@ -1078,11 +1089,15 @@ static int check_syscall(sbcontext_t* sbcontext, const char* func, const char* f
   if (absolute_path) free(absolute_path);
   absolute_path = NULL;
 
+  errno = old_errno;
+
   return result;
 }
 
 static int is_sandbox_on()
 {
+  int old_errno = errno;
+  
   /* $SANDBOX_ACTIVE is an env variable that should ONLY
    * be used internal by sandbox.c and libsanbox.c.  External
    * sources should NEVER set it, else the sandbox is enabled
@@ -1092,18 +1107,23 @@ static int is_sandbox_on()
    * Azarah (3 Aug 2002)
    */
   if ((NULL != getenv("SANDBOX_ON")) &&
-      (0 == strcmp(getenv("SANDBOX_ON"), "1")) &&
+      (0 == strncmp(getenv("SANDBOX_ON"), "1", 1)) &&
       (NULL != getenv("SANDBOX_ACTIVE")) &&
-      (0 == strcmp(getenv("SANDBOX_ACTIVE"), "armedandready"))
+      (0 == strncmp(getenv("SANDBOX_ACTIVE"), "armedandready", 13))
      ) {
+    errno = old_errno;
+    
     return 1;
   } else {
+    errno = old_errno;
+    
     return 0;
   }
 }
 
 static int before_syscall(const char* func, const char* file)
 {
+  int old_errno = errno;
   int result = 1;
   sbcontext_t sbcontext;
 
@@ -1132,7 +1152,9 @@ static int before_syscall(const char* func, const char* file)
                     &(sbcontext.num_write_prefixes));
   clean_env_entries(&(sbcontext.predict_prefixes),
                     &(sbcontext.num_predict_prefixes));
-	
+
+  errno = old_errno;
+                    
   if (0 == result) {
     errno = EACCES;
   }

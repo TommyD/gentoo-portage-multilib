@@ -25,7 +25,7 @@
 #include <fcntl.h>
 
 #include "sandbox.h"
-		
+
 
 char *get_sandbox_path(char *argv0)
 {
@@ -131,18 +131,17 @@ char *dirname(const char *path)
 /*
 char* dirname(const char* path)
 {
-  char*			base = NULL;
-  unsigned int	length = 0;
+  char* base = NULL;
+  unsigned int length = 0;
 
   base = strrchr(path, '/');
   if (NULL == base)
   {
-	  return strdup(".");
+    return strdup(".");
   }
-  while (base > path &&
-		 *base == '/')
+  while (base > path && *base == '/')
   {
-	  base--;
+    base--;
   }
   length = (unsigned int) 1 + base - path;
 
