@@ -8,7 +8,7 @@ from stat import *
 from commands import *
 from select import *
 from output import *
-import string,os,types,sys,shlex,shutil,xpak,fcntl,signal,time,missingos,cPickle,atexit,grp,traceback,commands,pwd
+import string,os,re,types,sys,shlex,shutil,xpak,fcntl,signal,time,missingos,cPickle,atexit,grp,traceback,commands,pwd
 
 #Secpass will be set to 1 if the user is root or in the wheel group.
 uid=os.getuid()
@@ -764,7 +764,7 @@ def autouse(myvartree):
 class config:
 	def __init__(self):
 		global incrementals
-		self.usemasks=[]
+		self.usemask=[]
 		self.configlist=[]
 		self.backupenv={}
 		# back up our incremental variables:
@@ -773,10 +773,11 @@ class config:
 		# configlist will contain: [ globals, (optional) profile, make.conf, backupenv (incrementals), origenv ]
 
 		#get the masked use flags
+		self.usemask=[]
 		if os.path.exists("/etc/make.profile/use.mask"):
-			usemasks=grabfile("/etc/make.profile/use.mask")
+			self.usemask=grabfile("/etc/make.profile/use.mask")
 		if os.path.exists("/etc/portage/use.mask"):
-			usemasks=usemasks+grabfile("/etc/portage/use.mask")
+			self.usemask=self.usemask+grabfile("/etc/portage/use.mask")
 
 		self.mygcfg=getconfig("/etc/make.globals")
 		if self.mygcfg==None:
@@ -875,7 +876,7 @@ class config:
 		#cache split-up USE var in a global
 		usesplit=[]
 		for x in string.split(self.configlist[-1]["USE"]):
-			if x not in self.usemasks:
+			if x not in self.usemask:
 				usesplit.append(x)
 		
 		# Pre-Pend ARCH variable to USE settings so '-*' in env doesn't kill arch.
@@ -1490,10 +1491,13 @@ def movefile(src,dest,newmtime=None,sstat=None):
 			print "!!!",e
 			return None
 
-	if newmtime:
-		os.utime(dest,(newmtime,newmtime))
+	if not S_ISLNK(sstat[ST_MODE]):
+		if newmtime:
+			os.utime(dest,(newmtime,newmtime))
+		else:
+			os.utime(dest, (sstat[ST_ATIME], sstat[ST_MTIME]))
+			newmtime=sstat[ST_MTIME]
 	else:
-		os.utime(dest, (sstat[ST_ATIME], sstat[ST_MTIME]))
 		newmtime=sstat[ST_MTIME]
 	return newmtime
 
@@ -1864,8 +1868,9 @@ def dep_parenreduce(mysplit,mypos=0):
 		mypos=mypos+1
 	return mysplit
 
-def dep_opconvert(mysplit,myuse):
+def dep_opconvert(mysplit,myuse,usemask=[]):
 	"Does dependency operator conversion"
+	
 	mypos=0
 	newsplit=[]
 	while mypos<len(mysplit):
@@ -1893,7 +1898,7 @@ def dep_opconvert(mysplit,myuse):
 			if (len(myuse)==1) and (myuse[0]=="*"):
 				# enable it even if it's ! (for repoman) but kill it if it's
 				# an arch variable that isn't for this arch. XXX Sparc64?
-				if (mysplit[mypos][:-1] not in archkeys) or \
+				if (mysplit[mypos][:-1] not in usemask) or \
 						(mysplit[mypos][:-1]==settings["ARCH"]):
 					enabled=1
 			else:
@@ -1914,13 +1919,13 @@ def dep_opconvert(mysplit,myuse):
 				if enabled:
 					#choose the first option
 					if type(mysplit[mypos+1])==types.ListType:
-						newsplit.append(dep_opconvert(mysplit[mypos+1],myuse))
+						newsplit.append(dep_opconvert(mysplit[mypos+1],myuse,usemask))
 					else:
 						newsplit.append(mysplit[mypos+1])
 				else:
 					#choose the alternate option
 					if type(mysplit[mypos+1])==types.ListType:
-						newsplit.append(dep_opconvert(mysplit[mypos+3],myuse))
+						newsplit.append(dep_opconvert(mysplit[mypos+3],myuse,usemask))
 					else:
 						newsplit.append(mysplit[mypos+3])
 				mypos += 4
@@ -1928,7 +1933,7 @@ def dep_opconvert(mysplit,myuse):
 				#normal use mode
 				if enabled:
 					if type(mysplit[mypos+1])==types.ListType:
-						newsplit.append(dep_opconvert(mysplit[mypos+1],myuse))
+						newsplit.append(dep_opconvert(mysplit[mypos+1],myuse,usemask))
 					else:
 						newsplit.append(mysplit[mypos+1])
 				#otherwise, continue.
@@ -2192,7 +2197,7 @@ def dep_expand(mydep,mydb=None):
 		mydep=mydep[1:]
 	return prefix+cpv_expand(mydep,mydb)+postfix
 
-def dep_check(depstring,mydbapi,use="yes",mode=None):
+def dep_check(depstring,mydbapi,use="yes",mode=None,usemask=[]):
 	"""Takes a depend string and parses the condition."""
 	global usesplit
 	if use=="all":
@@ -2208,7 +2213,7 @@ def dep_check(depstring,mydbapi,use="yes",mode=None):
 	#convert parenthesis to sublists
 	mysplit=dep_parenreduce(mysplit)
 	#mysplit can't be None here, so we don't need to check
-	mysplit=dep_opconvert(mysplit,myusesplit)
+	mysplit=dep_opconvert(mysplit,myusesplit,usemask)
 	#if mysplit==None, then we have a parse error (paren mismatch or misplaced ||)
 	#up until here, we haven't needed to look at the database tree
 	
