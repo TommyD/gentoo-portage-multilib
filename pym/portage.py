@@ -1306,6 +1306,9 @@ class config:
 			self.prevmaskdict = copy.deepcopy(clone.prevmaskdict)
 			self.lookuplist = copy.deepcopy(clone.lookuplist)
 			self.uvlist     = copy.deepcopy(clone.uvlist)
+			self.dirVirtuals = copy.deepcopy(clone.dirVirtuals)
+			self.treeVirtuals = copy.deepcopy(clone.treeVirtuals)
+			self.userVirtuals = copy.deepcopy(clone.userVirtuals)
 		else:
 			self.depcachedir = DEPCACHE_PATH
 			
@@ -1649,10 +1652,11 @@ class config:
 
 	def setinst(self,mycpv,mydbapi):
 		# Grab the virtuals this package provides and add them into the tree virtuals.
-		virts = mydbapi.aux_get(mykey, ["PROVIDE"])[0].split()
-		cp = portage.dep_getkey(mykey)
+		virts = mydbapi.aux_get(mycpv, ["PROVIDE"])[0].split()
+
+		cp = dep_getkey(mykey)
 		for virt in virts:
-			virt = portage.dep_getkey(virt)
+			virt = dep_getkey(virt)
 			if not self.treeVirtuals.has_key(virt):
 				self.treeVirtuals[virt] = []
 			self.treeVirtuals[virt] = unique_array(self.treeVirtuals[virt]+[cp])
@@ -5070,13 +5074,15 @@ class portdbapi(dbapi):
 		'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
 		'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or raise KeyError if error'
 		global auxdbkeys,auxdbkeylen
+
 		cat,pkg = string.split(mycpv, "/", 1)
-		
+
 		if metacachedir:
 			if cat not in self.metadb:
 				self.metadb[cat] = self.metadbmodule(metacachedir,cat,auxdbkeys,uid,portage_gid)
 
 		myebuild, mylocation=self.findname2(mycpv)
+
 		if not myebuild:
 			writemsg("!!! aux_get(): ebuild for '%s' does not exist at:\n" % mycpv)
 			writemsg("!!!            %s\n" % myebuild)
