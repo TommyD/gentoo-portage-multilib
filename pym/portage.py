@@ -1461,6 +1461,16 @@ def movefile(src,dest,newmtime=None,sstat=None):
 	if S_ISLNK(sstat[ST_MODE]):
 		try:
 			target=os.readlink(src)
+
+			# Well just cuz it didn't exist up there doesn't
+			# mean it doesn't exist now, silly.
+			destexists=1
+			try:
+				dstat=os.lstat(dest)
+			except:
+				dstat=os.lstat(os.path.dirname(dest))
+				destexists=0
+
 			if destexists and not S_ISDIR(dstat[ST_MODE]):
 				os.unlink(dest)
 			os.symlink(target,dest)
