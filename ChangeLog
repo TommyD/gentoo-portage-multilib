@@ -1,6 +1,15 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+  13 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge :
+  fixed little bug where emerge --clean rsync wasn't correctly handled anymore
+
+  12 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge, portage.py :
+  changed emerge --zap to emerge --clean
+  removed parts of the already implemented slots functionality to be able to
+  fall back to a more flexible implementation. Binary compatible slots will now
+  mostly influence emerge during the --clean operation
+
   12 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge :
   added fallback check in case UNMERGE_DELAY hasn't been defined in
   make.globals or make.conf
