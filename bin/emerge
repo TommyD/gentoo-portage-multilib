@@ -303,6 +303,13 @@ if ("--debug" in myopts):
 	portage.debug=1
 	portage.settings.lock()
 
+if "inject" == myaction:
+	print
+	print red("*** --inject has been deprecated.")
+	print red("*** Please add package to /etc/portage/package.provided")
+	print red("*** using its full name (eg foo/bar-1.0) instead.")
+	print
+
 def emergelog(mystr):
 	if "notitles" not in portage.features:
 		xtermTitle(mystr)

@@ -1304,6 +1304,7 @@ class config:
 			self.pmaskdict = copy.deepcopy(clone.pmaskdict)
 			self.punmaskdict = copy.deepcopy(clone.punmaskdict)
 			self.prevmaskdict = copy.deepcopy(clone.prevmaskdict)
+			self.pprovideddict = copy.deepcopy(clone.pprovideddict)
 			self.lookuplist = copy.deepcopy(clone.lookuplist)
 			self.uvlist     = copy.deepcopy(clone.uvlist)
 			self.dirVirtuals = copy.deepcopy(clone.dirVirtuals)
@@ -1517,6 +1518,20 @@ class config:
 					self.pmaskdict[mycatpkg].append(x)
 				else:
 					self.pmaskdict[mycatpkg]=[x]
+
+			pkgprovidedlines = grab_multiple("package.provided", locations, grabfile)
+			pkgprovidedlines = stack_lists(pkgprovidedlines, incremental=1)
+
+			self.pprovideddict = {}
+			for x in pkgprovidedlines:
+				cpv=catpkgsplit(x)
+				if not x:
+					continue
+				mycatpkg=dep_getkey(x)
+				if self.pprovideddict.has_key(mycatpkg):
+					self.pprovideddict[mycatpkg].append(x)
+				else:
+					self.pprovideddict[mycatpkg]=[x]
 
 		self.lookuplist=self.configlist[:]
 		self.lookuplist.reverse()
@@ -3733,7 +3748,7 @@ def dep_check(depstring,mydbapi,mysettings,use="yes",mode=None,myuse=None,use_ca
 		#dependencies were reduced to nothing
 		return [1,[]]
 	mysplit2=mysplit[:]
-	mysplit2=dep_wordreduce(mysplit2,mydbapi,mode,use_cache=use_cache)
+	mysplit2=dep_wordreduce(mysplit2,mysettings,mydbapi,mode,use_cache=use_cache)
 	if mysplit2==None:
 		return [0,"Invalid token"]
 	
@@ -3757,38 +3772,43 @@ def dep_check(depstring,mydbapi,mysettings,use="yes",mode=None,myuse=None,use_ca
 		writemsg("mydict:   %s\n" % (mydict), 1)
 		return [1,mydict.keys()]
 
-def dep_wordreduce(mydeplist,mydbapi,mode,use_cache=1):
+def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
 	"Reduces the deplist to ones and zeros"
 	mypos=0
 	deplist=mydeplist[:]
 	while mypos<len(deplist):
 		if type(deplist[mypos])==types.ListType:
 			#recurse
-			deplist[mypos]=dep_wordreduce(deplist[mypos],mydbapi,mode,use_cache=use_cache)
+			deplist[mypos]=dep_wordreduce(deplist[mypos],mysettings,mydbapi,mode,use_cache=use_cache)
 		elif deplist[mypos]=="||":
 			pass
 		else:
-			if mode:
-				mydep=mydbapi.xmatch(mode,deplist[mypos])
+			mykey = dep_getkey(deplist[mypos])
+			if mysettings and mysettings.pprovideddict.has_key(mykey) and \
+			        match_from_list(deplist[mypos], mysettings.pprovideddict[mykey]):
+				deplist[mypos]=True
 			else:
-				mydep=mydbapi.match(deplist[mypos],use_cache=use_cache)
-			if mydep!=None:
-				tmp=(len(mydep)>=1)
-				if deplist[mypos][0]=="!":
-					#tmp=not tmp
-					# This is ad-hoc code. We should rewrite this later.. (See #52377)
-					# The reason is that portage uses fakedb when --update option now.
-					# So portage considers that a block package doesn't exist even if it exists.
-					# Then, #52377 happens.
-					# ==== start
-					# emerge checks if it's block or not, so we can always set tmp=False.
-					# but it's not clean..
-					tmp=False
-					# ==== end
-				deplist[mypos]=tmp
-			else:
-				#encountered invalid string
-				return None
+				if mode:
+					mydep=mydbapi.xmatch(mode,deplist[mypos])
+				else:
+					mydep=mydbapi.match(deplist[mypos],use_cache=use_cache)
+				if mydep!=None:
+					tmp=(len(mydep)>=1)
+					if deplist[mypos][0]=="!":
+						#tmp=not tmp
+						# This is ad-hoc code. We should rewrite this later.. (See #52377)
+						# The reason is that portage uses fakedb when --update option now.
+						# So portage considers that a block package doesn't exist even if it exists.
+						# Then, #52377 happens.
+						# ==== start
+						# emerge checks if it's block or not, so we can always set tmp=False.
+						# but it's not clean..
+						tmp=False
+						# ==== end
+					deplist[mypos]=tmp
+				else:
+					#encountered invalid string
+					return None
 		mypos=mypos+1
 	return deplist
 
