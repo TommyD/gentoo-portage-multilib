@@ -12,9 +12,9 @@ done
 cp ${DEST}/pym/portage.py ${DEST}/pym/portage.py.orig
 sed "s/@portage_version@/${V}/" < ${DEST}/pym/portage.py.orig > ${DEST}/pym/portage.py
 rm ${DEST}/pym/portage.py.orig
+cp ChangeLog ${DEST}
 cd ${DEST}
 find -name CVS -exec rm -rf {} \;
-cp ChangeLog ${DEST}
 chown -R root.root ${DEST}
 cd $TMP
 tar cjvf ${TMP}/${PKG}-${V}.tar.bz2 ${PKG}-${V}
