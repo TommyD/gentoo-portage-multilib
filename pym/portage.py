@@ -597,7 +597,7 @@ def fetch(myuris):
 		for loc in locations:
 			print
 			print ">>> Downloading",loc
-			myret=os.system("/usr/bin/wget --non-verbose -t 5 --passive-ftp -P "+settings["DISTDIR"]+" "+loc)
+			myret=os.system("/usr/bin/wget -t 5 --passive-ftp -P "+settings["DISTDIR"]+" "+loc)
 			if not myret:
 				gotit=1
 				break
@@ -772,17 +772,17 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 		fetchme=newuris
 		checkme=alist
 
-	# if we need to generate digests, do it here and exit.
-	if mydo=="digest":
-		digestgen(checkme)	
-		sys.exit(0)	
-	
 	if not fetch(fetchme):
 		sys.exit(1)
 	
 	if mydo=="fetch":
 		sys.exit(0)
 
+	# if we need to generate digests, do it here and exit.
+	if mydo=="digest":
+		digestgen(checkme)	
+		sys.exit(0)	
+	
 	if not digestcheck(checkme):
 		sys.exit(1)
 	#initial dep checks complete; time to process main commands

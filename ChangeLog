@@ -1,6 +1,10 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+  22 Feb 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: changed
+  position of digest generation call so that "ebuild digest" now works if the
+  sources have not yet been downloaded.
+  
   22 Feb 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: unmerging now
   works correctly.
 
