@@ -1,6 +1,12 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-1.8.9_pre38 (30 Mar 2002)
+
+  30 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: resolve_key()
+  didn't call load() on mapped virtuals, resulting in inconsistent resolution
+  of virtual keys.  Now fixed; thanks to woodchip for the bug report.
+
 *portage-1.8.9_pre37 (30 Mar 2002)
 
   30 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: specific

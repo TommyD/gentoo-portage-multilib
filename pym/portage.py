@@ -46,7 +46,7 @@
 #whole enchilada. (generally, I prefer this approach, though for runtime-only systems
 #subpackages make a lot of sense).
 
-VERSION="1.8.9_pre32"
+VERSION="@portage_version@"
 
 import string,os
 from stat import *
@@ -1570,6 +1570,7 @@ class packagetree:
 			#no packages correspond to the key
 			if self.virtual:
 				if self.virtual.has_key(mykey):
+					self.load(self.virtual[mykey])
 					return self.virtual[mykey]
 		return mykey
 
