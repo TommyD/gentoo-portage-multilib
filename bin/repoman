@@ -800,6 +800,7 @@ for x in scanlist:
 		#syntax checks
 		gentoo_copyright = re.compile(r'^# Copyright 1999-' + strftime("%Y", gmtime()) + r' Gentoo Technologies, Inc\.')
 		gentoo_license = re.compile(r'^# Distributed under the terms of the GNU General Public License v2$')
+		cvs_header = re.compile(r'^#\s*\$Header.*\$$')
 		ignore_line = re.compile(r'(^$)|(^(\t)*#)')
 		leading_spaces = re.compile(r'^[\S\t]')
 		trailing_whitespace = re.compile(r'.*([\S]$)')
@@ -822,6 +823,13 @@ for x in scanlist:
 				match = gentoo_license.match(line)
 				if not match:
 					myerrormsg = "Gentoo License Error."
+					stats["ebuild.badheader"] +=1
+					fails["ebuild.badheader"].append(x+"/"+y+".ebuild: %s" % myerrormsg)
+			# CVS Header check
+			elif linenum == 3:
+				match = cvs_header.match(line)
+				if not match:
+					myerrormsg = "CVS Header Error."
 					stats["ebuild.badheader"] +=1
 					fails["ebuild.badheader"].append(x+"/"+y+".ebuild: %s" % myerrormsg)
 			else:
