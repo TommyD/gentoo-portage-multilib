@@ -213,6 +213,11 @@ if ("buildpkg" in portage.features) or ("--buildpkgonly" in myopts):
 	if "--buildpkg" not in myopts:
 		myopts.append("--buildpkg")
 
+# --tree only makes sense with --pretend
+if "--tree" in myopts and not (("--pretend" in myopts) or ("--ask" in myopts)):
+	print ">>> --tree implies --pretend... adding --pretend to options."
+	myopts.append("--pretend")
+
 # Also allow -S to invoke search action (-sS)
 if ("--searchdesc" in myopts):
 	if myaction and myaction != "search":

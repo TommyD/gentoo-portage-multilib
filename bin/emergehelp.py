@@ -253,6 +253,11 @@ def help(myaction,myopts,havecolor=1):
 		print "              should only be used in cases where skipping the package will not"
 		print "              result in failed dependencies."
 		print
+		print "       "+green("--tree")+" ("+green("-t")+" short option)"
+		print "              Shows the dependency tree using indentation for dependencies."
+		print "              Only really useful in combination with --emptytree, --update "
+		print "              or --deep."
+		print
 		print "       "+green("--update")+" ("+green("-u")+" short option)"
 		print "              Updates packages to the best version available, which may not"
 		print "              always be the highest version number due to masking for testing"

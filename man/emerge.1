@@ -278,6 +278,11 @@ first package in the resume list so that a merge may continue in the presence
 of an uncorrectable or inconsequential error.  This should only be used in 
 cases where skipping the package will not result in failed dependencies.
 .TP 
+.BR "\-\-tree " (\fB\-t\fR)
+Shows the dependency tree for the given target by indenting dependencies.
+Only really useful in combination with \fB\-\-emptytree\fR, \fB\-\-update\fR
+or \fB\-\-deep\fR.
+.TP 
 .BR "\-\-update " (\fB\-u\fR)
 Updates packages to the most recent version available.  \fBNote that \-\-update does not have full 
 functionality yet\fR.  It will not automatically update dependencies of packages in the \fBworld\fR file, 
