@@ -47,6 +47,12 @@
   versions will intentionally die on upgrade. USE=build disables it so
   bootstrap isn't affected.
 
+*portage-2.0.45-r5 (13 Dec 2002): Feature addition: PDEPEND+fixes
+
+  13 Dec 2002; Nicholas Jones <carpaski@gentoo.org> emerge/portage.py:
+	Added restart on portage upgrade code and adjusted ebuild to accomplish
+	this until version matches -r5.
+
 *portage-2.0.45-r4 (11 Dec 2002): Feature addition: PDEPEND
 
   11 Dec 2002; Nicholas Jones <carpaski@gentoo.org> ebuild.sh/portage.py:
