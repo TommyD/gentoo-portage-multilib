@@ -5,15 +5,15 @@ prepallinfo
 prepallstrip
 
 #this should help to ensure that all (most?) shared libraries are executable
-cd ${D}
+cd "${D}"
 for i in opt/*/lib lib usr/lib usr/X11R6/lib
 do
-	[ -d $i ] && continue
-	for j in $i/*.so.* $i/*.so
+	[ -d "$i" ] && continue
+	for j in "$i"/*.so.* "$i"/*.so
 	do
-		[ ! -e $j ] && continue
-		[ -L $j ] && continue
-		chmod +x $j
+		[ ! -e "$j" ] && continue
+		[ -L "$j" ] && continue
+		chmod +x "$j"
 	done
 done
 
@@ -25,9 +25,9 @@ do
     if [  "$i" != "${D}usr/share/aclocal" ]
     then
       echo moving aclocal: $i
-      install -d ${D}usr/share/aclocal
-      mv ${i}/* ${D}usr/share/aclocal
-      rm -fr ${i}
+      install -d "${D}usr/share/aclocal"
+      mv "${i}"/* "${D}usr/share/aclocal"
+      rm -fr "${i}"
     fi
   fi
 done

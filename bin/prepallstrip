@@ -9,16 +9,16 @@ z=`find ${D} -type f \( -perm -0100 -or -perm -0010 -or -perm -0001 -or -name "*
 
 for x in $z
 do
-   f=`file $x`
+   f=`file "$x"`
    if [ "${f/*SB executable*/1}" == "1"  ]
    then
 	echo $x
-	strip ${x}
+	strip "${x}"
    fi
    if [ "${f/*SB shared object*/1}" == "1" ]
    then
 	echo $x
-	strip --strip-debug ${x}
+	strip --strip-debug "${x}"
    fi
 done
 

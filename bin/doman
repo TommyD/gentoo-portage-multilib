@@ -25,13 +25,13 @@ do
 	fi
 
 	BASE="$OLDBASE"
-	suffix=${x##*.}
+	suffix="${x##*.}"
 	if [ "$suffix" = "gz" ]; then
 		compressed="gz"
-		realname=${x%.*}
-		suffix=${realname##*.}
+		realname="${x%.*}"
+		suffix="${realname##*.}"
 	else
-		realname=$x
+		realname="$x"
 		compressed=""
 	fi
 
@@ -42,16 +42,16 @@ do
 
 	mandir=man${suffix:0:1}
 
-	if $(echo ${mandir} | egrep -q '^man[1-8n]$' -); then
-		if [ -e ${x} ];	then
-			if [ ! -d ${D}${BASE}/man/${mandir} ]; then
-				install -d ${D}${BASE}/man/${mandir}
+	if echo ${mandir} | egrep -q '^man[1-8n]$' -; then
+		if [ -e "${x}" ];	then
+			if [ ! -d "${D}${BASE}/man/${mandir}" ]; then
+				install -d "${D}${BASE}/man/${mandir}"
 			fi
 
-			install -m0644 ${x} ${D}${BASE}/man/${mandir}
+			install -m0644 "${x}" "${D}${BASE}/man/${mandir}"
 	
 			if [ -z "${compressed}" ]; then
-				gzip -f -9 ${D}${BASE}/man/${mandir}/${x##*/}
+				gzip -f -9 "${D}${BASE}/man/${mandir}/${x##*/}"
 			fi
 		else
 			echo "doman: ${x} does not exist." 1>&2

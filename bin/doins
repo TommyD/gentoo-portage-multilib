@@ -4,24 +4,24 @@ then
 	echo "${0}: at least one argument needed"
 	exit
 fi
-if [ ! -d ${D}${INSDESTTREE} ]
+if [ ! -d "${D}${INSDESTTREE}" ]
 	then
-	install -d ${D}${INSDESTTREE}
+	install -d "${D}${INSDESTTREE}"
 fi
 for x in "$@"
 do
-	if [ -L $x ]
+	if [ -L "$x" ]
 	then
-	    cp $x ${T}
-	    mysrc=${T}/`/usr/bin/basename ${x}`
-	elif [ -d $x ]
+	    cp "$x" "${T}"
+	    mysrc="${T}"/`/usr/bin/basename "${x}"`
+	elif [ -d "$x" ]
 	then
 	    echo "doins: warning, skipping directory ${x}"
 		continue
 	else
-	    mysrc=${x}
+	    mysrc="${x}"
 	fi
-        install ${INSOPTIONS} ${mysrc} ${D}${INSDESTTREE}
+        install ${INSOPTIONS} "${mysrc}" "${D}${INSDESTTREE}"
 done
 
 

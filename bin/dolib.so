@@ -4,19 +4,19 @@ then
 	echo "${0}: at least one argument needed"
 	exit 1
 fi
-if [ ! -d ${D}${DESTTREE}/lib ]
+if [ ! -d "${D}${DESTTREE}/lib" ]
 then
-	install -d ${D}${DESTTREE}/lib
+	install -d "${D}${DESTTREE}/lib"
 fi
 for x in "$@"
 do
-	if [ -e ${x} ]
+	if [ -e "${x}" ]
 	then
 	    if [ -z "$DEBUGBUILD" ]
 	    then
-			strip --strip-debug ${x}
+			strip --strip-debug "${x}"
 	    fi
-	    install -m0755 ${x} ${D}${DESTTREE}/lib
+	    install -m0755 "${x}" "${D}${DESTTREE}/lib"
 	else
 	    echo "${0}: ${x} does not exist"
 	fi

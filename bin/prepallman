@@ -2,45 +2,45 @@
 
 for x in ${D}/opt/*/man/* ${D}/usr/share/man/* ${D}/usr/local/man/* ${D}/usr/X11R6/share/man/*
 do
-	if [ ! -d ${x} ]
+	if [ ! -d "${x}" ]
 	then
 		continue
 	fi
 	w=`echo ${x}/*`
 	for y in ${w}
 	do
-		if [ -L ${y} ]
+		if [ -L "${y}" ]
 		then
 			#symlink
-			mylink=${y}
+			mylink="${y}"
 			linkto=`readlink ${y}`
 			if [ "${linkto:0:1}" == "/" ]
 			then
 				#absolute path; remove any weirdly embedded ${D}'s
-				linkto=${linkto/${D}/}
+				linkto="${linkto/${D}/}"
 			fi
 			if [ "${linkto##*.}" != "gz" ]
 			then
-				linkto=${linkto}.gz
+				linkto="${linkto}.gz"
 			fi
 			if [ "${mylink##*.}" != "gz" ]
 			then
-				mylink=${mylink}.gz
+				mylink="${mylink}.gz"
 			fi
 			echo "fixing man page symlink: ${mylink##*/}"
-			ln -sf ${linkto} ${mylink}
-			if [ ${y} != ${mylink} ]
+			ln -sf "${linkto}" "${mylink}"
+			if [ "${y}" != "${mylink}" ]
 			then
 				echo "removing old symlink: ${y##*/}"
-				rm ${y}
+				rm "${y}"
 			fi
-		elif [ -f ${y} ]
+		elif [ -f "${y}" ]
 		then
 			if [ "${y##*.}" != "gz" ]
 			then
-				gzip -f -9 ${y}
+				gzip -f -9 "${y}"
 				echo "gzipping man page: ${y}"
 			fi
-		fi	
+		fi
 	done
 done

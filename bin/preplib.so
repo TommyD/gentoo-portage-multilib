@@ -5,6 +5,6 @@ then
 fi	
 for x in $@
 do
-	strip --strip-debug ${D}${x}/*.so*
+	strip --strip-debug "${D}${x}"/*.so*
 done
 

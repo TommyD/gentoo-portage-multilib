@@ -24,7 +24,7 @@ except KeyError:
 	pass
 
 incrementals=["USE","FEATURES","ACCEPT_KEYWORDS","ACCEPT_LICENSE","CONFIG_PROTECT_MASK","CONFIG_PROTECT"]
-stickies=["KEYWORDS_ACCEPT","USE","CFLAGS","CXXFLAGS","MAKEOPTS","EXTRA_CONFIGURE"]
+stickies=["KEYWORDS_ACCEPT","USE","CFLAGS","CXXFLAGS","MAKEOPTS","EXTRA_ECONF","EXTRA_EMAKE"]
 
 def getcwd():
 	"this fixes situations where the current directory doesn't exist"
@@ -286,7 +286,7 @@ def env_update(makelinks=1):
 			continue
 		pos=pos+1
 
-	specials={"KDEDIRS":[],"PATH":[],"CLASSPATH":[],"LDPATH":[],"MANPATH":[],"INFODIR":[],"ROOTPATH":[],"CONFIG_PROTECT":[],"CONFIG_PROTECT_MASK":[]}
+	specials={"KDEDIRS":[],"PATH":[],"CLASSPATH":[],"LDPATH":[],"MANPATH":[],"INFODIR":[],"INFOPATH":[],"ROOTPATH":[],"CONFIG_PROTECT":[],"CONFIG_PROTECT_MASK":[]}
 	env={}
 
 	for x in fns:
@@ -779,9 +779,12 @@ class config:
 		#cache split-up USE var in a global
 		usesplit=string.split(self.configlist[-1]["USE"])
 		# Pre-Pend ARCH variable to USE settings so '-*' in env doesn't kill arch.
-		if (profiledir) and (self.configdict["defaults"]["ARCH"]) and (self.configdict["defaults"]["ARCH"] not in usesplit):
-			usesplit.insert(0,self.configdict["defaults"]["ARCH"])
-			self.configlist[-1]["USE"]=string.join(usesplit," ")
+		if profiledir:
+			if self.configdict["defaults"].has_key("ARCH"):
+				if self.configdict["defaults"]["ARCH"]:
+					if self.configdict["defaults"]["ARCH"] not in usesplit:
+						usesplit.insert(0,self.configdict["defaults"]["ARCH"])
+						self.configlist[-1]["USE"]=string.join(usesplit," ")
 	
 	def __getitem__(self,mykey):
 		if mykey=="CONFIG_PROTECT_MASK":
@@ -1116,7 +1119,6 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 
 	settings["BUILD_PREFIX"]=settings["PORTAGE_TMPDIR"]+"/portage"
 	settings["PKG_TMPDIR"]=settings["PORTAGE_TMPDIR"]+"/portage-pkg"
-	#depend may be run as non-root
 	settings["BUILDDIR"]=settings["BUILD_PREFIX"]+"/"+settings["PF"]
 
 	try:
@@ -1138,17 +1140,17 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 		return unmerge(settings["CATEGORY"],settings["PF"],myroot)
 	
 	if mydo not in ["help","clean","prerm","postrm","preinst","postinst","config","touch","setup",
-	"depend","fetch","digest","unpack","compile","install","rpm","qmerge","merge","package"]:
+	                "depend","fetch","digest","unpack","compile","install","rpm","qmerge","merge","package"]:
 		print "!!! Please specify a valid command."
 		return 1
 
 	#set up KV variable
-	mykv,err=ExtractKernelVersion(root+"usr/src/linux")
+	mykv,err1=ExtractKernelVersion(root+"usr/src/linux")
 	if mykv:
 		# Regular source tree
 		settings["KV"]=mykv
 	else:
-		mykv,err=ExtractKernelVersion(root+"usr")
+		mykv,err2=ExtractKernelVersion(root+"usr")
 		if mykv:
 			# Header files installed but not source tree
 			settings["KV"]=mykv
@@ -1156,12 +1158,14 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 			if settings["CATEGORY"] != "sys-kernel":
 				# No Headers at all and not installing any.
 				print
-				print "!!! Error extracting kernel version (attempt 2):"
-				print "!!!",err
+				print "!!! Error extracting kernel version:"
 				print "!!! You must either install kernel sources or kernel headers."
 				print "!!! Portage will not merge anything until one of those is merged."
+				print "!!!",err1
+				print "!!!",err2
 				print
 				sys.exit(1)
+
 
 	# if any of these are being called, handle them -- running them out of the sandbox -- and stop now.
 	if mydo in ["help","clean","setup","prerm","postrm","preinst","postinst","config"]:
@@ -3232,6 +3236,8 @@ class binarytree(packagetree):
 		"popules the binarytree"
 		if (not os.path.isdir(self.pkgdir)):
 			return 0
+		if (not os.path.isdir(self.pkgdir+"/All")):
+			return 0
 		for mypkg in listdir(self.pkgdir+"/All"):
 			if mypkg[-5:]!=".tbz2":
 				continue
@@ -3305,7 +3311,7 @@ class dblink:
 			os.rmdir(self.dbdir)
 		except OSError, e:
 			print "!!! Unable to remove db entry for this package."
-			print "!!! It is possible that a directory in this one. Portage will still"
+			print "!!! It is possible that a directory is in this one. Portage will still"
 			print "!!! register this package as installed as long as this directory exists."
 			print "!!! You may delete this directory with 'rm -Rf "+self.dbdir+"'"
 			print "!!! "+str(e)
@@ -3420,6 +3426,8 @@ class dblink:
 		mysyms=[]
 		for obj in mykeys:
 			obj=os.path.normpath(obj)
+			if obj[:2]=="//":
+				obj=obj[1:]
 			if not os.path.exists(obj):
 				if not os.path.islink(obj):
 					#we skip this if we're dealing with a symlink
@@ -3709,7 +3717,11 @@ class dblink:
 		
 	def mergeme(self,srcroot,destroot,outfile,secondhand,stufftomerge,cfgfiledict,thismtime):
 		srcroot=os.path.normpath(srcroot)+"/"
+		if srcroot[:2]=="//":
+			srcroot=srcroot[1:]
 		destroot=os.path.normpath(destroot)+"/"
+		if destroot[:2]=="//":
+			destroot=destroot[1:]
 		# this is supposed to merge a list of files.  There will be 2 forms of argument passing.
 		if type(stufftomerge)==types.StringType:
 			#A directory is specified.  Figure out protection paths, listdir() it and process it.
@@ -4133,9 +4145,14 @@ mtimedb={}
 mtimedbfile=root+"var/cache/edb/mtimedb"
 try:
 	mtimedb=cPickle.load(open(mtimedbfile))
+	if mtimedb.has_key("old"):
+		mtimedb["updates"]=mtimedb["old"]
+		del mtimedb["old"]
+	if mtimedb.has_key("cur"):
+		del mtimedb["cur"]
 except Exception, e:
-	print "!!!",e
-	mtimedb={"old":{},"cur":{},"eclass":{},"packages":[]}
+	#print "!!!",e
+	mtimedb={"updates":{},"eclass":{},"packages":[]}
 	
 def do_upgrade(mykey):
 	#now, let's process this file...
@@ -4173,7 +4190,7 @@ def do_upgrade(mykey):
 	
 	if processed:
 		#update our internal mtime since we processed all our directives.
-		mtimedb["old"][mykey]=os.stat(mykey)[ST_MTIME]
+		mtimedb["updates"][mykey]=os.stat(mykey)[ST_MTIME]
 	myworld=open("/var/cache/edb/world","w")
 	for x in worldlist:
 		myworld.write(x+"\n")
@@ -4189,7 +4206,7 @@ if secpass==2:
 			mykey=updpath+"/"+myfile
 			if not os.path.isfile(mykey):
 				continue
-			if (not mtimedb["old"].has_key(mykey)) or (mtimedb["old"][mykey] != os.stat(mykey)[ST_MTIME]):
+			if (not mtimedb["updates"].has_key(mykey)) or (mtimedb["updates"][mykey] != os.stat(mykey)[ST_MTIME]):
 				didupdate=1
 				do_upgrade(mykey)
 	except OSError:
@@ -4215,6 +4232,7 @@ def store():
 		mymfn=mtimedbfile
 		try:
 			if mtimedb:
+				mtimedb["version"]=VERSION
 				cPickle.dump(mtimedb,open(mymfn,"w"))
 				os.chown(mymfn,uid,wheelgid)
 				os.chmod(mymfn,0664)

@@ -4,7 +4,7 @@
 	echo "${0}: two arguments needed"
     exit 1
 	fi
-    mysrc=${1}
-    mydest=${2}
-    ln -f ${D}${mysrc} ${D}${mydest}
+    mysrc="${1}"
+    mydest="${2}"
+    ln -f "${D}${mysrc}" "${D}${mydest}"
 

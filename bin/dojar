@@ -32,24 +32,23 @@ fi
 
 jarroot="${DESTTREE}/share/${PN}/"
 jardest="${DESTTREE}/share/${PN}/${JARDESTTREE}/"
-pf=${D}${jarroot}/package.env
+pf="${D}${jarroot}/package.env"
 
-dodir ${jardest}
+dodir "${jardest}"
 
 for i in $* ; do
-	bn=`basename $i`
-	
+	bn="$(basename $i)"
 
-	if [ -f $pf ] ; then
-		oldcp=`grep "CLASSPATH=" $pf | sed "s/CLASSPATH=//"`
-		grep -v "CLASSPATH=" $pf > ${pf}.new
-		echo "CLASSPATH=${oldcp}:${jardest}${bn}" >> ${pf}.new
-		mv ${pf}.new $pf
+	if [ -f "$pf" ] ; then
+		oldcp=`grep "CLASSPATH=" "$pf" | sed "s/CLASSPATH=//"`
+		grep -v "CLASSPATH=" "$pf" > "${pf}.new"
+		echo "CLASSPATH=${oldcp}:${jardest}${bn}" >> "${pf}.new"
+		mv "${pf}.new" "$pf"
 	else
-		echo "DESCRIPTION=\"${DESCRIPTION}\"" > $pf
-		echo "CLASSPATH=${jardest}${bn}" >> $pf
+		echo "DESCRIPTION=\"${DESCRIPTION}\"" > "$pf"
+		echo "CLASSPATH=${jardest}${bn}" >> "$pf"
 	fi
 	
-	cp $i ${D}${jardest}/
-	chmod 0444 ${D}${jardest}/${bn}
+	cp "$i" "${D}${jardest}/"
+	chmod 0444 "${D}${jardest}/${bn}"
 done

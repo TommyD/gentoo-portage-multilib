@@ -45,7 +45,7 @@ diefunc() {
 	local funcname="$1" lineno="$2" exitcode="$3"
 	shift 3
 	echo >&2
-	echo "!!! ERROR: The ebuild did not complete successfully." >&2
+	echo "!!! ERROR: $CATEGORY/$PF failed." >&2
 	echo "!!! Function $funcname, Line $lineno, Exitcode $exitcode" >&2
 	echo "!!! ${*:-(no error message)}" >&2
 	echo >&2
@@ -173,7 +173,7 @@ unpack() {
 			fi
 			;;
 		*)
-			die "unpack ${x}: file format not recognized"
+			echo "unpack ${x}: file format not recognized. Ignoring."
 			;;
 		esac
 	done
@@ -189,6 +189,7 @@ econf() {
 		    --datadir=/usr/share \
 		    --sysconfdir=/etc \
 		    --localstatedir=/var/lib \
+				${EXTRA_ECONF} \
 		    "$@" || die "econf failed" 
 	else
 		die "no configure script found"

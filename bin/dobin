@@ -4,28 +4,28 @@ then
 	echo "${0}: at least one argument needed"
 	exit 1
 fi
-if [ ! -d ${D}${DESTTREE}/bin ]
+if [ ! -d "${D}${DESTTREE}/bin" ]
 then
-	install -d ${D}${DESTTREE}/bin
+	install -d "${D}${DESTTREE}/bin"
 fi
 for x in "$@"
 do
-	if [ -x ${x} ]
+	if [ -x "${x}" ]
 	then
 		if [ -z "$DEBUGBUILD" ]
 	    then
-			MYVAL=`file ${x} | grep "ELF"` 
+			MYVAL=`file "${x}" | grep "ELF"` 
 	        if [ -n "$MYVAL" ]
 	        then
-				strip ${x}
+				strip "${x}"
 			fi
 		fi
 	    #if executable, use existing perms
-		install ${x} ${D}${DESTTREE}/bin
+		install "${x}" "${D}${DESTTREE}/bin"
 	else
 		#otherwise, use reasonable defaults
 		echo ">>> dobin: making ${x} executable..."
-		install -m0755 --owner=root --group=root ${x} ${D}${DESTTREE}/bin
+		install -m0755 --owner=root --group=root "${x}" "${D}${DESTTREE}/bin"
 	fi
 done
 

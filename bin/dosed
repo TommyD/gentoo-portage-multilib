@@ -5,19 +5,19 @@ mysed="s:${D}::g"
 
 for x in "$@"
 do
-    y=${D}${x}
+    y="${D}${x}"
     if [ -a "${y}" ]
     then
 	if [ -f "${y}" ]
 	then
-	    mysrc=${T}/`/usr/bin/basename ${y}`
-	    cp ${y} ${mysrc}
-	    sed -e "${mysed}" ${mysrc} > ${y}
+	    mysrc="${T}"/`/usr/bin/basename "${y}"`
+	    cp "${y}" "${mysrc}"
+	    sed -e "${mysed}" "${mysrc}" > "${y}"
 	else
 	    echo "${y} is not a regular file!"
 		exit 1
 	fi
     else
-	mysed=${x}
+	mysed="${x}"
     fi
 done

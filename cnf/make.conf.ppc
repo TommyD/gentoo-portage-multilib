@@ -178,3 +178,8 @@ CXXFLAGS="${CFLAGS}"
 #     flag of the same name. It causes binary packages to be created of all
 #     packages that are merged.
 #FEATURES="ccache buildpkg"
+#
+# RSYNC_RETRIES sets the number of times portage will attempt to retrieve
+#     a current portage tree before it exits with an error. This allows
+#     for a more successful retrieval without user intervention most times.
+#RSYNC_RETRIES="3"

@@ -5,5 +5,5 @@ then
 fi	
 for x in $@
 do
-	strip ${D}${x}/*
+	strip "${D}${x}"/*
 done

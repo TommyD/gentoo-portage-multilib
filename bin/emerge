@@ -21,10 +21,12 @@ shortmapping={"a":"--autoclean", "b":"--buildpkg", "c":"clean", "C":"unmerge", "
 def emergelog(mystr):
 	try:
 		mylogfile=open("/var/log/emerge.log", "a")
-		mylogfile.write(mystr+"\n")
+		mylogfile.write(str(time.time())[:10]+": "+mystr+"\n")
 		mylogfile.flush()
 		mylogfile.close()
-	except:
+	except Exception, e:
+		if edebug:
+			print "emergelog():",e
 		pass
 
 def countdown(secs=5, doing="Starting"):
@@ -387,7 +389,7 @@ elif portage.secpass!=2:
 		sys.exit(1)
 
 if not "--pretend" in myopts:
-	emergelog("Started emerge on: "+time.strftime("%b %d, %Y", time.localtime()))
+	emergelog("Started emerge on: "+time.strftime("%b %d, %Y %H:%M:%S", time.localtime()))
 	myelogstr=""
 	if myopts:
 		myelogstr=string.join(myopts, " ")
@@ -475,8 +477,6 @@ class search:
 					masked=1
 				self.matches["pkg"].append([package,masked])
 			elif self.searchdesc: # DESCRIPTION searching
-				#description searching is a bit broken because we use visible packages rather than
-				#all packages.  But this will work until I have time to rewrite it.
 				full_package = portage.portdb.xmatch("bestmatch-visible",package)
 				if not full_package:
 					#no match found; we don't want to query description
@@ -524,11 +524,36 @@ class search:
 						print green("*")+"  "+white(match)+" "+red("[ Masked ]")
 					else:
 						print green("*")+"  "+white(match)
-					print "     ", "Latest version available:",self.getVersion(full_package, search.VERSION_RELEASE)
+					myversion = self.getVersion(full_package, search.VERSION_RELEASE)
+
+					mysum = [0,0]
+					mycat = match.split("/")[0]
+					mypkg = match.split("/")[1] + "-" + myversion
+
+					mydigest = portage.config()["PORTDIR"] + "/"  + match + "/files/digest-" + mypkg
+					
+					try:
+						myfile = open(mydigest,"r")
+						for line in myfile.readlines():
+							mysum[0] += int(line.split(" ")[3])
+						myfile.close()
+						mystr = str(mysum[0]/1024)
+						mycount=len(mystr)
+						while (mycount > 3):
+							mycount-=3
+							mystr=mystr[:mycount]+","+mystr[mycount:]
+						mysum[0]=mystr+" kB"
+					except Exception, e:
+						if edebug:
+							print "!!! Exception:",e
+						mysum[0]=" [no/bad digest]"
+						
+					print "     ", "Latest version available:",myversion
 					print "     ", self.getInstallationStatus(catpack)
 					print "     ", "Homepage:",homepage
 					print "     ", "Description:",desc
-					print " "
+					print "     ", "Distfiles:",mysum[0]
+					print
 		
 	#
 	# private interface
@@ -1229,38 +1254,60 @@ def post_emerge(retval=0):
 		sys.exit(retval)
 	emergelog(" *** exiting successfully.")
 	root=portage.root
-	inforoot=root+"usr/share/info"
-	if os.path.isdir(inforoot) and os.path.exists("/usr/bin/install-info"):
-		try:
-			infomtime=os.stat(inforoot)[ST_MTIME]
-		except:
-			infomtime=0
-		regen=1
-		if portage.mtimedb["old"].has_key(inforoot):
-			if portage.mtimedb["old"][inforoot]==infomtime:
-				regen=0
+
+	if os.path.exists("/usr/bin/install-info"):
+		for z in string.split(portage.settings["INFOPATH"]+":"+portage.settings["INFODIR"], ":"):
+			inforoot=root+z
+			if os.path.isdir(inforoot):
+				try:
+					infomtime=os.stat(inforoot)[ST_MTIME]
+				except:
+					infomtime=0
+				regen=1
+
+			if not portage.mtimedb.has_key("info"):
+				portage.mtimedb["info"]={}
+			if portage.mtimedb["info"].has_key(inforoot):
+				if portage.mtimedb["info"][inforoot]==infomtime:
+					regen=0
+				else:
+					portage.mtimedb["info"][inforoot]=0
+
+
 		if not regen:
 			print " "+green("*")+" GNU info directory index is up-to-date."
 		else:
 			print " "+green("*")+" Regenerating GNU info directory index..."
-			try:
-				os.rename(root+"usr/share/info/dir",root+"usr/share/info/dir.old")
-			except:
-				pass
+
 			icount=0
 			badcount=0
-			for x in os.listdir(root+"usr/share/info"):
-				aux=auxpat.search(x)
-				if not aux:
+			for z in string.split(portage.settings["INFOPATH"]+":"+portage.settings["INFODIR"], ":"):
+				inforoot=root+z
+				if portage.mtimedb["info"].has_key(inforoot):
+					if portage.mtimedb["info"][inforoot]!=0:
+						continue
+				try:
+					os.rename(inforoot+"/dir",inforoot+"/dir.old")
+				except:
+					pass
+				
+				if not os.path.isdir(inforoot):
 					continue
-				auxgroups=aux.groups()	
-				if not (auxgroups[1] or auxgroups[2]):
-					myso=commands.getstatusoutput("/usr/bin/install-info --dir-file="+root+"usr/share/info/dir "+root+"usr/share/info/"+x)[1]
-					if myso!="":
-						badcount=badcount+1
-						if "--verbose" in myopts:
-							print myso
-					icount=icount+1
+				for x in os.listdir(inforoot):
+					aux=auxpat.search(x)
+					if not aux:
+						continue
+					auxgroups=aux.groups()	
+					if not (auxgroups[1] or auxgroups[2]):
+						myso=commands.getstatusoutput("/usr/bin/install-info --dir-file="+inforoot+"/dir "+inforoot+"/"+x)[1]
+						if myso!="":
+							badcount=badcount+1
+							if "--verbose" in myopts:
+								print myso
+						icount=icount+1
+				#update mtime so we can potentially avoid regenerating.
+				portage.mtimedb["info"][inforoot]=os.stat(inforoot)[ST_MTIME]
+
 			if badcount:
 				if "--verbose" not in myopts:
 					print " "+yellow("*")+" Processed",icount,"info files:",badcount,"errors; type "+green("emerge --verbose")+" to view errors."
@@ -1268,9 +1315,7 @@ def post_emerge(retval=0):
 					print " "+yellow("*")+" Processed",icount,"info files;",badcount,"errors."
 			else:
 				print " "+green("*")+" Processed",icount,"info files."
-		#update mtime so we can potentially avoid regenerating.
-		portage.mtimedb["old"][inforoot]=os.stat(inforoot)[ST_MTIME]
-			
+
 	if portage.settings["CONFIG_PROTECT"]:
 		#number of directories with some protect files in them
 		procount=0
@@ -1319,7 +1364,18 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 		mycommand=mycommand+syncuri+"/* "+myportdir
 		print ">>> starting rsync with "+syncuri+"..."
 	#protect users that did not set a default umask
-		portage.spawn(mycommand,free=1)	
+		exitcode=portage.spawn(mycommand,free=1)
+		#if the exit code of rsync is 12 retry to rsync till
+		#we have reached RSYNC_RETRIES or the default of 3 retries
+		try:
+			maxretries=int(portage.settings["RSYNC_RETRIES"])
+		except:
+			maxretries=3 #default number of retries
+		retries=1
+		while exitcode==12 and retries<=maxretries:
+			print ">>> Starting retry %d of %d"% (retries,maxretries)
+			retries=retries+1
+			exitcode=portage.spawn(mycommand,free=1)
 	elif syncuri[:6]=="cvs://":
 		if not os.path.exists("/usr/bin/cvs"):
 			print "!!! /usr/bin/cvs does not exist, so rsync support is disabled."

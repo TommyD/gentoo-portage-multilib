@@ -5,32 +5,32 @@
 	echo "doexe: at least one argument needed"
    	exit 1
 	fi
-    if [ ! -d ${D}${EXEDESTTREE} ]
+    if [ ! -d "${D}${EXEDESTTREE}" ]
     then
-	install -d ${D}${EXEDESTTREE}
+	install -d "${D}${EXEDESTTREE}"
     fi
     for x in "$@"
     do
 	if [ -z "$DEBUGBUILD" ]
 	then
-		MYVAL=`file ${x} | grep "ELF"` 
+		MYVAL=`file "${x}" | grep "ELF"` 
 		if [ -n "$MYVAL" ]
 		then
-			strip ${x}
+			strip "${x}"
 		fi
 	fi
-	if [ -L ${x} ]
+	if [ -L "${x}" ]
 	then
-		cp ${x} ${T}
-		mysrc=${T}/`/usr/bin/basename ${x}`
-	elif [ -d ${x} ]
+		cp "${x}" "${T}"
+		mysrc="${T}"/`/usr/bin/basename "${x}"`
+	elif [ -d "${x}" ]
 	then
 		echo "doexe: warning, skipping directory ${x}"
 		continue
 	else
-		mysrc=${x}
+		mysrc="${x}"
 	fi
-	install ${EXEOPTIONS} ${mysrc} ${D}${EXEDESTTREE}
+	install ${EXEOPTIONS} "${mysrc}" "${D}${EXEDESTTREE}"
 done
 
 

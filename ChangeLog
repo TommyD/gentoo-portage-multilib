@@ -1,6 +1,19 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-2.0.44 (11 Nov 2002): bug fixes and 1.2 rescue/install setup
+
+  11 Nov 2002; Nicholas Jones <carpaski@gentoo.org> *:
+  bin/*: fixes for spaces-in-filename issues, lots of quotes added. conf/*:
+  touched up comments and warning. Added RSYNC_RETRIES.	ebuild.sh: exit now
+  reports the failing ebuild's $CATEGORY/$PF. Added EXTRA_ECONF to econf().
+  emake: added EXTRA_EMAKE. emerge: RSYNC_RETRIES curtasy of Christopher
+  Sharp. Random comment fixes. portage.py: Random touchups. KV extraction
+	fixup for new ROOTs. ARCH missing in profile fix. Fix for packages/All
+	missing dir traceback. INFOPATH/INFODIR fix. Added INFOPATH to specials.
+	portage.py: Touchups to the mtimedb-touching code. Fixes for the broken
+	os.path.normpath() leading '//' bug.
+
   09 Nov 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
 	Fixups for KV.
 
