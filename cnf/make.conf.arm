@@ -26,6 +26,7 @@
 # Host Setting
 # ============
 #
+# DO NOT CHANGE THIS SETTING UNLESS YOU ARE USING STAGE1!
 # It's very important you select the right CHOST from the start.  A wrong
 # CHOST could easily lead to weird errors either in compiling or running.
 #
@@ -103,7 +104,8 @@ CHOST="armv4l-unknown-linux-gnu"
 #
 # PORTDIR is the location of the portage tree. This is the repository
 #     for all profile information as well as all ebuilds. This directory
-#     itself can reach 200M. WE DO NOT RECOMMEND that you change this.
+#     itself can reach 200M. If you change this, you must update your
+#     /etc/make.profile symlink accordingly.
 #PORTDIR=/usr/portage
 #
 # DISTDIR is where all of the source code tarballs will be placed for
@@ -226,6 +228,16 @@ CHOST="armv4l-unknown-linux-gnu"
 #     Note: This is an increment. Running emerge in a niced environment will
 #     reduce it further. Default is unset.
 #PORTAGE_NICENESS=3
+#
+# PORTAGE_TMPFS is a location where portage may create temporary files.
+#     If specified, portage will use this directory whenever possible
+#     for all rapid operations such as lockfiles and transient data.
+#     It is _highly_ recommended that this be a tmpfs or ramdisk. Do not
+#     set this to anything that does not give a significant performance
+#     enhancement and proper FS compliance for locks and read/write.
+#     /dev/shm is a glibc mandated tmpfs, and should be a reasonable
+#     setting for all linux kernel+glibc based systems.
+#PORTAGE_TMPFS="/dev/shm"
 #
 # FEATURES are settings that affect the functionality of portage. Most of
 #     these settings are for developer use, but some are available to non-

@@ -26,6 +26,7 @@
 # Host Setting
 # ============
 #
+# DO NOT CHANGE THIS SETTING UNLESS YOU ARE USING STAGE1!
 # Change this line as appropriate (i686, i586, i486 or i386).
 # All modern systems (even Athlons) should use "i686-pc-linux-gnu".
 # All K6's are i586.
@@ -109,7 +110,8 @@ CHOST="i686-pc-linux-gnu"
 #
 # PORTDIR is the location of the portage tree. This is the repository
 #     for all profile information as well as all ebuilds. This directory
-#     itself can reach 200M. WE DO NOT RECOMMEND that you change this.
+#     itself can reach 200M. If you change this, you must update your
+#     /etc/make.profile symlink accordingly.
 #PORTDIR=/usr/portage
 #
 # DISTDIR is where all of the source code tarballs will be placed for
@@ -232,6 +234,16 @@ CHOST="i686-pc-linux-gnu"
 #     Note: This is an increment. Running emerge in a niced environment will
 #     reduce it further. Default is unset.
 #PORTAGE_NICENESS=3
+#
+# PORTAGE_TMPFS is a location where portage may create temporary files.
+#     If specified, portage will use this directory whenever possible
+#     for all rapid operations such as lockfiles and transient data.
+#     It is _highly_ recommended that this be a tmpfs or ramdisk. Do not
+#     set this to anything that does not give a significant performance
+#     enhancement and proper FS compliance for locks and read/write.
+#     /dev/shm is a glibc mandated tmpfs, and should be a reasonable
+#     setting for all linux kernel+glibc based systems.
+#PORTAGE_TMPFS="/dev/shm"
 #
 # FEATURES are settings that affect the functionality of portage. Most of
 #     these settings are for developer use, but some are available to non-
