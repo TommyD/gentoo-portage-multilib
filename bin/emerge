@@ -15,7 +15,7 @@ spinpos=0
 merged=0
 params=["selective", "deep", "self", "recurse", "empty"]
 actions=["clean", "config", "help", "info", "prune", "rsync", "search", "sync", "system", "unmerge", "world", "inject", "regen", "depclean"]
-options=["--autoclean", "--deep", "--selective", "--buildpkg", "--debug", "--nodeps", "--emptytree", "--fetchonly", 
+options=["--autoclean", "--deep", "--selective", "--buildpkg", "--debug", "--nodeps", "--emptytree", "--fetchonly", "--changelog",
 "--noreplace", "--onlydeps", "--pretend", "--usepkg", "--usepkgonly", "--searchdesc", "--verbose", "--update", "--help", "--oneshot", "--version"]
 
 shortmapping={"a":"--autoclean", "b":"--buildpkg", "c":"clean", "C":"unmerge", "e":"--emptytree", "d":"--debug", "f":"--fetchonly",
@@ -60,7 +60,7 @@ def getportageversion():
 	if glibcver==[]:
 		glibcver="unavailable"
 
-	gccver=commands.getstatusoutput("/usr/bin/gcc -dumpversion")[1]
+	gccver=commands.getstatusoutput("`which gcc` -dumpversion")[1]
 	return "Portage " + portage.VERSION +" ("+profilever+", gcc-"+gccver+", glibc-"+glibcver+")"
 
 
@@ -208,6 +208,10 @@ def help():
 		print "              installing an unfamiliar package.  In the printout, N = new,"
 		print "              U = upgrading, R = replacing, B = blocked by an already installed"
 		print "              package."
+		print
+		print "       "+green("--changelog")
+		print "              When pretending, also display the ChangeLog entries for packages"
+		print "              that will be upgraded."
 		print
 		print "       "+green("--searchdesc")+" ("+green("-S")+" short option)"
 		print "              Matches the search string against the description field as well"
@@ -830,11 +834,11 @@ class depgraph:
 						xfrom = '(dependency required by '+green('"'+myparent.split()[2]+'"')+red(' ['+myparent.split()[0]+"])")
 					alleb=portage.portdb.xmatch("match-all",x)
 					if alleb:
-						print "\n\n!!! "+red("all ebuilds that could satisfy ")+green(xinfo)+red(" have been masked.")
-					if myparent:
-						print     "!!!    "+red(xfrom)
+						print "\n!!! "+red("all ebuilds that could satisfy ")+green(xinfo)+red(" have been masked.")
+						if myparent:
+							print     "!!!    "+red(xfrom)
 					else:
-						print "\n\nemerge: there are no masked or unmasked ebuilds to satisfy "+xinfo+"."
+						print "\nemerge: there are no masked or unmasked ebuilds to satisfy "+xinfo+"."
 					return 0
 				
 				if "--usepkg" in myopts:
@@ -967,6 +971,7 @@ class depgraph:
 		return myk	
 	
 	def display(self,mylist):
+		changelogs=[]
 		for x in mylist:
 			if x[0]=="blocks":
 				addl=""+red("B")+"    "
@@ -996,18 +1001,24 @@ class depgraph:
 						addl="   "+turquoise("U")+blue("D")
 					else:
 						addl="   "+turquoise("U")+" "
+					if "--changelog" in myopts:
+		 				changelogs.extend(self.calc_changelog(
+							portage.portdb.findname(x[2]),
+							portage.db["/"]["vartree"].dep_bestmatch('/'.join(portage.catpkgsplit(x[2])[:2])),
+							x[2]
+ 							))
 				else:
 					addl=" "+green("N")+"   "
 				if myoldbest:
 					myoldbest=blue("["+portage.pkgsplit(myoldbest)[1]+"-"+portage.pkgsplit(myoldbest)[2]+"]")
 				if x[1]!="/":
-					print "["+x[0]+" "+addl+"]",x[2],myoldbest,darkgreen("to "+x[1])
+					print "["+x[0]+" "+addl+"]",darkgreen(x[2]),myoldbest,darkgreen("to "+x[1])
 				else:
-					print "["+x[0]+" "+addl+"]",x[2],myoldbest
+					print "["+x[0]+" "+addl+"]",darkgreen(x[2]),myoldbest
 
 			mysplit=portage.pkgsplit(x[2])
 			# XXX mysplit _can_ be None.... Why?
-			if mysplit and "--emptytree" not in myopts:
+			if mysplit and (len(mysplit)==3) and ("--emptytree" not in myopts):
 				if mysplit[0]=="sys-apps/portage":
 					if mysplit[1]+"-"+mysplit[2]!=portage.VERSION:
 						if mylist.index(x)<len(mylist)-1:
@@ -1017,13 +1028,63 @@ class depgraph:
 								print darkgreen("    You may avoid the remerging of packages by updating portage on its own.")
 							print
 			else:
-				if mysplit[0]=="sys-apps/portage":
+				if mysplit[0]=="sys-apps/portage" and ("--emptytree" in myopts):
 					if mysplit[1]+"-"+mysplit[2]!=portage.VERSION:
-						print red("!!!")+" Please update portage to the above version before proceeding."
+						print red("***")+" Please update portage to the above version before proceeding."
 						print "    Failure to do so may result in failed or improper merges."
 						print "    A simple '"+green("emerge -u portage")+"' is sufficient."
 						print
+			mysplit=0
 			del mysplit
+
+ 		if "--changelog" in myopts:
+ 			print
+ 			for revision,text in changelogs:
+ 				print bold('*'+revision)
+ 				sys.stdout.write(text)
+
+ 	def calc_changelog(self,ebuildpath,current,next):
+ 		current = '-'.join(portage.catpkgsplit(current)[1:])
+ 		if current.endswith('-r0'): current = current[:-3]
+ 		next = '-'.join(portage.catpkgsplit(next)[1:])
+ 		if next.endswith('-r0'): next = next[:-3]
+ 		changelogpath = os.path.join(os.path.split(ebuildpath)[0],'ChangeLog')
+ 		changelog = open(changelogpath).read()
+ 		divisions = self.find_changelog_tags(changelog)
+ 		#print 'XX from',current,'to',next
+ 		#for div,text in divisions: print 'XX',div
+ 		# skip entries for all revisions above the one we are about to emerge
+ 		for i in range(len(divisions)):
+ 			if divisions[i][0]==next:
+ 				divisions = divisions[i:]
+ 				break
+ 		# find out how many entries we are going to display
+ 		for i in range(len(divisions)):
+ 			if divisions[i][0]==current:
+ 				divisions = divisions[:i]
+ 				break
+ 		else:
+ 		    # couldnt find the current revision in the list. display nothing
+ 			return []
+ 		return divisions
+ 
+ 	def find_changelog_tags(self,changelog):
+ 		divs = []
+ 		release = None
+ 		while 1:
+ 			match = re.search(r'^\*\ ?([-a-zA-Z0-9_.]*)(?:\ .*)?\n',changelog,re.M)
+ 			if match is None:                                                                            
+ 				if release is not None:
+ 					divs.append((release,changelog))
+ 				return divs
+ 			if release is not None:
+ 				divs.append((release,changelog[:match.start()]))
+ 			changelog = changelog[match.end():]
+ 			release = match.group(1)
+ 			if release.endswith('.ebuild'):
+ 				release = release[:-7]
+ 			if release.endswith('-r0'):
+ 				release = release[:-3]
 
 	def outdated(self):
 		return self.outdatedpackages
@@ -1198,7 +1259,7 @@ def unmerge(unmerge_action, unmerge_files):
 				candidate_catpkgs.append("="+spabsx[4]+"/"+spabsx[5])
 
 	if "--pretend" in myopts:
-		print"\n>>> These are the packages that I would unmerge:"
+		print darkgreen("\n>>> These are the packages that I would unmerge:")
 	
 	pkgmap={}
 	numselected=0
@@ -1319,11 +1380,6 @@ def post_emerge(retval=0):
 	print
 	if "--pretend" in myopts:
 		sys.exit(retval)
-
-	if portage.prelink_enabled:
-		print ">>> Updating prelinks..."
-		emergelog(" >>> Updating prelinks...")
-		os.system("/usr/sbin/prelink -af 2>/tmp/prelink_err.log")
 
 	emergelog(" *** exiting successfully.")
 	root=portage.root
@@ -1688,7 +1744,7 @@ elif "depclean"==myaction:
 else:
 	if ("--pretend" in myopts) and not ("--fetchonly" in myopts):
 		print
-		print "These are the packages that I would merge, in order."
+		print darkgreen("These are the packages that I would merge, in order:")
 		print
 	mydepgraph=depgraph(myaction,myopts)
 	favorites=[]
@@ -1717,7 +1773,5 @@ else:
 		if portage.settings["AUTOCLEAN"] and "yes"==portage.settings["AUTOCLEAN"]:
 			print ">>> Auto-cleaning packages ..."
 			unmerge("clean", ["world"])
-		if portage.prelink_enabled:
-			print ">>> Updating prelinks..."
-			os.system("/usr/sbin/prelink -af")
 	post_emerge()
+

@@ -76,7 +76,7 @@ use_with() {
 		UWORD="$1"
 	fi
 	
-	if use $1; then
+	if use $1 &>/dev/null; then
 		echo "--with-${UWORD}"
 		return 0
 	else
@@ -95,7 +95,7 @@ use_enable() {
 		UWORD="$1"
 	fi
 	
-	if use $1; then
+	if use $1 &>/dev/null; then
 		echo "--enable-${UWORD}"
 		return 0
 	else
@@ -1000,9 +1000,6 @@ do
 		fi
 		echo `echo "$DEPEND"` > $dbkey
 		echo `echo "$RDEPEND"` >> $dbkey
-		echo `echo "$CDEPEND"` >> $dbkey
-		echo `echo "$PDEPEND"` >> $dbkey
-		echo `echo "$REBUILD"` >> $dbkey
 		echo `echo "$SLOT"` >> $dbkey
 		echo `echo "$SRC_URI"` >> $dbkey
 		echo `echo "$RESTRICT"` >> $dbkey
@@ -1012,6 +1009,8 @@ do
 		echo `echo "$KEYWORDS"` >> $dbkey
 		echo `echo "$INHERITED"` >> $dbkey
 		echo `echo "$IUSE"` >> $dbkey
+		echo `echo "$CDEPEND"` >> $dbkey
+		echo `echo "$PDEPEND"` >> $dbkey
 		set +f
 		#make sure it is writable by our group:
 		chmod g+ws $dbkey
