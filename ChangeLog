@@ -2,7 +2,12 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
-*portage-2.0.47-r8 (02 Mar 2003): Fixes -- cvs-src, ebuild.sh, repoman
+  12 Mar 2003; Nicholas Jones <carpaski@gentoo.org> emerge: Added more
+  conditions on rsync -- Proper error detection. Rsync failures will not
+  cause a cache regeneration. Portage no longer considers masked portages
+  candidates for 'An update to portage'.
+
+*portage-2.0.47-r9 (10 Mar 2003): Fixes -- cvs-src, ebuild.sh, repoman
 
   10 Mar 2003; Nicholas Jones <carpaski@gentoo.org> make.conf*: Adjusted
   the LOGDIR message and change the default location to /var/log/portage.

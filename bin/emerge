@@ -1513,26 +1513,36 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 		mycommand=mycommand+" "+syncuri+"/* "+myportdir
 		print ">>> starting rsync with "+syncuri+"..."
 		exitcode=portage.spawn(mycommand,free=1)
-		#if the exit code of rsync is 12 retry to rsync till
-		#we have reached RSYNC_RETRIES or the default of 3 retries
 		try:
 			maxretries=int(portage.settings["RSYNC_RETRIES"])
 		except:
 			maxretries=3 #default number of retries
 		retries=1
-		exitcode=1
-		while (exitcode!=0) and (retries<=maxretries):
-			print ">>> Starting retry %d of %d"% (retries,maxretries)
+		while (exitcode not in [0,1,2,3,4,11,14,20,21]) and (retries<=maxretries):
+			print "\n\n>>> Starting retry %d of %d"% (retries,maxretries)
 			time.sleep(11)
 			retries=retries+1
 			exitcode=portage.spawn(mycommand,free=1)
 		if (exitcode>0):
 			print
-			print darkred("!!!")+green(" Rsync has not successfully finished. It is recommended that you keep")
-			print darkred("!!!")+green(" trying or that you use the 'emerge-webrsync' option if you are unable")
-			print darkred("!!!")+green(" to use rsync due to firewall or other restrictions. This should be a")
-			print darkred("!!!")+green(" temporary problem unless complications exist with your network")
-			print darkred("!!!")+green(" (and possibly your system's filesystem) configuration.")
+			if exitcode==1:
+				print darkred("!!!")+green(" Rsync has reported that there is a syntax error. Please ensure")
+				print darkred("!!!")+green(" that your SYNC statement is proper.")
+				print darkred("!!!")+green(" SYNC="+portage.settings["SYNC"])
+			elif exitcode==11:
+				print darkred("!!!")+green(" Rsync has reported that there is a File IO error. Normally")
+				print darkred("!!!")+green(" this means your disk is full, but can be caused by corruption")
+				print darkred("!!!")+green(" on the filesystem that contains PORTDIR. Please investigate")
+				print darkred("!!!")+green(" and try again after the problem has been fixed.")
+				print darkred("!!!")+green(" PORTDIR="+portage.settings["PORTDIR"])
+			elif exitcode==20:
+				print darkred("!!!")+green(" Rsync was killed before it finished.")
+			else:
+				print darkred("!!!")+green(" Rsync has not successfully finished. It is recommended that you keep")
+				print darkred("!!!")+green(" trying or that you use the 'emerge-webrsync' option if you are unable")
+				print darkred("!!!")+green(" to use rsync due to firewall or other restrictions. This should be a")
+				print darkred("!!!")+green(" temporary problem unless complications exist with your network")
+				print darkred("!!!")+green(" (and possibly your system's filesystem) configuration.")
 			print
 			sys.exit(exitcode)
 	elif syncuri[:6]=="cvs://":
@@ -1594,14 +1604,12 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 		sys.stdout.write("\b\b  ...done!\n\n")
 		sys.stdout.flush()
 
-	#mynewpv=portage.portdb.xmatch("bestmatch-visible","sys-apps/portage")
-	mylist=portage.portdb.cp_list("sys-apps/portage")
-	myvisi=portage.portdb.visible(mylist)
-	mynewpv=portage.best(myvisi)
+	portage.portageexit()
+	reload(portage)
+	mybestpv=portage.portdb.xmatch("bestmatch-visible","sys-apps/portage")
+	mypvs=portage.best(portage.db[portage.root]["vartree"].dbapi.match("sys-apps/portage"))
 
-	mycurpv=portage.best(portage.db[portage.root]["vartree"].dbapi.match("sys-apps/portage"))
-
-	if(mycurpv!=mynewpv):
+	if(mybestpv != mypvs):
 		print
 		print red(" * ")+bold("An update to portage is available.")+" It is _highly_ recommended"
 		print red(" * ")+"that you update portage now, before any other packages are updated."
