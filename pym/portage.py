@@ -7,7 +7,21 @@ VERSION="2.0.16pre"
 from stat import *
 from commands import *
 from select import *
-import string,os,types,sys,shlex,shutil,xpak,fcntl,signal,time,missingos,cPickle,atexit
+import string,os,types,sys,shlex,shutil,xpak,fcntl,signal,time,missingos,cPickle,atexit,grp
+
+#Secpass will be set to 1 if the user is root or in the wheel group.
+uid=os.getuid()
+secpass=0
+if uid==0:
+	secpass=2
+try:
+	wheelgid=grp.getgrnam("wheel")[2]
+	if (not secpass) and (wheelgid in os.getgroups()):
+		secpass=1
+except KeyError:
+	print "portage initialization: your system doesn't have a \"wheel\" group."
+	print "Please fix this so that Portage can operate correctly (It's normally GID 10)"
+	pass
 
 incrementals=["USE","FEATURES","ACCEPT_KEYWORDS","ACCEPT_LICENSE","CONFIG_PROTECT_MASK"]
 
@@ -382,7 +396,7 @@ def grabfile(myfilename):
 		newlines.append(myline)
 	return newlines
 
-def grabdict(myfilename):
+def grabdict(myfilename,juststrings=0):
 	"""This function grabs the lines in a file, normalizes whitespace and returns lines in a dictionary"""
 	newdict={}
 	try:
@@ -397,8 +411,38 @@ def grabdict(myfilename):
 		myline=string.split(x)
 		if len(myline)<2:
 			continue
-		newdict[myline[0]]=myline[1:]
+		if juststrings:
+			newdict[myline[0]]=string.join(myline[1:])
+		else:
+			newdict[myline[0]]=myline[1:]
 	return newdict
+
+def grabints(myfilename):
+	newdict={}
+	try:
+		myfile=open(myfilename,"r")
+	except IOError:
+		return newdict 
+	mylines=myfile.readlines()
+	myfile.close()
+	for x in mylines:
+		#the split/join thing removes leading and trailing whitespace, and converts any whitespace in the line
+		#into single spaces.
+		myline=string.split(x)
+		if len(myline)!=2:
+			continue
+		newdict[myline[0]]=string.atoi(myline[1])
+	return newdict
+
+def writeints(mydict,myfilename):
+	try:
+		myfile=open(myfilename,"w")
+	except IOError:
+		return 0
+	for x in mydict.keys():
+		myfile.write(x+" "+`mydict[x]`+"\n")
+	myfile.close()
+	return 1
 
 def writedict(mydict,myfilename,writekey=1):
 	"""Writes out a dict to a file; writekey=0 mode doesn't write out the key and assumes all values are strings,
@@ -2545,50 +2589,36 @@ auxdbkeylen=len(auxdbkeys)
 class portdbapi(dbapi):
 	"this tree will scan a portage directory located at root (passed to init)"
 	def __init__(self):
+		global mtimedb
 		self.root=settings["PORTDIR"]
 		self.auxcache={}
-
+		self.xcache={0:{},1:{},2:{}}
 		if os.path.exists("/var/cache/edb/xcache.p"):
-			try:
-				myxfile=open("/var/cache/edb/xcache.p","r")
-				self.xcache=cPickle.load(myxfile)
-				myxfile.close()
-			except Exception, e:
-				print "Exception in xcache: "+str(e)
-				self.xcache={0:{},1:{},2:{}}
-
 			# Check the mtimes to make sure that the cache is correct
-			self.mtime_pkgmask = os.stat(self.root+"/profiles/package.mask")[8]
-			self.mtime_pkg     = os.stat("/etc/make.profile/packages")[8]
+			for myent,myfile in [["pkgmask",self.root+"/profiles/package.mask"],["pkgs","/etc/make.profile/packages"]]:
+				try:
+					mtimedb["cur"][myent]=os.stat(myfile)[8]
+				except (OSError, IOError):
+					mtimedb["cur"][myent]=0
+				if not mtimedb["old"].has_key(myent):
+					mtimedb["old"][myent]=0
+			newmasks=0
+			for myent in ["pkgmask","pkgs"]:
+				if mtimedb["old"][myent]!=mtimedb["cur"][myent]:
+					newmasks=1
+					break
+			if not newmasks:
+				try:
+					myxfile=open("/var/cache/edb/xcache.p","r")
+					self.xcache=cPickle.load(myxfile)
+					myxfile.close()
+				except:
+					pass
+			else:
+				for myent in ["pkgmask","pkgs"]:
+					#update mtimes since we are starting our xcache from scratch
+					mtimedb["old"][myent]=mtimedb["cur"][myent]
 
-			self.cacheOK = 0
-			if self.xcache.has_key("mtimes"):
-				if self.xcache["mtimes"].has_key("packages") and \
-				   self.xcache["mtimes"].has_key("package.mask"):
-					if (self.xcache["mtimes"]["package.mask"] == self.mtime_pkgmask) and \
-					   (self.xcache["mtimes"]["packages"] == self.mtime_pkg):
-						self.cacheOK = 1
-			
-			if not self.cacheOK:
-				print "Rebuilding visible cache..."
-
-				if not self.xcache.has_key("mtimes"):
-					self.xcache["mtimes"]={}
-
-				self.xcache["mtimes"]["package.mask"] = self.mtime_pkgmask
-				self.xcache["mtimes"]["packages"]     = self.mtime_pkg
-
-				for key in self.xcache.keys():
-					if self.xcache[key].has_key("bestmatch-visible"):
-						del self.xcache[key]["bestmatch-visible"]
-					if self.xcache[key].has_key("match-visible"):
-						del self.xcache[key]["match-visible"]
-					if self.xcache[key].has_key("list-visible"):
-						del self.xcache[key]["list-visible"]
-			
-		else:
-			self.xcache={0:{},1:{},2:{}}
-	
 	def aux_get(self,mycpv,mylist,strict=0):
 		"stub code for returning auxilliary db information, such as SLOT, DEPEND, etc."
 		'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
@@ -3679,6 +3709,7 @@ def pkgmerge(mytbz2,myroot):
 	cleanup_pkgmerge(mypkg,origdir)
 	return returnme
 
+
 if os.environ.has_key("ROOT"):
 	root=os.environ["ROOT"]
 	if not len(root):
@@ -3739,19 +3770,25 @@ if profiledir:
 else:
 	usedefaults=[]
 settings=config()
+#grab mtimes
+mtimedb={"cur":{}}
+mtimedb["old"]=grabints("/var/cache/edb/mtimes")
 #the new standardized db names:
 portdb=portdbapi()
+
 def store():
-	try:
-		myxfile=open("/var/cache/edb/xcache.p","w")
-		cPickle.dump(portdb.xcache,myxfile)
-		myxfile.close()
-	except Exception, e:
-		print " * Unable to update xcache:"
-		print "     "+str(e)
-#	myxfile=open("/var/cache/edb/pkgcache.p","w")
-#	cPickle.dump(pkgcache,myxfile)
-#	myxfile.close()
+	global uid,wheelgid
+	if secpass:
+		try:
+			myxfile=open("/var/cache/edb/xcache.p","w")
+			cPickle.dump(portdb.xcache,myxfile)
+			myxfile.close()
+		except:
+			print "portage: store(): Unable to update xcache"
+		writeints(mtimedb["old"],"/var/cache/edb/mtimes")	
+		for x in ["/var/cache/edb/xcache.p","/var/cache/edb/mtimes"]:
+			os.chown(x,uid,wheelgid)
+			
 atexit.register(store)
 #continue setting up other trees
 db["/"]["porttree"]=portagetree("/",virts)

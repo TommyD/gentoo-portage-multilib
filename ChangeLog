@@ -1,10 +1,39 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  22 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: changed xcache
+  behavior so that the cache gets totally thrown away when the masks are
+  updated.  Also revamped carpaski's code so we can avoid loading xcache from
+  disk if we simply plan to throw it away.  This necessitated the creation of a
+  new file in /var/cache/edb: mtimes.  This file stores mtimes for various
+  important filesystem objects.  Also added support to not regenerate the GNU
+  info directory index if the mtime on /usr/share/info has not changed since
+  previous invocation.
+
+  22 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, emerge: moved
+  security handling code from emerge to portage.py; also moved group "wheel"
+  check to portage.py.  Added additional security checks and permissions fixes
+  to the cache handling functions.
+
+  22 Jul 2002: Daniel Robbins <drobbins@gentoo.org> emerge: fixed a bug
+  reported by woodchip related to merging packages.  When using --usepkg, a
+  package wouldn't be used if there was a newer unmasked version of the ebuild
+  available, even if the package in question was the right selection.
+  
+  22 Jul 2002; Daniel Robbins <drobbins@gentoo.org> emerge: fixed create() code
+  and consolidated some functions.  My goal is to simplify the emerge code
+  until it's clean, at which point we can begin adding new features to emerge
+  like more SLOT-friendly decision making.
+
+  22 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: was able to
+  remove 130 or so lines of code by depreciating the match() function (replaced
+  by the match2() method.) I also rennovated the binarytree code to take
+  advantage of fakedbapi.
+
   22 Jul 2002; Nicholas Jones <carpaski@gentoo.org> portage.py: added the
-  xcache.p fix and updated the version to 2.0.16pre (from 2.0.12) -- Also
-	added in a try/except inside the store() (atexit) for xcache.p to give
-	hints instead of tracebacks.
+  xcache.p fix and updated the version to 2.0.16pre (from 2.0.12) -- Also added
+  in a try/except inside the store() (atexit) for xcache.p to give hints
+  instead of tracebacks.
 
   22 Jul 2002; Nicholas Jones <carpaski@gentoo.org> emerge: added the
   description searching code and added a spinner to the search.

@@ -1,14 +1,7 @@
 #!/usr/bin/env python2.2
-import os,sys,portage,xpak,string,re,commands,time,threading,grp,shutil
+import os,sys,portage,xpak,string,re,commands,time,threading,shutil
 from stat import *
 from output import *
-
-try:
-	grp.getgrnam("wheel")
-except KeyError:
-	print "emerge: your system doesn't have a \"wheel\" group."
-	print "Please fix this so that Portage can operate correctly (It's normally GID 10)"
-	sys.exit(1)
 
 spinner="\|/-\|/-"
 spinpos=0
@@ -106,20 +99,10 @@ if ("--searchdesc" in myopts) and (not myaction):
 		myaction = "search"
 
 # check if root user is the current user for the actions where emerge needs this
-secpass=0
-if (os.getuid()==0) or ("--help" in myopts) or ("--version" in myopts):
-	secpass=1
-elif ("--pretend" in myopts) or (myaction=="search"):
-	try:
-		wheelid=grp.getgrnam("wheel")[2]
-		if wheelid in os.getgroups():
-			secpass=1
-	except KeyError:
-		#group "wheel" not defined for some reason
-		pass
-if not secpass:
-	print "emerge: root access required (or wheel group membership for \"--pretend\" and search.)"
-	sys.exit(1)
+if ("--pretend" in myopts) or (myaction=="search"):
+	if not portage.secpass:
+		print "emerge: root access required (or wheel group membership for \"--pretend\" and search.)"
+		sys.exit(1)
 	
 # search functionality
 class search:
@@ -188,7 +171,7 @@ class search:
 
 	def output(self):
 		"""Outputs the results of the search."""
-		print "[ Results for search key : "+white(self.searchkey)+" ]"
+		print "\b\b  \n[ Results for search key : "+white(self.searchkey)+" ]"
 		print "[ Applications found : "+white(str(len(self.packagematches)))+" ]"
 		print " "
 		for match in self.packagematches:
@@ -925,34 +908,48 @@ def post_emerge(retval=0):
 	if "--pretend" in myopts:
 		sys.exit(retval)
 	root=portage.root
-	if os.path.isdir(root+"usr/share/info") and os.path.exists("/usr/bin/install-info"):
-		print " "+green("*")+" Regenerating GNU info directory index..."
+	inforoot=root+"usr/share/info"
+	if os.path.isdir(inforoot) and os.path.exists("/usr/bin/install-info"):
 		try:
-			os.rename(root+"usr/share/info/dir",root+"usr/share/info/dir.old")
+			infomtime=os.stat(inforoot)[ST_MTIME]
 		except:
-			pass
-		icount=0
-		badcount=0
-		for x in os.listdir(root+"usr/share/info"):
-			aux=auxpat.search(x)
-			if not aux:
-				continue
-			auxgroups=aux.groups()	
-			if not (auxgroups[1] or auxgroups[2]):
-				myso=commands.getstatusoutput("/usr/bin/install-info --dir-file="+root+"usr/share/info/dir "+root+"usr/share/info/"+x)[1]
-				if myso!="":
-					badcount=badcount+1
-					if "--verbose" in myopts:
-						print myso
-				icount=icount+1
-		if badcount:
-			if "--verbose" not in myopts:
-				print " "+yellow("*")+" Processed",icount,"info files:",badcount,"errors; type "+green("emerge --verbose")+" to view errors."
-			else:
-				print " "+yellow("*")+" Processed",icount,"info files;",badcount,"errors."
-
+			infomtime=0
+		regen=1
+		if portage.mtimedb["old"].has_key(inforoot):
+			if portage.mtimedb["old"][inforoot]==infomtime:
+				regen=0
+		if not regen:
+			print " "+green("*")+" GNU info directory index is up-to-date."
 		else:
-			print " "+green("*")+" Processed",icount,"info files."
+			print " "+green("*")+" Regenerating GNU info directory index..."
+			try:
+				os.rename(root+"usr/share/info/dir",root+"usr/share/info/dir.old")
+			except:
+				pass
+			icount=0
+			badcount=0
+			for x in os.listdir(root+"usr/share/info"):
+				aux=auxpat.search(x)
+				if not aux:
+					continue
+				auxgroups=aux.groups()	
+				if not (auxgroups[1] or auxgroups[2]):
+					myso=commands.getstatusoutput("/usr/bin/install-info --dir-file="+root+"usr/share/info/dir "+root+"usr/share/info/"+x)[1]
+					if myso!="":
+						badcount=badcount+1
+						if "--verbose" in myopts:
+							print myso
+					icount=icount+1
+			if badcount:
+				if "--verbose" not in myopts:
+					print " "+yellow("*")+" Processed",icount,"info files:",badcount,"errors; type "+green("emerge --verbose")+" to view errors."
+				else:
+					print " "+yellow("*")+" Processed",icount,"info files;",badcount,"errors."
+			else:
+				print " "+green("*")+" Processed",icount,"info files."
+		#update mtime so we can potentially avoid regenerating.
+		portage.mtimedb["old"][inforoot]=os.stat(inforoot)[ST_MTIME]
+			
 	if portage.settings["CONFIG_PROTECT"]:
 		#number of directories with some protect files in them
 		procount=0
@@ -1038,13 +1035,12 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 	if os.path.exists(myportdir+"/metadata/cache"):
 		print "\n>>> Updating Portage cache...  ",
 		mynodes=portage.portdb.cp_all()
-		wheelgid=grp.getgrnam("wheel")[2]
 		for x in mynodes:
 			myxsplit=x.split("/")
 			mycatdir=portage.settings["PORTAGE_CACHEDIR"]+"/"+myxsplit[0]
 			if not os.path.exists(mycatdir):
 				os.makedirs(mycatdir,02775)
-				os.chown(mycatdir,0,wheelgid)
+				os.chown(mycatdir,0,portage.wheelgid)
 			mymatches=portage.portdb.xmatch("match-all",x)
 			for y in mymatches:
 				sys.stdout.write("\b"+spinner[spinpos])
@@ -1075,7 +1071,7 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 					pass
 				if (newkeytime>=ebuildtime>curkeytime):
 					shutil.copy(newdbkey,curdbkey)
-					os.chown(curdbkey,0,wheelgid)
+					os.chown(curdbkey,0,portage.wheelgid)
 		sys.stdout.write("\b\b  \n\n")
 		sys.stdout.flush()
 elif myaction=="regen":
