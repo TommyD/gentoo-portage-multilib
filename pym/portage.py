@@ -830,9 +830,10 @@ def fetch(myuris):
 		mydigests={}
 		for x in mylines:
 			myline=string.split(x)
-			if len(myline)<2:
+			if len(myline)<4:
 				#invalid line
-				continue
+				print "!!! The digest",digestfn,"appears to be corrupt.  Aborting."
+				return 0
 			mydigests[myline[2]]={"md5":myline[1],"size":string.atol(myline[3])}
 	if "fetch" in settings["RESTRICT"].split():
 		# fetch is restricted.	Ensure all files have already been downloaded; otherwise,
@@ -3500,7 +3501,10 @@ if root!="/":
 	virts=getvirtuals(root)
 	db[root]={"virtuals":virts,"vartree":vartree(root,virts)}
 #We need to create the vartree first, then load our settings, and then set up our other trees
-usedefaults=grabfile(profiledir+"/use.defaults")
+if profiledir:
+	usedefaults=grabfile(profiledir+"/use.defaults")
+else:
+	usedefaults=[]
 settings=config()
 #continue setting up other trees
 db["/"]["porttree"]=portagetree("/",virts)
@@ -3519,7 +3523,10 @@ else:
 	categories=[]
 
 pkgmasklines=grabfile(settings["PORTDIR"]+"/profiles/package.mask")
-pkglines=grabfile(profiledir+"/packages")
+if profiledir:
+	pkglines=grabfile(profiledir+"/packages")
+else:
+	pkglines=[]
 maskdict={}
 for x in pkgmasklines:
 	mycatpkg=dep_getkey(x)

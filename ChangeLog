@@ -1,6 +1,18 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-2.0.4 (20 Jun 2002)
+
+  20 Jun 2002; Daniel Robbins <drobbins@gentoo.org> in the 2.0.4 ebuild itself:
+  added back tbz2tool symlink which was mistakenly removed.
+
+  20 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: fixed up the
+  fetch() code so that invalid digests don't cause a traceback.
+
+  20 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: some of the new
+  transplanted virtuals code assumed that profiledir was set, which is not 
+  required.  This code has now been fixed to not make that assumption.
+
 *portage-2.0.3 (20 Jun 2002)
 
   20 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: fixed two typos
