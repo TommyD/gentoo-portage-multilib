@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  26 Sep 2004; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Added
+  support for per profile package.mask
+
 *portage-2.0.51_rc4 (26 Sep 2004): RC + Lock cleanup
 
   26 Sep 2004; Nicholas Jones <carpaski@gentoo.org> bin/clean_locks: A new

@@ -1031,7 +1031,7 @@ class config:
 			self.loadVirtuals('/')
 					
 			#package.mask
-			pkgmasklines = grab_multiple("package.mask", locations, grabfile)
+			pkgmasklines = grab_multiple("package.mask", self.profiles + locations, grabfile)
 			pkgmasklines = stack_lists(pkgmasklines, incremental=1)
 
 			self.pmaskdict = {}
