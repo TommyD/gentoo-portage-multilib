@@ -1,6 +1,10 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  1 Sep 2002; Martin Schlemmer <azarah@gentoo.org> ebuild.sh: add a custom
+  version of the esyslog() function to fix the "Red Star" bug if no logger
+  is running.
+
 *portage-2.0.33_p1 (30 Aug 2002): urgent fix
 
   31 Aug 2002; Dan Armak <danarmak@gentoo.org> ebuild.sh: comment out the if clause

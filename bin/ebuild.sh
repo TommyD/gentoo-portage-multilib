@@ -61,6 +61,11 @@ then
 	source /etc/rc.d/config/functions > /dev/null 2>&1
 fi
 
+# Custom version of esyslog() to take care of the "Red Star" bug
+# if no logger is running (tipically during bootstrap)
+esyslog() {
+	return 0
+}
 
 #The following diefunc() and aliases come from Aron Griffis -- an excellent bash coder -- thanks! 
 

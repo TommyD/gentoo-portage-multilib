@@ -169,15 +169,16 @@ void cleanup()
     if (file_exist(PIDS_FILE, 1) <= 0) {
       perror(">>> pids file is not a regular file");
       success = 0;
-      /* Go ahead and exit, pids file is not a regular file */
-      exit(1);
+      /* We should really not fail if the pidsfile is missing here, but
+       * rather just exit cleanly, as there is still some cleanup to do */
+      return 1;
     }
 
     pids_file = file_open(PIDS_FILE, "r+", 0);
     if (-1 == pids_file) {
       success = 0;
-      /* Go ahead and exit, failed opening pids file */
-      exit(1);
+      /* Nothing more to do here */
+      return 1;
     }
 
     /* Load "still active" pids into an array */
@@ -238,19 +239,26 @@ void cleanup()
           break;
         }
       }
+
+      file_close(pids_file);
+      pids_file = -1;
+    } else {
+            
+      file_close(pids_file);
+      pids_file = -1;
+
+      /* remove the pidsfile, as this was the last sandbox */
+      unlink(PIDS_FILE);
     }
 
     if (pids_array != NULL) {
       free(pids_array);
       pids_array = NULL;
     }
-
-    file_close(pids_file);
-    pids_file = -1;
   }
 
   if (0 == success) {
-    exit(1);
+    return 1;
   }
 }
 
