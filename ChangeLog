@@ -2,6 +2,9 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  19 Dec 2003; Masatomo Nakano <nakano@gentoo.org> repoman: Added check 
+	 whether "ebuild foo.ebuild digest" succeeds.
+
   19 Dec 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Fix for
 	pkg settings being maintained after an unmerge.
 

@@ -643,7 +643,10 @@ for x in scanlist:
 				if "--pretend" in myoptions:
 					print "/usr/sbin/ebuild "+repodir+"/"+x+"/"+y+".ebuild digest"
 				else:
-					os.system("/usr/sbin/ebuild "+repodir+"/"+x+"/"+y+".ebuild digest")
+					retval=os.system("/usr/sbin/ebuild "+repodir+"/"+x+"/"+y+".ebuild digest")
+					if retval:
+						print "!!! Exiting on ebuild digest (shell) error code:",retval
+						sys.exit(retval)
 			else:
 				stats["digest.missing"]=stats["digest.missing"]+1
 				fails["digest.missing"].append(x+"/files/digest-"+y)
@@ -922,7 +925,11 @@ else:
 		if "--pretend" in myoptions:
 			print "(ebuild "+repoman_settings["PORTDIR"]+"/"+myeb+".ebuild digest)"
 		else:
-			os.system("ebuild "+repoman_settings["PORTDIR"]+"/"+myeb+".ebuild digest")
+			retval=os.system("ebuild "+repoman_settings["PORTDIR"]+"/"+myeb+".ebuild digest")
+			if retval:
+				print "!!! Exiting on ebuild digest (shell) error code:",retval
+				sys.exit(retval)
+
 	mycvstree=cvstree.getentries("./",recursive=1)
 	if isCvs and not mycvstree:
 		print "!!! It seems we don't have a cvs tree?"
