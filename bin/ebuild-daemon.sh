@@ -223,7 +223,8 @@ while [ "$alive" == "1" ]; do
 					# simple.  this allows the actual exit code to be used, rather then just stating no .success == 1 || 0
 					# note this was
 					# execute_phases ${e] &> >(umask 0002; tee -i -a $PORTAGE_LOGFILE)
-					# less then bash v3 however hates it.  And I hate it.
+					# less then bash v3 however hates it.  And I hate less then v3.
+					# circle of hate you see.
 					execute_phases ${e} 2>&1 | {
 						umask 0002
 						tee -i -a $PORTAGE_LOGFILE
