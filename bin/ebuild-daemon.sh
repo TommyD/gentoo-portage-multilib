@@ -114,14 +114,6 @@ request_confcache() {
 		export SANDBOX_DEBUG=1
 		return 0
 	fi
-#	fi
-#	if [ "$line" == "empty" ]; then
-#		echo "confcache is empty, starting anew" >&2
-#		return 0
-#	elif [ "$line" == "transferred" ]; then
-#		return 0
-#	fi;
-
 	return 1
 }
 
@@ -149,12 +141,6 @@ DONT_EXPORT_FUNCS="$(declare -F | cut -s -d ' ' -f 3)"
 
 DONT_EXPORT_VARS="${DONT_EXPORT_VARS} alive com PORTAGE_LOGFILE cont"
 
-#INIT_VARS=$(declare | egrep '^[^[:space:]{}()]+=' | cut -s -d '=' -f 1)
-#INIT_FUNCS=$(declare -F | cut -s -d ' ' -f 3)
-#readonly INIT_VARS
-#readonly INIT_FUNCS cleanse_vars cleanse_funcs
-# QA interceptors are on by default, disabled when not processing depend.
-# why?  because enabling QA interceptors is expensive, and nukes regen performance.
 export QA_CONTROLLED_EXTERNALLY="yes"
 enable_qa_interceptors
 source "/usr/lib/portage/bin/ebuild-functions.sh" || die "failed sourcing ebuild-functions.sh"
@@ -218,8 +204,11 @@ while [ "$alive" == "1" ]; do
 			exit $cont
 		else
 			reset_sandbox
-			if [ -n "$SANDBOX_LOG" ] && [ -n "$PORTAGE_LOGFILE" ]; then
-				addwrite "$PORTAGE_LOGFILE"
+			if [ -n "$SANDBOX_LOG" ]; then
+				addwrite $SANDBOX_LOG
+				if [ -n "$PORTAGE_LOGFILE" ]; then
+					addwrite "$PORTAGE_LOGFILE"
+				fi
 			fi
 			speak "starting ${phases}"
 			if [ -z $RC_NOCOLOR ]; then
@@ -232,7 +221,13 @@ while [ "$alive" == "1" ]; do
 				else
 					# why do it this way rather then the old '[ -f ${T}/.succesfull }'?
 					# simple.  this allows the actual exit code to be used, rather then just stating no .success == 1 || 0
-					execute_phases ${e} &> >(umask 0002; tee -i -a $PORTAGE_LOGFILE)
+					# note this was
+					# execute_phases ${e] &> >(umask 0002; tee -i -a $PORTAGE_LOGFILE)
+					# less then bash v3 however hates it.  And I hate it.
+					execute_phases ${e} 2>&1 | {
+						umask 0002
+						tee -i -a $PORTAGE_LOGFILE
+					}
 				fi
 				ret=$?
 				if [ -n "$SANDBOX_LOG" ] && [ -e "$SANDBOX_LOG" ]; then

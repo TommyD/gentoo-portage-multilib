@@ -7,18 +7,22 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
-  07 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py: Corrected
+  09 Nov 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild-daemon.sh:
+  Added appropriate addwrites for logs for -r3 sandbox, and corrected logging
+  for bash v2 systems.
+
+  09 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py: Corrected
   som idiocy I introduced into listdir.
 
-  07 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py: buggy logic
+  09 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py: buggy logic
   in listdir w/ ignorecvs on. (#70170)
 
-  07 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py: tweaked
+  08 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py: tweaked
   portage.exit_callbacks so it's more flexible.  
   Call portage.append_exit_callback to append to it, optionally specifying args
   and keyword args.
 
-  07 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portageq.py, bin/portageq:
+  08 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portageq.py, bin/portageq:
   Tied portageq script into using the portageq module.
 
   07 Nov 2004; Brian Harring <ferringb@gentoo.org> bin/repoman: converted repoman
