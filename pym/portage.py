@@ -3629,12 +3629,6 @@ class dblink:
 				if not os.path.islink(obj):
 					print "--- !sym  ","sym", obj
 					continue
-				myabsdest=abssymlink(obj)
-				mydest=os.readlink(obj)
-				if os.path.exists(myabsdest):
-					if mydest != pkgfiles[obj][2]:
-						print "--- !destn","sym", obj
-						continue
 				mysyms.append(obj)
 			elif pkgfiles[obj][0]=="obj":
 				if not os.path.isfile(obj):
@@ -3678,7 +3672,7 @@ class dblink:
 			progress=0
 
 			#step 1: remove all the dead symlinks we can...
-	
+
 			pos = 0
 			while pos<len(mysyms):
 				obj=mysyms[pos]
