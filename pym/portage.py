@@ -466,6 +466,8 @@ def expand(mystring,dictlist=[]):
 
 def autouse(myvartree):
 	"returns set of USE variables auto-enabled due to packages being installed"
+	if profiledir==None:
+		return ""
 	mylines=grabfile(profiledir+"/use.defaults")
 	if not mylines:
 		return ""
