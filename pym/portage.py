@@ -2267,18 +2267,13 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 		return spawn("/usr/sbin/ebuild.sh "+mydo,mysettings,debug,free=1)
 	
 	try: 
-		mysettings["SLOT"], mysettings["RESTRICT"], myuris = db["/"]["porttree"].dbapi.aux_get(mycpv,["SLOT","RESTRICT","SRC_URI"])
+		mysettings["SLOT"], mysettings["RESTRICT"] = db["/"]["porttree"].dbapi.aux_get(mycpv,["SLOT","RESTRICT"])
 	except (IOError,KeyError):
 		print red("doebuild():")+" aux_get() error; aborting."
 		sys.exit(1)
 
-	myuris=myuris.replace("(", " ( ");
-	myuris=myuris.replace(")", " ) ");
-	myurilist=myuris.split()
-	myurilist=dep_parenreduce(myurilist)
-	myurilist=dep_opconvert(myurilist,string.split(mysettings["USE"]),mysettings)
-	newuris=flatten(myurilist)
-	alluris=flatten(evaluate(tokenize(myuris),[],1))	
+	newuris=db["/"]["porttree"].dbapi.getfetchlist(mycpv,mysettings=mysettings)
+	alluris=db["/"]["porttree"].dbapi.getfetchlist(mycpv,mysettings=mysettings,all=1)
 	alist=[]
 	aalist=[]
 	#uri processing list; create list with duplicates removed:
@@ -3010,7 +3005,7 @@ def dep_zapdeps(unreduced,reduced):
 					candidate.append(unreduced[x])
 				x+=1
 
-			#use already installed and not masked pkg
+			#use already installed and no-masked pkg
 			for x in candidate:
 				if (type(x)==types.ListType):
 					match=1
@@ -3024,8 +3019,8 @@ def dep_zapdeps(unreduced,reduced):
 				elif mydbapi.match(x) and myportapi and myportapi.match(x):
 					return x
 
-			#use not masked pkg
-			if portdbapi:
+			#use no-masked pkg
+			if myportapi:
 				for x in candidate:
 					if (type(x)==types.ListType):
 						match=1
@@ -3037,7 +3032,7 @@ def dep_zapdeps(unreduced,reduced):
 					elif myportapi.match(x):
 						return x
 
-			#none of the not masked pkg, use the first one
+			#none of the no-masked pkg, use the first one
 			return candidate[0]
 	else:
 		if dep_eval(reduced):
@@ -4004,7 +3999,7 @@ class vardbapi(dbapi):
 	def cpv_inject(self,mycpv):
 		"injects a real package into our on-disk database; assumes mycpv is valid and doesn't already exist"
 		os.makedirs(self.root+VDB_PATH+"/"+mycpv)	
-		counter=db[self.root]["vartree"].dbapi.counter_tick(self.root,mycpv)
+		counter=db[self.root]["vartree"].dbapi.counter_tick(self.root)
 		# write local package counter so that emerge clean does the right thing
 		lcfile=open(self.root+VDB_PATH+"/"+mycpv+"/COUNTER","w")
 		lcfile.write(str(counter))
@@ -4583,21 +4578,70 @@ class portdbapi(dbapi):
 
 		self.auxdb[cat].sync()
 		return returnme
-		
-	def getsize(self,mypkg,debug=0):
-		# Pull the size of the downloads
-		mysum=0
-		mydigest=self.finddigest(mypkg)
 
+	def getfetchlist(self,mypkg,useflags=None,filemode=0,mysettings=None,all=0):
+		if mysettings == None:
+			mysettings = self.mysettings
+		try: myuris = self.aux_get(mypkg,["SRC_URI"])[0]
+		except (IOError,KeyError):
+			print red("getfetchlist():")+" aux_get() error; aborting."
+			sys.exit(1)
+		if useflags == None:
+			useflags = string.split(mysettings["USE"])
+		
+		if all:
+			newuris = flatten(evaluate(tokenize(myuris),[],1))
+		else:
+			myuris = myuris.replace("(", " ( ");
+			myuris = myuris.replace(")", " ) ");
+			myurilist = myuris.split()
+			myurilist = dep_parenreduce(myurilist)
+			myurilist = dep_opconvert(myurilist,useflags,mysettings)
+			newuris = flatten(myurilist)
+		if not filemode:
+			return newuris
+		
+		myfiles = []
+		for x in newuris:
+			mya = os.path.basename(x)
+			if not mya in myfiles:
+				myfiles.append(mya)
+		return myfiles
+
+	def getfetchsizes(self,mypkg,useflags=None,debug=0):
+		# returns a filename:size dictionnary of remaining downloads
+		mydigest=self.finddigest(mypkg)
 		mymd5s=digestParseFile(mydigest)
 		if not mymd5s:
-			if debug:
-				print "[empty/missing/bad digest]: "+mypkg
+			if debug: print "[empty/missing/bad digest]: "+mypkg
+			return None
+		filesdict={}
+		if useflags == None:
+			myfiles=self.getfetchlist(mypkg,filemode=1,all=1)
+		else:
+			myfiles=self.getfetchlist(mypkg,useflags=useflags,filemode=1)
+		#XXX: maybe this should be improved: take partial downloads
+		# into account? check md5sums?
+		for myfile in myfiles:
+			if debug and myfile not in mymd5s.keys():
+				print "[bad digest]: missing",myfile,"for",mypkg
+			elif myfile in mymd5s.keys():
+				distfile=settings["DISTDIR"]+"/"+myfile
+				if not os.access(distfile, os.R_OK):
+					filesdict[myfile]=int(mymd5s[myfile][1])
+		return filesdict
+
+	def getsize(self,mypkg,useflags=None,debug=0):
+		# returns the total size of remaining downloads
+		#
+		# we use getfetchsizes() now, so this function would be obsoleted
+		#
+		filesdict=self.getfetchsizes(mypkg,useflags,debug)
+		if filesdict==None:
 			return "[empty/missing/bad digest]"
-		for myfile in mymd5s.keys():
-			distfile=settings["DISTDIR"]+"/"+myfile
-			if not os.access(distfile, os.R_OK):
-				mysum+=int(mymd5s[myfile][1])
+		mysize=0
+		for myfile in filesdict.keys():
+			mysum+=filesdict[myfile]
 		return mysum
 
 	def cpv_exists(self,mykey):
