@@ -3013,8 +3013,7 @@ def cpv_expand(mycpv,mydb=None):
 		if mydb:
 			for x in categories:
 				if mydb.cp_list(x+"/"+myp):
-					if mydb.xmatch("bestmatch-visible", x+"/"+myp):
-						matches.append(x+"/"+myp)
+					matches.append(x+"/"+myp)
 		if (len(matches)>1):
 			raise ValueError, matches
 		elif matches:
