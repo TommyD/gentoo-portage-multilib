@@ -243,7 +243,7 @@ class search:
 
 #build our package digraph
 def getsyslist():
-	if os.path.exists(portage.profiledir+"/packages"):
+	if portage.profiledir and os.path.exists(portage.profiledir+"/packages"):
 		pfile=portage.profiledir+"/packages"
 	else:
 		print "!!! Couldn't find",portage.profiledir+"/packages;"

@@ -529,7 +529,10 @@ class config:
 		self.configdict["conf"]=getconfig("/etc/make.conf")
 		self.configdict["globals"]=getconfig("/etc/make.globals")
 		self.configdict["env"]=self.configdict["origenv"].copy()
-		self.configdict["defaults"]=getconfig(profiledir+"/make.defaults")
+		if not profiledir:
+			self.configdict["defaults"]={}
+		else:
+			self.configdict["defaults"]=getconfig(profiledir+"/make.defaults")
 		self.configlist=[self.configdict["env"],self.configdict["conf"],self.configdict["defaults"],self.configdict["globals"]]
 		self.populated=1
 		useorder=self["USE_ORDER"]
@@ -1448,7 +1451,6 @@ def dep_listcleanup(deplist):
 # gets virtual package settings
 def getvirtuals(myroot):
 	if (not profiledir) or (not os.path.exists(profiledir+"/virtuals")):
-		print ">>>",os.path.normpath(myroot+"/etc/make.profile/virtuals"),"does not exist.  Continuing anyway..."
 		return {}
 	myfile=open(profiledir+"/virtuals")
 	mylines=myfile.readlines()
@@ -1471,7 +1473,7 @@ class packagetree:
 			self.populated=0
 			self.virtual=virtual
 	
-	def load(self):
+	def load(self,mykey):
 		"loads a cat/pkg from disk into the tree"
 		#stub function for non-incremental caching:
 		if not self.populated:
@@ -2109,11 +2111,12 @@ class portagetree(packagetree):
 			self.pkgmasklines=grabfile(self.portroot+"/profiles/package.mask")
 			self.pkglines=[]
 			#remove '*'s from beginnning of deps
-			for x in grabfile(profiledir+"/packages"):
-				if x[0]=="*":
-					self.pkglines.append(x[1:])
-				else:
-					self.pkglines.append(x)
+			if profiledir:
+				for x in grabfile(profiledir+"/packages"):
+					if x[0]=="*":
+						self.pkglines.append(x[1:])
+					else:
+						self.pkglines.append(x)
 		packagetree.__init__(self,virtual)
 	
 	def load(self,mykey):
@@ -2910,11 +2913,11 @@ if not os.path.exists(root+"var/tmp"):
 	os.mkdir(root+"var",0755)
 	os.mkdir(root+"var/tmp",01777)
 os.umask(022)
+profiledir=None
 if os.path.exists("/etc/make.profile/make.defaults"):
 	profiledir="/etc/make.profile"
 else:
-	print "!!! Couldn't find an /etc/make.profile directory; exiting."
-	sys.exit(1)
+	print ">>> Note: /etc/make.profile isn't available; an 'emerge sync' will probably fix this."
 #from here on in we can assume that profiledir is set to something valid
 db={}
 virts=getvirtuals("/")
