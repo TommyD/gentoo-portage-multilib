@@ -2,6 +2,8 @@
 # Copyright 1998-2002 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
 
+# $Id$
+
 VERSION="2.0.47-r1"
 
 from stat import *
@@ -2342,7 +2344,6 @@ class portagetree:
 		if clone:
 			self.root=clone.root
 			self.portroot=clone.portroot
-			self.pkglines=clone.pkglines
 		else:
 			self.root=root
 			self.portroot=settings["PORTDIR"]
