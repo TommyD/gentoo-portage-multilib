@@ -1,4 +1,4 @@
-.TH "emerge" "1" "July 21, 2002" "portage 2.0.17" ""
+.TH "emerge" "1" "July 21, 2002" "portage 2.0.22" ""
 .SH "NAME"
 emerge \- Command\-line interface to the Portage system
 .SH "SYNOPSIS"
@@ -82,7 +82,7 @@ considered for later updating.
 Cleans the system by removing packages that will not effect the functionality of the system.  The
 arguments can be \fIebuilds\fR, \fIclasses\fR, or \fIdependencies\fR.  For example, \fBemerge
 clean binutils\fR cleans out old versions of binutils; \fBemerge clean net\-www/mozilla\-0.9.9\-r2\fR
-cleans out that specific version of Mozilla.  This is generally safe to use.
+cleans out that specific version of Mozilla.  This is generally safe to use. \fBNote that\fR clean \fBdoes not remove unslotted packages.\fR
 .TP 
 \fBhelp\fR (\fB\-h\fR)
 Displays help information for emerge.  Adding one of the additional arguments listed above will

@@ -1,6 +1,10 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  31 Jul 2002; Phil Bordelon <sunflare@gentoo.org> emerge.1: Documented the
+  fact that emerge clean does not remove unslotted ebuilds.  Bumped the man
+  page revision number to 2.0.22.
+
 *portage-2.0.22 (29 Jul 2002)
 
   29 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: fetch() didn't
