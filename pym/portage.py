@@ -1113,6 +1113,8 @@ class config:
 		else:
 			del self.configdict["env"][x]
 		self.modifiedkeys = []
+		for x in self.configdict["pkg"].keys():
+			del self.configdict["pkg"][x]
 		self.regenerate()
 
 	def load_infodir(self,infodir):

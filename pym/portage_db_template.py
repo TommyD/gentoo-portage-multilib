@@ -1,5 +1,8 @@
 
 class database:
+	def __init__(self,path,category,dbkeys):
+		raise NotImplementedError("Method not defined")
+
 	def check_key(self,key):
 		if not key:
 			raise KeyError, "No key provided. key:%s" % (key)
@@ -7,6 +10,12 @@ class database:
 	def clear(self):
 		for x in self.list_keys():
 			self.del_key(x)
+	
+	def __getitem__(self,key):
+		return self.get_values(key)
+	
+	def __setitem__(self,key,values):
+		return self.set_values(key,values)
 
 	def check_val(self,val):
 		if not val:
@@ -14,35 +23,32 @@ class database:
 		if len(val) != len(self.dbkeys):
 			raise ValueError, "Not enough values provided val:%s" % (val)
 
-	def __init__(self,path,category,dbkeys):
-		raise Exception, "Method not defined"
-
-	def key_exists(self,key):
-		raise Exception, "Method not defined"
+	def has_key(self,key):
+		raise NotImplementedError("Method not defined")
 	
-	def list_keys(self):
-		raise Exception, "Method not defined"
+	def keys(self):
+		raise NotImplementedError("Method not defined")
 
 	def get_values(self,key):
 		if not key:
 			raise KeyError, "key is not set to a valid value"
 
-		raise Exception, "Method not defined"
+		raise NotImplementedError("Method not defined")
 	
 	def set_values(self,key,val):
 		self.check_key(key)
 		self.check_val(val)
 		
-		raise Exception, "Method not defined"
+		raise NotImplementedError("Method not defined")
 
 	def del_key(self,key):
-		raise Exception, "Method not defined"
+		raise NotImplementedError("Method not defined")
 			
 	def sync(self):
-		raise Exception, "Method not defined"
+		raise NotImplementedError("Method not defined")
 	
 	def close(self):
-		raise Exception, "Method not defined"
+		raise NotImplementedError("Method not defined")
 	
 def test_database(db_class,path,category,dbkeys):
 	d = db_class(path,category,dbkeys)

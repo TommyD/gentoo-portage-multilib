@@ -21,12 +21,12 @@ class database(portage_db_template.database):
 		if not os.path.exists(self.fullpath):
 			makedirs(self.fullpath)
 
-	def key_exists(self,key):
+	def has_key(self,key):
 		if os.path.exists(self.fullpath+key):
 			return 1
 		return 0
 	
-	def list_keys(self):
+	def keys(self):
 		# XXX: NEED TOOLS SEPERATED
 		# return portage.listdir(self.fullpath,filesonly=1)
 		mykeys = []
