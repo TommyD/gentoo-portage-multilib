@@ -9,25 +9,25 @@
   reports the failing ebuild's $CATEGORY/$PF. Added EXTRA_ECONF to econf().
   emake: added EXTRA_EMAKE. emerge: RSYNC_RETRIES curtasy of Christopher
   Sharp. Random comment fixes. portage.py: Random touchups. KV extraction
-	fixup for new ROOTs. ARCH missing in profile fix. Fix for packages/All
-	missing dir traceback. INFOPATH/INFODIR fix. Added INFOPATH to specials.
-	portage.py: Touchups to the mtimedb-touching code. Fixes for the broken
-	os.path.normpath() leading '//' bug. Added a modified chuck of Phoen][x's
-	dist size patch.
+  fixup for new ROOTs. ARCH missing in profile fix. Fix for packages/All
+  missing dir traceback. INFOPATH/INFODIR fix. Added INFOPATH to specials.
+  portage.py: Touchups to the mtimedb-touching code. Fixes for the broken
+  os.path.normpath() leading '//' bug. Added a modified chuck of Phoen][x's
+  dist size patch.
 
   09 Nov 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
-	Fixups for KV.
+  Fixups for KV.
 
   08 Nov 2002; Nicholas Jones <carpaski@gentoo.org> emerge:
-	Fix for missing-glibc-bug in --version.
+  Fix for missing-glibc-bug in --version.
 
   08 Nov 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
-	Fix for cfgdictfile traceback when ROOT != '/'. Fix for missing kernel
-	headers -- checks usr/src/linux, then /usr/include, then if merging
-	from sys-kernel ignore error.
+  Fix for cfgdictfile traceback when ROOT != '/'. Fix for missing kernel
+  headers -- checks usr/src/linux, then /usr/include, then if merging
+  from sys-kernel ignore error.
 
   07 Nov 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
-	Fix (part 2) for the USE="-*" arch-missing problem.
+  Fix (part 2) for the USE="-*" arch-missing problem.
 
   03 Nov 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
   eclass() function uses a caching and cPickle storing method to determine

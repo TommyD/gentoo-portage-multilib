@@ -548,11 +548,11 @@ class search:
 							print "!!! Exception:",e
 						mysum[0]=" [no/bad digest]"
 						
-					print "     ", "Latest version available:",myversion
+					print "     ", darkgreen("Latest version available:"),myversion
 					print "     ", self.getInstallationStatus(catpack)
-					print "     ", "Homepage:",homepage
-					print "     ", "Description:",desc
-					print "     ", "Distfiles:",mysum[0]
+					print "     ", darkgreen("Size of downloaded files:"),mysum[0]
+					print "     ", darkgreen("Homepage:   "),homepage
+					print "     ", darkgreen("Description:"),desc
 					print
 		
 	#
@@ -563,9 +563,9 @@ class search:
 		result = ""
 		version = self.getVersion(installed_package,search.VERSION_RELEASE)
 		if len(version) > 0:
-			result = "Latest version installed: "+version
+			result = darkgreen("Latest version installed: ")+version
 		else:
-			result = "Latest version installed: [ Not Installed ]"
+			result = darkgreen("Latest version installed:")+" [ Not Installed ]"
 		return result
 
 	def getVersion(self,full_package,detail):
