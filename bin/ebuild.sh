@@ -553,6 +553,7 @@ dyn_compile() {
 	echo "$LICENSE" > LICENSE
 	echo "$CATEGORY" > CATEGORY
 	echo "$PF" > PF
+	echo "$SLOT" > SLOT
 	echo "$RDEPEND" > RDEPEND
 	echo "$PROVIDE" > PROVIDE
 	cp ${EBUILD} ${PF}.ebuild
@@ -645,7 +646,7 @@ dyn_rpm () {
 dyn_help() {
 	echo
 	echo "Portage"
-	echo "Copyright 2000 Gentoo Technologies, Inc."
+	echo "Copyright 2002 Gentoo Technologies, Inc."
 	echo 
 	echo "How to use the ebuild command:"
 	echo 
@@ -669,6 +670,7 @@ dyn_help() {
 	echo "The following settings will be used for the ebuild process:"
 	echo
 	echo "  package     : ${PF}" 
+	echo "  slot        : ${SLOT}" 
 	echo "  category    : ${CATEGORY}" 
 	echo "  description : ${DESCRIPTION}"
 	echo "  system      : ${CHOST}" 

@@ -76,6 +76,7 @@ import shlex
 import shutil
 import xpak
 import re
+import copy
 
 # master category list.  Any new categories should be added to this list to
 # ensure that they all categories are read when we check the portage directory
@@ -624,6 +625,11 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 		settings["PVR"]=mysplit[1]
 	else:
 		settings["PVR"]=mysplit[1]+"-"+mysplit[2]
+	myslot=slotgrab(myebuild)
+	if myslot:
+		settings["SLOT"]=myslot
+	else:
+		settings["SLOT"]=settings["PV"]
 	if settings.has_key("PATH"):
 		mysplit=string.split(settings["PATH"],":")
 	else:
@@ -689,7 +695,9 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 	a.write(flatten(alluris))
 	a.close()
 	
-	if mydo=="unpack": 
+	if mydo=="help": 
+		return spawn("/usr/sbin/ebuild.sh help")
+	elif mydo=="unpack": 
 		if settings["MAINTAINER_noauto"]=="1":
 			return spawn("/usr/sbin/ebuild.sh unpack")
 		else:
@@ -720,9 +728,9 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 		if checkdeps:
 			retval=dep_frontend("runtime",myebuild,mydeps[1])
 			if (retval): return retval
-		return merge(settings["CATEGORY"],settings["PF"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot)
+		return merge(settings["CATEGORY"],settings["PF"],settings["SLOT"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot)
 	elif mydo=="unmerge": 
-		return unmerge(settings["CATEGORY"],settings["PF"],myroot)
+		return unmerge(settings["CATEGORY"],settings["PF"],settings["SLOT"],myroot)
 	elif mydo=="package":
 		retval=spawn("/usr/sbin/ebuild.sh setup fetch")
 		if retval:
@@ -809,15 +817,15 @@ def pathstrip(x,mystart):
     cpref=os.path.commonprefix([x,mystart])
     return [root+x[len(cpref)+1:],x[len(cpref):]]
 
-def merge(mycat,mypkg,pkgloc,infloc,myroot):
-	mylink=dblink(mycat,mypkg,myroot)
+def merge(mycat,mypkg,myslot,pkgloc,infloc,myroot):
+	mylink=dblink(mycat,mypkg,myslot,myroot)
 	if not mylink.exists():
 		mylink.create()
 		#shell error code
 	mylink.merge(pkgloc,infloc,myroot)
 	
-def unmerge(cat,pkg,myroot):
-	mylink=dblink(cat,pkg,myroot)
+def unmerge(cat,pkg,slot,myroot):
+	mylink=dblink(cat,pkg,slot,myroot)
 	if mylink.exists():
 		mylink.unmerge()
 	mylink.delete()
@@ -1784,9 +1792,25 @@ class vartree(packagetree):
 	def __init__(self,root="/",virtual=None,clone=None):
 		if clone:
 			self.root=clone.root
+			self.slots=copy.deepcopy(clone.slots)
 		else:
 			self.root=root
+			self.slots=[]
 		packagetree.__init__(self,virtual,clone)
+
+	def getEbuildPaths(self,fullpkg):
+		full_paths=[]
+		# add the possible default ebuild path
+		package_parts=string.split(fullpkg, '/')
+		regular_ebuild=self.root+"var/db/pkg"+"/"+fullpkg+"/"+package_parts[1]+".ebuild"
+		if os.path.exists(regular_ebuild):
+			full_paths.append(regular_ebuild);
+		# add the possible slot matches
+		for x in self.slots:
+			if x[0]==fullpkg:
+				full_paths.append(x[1]);
+		return full_paths
+
 	def populate(self):
 		"populates the local tree (/var/db/pkg)"
 		prevmask=os.umask(0)
@@ -1804,7 +1828,23 @@ class vartree(packagetree):
 			if not os.path.isdir(os.getcwd()+"/"+x):
 				continue
 			for y in os.listdir(os.getcwd()+"/"+x):
-				if isjustname(y):
+				mypkgpath=os.getcwd()+"/"+x+"/"+y
+				# handle binary compatibility slots
+				if os.path.isfile(mypkgpath+"/SLOT") and os.path.isfile(mypkgpath+"/PF"):
+					mypf_file=open(mypkgpath+"/PF")
+					mypf=mypf_file.readline()[:-1]
+					mypf_file.close()
+					myebuildpath=mypkgpath+"/"+mypf+".ebuild"
+					if os.path.isfile(myebuildpath):
+						fullpkg=x+"/"+mypf
+						self.slots.append([fullpkg,myebuildpath])
+					else:
+						print "!!! Error:",myebuildpath,"could not be found, skipping..."
+						continue
+				# can't find the PF file, this means that it's probably a
+				# virtual package and thus appending a dummy 1.0 version
+				# number
+				elif isjustname(y):
 					fullpkg=x+"/"+y+"-1.0"
 				else:
 					fullpkg=x+"/"+y
@@ -1948,12 +1988,26 @@ class binarytree(packagetree):
 
 class dblink:
 	"this class provides an interface to the standard text package database"
-	def __init__(self,cat,pkg,myroot):
+	def __init__(self,cat,pkg,slot,myroot):
 		"create a dblink object for cat/pkg.  This dblink entry may or may not exist"
 		self.cat=cat
 		self.pkg=pkg
-		self.dbdir=myroot+"/var/db/pkg/"+cat+"/"+pkg
+		self.slot=slot
+		pkg_parts=pkgsplit(pkg)
+		pkg_slot=pkg_parts[0]
+		if slot != "" and slot != "0":
+			pkg_slot = pkg_slot+"-"+slot
+		self.dbdir=myroot+"/var/db/pkg/"+cat+"/"+pkg_slot
 		self.myroot=myroot
+		self.makeCompat()
+
+	# backwards compatibility code to be able to unmerge packages that have been
+	# merged with a previous version of portage
+	def makeCompat(self):
+		if not os.path.exists(self.dbdir):
+			mydbdir=self.myroot+"/var/db/pkg/"+self.cat+"/"+self.pkg
+			if os.path.exists(mydbdir) and not os.path.exists(mydbdir+"/SLOT"):
+					self.dbdir=mydbdir
 
 	def getpath(self):
 		"return path to location of db information (for >>> informational display)"
@@ -2516,6 +2570,26 @@ def depgrab(myfilename,depmark):
 			pos=pos+1
 	return string.join(string.split(depstring)," ")
 
+def slotgrab(myfilename):
+	"""
+	Will grab the binary slot string from an ebuild file
+	"""
+	slotmark="SLOT"
+	slotstring=None
+	myfile=open(myfilename,"r")
+	mylines=myfile.readlines()
+	myfile.close()
+	pos=0
+	while (pos<len(mylines)):
+		if mylines[pos][0:len(slotmark)+1]==slotmark+"=":
+			slotparts=string.split(mylines[pos][len(slotmark):],'"')
+			if len(slotparts)==3:
+				slotstring=slotparts[1]
+			break
+		else:
+			pos=pos+1
+	return slotstring
+
 def cleanup_pkgmerge(mypkg,origdir):
 	shutil.rmtree(settings["PKG_TMPDIR"]+"/"+mypkg)
 	os.chdir(origdir)
@@ -2534,6 +2608,15 @@ def pkgmerge(mytbz2,myroot):
 	if not mycat:
 		print "!!! CATEGORY info missing from info chunk, aborting..."
 		return None
+	myslot=xptbz2.getfile("SLOT")
+	if not myslot:
+		# binary package created on a portage version that didn't support slots yet
+		# setting the slot number to the package version
+		mypkgparts=pkgsplit(mypkg)
+		myslot=mypkgparts[1]
+	else:
+		# strip newline
+		myslot=myslot[:-1]
 	mycat=string.strip(mycat)
 	mycatpkg=mycat+"/"+mypkg
 
@@ -2555,7 +2638,7 @@ def pkgmerge(mytbz2,myroot):
 		cleanup_pkgmerge(mypkg,origdir)
 		return None
 	#the merge takes care of pre/postinst and old instance auto-unmerge, virtual/provides updates, etc.
-	mylink=dblink(mycat,mypkg,myroot)
+	mylink=dblink(mycat,mypkg,myslot,myroot)
 	if not mylink.exists():
 		mylink.create()
 		#shell error code
