@@ -904,8 +904,6 @@ for x in scanlist:
 				portage.profiledir=profdir
 				os.environ["ACCEPT_KEYWORDS"]="-~"+arch
 				if (not os.path.exists(profdir)):
-					stats["KEYWORDS.invalid"] += 1
-					fails["KEYWORDS.invalid"].append(catpkg+".ebuild: Profile missing for "+arch)
 					continue
 
 				if arch_caches.has_key(arch):
@@ -1009,9 +1007,14 @@ for x in scanlist:
 				myskey=myskey[1:]
 			if myskey[0]=="~":
 				myskey=myskey[1:]
-			if (mykey!="-*") and (myskey not in kwlist):
-				stats["KEYWORDS.invalid"]=stats["KEYWORDS.invalid"]+1
-				fails["KEYWORDS.invalid"].append(x+"/"+y+".ebuild: %s" % mykey)
+			if mykey!="-*":
+				if myskey not in kwlist:
+					stats["KEYWORDS.invalid"] += 1
+					fails["KEYWORDS.invalid"].append(x+"/"+y+".ebuild: %s" % mykey)
+				elif not profiles.has_key(myskey):
+					stats["KEYWORDS.invalid"] += 1
+					fails["KEYWORDS.invalid"].append(x+"/"+y+".ebuild: %s (profile invalid)" % mykey)
+
 		#syntax checks
 		gentoo_copyright = re.compile(r'^# Copyright 1999-' + strftime("%Y", gmtime()) + r' Gentoo Foundation')
 		gentoo_license = re.compile(r'^# Distributed under the terms of the GNU General Public License v2$')
