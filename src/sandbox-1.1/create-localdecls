@@ -62,7 +62,7 @@ fi
 
 if test "$VERSION" = 'libc.so.6' ; then
 	echo -n 'Checking glibc subversion... '
-	tmp="`ldd /bin/sh | grep libc.so 2> /dev/null`"
+	tmp="$(ldd /usr/bin/* 2>/dev/null | grep libc.so | tail -n 1)"
 	LibcPath=`expr "$tmp" : '[^/]*\(/[^ ]*\)'`
 	tmp="`strings $LibcPath | grep -i 'c library'`"
 	OsLibcMajor=`expr "$tmp" : '.* \([0-9][0-9]*\)'`
