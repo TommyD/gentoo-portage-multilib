@@ -11,6 +11,9 @@
 
 *portage-2.0.51_pre12 (21 Jun 2003): Fixes
 
+  25 Jun 2004; Jason Stubbs <jstubbs@gentoo.org> repoman: Changed CVS
+  header regex to "Gentoo Foundation"
+
   21 Jun 2004; Nicholas Jones <carpaski@gentoo.org> emerge: Removed the
   extra spawn of portageq as sandbox handles the python pyo's accesses now.
 
