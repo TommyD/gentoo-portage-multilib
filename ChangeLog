@@ -7,6 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  05 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> emerge: Refactored argv
+  processing a little bit and made "emerge rsync" to emerge rsync with notice
+  and "emerge --rsync" to emerge --sync with notice.
+
   05 Oct 2004; Nicholas Jones <carpaski@gentoo.org> portage_util.py: grabfile
   now handles a compat_level option for comment-based compatability changes --
   This feautre is for migration only and is thus transitory.
