@@ -3585,17 +3585,23 @@ def pkgmerge(mytbz2,myroot):
 		return None
 	mycat=mycat.strip()
 	mycatpkg=mycat+"/"+mypkg
-
 	tmploc=settings["PKG_TMPDIR"]
 	pkgloc=tmploc+"/"+mypkg+"/bin/"
 	infloc=tmploc+"/"+mypkg+"/inf/"
+	myebuild=tmploc+"/"+mypkg+"/inf/"+os.path.basename(mytbz2)[:-4]+"ebuild"
 	if os.path.exists(tmploc+"/"+mypkg):
 		shutil.rmtree(tmploc+"/"+mypkg,1)
 	os.makedirs(pkgloc)
 	os.makedirs(infloc)
 	print ">>> extracting info"
 	xptbz2.unpackinfo(infloc)
+	#run pkg_setup early, so we can bail out early (before extracting binaries) if there's a problem
 	origdir=os.getcwd()
+	a=doebuild(myebuild,"setup",myroot)
+	if a:
+		print "!!! pkg_setup() script failed; exiting."
+		cleanup_pkgmerge(mypkg,origdir)
+		return None
 	os.chdir(pkgloc)
 	print ">>> extracting",mypkg
 	notok=spawn("cat "+mytbz2+"| bzip2 -dq | tar xpf -",free=1)
@@ -3608,7 +3614,7 @@ def pkgmerge(mytbz2,myroot):
 	if not mylink.exists():
 		mylink.create()
 		#shell error code
-	mylink.merge(pkgloc,infloc,myroot)
+	mylink.merge(pkgloc,infloc,myroot,myebuild)
 	if not os.path.exists(infloc+"/RDEPEND"):
 		returnme=""
 	else:

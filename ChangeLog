@@ -1,9 +1,13 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  02 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: pkg_setup() now
+  gets called before a tbz2 is installed, and pkg_preinst() and postinst() get
+  called at the right times as well.
+  
   01 Jul 2002; Phil Bordelon <sunflare@gentoo.org> emerge: "emerge --help
-  rsync" does an rsync instead of printing help.  Until this is fixed,
-  I removed it from the list of detailed help options.
+  rsync" does an rsync instead of printing help.  Until this is fixed, I
+  removed it from the list of detailed help options.
 
 *portage-2.0.9 (01 Jul 2002)
 
