@@ -261,10 +261,16 @@ if ("--getbinpkg" in myopts) and not ("--usepkg" in myopts):
 if ("--usepkgonly" in myopts) and not ("--usepkg" in myopts):
 	myopts.append("--usepkg")
 
-# Also allow -U to apply --update/-u
-if ("--upgradeonly" in myopts) and not ("--update" in myopts):
-	print ">>> --upgradeonly implies --update... adding --update to options."
-	myopts.append("--update")
+# Print deprecation warning for -U
+if ("--upgradeonly" in myopts):
+	print
+	print red("*** Warning: --upgradeonly is a deprecated option in portage-"+portage.VERSION)
+	print red("***          and will likely be removed in a future version.")
+	print
+	# Also allow -U to apply --update/-u
+	if not ("--update" in myopts):
+		print ">>> --upgradeonly implies --update... adding --update to options."
+		myopts.append("--update")
 
 # Also allow -l to apply --pretend/-p, but if already in --ask mode
 if ("--changelog" in myopts) and not (("--pretend" in myopts) or ("--ask" in myopts)):
