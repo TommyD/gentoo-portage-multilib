@@ -127,7 +127,7 @@ CXXFLAGS="${CFLAGS}"
 # the list so that portage will fall back to it if the files cannot be found
 # on your specified mirror. We _HIGHLY_ recommend that you change this setting
 # to a nearby mirror using the 'mirrorselect' tool in portage.
-#GENTOO_MIRRORS="<your_mirror_here> http://www.ibiblio.org/pub/Linux/distributions/gentoo"
+#GENTOO_MIRRORS="<your_mirror_here> http://gentoo.oregonstate.edu/ http://www.ibiblio.org/pub/Linux/distributions/gentoo"
 
 # Advanced Features
 # =================
