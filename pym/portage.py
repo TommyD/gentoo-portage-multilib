@@ -2095,13 +2095,23 @@ class portagetree(packagetree):
 		if clone:
 			self.root=clone.root
 			self.portroot=clone.portroot
+			self.pkgmaskdict=clone.pkgmaskdict
+			self.pkglines=clone.pkglines
 		else:
 			self.root=root
 			self.portroot=settings["PORTDIR"]
+			self.pkgmaskdict={}
+			self.pkgmasklines=grabfile(self.portroot+"/profiles/package.mask")
+			self.pkglines=grabfile(profiledir+"/packages")
+			#remove '*'s from beginnning of deps
+			for x in self.pkglines:
+				if x[0]=="*":
+					x=x[1:]
 		packagetree.__init__(self,virtual)
 	
 	def load(self,mykey):
 		"adds a single set of cat/pkg key entries to our tree from disk"
+		"""print "load",mykey
 		mycat,mypkg=string.split(mykey,"/")
 		self.tree[mykey]=[]
 		if not os.path.isdir(self.portroot+"/"+mycat):
@@ -2116,8 +2126,12 @@ class portagetree(packagetree):
 			if mysplit==None:
 				print "!!! Error:",self.portroot+"/"+mykey+"/"+x,"is not a valid ebuild filename, skipping..."
 				continue	
-			self.tree[mykey].append([mynewpkg,mysplit])
-			
+			self.tree[mykey].append([mynewpkg,mysplit])"""
+		if not self.tree.has_key(mykey):
+			self.tree[mykey]=[]
+		if not self.populated:
+			self.populate()
+
 	def populate(self):
 		"populates the port tree"
 		origdir=getmycwd()
@@ -2145,25 +2159,22 @@ class portagetree(packagetree):
 					self.tree[mykey].append([fullpkg,mysplit])
 		#self.populated must be set here, otherwise dep_match will cause recursive populate() calls
 		self.populated=1
-		mylines=grabfile("profiles/package.mask")
-		for x in mylines:
+		self.domask()
+		
+	def domask(self):
+		"mask out appropriate entries in our database.  We call this whenever we add to the db."
+		for x in self.pkgmasklines:
 			matches=self.dep_match(x)
 			if matches:
 				for y in matches:
 					self.zap(y)
-		os.chdir(origdir)
-		mylines=grabfile(profiledir+"/packages")
-		for x in mylines:
-			if x[0]=="*":
-				x=x[1:]
+		for x in self.pkglines:
 			matches=self.dep_nomatch(x)
 			for y in matches:
 				self.zap(y)
 
 	def getdeps(self,pf):
 		"returns list of dependencies, if any"
-		if not self.populated:
-			self.populate()
 		if self.exists_specific(pf):
 			mysplit=catpkgsplit(pf)
 			if mysplit==None:
@@ -2179,10 +2190,9 @@ class portagetree(packagetree):
 					returnme=returnme+" "+x[:-1]
 				return returnme
 		return ""
+	
 	def getname(self,pkgname):
 		"returns file location for this particular package"
-		if not self.populated:
-			self.populate()
 		pkgname=self.resolve_specific(pkgname)
 		if not pkgname:
 			return ""

@@ -421,10 +421,12 @@ class depgraph:
 		myeb=portage.db[portage.root]["porttree"].dep_bestmatch(mydep2)
 		if not myeb:
 			if not mykey:
-				print "\n!!! Warning: couldn't find match for",mydep
+				print "\n!!! Error: couldn't find match for",mydep
 			else:
-				print "\n!!! Warning: couldn't find match for",mydep,"in",mykey
-			return None
+				print "\n!!! Error: couldn't find match for",mydep,"in",mykey
+			print
+			sys.exit(1)
+			#return None
 
 		# handle filtering of virtual deps for the rebuild action
 		#if self.myaction=="--rebuild" and myeb[0:len("virtual")]=="virtual":
