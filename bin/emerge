@@ -1069,7 +1069,7 @@ elif "--help" in myopts:
 		print bold("Usage: ")+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] [ "+turquoise("ebuildfile")+" | "+turquoise("tbz2file")+" | "+turquoise("dependency")+" ] ..."
 		print "       "+turquoise("emerge")+" [ "+green("options")+" ] [ "+green("action")+" ] "+turquoise("system")
 		print "       "+turquoise("emerge")+" [ "+green("--clean")+" "+green("-c")+" ] "+turquoise("sync")+" | "+turquoise("rsync")
-		print "       "+turquoise("emerge")+" "+green("--help")+" "" "+green("-h")+" [ "+turquoise("system")+" | "+turquoise("config")+" ] "
+		print "       "+turquoise("emerge")+" "+green("--help")+" "" "+green("-h")+" [ "+turquoise("system")+" | "+turquoise("config")+" | "+turquoise("sync")+" ] "
 		print
 		print turquoise("Help (this screen):")
 		print "       "+green("--help")+" ("+green("-h")+" short option)"
