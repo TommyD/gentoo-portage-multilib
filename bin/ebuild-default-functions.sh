@@ -382,6 +382,14 @@ dyn_test() {
 	trap SIGINT SIGQUIT
 }
 
+function stat_perms() {
+	local f
+	f=$(stat -c '%f' "$1")
+	f=$(printf %o ox$f)
+	f="${f:${#f}-4}"
+	echo $f
+}
+
 
 dyn_install() {
 	trap "abort_install" SIGINT SIGQUIT
@@ -399,7 +407,6 @@ dyn_install() {
 	#our libtool to create problematic .la files
 	export PWORKDIR="$WORKDIR"
 	src_install 
-	return
 	#|| abort_install "fail"
 	prepall
 	cd "${D}"
@@ -439,15 +446,9 @@ dyn_install() {
 		die "There are ${UNSAFE} unsafe files. Portage will not install them."
 	fi
 
-	function stat_perms() {
-		local f
-		f=$(stat -c '%f' "$1")
-		f=$(printf %o ox$f)
-		f="${f:${#f}-4}"
-		echo $f
-	}
 	local file
 	find "${D}/" -user  portage -print0 | while read file; do
+		ewarn "file $file was installed with user portage!"
 		s=$(stat_perms $file)
 		chown root "$file"
 		chmod "$s" "$file"
@@ -455,12 +456,14 @@ dyn_install() {
 
 	if [ "$USERLAND" == "BSD" ]; then
 		find "${D}/" -group portage -print0 | while read file; do
+			ewarn "file $file was installed with group portage!"
 			s=$(stat_perms "$file")
 			chgrp wheel "$file"
 			chmod "%s" "$file"
 		done
 	else
 		find "${D}/" -group portage -print0 | while read file; do
+			ewarn "file $file was installed with group portage!"
 			s=$(stat_perms "$file")
 			chgrp root "$file"
 			chmod "%s" "$file"
