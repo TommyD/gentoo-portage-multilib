@@ -4346,7 +4346,7 @@ class vardbapi(dbapi):
 		basepath = self.root+VDB_PATH+"/"
 		
 		mycats = self.categories
-		if not mycats:
+		if mycats == None:
 			# XXX: CIRCULAR DEP! This helps backwards compat. --NJ (10 Sept 2004)
 			mycats = settings.categories
 		

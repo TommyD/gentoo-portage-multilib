@@ -9,10 +9,13 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  13 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Fix for empty
+  categories/portage-tree causing a traceback.
+	
 *portage-2.0.51_pre23 (11 Sep 2004): Fixes and stuff.
 
   11 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Another fix
-	to the virtuals/use code -- It wasn't using treeVirtuals.
+  to the virtuals/use code -- It wasn't using treeVirtuals.
 
 *portage-2.0.51_pre22 (11 Sep 2004): Fixes and stuff.
 
