@@ -87,9 +87,9 @@ for x in cmdline:
 				myopts.append(x)
 			elif x[2:] in actions:
 				if x[2:]=="rsync":
-					print
-					print red("*** --rsync has been deprecated.")
-					print red("***   Please use '--sync' instead.")
+					#print
+					#print red("*** --rsync has been deprecated.")
+					#print red("***   Please use '--sync' instead.")
 					x="--sync"
 				if myaction:
 					if myaction not in ["system", "world"]:
@@ -105,20 +105,21 @@ for x in cmdline:
 				sys.exit(1)
 	elif (not myaction) and (x in actions):
 		if x not in ["system", "world"]:
-			print red("*** Deprecated use of action '"+x+"'")
+			#print red("*** Deprecated use of action '"+x+"'")
 			if x=="rsync":
-				print red("***   Please use '--sync' instead.")
+				#print red("***   Please use '--sync' instead.")
 				x="sync"
-			else:
-				print red("***   Please use '--"+x+"' instead.")
+			#else:
+				#print red("***   Please use '--"+x+"' instead.")
 		if myaction:
 			print
 			print red("!!!")+green(" Multiple actions requested... Please choose one only.")
-			print red("!!! '")+darkgreen("--"+myaction)+"' "+red("or")+" '"+darkgreen("--"+x)+"'"
+			#print red("!!! '")+darkgreen("--"+myaction)+"' "+red("or")+" '"+darkgreen("--"+x)+"'"
+			print red("!!! '")+darkgreen(myaction)+"' "+red("or")+" '"+darkgreen(x)+"'"
 			print
 			sys.exit(1)
 		myaction=x
-	elif x[-1]=="/":	
+	elif x[-1]=="/":
 		# this little conditional helps tab completion
 		myfiles.append(x[:-1])
 	else:
@@ -1465,7 +1466,8 @@ def post_emerge(retval=0):
 						procount=procount+1
 						print " "+yellow("* IMPORTANT:")+"",len(files),"config files in",x,"need updating."
 		if procount:
-			print " "+yellow("*")+" Type "+green("emerge --help config")+" to learn how to update config files."
+			#print " "+yellow("*")+" Type "+green("emerge --help config")+" to learn how to update config files."
+			print " "+yellow("*")+" Type "+green("emerge help config")+" to learn how to update config files."
 		print
 	sys.exit(retval)
 
@@ -1475,7 +1477,7 @@ if "--debug" in myopts:
 
 if myaction in ["sync","rsync"] and (not "--help" in myopts):
 	if "--pretend" in myopts:
-		print "emerge: the \"--sync\" action does not support \"--pretend.\""
+		print "emerge: the \"sync\" action does not support \"--pretend.\""
 		sys.exit(1)
 
 	emergelog(" === rsync")
@@ -1614,7 +1616,7 @@ elif myaction=="regen":
 elif "config"==myaction:
 	emergelog(" === config")
 	print
-	print "Currently, \'config\' is a --help option only."
+	print "Currently, \'config\' is a help option only."
 	print
 # INFO action
 elif "info"==myaction:
