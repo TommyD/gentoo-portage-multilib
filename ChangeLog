@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  28 Nov 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild-daemon.sh: 
+  Correction of return code for execute_phases w/ logging.
+
   26 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge: Fixed a bug in
   graph_display.use_flags().
 

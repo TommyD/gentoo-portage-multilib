@@ -229,6 +229,7 @@ while [ "$alive" == "1" ]; do
 			for e in $phases; do
 				if [ -z $PORTAGE_LOGFILE ]; then
 					execute_phases ${e}
+					ret=$?
 				else
 					# why do it this way rather then the old '[ -f ${T}/.succesfull }'?
 					# simple.  this allows the actual exit code to be used, rather then just stating no .success == 1 || 0
@@ -240,8 +241,8 @@ while [ "$alive" == "1" ]; do
 						umask 0002
 						tee -i -a $PORTAGE_LOGFILE
 					}
+					ret=${PIPESTATUS[0]}
 				fi
-				ret=$?
 				# if sandbox log exists, then there were complaints from it.
 				# tell python to display the errors, then dump relevant vars for debugging.
 				if [ -n "$SANDBOX_LOG" ] && [ -e "$SANDBOX_LOG" ]; then
