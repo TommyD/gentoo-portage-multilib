@@ -580,7 +580,7 @@ else:
 		if abs(time() - ct) > (60*60*24*7):
 			# don't trap the exception, we're watching for errno 2 (file not found), anything else is a bug.
 			backup_exists=1
-			os.renam(portage.CACHE_PATH+'/metadata.dtd',portage.CACHE_PATH+'/metadata.dtd.backup')
+			os.rename(portage.CACHE_PATH+'/metadata.dtd',portage.CACHE_PATH+'/metadata.dtd.backup')
 		else:
 			must_fetch=0
 
