@@ -93,6 +93,7 @@ options=[
 "--emptytree",    "--fetchonly",
 "--getbinpkg",    "--getbinpkgonly",
 "--help",         "--noconfmem",
+"--newuse",
 "--nodeps",       "--noreplace",
 "--nospinner",    "--oneshot",
 "--onlydeps",     "--pretend",
@@ -772,6 +773,15 @@ class depgraph:
 					merging=0
 			elif ("selective" in myparams) and vardbapi.cpv_exists(mykey):
 				merging=0
+
+			if (merging==0 and "--newuse" in myopts and vardbapi.cpv_exists(mykey)):
+				iuses=string.split(portage.portdb.aux_get(mykey, ["IUSE"])[0])
+				old_use=string.split(vardbapi.aux_get(mykey, ["USE"])[0])
+				now_use=self.pkgsettings["USE"]
+				for x in iuses:
+					if (old_use.count(x) and not now_use.count(x)) or (not old_use.count(x) and now_use.count(x)):
+						merging=1
+						break
 		else:
 			#onlydeps mode; don't merge
 			merging=2
@@ -1257,33 +1267,42 @@ class depgraph:
 							))
 				else:
 					addl=" "+green("N")+" "+fetch+"  "
-				if myoldbest:
-					myoldbest=portage.pkgsplit(myoldbest)[1]+"-"+portage.pkgsplit(myoldbest)[2]
-					if myoldbest[-3:]=="-r0":
-						myoldbest=myoldbest[:-3]
-					myoldbest=blue("["+myoldbest+"]")
 
 				verboseadd=""
 				if "--verbose" in myopts:
 					# iuse verbose
 					try:
-						iuse_split = string.split(portage.portdb.aux_get(x[2],["IUSE"])[0], " ")
+						iuse_split = string.split(portage.portdb.aux_get(x[2],["IUSE"])[0])
 					except:
 						portage.writemsg("!!! Error getting IUSE (report this to bugs.gentoo.org)\n")
 						portage.writemsg("!!! %s\n" % x)
 						iuse_split = []
 					iuse_split.sort()
+					old_use=None
+					if myoldbest:
+						pkg=myoldbest
+					else:
+						pkg=x[2]
+					if portage.db["/"]["vartree"].dbapi.cpv_exists(pkg):
+						try:
+							old_use=string.split(portage.db["/"]["vartree"].dbapi.aux_get(pkg, ["USE"])[0])
+						except:
+							pass
 					iuse=""
+					now_use=self.applied_useflags[x[2]]
 					for ebuild_iuse in iuse_split:
-						if not ebuild_iuse:
-							continue
+						usechange=""
+						if old_use:
+							if (old_use.count(ebuild_iuse) and not now_use.count(ebuild_iuse)) or (not old_use.count(ebuild_iuse) and now_use.count(ebuild_iuse)):
+								usechange="*"
+
 						if ebuild_iuse in self.applied_useflags[x[2]]:
-							iuse=iuse+red("+"+ebuild_iuse)+" "
+							iuse=red("+"+ebuild_iuse)
 						elif ebuild_iuse in portage.settings.usemask:
-							iuse=iuse+blue("-("+ebuild_iuse+")")+" "
+							iuse=blue("(-"+ebuild_iuse+")")
 						else:
-							iuse=iuse+blue("-"+ebuild_iuse)+" "
-					verboseadd+=iuse+" "
+							iuse=blue("-"+ebuild_iuse)
+						verboseadd+=iuse+usechange+" "
 
 					# size verbose
 					mysize=0
@@ -1322,6 +1341,12 @@ class depgraph:
 				indent=""
 				if ("--tree" in myopts):
 					indent=" "*mygraph.depth(string.join(x))
+
+				if myoldbest:
+					myoldbest=portage.pkgsplit(myoldbest)[1]+"-"+portage.pkgsplit(myoldbest)[2]
+					if myoldbest[-3:]=="-r0":
+						myoldbest=myoldbest[:-3]
+					myoldbest=blue("["+myoldbest+"]")
 
 				if x[1]!="/":
 					if "--columns" in myopts:
