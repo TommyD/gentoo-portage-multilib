@@ -1055,10 +1055,21 @@ def movefile(src,dest):
 	"""moves a file from src to dest, preserving all permissions and attributes; mtime will
 	be preserved even when moving across filesystems.  Returns true on success and false on
 	failure."""
-	#The next 2 lines appear to be no longer needed with recent fileutils
-	#if os.path.islink(dest):
-	#	os.unlink(dest)
 	a=getstatusoutput("/bin/mv -f "+"'"+src+"' '"+dest+"'")	
+	if a[0]!=0 and os.path.islink(src) and os.path.exists("/sbin/sln"):
+		print ">>> /sbin/sln fallback mode..."
+		#fallback mode: if we're dealing with symlinks, use sln to create our symlink
+		#NOTE: we need to preserve permissions....
+		mytarget=os.readlink(src)
+		mylstat=os.lstat(src)
+		try:
+			os.unlink(dest)
+		except:
+			return 0
+		a=getstatusoutput("/sbin/sln '"+mytarget+"' '"+dest+"'")
+		#restore permissions
+		os.chmod(dest,mylstat[ST_MODE])
+		os.chown(dest,mylstat[ST_UID],mylstat[ST_GID])
 	return not a[0]
 
 def getmtime(x):

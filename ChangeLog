@@ -1,6 +1,13 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-1.8.9.1 (31 Mar 2002)
+
+  31 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: it appears that
+  movefile() (using "/bin/mv") can still die if moving a new symlink on top of
+  an existing library symlink.  Upon failure, we now use a fallback mechanism
+  to use "/bin/sln" to create the new symlink safely.
+
 *portage-1.8.9 (30 Mar 2002)
 
   30 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: tiny cosmetic
