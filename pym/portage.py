@@ -783,10 +783,7 @@ def spawn(mystring,debug=0,free=0):
 		myargs=[]
 		if ("sandbox" in features) and (not free):
 			mycommand="/usr/lib/portage/bin/sandbox"
-			if debug:
-				myargs=["sandbox",mystring]
-			else:
-				myargs=["sandbox",mystring]
+			myargs=["sandbox",mystring]
 		else:
 			mycommand="/bin/bash"
 			if debug:
@@ -1062,9 +1059,9 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 	if mykv:
 		settings["KV"]=mykv
 
-	# if any of these are being called, handle them and stop now.
+	# if any of these are being called, handle them -- running them out of the sandbox -- and stop now.
 	if mydo in ["help","clean","setup","prerm","postrm","preinst","postinst","config"]:
-		return spawn("/usr/sbin/ebuild.sh "+mydo,debug)
+		return spawn("/usr/sbin/ebuild.sh "+mydo,debug,free=1)
 	
 	# get possible slot information from the deps file
 	if mydo=="depend":

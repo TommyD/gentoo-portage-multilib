@@ -799,10 +799,12 @@ do
 		export SANDBOX_ON="0"
 		if [ "$PORTAGE_DEBUG" = "0" ]
 		then
-		  pkg_${myarg} || die "pkg_${myarg} failed"
+		  pkg_${myarg}
+		  #Allow non-zero return codes since they can be caused by &&
 		else
 		  set -x
-		  pkg_${myarg} || die "pkg_${myarg} failed"
+		  pkg_${myarg}
+		  #Allow non-zero return codes since they can be caused by &&
 		  set +x
 		fi
 	    ;;
@@ -816,9 +818,11 @@ do
 		if [ "$PORTAGE_DEBUG" = "0" ]
 		then
 			dyn_${myarg}
+		  	#Allow non-zero return codes since they can be caused by &&
 		else
 			set -x
 			dyn_${myarg}
+		  	#Allow non-zero return codes since they can be caused by &&
 			set +x
 		fi
 		export SANDBOX_ON="0"
