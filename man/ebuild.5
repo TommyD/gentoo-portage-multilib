@@ -20,7 +20,8 @@ Here's a simple example ebuild:
 # $Header:
 $
 .br
-
+inherit some_eclass another_eclass
+.br
 DESCRIPTION="Super\-useful stream editor (sed)"
 .br
 SRC_URI="ftp://alpha.gnu.org/pub/gnu/sed/${P}.tar.gz"
@@ -361,6 +362,16 @@ This variable should only be used when a package provides a virtual target.
 For example, blackdown-jdk and sun-jdk provide \fIvirtual/jdk\fR.  This
 allows for packages to depend on \fIvirtual/jdk\fR rather than on blackdown
 or sun specifically.
+.SH "PORTAGE DECLARATIONS"
+.TP
+.B inherit
+Inherit is portage's maintainance of extra classes of functions that
+are external to ebuilds and provided as inheritable capabilities and
+data. They define functions and set data types as drop-in replacements,
+expanded, and simplified routines for extremely common tasks to streamline
+the build process. Inherit may only be called once in an ebuild and it may
+\fBnever be wrapped within any conditionals\fR of any kind. Specification of
+the eclasses contains only their name and not the \fI.eclass\fR extention.
 .SH "FUNCTIONS"
 .TP
 .B pkg_nofetch
@@ -425,19 +436,21 @@ include \fIreason\fR.
 \fBuse\fR \fI<USE item>\fR
 If \fIUSE item\fR is in the \fBUSE\fR variable, \fIUSE item\fR will be
 echoed and the function will return 0.  If \fIUSE item\fR is not in the
-\fBUSE\fR variable, the function will return 1.
+\fBUSE\fR variable, the function will return 1. \fBuseq\fR is a non-echoing
+version of \fBuse\fR and should be used as often as possible instead of
+interpreting or handling the output of \fBuse\fR.
 .RS
 .TP
 .I Example:
-if use gnome ; then
+if useq gnome ; then
 .br
 	guiconf="--enable-gui=gnome --with-x"
 .br
-elif use gtk ; then
+elif useq gtk ; then
 .br
 	guiconf="--enable-gui=gtk --with-x"
 .br
-elif use X ; then
+elif useq X ; then
 .br
 	guiconf="--enable-gui=athena --with-x"
 .br
@@ -492,7 +505,9 @@ See \fBuse_with\fR for an example.
 .TP
 \fBhas\fR \fI<item>\fR \fI<item list>\fR
 If \fIitem\fR is in \fIitem list\fR, then \fIitem\fR is echoed and \fBhas\fR
-returns 0.  Otherwise, nothing is echoed and 1 is returned.
+returns 0.  Otherwise, nothing is echoed and 1 is returned. As indicated with
+use, there is a non-echoing version \fBhasq\fR. Please use \fBhasq\fR in all
+places where output is to be disregarded. Never use the output for calculation.
 .br
 The \fIitem list\fR is delimited by the \fIIFS\fR variable.  This variable
 has a default value of ' ', or a space.  It is a \fBbash\fR(1) setting.

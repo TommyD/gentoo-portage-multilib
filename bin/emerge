@@ -138,7 +138,7 @@ myopts=[]
 myfiles=[]
 edebug=0
 
-# process short actions and options
+# process short actions
 tmpcmdline=sys.argv[1:]
 #tmpcmdline.extend(portage.settings["EMERGE_OPTS"].split())
 cmdline=[]
@@ -157,7 +157,7 @@ for x in tmpcmdline:
 	else:
 		cmdline.append(x)
 
-# process the command arguments
+# process the options and command arguments
 for x in cmdline:
 	if not x:
 		continue

@@ -10,7 +10,7 @@ emerge \- Command\-line interface to the Portage system
 [\fIoptions\fR] [\fIaction\fR] \fBebuildfile\fR
 .TP 
 .BR emerge
-\fBsync\fR | \fBrsync\fR
+\fBsync\fR | \fBmetadata\fR
 .TP 
 .BR emerge
 \fI\-\-help \-h\fR [\fBsystem\fR | \fBconfig\fR | \fBsync\fR]
@@ -114,6 +114,12 @@ your own packages.  You \fBmust\fR specify a category and particular
 version of a package for injecting.  For example,
 \fBemerge inject sys\-kernel/gentoo\-sources\-2.4.19\fR.
 .TP 
+.BR metadata
+Causes portage to process all the metacache files as is normally done
+on the tail end of an rsync update using \fBemerge sync\fR. The processing
+creates the cache database that portage uses for pre-parsed lookups of
+package data.
+.TP 
 .BR "prune " (\fB\-P\fR)
 \fBWARNING: This action can remove important packages!\fR Removes
 all but the latest versions of matching packages.  If there are
@@ -131,7 +137,9 @@ and the building of dependency trees.  This command is not recommended
 for rsync users as rsync updates the cache using server\-side caches.  If
 you do not know the differences between a 'rsync user' and some other
 user, then you are a 'rsync user' :).  Rsync users should simply run 
-\fBemerge sync\fR to regenerate the cache.
+\fBemerge sync\fR to regenerate the cache. After a portage updated, rsync
+users may find it convenient to run \fBemerge metadata\fR to rebuild the
+cache as portage does at the end of a sync operation.
 .TP 
 .BR "search " (\fB\-s\fR)
 Searches for matches of the supplied string in the portage tree.
@@ -301,8 +309,8 @@ cases where skipping the package will not result in failed dependencies.
 .TP 
 .BR "\-\-tree " (\fB\-t\fR)
 Shows the dependency tree for the given target by indenting dependencies.
-Only really useful in combination with \fB\-\-emptytree\fR, \fB\-\-update\fR
-or \fB\-\-deep\fR.
+Only really useful in combination with "\fB\-\-emptytree\fR" or "\fB\-\-update\fR
+and \fB\-\-deep\fR".
 .TP 
 .BR "\-\-update " (\fB\-u\fR)
 Updates packages to the best version available, which may not

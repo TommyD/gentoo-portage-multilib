@@ -4818,7 +4818,7 @@ class portdbapi(dbapi):
 		myebuild, mylocation=self.findname2(mycpv)
 
 		if not myebuild:
-			writemsg("!!! aux_get(): ebuild for '%(cpv)s' does not exist at:\n" % {"cpv":mycpv})
+			writemsg("!!! aux_get(): ebuild path for '%(cpv)s' not specified:\n" % {"cpv":mycpv})
 			writemsg("!!!            %s\n" % myebuild)
 			raise KeyError, "'%(cpv)s' at %(path)s" % {"cpv":mycpv,"path":myebuild}
 
@@ -5494,7 +5494,6 @@ class binarytree(packagetree):
 
 class dblink:
 	"this class provides an interface to the standard text package database"
-	# XXX SETTINGS
 	def __init__(self,cat,pkg,myroot,mysettings):
 		"create a dblink object for cat/pkg.  This dblink entry may or may not exist"
 		self.cat     = cat
@@ -5681,7 +5680,7 @@ class dblink:
 
 		#do prerm script
 		if myebuildpath and os.path.exists(myebuildpath):
-			a=doebuild(myebuildpath,"prerm",self.myroot,self.settings,cleanup=cleanup,use_cache=0)
+			a=doebuild(myebuildpath,"prerm",self.myroot,self.settings,cleanup=cleanup,use_cache=0,tree="vartree")
 			# XXX: Decide how to handle failures here.
 			if a != 0:
 				writemsg("!!! FAILED prerm: "+str(a)+"\n")
@@ -5874,7 +5873,7 @@ class dblink:
 		if myebuildpath and os.path.exists(myebuildpath):
 			# XXX: This should be the old config, not the current one.
 			# XXX: Use vardbapi to load up env vars.
-			a=doebuild(myebuildpath,"postrm",self.myroot,self.settings,use_cache=0)
+			a=doebuild(myebuildpath,"postrm",self.myroot,self.settings,use_cache=0,tree="vartree")
 			# XXX: Decide how to handle failures here.
 			if a != 0:
 				writemsg("!!! FAILED postrm: "+str(a)+"\n")
@@ -5987,7 +5986,7 @@ class dblink:
 
 		# run preinst script
 		if myebuild:
-			# if we are merging a new ebuild, use *its* pre/postinst rather than using the one in /var/db/pkg 
+			# if we are merging a new ebuild, use *its* pre/postinst rather than using the one in /var/db/pkg
 			# (if any).
 			a=doebuild(myebuild,"preinst",root,self.settings,cleanup=cleanup,use_cache=0)
 		else:

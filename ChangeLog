@@ -9,27 +9,41 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+*portage-2.0.51_rc1 (15 Sep 2004): And we have Release Candidate!
+
+  15 Sep 2004; Nicholas Jones <carpaski@gentoo.org> ebuild: On merge, disable
+	the noauto feature explicitly.
+
+  15 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Fixed the
+	'missing ebuild' for uninstalls of packages not in the tree.
+
+  15 Sep 2004; Nicholas Jones <carpaski@gentoo.org> man/*: Started adding
+	to the documentation in order to break it an make it look funny. Added a
+	couple entries for missing concepts like 'inherit' and 'useq' and 'hasq'.
+	Cleared up a few things here and there with usage. Added in the metadata
+	target for emerge.
+
 *portage-2.0.51_pre24 (14 Sep 2004): Last _pre before docs and rc/stable.
 
   14 Sep 2004; Nicholas Jones <carpaski@gentoo.org> repoman: Extra handling
-	for weird CVS/Repository info on OSX.
+  for weird CVS/Repository info on OSX.
 
   14 Sep 2004; Nicholas Jones <carpaski@gentoo.org> emerge: Fixed a traceback
-	in traceback handling where a value was trying to be extracted from an
-	exception. Handled the case where a binary package does not have an ebuild
-	in a tree or overlay and the verbose overlay output requires it. Change to
-	the CVS checkouts for emerge sync, moved the -P immediately after the co.
+  in traceback handling where a value was trying to be extracted from an
+  exception. Handled the case where a binary package does not have an ebuild
+  in a tree or overlay and the verbose overlay output requires it. Change to
+  the CVS checkouts for emerge sync, moved the -P immediately after the co.
 
   14 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage_exception.py:
-	Added in some spacing between related exception groups.
+  Added in some spacing between related exception groups.
 
   14 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Changed a bunch
-	of lines unnecessarily to start getting the locale strings ready -- I'll
-	probably have bugs due to this because I've been doing dumb things like
-	that recently. 
+  of lines unnecessarily to start getting the locale strings ready -- I'll
+  probably have bugs due to this because I've been doing dumb things like
+  that recently. 
 
   14 Sep 2004; Nicholas Jones <carpaski@gentoo.org> man/*: Fixed ka0ttic's
-	email address.
+  email address.
 
   14 Sep 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild.sh: Removed 
   the ${T}/successful logic, it's no longer needed.  Existed only for the 
@@ -38,7 +52,7 @@
 
   13 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Fix for empty
   categories/portage-tree causing a traceback.
-	
+  
 *portage-2.0.51_pre23 (11 Sep 2004): Fixes and stuff.
 
   11 Sep 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Another fix
