@@ -416,3 +416,26 @@ if __name__ == "__main__":
 	mynewset=myset.subset([key("media-libs/libsdl"),depid(">=1.2.0"),depid("<1.2.2")])
 	#we print the result :)
 	print mynewset.keydict
+
+"""
+The new download manager:
+
+Karltk needs a feature (for Opera-6) where he can specify that a particular file should not be
+mirrored on ibiblio, since it is illegal to do so.  This only affects one package at the moment,
+but could be more widely used in the future.
+
+Karltk says:
+	manual:http://url
+
+	"error:generic error message"
+
+Of course, we need to continue our ability to handle USE variables.
+
+Support mirroring from a set of pre-defined mirrors:
+	mirror://gnu/path
+
+We need to take advantage of filesizes in digests to detect partial downloads, and restart them.
+We need a way of recording official mirrors (profiles/mirrors?) and selecting our preferred mirror
+from the set (/etc/make.conf?)
+"""
+
