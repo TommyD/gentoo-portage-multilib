@@ -881,7 +881,7 @@ def fetch(myuris):
 
 def digestgen(myarchives,overwrite=1):
 	"""generates digest file if missing.  Assumes all files are available.	If
-	overwrite=1, the digest will only be created if it doesn't exist."""
+	overwrite=0, the digest will only be created if it doesn't already exist."""
 	if not os.path.isdir(settings["FILESDIR"]):
 		os.makedirs(settings["FILESDIR"])
 		if "cvs" in features:
@@ -1071,10 +1071,13 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 
 	if "digest" in features:
 		#generate digest if it doesn't exist.
-		digestgen(checkme,overwrite=0)
 		if mydo=="digest":
+			digestgen(checkme,overwrite=1)
 			return 0
+		else:
+			digestgen(checkme,overwrite=0)
 	elif mydo=="digest":
+		#since we are calling "digest" directly, recreate the digest even if it already exists
 		digestgen(checkme,overwrite=1)
 		return 0
 		
