@@ -553,7 +553,11 @@ dyn_compile() {
 	echo "$LICENSE" > LICENSE
 	echo "$CATEGORY" > CATEGORY
 	echo "$PF" > PF
-	echo "$SLOT" > SLOT
+	#It seems like a good plan to leave SLOT out of unslotted ebuilds
+	if [ "$SLOT" ]
+	then
+		echo "$SLOT" > SLOT
+	fi
 	echo "$RDEPEND" > RDEPEND
 	echo "$PROVIDE" > PROVIDE
 	cp ${EBUILD} ${PF}.ebuild

@@ -316,6 +316,8 @@ class depgraph:
 			self.db["/"]["vartree"].populated=1
 			self.db["/"]["vartree"].inject("virtual/glibc-1.0")
 		self.outdatedpackages=[]
+		#cache dependencies from ebuilds to avoid looking them up twice
+		self.depcache={}
 	def create(self,mybigkey,myparent=None,addme=1):
 		"""creates the actual digraph of packages to merge.  return 1 on success, 0 on failure
 		mybigkey = specification of package to merge; myparent = parent package (one depending on me);
@@ -349,7 +351,12 @@ class depgraph:
 				sys.exit(1)
 				mydep={}
 			myebuild=self.db[myroot]["porttree"].getname(mykey)
-			edepend=portage.doebuild(myebuild,"depend",myroot,1,edebug)
+			myattr=commands.getstatusoutput("attr -ql "+myebuild)[1]
+			if string.find(myattr,"DEPEND")!=-1:
+				edepend=eval(commands.getstatusoutput("attr -qg DEPEND "+myebuild)[1])
+			else:
+				edepend=portage.doebuild(myebuild,"depend",myroot,1,edebug)
+				commands.getstatusoutput('attr -qs DEPEND -V"'+`edepend`+'" '+myebuild)
 			if edepend==1:
 				print "!!! emerge aborting."
 				sys.exit(1)
@@ -1133,6 +1140,7 @@ elif "--rebuild"==myaction:
 			mydepgraph=depgraph(mymode,myaction,myopts)
 			print "Calculating world dependencies",
 			mydepgraph.syscreate(mydepgraph.db["/"]["vartree"].getallnodes())
+			#we need to add getsyslist() to the above line soon
 			print " done!"
 
 		if "--pretend" in myopts:

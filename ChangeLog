@@ -1,13 +1,35 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
-  16 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge :
-  added support for 'emerge cat/pkg-version' instead of always having to
-  require 'emerge cat/pkg'
+  17 Feb 2002; Daniel Robbins <drobbins@gentoo.org> portage.py : Added
+  cumulative USE variable support.  The final USE var is calculated
+  cumulatively starting with make.profile, then make.conf, and then the
+  environment.  Any "-foo" option in USE will turn off a previously-defined USE
+  setting.  So, if you want to use the profile-default USE settings except turn
+  "X" off, you add 'USE="-X"' to /etc/make.conf and that's it.  This greatly
+  simplifies USE variable maintenance since developers can now easily add new
+  USE variables that default to 'on'.  Simply add the USE variable and then add
+  it to make.profile.  It will then be included in everyone's USE variables
+  automatically unless they explicitly "-newvar" in /etc/make.conf or in the
+  local environment.  This also enables easy one-shot disabling of USE
+  variables.  For example, to merge xchat without GNOME support (when "gnome"
+  is in your /etc/make.conf USE variable), simply type "USE="-gnome" emerge
+  net-irc/xchat".  This is a lot easier than temporarily tweaking
+  /etc/make.conf.
+ 
+  17 Feb 2002: Daniel Robbins <drobbins@gentoo.org> emerge : Added a quick hack
+  to cache ebuild dependency info using extended attributes on XFS filesystems.
+  Gives a factor of 10 speedup for dependency calculations.  Will look into a
+  generic caching solution that should offer similar performance increases on
+  all filesystems.  Note: the fact that this hack is on CVS means that emerge
+  is currently in a hyper-experimental state and shouldn't be used right now.
+ 
+  16 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge : added support for 'emerge
+  cat/pkg-version' instead of always having to require 'emerge cat/pkg'
   
-  15 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge :
-  reimplemented the display of cleaned packages to clearly show all versions
-  that are about to be removed and which versions are going to stay  
+  15 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge : reimplemented the display
+  of cleaned packages to clearly show all versions that are about to be removed
+  and which versions are going to stay  
 
   13 Feb 2002; D.Robbins <drobbins@gentoo.org> emerge :
   added --emptytree option
