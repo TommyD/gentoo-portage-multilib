@@ -347,7 +347,7 @@ class depgraph:
 				sys.exit(1)
 			mypkgparts=portage.catpkgsplit(mykey)
 			mytbz2=xpak.tbz2(self.db[portage.root]["bintree"].getname(mykey))
-			edepend=["",string.join(mytbz2.getelements("RDEPEND")," "),mytbz2.getfile("SLOT",mypkgparts[2])]
+			edepend=["",string.join(mytbz2.getelements("RDEPEND")," "),mytbz2.getfile("SLOT",mypkgparts[2]),""]
 		elif mytype=="ebuild":
 			if not self.db[myroot]["porttree"].exists_specific(mykey):
 				print "\n\n!!!",mytype,mykey,"not found (possibly blocked by package.mask)\n"
@@ -380,7 +380,9 @@ class depgraph:
 			if myroot=="/":
 				mydep["/"]=edepend[0]+" "+edepend[1]
 			else:
-				mydep["/"],mydep[myroot]=edepend
+				print "DEBUG",edepend
+				mydep["/"]=edepend[0]
+				mydep[myroot]=edepend[1]
 			if addme:
 				self.digraph.addnode(mybigkey,myparent)
 			for dep in mydep.keys():
@@ -597,7 +599,6 @@ def post_emerge(retval=0):
 			if not (auxgroups[1] or auxgroups[2]):
 				myso=commands.getstatusoutput("/usr/bin/install-info --dir-file="+root+"usr/share/info/dir "+root+"usr/share/info/"+x)[1]
 				if myso!="":
-					print auxgroups	
 					badcount=badcount+1
 					if "--verbose" in myopts:
 						print myso

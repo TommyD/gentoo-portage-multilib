@@ -2,6 +2,13 @@
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
   18 Feb 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, emerge,
+  ebuild.sh : Rewrote merge code.  Should merge symlinks only *after* the
+  target has been merged (needs testing).  Added lots of comments.  Split
+  dblink.merge() into 2 new functions -- .walktree() and .mergeme().
+  Cleaned/optimized merging a good deal.  Added special "-*" USE variable to
+  unset *all* USE variables defined up until that point.  
+  
+  18 Feb 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, emerge,
   ebuild.sh : Fixed USE bug (config.reset() threw away our cumulative USE),
   streamlined turbo dep calculations by moving edb cache entry creation to
   ebuild.sh.  Started coding new dblink.merge() method that should be much

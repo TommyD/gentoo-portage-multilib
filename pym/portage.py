@@ -505,7 +505,10 @@ class config:
 				if self.configlist[pos].has_key("USE"):
 					myusesplit=string.split(expand(self.configlist[pos]["USE"],self.configlist[2]))
 					for x in myusesplit:
-						if x[0]!="-":
+						if x=="-*":
+							# "-*" is a special "minus" var that means "unset all USE settings".  so USE="-* gnome" will have *just* gnome enabled.
+							myuse=[]
+						elif x[0]!="-":
 							if not x in myuse:
 								myuse.append(x)
 						else:
@@ -2226,34 +2229,127 @@ class dblink:
 			print "!!! pkg_postrm() script failed; exiting."
 			sys.exit(a)
 	
-	def treewalk(srcroot,destroot,inforoot,secondhand=[],mypath=None):
+	def treewalk(self,srcroot,destroot,inforoot,secondhand=[]):
 		# srcroot = ${D}; destroot=where to merge, ie. ${ROOT}, inforoot=root of db entry,
 		# secondhand = list of symlinks that have been skipped due to their target not existing (will merge later),
-		# mypath = path offset for srcroot and destroot
 		"this is going to be the new merge code"
-		if mypath==None:
-			mypath=srcroot
-			if not os.path.exists(self.dbdir):
-				self.create()
-			print ">>> Updating mtimes..."
-			# before merging, it's *very important* to touch all the files
-			# this ensures that their mtime is current and unmerging works correctly
-			os.system("(cd "+srcroot+"; for x in `find`; do  touch -c $x 2>/dev/null; done)")
-			print ">>> Merging",self.cat+"/"+self.pkg,"to",destroot
-			# get old contents info for later unmerging
-			oldcontents=self.getcontents()
-			# run preinst script
-			a=doebuild(inforoot+"/"+self.pkg+".ebuild","preinst",root)
-			if a:
-				print "!!! pkg_preinst() script failed; exiting."
-				sys.exit(a)
-			# open CONTENTS file (possibly overwriting old one) for recording
-			outfile=open(inforoot+"/CONTENTS","w")
-	
-		# iterate through all files in the current directory
-		for x in os.listdir(mypath):
+		if not os.path.exists(self.dbdir):
+			self.create()
+		print ">>> Updating mtimes..."
+		# before merging, it's *very important* to touch all the files
+		# this ensures that their mtime is current and unmerging works correctly
+		os.system("(cd "+srcroot+"; for x in `find`; do  touch -c $x 2>/dev/null; done)")
+		print ">>> Merging",self.cat+"/"+self.pkg,"to",destroot
+		# get old contents info for later unmerging
+		oldcontents=self.getcontents()
+		# run preinst script
+		a=doebuild(inforoot+"/"+self.pkg+".ebuild","preinst",root)
+		if a:
+			print "!!! pkg_preinst() script failed; exiting."
+			sys.exit(a)
+		# open CONTENTS file (possibly overwriting old one) for recording
+		outfile=open(inforoot+"/CONTENTS","w")
+		# prep for config file management
+		self.protect=[]
+		# self.protect records any paths in CONFIG_PROTECT that are real directories and exist
+		for x in string.split(settings["CONFIG_PROTECT"]):
+			ppath=os.path.normpath(destroot+"/"+x)+"/"
+			if os.path.isdir(ppath):
+				self.protect.append(ppath)
+		self.protectmask=[]
+		# self.protectmask records any paths in CONFIG_PROTECT_MASK that are real directories and exist
+		for x in string.split(settings["CONFIG_PROTECT_MASK"]):
+			ppath=os.path.normpath(destroot+"/"+x)+"/"
+			if os.path.isdir(ppath):
+				self.protectmask.append(ppath)
+		# set umask to 0 for merging; back up umask, save old one in prevmask (since this is a global change)
+		prevmask=os.umask(0)
+			
+		# we do a first merge; this will recurse through all files in our srcroot but also build up a
+		# "second hand" of symlinks to merge later
+		self.mergeme(srcroot,destroot,outfile,secondhand,"")
+		# now, it's time for dealing our second hand; we'll loop until we can't merge anymore.  The rest are
+		# broken symlinks.
+		thirdhand=[]
+		while len(secondhand)!=len(thirdhand):
+			self.mergeme(srcroot,destroot,outfile,thirdhand,secondhand)
+			#swap hands
+			[thirdhand,secondhand]=[secondhand,thirdhand]
+		if len(secondhand):
+			# force merge of remaining symlinks (broken or circular; oh well)
+			self.mergeme(srcroot,destroot,outfile,None,secondhand)
+			
+		#restore umask
+		os.umask(prevmask)
+		#if we opened it, close it	
+		outfile.close()
+		print
+		if (oldcontents):
+			print ">>> Safely unmerging already-installed instance..."
+			self.unmerge(oldcontents)
+			print ">>> original instance of package unmerged safely."	
+
+		# copy "info" files (like SLOT, CFLAGS, etc.) into the database
+		for x in os.listdir(inforoot):
+			self.copyfile(inforoot+"/"+x)
+			
+		#create virtual links
+		for mycatpkg in self.getelements("PROVIDE"):
+			mycat,mypkg=string.split(mycatpkg,"/")
+			mylink=dblink(mycat,mypkg,self.myroot)
+			#this will create the link if it doesn't exist
+			mylink.create()
+			myvirts=mylink.getelements("VIRTUAL")
+			if not mycat+"/"+mypkg in myvirts:
+				myvirts.append(self.cat+"/"+self.pkg)
+				mylink.setelements(myvirts,"VIRTUAL")
+
+		#do postinst script
+		a=doebuild(self.dbdir+"/"+self.pkg+".ebuild","postinst",root)
+		if a:
+			print "!!! pkg_postinst() script failed; exiting."
+			sys.exit(a)
+		#update environment settings, library paths
+		env_update()	
+		print ">>>",self.cat+"/"+self.pkg,"merged."
+
+	def isprotected(self,destroot,offset):
+		mytruncpath=os.path.realpath(destroot+offset)
+		mytruncpath=mytruncpath[len(destroot)-1:]
+		myppath=""
+		for ppath in self.protect:
+			#the expandpath() means that we will be expanding rootpath first (resolving dir symlinks)
+			#before matching against a protection path.
+			if mytruncpath[0:len(ppath)]==ppath:
+				myppath=ppath
+				#config file management
+				for pmpath in self.protectmask:
+					#again, dir symlinks are expanded
+					if mytruncpath[0:len(pmpath)]==pmpath:
+						#skip, it's in the mask
+						myppath=""
+						break
+				if not myppath:
+					break	
+		return myppath!=""
+		
+	def mergeme(self,srcroot,destroot,outfile,secondhand,stufftomerge):
+		# this is supposed to merge a list of files.  There will be 2 forms of argument passing.
+		if type(stufftomerge)==types.StringType:
+			#A directory is specified.  Figure out protection paths, listdir() it and process it.
+			mergelist=os.listdir(srcroot+stufftomerge)
+			offset=stufftomerge
+			# We need mydest defined up here to calc. protection paths.  This is now done once per
+			# directory rather than once per file merge.  This should really help merge performance.
+			myppath=self.isprotected(destroot,offset)
+		else:
+			mergelist=stufftomerge
+			offset=""
+		for x in mergelist:
+			mysrc=srcroot+offset+x
+			mydest=destroot+offset+x
 			# stat file once, test using S_* macros many times (faster that way)
-			mystat=os.lstat(mypath+"/"+x)
+			mystat=os.lstat(mysrc)
 			mymode=mystat[ST_MODE]
 			mymtime=mystat[ST_MTIME]
 			# handy variables; mydest is the target object on the live filesystems;
@@ -2261,20 +2357,18 @@ class dblink:
 			# is the "real" final location of the file (minus any $ROOT) offsets.
 			# myrealdest is what gets recorded in CONTENTS.  mydest gets printed
 			# onscreen.
-			mydest=destroot+"/"+mypath+"/"+x
 			try:
 				mydmode=os.lstat(mydest)[ST_MODE]
 			except:
 				#dest file doesn't exist
 				mydmode=None
-			mysrc=srcroot+"/"+mypath+"/"+x
 			# below, the [len(destroot):] is there to chop off the $ROOT 
 			# (we don't record this in CONTENTS) after the real
 			# target path has been expanded. os.path.realpath gets the "real"
 			# path, taking any existing symlinks into account.  That way, if
 			# the symlinks are unmerged, this object can still be found and unmerged
 			# too, since we record myrealdest in CONTENTS.
-			myrealdest=os.path.realpath(mydest)[len(destroot):]
+			myrealdest=os.path.realpath(mydest)[len(destroot)-1:]
 			if S_ISLNK(mymode):
 				# we are merging a symbolic link
 				myto=os.readlink(mysrc)
@@ -2288,18 +2382,19 @@ class dblink:
 						print "!!!",mydest,"->",myto
 						# we won't merge this, continue with next file...
 						continue
-				if not os.path.exists(myrealto):
+				# if secondhand==None it means we're operating in "force" mode and should not create a second hand.
+				if (secondhand!=None) and (not os.path.exists(myrealto)):
 					# either the target directory doesn't exist yet or the target file doesn't exist -- or
 					# the target is a broken symlink.  We will add this file to our "second hand" and merge
 					# it later.
-					secondhand.append(mysrc)
+					secondhand.append(mysrc[len(srcroot):])
 					continue
 				# unlinking no longer necessary; "movefile" will overwrite symlinks atomically and correctly
 				if movefile(mysrc,mydest):
 					print ">>>",mydest,"->",myto
-					outfile.write("sym "+myrealdest+" -> "+myto+" "+mymtime+"\n")
+					outfile.write("sym "+myrealdest+" -> "+myto+" "+`mymtime`+"\n")
 				else:
-					print "!!!",rootfile,"->",myto
+					print "!!!",mydest,"->",myto
 			elif S_ISDIR(mymode):
 				# we are merging a directory
 				if mydmode!=None:
@@ -2307,180 +2402,57 @@ class dblink:
 					if S_ISDIR(mydmode):
 						if S_ISLNK(mydmode):
 							# a symlink to an existing directory will work for us; keep it:
-							print "---",rootfile+"/"
+							print "---",mydest+"/"
 						else:
 							# a normal directory will work too
-							print "---",rootfile+"/"
+							print "---",mydest+"/"
 					else:
 						# a non-directory and non-symlink-to-directory.  Won't work for us.  Move out of the way.
-						movefile(rootfile,rootfile+".backup")
-						print "bak",rootfile,rootfile+".backup"
+						movefile(mydest,mydest+".backup")
+						print "bak",mydest,mydest+".backup"
 						#now create our directory
-						os.mkdir(rootfile)
-						os.chmod(rootfile,mystat[0])
-						os.chown(rootfile,mystat[4],mystat[5])
-						print ">>>",rootfile+"/"
-				else:				
-					os.mkdir(rootfile)
-					os.chmod(rootfile,mystat[0])
-					os.chown(rootfile,mystat[4],mystat[5])
-					print ">>>",rootfile+"/"
-				outfile.write("dir "+expandpath(relfile)+"\n")
-				#enter directory, recurse
-				os.chdir(x)
-				self.merge(mergeroot,inforoot,myroot,mergestart+"/"+x,outfile)
-				#return to original path
-				os.chdir(mergestart)
-				if mypath!=myroot:
-					mygraph.addnode(relpath[:-1],relpath+x)
+						os.mkdir(mydest)
+						os.chmod(mydest,mystat[0])
+						os.chown(mydest,mystat[4],mystat[5])
+						print ">>>",mydest+"/"
 				else:
-					mygraph.addnode(relpath+x)
-				treewalk(myroot,mypath+"/"+x,relpath+x+"/",mygraph)
-			else:
-				if mypath!=myroot:
-					mygraph.addnode(relpath[:-1],relpath+x)
-				else:
-					mygraph.addnode(relpath+x)	
-		return mygraph
-
-	
-	def merge(self,mergeroot,inforoot,myroot,mergestart=None,outfile=None):
-		global prevmask	
-		#myroot=os.environ["ROOT"]
-		#myroot should be set to the ROOT of where to merge to.
-
-		if mergestart==None:
-			origdir=getmycwd()
-			if not os.path.exists(self.dbdir):
-				self.create()
-				#open contents file if it isn't already open
-			mergestart=mergeroot
-			print ">>> Updating mtimes..."
-			#before merging, it's *very important* to touch all the files !!!
-			os.system("(cd "+mergeroot+"; for x in `find`; do  touch -c $x 2>/dev/null; done)")
-			print ">>> Merging",self.cat+"/"+self.pkg,"to",myroot
-			
-		
-			#get old contents info for later unmerging
-			oldcontents=self.getcontents()
-			a=doebuild(inforoot+"/"+self.pkg+".ebuild","preinst",root)
-			if a:
-				print "!!! pkg_preinst() script failed; exiting."
-				sys.exit(a)
-			outfile=open(inforoot+"/CONTENTS","w")
-		
-			#prep for config file management
-			self.protect=[]
-			for x in string.split(settings["CONFIG_PROTECT"]):
-				ppath=os.path.normpath(myroot+"/"+x)+"/"
-				if os.path.isdir(ppath):
-					self.protect.append(ppath)
-			# Don't warn about a missing config file path
-			#	else:
-			#		print "!!!",ppath,"not found.  Config file management disabled for this directory."
-			self.protectmask=[]
-			for x in string.split(settings["CONFIG_PROTECT_MASK"]):
-				ppath=os.path.normpath(myroot+"/"+x)+"/"
-				if os.path.isdir(ppath):
-					self.protectmask.append(ppath)
-				#if it doesn't exist, silently skip it
-				#back up umask, save old one in prevmask (global)
-				prevmask=os.umask(0)
-		
-		mergestart=mergestart
-		os.chdir(mergestart)
-		cpref=os.path.commonprefix([mergeroot,mergestart])
-		relstart=mergestart[len(cpref):]
-		myfiles=os.listdir(mergestart)
-		
-		for x in myfiles:
-			relfile=relstart+"/"+x
-			rootfile=os.path.normpath(myroot+relfile)
-			#symbolic link
-			if os.path.islink(x):
-				myto=os.readlink(x)
-				if os.path.exists(rootfile):
-					if (not os.path.islink(rootfile)) and (os.path.isdir(rootfile)):
-						print "!!!",rootfile,"->",myto
-					else:
-						os.unlink(rootfile)
-				try:
-					os.symlink(myto,rootfile)
-					print ">>>",rootfile,"->",myto
-					outfile.write("sym "+expandpath(relfile)+" -> "+myto+" "+getmtime(rootfile)+"\n")
-				except:
-					print "!!!",rootfile,"->",myto
-			#directory
-			elif os.path.isdir(x):
-				mystat=os.stat(x)
-				if os.path.exists(rootfile):
-					if os.path.islink(rootfile) and os.path.isdir(rootfile):
-						#a symlink to an existing directory will work for us; keep it:
-						print "---",rootfile+"/"
-					elif os.path.isdir(rootfile):
-						#a normal directory will work too
-						print "---",rootfile+"/"
-					else:
-						#a non-directory and non-symlink-to-directory.  Won't work for us.  Move out of the way.
-						movefile(rootfile,rootfile+".backup")
-						print "bak",rootfile,rootfile+".backup"
-						#now create our directory
-						os.mkdir(rootfile)
-						os.chmod(rootfile,mystat[0])
-						os.chown(rootfile,mystat[4],mystat[5])
-						print ">>>",rootfile+"/"
-				else:				
-					os.mkdir(rootfile)
-					os.chmod(rootfile,mystat[0])
-					os.chown(rootfile,mystat[4],mystat[5])
-					print ">>>",rootfile+"/"
-				outfile.write("dir "+expandpath(relfile)+"\n")
-				#enter directory, recurse
-				os.chdir(x)
-				self.merge(mergeroot,inforoot,myroot,mergestart+"/"+x,outfile)
-				#return to original path
-				os.chdir(mergestart)
-			#regular file
-			elif os.path.isfile(x):
-				mymd5=md5(x)
-				myppath=""
-				rootdir=os.path.dirname(rootfile)
-				for ppath in self.protect:
-					#the expandpath() means that we will be expanding rootpath first (resolving dir symlinks)
-					#before matching against a protection path.
-					if expandpath(rootfile)[0:len(ppath)]==ppath:
-						myppath=ppath
-						#config file management
-						for pmpath in self.protectmask:
-							#again, dir symlinks are expanded
-							if expandpath(rootfile)[0:len(pmpath)]==pmpath:
-								#skip, it's in the mask
-								myppath=""
-								break
-						if not myppath:
-							break	
+					#destination doesn't exist
+					os.mkdir(mydest)
+					os.chmod(mydest,mystat[0])
+					os.chown(mydest,mystat[4],mystat[5])
+					print ">>>",mydest+"/"
+				outfile.write("dir "+myrealdest+"\n")
+				# recurse and merge this directory
+				self.mergeme(srcroot,destroot,outfile,secondhand,myrealdest[1:]+"/")
+			elif S_ISREG(mymode):
+				# we are merging a regular file
+				mymd5=md5(mysrc)
+				# calculate config file protection stuff
+				mydestdir=os.path.dirname(mydest)	
 				moveme=1
-				if os.path.exists(rootfile):
-					if os.path.islink(rootfile):
-						#this is how to cleverly avoid accidentally processing symlinks as dirs or regular files
-						pass
-					elif os.path.isdir(rootfile):
-						#directories do *not* get replaced by files
+				if mydmode!=None:
+					# destination file exists
+					if S_ISDIR(mydmode):
+						# install of destination is blocked by an existing directory with the same name
 						moveme=0
-						print "!!!",rootfile
-					elif os.path.isfile(rootfile):
-						#replacing a regular file: we need to do some cfg file management here
-						#let's find the right filename for rootfile
-						if myppath!="":
-							#if the md5's *do* match, just copy it over (fall through to movefile(), below)
-							if mymd5!=md5(rootfile):
+						print "!!!",mydest
+					elif S_ISREG(mydmode):
+						# install of destination is blocked by an existing regular file; now, config file
+						# management may come into play.
+						# we only need to tweak mydest if cfg file management is in play.
+						if myppath:
+							# we have a protection path; enable config file management.
+							if mymd5!=md5(mydest):
+								# the files are not identical (from an md5 perspective); we cannot simply overwrite.
 								pnum=-1
-								pmatch=os.path.basename(rootfile)
-								#format:
+								# set pmatch to the literal filename only
+								pmatch=os.path.basename(mydest)
+								# config protection filename format:
 								# ._cfg0000_foo
+								# positioning (for reference):
 								# 0123456789012
 								mypfile=""
-								for pfile in os.listdir(rootdir):
+								for pfile in os.listdir(mydestdir):
 									if pfile[0:5]!="._cfg":
 										continue
 									if pfile[10:]!=pmatch:
@@ -2493,100 +2465,45 @@ class dblink:
 									except:
 										continue
 								pnum=pnum+1
-								#this next line specifies the normal default rootfile (the next available ._cfgxxxx_ slot
-								rootfile=os.path.normpath(rootdir+"/._cfg"+string.zfill(pnum,4)+"_"+pmatch)
-								#but, we can override rootfile in a special case:
-								#if the last ._cfgxxxx_foo file's md5 matches:
+								# mypfile is set to the name of the most recent cfg management file currently on disk.
+								# if their md5sums match, we overwrite the mypfile rather than creating a new .cfg file.
+								# this keeps on-disk cfg management clutter to a minimum.
+								cleanup=0
 								if mypfile:
-									pmd5=md5(rootdir+"/"+mypfile)
+									pmd5=md5(mydestdir+"/"+mypfile)
 									if mymd5==pmd5:
-										rootfile=(rootdir+"/"+mypfile)
-										#then overwrite the last ._cfgxxxx_foo file rather than creating a new one
-										#(for cleanliness)
-				else:
-					#this is mainly for zapping symbolic links that are dead
-					try:
-						os.unlink(rootfile)
-					except OSError:
-						pass
-					
-					if myppath:
-						unlinkme=[]
-						pmatch=os.path.basename(rootfile)
-						mypfile=""
-						for pfile in os.listdir(rootdir):
-							if pfile[0:5]!="._cfg":
-								continue
-							if pfile[10:]!=pmatch:
-								continue
-							unlinkme.append(rootdir+"/"+pfile)
-						for ufile in unlinkme:
-							if os.path.isfile(ufile) and not os.path.islink(ufile):
-								os.unlink(ufile)
-								print "<<<",ufile
-				if moveme:
-					#moveme=0 is used to avoid copying on top of directories
-					if movefile(x,rootfile):
-						zing=">>>"
-						outfile.write("obj "+expandpath(relfile)+" "+mymd5+" "+getmtime(rootfile)+"\n")
-					else:
-						zing="!!!"
-					print zing,rootfile
-			elif isfifo(x):
-				#fifo
-				zing="!!!"
-				if not os.path.exists(rootfile):	
-					if movefile(x,rootfile):
-						zing=">>>"
-				elif isfifo(rootfile):
-					os.unlink(rootfile)
-					if movefile(x,rootfile):
-						zing=">>>"
-				print zing+" "+rootfile
-				outfile.write("fif "+expandpath(relfile)+"\n")
-			else:
-				#device nodes, the only other possibility
-				if movefile(x,rootfile):
+										mydest=(mydestdir+"/"+mypfile)
+										cleanup=1
+								if not cleanup:
+									# we now have pnum set to the official 4-digit config that should be used for the file
+									# we need to install.  Set mydest to this new value.
+									mydest=os.path.normpath(mydestdir+"/._cfg"+string.zfill(pnum,4)+"_"+pmatch)
+								# update myrealdest for writing to CONTENTS
+								myrealdest=mydest[len(destroot)-1:]
+				# whether config protection or not, we merge the new file the same way.  Unless moveme=0 (blocking directory)
+				if moveme and movefile(mysrc,mydest):
 					zing=">>>"
+					outfile.write("obj "+myrealdest+" "+mymd5+" "+`mymtime`+"\n")
 				else:
 					zing="!!!"
-				print zing+" "+rootfile
-				outfile.write("dev "+expandpath(relfile)+"\n")
-		if mergestart==mergeroot:
-			#restore umask
-			os.umask(prevmask)
-			#if we opened it, close it	
-			outfile.close()
-			if (oldcontents):
-				print ">>> Safely unmerging already-installed instance..."
-				self.unmerge(oldcontents)
-				print ">>> original instance of package unmerged safely."	
-
-			os.chdir(inforoot)
-			for x in os.listdir("."):
-				self.copyfile(x)
-			
-			#create virtual links
-			for mycatpkg in self.getelements("PROVIDE"):
-				mycat,mypkg=string.split(mycatpkg,"/")
-				mylink=dblink(mycat,mypkg,self.myroot)
-				#this will create the link if it doesn't exist
-				mylink.create()
-				myvirts=mylink.getelements("VIRTUAL")
-				if not mycat+"/"+mypkg in myvirts:
-					myvirts.append(self.cat+"/"+self.pkg)
-					mylink.setelements(myvirts,"VIRTUAL")
-
-			#do postinst script
-			a=doebuild(self.dbdir+"/"+self.pkg+".ebuild","postinst",root)
-			if a:
-				print "!!! pkg_postinst() script failed; exiting."
-				sys.exit(a)
-			#update environment settings, library paths
-			env_update()	
-			print ">>>",self.cat+"/"+self.pkg,"merged."
-			os.chdir(origdir)
+				print zing,mydest
+			else:
+				# we are merging a fifo or device node
+				zing="!!!"
+				if mydmode==None:
+					#destination doesn't exist
+					if movefile(mysrc,mydest):
+						zing=">>>"
+						if S_ISFIF(mymode):
+							#we don't record device nodes in CONTENTS, although we do merge them.
+							outfile.write("fif "+myrealdest+"\n")
+					else:
+						zing="!!!"
+				print zing+" "+mydest
 	
+	def merge(self,mergeroot,inforoot,myroot,mergestart=None,outfile=None):
+		self.treewalk(mergeroot,myroot,inforoot)
+
 	def getstring(self,name):
 		"returns contents of a file with whitespace converted to spaces"
 		if not os.path.exists(self.dbdir+"/"+name):
@@ -2696,8 +2613,8 @@ def pkgmerge(mytbz2,myroot):
 	mycatpkg=mycat+"/"+mypkg
 
 	tmploc=settings["PKG_TMPDIR"]
-	pkgloc=tmploc+"/"+mypkg+"/bin"
-	infloc=tmploc+"/"+mypkg+"/inf"
+	pkgloc=tmploc+"/"+mypkg+"/bin/"
+	infloc=tmploc+"/"+mypkg+"/inf/"
 	if os.path.exists(tmploc+"/"+mypkg):
 		shutil.rmtree(tmploc+"/"+mypkg,1)
 	os.makedirs(pkgloc)
