@@ -526,6 +526,8 @@ if "--help" in myopts:
 		print "              A few examples of the second format:"
 		print "              \x1b[37;01mbinutils\x1b[0m matches"
 		print "                  binutils-2.11.90.0.7 and binutils-2.11.92.0.12.3-r1"
+		print "              \x1b[37;01m>binutils-2.11.90.0.7\x1b[0m matches"
+		print "                  binutils-2.11.92.0.12.3-r1"
 		print "              \x1b[37;01msys-devel/binutils\x1b[0m matches"
 		print "                  binutils-2.11.90.0.7 and binutils-2.11.92.0.12.3-r1"
 		print "              \x1b[37;01msys-devel/binutils-2.11.90.0.7\x1b[0m matches"

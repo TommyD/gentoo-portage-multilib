@@ -75,6 +75,7 @@ import sys
 import shlex
 import shutil
 import xpak
+import re
 
 # master category list.  Any new categories should be added to this list to
 # ensure that they all categories are read when we check the portage directory
@@ -1488,6 +1489,38 @@ class packagetree:
 		else:
 			return None
 
+	def dep_pkgcat(self,mypkgdep):
+		"""tries to find the category of a package dependency that has been provided without
+		a category, if it couldn't be found the initial argument in returned"""
+		# check if a slash has been provided to
+		# seperate the category from the application
+		# if not, seperate the deps chars and try
+		# to find a matching category
+		if not '/' in mypkgdep:
+			re_deps=re.compile("^([><=~]+)(.+)$")
+			mypkgdep_parts=re_deps.findall(mypkgdep)
+			# set default values
+			mypkgdep_deps=""
+			mypkgdep_package=mypkgdep
+			mypkgdep_packagename=mypkgdep
+			# try to get the deps chars and package name isolated
+			if mypkgdep_parts:
+				mypkgdep_deps=mypkgdep_parts[0][0]
+				mypkgdep_package=mypkgdep_parts[0][1]
+				mypkgdep_package_parts=pkgsplit(mypkgdep_package)
+				if mypkgdep_package_parts:
+					mypkgdep_packagename=mypkgdep_package_parts[0]
+			# try to contructs a full packagename with category
+			mypkgdep_withcat = ""
+			for cat in categories:
+				if self.hasnode(cat+"/"+mypkgdep_packagename):
+					mypkgdep_withcat = mypkgdep_deps+cat+"/"+mypkgdep_package
+					break
+			# if it succeeded, assign it as a result
+			if mypkgdep_withcat:
+				mypkgdep = mypkgdep_withcat
+		return mypkgdep
+
 	def dep_bestmatch(self,mypkgdep):
 		"""
 		returns best match for mypkgdep in the tree.  Accepts
@@ -1497,6 +1530,8 @@ class packagetree:
 		for >,<,>=,<=,=,and general deps.  Don't call with a !
 		dep, since there is no good match for a ! dep.
 		"""
+		mypkgdep=self.dep_pkgcat(mypkgdep)
+
 		if (mypkgdep[0]=="="):
 			if mypkgdep[-1]=="*":
 				if not isspecific(mypkgdep[1:-1]):
@@ -1576,21 +1611,7 @@ class packagetree:
 				return mymatch
 		elif not isspecific(mypkgdep):
 			if not self.hasnode(mypkgdep):
-				# check if a slash has been provided to
-				# seperate the category from the application
-				if '/' in mypkgdep:
-					return ""
-				# otherwise try to find a matching category
-				else:
-					mypkgdep_withcat = ""
-					for cat in categories:
-						if self.hasnode(cat+"/"+mypkgdep):
-							mypkgdep_withcat = cat+"/"+mypkgdep
-							break
-					if mypkgdep_withcat:
-						mypkgdep = mypkgdep_withcat
-					else:
-						return ""
+				return ""
 			mynodes=self.getnode(mypkgdep)[:]
 			if len(mynodes)==0:
 				return ""
@@ -1690,6 +1711,8 @@ class packagetree:
 		for >,<,>=,<=,=,and general deps.  Don't call with a !
 		dep, since there is no good match for a ! dep.
 		"""
+		mypkgdep=self.dep_pkgcat(mypkgdep)
+
 		if (mypkgdep[0]=="="):
 			if self.exists_specific(mypkgdep[1:]):
 				return [mypkgdep[1:]]
@@ -1723,21 +1746,7 @@ class packagetree:
 			return self.dep_bestmatch(mypkgdep)
 		elif not isspecific(mypkgdep):
 			if not self.hasnode(mypkgdep):
-				# check if a slash has been provided to
-				# seperate the category from the application
-				if '/' in mypkgdep:
-					return ""
-				# otherwise try to find a matching category
-				else:
-					mypkgdep_withcat = ""
-					for cat in categories:
-						if self.hasnode(cat+"/"+mypkgdep):
-							mypkgdep_withcat = cat+"/"+mypkgdep
-							break
-					if mypkgdep_withcat:
-						mypkgdep = mypkgdep_withcat
-					else:
-						return [] 
+				return [] 
 			mynodes=[]
 			for x in self.getnode(mypkgdep)[:]:
 				mynodes.append(x[0])
