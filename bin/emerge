@@ -28,16 +28,24 @@ class depgraph:
 			self.db[pr]={"virtuals":virts,"vartree":portage.vartree(pr,virts),"porttree":portage.portagetree(pr,virts),"bintree":portage.binarytree(pr,virts)}
 		self.digraph=portage.digraph()
 
-	def create(self,mybigkey=None,myparent=None):
+	def create(self,mybigkey=None,myparent=None,addme=1):
+		"""creates the actual digraph of packges to merge.  return 1 on success, 0 on failure
+		mybigkey = specification of package to merge; myparent = parent package (one depending on me);
+		addme = should I be added to the tree? (for the --onlydeps mode)"""
 		sys.stdout.write(".")	
 		sys.stdout.flush()
 		if self.digraph.hasnode(mybigkey):
 			#if we've already hit this node before, we're already recursing on the dependencies.
 			#no need to recurse again.
-			if myparent:
-				self.digraph.addnode(mybigkey,myparent)
+			if addme:
+				if myparent:
+					self.digraph.addnode(mybigkey,myparent)
 			return 1
 		mytype,myroot,mykey=string.split(mybigkey)
+		if "--noreplace" in self.myopts:
+			if self.db[myroot]["vartree"].exists_specific(mykey):
+				print "\n>>>",mykey,"already merged in",myroot+", skipping...\n"
+				return 1
 		if mytype=="binary":
 			if not self.db[portage.root]["bintree"].exists_specific(mykey):
 				print "\n\n!!!",mytype,mykey,"not found (possibly blocked by package.mask)\n"
@@ -45,7 +53,6 @@ class depgraph:
 			mytbz2=xpak.tbz2(self.db[portage.root]["bintree"].getname(mykey))
 			edepend=["",string.join(mytbz2.getelements("RDEPEND")," ")]
 		else:
-			#ebuild specified
 			if not self.db[myroot]["porttree"].exists_specific(mykey):
 				print "\n\n!!!",mytype,mykey,"not found (possibly blocked by package.mask)\n"
 				sys.exit(1)
@@ -56,15 +63,12 @@ class depgraph:
 				print "!!! emerge aborting."
 				sys.exit(1)
 		mydep={}	
-		#if portage.root=="/":
-		#	mydep["/"]=edepend[0]+" "+edepend[1]
-		#else:
-		#	mydep["/"],mydep[portage.root]=edepend
 		if myroot=="/":
 			mydep["/"]=edepend[0]+" "+edepend[1]
 		else:
 			mydep["/"],mydep[myroot]=edepend
-		self.digraph.addnode(mybigkey,myparent)
+		if addme:
+			self.digraph.addnode(mybigkey,myparent)
 		for dep in mydep.keys():
 			mycheck=self.db[dep]["vartree"].depcheck(mydep[dep])
 			if mycheck[0]==0:
@@ -73,8 +77,12 @@ class depgraph:
 			for x in mycheck[1]:
 				mynew=self.match(x,dep)
 				if not self.digraph.hasnode(mynew):
-					if not self.create(mynew,mybigkey):
-						return 0
+					if addme:
+						if not self.create(mynew,mybigkey):
+							return 0
+					else:
+						if not self.create(mynew,None):
+							return 0
 				else:
 					self.digraph.addnode(mynew,mybigkey)
 		return 1
@@ -155,7 +163,7 @@ class depgraph:
 			print ">>> emerge",x[2],"to",x[1]
 			#the last argument in the portage.doebuild() tells doebuild to *not* do dep checking
 			#(emerge is already handling that)
-			y=self.db[x[1]]["porttree"].getname(x[2])
+			y=self.db[myroot]["porttree"].getname(x[2])
 			if x[0]=="ebuild":
 				if "--fetchonly" in self.myopts:
 					retval=portage.doebuild(y,"fetch",myroot,0,edebug)
@@ -246,7 +254,9 @@ def post_emerge(retval=0):
 		print
 	sys.exit(retval)
 
-opts=["--help","--pretend","--buildpkg","--usepkg","--autoclean","--clean","--debug","--fetchonly"]
+#number of ebuilds merged
+merged=0
+opts=["--help","--pretend","--buildpkg","--usepkg","--autoclean","--clean","--debug","--fetchonly","--noreplace","--onlydeps"]
 modes=["rsync","system","update","config"]
 myopts=[]
 mymode=[]
@@ -267,12 +277,9 @@ for x in sys.argv[1:]:
 				sys.exit(1)
 			else:
 				mymode.append(x)
-		elif os.path.exists(x):
-			if not x in myfiles:
+		else:	
 				myfiles.append(x)
-		else:
-			print "!!! Error:",x,"does not exist or is an invalid command-line option."
-			sys.exit(1)
+			
 if not portage.settings.has_key("MAINTAINER"):
 	if not "--autoclean" in myopts:
 		myopts.append("--autoclean")
@@ -284,7 +291,7 @@ if "--help" in myopts:
 		print "\x1b[01mYou can also type \"emerge --help system\" and \"emerge --help rsync\" for"
 		print "additional help.\x1b[0m"
 		print
-		print "Usage: \x1b[36;01memerge\x1b[0m [ \x1b[32;01moptions\x1b[0m ] [ \x1b[36;01mebuildfile\x1b[0m | \x1b[36;01mtbz2file\x1b[0m ] ..."
+		print "Usage: \x1b[36;01memerge\x1b[0m [ \x1b[32;01moptions\x1b[0m ] [ \x1b[36;01mebuildfile\x1b[0m | \x1b[36;01mtbz2file\x1b[0m ] | \x1b[36;01mdep\x1b[0m ]..."
 		print "       \x1b[36;01memerge\x1b[0m [ \x1b[32;01moptions\x1b[0m ] \x1b[36;01msystem\x1b[0m"
 		print "       \x1b[36;01memerge\x1b[0m [ \x1b[32;01m--clean\x1b[0m ] \x1b[36;01mrsync"
 		print
@@ -302,6 +309,17 @@ if "--help" in myopts:
 		print "       \x1b[32;01m--fetchonly\x1b[0m"
 		print "              Instead of doing any package building, just perform fetches for"
 		print "              all packages (main package as well as all dependencies.)"
+		print
+		print "       \x1b[32;01m--onlydeps\x1b[0m"
+		print "              Only merge (or pretend to merge) the dependencies of the"
+		print "              specified packages, not the packages themselves."
+		print
+		print "       \x1b[32;01m--noreplace\x1b[0m"
+		print "              Skip the packages specified on the command-line that have"
+		print "              already been installed.  Without this option, any packages,"
+		print "              ebuilds, or deps you specify on on the command-line *will* cause"
+		print "              Portage to remerge the package, even if it is already installed."
+		print "              Note that Portage will never remerge dependencies automatically."
 		print
 		print "       \x1b[32;01m--usepkg\x1b[0m"
 		print "              tell emerge to use binary packages (from $DISTDIR) if they are"
@@ -454,10 +472,21 @@ for mypkg in myfiles:
 		mytype="ebuild"
 		mykey=os.path.basename(os.path.abspath(mypkg+"/../.."))+"/"+os.path.basename(mypkg)[:-7]
 	else:
-		print "!!! Error:",x,"is neither an ebuild nor a .tbz2 package."
-		sys.exit(1)
+		mykey=""
+		if "--usepkg" in myopts:
+			mykey=mydepgraph.db[portage.root]["bintree"].dep_bestmatch(mypkg)
+			mytype="binary"
+		if not mykey:
+			mykey=mydepgraph.db[portage.root]["porttree"].dep_bestmatch(mypkg)
+			mytype="ebuild"
+			if not mykey:
+				print "!!! Couldn't find match for",mypkg+"; aborting."
+				sys.exit(1)
+#	else:
+#		print "!!! Error:",x,"is neither an ebuild nor a .tbz2 package."
+#		sys.exit(1)
 	print "Calculating dependencies",
-	mydepgraph.create(mytype+" "+portage.root+" "+mykey)
+	mydepgraph.create(mytype+" "+portage.root+" "+mykey,None,"--onlydeps" not in myopts)
 	print " done!"
 	if "--pretend" in myopts:
 		mydepgraph.display(mydepgraph.altlist())
