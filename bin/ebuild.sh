@@ -554,7 +554,7 @@ insopts() {
 	for x in $*
 	do
 		#if we have a debug build, let's not strip anything
-		if [ -n "$DEBUGBUILD" ] && [ "$x" = "-s" ]
+		if has nostrip $FEATURES $RESTRICT && [ "$x" = "-s" ]
 		then
 			continue
  		else
@@ -578,7 +578,7 @@ exeopts() {
 	for x in $*
 	do
 		#if we have a debug build, let's not strip anything
-		if [ -n "$DEBUGBUILD" ] && [ "$x" = "-s" ]
+		if has nostrip $FEATURES $RESTRICT && [ "$x" = "-s" ]
 		then
 			continue
 		else
@@ -593,7 +593,7 @@ libopts() {
 	for x in $*
 	do
 		#if we have a debug build, let's not strip anything
-		if [ -n "$DEBUGBUILD" ] && [ "$x" = "-s" ]
+		if has nostrip $FEATURES $RESTRICT && [ "$x" = "-s" ]
 		then
 			continue
 		else
@@ -709,7 +709,7 @@ dyn_compile() {
 	echo "$PDEPEND"  > PDEPEND
 	echo "$PROVIDE"  > PROVIDE
 	cp ${EBUILD} ${PF}.ebuild
-	if [ -n "$DEBUGBUILD" ]
+	if has nostrip $FEATURES $RESTRICT
 	then
 		touch DEBUGBUILD
 	fi
@@ -855,8 +855,7 @@ dyn_help() {
 	echo "  c++ flags   : ${CXXFLAGS}" 
 	echo "  make flags  : ${MAKEOPTS}" 
 	echo -n "  build mode  : "
-	if [ -n "${DEBUGBUILD}" ]
-	then
+	if has nostrip $FEATURES $RESTRICT;	then
 		echo "debug (large)"
 	else
 		echo "production (stripped)"
@@ -1049,10 +1048,6 @@ source ${EBUILD} || die "error sourcing ebuild"
 #a reasonable default for $S
 if [ "$S" = "" ]; then
 	export S=${WORKDIR}/${P}
-fi
-if [ "${RESTRICT/nostrip/}" != "${RESTRICT}" ]
-then
-	export DEBUGBUILD="yes"
 fi
 
 # Note: this next line is not the same as export RDEPEND=${RDEPEND:-${DEPEND}}

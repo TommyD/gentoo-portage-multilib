@@ -9,6 +9,13 @@ from output import *
 if (not sys.stdout.isatty()) or (portage.settings["NOCOLOR"] in ["yes","true"]):
 	nocolor()
 
+if portage.settings.has_key("PORTAGE_NICENESS"):
+	try:
+		os.nice(int(portage.settings["PORTAGE_NICENESS"]))
+	except Exception,e:
+		print "!!! Failed to change nice value to '"+str(portage.settings["NICE"])+"'"
+		print "!!!",e
+
 spinner="\|/-\|/-"
 spinpos=0
 #number of ebuilds merged

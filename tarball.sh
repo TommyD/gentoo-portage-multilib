@@ -13,7 +13,7 @@ export PKG="portage"
 export TMP="/tmp"
 export V="$1"
 export DEST="${TMP}/${PKG}-${V}"
-export PREVEB="2.0.47-r10"
+export PREVEB="2.0.47-r13"
 rm -rf ${DEST}
 install -d -m0755 ${DEST}
 #get any binaries out of the way
@@ -34,9 +34,10 @@ rm ${DEST}/pym/portage.py.orig ${DEST}/man/emerge.1.orig
 cp ChangeLog ${DEST}
 cd ${DEST}
 find -name CVS -exec rm -rf {} \;
+find -name '*~' -exec rm -rf {} \;
 chown -R root.root ${DEST}
 cd $TMP
-rm -f ${PKG}-${V}/bin/emerge.py ${PKG}-${V}/bin/pmake ${PKG}-${V}/bin/*.py[oc] ${PKG}-${V}/pym/*.py[oc]
+rm -f ${PKG}-${V}/bin/emerge.py ${PKG}-${V}/bin/{pmake,sandbox} ${PKG}-${V}/{bin,pym}/*.py[oc]
 tar cjvf ${TMP}/${PKG}-${V}.tar.bz2 ${PKG}-${V}
 
 if [ -L ${TMP}/portage-copy ]; then

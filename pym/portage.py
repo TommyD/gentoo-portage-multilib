@@ -3,13 +3,13 @@
 # Distributed under the GNU Public License v2
 # $Header$
 
-VERSION="2.0.47-r11"
+VERSION="2.0.47-r13"
 
 from stat import *
 from commands import *
 from select import *
 from output import *
-import string,os,re,types,sys,shlex,shutil,xpak,fcntl,signal,time,missingos,cPickle,atexit,grp,traceback,commands,pwd
+import string,os,re,types,sys,shlex,shutil,xpak,fcntl,signal,time,missingos,cPickle,atexit,grp,traceback,commands,pwd,cvstree
 
 #Secpass will be set to 1 if the user is root or in the portage group.
 uid=os.getuid()
@@ -76,32 +76,27 @@ def abssymlink(symlink):
 	return os.path.normpath(mylink)
 
 dircache={}
-def listdir(mypath,recursive=0,filesonly=0,ignorecvs=0):
-	"""List directory contents, using cache. (from dircache module; streamlined by drobbins)
+def listdir(mypath,recursive=0,filesonly=0,ignorecvs=0,ignorelist=[]):
+	"""List directory contents, using cache.
 	Exceptions will be propagated to the caller."""
-	#print "mypath:",mypath
-	mypath=os.path.normpath(mypath)
-	try:
+	if dircache.has_key(mypath):
 		cached_mtime, list, ftype = dircache[mypath]
-	except KeyError:
+	else:
 		cached_mtime, list, ftype = -1, [], []
 	mtime = os.stat(mypath)[ST_MTIME]
 	if mtime != cached_mtime:
 		list = os.listdir(mypath)
-		for file in list:
-			#print "file::",file
-			if os.path.isfile(mypath+"/"+file):
-				#print "file:",file
-				ftype.append(0)
-			elif os.path.isdir(mypath+"/"+file):
-				#print "dir:",file
-				ftype.append(1)
+		for x in range(len(list)-1,-1,-1):
+			if list[x] in ignorelist:
+				del list[x]
+				continue
+			if os.path.isfile(mypath+"/"+list[x]):
+				ftype.insert(0,0)
+			elif os.path.isdir(mypath+"/"+list[x]):
+				ftype.insert(0,1)
 			else:
-				#print "other:",file
-				ftype.append(2)
+				ftype.insert(0,2)
 		dircache[mypath] = mtime, list, ftype
-
-	#print "!!!",list
 
 	if not filesonly and not recursive:
 		return list
@@ -110,14 +105,11 @@ def listdir(mypath,recursive=0,filesonly=0,ignorecvs=0):
 		x=0
 		while x<len(ftype):
 			if ftype[x]==1 and not (ignorecvs and (len(list[x])>=3) and (("/"+list[x][-3:])=="/CVS")):
-				#print "010:",mypath+"$"+list[x]
 				ignored=listdir(mypath+"/"+list[x],recursive,filesonly,ignorecvs)
 				m,l,f = dircache[mypath+"/"+list[x]]
 				l=l[:]
-				#print "020:",mypath+"/"+list[x]
 				for y in range(0,len(l)):
 					l[y]=list[x]+"/"+l[y]
-					#print "030:",l[y],f[y]
 				list=list+l
 				ftype=ftype+f
 			x=x+1
@@ -1174,124 +1166,210 @@ def fetch(myuris, listonly=0):
 			return 0
 	return 1
 
-def digestgen(myarchives,overwrite=1):
-	"""generates digest file if missing.  Assumes all files are available.	If
-	overwrite=0, the digest will only be created if it doesn't already exist."""
-	if not os.path.isdir(settings["FILESDIR"]):
-		os.makedirs(settings["FILESDIR"])
-		if "cvs" in features:
-			print ">>> Auto-adding files/ dir to CVS..."
-			spawn("cd "+settings["O"]+"; cvs add files",free=1)
-	myoutfn=settings["FILESDIR"]+"/.digest-"+settings["PF"]
-	myoutfn2=settings["FILESDIR"]+"/digest-"+settings["PF"]
-	if (not overwrite) and os.path.exists(myoutfn2):
-		return
-	print green(">>> Generating digest file...")
 
-	myfiles=listdir(settings["FILESDIR"],recursive=1,filesonly=1,ignorecvs=1)
-	for x in range(len(myfiles)-1,-1,-1):
-		if len(myfiles[x])>len("digest-"):
-			if myfiles[x][:len("digest-")]=="digest-":
-				del myfiles[x]
-				continue
-		if len(myfiles[x])>len(".digest-"):
-			if myfiles[x][:len(".digest-")]==".digest-":
-				del myfiles[x]
-				continue
-		myfiles[x]="/files/"+myfiles[x]
-	myfiles=myfiles+["/"+settings["PF"]+".ebuild"]
-
-	try:
-		outfile=open(myoutfn,"w")
-	except IOError, e:
-		print "!!! Filesystem error skipping generation. (Read-Only?)"
-		print "!!! "+str(e)
-		return
-	
-	for x in myfiles+myarchives:
+def digestCreate(myfiles,basedir):
+	"""Takes a list of files and the directory they are in and returns the
+	dict of dict[filename]=[md5,size]
+	returns None on error."""
+	mydigests={}
+	for x in myfiles:
 		print "<<<",x
-		if x[0]=="/":
-			myfile=settings["O"]+"/"+x
-		else:
-			myfile=settings["DISTDIR"]+"/"+x
+		myfile=basedir+x
+		if not os.access(myfile, os.R_OK):
+			print "!!! Given file does not appear to be readable. Does it exist?"
+			print "!!! File:",myfile
+			return None
 		mymd5=perform_md5(myfile)
 		mysize=os.stat(myfile)[ST_SIZE]
-		#The [:-1] on the following line is to remove the trailing "L"
-		outfile.write("MD5 "+mymd5+" "+x+" "+`mysize`[:-1]+"\n")	
+		mydigests[x]=[mymd5,mysize]
+	return mydigests
+
+
+def digestgen(myarchives,overwrite=1,manifestonly=0):
+	"""generates digest file if missing.  Assumes all files are available.	If
+	overwrite=0, the digest will only be created if it doesn't already exist."""
+
+	# archive files
+	basedir=settings["DISTDIR"]+"/"
+	digestfn=settings["FILESDIR"]+"/digest-"+settings["PF"]
+
+	# portage files -- p(ortagefiles)basedir
+	pbasedir=settings["O"]+"/"
+	manifestfn=pbasedir+"manifest"
+
+	if not manifestonly:
+		if not os.path.isdir(settings["FILESDIR"]):
+			os.makedirs(settings["FILESDIR"])
+		mycvstree=cvstree.getentries(pbasedir, recursive=1)
+
+		if ("cvs" in features) and not cvstree.isadded(mycvstree,"files"):
+			print ">>> Auto-adding files/ dir to CVS..."
+			spawn("cd "+pbasedir+"; cvs add files",free=1)
+
+		if (not overwrite) and os.path.exists(digestfn):
+			return 1
+
+		print green(">>> Generating digest file...")
+		mydigests=digestCreate(myarchives, basedir)
+		if mydigests==None: # There was a problem, exit with an errorcode.
+			return 0
+
+		try:
+			outfile=open(digestfn, "w+")
+		except Exception, e:
+			print "!!! Filesystem error skipping generation. (Read-Only?)"
+			print "!!!",e
+			return 0
+		for myarchive in myarchives:
+			mymd5=mydigests[myarchive][0]
+			mysize=mydigests[myarchive][1]
+			outfile.write("MD5 "+mymd5+" "+myarchive+" "+str(mysize)+"\n")	
+		outfile.close()
+
+	print green(">>> Generating manifest file...")
+	mypfiles=listdir(pbasedir,recursive=1,filesonly=1,ignorecvs=1)
+	if "manifest" in mypfiles:
+		del mypfiles[mypfiles.index("manifest")]
+
+	mydigests=digestCreate(mypfiles, pbasedir)
+	if mydigests==None: # There was a problem, exit with an errorcode.
+		return 0
+
+	try:
+		outfile=open(manifestfn, "w+")
+	except Exception, e:
+		print "!!! Filesystem error skipping generation. (Read-Only?)"
+		print "!!!",e
+		return 0
+	for mypfile in mypfiles:
+		mymd5=mydigests[mypfile][0]
+		mysize=mydigests[mypfile][1]
+		outfile.write("MD5 "+mymd5+" "+mypfile+" "+str(mysize)+"\n")	
 	outfile.close()
-	if not movefile(myoutfn,myoutfn2):
-		print "!!! Failed to move digest."
-		sys.exit(1)
+
 	if "cvs" in features:
-		print blue(">>> Auto-adding digest file to CVS...")
-		spawn("cd "+settings["FILESDIR"]+"; cvs add digest-"+settings["PF"],free=1)
+		mycvstree=cvstree.getentries(pbasedir, recursive=1)
+		myunaddedfiles=""
+		if not manifestonly and not cvstree.isadded(mycvstree,digestfn):
+			if digestfn[:len(pbasedir)+1]==pbasedir+"/":
+				myunaddedfiles=digestfn[len(pbasedir)+1:]+" "
+			else:
+				myunaddedfiles=digestfn+" "
+		if not cvstree.isadded(mycvstree,manifestfn):
+			if manifestfn[:len(pbasedir)]==pbasedir:
+				myunaddedfiles=manifestfn[len(pbasedir):]+" "
+			else:
+				myunaddedfiles+=manifestfn
+		if myunaddedfiles:
+			print blue(">>> Auto-adding digest file(s) to CVS...")
+			spawn("cd "+pbasedir+"; cvs add "+myunaddedfiles,free=1)
 	print darkgreen(">>> Computed message digests.")
 	print
-	
-def digestcheck(myarchives):
-	"Checks md5sums.  Assumes all files have been downloaded."
-	digestfn=settings["FILESDIR"]+"/digest-"+settings["PF"]
-	if not os.path.exists(digestfn):
-		if "digest" in features:
-			print ">>> No message digest file found:",digestfn
-			print ">>> \"digest\" mode enabled; auto-generating new digest..."
-			digestgen(myarchives)
-			return 1
-		else:
-			print "!!! No message digest file found:",digestfn
-			print "!!! Type \"ebuild foo.ebuild digest\" to generate a digest."
-			return 0
-	myfile=open(digestfn,"r")
-	mylines=myfile.readlines()
+	return 1
+
+
+def digestParseFile(myfilename):
+	"""(filename) -- Parses a given file for entries matching:
+	MD5 MD5_STRING_OF_HEX_CHARS FILE_NAME FILE_SIZE
+	Ignores lines that do not begin with 'MD5' and returns a
+	dict with the filenames as keys and [md5,size] as the values."""
+	try:
+		myfile=open(myfilename,"r")
+		mylines=myfile.readlines()
+	except:
+		return None
 	mydigests={}
-	myfiles=[]
 	for x in mylines:
 		myline=string.split(x)
-		if len(myline)<2:
+		if len(myline)!=4:
 			#invalid line
 			continue
-		mydigests[myline[2]]=[myline[1],myline[3]]
-		if myline[2][0]=="/":
-			myfiles.append(myline[2])
-	for x in myarchives+myfiles:
-		if not mydigests.has_key(x):
-			if "digest" in features:
-				print ">>> No message digest entry found for file \""+x+".\""
-				print ">>> \"digest\" mode enabled; auto-generating new digest..."
-				digestgen(myarchives)
-				return 1
-			else:
-				print ">>> No message digest entry found for file \""+x+".\""
-				print "!!! Most likely a temporary problem. Try 'emerge rsync' again later."
-				print "!!! If you are certain of the authenticity of the file then you may type"
-				print "!!! the following to generate a new digest:"
-				print "!!!   ebuild /usr/portage/category/package/package-version.ebuild digest" 
-				return 0
-		if x[0]=="/":
-			mfile=settings["O"]+"/"+x
-		else:
-			mfile=settings["DISTDIR"]+"/"+x
-		if not os.path.exists(mfile):
+		if myline[0]!='MD5': # Ignore non-md5 lines.
 			continue
-		mymd5=perform_md5(mfile)
+		mydigests[myline[2]]=[myline[1],myline[3]]
+	return mydigests
+
+def digestCheckFiles(myfiles, mydigests, basedir, note=""):
+	"""(fileslist, digestdict, basedir) -- Takes a list of files and a dict
+	of their digests and checks the digests against the indicated files in
+	the basedir given. Returns 1 only if all files exist and match the md5s.
+	"""
+	for x in myfiles:
+		if not mydigests.has_key(x):
+			print "!!! No message digest entry found for file \""+x+".\""
+			print "!!! Most likely a temporary problem. Try 'emerge rsync' again later."
+			print "!!! If you are certain of the authenticity of the file then you may type"
+			print "!!! the following to generate a new digest:"
+			print "!!!   ebuild /usr/portage/category/package/package-version.ebuild digest" 
+			return 0
+		myfile=basedir+"/"+x
+		if not os.path.exists(myfile):
+			if strict:
+				print "!!! File does not exist:",myfile
+				return 0
+			continue
+		mymd5=perform_md5(myfile)
 		if mymd5 != mydigests[x][0]:
 			print
 			print red("!!! A file is corrupt or incomplete. (Digests do not match)")
 			print green(">>> our recorded digest:"),mydigests[x][0]
 			print green(">>>  your file's digest:"),mymd5
-			if x[0]=="/":
-				print red(">>> file: "+settings["O"]+x)
-				print
-				print ">>> Please ensure you have sync'd properly. Please try '"+bold("emerge sync")+"' and"
-				print ">>> optionally examine the file for corruption. "+bold("A sync will fix most cases.")
-			else:
-				print
-				print ">>> Please delete",settings["DISTDIR"]+"/"+x,"and refetch."
 			print
 			return 0
 		else:
-			print ">>> md5 ;-)",x
+			print ">>> md5 "+note+" ;-)",x
 	return 1
+
+
+def digestcheck(myfiles,strict=0):
+	"""Checks md5sums.  Assumes all files have been downloaded."""
+
+	# archive files
+	basedir=settings["DISTDIR"]+"/"
+	digestfn=settings["FILESDIR"]+"/digest-"+settings["PF"]
+
+	# portage files -- p(ortagefiles)basedir
+	pbasedir=settings["O"]+"/"
+	manifestfn=pbasedir+"manifest"
+
+	if not (os.path.exists(digestfn) and os.path.exists(manifestfn)):
+		if "digest" in features:
+			print ">>> No message digest/manifest file found:",digestfn
+			print ">>> \"digest\" mode enabled; auto-generating new digest..."
+			return digestgen(myfiles)
+		else:
+			print "!!! No message digest file found:",digestfn
+			print "!!! Type \"ebuild foo.ebuild digest\" to generate a digest."
+			return 0
+
+	mydigests=digestParseFile(digestfn)
+	if mydigests==None:
+		print "!!! Failed to parse digest file:",digestfn
+		return 0
+	mymdigests=digestParseFile(manifestfn)
+	if mymdigests==None:
+		print "!!! Failed to parse manifest file:",manifestfn
+		return 0
+
+	# Check the portage-related files here.
+	mymfiles=listdir(pbasedir,recursive=1,filesonly=1,ignorecvs=1)
+	for x in range(len(mymfiles)-1,-1,-1):
+		if mymfiles[x]=='manifest': # We don't want the manifest in out list.
+			del mymfiles[x]
+			continue
+		if mymfiles[x] not in mymdigests.keys():
+			print "!!! Security Violation: A file exists that is not in the manifest."
+			print "!!! File:",mymfile[x]
+			if strict:
+				return 0
+	
+	if not digestCheckFiles(mymfiles, mymdigests, pbasedir, "manifest"):
+		print ">>> Please ensure you have sync'd properly. Please try '"+bold("emerge sync")+"' and"
+		print ">>> optionally examine the file(s) for corruption. "+bold("A sync will fix most cases.")
+		return 0
+	
+	# Just return the status, as it's the last check.
+	return digestCheckFiles(myfiles, mydigests, basedir, "tarballs")
 
 # parse actionmap to spawn ebuild with the appropriate args
 def spawnebuild(mydo,actionmap,debug,alwaysdep=0):
@@ -1308,7 +1386,6 @@ def spawnebuild(mydo,actionmap,debug,alwaysdep=0):
 				actionmap[mydo]["args"][1]
 	)
 
-# "checkdeps" support has been deprecated.  Relying on emerge to handle it.
 def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 	global settings
 
@@ -1377,21 +1454,6 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 		myso=getstatusoutput("uname -r")
 		settings["KVERS"]=myso[1]
 
-	try:
-		if ("userpriv" in features) and portage_uid and portage_gid:
-			settings["HOME"]=settings["BUILD_PREFIX"]+"/homedir"
-			if (secpass==2):
-				if os.path.exists(settings["HOME"]):
-					spawn("rm -Rf "+settings["HOME"], free=1)
-				if not os.path.exists(settings["HOME"]):
-					os.makedirs(settings["HOME"])
-		elif ("userpriv" in features):
-			print "!!! Disabling userpriv from features... Portage UID/GID not valid."
-			del features[features.index("userpriv")]
-	except Exception, e:
-		print "!!! Couldn't empty HOME:",settings["HOME"]
-		print "!!!",e
-
 	# get possible slot information from the deps file
 	if mydo=="depend":
 		myso=getstatusoutput("/usr/sbin/ebuild.sh depend")
@@ -1400,98 +1462,115 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 			print myso[1]
 		return myso[0]
 
-	try:
-		# no reason to check for depend since depend returns above.
-		if not os.path.exists(settings["BUILD_PREFIX"]):
-			os.makedirs(settings["BUILD_PREFIX"])
-		os.chown(settings["BUILD_PREFIX"],portage_uid,portage_gid)
-		if not os.path.exists(settings["BUILDDIR"]):
-			os.makedirs(settings["BUILDDIR"])
-		os.chown(settings["BUILDDIR"],portage_uid,portage_gid)
+	# Build directory creation isn't required for any of these.
+	if mydo not in ["digest"]:
+		try:
+			if ("userpriv" in features) and portage_uid and portage_gid:
+				settings["HOME"]=settings["BUILD_PREFIX"]+"/homedir"
+				if (secpass==2):
+					if os.path.exists(settings["HOME"]):
+						spawn("rm -Rf "+settings["HOME"], free=1)
+					if not os.path.exists(settings["HOME"]):
+						os.makedirs(settings["HOME"])
+			elif ("userpriv" in features):
+				print "!!! Disabling userpriv from features... Portage UID/GID not valid."
+				del features[features.index("userpriv")]
+		except Exception, e:
+			print "!!! Couldn't empty HOME:",settings["HOME"]
+			print "!!!",e
 
-		# Should be ok again to set $T, as sandbox do not depend on it
-		settings["T"]=settings["BUILDDIR"]+"/temp"
-		if not os.path.exists(settings["T"]):
-			os.makedirs(settings["T"])
-		os.chown(settings["T"],portage_uid,portage_gid)
-		os.chmod(settings["T"],06770)
-	except OSError, e:
-		print "!!! File system problem. (ReadOnly? Out of space?)"
-		print "!!! Perhaps: rm -Rf",settings["BUILD_PREFIX"]
-		print "!!!",str(e)
-		return 1
+		try:
+			# no reason to check for depend since depend returns above.
+			if not os.path.exists(settings["BUILD_PREFIX"]):
+				os.makedirs(settings["BUILD_PREFIX"])
+			os.chown(settings["BUILD_PREFIX"],portage_uid,portage_gid)
+			if not os.path.exists(settings["BUILDDIR"]):
+				os.makedirs(settings["BUILDDIR"])
+			os.chown(settings["BUILDDIR"],portage_uid,portage_gid)
 
-	try:
-		if not os.path.exists(settings["DISTDIR"]):
-			os.makedirs(settings["DISTDIR"])
-		if not os.path.exists(settings["DISTDIR"]+"/cvs-src"):
-			os.makedirs(settings["DISTDIR"]+"/cvs-src")
-	except OSError, e:
-		print "!!! File system problem. (ReadOnly? Out of space?)"
-		print "!!!",str(e)
-		return 1
+			# Should be ok again to set $T, as sandbox do not depend on it
+			settings["T"]=settings["BUILDDIR"]+"/temp"
+			if not os.path.exists(settings["T"]):
+				os.makedirs(settings["T"])
+			os.chown(settings["T"],portage_uid,portage_gid)
+			os.chmod(settings["T"],06770)
+		except OSError, e:
+			print "!!! File system problem. (ReadOnly? Out of space?)"
+			print "!!! Perhaps: rm -Rf",settings["BUILD_PREFIX"]
+			print "!!!",str(e)
+			return 1
 
-	try:
-		mystat=os.stat(settings["DISTDIR"]+"/cvs-src")
-		if (mystat[ST_GID]!=portage_gid) or ((mystat[ST_MODE]&02770)!=02770):
-			print "*** Adjusting cvs-src permissions for portage user..."
-			os.chown(settings["DISTDIR"]+"/cvs-src",0,portage_gid)
-			os.chmod(settings["DISTDIR"]+"/cvs-src",02770)
-			spawn("chgrp -R "+str(portage_gid)+" "+settings["DISTDIR"]+"/cvs-src", free=1)
-			spawn("chmod -R g+rw "+settings["DISTDIR"]+"/cvs-src", free=1)
-	except:
-		pass
+		try:
+			if not os.path.exists(settings["DISTDIR"]):
+				os.makedirs(settings["DISTDIR"])
+			if not os.path.exists(settings["DISTDIR"]+"/cvs-src"):
+				os.makedirs(settings["DISTDIR"]+"/cvs-src")
+		except OSError, e:
+			print "!!! File system problem. (ReadOnly? Out of space?)"
+			print "!!!",str(e)
+			return 1
 
-	try:
-		if ("userpriv" in features) and ("ccache" in features):
-			if (not settings.has_key("CCACHE_DIR")) or (settings["CCACHE_DIR"]==""):
-				settings["CCACHE_DIR"]=settings["PORTAGE_TMPDIR"]+"/ccache"
-			if not os.path.exists(settings["CCACHE_DIR"]):
-				os.makedirs(settings["CCACHE_DIR"])
-			if not os.path.exists(settings["HOME"]):
-				os.makedirs(settings["HOME"])
-			os.chown(settings["HOME"],portage_uid,portage_gid)
-			os.chmod(settings["HOME"],06770)
-	except OSError, e:
-		print "!!! File system problem. (ReadOnly? Out of space?)"
-		print "!!! Perhaps: rm -Rf",settings["BUILD_PREFIX"]
-		print "!!!",str(e)
-		return 1
+		try:
+			mystat=os.stat(settings["DISTDIR"]+"/cvs-src")
+			if (mystat[ST_GID]!=portage_gid) or ((mystat[ST_MODE]&02770)!=02770):
+				print "*** Adjusting cvs-src permissions for portage user..."
+				os.chown(settings["DISTDIR"]+"/cvs-src",0,portage_gid)
+				os.chmod(settings["DISTDIR"]+"/cvs-src",02770)
+				spawn("chgrp -R "+str(portage_gid)+" "+settings["DISTDIR"]+"/cvs-src", free=1)
+				spawn("chmod -R g+rw "+settings["DISTDIR"]+"/cvs-src", free=1)
+		except:
+			pass
 
-	try:
-		mystat=os.stat(settings["CCACHE_DIR"])
-		if (mystat[ST_GID]!=portage_gid) or ((mystat[ST_MODE]&02070)!=02070):
-			print "*** Adjusting ccache permissions for portage user..."
-			os.chown(settings["CCACHE_DIR"],portage_uid,portage_gid)
-			os.chmod(settings["CCACHE_DIR"],02770)
-			if mystat[ST_GID]!=portage_gid:
-				spawn("chown -R "+str(portage_uid)+":"+str(portage_gid)+" "+settings["CCACHE_DIR"], free=1)
-				spawn("chmod -R g+rw "+settings["CCACHE_DIR"], free=1)
-	except:
-		pass
+		try:
+			if ("userpriv" in features) and ("ccache" in features):
+				if (not settings.has_key("CCACHE_DIR")) or (settings["CCACHE_DIR"]==""):
+					settings["CCACHE_DIR"]=settings["PORTAGE_TMPDIR"]+"/ccache"
+				if not os.path.exists(settings["CCACHE_DIR"]):
+					os.makedirs(settings["CCACHE_DIR"])
+				if not os.path.exists(settings["HOME"]):
+					os.makedirs(settings["HOME"])
+				os.chown(settings["HOME"],portage_uid,portage_gid)
+				os.chmod(settings["HOME"],06770)
+		except OSError, e:
+			print "!!! File system problem. (ReadOnly? Out of space?)"
+			print "!!! Perhaps: rm -Rf",settings["BUILD_PREFIX"]
+			print "!!!",str(e)
+			return 1
 
-	settings["WORKDIR"]=settings["BUILDDIR"]+"/work"
-	settings["D"]=settings["BUILDDIR"]+"/image/"
+		try:
+			mystat=os.stat(settings["CCACHE_DIR"])
+			if (mystat[ST_GID]!=portage_gid) or ((mystat[ST_MODE]&02070)!=02070):
+				print "*** Adjusting ccache permissions for portage user..."
+				os.chown(settings["CCACHE_DIR"],portage_uid,portage_gid)
+				os.chmod(settings["CCACHE_DIR"],02770)
+				if mystat[ST_GID]!=portage_gid:
+					spawn("chown -R "+str(portage_uid)+":"+str(portage_gid)+" "+settings["CCACHE_DIR"], free=1)
+					spawn("chmod -R g+rw "+settings["CCACHE_DIR"], free=1)
+		except:
+			pass
 
-	if mydo=="unmerge":
-		return unmerge(settings["CATEGORY"],settings["PF"],myroot)
+		settings["WORKDIR"]=settings["BUILDDIR"]+"/work"
+		settings["D"]=settings["BUILDDIR"]+"/image/"
 
-	if settings.has_key("PORT_LOGDIR"):
-		if os.access(settings["PORT_LOGDIR"]+"/",os.W_OK):
-			try:
-				os.chown(settings["BUILD_PREFIX"],portage_uid,portage_gid)
-				os.chmod(settings["PORT_LOGDIR"],06770)
-				if not settings.has_key("LOG_PF") or (settings["LOG_PF"] != settings["PF"]):
-					settings["LOG_PF"]=settings["PF"]
-					settings["LOG_COUNTER"]=str(get_counter_tick_core("/"))
-			except Exception, e:
+		if mydo=="unmerge":
+			return unmerge(settings["CATEGORY"],settings["PF"],myroot)
+
+		if settings.has_key("PORT_LOGDIR"):
+			if os.access(settings["PORT_LOGDIR"]+"/",os.W_OK):
+				try:
+					os.chown(settings["BUILD_PREFIX"],portage_uid,portage_gid)
+					os.chmod(settings["PORT_LOGDIR"],06770)
+					if not settings.has_key("LOG_PF") or (settings["LOG_PF"] != settings["PF"]):
+						settings["LOG_PF"]=settings["PF"]
+						settings["LOG_COUNTER"]=str(get_counter_tick_core("/"))
+				except Exception, e:
+					settings["PORT_LOGDIR"]=""
+					print "!!! Unable to chown/chmod PORT_LOGDIR. Disabling logging."
+					print "!!!",e
+			else:
+				print "!!! Cannot create log... No write access / Does not exist"
+				print "!!! PORT_LOGDIR:",settings["PORT_LOGDIR"]
 				settings["PORT_LOGDIR"]=""
-				print "!!! Unable to chown/chmod PORT_LOGDIR. Disabling logging."
-				print "!!!",e
-		else:
-			print "!!! Cannot create log... No write access / Does not exist"
-			print "!!! PORT_LOGDIR:",settings["PORT_LOGDIR"]
-			settings["PORT_LOGDIR"]=""
 	
 	# if any of these are being called, handle them -- running them out of the sandbox -- and stop now.
 	if mydo in ["help","clean","setup","prerm","postrm","preinst","postinst","config"]:
@@ -1502,6 +1581,7 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 	except (IOError,KeyError):
 		print red("doebuild():")+" aux_get() error; aborting."
 		sys.exit(1)
+
 	newuris=flatten(evaluate(tokenize(myuris),string.split(settings["USE"])))	
 	alluris=flatten(evaluate(tokenize(myuris),[],1))	
 	alist=[]
@@ -1531,14 +1611,12 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 	if "digest" in features:
 		#generate digest if it doesn't exist.
 		if mydo=="digest":
-			digestgen(checkme,overwrite=1)
-			return 0
+			return (not digestgen(checkme,overwrite=1))
 		else:
 			digestgen(checkme,overwrite=0)
 	elif mydo=="digest":
 		#since we are calling "digest" directly, recreate the digest even if it already exists
-		digestgen(checkme,overwrite=1)
-		return 0
+		return (not digestgen(checkme,overwrite=1))
 	
 	if not digestcheck(checkme):
 		return 1
@@ -4665,8 +4743,8 @@ def do_upgrade(mykey):
 	writedict(myvirts,"/var/cache/edb/virtuals")
 
 if (secpass==2) and (not os.environ.has_key("SANDBOX_ACTIVE")):
-	if not os.environ.has_key("REPOMAN"):
-		#only do this if we're root and not running repoman
+	if settings["PORTAGE_CALLER"] not in ["repoman","ebuild"]:
+		#only do this if we're root and not running repoman/ebuild digest
 		updpath=os.path.normpath(settings["PORTDIR"]+"/profiles/updates")
 		didupdate=0
 		if not mtimedb.has_key("updates"):

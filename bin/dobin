@@ -14,7 +14,7 @@ fi
 
 for x in "$@" ; do
 	if [ -x "${x}" ] ; then
-		if [ -z "$DEBUGBUILD" ] ; then
+		if ! has nostrip $FEATURES $RESTRICT ; then
 			MYVAL=`file "${x}" | grep "ELF"` 
 			if [ -n "$MYVAL" ] ; then
 				strip "${x}"

@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-if [ -n "${DEBUGBUILD}" ] ; then
+if has nostrip $FEATURES $RESTRICT ; then
 	exit 0
 fi
 

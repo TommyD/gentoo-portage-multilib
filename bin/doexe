@@ -13,7 +13,7 @@ if [ ! -d "${D}${EXEDESTTREE}" ] ; then
 fi
 
 for x in "$@" ; do
-	if [ -z "$DEBUGBUILD" ] ; then
+	if ! has nostrip $FEATURES $RESTRICT ; then
 		MYVAL=`file "${x}" | grep "ELF"` 
 		if [ -n "$MYVAL" ] ; then
 			strip "${x}"

@@ -13,7 +13,7 @@ fi
 
 for x in "$@" ; do
 	if [ -e "${x}" ] ; then
-		if [ -z "$DEBUGBUILD" ] ; then
+		if ! has nostrip $FEATURES $RESTRICT ; then
 			strip --strip-debug "${x}"
 		fi
 		install -m0755 "${x}" "${D}${DESTTREE}/lib"
