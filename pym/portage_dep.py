@@ -35,7 +35,7 @@ def paren_reduce(mystr,tokenize=1):
 			subsec = None
 			tail = ""
 		elif mystr[0] == ")":
-			return mylist,mystr[1:]
+			return [mylist,mystr[1:]]
 		elif ("(" in mystr) and (mystr.index("(") < mystr.index(")")):
 			freesec,subsec = mystr.split("(",1)
 			subsec,tail = paren_reduce(subsec,tokenize)
