@@ -31,9 +31,24 @@ Defaults to /.
 .TP
 \fBFEATURES\fR = \fI"buildpkg ccache cvs digest mirror noauto noclean sandbox"\fR
 Defines actions portage takes by default.  These options should
-not be changed by anyone but developers and/or maintainers.
-'sandbox' is an important part of features and should not be
-disabled by default.
+not be changed by anyone but developers and/or maintainers.  'sandbox' is an important
+part of \fBFEATURES\fR and should not be disabled by default.
+.br
+\fIbuildpkg\fR: binary packages will always be generated.
+.br
+\fIccache\fR: enable portage support for the ccache package.
+.br
+\fIcvs\fR: enable auto-commit files after emerging a package.
+.br
+\fIdigest\fR: autogenerate a digest for packages.
+.br
+\fImirror\fR: cause \fBFETCHCOMMAND\fR to always be run even if file exists in \fBDISDIR\fR.
+.br
+\fInoauto\fR: when utilizing \fBebuild\fR(1), only run the function requested.
+.br
+\fInoclean\fR: do not clean out the temp build directory before building the pkg.
+.br
+\fIsandbox\fR: enable sandbox-ing when running \fBemerge\fR(1) and \fBebuild(1)\fR.
 .TP
 \fBNOCOLOR\fR = \fI["true" | "false"]\fR
 Defines if color should be disabled by default.
@@ -102,10 +117,16 @@ http://gcc.gnu.org/onlinedocs/gcc-2.95.3/gcc_2.html
 \fBDEBUGBUILD\fR
 If this is defined, binaries and libraries are not stripped before \fImerge\fR.
 .TP
-\fBUSE\fR
+\fBUSE\fR = \fI[space delimited list of USE items]\fR
 This variable contains options that control the build behavior of
 several packages.  More information in \fBebuild\fR(5).  Possible USE values
 can be found in \fI/usr/portage/profiles/use.desc\fR.
+.TP
+\fBACCEPT_KEYWORDS\fR = \fI[space delimited list of KEYWORDS]\fR
+Enable testing of ebuilds that have not yet been deemed 'stable'.  Users of the 'x86'
+architecture would set this to '~x86' while ppc users would set this to '~ppc'.
+.br
+Defaults to no value.
 .TP
 \fBFETCHCOMMAND\fR
 This variable contains the command used for fetching package\-sources from
