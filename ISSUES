@@ -1,0 +1,3 @@
+- pkg_setup and sandbox
+- $ECONF_SOURCE not existant
+- eclasses showing up in -vp
