@@ -696,9 +696,6 @@ then
 fi
 KV="${KV/linux-/}"
 
-#turn off glob expansion from here on in to prevent *'s and ? in the DEPEND
-#syntax from getting expanded :)  Fixes bug #1473
-set -f
 source ${EBUILD} 
 if [ $? -ne 0 ]
 then
@@ -718,10 +715,14 @@ fi
 # Note: this next line is not the same as export RDEPEND=${RDEPEND:-${DEPEND}}
 # That will test for unset *or* NULL ("").  We want just to set for unset...
 
+#turn off glob expansion from here on in to prevent *'s and ? in the DEPEND
+#syntax from getting expanded :)  Fixes bug #1473
+set -f
 if [ -z "`set | grep ^RDEPEND=`" ]
 then
 	export RDEPEND=${DEPEND}
 fi
+set +f
 
 count=1
 while [ $count -le $# ]
@@ -767,8 +768,10 @@ do
 	    fi
 	    ;;
 	depend)
+		set -f
 		#the echo commands remove newlines
 		echo "['`echo $DEPEND`', '`echo $RDEPEND`', '`echo $SLOT`', '`echo $SRC_URI`','`echo $RESTRICT`' ]" > /var/cache/edb/dep/dep-${PF}.ebuild
+		set +f
 		exit 0
 		;;
 	*)
