@@ -693,7 +693,7 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 			return dep_frontend("build",myebuild,mydeps[0])
 		elif mydo=="rcheck":
 			return dep_frontend("runtime",myebuild,mydeps[1])
-		if mydo in ["merge","qmerge","unpack", "compile", "rpm", "package"]:
+		if mydo in ["merge","qmerge", "compile", "rpm", "package"]:
 			#optional dependency check -- if emerge is merging, this is skipped 
 			retval=dep_frontend("build",myebuild,mydeps[0])
 			if (retval): return retval

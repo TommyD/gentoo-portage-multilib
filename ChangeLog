@@ -1,6 +1,11 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+  21 Feb 2002; Daniel Robbins <drobbins@gentoo.org> ebuild.sh, portage.py:
+  Dependencies should be no longer checked during the "unpack" stage.  This
+  closes bug #231.  Added the $KV kernel version variable to ebuild.sh so
+  that it's available for all ebuilds.  This closes bug #599.
+  
   21 Feb 2002; Daniel Robbins <drobbins@gentoo.org> ebuild.sh: S now defaults
   to ${WORKDIR}/${P} if it isn't defined.  That's right.  Defining S is now 
   optional :)  This should eliminate around 1000 lines from our ports tree.

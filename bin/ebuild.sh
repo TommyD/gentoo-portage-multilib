@@ -711,11 +711,15 @@ diefunc() {
 alias die='diefunc "$FUNCNAME" "$LINENO" "$?"'
 alias assert='_retval=$?; [ $_retval = 0 ] || diefunc "$FUNCNAME" "$LINENO" "$_retval"'
 
+#grab currently-installed kernel symlink version and set KV
+KV="`readlink ${ROOT}usr/src/linux 2>/dev/null`"
+if [ $? -ne 0 ]
+then
+	KV=""
+fi
+KV="${KV/linux-/}"
 
-#if [ -e ${PEBUILD} ]
-#then
-#	source ${PEBUILD}
-#fi
+
 source ${EBUILD} 
 if [ $? -ne 0 ]
 then
