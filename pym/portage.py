@@ -648,7 +648,7 @@ def fetch(myuris):
 		docontinue=0
 		try:
 			mystat=os.stat(settings["DISTDIR"]+"/"+myfile)
-			if mydigests!=None:
+			if mydigests!=None and mydigests.has_key(myfile):
 				#if we have the digest file, we know the final size and can resume the download.
 				if mystat[ST_SIZE]<mydigests[myfile]["size"]:
 					print ">>> Resuming download..."
@@ -679,7 +679,7 @@ def fetch(myuris):
 			myfetch=string.replace(locfetch,"${URI}",loc)
 			myfetch=string.replace(myfetch,"${FILE}",myfile)
 			myret=spawn(myfetch,free=1)
-			if (mydigests!=None):
+			if mydigests!=None and mydigests.has_key[myfile]:
 				try:
 					mystat=os.stat(settings["DISTDIR"]+"/"+myfile)
 					if mystat[ST_SIZE]==mydigests[myfile]["size"]:
@@ -727,11 +727,13 @@ def digestcheck(myarchives):
 	"Checks md5sums.  Assumes all files have been downloaded."
 	digestfn=settings["FILESDIR"]+"/digest-"+settings["PF"]
 	if not os.path.exists(digestfn):
-		print "!!! No message digest file found.",digestfn
 		if "digest" in features:
+			print ">>> No message digest file found.",digestfn
+			print ">>> \"digest\" mode enabled; auto-generating new digest..."
 			digestgen(myarchives)
 			return 1
 		else:
+			print "!!! No message digest file found.",digestfn
 			print "!!! Type \"ebuild foo.ebuild digest\" to generate a digest."
 			return 0
 	myfile=open(digestfn,"r")
@@ -745,9 +747,15 @@ def digestcheck(myarchives):
 		mydigests[myline[2]]=[myline[1],myline[3]]
 	for x in myarchives:
 		if not mydigests.has_key(x):
-			print "!!! No message digest found for",x+"."
-			print "!!! Type \"ebuild foo.ebuild digest\" to generate a digest."
-			return 0
+			if "digest" in features:
+				print ">>> No messages digest found for",x+"."
+				print ">>> \"digest\" mode enabled; auto-generating new digest..."
+				digestgen(myarchives)
+				return 1
+			else:
+				print "!!! No message digest found for",x+"."
+				print "!!! Type \"ebuild foo.ebuild digest\" to generate a digest."
+				return 0
 		mymd5=md5(settings["DISTDIR"]+"/"+x) 
 		if mymd5 != mydigests[x][0]:
 			print
