@@ -3923,10 +3923,6 @@ class portdbapi(dbapi):
 		
 		self.depcachedir = self.mysettings.depcachedir
 
-		self.tmpfs = self.mysettings["PORTAGE_TMPFS"]
-		if not os.path.exists(self.tmpfs):
-			self.tmpfs = None
-		
 		self.eclassdb = eclass_cache(self.porttree_root, self.mysettings)
 
 		self.metadb       = {}
