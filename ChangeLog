@@ -3,10 +3,13 @@
 
 *portage-1.8.9 (30 Mar 2002)
 
-  30 Mar 2002; Daniel Robbins <drobbins@gentoo.org> entries in the world 
-  profile will be ignored if at least one version of the package in question
-  isn't already merged.  Prevents "--update world" from remerging packages
-  that have since been unmerged.
+  30 Mar 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: tiny cosmetic
+  fix for digest generation.
+  
+  30 Mar 2002; Daniel Robbins <drobbins@gentoo.org> emerge: entries in the
+  world profile will be ignored if at least one version of the package in
+  question isn't already merged.  Prevents "--update world" from remerging
+  packages that have since been unmerged.
   
   30 Mar 2002; Daniel Robbins <drobbins@gentoo.org> various: changing all
   references from /usr/bin/python to /usr/bin/python2.2.

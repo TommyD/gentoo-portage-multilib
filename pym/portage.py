@@ -970,6 +970,8 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 	if "digest" in features:
 		#generate digest if it doesn't exist.
 		digestgen(checkme,overwrite=0)
+		if mydo=="digest":
+			return 0
 	elif mydo=="digest":
 		digestgen(checkme,overwrite=1)
 		return 0
