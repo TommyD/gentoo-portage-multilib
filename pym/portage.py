@@ -114,9 +114,9 @@ try:
 	                         portage_uid, portage_gid
 	
 	import portage_util
-	from portage_util import grab_multiple, grabdict, grabdict_package, grabfile, grabints, map_dictlist_vals, \
-		pickle_read, pickle_write, stack_dictlist, stack_dicts, stack_lists, unique_array, varexpand, \
-		writedict, writeints, writemsg, getconfig
+	from portage_util import grab_multiple, grabdict, grabdict_package, grabfile, grabfile_package, \
+		grabints, map_dictlist_vals, pickle_read, pickle_write, stack_dictlist, stack_dicts, stack_lists, \
+		unique_array, varexpand, writedict, writeints, writemsg, getconfig
 	import portage_exception
 	import portage_gpg
 	import portage_locks

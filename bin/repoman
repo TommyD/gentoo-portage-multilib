@@ -899,12 +899,13 @@ for x in scanlist:
 
 				if (profiles.has_key(arch)):
 					profdir=portdir+"/profiles/"+profiles[arch][0]
+					if (not os.path.exists(profdir)):
+						continue
 				else:
-					profdir=portdir+"/profiles/default-"+arch+"-2004.0"
+					continue
+
 				portage.profiledir=profdir
 				os.environ["ACCEPT_KEYWORDS"]="-~"+arch
-				if (not os.path.exists(profdir)):
-					continue
 
 				if arch_caches.has_key(arch):
 					dep_settings, portage.portdb = arch_caches[arch]

@@ -8,7 +8,8 @@
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
   27 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> dispatch-conf: Moved temp file
-  creation from /tmp to /var/lib/portage.
+  creation from /tmp to /var/lib/portage. Made the log file a configurable option
+  that is disabled by default.
 
   26 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> portage.py:  Added a check to
   portdbapi.fetchcheck to account for a missing digest.
@@ -72,7 +73,7 @@
   22 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> emerge: Added python version
   to "emerge info" output.
 
-*portage-2.0.51 (20 Oct 2004): Everyone loves finding bugs in stable!
+*portage-2.0.51-r2 (20 Oct 2004): Everyone loves finding bugs in stable!
 
   20 Oct 2004; Nicholas Jones <carpaski@gentoo.org> emerge: Fixed the result
   checking when ebuilds are called -- this removes the continuing-after failure

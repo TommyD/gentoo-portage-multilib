@@ -50,8 +50,6 @@ def cleanup(mydir=SCRATCH_DIR):
     shutil.rmtree(SCRATCH_DIR)
 atexit.register(cleanup)
 
-LOG_CHANGES_TO = '/tmp/dispatch-conf.changes'
-
 MANDATORY_OPTS  = [ 'archive-dir', 'diff', 'pager', 'replace-cvs', 'replace-wscomments' ]
 
 class dispatch:
@@ -61,10 +59,14 @@ class dispatch:
         confs = []
         count = 0
 
-        if os.path.exists(LOG_CHANGES_TO):
-            shutil.move(LOG_CHANGES_TO, LOG_CHANGES_TO + '.old')
 
         self.options = dispatch_conf.read_config(MANDATORY_OPTS)
+
+        if self.options.has_key("log-file"):
+            if os.path.exists(self.options["log-file"]):
+                shutil.move(self.options["log-file"], self.options["log-file"] + '.old')
+        else:
+            self.options["log-file"] = "/dev/null"
 
         #
         # Build list of extant configs
@@ -214,8 +216,8 @@ class dispatch:
 
     def replace (self, newconf, curconf):
         """Replace current config with the new/merged version.  Also logs
-        the diff of what changed into the LOG_CHANGES_TO file."""
-        os.system((DIFF_CONTENTS % (curconf, newconf)) + '>>' + LOG_CHANGES_TO)
+        the diff of what changed into the configured log file."""
+        os.system((DIFF_CONTENTS % (curconf, newconf)) + '>>' + self.config["log-file"])
         try:
             shutil.move(newconf, curconf)
         except (IOError, os.error), why:
