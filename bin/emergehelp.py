@@ -15,7 +15,7 @@ def shorthelp():
 	print "   "+turquoise("emerge")+" < "+turquoise("sync")+" | "+turquoise("info")+" >"
 	print "   "+turquoise("emerge")+" "+turquoise("--resume")+" [ "+green("--pretend")+" | "+green("--ask")+" | "+green("--skipfirst")+" ]"
 	print "   "+turquoise("emerge")+" "+turquoise("--help")+" [ "+green("system")+" | "+green("config")+" | "+green("sync")+" ] "
-	print bold("Options:")+" "+green("-")+"["+green("abcCdDefhikKlnoOpPsSuUvV")+"] ["+green("--oneshot")+"] ["+green("--noconfmem")+"]"
+	print bold("Options:")+" "+green("-")+"["+green("abcCdDefhikKlnoOpPsSuUvV")+"] ["+green("--oneshot")+"] ["+green("--newuse")+"] ["+green("--noconfmem")+"]"
 	print      "                                    ["+green("--columns")+"] ["+green("--nospinner")+"]"
 	print bold("Actions:")+" [ "+green("clean")+" | "+green("depclean")+" | "+green("inject")+" | "+green("prune")+" | "+green("regen")+" | "+green("search")+" | "+green("unmerge")+" ]"
 	print
@@ -186,6 +186,10 @@ def help(myaction,myopts,havecolor=1):
 		print "              ANY information from the local machine. All binaries will be"
 		print "              downloaded from the remote server without consulting packages"
 		print "              existing in the packages directory."
+		print
+		print "       "+green("--newuse")
+		print "              Tells emerge to include installed packages where USE flags have "
+		print "              changed since installation."
 		print
 		print "       "+green("--noconfmem")
 		print "              Portage keeps track of files that have been placed into"

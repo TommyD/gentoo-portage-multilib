@@ -229,6 +229,10 @@ on that subject.  The internal \fBemerge\fR help documentation is
 updated more frequently than this man page; check it out if you
 are having problems that this man page does not help resolve.
 .TP 
+.BR "\-\-newuse"
+Tells emerge to include installed packages where USE flags have changed
+since installation.
+.TP 
 .BR "\-\-noconfmem"
 Causes portage to disregard merge records indicating that a config file
 inside of a \fBCONFIG_PROTECT\fR directory has been merged already.  Portage
@@ -381,11 +385,13 @@ when the previous version emerged was injected (see \fBinject\fR for more info)
 or very outdated (so old that \fBSLOT\fR did not exist).  Either way, a newer version
 of Xfree is availabe for your updating delight.
 .TP 
-.B [ebuild    U ] net\-analyzer/nmap\-3.15_beta2 [3.15_beta1] \-gtk \-gnome
+.B [ebuild     U ] sys\-devel/distcc\-2.16 [2.13-r1] \-gnome \-gtk +ipv6* (\-selinux)
 The \-gtk and \-gnome reflect the status of \fBUSE\fR variables when emerging nmap.  Here
 we see that nmap can use the \fBUSE\fR variables gtk and gnome, but that your current
 settings have gtk and gnome disabled.  So optional support for gtk and gnome will
 not be enabled in nmap when you emerge it.
+An asterisk shows that the use flags have changed since the package was last installed. In this case ipv6 is enabled but was previously disabled.
+A use flag in brackets, as in (\-selinux), is always disabled and shows that the flag is not available for the current system profile.
 .br 
 \fB*Note:\fR The \fBUSE\fR status is only displayed when you use the \fB\-\-pretend\fR
 and \fB\-\-verbose\fR options.
