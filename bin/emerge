@@ -1800,13 +1800,14 @@ class depgraph:
 									myr+=1
 								emergelog(" *** RESTARTING emerge via exec() after change of portage version.")
 								portage.portageexit()
+								# Remove --ask from options before restarting
 								mynewargv=[]
 								for arg in myargv:
 									if arg[0:2] == "--":
 										if arg != "--ask":
 											mynewargv += [arg]
 									elif arg[0] == "-":
-										myarg = "-":
+										myarg = "-"
 										for ch in myarg[1:]:
 											if ch != "a":
 												myarg += ch
