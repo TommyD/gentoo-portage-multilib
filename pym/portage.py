@@ -597,23 +597,24 @@ def getmycwd():
 	return a
 
 def fetch(myuris):
-	"fetch files.  Assumes digest file exists."
+	"fetch files.  Will use digest file if available."
 	mirrors=settings["GENTOO_MIRRORS"].split()
 	fetchcommand=settings["FETCHCOMMAND"]
 	resumecommand=settings["RESUMECOMMAND"]
 	fetchcommand=string.replace(fetchcommand,"${DISTDIR}",settings["DISTDIR"])
 	resumecommand=string.replace(resumecommand,"${DISTDIR}",settings["DISTDIR"])
+	mydigests=None
 	digestfn=settings["FILESDIR"]+"/digest-"+settings["PF"]
-	myfile=open(digestfn,"r")
-	mylines=myfile.readlines()
-	mydigests={}
-	for x in mylines:
-		myline=string.split(x)
-		if len(myline)<2:
-			#invalid line
-			continue
-		mydigests[myline[2]]={"md5":myline[1],"size":string.atol(myline[3])}
-	#expand $DISTDIR before we begin
+	if os.path.exists(digestfn):
+		myfile=open(digestfn,"r")
+		mylines=myfile.readlines()
+		mydigests={}
+		for x in mylines:
+			myline=string.split(x)
+			if len(myline)<2:
+				#invalid line
+				continue
+			mydigests[myline[2]]={"md5":myline[1],"size":string.atol(myline[3])}
 	for myuri in myuris:
 		if myuri[:14]=="http://mirror/":
 			#generic syntax for a file mirrored directly on a gentoo mirror
@@ -627,15 +628,20 @@ def fetch(myuris):
 		locfetch=fetchcommand
 		try:
 			mystat=os.stat(settings["DISTDIR"]+"/"+myfile)
-			if mystat[ST_SIZE]!=mydigests[myfile]["size"]:
-				print ">>> Resuming download..."
-				locfetch=resumecommand
+			if mydigests!=None:
+				#if we have the digest file, we know the final size and can resume the download.
+				if mystat[ST_SIZE]<mydigests[myfile]["size"]:
+					print ">>> Resuming download..."
+					locfetch=resumecommand
+				else:
+					#we already have it downloaded, skip.
+					#if our file is bigger than the recorded size, digestcheck should catch it.
+					continue
 			else:
-				#we already have it downloaded, skip.
+				#we don't have the digest file, but the file exists.  Assume it is fully downloaded.
 				continue
 		except OSError:
 			pass
-			
 		gotit=0
 		locations=mirrors[:]
 		for y in range(0,len(locations)):
@@ -656,9 +662,9 @@ def fetch(myuris):
 			return 0
 	return 1
 
-def digestgen(myarchives):
-	"generates digest file if missing.  Assumes all files are available."
-	print ">>> Generating digest file..."
+def digestgen(myarchives,overwrite=1):
+	"""generates digest file if missing.  Assumes all files are available.  If
+	overwrite=1, the digest will only be created if it doesn't exist."""
 	if not os.path.isdir(settings["FILESDIR"]):
 		os.makedirs(settings["FILESDIR"])
 		if "cvs" in features:
@@ -666,6 +672,9 @@ def digestgen(myarchives):
 			spawn("cd "+settings["O"]+"; cvs add files",free=1)
 	myoutfn=settings["FILESDIR"]+"/.digest-"+settings["PF"]
 	myoutfn2=settings["FILESDIR"]+"/digest-"+settings["PF"]
+	if (not overwrite) and os.path.exists(myoutfn2):
+		return
+	print ">>> Generating digest file..."
 	outfile=open(myoutfn,"w")
 	for x in myarchives:
 		myfile=settings["DISTDIR"]+"/"+x
@@ -825,7 +834,10 @@ def doebuild(myebuild,mydo,myroot,checkdeps=1,debug=0):
 
 	if not fetch(fetchme):
 		sys.exit(1)
-	
+
+	if "digest" in features:
+		#generate digest if it doesn't exist.
+		digestgen(checkme,overwrite=0)
 	if mydo=="fetch":
 		sys.exit(0)
 

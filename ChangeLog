@@ -1,6 +1,13 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+*portage-1.8.9_pre15 (24 Feb 2002)
+
+  24 Feb 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: some fixing of
+  the merge code; added automatic digest generation when "digest" is in
+  FEATURES; made the fetch() code not depend on a pre-existing digest.  This
+  should fix all known digest/fetch issues.
+
 *portage-1.8.9_pre14 (23 Feb 2002)
 
   23 Feb 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: If you have a
