@@ -100,7 +100,7 @@ CXXFLAGS="${CFLAGS}"
 #
 # Lukemftp (BSD ftp):
 #FETCHCOMMAND="/usr/bin/lukemftp -s -a -o \${DISTDIR}/\${FILE} \${URI}"
-#RESUMECOMMAND="usr/bin/lukemftp -s -a -R -o \${DISTDIR}/\${FILE} \${URI}"
+#RESUMECOMMAND="/usr/bin/lukemftp -s -a -R -o \${DISTDIR}/\${FILE} \${URI}"
 #
 # Prozilla (turbo downloader)
 #FETCHCOMMAND='/usr/bin/proz --no-getch -s ${URI} -P ${DISTDIR}'
