@@ -175,9 +175,8 @@ live filesystem.
 .TP
 .BR "--buildpkgonly " (\fB\-B\fR)
 Creates binary packages for all ebuilds processed without actually
-merging the packages.  This has the restriction that unsatisfied 
-dependencies must not exist for the desired package as they cannot be 
-used if they do not exist on the system.
+merging the packages.  This comes with the caveat that all build time 
+dependencies must already be emerged on the system.
 .TP
 .BR "--changelog " (\fB\-l\fR)
 Use this in conjunction with the \fB--pretend\fR action.  This will
