@@ -1092,9 +1092,8 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 		settings["KV"]=mykv
 
 	# if any of these are being called, handle them and stop now.
-	if mydo in ["help","clean","prerm","postrm","preinst","postinst","config","touch","setup"]:
+	if mydo in ["help","clean","setup","prerm","postrm","preinst","postinst"]:
 		return spawn("/usr/sbin/ebuild.sh "+mydo,debug)
-		#initial ebuild.sh bash environment configured
 	
 	# get possible slot information from the deps file
 	if mydo=="depend":
@@ -1152,16 +1151,13 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 	
 	#initial dep checks complete; time to process main commands
 	
-	actionmap={	"unpack":"unpack", 
+	actionmap={	"unpack":"setup unpack", 
 				"compile":"setup unpack compile",
 				"install":"setup unpack compile install",
 				"rpm":"setup unpack compile install rpm"
 				}
 	if mydo in actionmap.keys():	
-		if "noauto" in features:
-			return spawn("/usr/sbin/ebuild.sh "+mydo,debug)
-		else:
-			return spawn("/usr/sbin/ebuild.sh "+actionmap[mydo],debug)
+		return spawn("/usr/sbin/ebuild.sh "+actionmap[mydo],debug)
 	elif mydo=="qmerge": 
 		#qmerge is specifically not supposed to do a runtime dep check
 		return merge(settings["CATEGORY"],settings["PF"],settings["D"],settings["BUILDDIR"]+"/build-info",myroot)
