@@ -35,7 +35,8 @@
 #undef open
 #undef open64
 
-#define PIDS_FILE	"/tmp/sandboxpids.tmp"
+#define PIDS_FILE		"/tmp/sandboxpids.tmp"
+#define LD_PRELOAD_FILE	"/etc/ld.so.preload"
 
 int 	check_access(const char*, const char*);
 int 	check_syscall(const char*, const char*);
@@ -56,7 +57,9 @@ char**	read_prefixes = NULL;
 int		num_read_prefixes = 0;
 char**	write_prefixes = NULL;
 int		num_write_prefixes = 0;
-char*	write_denied_prefixes[] = {"/etc/ld.so.preload"};
+char**	predict_prefixes = NULL;
+int		num_predict_prefixes = 0;
+char*	write_denied_prefixes[] = {LD_PRELOAD_FILE};
 int		num_write_denied_prefixes = sizeof(write_denied_prefixes)/sizeof(char*);
 
 /* Wrapper macros and functions */
@@ -473,7 +476,8 @@ void init_env_entries(char*** prefixes_array, int* prefixes_num, char* env)
 
 				strcpy(buffer, prefixes_env);
 				token = strtok(buffer, ":");
-				while (NULL != token)
+				while (NULL != token &&
+					   strlen(token) > 0)
 				{
 					prefix = (char*)malloc((sizeof(char)*strlen(token))+1);
 					strcpy(prefix, token);
@@ -599,6 +603,16 @@ int check_access(const char* func, const char* path)
 				return 0;
 			}
 		}
+	
+		for (i = 0; i < num_predict_prefixes; i++)
+		{
+			if (0 == strncmp(filtered_path, predict_prefixes[i], strlen(predict_prefixes[i])))
+			{
+				show_access_violation = 0;
+				return 0;
+			}
+		}
+	
 	}
 	
 
@@ -668,12 +682,14 @@ int before_syscall(const char* func, const char* file)
 		init_env_entries(&deny_prefixes, &num_deny_prefixes, "SANDBOX_DENY");
 		init_env_entries(&read_prefixes, &num_read_prefixes, "SANDBOX_READ");
 		init_env_entries(&write_prefixes, &num_write_prefixes, "SANDBOX_WRITE");
+		init_env_entries(&predict_prefixes, &num_predict_prefixes, "SANDBOX_PREDICT");
 
 		result = check_syscall(func, file);
 
 		clean_env_entries(&deny_prefixes, &num_deny_prefixes);
 		clean_env_entries(&read_prefixes, &num_read_prefixes);
 		clean_env_entries(&write_prefixes, &num_write_prefixes);
+		clean_env_entries(&predict_prefixes, &num_predict_prefixes);
 	}
 	
 	if (0 == result)
