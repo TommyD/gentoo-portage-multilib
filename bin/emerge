@@ -2142,8 +2142,8 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 
 		rsynccommand = "/usr/bin/rsync " + string.join(rsync_flags, " ")
 
-		servertimestampdir  = portage.settings["PORTAGE_CACHEDIR"]+"/"
-		servertimestampfile = portage.settings["PORTAGE_CACHEDIR"]+"/timestamp.chk"
+		servertimestampdir  = portage.settings.depcachedir+"/"
+		servertimestampfile = portage.settings.depcachedir+"/timestamp.chk"
 		tmpservertimestampdir  = portage.settings["PORTAGE_TMPDIR"]+"/"
 		tmpservertimestampfile = portage.settings["PORTAGE_TMPDIR"]+"/timestamp.chk"
 
@@ -2155,7 +2155,10 @@ if myaction in ["sync","rsync","metadata"] and (not "--help" in myopts):
 			content=portage.grabfile(myportdir+"/metadata/timestamp.chk")
 
 		if (content):
-			mytimestamp=time.mktime(time.strptime(content[0], "%a, %d %b %Y %H:%M:%S +0000"))
+			try:
+				mytimestamp=time.mktime(time.strptime(content[0], "%a, %d %b %Y %H:%M:%S +0000"))
+			except ValueError:
+				mytimestamp=0
 		else:
 			mytimestamp=0
 

@@ -9,6 +9,9 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  20 Jun 2004; Masatomo Nakano <nakano@gentoo.org> bin/emerge:
+  Added an exception code for broken timestamp.chk. (#54380)
+
   20 Jun 2004; Jason Stubbs <jstubbs@gentoo.org> pym/ebuild.sh: Adjusted 
   returns for use_with and use_enable to only return 1 on invalid usage.
 
