@@ -209,6 +209,18 @@ and it enables complete trees to be rebuilt using the latest libraries.
 .BR "\-\-fetchonly " (\fB\-f\fR)
 Instead of doing any package building, just perform fetches for all
 packages (the main package as well as all dependencies.)
+.TP
+.BR "\-\-getbinpkg " (\fB\-g\fR)
+Using the server and location defined in \fIPORTAGE_BINHOST\fR (see 
+\fBmake.conf\fR(5)), portage will download the information from each binary 
+package found and it will use that information to help build the dependency 
+list.  This option implies \fB\-k\fR.  (Use \fB\-gK\fR for binary-only merging.)
+.TP
+.BR "\-\-getbinpkgonly " (\fB\-G\fR)
+This option is identical to \fB\-g\fR, as above, except it will not use ANY 
+information from the local machine.  All binaries will be downloaded from the 
+remote server without consulting packages existing in the local packages 
+directory.
 .TP 
 .BR "\-\-help " (\fB\-h\fR)
 Displays help information for emerge.  Adding one of the additional
