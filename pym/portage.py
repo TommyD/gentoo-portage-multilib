@@ -2517,7 +2517,6 @@ def digestcheck(myfiles, mysettings, strict=0):
 	else:
 		# Check the portage-related files here.
 		mymfiles=listdir(pbasedir,recursive=1,filesonly=1,ignorecvs=1,EmptyOnError=1)
-		mymfiles=cvstree.apply_cvsignore_filter(mymfiles)
 		manifest_files = mymdigests.keys()
 		for x in range(len(mymfiles)-1,-1,-1):
 			if mymfiles[x]=='Manifest': # We don't want the manifest in out list.
@@ -2525,6 +2524,11 @@ def digestcheck(myfiles, mysettings, strict=0):
 				continue
 			if mymfiles[x] in manifest_files:
 				manifest_files.remove(mymfiles[x])
+			elif len(cvstree.apply_cvsignore_filter([mymfiles[x]]))==0:
+				# we filter here, rather then above; manifest might have files flagged by the filter.
+				# if something is returned, then it's flagged as a bad file
+				# manifest doesn't know about it, so we kill it here.
+				del mymfiles[x]
 			else:
 				print red("!!! Security Violation: A file exists that is not in the manifest.")
 				print "!!! File:",mymfiles[x]
