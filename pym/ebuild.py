@@ -775,6 +775,12 @@ class ebuild_handler:
 		os.chown(mysettings["T"],portage_uid,portage_gid)
 		os.chmod(mysettings["T"],0770)
 	
+		logdir = mysettings["T"]+"/logging"
+		if not os.path.exists(logdir):
+			os.makedirs(logdir)
+		os.chown(logdir, portage_uid, portage_gid)
+		os.chmod(logdir, 0770)
+	
 		try:
 			if ("nouserpriv" not in string.split(mysettings["RESTRICT"])):
 				if ("userpriv" in features) and (portage_uid and portage_gid):

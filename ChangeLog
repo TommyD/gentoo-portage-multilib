@@ -7,6 +7,23 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  21 Feb 2005; Marius Mauch <genone@gentoo.org> bin/isolated-functions.sh,
+  cnf/make.conf, cnf/make.conf.alpha, cnf/make.conf.amd64,
+  cnf/make.conf.arm, cnf/make.conf.hppa, cnf/make.conf.ia64,
+  cnf/make.conf.mips, cnf/make.conf.ppc, cnf/make.conf.ppc64,
+  cnf/make.conf.s390, cnf/make.conf.sh, cnf/make.conf.sparc,
+  cnf/make.conf.x86, pym/ebuild.py, pym/portage.py, pym/portage_const.py,
+  +pym/elog_modules/__init__.py, +pym/elog_modules/mod_custom.py,
+  +pym/elog_modules/mod_mail.py, +pym/elog_modules/mod_save.py,
+  +pym/elog_modules/mod_syslog.py:
+  New shiny flexible modular logging system. Supports logging of ebuild
+  messages via syslog, mail and storing on disc with an optional command for
+  post-processing. See make.conf on how to configure it. On the technical side
+  it's one of the first pluggable subsystems, you can just put mod_foo in
+  /usr/lib/portage/pym/elog_modules, set PORTAGE_LOG_SYSTEM=foo and all logs
+  are processed by your new module (see existing modules for the very simple
+  API).
+
   17 Feb 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py, 
   pym/portage_db_flat.py: Collection of speedups, some massive. 
   J?rgen H?tzel <gentoo@hoetzel.info> deserves massive props for identifying

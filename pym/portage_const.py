@@ -58,3 +58,5 @@ RSYNC_BIN               = "/usr/bin/rsync"
 RSYNC_HOST              = "rsync.gentoo.org/gentoo-portage"
 
 CVS_BIN                 = "/usr/bin/cvs"
+
+EBUILD_PHASES			= "setup unpack compile test install preinst postinst"

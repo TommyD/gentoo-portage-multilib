@@ -402,16 +402,56 @@ class digraph:
 		mygraph.okeys=self.okeys[:]
 		return mygraph
 
-# valid end of version components; integers specify offset from release version
-# pre=prerelease, p=patchlevel (should always be followed by an int), rc=release candidate
-# all but _p (where it is required) can be followed by an optional trailing integer
+def elog_process(cpv, mysettings):
+	mylogfiles = listdir(mysettings["T"]+"/logging/")
+	# shortcut for packages without any messages
+	if len(mylogfiles) == 0:
+		return
+	# exploit listdir() file order so we process log entries in cronological order
+	mylogfiles.reverse()
+	mylogentries = {}
+	for f in mylogfiles:
+		msgfunction, msgtype = f.split(".")
+		if not msgtype.upper() in mysettings["PORTAGE_LOG_CLASSES"].split() \
+				and not msgtype.lower() in mysettings["PORTAGE_LOG_CLASSES"].split():
+			continue
+		if msgfunction not in EBUILD_PHASES.split():
+			print "!!! can't process invalid log file: %s" % f
+			continue
+		if not msgfunction in mylogentries:
+			mylogentries[msgfunction] = []
+		msgcontent = open(mysettings["T"]+"/logging/"+f, "r").readlines()
+		mylogentries[msgfunction].append((msgtype, msgcontent))
 
-endversion={"pre":-2,"p":0,"alpha":-4,"beta":-3,"rc":-1}
-# as there's no reliable way to set {}.keys() order
-# netversion_keys will be used instead of endversion.keys
-# to have fixed search order, so that "pre" is checked
-# before "p"
-endversion_keys = ["pre", "p", "alpha", "beta", "rc"]
+	# in case the filters matched all messages
+	if len(mylogentries) == 0:
+		return
+
+	# generate a single string with all log messages
+	fulllog = ""
+	for phase in EBUILD_PHASES.split():
+		if not phase in mylogentries:
+			continue
+		for msgtype,msgcontent in mylogentries[phase]:
+			fulllog += "%s: %s\n" % (msgtype, phase)
+			for line in msgcontent:
+				fulllog += line
+			fulllog += "\n"
+
+	# pass the processing to the individual modules
+	logsystems = mysettings["PORTAGE_LOG_SYSTEM"].split()
+	for s in logsystems:
+		try:
+			# FIXME: ugly ad.hoc import code
+			# TODO:  implement a common portage module loader
+			logmodule = __import__("elog_modules.mod_"+s)
+			m = getattr(logmodule, "mod_"+s)
+			m.process(mysettings, cpv, mylogentries, fulllog)
+		except (ImportError, AttributeError), e:
+			print "!!! Error while importing logging modules:"
+			print e
+		except portage_exception.PortageException, e:
+			print e
 
 #parse /etc/env.d and generate /etc/profile.env
 
@@ -5667,6 +5707,9 @@ class dblink:
 		if dircache.has_key(self.dbcatdir):
 			del dircache[self.dbcatdir]
 		print ">>>",self.mycpv,"merged."
+
+		# Process ebuild logfiles
+		elog_process(self.mycpv, self.settings)
 		
 		return 0
 
