@@ -2567,7 +2567,7 @@ def spawnebuild(mydo,actionmap,mysettings,debug,alwaysdep=0):
 				actionmap[mydo]["args"][1])
 	return retval
 
-def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,cleanup=0,dbkey=None,use_cache=1):
+def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,cleanup=0,dbkey=None,use_cache=1,fetchall=0):
 	global db
 	
 	ebuild_path = os.path.abspath(myebuild)
@@ -2826,7 +2826,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 	alluris, aalist=db["/"]["porttree"].dbapi.getfetchlist(mycpv,mysettings=mysettings,all=1)
 	mysettings["A"]=string.join(alist," ")
 	mysettings["AA"]=string.join(aalist," ")
-	if ("cvs" in features) or ("mirror" in features):
+	if ("cvs" in features) or ("mirror" in features) or fetchall:
 		fetchme=alluris
 		checkme=aalist
 	else:
@@ -2844,7 +2844,7 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 
 	try:
 		mystat=os.stat(mysettings["DISTDIR"]+"/cvs-src")
-		if (mystat[ST_GID]!=portage_gid) or ((mystat[ST_MODE]&02770)!=02770):
+		if ((mystat[ST_GID]!=portage_gid) or ((mystat[ST_MODE]&02770)!=02770)) and not listonly:
 			print "*** Adjusting cvs-src permissions for portage user..."
 			os.chown(mysettings["DISTDIR"]+"/cvs-src",0,portage_gid)
 			os.chmod(mysettings["DISTDIR"]+"/cvs-src",02770)

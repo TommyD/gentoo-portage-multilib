@@ -482,7 +482,7 @@ for x in myfiles:
 		countdown(10, "Continuing with emerge /path/to/ebuild")
 
 # check if root user is the current user for the actions where emerge needs this
-if ("--pretend" in myopts) or ("--fetchonly" in myopts) or (myaction=="search"):
+if ("--pretend" in myopts) or ("--fetchonly" in myopts or "--fetch-all-uri" in myopts) or (myaction=="search"):
 	if not portage.secpass:
 		if portage.wheelgid==portage.portage_gid:
 			print "emerge: wheel group membership required for \"--pretend\" and search."
@@ -1710,7 +1710,7 @@ class depgraph:
 					emergelog(" --- ("+str(mergecount)+" of "+str(len(mymergelist))+") Fetching Binary ("+x[pkgindex]+"::"+mytbz2+")")
 					portage.db[portage.root]["bintree"].gettbz2(x[2])
 
-				if ("--fetchonly" in myopts):
+				if ("--fetchonly" in myopts) or ("--fetch-all-uri" in myopts):
 					continue
 				
 				emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Merging Binary ("+x[pkgindex]+"::"+mytbz2+")")
@@ -1721,7 +1721,7 @@ class depgraph:
 			if "--buildpkgonly" not in myopts:
 				portage.db[x[1]]["vartree"].inject(x[2])
 				myfavkey=portage.cpv_getkey(x[2])
-				if (not "--fetchonly" in myopts) and (myfavkey in favorites):
+				if (not "--fetchonly" in myopts) and (not "--fetch-all-uri" in myopts) and (myfavkey in favorites):
 					myfavs=portage.grabfile(myroot+portage.WORLD_FILE)
 					myfavdict=genericdict(myfavs)
 					mysysdict=genericdict(syslist)
@@ -1739,7 +1739,7 @@ class depgraph:
 					if retval:
 						sys.exit(1)
 			
-				if ("--pretend" not in myopts) and ("--fetchonly" not in myopts):
+				if ("--pretend" not in myopts) and ("--fetchonly" not in myopts) and ("--fetch-all-uri" not in myopts):
 					# Clean the old package that we have merged over top of it.
 					if self.pkgsettings["AUTOCLEAN"]=="yes":
 						xsplit=portage.pkgsplit(x[2])
@@ -1770,7 +1770,7 @@ class depgraph:
 								portage.portageexit()
 								os.execv("/usr/lib/portage/bin/emerge", myargv)
 
-			if ("--pretend" not in myopts) and ("--fetchonly" not in myopts):
+			if ("--pretend" not in myopts) and ("--fetchonly" not in myopts) and ("--fetch-all-uri" not in myopts):
 				emergelog(" ::: completed emerge ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[2]+" to "+x[1])
 			
 			# Unsafe for parallel merges
@@ -1783,14 +1783,14 @@ class depgraph:
 			del portage.mtimedb["resume"]
 
 		if ("--pretend" not in myopts):
-			if ("--fetchonly" not in myopts):
+			if ("--fetchonly" not in myopts) and ("--fetch-all-uri" not in myopts):
 				if (mergecount>0):
 					if retval:
 						portage.env_update()
 
 		#by doing an exit this way, --fetchonly can continue to try to
 		#fetch everything even if a particular download fails.
-		if "--fetchonly" in myopts:
+		if "--fetchonly" in myopts or "--fetch-all-uri" in myopts:
 			if returnme:
 				print "\n\n!!! Some fetch errors were encountered.  Please see above for details.\n\n"
 				sys.exit(returnme)
@@ -2668,7 +2668,7 @@ elif "depclean"==myaction:
 else:
 	favorites=[]
 	syslist=getlist("system")
-	if (("--pretend" in myopts) and not ("--fetchonly" in myopts)) or ("--ask" in myopts):
+	if (("--pretend" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts)) or ("--ask" in myopts):
 		if "--tree" in myopts:
 			print
 			print darkgreen("These are the packages that I would merge, in reverse order:")
@@ -2751,7 +2751,7 @@ else:
 					print "Nothing to merge; quitting."
 					print
 					sys.exit(0)
-			elif "--fetchonly" in myopts:
+			elif "--fetchonly" in myopts or "--fetch-all-uri" in myopts:
 				prompt="Do you want me to fetch the source files for these packages?"
 			else:
 				prompt="Do you want me to merge these packages?"
@@ -2764,7 +2764,7 @@ else:
 		# Don't ask again (e.g. when auto-cleaning packages after merge)
 		myopts.remove("--ask")
 
-	if ("--pretend" in myopts) and ("--fetchonly" not in myopts):
+	if ("--pretend" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts):
 		if ("--resume" in myopts):
 			mydepgraph.display(portage.mtimedb["resume"]["mergelist"])
 		else:
@@ -2783,7 +2783,7 @@ else:
 			portage.mtimedb["resume"]={}
 			portage.mtimedb["resume"]["myopts"]=myopts
 			portage.mtimedb["resume"]["favorites"]=favorites
-			if ("--digest" in myopts) and not ("--fetchonly" in myopts):
+			if ("--digest" in myopts) and not ("--fetchonly" in myopts or "--fetch-all-uri" in myopts):
 				for pkgline in mydepgraph.altlist():
 					if pkgline[0]=="ebuild" and pkgline[3]=="merge":
 						y=portage.portdb.findname(pkgline[2])

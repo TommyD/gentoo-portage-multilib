@@ -175,6 +175,13 @@ def help(myaction,myopts,havecolor=1):
 		print "              used in combination with --pretend all the SRC_URIs will be"
 		print "              displayed multiple mirrors per line, one line per file."
 		print
+		print "       "+green("--fetch-all-uri")
+		print "              Instead of doing any package building, just perform fetches for"
+		print "              all packages (main package as well as all dependencies.), grabbing"
+		print "	             all possible files."
+		print "              When used in combination with --pretend all the SRC_URIs will be"
+		print "              displayed multiple mirrors per line, one line per file."
+		print
 		print "       "+green("--getbinpkg")+" ("+green("-g")+" short option)"
 		print "              Using the server and location defined in PORTAGE_BINHOST, portage"
 		print "              will download the information from each binary file there and it"

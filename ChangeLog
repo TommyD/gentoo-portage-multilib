@@ -9,6 +9,11 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  03 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py, 
+  bin/emerge: Corrected emerge --fetch-all-uri issues, now works.  Basically,
+  FEATURES="cvs" emerge -f blar == emerge --fetch-all-uri blar.  The fetch
+  option handling in emerge could use some cleanup.
+
   03 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py: Ongoing 
   cleanup in emerge -fp; this corrects a minor naggle affecting previous 
   releases, where emerge -fp would still attempt to do md5 checks on files.
