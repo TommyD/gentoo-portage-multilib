@@ -7,9 +7,6 @@
 # bin/portageq doesn't currently use this, but should for the sake of reduction of code
 # duplication.
 
-import sys
-sys.path = ["/usr/lib/portage/pym"]+sys.path
-
 import portage,types,string
 
 
@@ -64,7 +61,6 @@ def best_version(argv):
 		return 0, portage.best(mylist)
 	except KeyError:
 		return 1, ""
-		sys.exit(1)
 
 
 def mass_best_version(argv):
