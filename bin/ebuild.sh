@@ -77,11 +77,48 @@ unpack() {
 	done
 }
 
+econf() {
+    if [ -x ./configure ] ; then
+	./configure \
+	    --prefix=/usr \
+	    --mandir=/usr/share/man \
+	    --infodir=/usr/share/info \
+	    --datadir=/usr/share \
+	    --sysconfdir=/etc \
+	    --localstatedir=/var/lib \
+	    "$@" || return 1
+    else
+	return 1
+    fi
+
+    return
+}
+
+einstall() {
+    if [ -f ./[mM]akefile ] ; then
+	make prefix=${D}/usr \
+	    mandir=${D}/usr/share/man \
+	    infodir=${D}/usr/share/info \
+	    datadir=${D}/usr/share \
+	    sysconfdir=${D}/etc \
+	    localstatedir=${D}/var/lib \
+	    install || exit 1
+    else
+	exit 1
+    fi
+
+    return
+}
+
 src_unpack() { 
 	unpack ${A} 
 }
 
 src_compile() { 
+        if [ -x ./configure ] ; then
+	        econf || return 1
+		emake || return 1
+	fi
 	return 
 }
 

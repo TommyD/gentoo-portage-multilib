@@ -2,6 +2,14 @@
 # Copyright 2001 Gentoo Technologies, Inc.; Distributed under the GPL
 # Written by Daniel Robbins (drobbins@gentoo.org)
 
+*portage 1.8.3 (11 Jan 2002)
+  11 Jan 2002; added functions econf and einstall. Also made src_compile 
+  having a default implementation.
+	
+*portage 1.8.2 (07 Jan 2002)
+  07 Jan 2002; sandbox included in portage
+	
+*portage 1.8.1 (30 Dec 2001)	
   29 Dec 2001; "emerge update" is now functional!  Although the
   algorithm really should be sound, it is still considered in testing
   since we may need to tweak some dependencies.
