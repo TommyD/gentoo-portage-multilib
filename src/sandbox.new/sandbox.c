@@ -415,7 +415,8 @@ int spawn_shell(char *argv_bash[])
   }
   printf("%s\n", sh);
   ret = system(sh);
-  if (sh) free(sh); sh = NULL;
+  if (sh) free(sh);
+  sh = NULL;
   
   if (-1 == ret) return 0;
   return 1;
@@ -496,18 +497,21 @@ int main(int argc, char** argv)
     /* Generate base sandbox path */
     tmp_string = get_sandbox_path(argv[0]);
     strncpy(sandbox_dir, tmp_string, 254);
-    if (tmp_string) free(tmp_string);  tmp_string = NULL;
+    if (tmp_string) free(tmp_string);
+    tmp_string = NULL;
     strcat(sandbox_dir, "/");
 
     /* Generate sandbox lib path */
     tmp_string = get_sandbox_lib(sandbox_dir);
     strncpy(sandbox_lib, tmp_string, 254);
-    if (tmp_string) free(tmp_string); tmp_string = NULL;
+    if (tmp_string) free(tmp_string);
+    tmp_string = NULL;
 
     /* Generate sandbox bashrc path */
     tmp_string = get_sandbox_rc(sandbox_dir);
     strncpy(sandbox_rc, tmp_string, 254);
-    if (tmp_string) free(tmp_string); tmp_string = NULL;
+    if (tmp_string) free(tmp_string);
+    tmp_string = NULL;
 
     /* verify the existance of required files */
     if (print_debug) printf("Verification of the required files.\n");
@@ -589,7 +593,8 @@ int main(int argc, char** argv)
     /* Generate sandbox log full path */
     tmp_string=get_sandbox_log();
     strncpy(sandbox_log, tmp_string, 254);
-    if (tmp_string) free(tmp_string); tmp_string = NULL;
+    if (tmp_string) free(tmp_string);
+    tmp_string = NULL;
 
     setenv(ENV_SANDBOX_LOG, sandbox_log, 1);
 
@@ -723,7 +728,8 @@ int main(int argc, char** argv)
           }
         }
         /* Clean pids_array */
-        if (pids_array) free(pids_array); pids_array = NULL;
+        if (pids_array) free(pids_array);
+        pids_array = NULL;
         num_of_pids = 0;
 
         /* We're done with the pids file */
