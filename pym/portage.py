@@ -1133,6 +1133,12 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 	except (IOError,KeyError):
 		print "portage: doebuild(): aux_get() error; aborting."
 		sys.exit(1)
+	#if the dep cache is stale, it is possible that aux_get() will call doebuild(depend) to
+	#regenerate it again.  This call will cause $T to be set to "", which will break anything
+	#that needs $T to be set to a writeble location inside the sandbox, thus set $T again to
+	#its proper value.
+	if mydo!="depend":
+		settings["T"]=settings["BUILDDIR"]+"/temp"
 	newuris=flatten(evaluate(tokenize(myuris),string.split(settings["USE"])))	
 	alluris=flatten(evaluate(tokenize(myuris),[],1))	
 	alist=[]
