@@ -1382,7 +1382,7 @@ def merge(mycat,mypkg,pkgloc,infloc,myroot,myebuild=None):
 	if not mylink.exists():
 		mylink.create()
 		#shell error code
-	mylink.merge(pkgloc,infloc,myroot,myebuild)
+	return mylink.merge(pkgloc,infloc,myroot,myebuild)
 	
 def unmerge(cat,pkg,myroot):
 	mylink=dblink(cat,pkg,myroot)
@@ -3492,7 +3492,8 @@ class dblink:
 		secondhand=[]	
 		# we do a first merge; this will recurse through all files in our srcroot but also build up a
 		# "second hand" of symlinks to merge later
-		self.mergeme(srcroot,destroot,outfile,secondhand,"",cfgfiledict,mymtime)
+		if self.mergeme(srcroot,destroot,outfile,secondhand,"",cfgfiledict,mymtime):
+			return 1
 		# now, it's time for dealing our second hand; we'll loop until we can't merge anymore.	The rest are
 		# broken symlinks.  We'll merge them too.
 		lastlen=0
@@ -3617,6 +3618,16 @@ class dblink:
 					print "!!!",mydest,"->",myto
 			elif S_ISDIR(mymode):
 				# we are merging a directory
+				if not os.access(mydest, os.W_OK):
+					pkgstuff = pkgsplit(self.pkg)
+					sys.stderr.write("\n!!! Cannot write to '"+mydest+"'.\n")
+					sys.stderr.write("!!! Please check permissions and directories for broken symlinks.\n")
+					sys.stderr.write("!!! You may start the merge process again by using ebuild:\n")
+					sys.stderr.write("!!! ebuild "+settings["PORTDIR"]+"/"+self.cat+"/"+pkgstuff[0]+"/"+self.pkg+".ebuild merge\n")
+					sys.stderr.write("!!! And finish by running this: env-update\n\n")
+					#self.fuck
+					return 1
+
 				if mydmode!=None:
 					# destination exists
 					if S_ISLNK(mydmode) or S_ISDIR(mydmode):
@@ -3639,7 +3650,8 @@ class dblink:
 					print ">>>",mydest+"/"
 				outfile.write("dir "+myrealdest+"\n")
 				# recurse and merge this directory
-				self.mergeme(srcroot,destroot,outfile,secondhand,offset+x+"/",cfgfiledict,thismtime)
+				if self.mergeme(srcroot,destroot,outfile,secondhand,offset+x+"/",cfgfiledict,thismtime):
+					return 1
 			elif S_ISREG(mymode):
 				# we are merging a regular file
 				mymd5=perform_md5(mysrc)
@@ -3755,7 +3767,7 @@ class dblink:
 				print zing+" "+mydest
 	
 	def merge(self,mergeroot,inforoot,myroot,myebuild=None):
-		self.treewalk(mergeroot,myroot,inforoot,myebuild)
+		return self.treewalk(mergeroot,myroot,inforoot,myebuild)
 
 	def getstring(self,name):
 		"returns contents of a file with whitespace converted to spaces"

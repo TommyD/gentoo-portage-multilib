@@ -1,12 +1,19 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
-	11 Oct 2002; Nicholas Jones <carpaski@gentoo.org> make*globals:
-	Removed the tomcat configs from CONFIG_PROTECT
+  12 Oct 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
+  Bug 6361 -- Added checking on directories to ensure that we can
+              write to them before we try and traceback. Also added
+              pieces to functions so that return conditions are
+              propagated back to emerge so that it actually dies on
+              errors. Message on condition details restart process.
+
+  11 Oct 2002; Nicholas Jones <carpaski@gentoo.org> make*globals:
+  Removed the tomcat configs from CONFIG_PROTECT
 
   11 Oct 2002; Nicholas Jones <carpaski@gentoo.org> doman:
   Bug 8208 -- Added flags and auto-location support for 'x'
-	            manpages. Added not-an-man-page message.
+              manpages. Added not-an-man-page message.
 
   11 Oct 2002; Nicholas Jones <carpaski@gentoo.org> dohtml:
   Bug 8208 -- Added 'js' to the include list, and added '-A'
@@ -17,13 +24,13 @@
   Bug 8949 -- Fix for read-only traceback in doebuild()
   Bug 8284 -- Prepend ARCH _after_ use order processing. Prevents -*
               from killing the ARCH flag.
-	Bug 7596 -- Set an mtime of 0 into CONTENTS if the file already exists
-	            on the FS. Allows the entry to be in the CONTENTS file.
+  Bug 7596 -- Set an mtime of 0 into CONTENTS if the file already exists
+              on the FS. Allows the entry to be in the CONTENTS file.
   Condensed the protect/protect-mask code into one function in class dblink.
-	Revised code to allow multi-level protects and masks.
+  Revised code to allow multi-level protects and masks.
 
-	10 Oct 2002; Nicholas Jones <carpaski@gentoo.org> emerge:
-	Bug 8552 -- typo fixes
+  10 Oct 2002; Nicholas Jones <carpaski@gentoo.org> emerge:
+  Bug 8552 -- typo fixes
 
   10 Oct 2002; Mark Guertin <gerk@gentoo.org> cnf/make.conf.ppc :
   Fixed type in reccomended CFLAGS for generic ppc (was 02, corrected 
