@@ -1,6 +1,8 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-2.0.28 (17 Aug 2002)
+
   16 Aug 2002; Daniel Robbins <drobbins@gentoo.org> emerge: return errors when
   two actions like "world" and "system" are specified on the command-line, or
   when "system" or "world" are combined with package names. Closes bug #6492.
