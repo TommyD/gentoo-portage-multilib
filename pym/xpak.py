@@ -57,6 +57,7 @@ def xpak(rootdir,outfile=None):
 	try:
 		origdir=os.getcwd()
 	except:
+		os.chdir("/")
 		origdir="/"
 	os.chdir(rootdir)
 	mylist=[]
@@ -194,6 +195,7 @@ def xpand(myid,mydest):
 	try:
 		origdir=os.getcwd()
 	except:
+		os.chdir("/")
 		origdir="/"
 	os.chdir(mydest)
 	myindexlen=len(myindex)
@@ -333,6 +335,7 @@ class tbz2:
 		try:
 			origdir=os.getcwd()
 		except:
+			os.chdir("/")
 			origdir="/"
 		a=open(self.file,"r")
 		if not os.path.exists(mydest):

@@ -2,7 +2,23 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
-  25 Dec 2003; Masatomo Nakano <nakano@gentoo.org> emerge: Added OVERLAY
+*portage-2.0.50_pre9 (24 Dec 2003): API change + enhancements
+
+  24 Dec 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Added
+  PORTAGE_TMPDIR to SANDBOX_READ/WRITE to ensure it works. SpanKY's
+  patch for use negation added (use !foo). pkg_setup doesn't die on
+  a non-zero exit status.
+
+  24 Dec 2003; Nicholas Jones <carpaski@gentoo.org> emerge: using os.uname
+  instead of calling out to uname.
+
+  24 Dec 2003; Nicholas Jones <carpaski@gentoo.org> quickpkg: Added SpanKY's
+  patch for delayed exit/error conditions.
+  
+  24 Dec 2003; Nicholas Jones <carpaski@gentoo.org> xpak.py: chdir's added
+  to the getcwd fix for missing dirs.
+
+  24 Dec 2003; Masatomo Nakano <nakano@gentoo.org> emerge: Added OVERLAY
   directories display for --verbose.
 
 *portage-2.0.50_pre8 (24 Dec 2003): API change + enhancements

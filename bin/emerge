@@ -356,7 +356,7 @@ def getportageversion():
 
 	gccver = getgccversion()
 
-	unameout=commands.getstatusoutput("uname -r")[1]
+	unameout=os.uname()[2]
 
 	return "Portage " + portage.VERSION +" ("+profilever+", "+gccver+", glibc-"+glibcver+", "+unameout+")"
 

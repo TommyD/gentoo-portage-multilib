@@ -14,17 +14,19 @@ if [ "`whoami`" != "root" ] ; then
 	echo "You must run this as root"
 	exit 1
 fi
+
+export PORTAGE_DB="/var/db/pkg"
 if [ -z $1 ] ; then
 	echo "QUICKPKG ver 1.2"
 	echo "USAGE: quickpkg <list of pkgs>"
 	echo "    a pkg can be of the form:"
-	echo "        - /var/db/pkg/<CATEGORY>/<PKG-VERSION>/"
+	echo "        - ${PORTAGE_DB}/<CATEGORY>/<PKG-VERSION>/"
 	echo "        - single depend-type atom ..."
 	echo "              if portage can emerge it, quickpkg can make a package"
 	echo "              for exact definitions of depend atoms, see ebuild(5)"
 	echo
 	echo "EXAMPLE:"
-	echo "    quickpkg /var/db/pkg/net-www/apache-1.3.27-r1"
+	echo "    quickpkg ${PORTAGE_DB}/net-www/apache-1.3.27-r1"
 	echo "        package up apache, just version 1.3.27-r1"
 	echo "    quickpkg apache"
 	echo "        package up apache, all versions of apache installed"
@@ -43,7 +45,7 @@ source /sbin/functions.sh
 # $2 = category
 do_pkg() {
 	MYDIR="${PORTAGE_TMPDIR}/portage-pkg/$1"
-	SRCDIR="/var/db/pkg/$2/$1"
+	SRCDIR="${PORTAGE_DB}/$2/$1"
 
 	ebegin "Building package for $1"
 	(
@@ -84,8 +86,9 @@ do_pkg() {
 }
 
 # here we parse the parameters given to use on the cmdline
+export PKGERROR=""
 export PKGSTATS=""
-for x in $@ ; do
+for x in "$@" ; do
 
 	# they gave us full path
 	if [ -e ${x}/CONTENTS ] ; then
@@ -97,19 +100,36 @@ for x in $@ ; do
 	else
 		DIRLIST="`portageq match / ${x}`"
 		if [ -z "${DIRLIST}" ] ; then
-			eerror "could not find anything to match ${x}"
-			exit 1
+			eerror "Could not find anything to match '${x}'; skipping"
+			export PKGERROR="${PKGERROR} ${x}"
+			continue
 		fi
 
 		for d in ${DIRLIST} ; do
 			pkg="`echo ${d} | cut -d/ -f2`"
 			cat="`echo ${d} | cut -d/ -f1`"
-			do_pkg ${pkg} ${cat}
+			if [ -f "${PORTAGE_DB}/${cat}/${pkg}/CONTENTS" ] ; then
+				do_pkg ${pkg} ${cat}
+			elif [ -d "${PORTAGE_DB}/${cat}/${pkg}" ] ; then
+				ewarn "Package '${cat}/${pkg}' was injected; skipping"
+			else
+				eerror "Unhandled case (${cat}/${pkg}) !"
+				eerror "Please file a bug at http://bugs.gentoo.org/"
+				exit 10
+			fi
 		done
 	fi
 
 done
 
-[ -z "${PKGSTATS}" ] \
-	&& eerror "No packages found" \
-	|| echo $'\n'"$(einfo Packages now in ${PKGDIR}:)${PKGSTATS}"
+if [ -z "${PKGSTATS}" ] ; then
+	eerror "No packages found"
+	exit 1
+else
+	echo $'\n'"$(einfo Packages now in ${PKGDIR}:)${PKGSTATS}"
+fi
+if [ ! -z "${PKGERROR}" ] ; then
+	ewarn "The following packages could not be found:"
+	ewarn "${PKGERROR}"
+	exit 2
+fi

@@ -4,8 +4,8 @@
 # $Header$
 
 SANDBOX_PREDICT="${SANDBOX_PREDICT}:/proc/self/maps"
-SANDBOX_WRITE="${SANDBOX_WRITE}:/dev/shm"
-SANDBOX_READ="${SANDBOX_READ}:/dev/shm"
+SANDBOX_WRITE="${SANDBOX_WRITE}:/dev/shm:${PORTAGE_TMPDIR}"
+SANDBOX_READ="${SANDBOX_READ}:/dev/shm:${PORTAGE_TMPDIR}"
 
 
 if [ "$*" != "depend" ] && [ "$*" != "clean" ]; then
@@ -90,18 +90,37 @@ esyslog() {
 }
 
 use() {
+	local u="${1}"
+	local neg=0
+	if [ "${u:0:1}" == "!" ]; then
+		u="${u:1}"
+		neg=1
+	fi
 	local x
 	for x in ${USE}; do
-		if [ "${x}" == "${1}" ]; then
-			if [ -r /dev/fd/1 ]; then
-				tty --quiet < /dev/stdout || echo "${x}"
+		if [ "${x}" == "${u}" ]; then
+			if [ ${neg} -eq 1 ]; then
+				return 1
 			else
-			  echo "${x}"
+				if [ -r /dev/fd/1 ]; then
+					tty --quiet < /dev/stdout || echo "${x}"
+				else
+					echo "${x}"
+				fi
+				return 0
 			fi
-			return 0
 		fi
 	done
-	return 1
+	if [ ${neg} -eq 1 ]; then
+		if [ -r /dev/fd/1 ]; then
+			tty --quiet < /dev/stdout || echo "${x}"
+		else
+			echo "${x}"
+		fi
+		return 0
+	else
+		return 1
+	fi
 }
 
 has() {
@@ -457,7 +476,7 @@ dyn_setup()
 			fi
 		fi
 	fi
-	pkg_setup || die "pkg_setup function failed; exiting."
+	pkg_setup
 }
 
 dyn_unpack() {
