@@ -463,6 +463,7 @@ dyn_install() {
 			chgrp wheel "$file"
 		else
 			chgrp root "$file"
+		fi
 		[ -h "$file" ] || chmod "$s" "$file"
 	done
 
