@@ -1392,6 +1392,12 @@ class config:
 		self.configdict["env"]["PORTAGE_GID"]=str(portage_gid)
 		self.backupenv["PORTAGE_GID"]=str(portage_gid)
 
+		if self.has_key("PORT_LOGDIR") and not self["PORT_LOGDIR"]:
+			# port_logdir is defined, but empty.  this causes a traceback in doebuild.
+			writemsg(yellow("!!!")+" PORT_LOGDIR was defined, but set to nothing.\n")
+			writemsg(yellow("!!!")+" Disabling it.  Please set it to a non null value.\n")
+			del self["PORT_LOGDIR"]
+
 		if self["PORTAGE_CACHEDIR"]:
 			# XXX: Deprecated -- April 15 -- NJ
 			writemsg(yellow(">>> PORTAGE_CACHEDIR has been deprecated!")+"\n")
@@ -6231,17 +6237,8 @@ class dblink:
 			otherversions=[]
 			mypkglist=[]
 
-			# this is a ugly hack to get the other versions of the same package,
-			# feel free to improve
-			if os.path.exists(self.myroot+VDB_PATH+"/"+self.cat):
-				for mydir in os.listdir(self.myroot+VDB_PATH+"/"+self.cat):
-					if os.path.isdir(self.myroot+VDB_PATH+"/"+self.cat+"/"+mydir):
-						otherpkg.append(self.cat+"/"+mydir.split("/")[-1])
-			for p in otherpkg:
-				# the new package doesn't have a category, this can create problems
-				# if there are packages with the same name in different categories
-				if catpkgsplit(p)[0] == self.cat and catpkgsplit(p)[1] == pkgsplit(self.pkg)[0]:
-					otherversions.append(p.split("/")[1])
+			for v in db[self.myroot]["vartree"].dbapi.cp_list(self.mysplit[0]):
+				otherversions.append(v.split("/")[1])
 
 			if self.pkg in otherversions:
 				otherversions.remove(self.pkg)	# we already checked this package

@@ -9,6 +9,12 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  24 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py: Fixed a 
+  traceback issues in dblink.treewalk when collision-protect is active.  
+  Also added specific check/complaint for PORT_LOGDIR='' to the config class,
+  since it should either not be set, or something non-null- a null 
+  PORT_LOGDIR triggers a traceback in doebuild do to an attempted chmod.
+
   23 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py: Added a 
   macos ranlib hack; dblink.mergeme by default resets each files mtime, which 
   makes static archives merged to the fs worthless (linker notes the files 
