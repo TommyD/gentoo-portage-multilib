@@ -5,30 +5,30 @@
 *portage-2.0.47-r12 (27 Mar 2003): Fixes & Security -- Repoman+Digests
 
   27 Mar 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Moved all
-	initialization error messages to stderr.write() calls so that the output
-	doesn't get mixed will called data. Added a warning about not being in
-	the portage group. Color touchups. Digest path fixups.
+  initialization error messages to stderr.write() calls so that the output
+  doesn't get mixed will called data. Added a warning about not being in
+  the portage group. Color touchups. Digest path fixups.
 
   27 Mar 2003; Nicholas Jones <carpaski@gentoo.org> repoman: Significant
-	additions to the commit code to nicely handle the changes for enhanced
-	digests. Added --commitmsg and --commitmsgfile flags to allow easier
-	scripting. Added a REPOMAN environment variable to prevent portage from
-	running do_updates(). Added 'grouplist' which makes groupings of subparts
-	from a list of parts. Added do* functions to manage the recursion into
-	the dirs of the repository.
+  additions to the commit code to nicely handle the changes for enhanced
+  digests. Added --commitmsg and --commitmsgfile flags to allow easier
+  scripting. Added a REPOMAN environment variable to prevent portage from
+  running do_updates(). Added 'grouplist' which makes groupings of subparts
+  from a list of parts. Added do* functions to manage the recursion into
+  the dirs of the repository.
 
   27 Mar 2003; Nicholas Jones <carpaski@gentoo.org> xpak.py: Change from
-	lstat to stat... We're not concerned with links. Return 0 on not found.
+  lstat to stat... We're not concerned with links. Return 0 on not found.
 
   27 Mar 2003; Nicholas Jones <carpaski@gentoo.org> portageq: added new
-	functions: best_visible, mass_best_visible, all_best_visible.
+  functions: best_visible, mass_best_visible, all_best_visible.
 
   27 Mar 2003; Nicholas Jones <carpaski@gentoo.org> emerge: Added '--digest'
-	to force recreation of digests from the command line. Fixed portage version
-	comparisions for the 'update portage please' notices.
+  to force recreation of digests from the command line. Fixed portage version
+  comparisions for the 'update portage please' notices.
 
   27 Mar 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Added an
-	extra rm of the 'successful' file.
+  extra rm of the 'successful' file.
 
   26 Mar 2003; Alain Penders <alain@gentoo.org> portageq: added
   mass_best_version method to help GUIs resolve best versions.
