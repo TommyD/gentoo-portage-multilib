@@ -1416,7 +1416,7 @@ class depgraph:
 							addl+=turquoise("U")+" "
 					else:
 						# New slot, mark it new.
-						addl=" "+green("N")+" "+fetch+"  "
+						addl=" "+green("S")+" "+fetch+"  "
 
 					if "--changelog" in myopts:
 						changelogs.extend(self.calc_changelog(
