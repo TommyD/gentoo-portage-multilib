@@ -777,7 +777,7 @@ class depgraph:
 			if (merging==0 and "--newuse" in myopts and vardbapi.cpv_exists(mykey)):
 				iuses=string.split(portage.portdb.aux_get(mykey, ["IUSE"])[0])
 				old_use=string.split(vardbapi.aux_get(mykey, ["USE"])[0])
-				now_use=self.pkgsettings["USE"]
+				now_use=string.split(self.pkgsettings["USE"])
 				for x in iuses:
 					if (old_use.count(x) and not now_use.count(x)) or (not old_use.count(x) and now_use.count(x)):
 						merging=1
