@@ -655,13 +655,13 @@ dyn_help() {
 		echo "production (stripped)"
 	fi
 	echo "  merge to    : ${ROOT}" 
-	echo 
+	echo
 	if [ -n "$USE" ]
 	then
 		echo "Additionally, support for the following optional features will be enabled:"
 		echo 
 		echo "  ${USE}"
-	fi    
+	fi
 	echo
 }
 
@@ -745,9 +745,9 @@ inherit() {
 # src_unpack() { base_src_unpack; }
 EXPORT_FUNCTIONS() {
 	while [ "$1" ]; do
-	    debug-print "EXPORT_FUNCTIONS: ${1} -> ${ECLASS}_${1}" 
-	    eval "$1() { ${ECLASS}_$1 ; }" > /dev/null
-	shift
+		debug-print "EXPORT_FUNCTIONS: ${1} -> ${ECLASS}_${1}" 
+		eval "$1() { ${ECLASS}_$1 ; }" > /dev/null
+		shift
 	done
 }
 
@@ -758,17 +758,17 @@ newdepend() {
 
 	while [ -n "$1" ]; do
 		case $1 in
-		    "/autotools")
-			    DEPEND="${DEPEND} sys-devel/autoconf sys-devel/automake sys-devel/make"
-			    ;;
-		    "/c")
-			    DEPEND="${DEPEND} sys-devel/gcc virtual/glibc"
-			    RDEPEND="${RDEPEND} virtual/glibc"
-			    ;;
-		    *)
-			    DEPEND="$DEPEND $1"
-			    RDEPEND="$RDEPEND $1"
-			    ;;
+		"/autotools")
+			DEPEND="${DEPEND} sys-devel/autoconf sys-devel/automake sys-devel/make"
+			;;
+		"/c")
+			DEPEND="${DEPEND} sys-devel/gcc virtual/glibc"
+			RDEPEND="${RDEPEND} virtual/glibc"
+			;;
+		*)
+			DEPEND="$DEPEND $1"
+			RDEPEND="$RDEPEND $1"
+			;;
 		esac
 		shift
 	done
@@ -806,13 +806,13 @@ do
 		export SANDBOX_ON="0"
 		if [ "$PORTAGE_DEBUG" = "0" ]
 		then
-		  pkg_${myarg}
-		  #Allow non-zero return codes since they can be caused by &&
+			pkg_${myarg}
+			#Allow non-zero return codes since they can be caused by &&
 		else
-		  set -x
-		  pkg_${myarg}
-		  #Allow non-zero return codes since they can be caused by &&
-		  set +x
+			set -x
+			pkg_${myarg}
+			#Allow non-zero return codes since they can be caused by &&
+			set +x
 		fi
 		;;
 	unpack|compile|clean|install)
@@ -825,11 +825,11 @@ do
 		if [ "$PORTAGE_DEBUG" = "0" ]
 		then
 			dyn_${myarg}
-		  	#Allow non-zero return codes since they can be caused by &&
+			#Allow non-zero return codes since they can be caused by &&
 		else
 			set -x
 			dyn_${myarg}
-		  	#Allow non-zero return codes since they can be caused by &&
+			#Allow non-zero return codes since they can be caused by &&
 			set +x
 		fi
 		export SANDBOX_ON="0"
@@ -841,11 +841,11 @@ do
 		export SANDBOX_ON="0"
 		if [ "$PORTAGE_DEBUG" = "0" ]
 		then
-		  dyn_${myarg}
+			dyn_${myarg}
 		else
-		  set -x
-		  dyn_${myarg}
-		  set +x
+			set -x
+			dyn_${myarg}
+			set +x
 		fi
 		;;
 	package|rpm)
