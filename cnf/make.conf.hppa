@@ -178,6 +178,14 @@ CXXFLAGS="${CFLAGS}"
 #     prevents the clean phase from deleting the temp files ($T) from a merge.
 #FEATURES="sandbox buildpkg ccache distcc userpriv usersandbox noclean noauto cvs keeptemp"
 #
+# CCACHE_SIZE sets the space use limitations for ccache. The default size is
+#     2G, and will be set if not defined otherwise and ccache is in features. 
+#     Portage will set the default ccache dir if it is not present in the
+#     user's environment: ${PORTAGE_TMPDIR}/ccache (/var/tmp/ccache).
+#     Sizes are specified with 'G' 'M' or 'K'.
+#     '4G' for 4 gigabytes, '4096M' for 4 gigabytes, etc... Default is 2G
+#CCACHE_SIZE="2G"
+#
 # RSYNC_RETRIES sets the number of times portage will attempt to retrieve
 #     a current portage tree before it exits with an error. This allows
 #     for a more successful retrieval without user intervention most times.
