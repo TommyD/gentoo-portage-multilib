@@ -2292,7 +2292,7 @@ def digestCheckFiles(myfiles, mydigests, basedir, note="", strict=0):
 			print "!!! the following to generate a new digest:"
 			print "!!!   ebuild /usr/portage/category/package/package-version.ebuild digest"
 			return 0
-		myfile=basedir+"/"+x
+		myfile=os.path.normpath(basedir+"/"+x)
 		if not os.path.exists(myfile):
 			if strict:
 				print "!!! File does not exist:",myfile
