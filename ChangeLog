@@ -1,6 +1,10 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  19 Nov 2002; Martin Schlemmer <azarah@gentoo.org> cnf/etc-update.conf:
+  Add 'menu' config item and note about it needing dev-utils/dialog, as
+  a lot of users do not know about this nifty feature.
+
   14 Nov 2002; Phil Bordelon <sunflare@gentoo.org> man/emerge.1:
   Cleaned up the more recent edits to the man page to more closely
   match the previous format, fix various typos, and so on.  Expanded
