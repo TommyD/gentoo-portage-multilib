@@ -24,7 +24,7 @@ SRC_URI="ftp://alpha.gnu.org/pub/gnu/sed/${P}.tar.gz"
 .br
 HOMEPAGE="http://www.gnu.org/software/sed/sed.html"
 .br
-KEYWORDS="x86 ppc sparc alpha mips hppa"
+KEYWORDS="x86 ppc sparc mips alpha arm hppa"
 .br
 SLOT="0"
 .br
@@ -132,13 +132,14 @@ if the file was not found at \fIGENTOO_MIRROR\fB\fR.
 Should contain a list of URL's for the sources main sites and other further
 package dependent information.
 .TP
-\fBKEYWORDS\fR = \fI[-~][x86,ppc,sparc,alpha,mips,hppa]\fR
+\fBKEYWORDS\fR = \fI[-~][x86,ppc,sparc,mips,alpha,arm,hppa]\fR
 Should contain appropriate list of arches that the ebuild is know to work/not work.  By
 default if you do not know if an ebuild runs under a particular arch simply omit that
 KEYWORD.  If the ebuild will not work on that arch include it as \-ppc for example.  If
 the ebuild is being submitted for inclusion, it must have ~arch set for architectures
 where it has been PROVEN TO WORK.  (Packages KEYWORDed this way may be unmasked for
 testing by setting ACCEPT_KEYWORDS="~arch" on the command line, or in \fBmake.conf\fR(5))
+For an authoritative list please review /usr/portage/profiles/arch.list.
 .TP
 \fBSLOT\fR
 This sets the SLOT for packages that may need to co\-exist.  By default
