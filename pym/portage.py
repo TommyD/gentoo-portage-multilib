@@ -164,11 +164,13 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 	if not mypath:
 		raise ValueError, "Empty path given"
 
-	if mypath[-1] == '/':
+	if type(mypath) == types.StringType and mypath[-1] == '/':
 		mypath = mypath[:-1]
 
+	if type(mypath) == types.FileType:
+		mypath = mypath.fileno()
 	if type(mypath) == types.IntType:
-		lockfilename    = '[Only fd given]'
+		lockfilename    = mypath
 		wantnewlockfile = 0
 		unlinkfile      = 0
 	elif wantnewlockfile:
@@ -180,7 +182,10 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 	if type(mypath) == types.StringType:
 		if not os.path.exists(os.path.dirname(mypath)):
 			raise IOError, "Base path does not exist '%s'" % os.path.dirname(mypath)
+		old_umask=os.umask(0002)
 		myfd = os.open(lockfilename, os.O_CREAT|os.O_WRONLY,0660)
+		os.chown(lockfilename,os.getuid(),portage_gid)
+		os.umask(old_umask)
 
 	elif type(mypath) == types.IntType:
 		myfd = mypath
@@ -189,7 +194,7 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 		raise ValueError, "Unknown type passed in '%s': '%s'" % (type(mypath),mypath)
 
 	fcntl.flock(myfd,fcntl.LOCK_EX)
-	if not os.path.exists(lockfilename):
+	if type(lockfilename) == types.StringType and not os.path.exists(lockfilename):
 		# The file was deleted on us... Keep trying to make one...
 		os.close(myfd)
 		writemsg("lockfile recurse\n",1)
@@ -203,7 +208,7 @@ def unlockfile(mytuple):
 
 	lockfilename,myfd,unlinkfile = mytuple
 	
-	if not os.path.exists(lockfilename):
+	if type(lockfilename) == types.StringType and not os.path.exists(lockfilename):
 		writemsg("lockfile does not exist '%s'\n" % lockfile,1)
 		return None
 
@@ -231,7 +236,10 @@ def unlockfile(mytuple):
 		writemsg("Failed to get lock... someone took it.\n",1)
 		writemsg(str(e)+"\n",1)
 		pass
-	os.close(myfd)
+	# why test lockfilename?  because we may have been handed an fd originally, and the caller might not like having their
+	# open fd closed automatically on them.
+	if type(lockfilename) == types.StringType:
+		os.close(myfd)
 			
 	return 1
 
@@ -1987,7 +1995,7 @@ def spawn(mystring,mysettings,debug=0,free=0,droppriv=0,fd_pipes=None):
 	else:
 		return ((retval & 0xff) << 8) # interrupted by signal
 
-def fetch(myuris, mysettings, listonly=0, fetchonly=0):
+def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",use_locks=1):
 	"fetch files.  Will use digest file if available."
 	if ("mirror" in features) and ("nomirror" in mysettings["RESTRICT"].split()):
 		print ">>> \"mirror\" mode and \"nomirror\" restriction enabled; skipping fetch."
@@ -1995,7 +2003,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0):
 	global thirdpartymirrors
 	
 	check_config_instance(mysettings)
-	
+
 	custommirrors=grabdict(CUSTOM_MIRRORS_FILE)
 
 	mymirrors=[]
@@ -2109,15 +2117,37 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0):
 						filedict[myfile].append(locmirr+"/"+myuri[eidx+1:])		
 		else:
 				filedict[myfile].append(myuri)
+
+	if use_locks and locks_in_subdir:
+		if os.path.exists(mysettings["DISTDIR"]+"/"+locks_in_subdir):
+			if not os.access(mysettings["DISTDIR"]+"/"+locks_in_subdir,os.W_OK):
+				writemsg("!!! Lack write access to write to %s.  Aborting.\n" % mysettings["DISTDIR"]+"/"+locks_in_subdir)
+				return 0
+		elif not os.access(mysettings["DISTDIR"]+"/",os.W_OK):
+			writemsg("!!! Lack write access to write to %s.  Aborting\n" % mysettings["DISTDIR"]+"/")
+			return 0
+		else:
+			old_umask=os.umask(0002)
+			os.mkdir(mysettings["DISTDIR"]+"/"+locks_in_subdir,0775)
+			os.chown(mysettings["DISTDIR"]+"/"+locks_in_subdir,os.getuid(),portage_gid)
+			os.umask(old_umask)
+
+		
 	for myfile in filedict.keys():
 		if listonly:
 			fetched=0
 			writemsg("\n")
+			file_lock = None
+		else:
+			if use_locks:
+				if locks_in_subdir:
+					file_lock = lockfile(mysettings["DISTDIR"]+"/"+locks_in_subdir+"/"+myfile,wantnewlockfile=1)
+				else:
+					file_lock = lockfile(mysettings["DISTDIR"]+"/"+myfile,wantnewlockfile=1)
 		for loc in filedict[myfile]:
 			if listonly:
 				writemsg(loc+" ")
 				continue
-
 			# allow different fetchcommands per protocol
 			protocol = loc[0:loc.find("://")]
 			if mysettings.has_key("FETCHCOMMAND_"+protocol.upper()):
@@ -2131,7 +2161,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0):
 			
 			fetchcommand=string.replace(fetchcommand,"${DISTDIR}",mysettings["DISTDIR"])
 			resumecommand=string.replace(resumecommand,"${DISTDIR}",mysettings["DISTDIR"])
-	
+
 			try:
 				mystat=os.stat(mysettings["DISTDIR"]+"/"+myfile)
 				if mydigests!=None and mydigests.has_key(myfile):
@@ -2160,7 +2190,14 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0):
 			except (OSError,IOError),e:
 				writemsg("An exception was caught(1)...\nFailing the download: %s.\n" % (str(e)),1)
 				fetched=0
-			if fetched!=2:
+
+
+			# check if we can actually write to the directory/existing file.
+			if fetched!=2 and not (os.access(mysettings["DISTDIR"],os.W_OK) and (os.path.exists(mysettings["DISTDIR"]+"/"+myfile) == os.access(mysettings["DISTDIR"]+"/"+myfile, os.W_OK))):
+				writemsg(red("***")+" Lack write access to %s, failing fetch\n" % str(mysettings["DISTDIR"]+"/"+myfile))
+				fetched=0
+				break
+			elif fetched!=2:
 				#we either need to resume or start the download
 				#you can't use "continue" when you're inside a "try" block
 				if fetched==1:
@@ -2229,7 +2266,9 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0):
 						break
 					elif mydigests!=None:
 						writemsg("No digest file available and download failed.\n")
-
+		if use_locks:
+			unlockfile(file_lock)
+		
 		if (fetched!=2) and not listonly:
 			writemsg("!!! Couldn't download "+str(myfile)+". Aborting.\n")
 			return 0

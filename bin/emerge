@@ -314,14 +314,21 @@ def emergelog(mystr):
 	if "notitles" not in portage.features:
 		xtermTitle(mystr)
 	try:
+		#seems odd opening a file each write...
 		if not os.path.exists("/var/log/emerge.log"):
 			mylogfile=open("/var/log/emerge.log", "w")
 			os.chmod("/var/log/emerge.log", S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP)
 			os.chown("/var/log/emerge.log", portage.portage_uid, portage.portage_gid)
 		else:
 			mylogfile=open("/var/log/emerge.log", "a")
+
+		l=portage.lockfile(mylogfile)
+		# seek because we may have gotten held up by the lock.
+		# if so, we may not be positioned at the end of the file.
+		mylogfile.seek(0,2)
 		mylogfile.write(str(time.time())[:10]+": "+mystr+"\n")
 		mylogfile.flush()
+		portage.unlockfile(l)
 		mylogfile.close()
 	except Exception, e:
 		if edebug:
@@ -459,7 +466,7 @@ def help():
 	emergehelp.help(myaction,myopts,havecolor)
 
 # check if root user is the current user for the actions where emerge needs this
-if ("--pretend" in myopts) or (myaction=="search"):
+if ("--pretend" in myopts) or ("--fetchonly" in myopts) or (myaction=="search"):
 	if not portage.secpass:
 		if portage.wheelgid==portage.portage_gid:
 			print "emerge: wheel group membership required for \"--pretend\" and search."
