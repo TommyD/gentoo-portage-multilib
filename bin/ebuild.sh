@@ -1434,7 +1434,7 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ]; then
 			export PATH="/usr/bin/ccache:${PATH}"
 		fi
 
-		[ -z "${CCACHE_DIR}" ] && export CCACHE_DIR="${HOME}/.ccache"
+		[ -z "${CCACHE_DIR}" ] && export CCACHE_DIR="/root/.ccache"
 
 		addread "${CCACHE_DIR}"
 		addwrite "${CCACHE_DIR}"
