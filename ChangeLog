@@ -7,6 +7,12 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  20 Nov 2004; Brian Harring <ferringb@gentoo.org> src/filter-env/posix.c:
+  Commited what should be a fix for the "lets randomly drop part of the env"
+  issue that's been around lately.   Basically, it looks like it wasn't reading
+  all of what was dumped to stdin.  Converted it to fread/fopen based, and used
+  feof.  General cleanup aside from that, close fd's on the way out, etc.
+
   20 Nov 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild.sh:
   filter-env is now in use.  In other words, you *will* have to do 
   the configure/install to get the binary, since it *is* required for

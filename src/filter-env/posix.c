@@ -40,7 +40,8 @@ static int debugging;
 int
 main(int argc, char *const *argv)
 {
-    int fd = 0;
+    FILE *file_in = NULL;
+    FILE *file_out = NULL;
     char **funcs = NULL;	char **vars = NULL;
     char *file_buff=NULL;
     int funcs_count = 0;	int vars_count = 0;
@@ -65,7 +66,7 @@ main(int argc, char *const *argv)
 	    debugging++;
 	    break;
 	case 'i':
-	    if(fd!=0) {
+	    if(file_in != NULL) {
 		fprintf(stderr,"-i cannot be specified twice. bailing\n");
 		exit(USAGE_FAIL);
 	    }
@@ -74,8 +75,8 @@ main(int argc, char *const *argv)
 	        exit(IO_FAIL);
 	    }
 	    file_size=st.st_size;
-	    fd=open(optarg, O_RDONLY);
-	    if(fd == -1) {
+	    file_in=fopen(optarg, "r");
+	    if(file_in == NULL) {
 		fprintf(stderr,"error opening file %s, bailing\n", optarg);
 		exit(IO_FAIL);
 	    }
@@ -99,6 +100,12 @@ main(int argc, char *const *argv)
 	    exit(USAGE_FAIL);
 	}
     }
+    if(file_size==0) {
+	file_in = stdin;
+    } else {
+	fclose(stdin);
+    }
+    file_out = stdout;
 
     fsr = build_regex_string((const char **)funcs, funcs_count);
     d1printf("fsr buffer=%s\n", fsr);
@@ -118,14 +125,13 @@ main(int argc, char *const *argv)
 	pvre=NULL;
     
 
-//    fprintf(stderr,"loading file\n");
     if(file_size) {
 	file_buff = (char *)malloc(file_size + 1);
 	if(file_buff == NULL) {
 	   fprintf(stderr, "failed allocing needed memory for file.\n");
 	   exit(MEM_FAIL);
 	}
-	if(file_size != read(fd, file_buff, file_size)) {
+	if(file_size != fread(file_buff, 1, file_size, file_in)) {
 	   fprintf(stderr, "failed reading file\n");
 	   exit(IO_FAIL);
 	}
@@ -134,34 +140,28 @@ main(int argc, char *const *argv)
 	    fprintf(stderr, "failed allocing needed memory for file.\n");
 	    exit(MEM_FAIL);
 	}
-	while((c=read(fd,file_buff + file_size, 4096)) == 4096) {
-	    file_size += 4096;
-	    if((file_buff = (char *)realloc(file_buff, file_size + 4096)) == NULL) {
+	while(!feof(file_in)) {
+	    c=fread(file_buff+file_size, 1, 4096, file_in);
+	    file_size += c;
+	    if(c != 4096 && !feof(file_in)) {
+		fprintf(stderr,"caught end\n");
+	    }
+	    // realloc +1 for null termination.
+	    if((file_buff = (char *)realloc(file_buff, file_size + c + 1)) == NULL) {
 		fprintf(stderr, "failed allocing needed memory for file.\n");
 		exit(MEM_FAIL);
 	    }
 	}
 	file_size += c;
-	if(c == 4095) {
-	    if((file_buff = (char *)realloc(file_buff, file_size + 4096)) == NULL) {
-		fprintf(stderr, "failed allocing needed memory for file.\n");
-		exit(MEM_FAIL);
-	    }
-	}
     }
     file_buff[file_size] = '\0';
-    close(fd);
+    fclose(file_in);
 
     init_regexes();
-    process_scope(stdout,file_buff, file_buff + file_size,pvre, pfre, '\0');
+    process_scope(file_out,file_buff, file_buff + file_size,pvre, pfre, '\0');
 
-/*    if(filter_the_file(file_buff, fsr, vsr)) {
-	fprintf(stderr, "walking file failed\n");
-	free((void*)fsr);	free((void*)vsr);
-	free(file_buff);
-	exit(PARSE_FAILURE);
-    }
-*/
+    fflush(file_out);
+    fclose(file_out);
     free_regexes();
     free((void*)fsr);	free((void*)vsr);
     free(file_buff);
