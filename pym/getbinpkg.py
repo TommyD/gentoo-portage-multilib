@@ -112,13 +112,17 @@ def create_conn(baseurl,conn=None):
 		elif protocol == "http":
 			conn = httplib.HTTPConnection(host)
 		elif protocol == "ftp":
+			passive = 0
+			if(host[-1] == "*"):
+				passive = 1
+				host = host[:-1]
 			conn = ftplib.FTP(host)
 			if password:
 				conn.login(username,password)
 			else:
 				sys.stderr.write(yellow(" * No password provided for username")+" '"+str(username)+"'\n\n")
 				conn.login(username)
-			conn.set_pasv(1)
+			conn.set_pasv(passive)
 			conn.set_debuglevel(0)
 		else:
 			raise NotImplementedError, "%s is not a supported protocol." % protocol

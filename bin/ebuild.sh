@@ -1328,8 +1328,8 @@ newdepend() {
 			do_newdepend DEPEND sys-devel/autoconf sys-devel/automake sys-devel/make
 			;;
 		"/c")
-			do_newdepend DEPEND sys-devel/gcc virtual/glibc
-			do_newdepend RDEPEND virtual/glibc
+			do_newdepend DEPEND sys-devel/gcc virtual/libc
+			do_newdepend RDEPEND virtual/libc
 			;;
 		*)
 			do_newdepend DEPEND $1

@@ -9,6 +9,22 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  04 Aug 2004; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Changed the
+	virtual/glibc references to virtual/libc.
+
+  04 Aug 2004; Nicholas Jones <carpaski@gentoo.org> prepman: No longer runs
+	gzip on .keep files.
+
+  04 Aug 2004; Nicholas Jones <carpaski@gentoo.org> getbinpkg.py: Added in
+	an active/passive option for FTP connections -- Requires the appending of
+	an asterisk to the HOST portion of the ftp string to use active connections.
+
+  04 Aug 2004; Nicholas Jones <carpaski@gentoo.org> make.conf*: Updates for
+	the active-connection ftp option.
+
+  04 Aug 2004; Nicholas Jones <carpaski@gentoo.org> emergehelp.py: Removed
+	the bin/ version and replaced it with a duplicated pym/ version.
+
   03 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py: 
   Added check to ensure /var/tmp/portage's permissions were sane. (#56665)
 

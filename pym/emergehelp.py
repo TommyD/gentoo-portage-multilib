@@ -165,7 +165,7 @@ def help(myaction,myopts,havecolor=1):
 		print 
 		print "       "+green("--emptytree")+" ("+green("-e")+" short option)"
 		print "              Virtually tweaks the tree of installed packages to only contain"
-		print "              glibc, this is great to use together with --pretend. This makes"
+		print "              libc, this is great to use together with --pretend. This makes"
 		print "              it possible for developers to get a complete overview of the"
 		print "              complete dependency tree of a certain package."
 		print

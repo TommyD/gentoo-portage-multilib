@@ -166,9 +166,14 @@ CHOST="armv4l-unknown-linux-gnu"
 # or '--getbinpkgonly' will cause portage to retrieve the metadata from all
 # packages in the directory specified, and use that data to determine what will
 # be downloaded and merged. '-g' or '-gK' are the recommend parameters. Please
-# consult the man pages and 'emerge --help' for more information.
-#PORTAGE_BINHOST="ftp://login:pass@grp.mirror.site/pub/grp/i686/athlon-xp/"
+# consult the man pages and 'emerge --help' for more information. For FTP, the
+# default connection is passive -- If you require an active connection, affix
+# an asterisk (*) to the end of the host:port string before the path.
 #PORTAGE_BINHOST="http://grp.mirror.site/gentoo/grp/1.4/i686/athlon-xp/"
+# This ftp connection is passive ftp.
+#PORTAGE_BINHOST="ftp://login:pass@grp.mirror.site/pub/grp/i686/athlon-xp/"
+# This ftp connection is active ftp.
+#PORTAGE_BINHOST="ftp://login:pass@grp.mirror.site:21*/pub/grp/i686/athlon-xp/"
 
 # Synchronizing Portage
 # =====================
