@@ -1,11 +1,19 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+*portage 1.8.9_pre12 (22 Feb 2002)
+
+  22 Feb 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: everything
+  should now generate *lowercase* md5sums, fixing problems with digest 
+  backwards compatibility.
+  
   22 Feb 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: changed
   position of digest generation call so that "ebuild digest" now works if the
   sources have not yet been downloaded.
   
-  22 Feb 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: unmerging now
+*portage 1.8.9_pre11 (22 Feb 2002)
+
+22 Feb 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: unmerging now
   works correctly.
 
 *portage 1.8.9_pre10 (22 Feb 2002)

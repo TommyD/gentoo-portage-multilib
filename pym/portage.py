@@ -649,7 +649,7 @@ def digestcheck(myarchives):
 		if len(myline)<2:
 			#invalid line
 			continue
-		mydigests[myline[2]]=[string.upper(myline[1]),myline[3]]
+		mydigests[myline[2]]=[myline[1],myline[3]]
 	for x in myarchives:
 		if not mydigests.has_key(x):
 			print "!!! No message digest found for",x+"."
@@ -881,7 +881,7 @@ def getmtime(x):
 	 return `os.lstat(x)[-2]`
 
 def md5(x):
-	return string.upper(fchksum.fmd5t(x)[0])
+	return fchksum.fmd5t(x)[0]
 
 def pathstrip(x,mystart):
     cpref=os.path.commonprefix([x,mystart])
@@ -2181,7 +2181,7 @@ class dblink:
 					print "--- !obj  ","obj", obj
 					continue
 				mymd5=md5(obj)
-				if mymd5 != string.upper(pkgfiles[obj][2]):
+				if mymd5 != pkgfiles[obj][2]:
 					print "--- !md5  ","obj", obj
 					continue
 				myppath=""
