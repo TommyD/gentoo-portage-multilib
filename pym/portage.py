@@ -3234,9 +3234,7 @@ class fakedbapi(dbapi):
 
 	def cp_all(self):
 		returnme=[]
-		for x in self.cpdict.keys():
-			returnme.extend(self.cpdict[x])
-		return returnme
+		return [y for y in [x for x in self.cpdict.values()]]
 
 	def cpv_inject(self,mycpv):
 		"""Adds a cpv from the list of available packages."""
@@ -3496,8 +3494,10 @@ class vardbapi(dbapi):
 			del self.cpcache[mycp]
 		return returnme
 
-	def cpv_all(self,use_cache=1):
-		returnme=[]
+	def cpv_all(self, use_cache=1):
+		return list(self.iter_cpv_all(use_cache=use_cache))
+
+	def iter_cpv_all(self,use_cache=1):
 		basepath = self.root+VDB_PATH+"/"
 		
 		mycats = self.categories
@@ -3510,13 +3510,12 @@ class vardbapi(dbapi):
 				subpath = x+"/"+y
 				# -MERGING- should never be a cpv, nor should files.
 				if os.path.isdir(basepath+subpath) and (portage_versions.pkgsplit(y) is not None):
-					returnme += [subpath]
-		return returnme
+					yield subpath
 
 	def cp_all(self,use_cache=1):
-		returnme=[]
 		mylist = self.cpv_all(use_cache=use_cache)
-		for y in mylist:
+		d=dict()
+		for y in self.iter_cpv_all(use_cache=use_cache):
 			if y[0] == '*':
 				y = y[1:]
 			mysplit=portage_versions.catpkgsplit(y)
@@ -3524,9 +3523,8 @@ class vardbapi(dbapi):
 				self.invalidentry(self.root+VDB_PATH+"/"+y)
 				continue
 			mykey=mysplit[0]+"/"+mysplit[1]
-			if not mykey in returnme:
-				returnme.append(mykey)
-		return returnme
+			d[mysplit[0]+"/"+mysplit[1]] = None
+		return d.keys()
 
 	def checkblockers(self,origdep):
 		pass
@@ -3823,21 +3821,9 @@ class eclass_cache:
 		if not (self.packages[location][cat].has_key(pkg) and self.packages[location][cat][pkg] and eclass_list):
 			return 0
 
-		eclass_list.sort()
-		eclass_list = portage_util.unique_array(eclass_list)
-		
-		ec_data = self.packages[location][cat][pkg].keys()
-		ec_data.sort()
-		if eclass_list != ec_data:
-			return 0
-
+		myp = self.packages[location][cat][pkg]
 		for x in eclass_list:
-			if x not in self.eclasses:
-				return 0
-			data = self.packages[location][cat][pkg][x]
-			if data[1] != self.eclasses[x][1]:
-				return 0
-			if data[0] != self.eclasses[x][0]:
+			if not (x in self.eclasses or myp.has_key(x) or myp[x][0:1] == self.eclasses[x][0:1]):
 				return 0
 
 		return 1			
@@ -4145,8 +4131,8 @@ class portdbapi(dbapi):
 			writemsg("!!!            %s\n" % myebuild)
 			raise KeyError, "'%(cpv)s' at %(path)s" % {"cpv":mycpv,"path":myebuild}
 
-		myManifestPath = "/".join( myebuild.split("/")[:-1] )+"/Manifest"
 		if "gpg" in self.mysettings.features:
+			myManifestPath = os.path.join("/",os.path.dirname(myebuild),"Manifest")
 			try:
 				mys = portage_gpg.fileStats(myManifestPath)
 				if (myManifestPath in self.manifestCache) and \
@@ -4191,21 +4177,32 @@ class portdbapi(dbapi):
 			writemsg("!!! aux_get(): ebuild for '%(cpv)s' does not exist at:\n" % {"cpv":mycpv})
 			writemsg("!!!            %s\n" % myebuild)
 			raise KeyError
+
 		mydata={}
 
 		# when mylocation is not overlay directorys and metacachedir is set,
 		# we use cache files, which is usually on /usr/portage/metadata/cache/.
 		if mylocation==self.mysettings["PORTDIR"] and metacachedir and self.metadb[cat].has_key(pkg):
 
-			doregen = False
-
-			if self.metadb[cat].get_timestamp(pkg) != self.auxdb[mylocation][cat].get_timestamp(pkg):
-				doregen = True
-				mydata = self.metadb[cat][pkg]
-			else:
-				mydata = self.metadb[cat][pkg]
-				if not self.eclassdb.is_current(mylocation,cat,pkg,mydata.get("INHERITED","").split()):
-					doregen = True
+			doregen = True
+			mydata=self.metadb[cat][pkg]
+			if self.auxdb[mylocation][cat].has_key(pkg):
+				data = self.auxdb[mylocation][cat][pkg]
+				doregen = not (data["_mtime_"] == mydata["_mtime_"] and \
+					self.eclassdb.is_current(mylocation,cat,pkg,mydata.get("INHERITED","").split()) )
+#				doregen = mymeta["_mtime_"] != self.auxdb[mylocation][cat][pkg]["_mtime_"]
+#				if not doregen:
+#					if not self.eclassdb.is_current(mylocation,cat,pkg,mydata.get("INHERITED","").split()):
+#						doregen = True
+					
+#				mydata=mymeta
+#			if self.metadb[cat].get_timestamp(pkg) != self.auxdb[mylocation][cat].get_timestamp(pkg):
+#				doregen = True
+#				mydata = self.metadb[cat][pkg]
+#			else:
+#				mydata = self.metadb[cat][pkg]
+#				if not self.eclassdb.is_current(mylocation,cat,pkg,mydata.get("INHERITED","").split()):
+#					doregen = True
 
 			if doregen:
 				self.auxdb[mylocation][cat][pkg] = mydata
@@ -4214,14 +4211,13 @@ class portdbapi(dbapi):
 		else:
 			doregen=False
 			try:
-				doregen = self.auxdb[mylocation][cat].get_timestamp(pkg) != emtime
-				if not doregen:
-					mydata = self.auxdb[mylocation][cat][pkg]
-					doregen = (not self.eclassdb.is_current(mylocation,cat, \
-						pkg,mydata.get("INHERITED","").split()))
+				mydata = self.auxdb[mylocation][cat][pkg]
+				doregen = not (emtime == long(mydata.get("_mtime_",0)) and self.eclassdb.is_current(mylocation,cat, \
+					pkg,mydata.get("INHERITED","").split()))
 			except SystemExit,e:
 				raise
 			except Exception, e:
+				print "caught exception", e
 				doregen = True
 				if not isinstance(e, KeyError):
 					# CorruptionError is the likely candidate
@@ -4361,14 +4357,13 @@ class portdbapi(dbapi):
 
 	def cp_all(self):
 		"returns a list of all keys in our tree"
-		biglist=[]
+		d=dict()
 		for x in self.mysettings.categories:
 			for oroot in self.porttrees:
-				for y in listdir(oroot+"/"+x,ignorecvs=1):
+				for y in listdir(os.path.join(oroot, x),ignorecvs=1):
 					mykey=x+"/"+y
-					if not mykey in biglist:
-						biglist.append(mykey)
-		return biglist
+					d[x+"/"+y] = None
+		return d.keys()
 	
 	def p_list(self,mycp):
 		returnme=[]

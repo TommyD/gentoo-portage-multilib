@@ -7,6 +7,13 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  17 Feb 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py, 
+  pym/portage_db_flat.py: Collection of speedups, some massive. 
+  J?rgen H?tzel <gentoo@hoetzel.info> deserves massive props for identifying
+  a huge slow down in cp_all.  Aside from that, pushed the locking 
+  rewrite for flat_list forward from stable, and cleaned up aux_get and
+  eclass.is_valid.
+
   06 Jan 2005; Marius Mauch <genone@gentoo.org> bin/emerge:
   Fixing some calls to pkgsplit to not modify the returned tuple.
 

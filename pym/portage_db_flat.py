@@ -9,14 +9,13 @@ from copy import deepcopy
 from string import join
 
 import portage_db_template
-import portage_locks
 
 class database(portage_db_template.database):
 	def module_init(self):
 		self.lastkey  = None # Cache
 		self.lastval  = None # Cache
 
-		self.fullpath = self.path + "/" + self.category + "/"
+		self.fullpath = os.path.join(self.path,self.category)
 
 		if not os.path.exists(self.fullpath):
 			prevmask=os.umask(0)
@@ -49,7 +48,7 @@ class database(portage_db_template.database):
 		self.__mcache_keys = [None,None,None]
 
 	def has_key(self,key):
-		if os.path.exists(self.fullpath+key):
+		if os.path.exists(os.path.join(self.fullpath,key)):
 			return 1
 		return 0
 	
@@ -63,10 +62,12 @@ class database(portage_db_template.database):
 		return mykeys
 
 	def get_timestamp(self,key,locking=True):
+		import traceback
+		traceback.print_stack()
 		if key in self.__mcache_keys:
 			return self.__mcache_list[self.__mcache_keys.index(key)]
-		lock=portage_locks.lockfile(self.fullpath+key,wantnewlockfile=1)
-		try:		x=os.stat(self.fullpath+key)[stat.ST_MTIME]
+		lock=portage_locks.lockfile(os.path.join(self.fullpath,key),wantnewlockfile=1)
+		try:		x=os.stat(os.path.join(self.fullpath,key))[stat.ST_MTIME]
 		except OSError:	x=None
 		self.__addMcache(key,x)
 		portage_locks.unlockfile(lock)
@@ -76,14 +77,14 @@ class database(portage_db_template.database):
 		if not key:
 			raise KeyError, "key is not set to a valid value"
 
-		mylock = portage_locks.lockfile(self.fullpath+key, wantnewlockfile=1)
-		if self.has_key(key):
-			self.get_timestamp(key,locking=False)
-			mtime = os.stat(self.fullpath+key)[stat.ST_MTIME]
-			myf = open(self.fullpath+key)
+#		mylock = portage_locks.lockfile(self.fullpath+key, wantnewlockfile=1)
+#		if self.has_key(key):
+		try:
+#			self.get_timestamp(key,locking=False)
+			myf = open(os.path.join(self.fullpath,key),"r")
+			mtime = os.fstat(myf.fileno()).st_mtime
 			myl = myf.readlines()
 			myf.close()
-			portage_locks.unlockfile(mylock)
 
 			dict = {"_mtime_":mtime}
 			
@@ -96,44 +97,34 @@ class database(portage_db_template.database):
 					dict[self.dbkeys[x]] = myl[x]
 				
 			return dict
-		else:
-			portage_locks.unlockfile(mylock)
-		return None
+		except OSError:
+			return None
 	
 	def set_values(self,key,val):
 		if not key:
 			raise KeyError, "No key provided. key:%s val:%s" % (key,val)
 		if not val:
 			raise ValueError, "No value provided. key:%s val:%s" % (key,val)
-			
-		data = ""
-		for x in self.dbkeys:
-			data += val[x]+"\n"
-
-		mylock = portage_locks.lockfile(self.fullpath+key, wantnewlockfile=1)
-		if os.path.exists(self.fullpath+key):
-			os.unlink(self.fullpath+key)
-
-		myf = open(self.fullpath+key,"w")
-		myf.write(data)
-		myf.flush()
+		update_fp = os.path.join(self.fullpath, ".update.%i.%s" % (os.getpid(), key))
+		myf = open(update_fp, "w")
+		myf.writelines( [ val[x] +"\n" for x in self.dbkeys] )
 		myf.close()
-		
-		os.chown(self.fullpath+key, self.uid, self.gid)
-		os.chmod(self.fullpath+key, 0664)
-		os.utime(self.fullpath+key, (long(val["_mtime_"]),long(val["_mtime_"])))
-		portage_locks.unlockfile(mylock)
+
+		os.chown(update_fp, self.uid, self.gid)
+		os.chmod(update_fp, 0664)
+		os.utime(update_fp, (-1,long(val["_mtime_"])))
+		os.rename(update_fp, os.path.join(self.fullpath,key))
 	
 	def del_key(self,key):
-		mylock = portage_locks.lockfile(self.fullpath+key, wantnewlockfile=1)
-		if self.has_key(key):
-			os.unlink(self.fullpath+key)
-			portage_locks.unlockfile(mylock)
-			self.lastkey = None
-			self.lastval = None
-			return 1
-		portage_locks.unlockfile(mylock)
-		return 0
+		self.lastkey = None	
+		self.lastval = None
+		try:
+			os.unlink(os.path.join(self.fullpath,key))
+		except OSError:
+			# either someone beat us to it, or the key doesn't exist.
+			# either way, it's gone, so we return false
+			return False
+		return True
 			
 	def sync(self):
 		return
