@@ -211,7 +211,7 @@ def emergelog(mystr):
 def emergeexit():
 	"""This gets out final log message in before we quit. As it overrides
 	any other atexit's we have setup, we need to call them ourself."""
-	#portage.portageexit()
+	portage.portageexit()
 	emergelog(" *** terminating.")
 	if "notitles" not in portage.features:
 		xtermTitleReset()
@@ -953,7 +953,7 @@ class depgraph:
 					myk=["binary",portage.root,mypk]
 				elif "--usepkgonly" in myopts:
 					self.missingbins += [myeb]
-					myk=["binary",portage.root,mypk]
+					myk=["binary",portage.root,myeb]
 					#print "mypk:",mypk
 					#print "myeb:",myeb
 				else:
@@ -1258,8 +1258,7 @@ class depgraph:
 						print "!!! Fetch for",y,"failed, continuing..."
 						print	
 						returnme=1
-					if x[0]=="blocks":
-						continue
+					continue
 				elif "--buildpkg" in myopts:
 					#create pkg, then merge pkg
 					emergelog(" === ("+str(mergecount)+" of "+str(len(mymergelist))+") Cleaning ("+y+")")
@@ -1479,12 +1478,13 @@ def unmerge(unmerge_action, unmerge_files):
 		print "\n>>>",unmerge_action+": No packages selected for removal.\n"
 		return 0
 
-	for x in candidate_catpkgs:
-		for y in localtree.dep_nomatch(mymatch[0]):
-			if y not in pkgmap[mykey]["omitted"] and \
-			   y not in pkgmap[mykey]["selected"] and \
-				 y not in pkgmap[mykey]["protected"]:
-				pkgmap[mykey]["omitted"].append(y)
+	if mymatch:
+		for x in candidate_catpkgs:
+			for y in localtree.dep_nomatch(mymatch[0]):
+				if y not in pkgmap[mykey]["omitted"] and \
+				   y not in pkgmap[mykey]["selected"] and \
+				   y not in pkgmap[mykey]["protected"]:
+					pkgmap[mykey]["omitted"].append(y)
 
 	for x in pkgmap.keys():
 		if global_unmerge and not pkgmap[x]["selected"]:

@@ -43,23 +43,4 @@ cd $TMP
 rm -f ${PKG}-${V}/bin/emerge.py ${PKG}-${V}/bin/{pmake,sandbox} ${PKG}-${V}/{bin,pym}/*.py[oc]
 tar cjvf ${TMP}/${PKG}-${V}.tar.bz2 ${PKG}-${V}
 
-if [ -L ${TMP}/portage-copy ]; then
-	echo "Copying to portage-copy"
-	cp ${TMP}/${PKG}-${V}.tar.bz2 ${TMP}/portage-copy/
-	cp /usr/portage/sys-apps/portage/portage-${PREVEB}.ebuild ${TMP}/portage-copy/portage-${V}.ebuild
-fi
-if [ -L ${TMP}/portage-web ]; then
-	echo "Copying to portage-web"
-	cp ${TMP}/${PKG}-${V}.tar.bz2 ${TMP}/portage-web/
-	cp /usr/portage/sys-apps/portage/portage-${PREVEB}.ebuild ${TMP}/portage-copy/portage-${V}.ebuild
-fi
-if [ -d /usr/portage.cvs/sys-apps/portage/ ]; then
-	cp /usr/portage/sys-apps/portage/portage-${PREVEB}.ebuild /usr/portage/sys-apps/portage/portage-${V}.ebuild
-	cp /usr/portage/sys-apps/portage/portage-${PREVEB}.ebuild /usr/portage.cvs/sys-apps/portage/portage-${V}.ebuild
-	rm -f /usr/portage/sys-apps/portage/files/digest-portage-${V}
-	rm -f /usr/portage.cvs/sys-apps/portage/files/digest-portage-${V}
-	rm -f /bigmama/share/archive/mirrors/gentoo/distfiles/portage-${V}.tar.bz2
-	rm -f $(python -c "import portage; print portage.settings['DISTDIR']+\"/${PKG}-${V}.tar.bz2\"")
-	ebuild /usr/portage/sys-apps/portage/portage-${V}.ebuild fetch digest
-	cp /usr/portage/sys-apps/portage/files/digest-portage-${V} /usr/portage.cvs/sys-apps/portage/files/digest-portage-${V}
-fi
+scp ${TMP}/${PKG}-${V}.tar.bz2 carpaski@twobit.net:/home/html/gentoo/portage/

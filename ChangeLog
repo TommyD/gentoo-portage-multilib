@@ -2,6 +2,16 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+*portage-2.0.49-r1 (25 Aug 2003): Fixes
+
+  25 Aug 2003; Nicholas Jones <carpaski@gentoo.org> emerge: -K traceback fix.
+  Made fetchonly quit traversing the merge code after fetching.
+
+  25 Aug 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Removed
+  auxcache saving code -- A few bugs and caching problems need to be resolved.
+  Moved a block of code in aux_get inside of an existing conditional -- Should
+  provide a small speedup.
+
 *portage-2.0.49 (22 Aug 2003): GRP downloading, Selinux, General Fixes
 
   22 Aug 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Make

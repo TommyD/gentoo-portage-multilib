@@ -12,10 +12,12 @@ exename=os.path.basename(sys.argv[0])
 os.environ["PORTAGE_CALLER"]="repoman"
 version="1.2"	
 
-import string,signal,readline,portage,re,cvstree
+import string,signal,readline,portage,re,cvstree,pickle
 from output import *
 from commands import getstatusoutput
 from time import *
+from fileinput import input
+from grp import getgrnam
 
 if "cvs" not in portage.features:
 	print
@@ -36,14 +38,16 @@ def exithandler(signum=None,frame=None):
 signal.signal(signal.SIGINT,exithandler)
 
 REPOROOTS=["gentoo-x86"]
-modes=["scan","fix","full","help","commit"]
+modes=["scan","fix","full","help","commit","last","lfull"]
 shortmodes={"ci":"commit"}
 modeshelp={
 "scan"  :"Scan current directory tree for QA issues (default)",
 "fix"   :"Fix those issues that can be fixed (stray digests, missing digests)",
 "full"  :"Scan current directory tree for QA issues (full listing)",
 "help"  :"Show this screen",
-"commit":"Scan current directory tree for QA issues; if OK, commit via cvs"
+"commit":"Scan current directory tree for QA issues; if OK, commit via cvs",
+"last"	:"Remember report from last run",
+"lfull"	:"Remember report from last run (full listing)"
 }
 options=["--pretend","--help","--commitmsg","--commitmsgfile"]
 shortoptions={"-m":"--commitmsg","-M":"--commitmsgfile","-p":"--pretend"}
@@ -65,7 +69,9 @@ qacats=[
 "ebuild.syntax","ebuild.output",
 "ebuild.nesteddie","LICENSE.invalid",
 "IUSE.invalid","KEYWORDS.invalid",
-"ebuild.nostable","ebuild.allmasked"
+"ebuild.nostable","ebuild.allmasked",
+"ebuild.majorsyn", "ebuild.minorsyn",
+"ebuild.badheader", "metadata.missing"
 ]
 qawarnings=[
 "changelog.missing",
@@ -79,7 +85,10 @@ qawarnings=[
 "digest.unmatch",
 "DEPEND.badmasked",
 "RDEPEND.badmasked",
-"IUSE.invalid"
+"IUSE.invalid",
+"ebuild.minorsyn",
+"ebuild.badheader",
+"metadata.missing"
 ]
 missingvars=["KEYWORDS","LICENSE","DESCRIPTION","SLOT"]
 allvars=portage.auxdbkeys
@@ -115,7 +124,11 @@ qahelp={
 	"LICENSE.invalid":"This ebuild is listing a license that doesnt exist in portages license/ dir.",
 	"KEYWORDS.invalid":"This ebuild contains KEYWORDS that are not listed in profiles/keywords.desc",
 	"ebuild.nostable":"There are no ebuilds that are marked as stable for your ARCH",
-	"ebuild.allmasked":"All ebuilds are masked for this package"
+	"ebuild.allmasked":"All ebuilds are masked for this package",
+	"ebuild.majorsyn":"This ebuild has a major syntax error that may cause the ebuild to fail partially or fully",
+	"ebuild.minorsyn":"This ebuild has a minor syntax error that contravenes gentoo coding style",
+	"ebuild.badheader":"This ebuild has a malformed header",
+	"metadata.missing":"Missing metadata.xml files"
 }
 
 def err(txt):
@@ -172,6 +185,63 @@ def help():
 	print
 	sys.exit(1)
 
+def last():
+	try:
+		#Retrieve and unpickle stats and fails from saved files
+		savedf=open('/var/cache/edb/repo.stats','r')
+		stats = pickle.load(savedf)
+		savedf.close()
+		savedf=open('/var/cache/edb/repo.fails','r')
+		fails = pickle.load(savedf)
+		savedf.close()
+	except:
+		err("Error retrieving last repoman run data; exiting.")
+
+	#dofail will be set to 1 if we have failed in at least one non-warning category
+	dofail=0
+	#dowarn will be set to 1 if we tripped any warnings
+	dowarn=0
+	#dofull will be set if we should print a "repoman full" informational message
+	dofull=0
+
+	print
+	print green("RepoMan remembers...")
+	print
+	for x in qacats:
+		if stats[x]:
+			dowarn=1
+			if x not in qawarnings:
+				dofail=1
+		else:
+			if mymode!="lfull":
+				continue
+		print "  "+string.ljust(x,20),
+		if stats[x]==0:
+			print green(`stats[x]`)
+			continue
+		elif x in qawarnings:
+			print yellow(`stats[x]`)
+		else:
+			print red(`stats[x]`)
+		if mymode!="lfull":
+			if stats[x]<12:
+				for y in fails[x]:
+					print "   "+y
+			else:
+				dofull=1
+		else:
+			for y in fails[x]:
+				print "   "+y
+	print
+	if dofull:
+		print bold("Note: type \"repoman lfull\" for a complete listing of repomans last run.")
+		print
+	if dowarn and not dofail:
+		print green("RepoMan sez:"),"\"You only gave me a partial QA payment last time?\nI took it, but I wasn't happy.\""
+	elif not dofail:
+		print green("RepoMan sez:"),"\"If everyone were like you, I'd be out of business!\""
+	print
+	sys.exit(1)
 
 mymode=None
 myoptions=[]
@@ -204,7 +274,8 @@ if mymode==None:
 	mymode="scan"
 if mymode=="help" or ("--help" in myoptions):
 	help()
-
+if mymode=="last" or (mymode=="lfull"):
+	last()
 if not os.path.isdir("CVS"):
 	err("We do not appear to be inside a local repository. Exiting.")
 try:
@@ -447,6 +518,11 @@ for x in scanlist:
 		stats["changelog.notadded"]+=1
 		fails["changelog.notadded"].append(x+"/ChangeLog")
 	
+	#metadata.xml file check
+	if "metadata.xml" not in checkdirlist:
+		stats["metadata.missing"]+=1
+		fails["metadata.missing"].append(x+"/metadata.xml")
+
 	for y in ebuildlist:
 		if y not in eadded:
 			#ebuild not added to cvs
@@ -544,6 +620,66 @@ for x in scanlist:
 			if (mykey!="-*") and (myskey not in kwlist):
 				stats["KEYWORDS.invalid"]=stats["KEYWORDS.invalid"]+1
 				fails["KEYWORDS.invalid"].append(x+"/"+y+".ebuild: %s" % mykey)
+		#syntax checks
+		gentoo_copyright = re.compile(r'^# Copyright 1999-' + strftime("%Y", gmtime()) + r' Gentoo Technologies, Inc\.')
+		gentoo_license = re.compile(r'^# Distributed under the terms of the GNU General Public License v2$')
+		ignore_line = re.compile(r'(^$)|(^(\t)*#)')
+		leading_spaces = re.compile(r'^[\S\t]')
+		trailing_whitespace = re.compile(r'.*([\S]$)')
+		continuation_symbol = re.compile(r'(.*[ ]+[\\][ ].*)')
+		line_continuation_quoted = re.compile(r'(\"|\')(([\w ,:;#\[\]\.`=/|\$\^\*{}()\'-])|(\\.))*\1')
+		line_continuation = re.compile(r'([^#]*\S)(\s+|\t)\\$')
+		linenum=0
+		for line in input(checkdir+"/"+y+".ebuild"):
+			linenum += 1
+			# Gentoo copyright check
+			if linenum == 1:
+				match = gentoo_copyright.match(line)
+				if not match:
+					myerrormsg = "Copyright header Error. Possibly date related."
+					stats["ebuild.badheader"] +=1
+					fails["ebuild.badheader"].append(x+"/"+y+".ebuild: %s" % myerrormsg)
+			# Gentoo license check
+			elif linenum == 2:
+				match = gentoo_license.match(line)
+				if not match:
+					myerrormsg = "Gentoo License Error."
+					stats["ebuild.badheader"] +=1
+					fails["ebuild.badheader"].append(x+"/"+y+".ebuild: %s" % myerrormsg)
+			else:
+				match = ignore_line.match(line)
+				if not match:
+					# Excluded Blank lines and full line comments. Good!
+					# Leading Spaces Check
+					match = leading_spaces.match(line)
+					if not match:
+						#Line has got leading spaces. Bad!
+						myerrormsg = "Leading Space Syntax Error. Line %d" % linenum
+						stats["ebuild.minorsyn"] +=1
+						fails["ebuild.minorsyn"].append(x+"/"+y+".ebuild: %s" % myerrormsg)
+					# Trailing whitespace check
+					match = trailing_whitespace.match(line)
+					if not match:
+						#Line has got trailing whitespace. Bad!
+						myerrormsg = "Trailing whitespace Syntax Error. Line %d" % linenum
+						stats["ebuild.minorsyn"] +=1
+						fails["ebuild.minorsyn"].append(x+"/"+y+".ebuild: %s" % myerrormsg)
+					# Line continuation check
+					match = continuation_symbol.match(line)
+					if match:
+						#Excluded lines not even containing a " \" match. Good!
+						line = re.sub(line_continuation_quoted,"\"\"",line)
+						#line has been edited to collapsed "" and '' quotes to "". Good!
+						match = continuation_symbol.match(line)
+						if match:
+							#Again exclude lines not even containing a " \" match. Good!
+							#This repetition is done for a slight performance increase
+							match = line_continuation.match(line)
+							if not match:
+								#Line has a line continuation error. Bad!
+								myerrormsg = "Line continuation (\"\\\") Syntax Error. Line %d" % linenum
+								stats["ebuild.majorsyn"] +=1
+								fails["ebuild.majorsyn"].append(x+"/"+y+".ebuild: %s" % myerrormsg)
 
 	# Check for 'all unstable' or 'all masked' -- ACCEPT_KEYWORDS is stripped
 	# XXX -- Needs to be implemented in dep code. Can't determine ~arch nicely.
@@ -554,7 +690,17 @@ for x in scanlist:
 	    stats["ebuild.allmasked"]+=1
 	    fails["ebuild.allmasked"].append(x)
 
-
+#Pickle and save results for instant reuse in last and lfull
+savef=open('/var/cache/edb/repo.stats','w')
+pickle.dump(stats,savef)
+savef.close()
+savef=open('/var/cache/edb/repo.fails','w')
+pickle.dump(fails,savef)
+savef.close()
+os.chown('/var/cache/edb/repo.stats',os.geteuid(),getgrnam('portage')[2])
+os.chmod('/var/cache/edb/repo.stats',0664)
+os.chown('/var/cache/edb/repo.fails',os.geteuid(),getgrnam('portage')[2])
+os.chmod('/var/cache/edb/repo.fails',0664)
 print
 #dofail will be set to 1 if we have failed in at least one non-warning category
 dofail=0

@@ -1158,7 +1158,16 @@ def fetch(myuris, listonly=0, fetchonly=0):
 			if eidx != -1:
 				mirrorname = myuri[9:eidx]
 				if thirdpartymirrors.has_key(mirrorname):
-					shuffle(thirdpartymirrors[mirrorname])
+					try:
+						shuffle(thirdpartymirrors[mirrorname])
+					except:
+						sys.stderr.write(red("!!! YOU HAVE A BROKEN PYTHON/GLIBC.\n"))
+						sys.stderr.write(    "!!! You are most likely on a pentium4 box and have specified -march=pentium4\n")
+						sys.stderr.write(    "!!! or -fpmath=sse2. GCC was generating invalid sse2 instructions in versions\n")
+						sys.stderr.write(    "!!! prior to 3.2.3-r3. Please rebuild python with either -march=pentium3 or\n")
+						sys.stderr.write(    "!!! set -mno-sse2 in your cflags.\n\n\n")
+						time.sleep(10)
+						
 					for locmirr in thirdpartymirrors[mirrorname]:
 						filedict[myfile].append(locmirr+"/"+myuri[eidx+1:])		
 		else:
@@ -1520,7 +1529,6 @@ def spawnebuild(mydo,actionmap,debug,alwaysdep=0):
 
 def doebuild(myebuild,mydo,myroot,debug=0,listonly=0,fetchonly=0):
 	global settings
-
 	if mydo not in ["help","clean","prerm","postrm","preinst","postinst",
 	                "config","touch","setup","depend","fetch","digest",
 	                "unpack","compile","install","rpm","qmerge","merge",
@@ -3387,36 +3395,13 @@ class portdbapi(dbapi):
 	"this tree will scan a portage directory located at root (passed to init)"
 	def __init__(self):
 		self.root=settings["PORTDIR"]
-		try:
-			self.auxcache=cPickle.load(file("/var/cache/edb/auxcache.pickle"))[self.root]
-		except:
-			self.auxcache={}
+		self.auxcache={}
 		#if the portdbapi is "frozen", then we assume that we can cache everything (that no updates to it are happening)
 		self.xcache={}
 		self.frozen=0
 		#overlays="overlay roots"
 		self.overlays=[]
-		
-	def saveauxcache(self):
-		try:
-			self.auxpickle=cPickle.load(file("/var/cache/edb/auxcache.pickle"))
-		except:
-			self.auxpickle={}
-		self.auxpickle[self.root] = self.auxcache
 
-		try:
-			cPickle.dump(self.auxpickle, file("/var/cache/edb/auxcache.pickle", "w"), 1)
-		except Exception, e:
-			print "!!! Failed to save auxcache"
-			print "!!! "+str(e)
-			return
-			
-		try:
-			os.chown("/var/cache/edb/auxcache.pickle", uid, portage_gid)
-			os.chmod("/var/cache/edb/auxcache.pickle",0664)
-		except Exception, e:
-			pass
-		
 	def finddigest(self,mycpv):
 		try:
 			mydig   = self.findname2(mycpv)[0]
@@ -3534,9 +3519,10 @@ class portdbapi(dbapi):
 				os.utime(mydbkey,(emtime,emtime))
 				mydbkeystat=os.stat(mydbkey)
 				if mydbkeystat[ST_SIZE] == 0:
-					#print "!!! <-- Size 0 -->"
+					#print "!!! <-- Size == 0 -->"
 					pass
 				else:
+					#print "!!! <-- Size != 0 -->"
 					dmtime=mydbkeystat[ST_MTIME]
 					doregen2=0
 			except OSError:
@@ -3549,110 +3535,112 @@ class portdbapi(dbapi):
 		#is stale, then we need to read in the new cache entry.
 
 		#print "statusline3:",doregen,dmtime,emtime,mycpv
-		if (not self.auxcache.has_key(mycpv)) or (not self.auxcache[mycpv].has_key("mtime")) or (self.auxcache[mycpv]["mtime"]!=dmtime):
+		if not (self.auxcache.has_key(mycpv) and \
+		        self.auxcache[mycpv].has_key("mtime") and \
+		        self.auxcache[mycpv]["mtime"] == dmtime):
 			#print "stale auxcache"
 			stale=1
 
-		try:
-			#print "grab cent"
-			mycent=open(mydbkey,"r")
-			mylines=mycent.readlines()
-			mycent.close()
-		except (IOError, OSError):
-			sys.stderr.write(str(red("\naux_get():")+" (1) Error in "+mycpv+" ebuild.\n"
-			  "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
-			raise KeyError
-
-		#We now have the db
-		myeclasses=[]
-		#if we regenerated our cache entry earlier, there's no point in
-		#checking all this as we know we are up-to-date.  Otherwise....
-		if not mylines:
-			print "no mylines"
-			pass
-		elif doregen2 or len(mylines)<len(auxdbkeys):
-			doregen2=1
-			#print "too few auxdbkeys / invalid generation"
-		elif mylines[auxdbkeys.index("INHERITED")]!="\n":
-			#print "inherits"
-			#Verify if this ebuild is current against the eclasses it uses.
-			#eclass() -> Loads, checks, and returns 1 if it's current.
-			myeclasses=mylines[auxdbkeys.index("INHERITED")].split()
-			#print "))) 002"
-			for myeclass in myeclasses:
-				myret=eclass(myeclass,mycpv,dmtime)
-				#print "eclass '",myeclass,"':",myret,doregen,doregen2
-				if myret==None:
-					# eclass is missing... We'll die if it doesn't get fixed on regen
-					doregen2=1
-					break
-				if myret==0 and not usingmdcache:
-					#print "((( 002 0"
-					#we set doregen2 to regenerate this entry in case it was fixed
-					#in the ebuild/eclass since the cache entry was created.
-					#print "Old cache entry. Regen."
-					doregen2=1
-					break
-
-		#print "doregen2: pre"
-		if doregen2:	
-			#sys.stderr.write("-")
-			#sys.stderr.flush()
-			#print "doregen2"
-			stale=1
-			#old cache entry, needs updating (this could raise IOError)
-
 			try:
-				# Can't set the mtime of a file we don't own, so to ensure that it
-				# is owned by the running user, we delete the file so we recreate it.
-				os.unlink(mydbkey)
-			except:
-				pass
-			
-			if doebuild(myebuild,"depend","/"):
-				#depend returned non-zero exit code...
-				sys.stderr.write(str(red("\naux_get():")+" (2) Error in "+mycpv+" ebuild.\n"
-				  "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
-				raise KeyError
-			try:
-				os.utime(mydbkey,(emtime,emtime))
+				#print "grab cent"
 				mycent=open(mydbkey,"r")
+				mylines=mycent.readlines()
+				mycent.close()
 			except (IOError, OSError):
-				sys.stderr.write(str(red("\naux_get():")+" (3) Error in "+mycpv+" ebuild.\n"
+				sys.stderr.write(str(red("\naux_get():")+" (1) Error in "+mycpv+" ebuild.\n"
 				  "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
 				raise KeyError
-			mylines=mycent.readlines()
-			mycent.close()
 
-		#print "stale: pre"
-		if stale:
-			#print "stale: in"
-			# due to a stale or regenerated cache entry,
-			# we need to update our internal dictionary....
-			try:
-				# Set the dep entry to the ebuilds mtime.
-				self.auxcache[mycpv]={"mtime": emtime}
+			#We now have the db
+			myeclasses=[]
+			#if we regenerated our cache entry earlier, there's no point in
+			#checking all this as we know we are up-to-date.  Otherwise....
+			if not mylines:
+				print "no mylines"
+				pass
+			elif doregen2 or len(mylines)<len(auxdbkeys):
+				doregen2=1
+				#print "too few auxdbkeys / invalid generation"
+			elif mylines[auxdbkeys.index("INHERITED")]!="\n":
+				#print "inherits"
+				#Verify if this ebuild is current against the eclasses it uses.
+				#eclass() -> Loads, checks, and returns 1 if it's current.
 				myeclasses=mylines[auxdbkeys.index("INHERITED")].split()
-			except Exception, e:
-				print red("\n\naux_get():")+" stale entry was not regenerated for"
-				print "           "+mycpv+"; deleting and exiting."
-				print "!!!",e
-				os.unlink(mydbkey)
-				sys.exit(1)
-			for myeclass in myeclasses:
-				if eclass(myeclass,mycpv,emtime)==None:
-					# Eclass wasn't found.
-					print red("\n\naux_get():")+' eclass "'+myeclass+'" from',mydbkey,"not found."
-					print "!!! Eclass '"+myeclass+"' not found."
+				#print "))) 002"
+				for myeclass in myeclasses:
+					myret=eclass(myeclass,mycpv,dmtime)
+					#print "eclass '",myeclass,"':",myret,doregen,doregen2
+					if myret==None:
+						# eclass is missing... We'll die if it doesn't get fixed on regen
+						doregen2=1
+						break
+					if myret==0 and not usingmdcache:
+						#print "((( 002 0"
+						#we set doregen2 to regenerate this entry in case it was fixed
+						#in the ebuild/eclass since the cache entry was created.
+						#print "Old cache entry. Regen."
+						doregen2=1
+						break
+
+			#print "doregen2: pre"
+			if doregen2:	
+				#sys.stderr.write("-")
+				#sys.stderr.flush()
+				#print "doregen2"
+				stale=1
+				#old cache entry, needs updating (this could raise IOError)
+
+				try:
+					# Can't set the mtime of a file we don't own, so to ensure that it
+					# is owned by the running user, we delete the file so we recreate it.
+					os.unlink(mydbkey)
+				except:
+					pass
+			
+				if doebuild(myebuild,"depend","/"):
+					#depend returned non-zero exit code...
+					sys.stderr.write(str(red("\naux_get():")+" (2) Error in "+mycpv+" ebuild.\n"
+					  "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
+					raise KeyError
+				try:
+					os.utime(mydbkey,(emtime,emtime))
+					mycent=open(mydbkey,"r")
+				except (IOError, OSError):
+					sys.stderr.write(str(red("\naux_get():")+" (3) Error in "+mycpv+" ebuild.\n"
+					  "               Check for syntax error or corruption in the ebuild. (--debug)\n\n"))
+					raise KeyError
+				mylines=mycent.readlines()
+				mycent.close()
+
+			#print "stale: pre"
+			if stale:
+				#print "stale: in"
+				# due to a stale or regenerated cache entry,
+				# we need to update our internal dictionary....
+				try:
+					# Set the dep entry to the ebuilds mtime.
+					self.auxcache[mycpv]={"mtime": emtime}
+					myeclasses=mylines[auxdbkeys.index("INHERITED")].split()
+				except Exception, e:
+					print red("\n\naux_get():")+" stale entry was not regenerated for"
+					print "           "+mycpv+"; deleting and exiting."
+					print "!!!",e
+					os.unlink(mydbkey)
 					sys.exit(1)
-			try:
-				for x in range(0,len(auxdbkeys)):
-					self.auxcache[mycpv][auxdbkeys[x]]=mylines[x][:-1]
-			except IndexError:
-				print red("\n\naux_get():")+" error processing",auxdbkeys[x],"for",mycpv
-				print "           Expiring the cache entry and exiting."
-				os.unlink(mydbkey)
-				sys.exit(1)
+				for myeclass in myeclasses:
+					if eclass(myeclass,mycpv,emtime)==None:
+						# Eclass wasn't found.
+						print red("\n\naux_get():")+' eclass "'+myeclass+'" from',mydbkey,"not found."
+						print "!!! Eclass '"+myeclass+"' not found."
+						sys.exit(1)
+				try:
+					for x in range(0,len(auxdbkeys)):
+						self.auxcache[mycpv][auxdbkeys[x]]=mylines[x][:-1]
+				except IndexError:
+					print red("\n\naux_get():")+" error processing",auxdbkeys[x],"for",mycpv
+					print "           Expiring the cache entry and exiting."
+					os.unlink(mydbkey)
+					sys.exit(1)
 		#finally, we look at our internal cache entry and return the requested data.
 		returnme=[]
 		for x in mylist:
@@ -3974,6 +3962,9 @@ class binarytree(packagetree):
 					self.dbapi.cpv_inject(fullpkg)
 				except:
 					continue
+
+		if getbinpkgs and not settings["PORTAGE_BINHOST"]:
+			sys.stderr.write(red("!!! PORTAGE_BINHOST unset, but use is requested.\n"))
 
 		if getbinpkgs and settings["PORTAGE_BINHOST"] and not self.remotepkgs:
 			try:
@@ -4969,9 +4960,12 @@ if 'selinux' in settings["USE"].split(" "):
 	try:
 		import selinux
 		selinux_enabled=1
-	except ImportError:
+	except OSError, e:
+		sys.stderr.write(red("!!! SELinux not loaded: ")+str(e)+"\n")
 		selinux_enabled=0
-		pass
+	except ImportError:
+		sys.stderr.write(red("!!! SELinux module not found.")+" Please verify that it was installed.\n")
+		selinux_enabled=0
 else:
 	selinux_enabled=0
 
@@ -5106,8 +5100,6 @@ def do_upgrade(mykey):
 def portageexit():
 	global uid,portage_gid,portdb
 	if secpass and not os.environ.has_key("SANDBOX_ACTIVE"):
-		portdb.saveauxcache()
-
 		if mtimedb:
   	 	# Store mtimedb
 			mymfn=mtimedbfile
@@ -5237,6 +5229,12 @@ for x in pkglines:
 		revmaskdict[mycatpkg].append(x)
 del pkglines
 groups=settings["ACCEPT_KEYWORDS"].split()
+archlist=[]
+for myarch in grabfile(settings["PORTDIR"]+"/profiles/arch.list"):
+	archlist += [myarch,"~"+myarch]
+for group in groups:
+	if group not in archlist:
+		sys.stderr.write("\n"+red("!!! INVALID ACCEPT_KEYWORD: ")+str(group)+"\n")
 
 # Clear the cache that we probably won't need anymore.
 dircache={}
