@@ -199,6 +199,23 @@ for x in cmdline:
 	else:
 		myfiles.append(x)
 
+
+if "moo" in myfiles:
+	print """
+
+  Gentoo Linux
+
+          (__)
+          (oo)
+    /------\\/
+   / |    ||
+  *  /\\---/\\
+     ~~   ~~
+
+...."Have you mooed today?"...
+"""
+
+
 if (myaction in ["world", "system"]) and myfiles:
 	print "emerge: please specify a package class (\"world\" or \"system\") or individual packages, but not both."
 	sys.exit(1)
@@ -948,10 +965,13 @@ class depgraph:
 			print "Depstring:",depstring
 		if not arg:
 			#processing dependencies
-			mycheck=portage.dep_check(depstring,self.mydbapi[myroot],self.pkgsettings,myuse=myuse)
+			mycheck=portage.dep_check(depstring,self.mydbapi[myroot],self.pkgsettings,myuse=myuse,use_binaries=("--usepkg" in myopts))
+			#mycheck=portage.dep_check(depstring,self.mydbapi[myroot],self.pkgsettings,myuse=myuse)
+
 			if not mycheck[0]:
 				return 0
 			mymerge=mycheck[1]
+
 		else:
 			#we're processing a command-line argument; unconditionally merge it even if it's already merged
 			mymerge=[depstring]
@@ -1247,7 +1267,10 @@ class depgraph:
 				if (not "--emptytree" in myopts) and portage.db[x[1]]["vartree"].exists_specific(x[2]):
 					addl="  "+yellow("R")+fetch+"  "
 				elif (not "--emptytree" in myopts) and portage.db[x[1]]["vartree"].exists_specific_cat(x[2]):
-					mynewslot=portage.portdb.aux_get(x[2],["SLOT"])[0]
+					if x[0] == "binary":
+						mynewslot=portage.db["/"]["bintree"].dbapi.aux_get(x[2],["SLOT"])[0]
+					elif x[0] == "ebuild":
+						mynewslot=portage.portdb.aux_get(x[2],["SLOT"])[0]
 					myoldlist=portage.db[x[1]]["vartree"].dbapi.match(portage.pkgsplit(x[2])[0])
 					myinslotlist=filter((lambda p: portage.db[portage.root]["vartree"].getslot(p)==mynewslot),myoldlist)
 					if myinslotlist:

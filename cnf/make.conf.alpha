@@ -224,6 +224,9 @@ CFLAGS="-mcpu=ev5 -O3 -pipe "
 #     these settings are for developer use, but some are available to non-
 #     developers as well. 
 #
+#  'autoaddcvs'  causes portage to automatically try to add files to cvs
+#                that will have to be added later. Done at generation times
+#                and only has an effect when 'cvs' is also set.
 #  'buildpkg'    causes binary packages to be created of all packages that 
 #                are merged.
 #  'ccache'      enables ccache support via CC.
@@ -259,10 +262,14 @@ CFLAGS="-mcpu=ev5 -O3 -pipe "
 # CCACHE_SIZE sets the space use limitations for ccache. The default size is
 #     2G, and will be set if not defined otherwise and ccache is in features. 
 #     Portage will set the default ccache dir if it is not present in the
-#     user's environment: ${PORTAGE_TMPDIR}/ccache (/var/tmp/ccache).
+#     user's environment, for userpriv it sets: ${PORTAGE_TMPDIR}/ccache
+#     (/var/tmp/ccache), and for regular use the default is /root/.ccache.
 #     Sizes are specified with 'G' 'M' or 'K'.
 #     '4G' for 4 gigabytes, '4096M' for 4 gigabytes, etc... Default is 2G
 #CCACHE_SIZE="2G"
+#
+# DISTCC_DIR sets the temporary space used by distcc.
+#DISTCC_DIR="${PORTAGE_TMPDIR}/.distcc"
 #
 # RSYNC_EXCLUDEFROM is a file that portage will pass to rsync when it updates
 #     the portage tree. Specific chucks of the tree may be excluded from

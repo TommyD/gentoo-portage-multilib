@@ -14,7 +14,7 @@
 **  $Header$
 */
 
-#define _GNU_SOURCE
+/* #define _GNU_SOURCE */
 
 #include <errno.h>
 #include <fcntl.h>
@@ -585,11 +585,14 @@ main(int argc, char **argv)
 		if (print_debug)
 			printf("Verification of the required files.\n");
 
+#ifndef SB_HAVE_64BIT_ARCH
 		if (file_exist(sandbox_lib, 0) <= 0) {
 			fprintf(stderr, "Could not open the sandbox library at '%s'.\n",
 							sandbox_lib);
 			return -1;
-		} else if (file_exist(sandbox_rc, 0) <= 0) {
+		} 
+#endif
+		if (file_exist(sandbox_rc, 0) <= 0) {
 			fprintf(stderr, "Could not open the sandbox rc file at '%s'.\n",
 							sandbox_rc);
 			return -1;

@@ -2,6 +2,44 @@
 # Copyright 2000-2004 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  20 Mar 2004; Nicholas Jones <carpaski@gentoo.org> portage_db_*: Updated
+	all the db modules to be current and correct and updated the testing code
+	to make sure everything is working properly.
+
+  20 Mar 2004; Nicholas Jones <carpaski@gentoo.org> ebuild: Fix for traceback
+	and incorrent ROOT variable when using an alternate root and hand-merging.
+
+  20 Mar 2004; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Exported the
+  sandbox variables so that they work.
+
+  20 Mar 2004; Nicholas Jones <carpaski@gentoo.org> emerge: Enhancements for
+  binary downloads -- proper selection for virtuals, etc... Proper slot
+  handling for pretend output with binaries.
+
+  20 Mar 2004; Nicholas Jones <carpaski@gentoo.org> prepman: symlink fix.
+
+  20 Mar 2004; Nicholas Jones <carpaski@gentoo.org> prepstrip: Added the
+  readelf PIC code for the TEXTREL stuff.
+
+  20 Mar 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Removed some
+  functions: evaluate, dep_listcleanup, dep_getjiggy. Made inheritance for
+  profiles relative from the profile's directory instead of from the profile's
+  base directory. OBSOLETING two functions dep_parenreduce and dep_opreduce in
+  favor of the new code in portage_dep paren_reduce and use_reduce. dep_zapdeps
+  got an overhaul for much more intelligent selection of packages and virtual
+  handling during depgraph generation. Binary tree enhancements and selection
+  enhancements. bindbapi created to do aux_get on binaries. isInjected added
+  to vardbapi to get injected status. SRC_URI uses the new portage_dep code
+  to handle strings now -- nesting should would flawlessly and FEATURES=cvs
+  should get _all_ files.
+
+  20 Mar 2004; Nicholas Jones <carpaski@gentoo.org> portage_db_cpickle.py:
+  Added pickle loading safety.
+
+  20 Mar 2004; Nicholas Jones <carpaski@gentoo.org> portage_dep: Temp home
+  for the dep resolution code that will be moving from portage.py and emerge
+  until we get the modular structure set up.
+
   17 Mar 2004; Masatomo Nakano <nakano@gentoo.org> ebuild.sh, emerge,
   portage.py, portage_db_anydbm.py, portage_db_cpickle.py,
   portage_db_flat.py, portage_db_template.py:

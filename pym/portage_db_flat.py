@@ -1,8 +1,7 @@
+# $Header$
 
-import types,os.path
+import types,os
 from copy import deepcopy
-from os import makedirs,unlink,chown,utime,chmod
-import os.path
 from string import join
 
 import portage_db_template
@@ -22,11 +21,11 @@ class database(portage_db_template.database):
 
 		if not os.path.exists(self.fullpath):
 			prevmask=os.umask(0)
-			makedirs(self.fullpath, 02775)
+			os.makedirs(self.fullpath, 02775)
 			os.umask(prevmask)
 			try:
-				chown(self.fullpath, self.uid, self.gid)
-				chmod(self.fullpath, 02775)
+				os.chown(self.fullpath, self.uid, self.gid)
+				os.chmod(self.fullpath, 02775)
 			except:
 				pass
 		
@@ -72,7 +71,7 @@ class database(portage_db_template.database):
 			raise KeyError, "No key provided. key:%s val:%s" % (key,val)
 		if not val:
 			raise ValueError, "No value provided. key:%s val:%s" % (key,val)
-		
+			
 		data = ""
 		for x in self.dbkeys:
 			data += val[x]+"\n"
@@ -85,13 +84,13 @@ class database(portage_db_template.database):
 		myf.flush()
 		myf.close()
 		
-		chown(self.fullpath+key, self.uid, self.gid)
-		chmod(self.fullpath+key, 0664)
-		utime(self.fullpath+key, (val["_mtime_"],val["_mtime_"]))
+		os.chown(self.fullpath+key, self.uid, self.gid)
+		os.chmod(self.fullpath+key, 0664)
+		os.utime(self.fullpath+key, (long(val["_mtime_"]),long(val["_mtime_"])))
 	
 	def del_key(self,key):
-		if self.key_exists(key):
-			unlink(self.fullpath+key)
+		if self.has_key(key):
+			os.unlink(self.fullpath+key)
 			self.lastkey = None
 			self.lastval = None
 			return 1

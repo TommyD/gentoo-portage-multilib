@@ -58,10 +58,14 @@ get_sandbox_lib(char *sb_path)
 {
 	char path[255];
 
+#ifdef SB_HAVE_64BIT_ARCH
+        snprintf(path, 254, "%s", LIB_NAME);
+#else
 	snprintf(path, 254, "/lib/%s", LIB_NAME);
 	if (file_exist(path, 0) <= 0) {
 		snprintf(path, 254, "%s%s", sb_path, LIB_NAME);
 	}
+#endif
 	return (strdup(path));
 }
 

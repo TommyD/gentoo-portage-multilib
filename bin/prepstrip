@@ -30,13 +30,18 @@ for x in "$@"; do # "$@" quotes each element... Plays nice with spaces.
 			echo "   ${x:${#D}:${#x}}"
 			${STRIP} --strip-unneeded "${x}"
 
-			# etdyn binaries are shared objects, but not really. Non-relocatable.
-			if [ -x /usr/bin/isetdyn ]; then
-				if /usr/bin/isetdyn "${x}" >/dev/null; then
-					${STRIP} "${x}"
+			if [ -x /usr/bin/readelf ] ; then
+				/usr/bin/readelf -d "${x}" | grep TEXTREL > /dev/null
+				if [ $? = 0 ]; then
+					echo "	${x:${#D}:${#x}} will contain runtime text relocations"
+					if [ "${FEATURES//*strict*/true}" == "true" ] ; then
+						echo "  Text relocations require a lot of extra work to be preformed by the dynamic linker which will cause serious performance impact on IA-32"
+						echo "	and might not even function properly on other architectures hppa for example"
+						echo "	If you are a programmer please take a closer look at this package and consider writing a patch which addresses this problem"
+						exit 1
+					fi
 				fi
 			fi
-
 		fi
 	fi
 done

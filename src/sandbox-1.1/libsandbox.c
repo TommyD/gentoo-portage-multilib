@@ -474,8 +474,7 @@ mkdir(const char *pathname, mode_t mode)
 	canonicalize_int(pathname, canonic);
 
 	/* Check if the directory exist, return EEXIST rather than failing */
-	lstat(canonic, &st);
-	if (0 == errno) {
+	if (0 == lstat(canonic, &st)) {
 		errno = EEXIST;
 		return errno;
 	}

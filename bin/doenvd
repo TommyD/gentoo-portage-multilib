@@ -1,0 +1,15 @@
+#!/bin/bash
+# Copyright 1999-2004 Gentoo Technologies, Inc.
+# Distributed under the terms of the GNU General Public License v2
+# $Header$
+
+if [ ${#} -lt 1 ] ; then
+	echo "doinfo: at least one argument needed"
+	exit 1 	
+fi
+
+tmp_INSDESTTREE="${INSDESTTREE}"
+INSDESTTREE=/etc/env.d/
+doins "$@"
+INSDESTTREE="${tmp_INSDESTTREE}"
+unset tmp_INSDESTTREE

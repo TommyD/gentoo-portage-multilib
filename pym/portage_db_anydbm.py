@@ -1,6 +1,6 @@
 # $Header$
 
-import anydbm,cPickle,types
+import anydbm,cPickle,types,os
 from os import chown,path,umask,mkdir
 from os.path import exists
 
@@ -15,7 +15,7 @@ class database(portage_db_template.database):
 		self.gid      = gid
 		
 		if not exists(self.path):
-			prevmask=umask(0)
+			prevmask=os.umask(0)
 			current_path="/"
 			for mydir in self.path.split("/"):
 				current_path += "/"+mydir
@@ -40,7 +40,7 @@ class database(portage_db_template.database):
 			return 1
 		return 0
 		
-	def list_keys(self):
+	def keys(self):
 		return self.db.keys()
 	
 	def get_values(self,key):
@@ -55,7 +55,7 @@ class database(portage_db_template.database):
 		self.db[key] = cPickle.dumps(val)
 	
 	def del_key(self,key):
-		if self.key_exists(key):
+		if self.has_key(key):
 			del self.db[key]
 			return True
 		return False

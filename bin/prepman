@@ -17,7 +17,12 @@ for x in `find "${z}"/ -type d 2>/dev/null` ; do
 			# Symlink ...
 			mylink="${y}"
 			linkto="`readlink "${y}"`"
-
+			
+			# Do NOT change links to directories
+			if [ -d "${z}/${linkto}" ] ; then
+				continue
+			fi
+			
 			if [ "${linkto##*.}" != "gz" ] ; then
 				linkto="${linkto}.gz"
 			fi

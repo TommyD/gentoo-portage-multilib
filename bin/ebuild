@@ -13,7 +13,7 @@ def getroot():
 			return '/'
 	except:
 		return '/'
-	return os.path.normpath(a+'/')
+	return os.path.normpath(a)+'/'
 
 os.environ["PORTAGE_CALLER"]="ebuild"
 		

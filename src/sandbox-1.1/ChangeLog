@@ -2,6 +2,13 @@
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+  20 Mar 2004; Nicholas Jones <carpaski@gentoo.org> Makefile: Updates for
+	32/64 bit sandbox. Made CC and LD '?=' values to allow passed in CC to work.
+
+  20 Mar 2004; Nicholas Jones <carpaski@gentoo.org> libsandbox.c:
+  bug 42048 -- Fixed the lstat/errno conditions for mkdir <caleb@g.o>.
+  Added the 64/32 bit sandbox patch for AMD64 bug 32963 <brad/azarah>.
+
   29 Feb 2004; Martin Schlemmer <azarah@gentoo.org> sandbox.c, sandbox_futils.c :
   Fix permissions and group of pids file and logs.  Permissions should be 0664
   and group should be 'portage'.  Bug #34260.

@@ -11,6 +11,8 @@ import sys,string,os,re,types,shlex,shutil,xpak,fcntl,signal
 import time,cPickle,atexit,grp,traceback,commands,pwd,cvstree,copy
 
 import getbinpkg
+import portage_dep
+
 from output import *
 
 from stat import *
@@ -458,39 +460,6 @@ def tokenize(mystring):
 		writemsg("!!! tokenizer: Exiting with unterminated parenthesis in:\n'"+str(mystring)+"'\n")
 		return None
 	return newtokens
-
-def evaluate(mytokens,mydefines,allon=0):
-	"""removes tokens based on whether conditional definitions exist or not.
-	Recognizes !"""
-
-	# This function is obsoleted.
-	# Use dep_opconvert
-	
-	pos=0
-	if mytokens==None:
-		return None
-	while pos<len(mytokens):
-		if type(mytokens[pos])==types.ListType:
-			evaluate(mytokens[pos],mydefines)
-			if not len(mytokens[pos]):
-				del mytokens[pos]
-				continue
-		elif mytokens[pos][-1]=="?":
-			cur=mytokens[pos][:-1]
-			del mytokens[pos]
-			if allon:
-				if cur[0]=="!":
-					del mytokens[pos]
-			else:
-				if cur[0]=="!":
-					if ( cur[1:] in mydefines ) and (pos<len(mytokens)):
-						del mytokens[pos]
-						continue
-				elif ( cur not in mydefines ) and (pos<len(mytokens)):
-					del mytokens[pos]
-					continue
-		pos=pos+1
-	return mytokens
 
 def flatten(mytokens):
 	"""this function now turns a [1,[2,3]] list into
@@ -1226,7 +1195,7 @@ class config:
 
 			mypath = self.profiles[0]
 			while os.path.exists(mypath+"/parent"):
-				mypath = os.path.normpath(os.path.dirname(mypath)+"///"+grabfile(mypath+"/parent")[0])
+				mypath = os.path.normpath(mypath+"///"+grabfile(mypath+"/parent")[0])
 				if os.path.exists(mypath):
 					self.profiles.insert(0,mypath)
 
@@ -1834,6 +1803,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0):
 					#we don't have the digest file, but the file exists.  Assume it is fully downloaded.
 					fetched=2
 			except (OSError,IOError),e:
+				writemsg("An exception was caught(1)...\nFailing the download: %s.\n" % (str(e)),1)
 				fetched=0
 			if fetched!=2:
 				#we either need to resume or start the download
@@ -1889,11 +1859,15 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0):
 								fetched=2
 								break
 					except (OSError,IOError),e:
+						writemsg("An exception was caught(2)...\nFailing the download: %s.\n" % (str(e)),1)
 						fetched=0
 				else:
 					if not myret:
 						fetched=2
 						break
+					elif mydigests!=None:
+						writemsg("No digest file available and download failed.\n")
+
 		if (fetched!=2) and not listonly:
 			writemsg("!!! Couldn't download "+str(myfile)+". Aborting.\n")
 			return 0
@@ -3088,9 +3062,10 @@ def dep_eval(deplist):
 				return 0
 		return 1
 
-def dep_zapdeps(unreduced,reduced):
+def dep_zapdeps(unreduced,reduced,vardbapi=None,use_binaries=0):
 	"""Takes an unreduced and reduced deplist and removes satisfied dependencies.
 	Returned deplist contains steps that must be taken to satisfy dependencies."""
+	writemsg("ZapDeps -- %s\n" % (use_binaries), 2)
 	if unreduced==[] or unreduced==['||'] :
 		return []
 	if unreduced[0]=="||":
@@ -3099,16 +3074,29 @@ def dep_zapdeps(unreduced,reduced):
 			return []
 		else:
 			#try to find an installed dep.
-			mydbapi=db[root]["vartree"].dbapi
+			if vardbapi:
+				mydbapi=vardbapi
+			else:
+				mydbapi=db[root]["vartree"].dbapi
+
 			if db["/"].has_key("porttree"):
 				myportapi=db["/"]["porttree"].dbapi
 			else:
 				myportapi=None
+
+			if use_binaries and db["/"].has_key("bintree"):
+				mybinapi=db["/"]["bintree"].dbapi
+				writemsg("Using bintree...\n",2)
+			else:
+				mybinapi=None
+
 			x=1
 			candidate=[]
 			while x<len(reduced):
+				writemsg("x: %s, reduced[x]: %s\n" % (x,reduced[x]), 2)
 				if (type(reduced[x])==types.ListType):
-					candidate.append(dep_zapdeps(unreduced[x], reduced[x]))
+					newcand = dep_zapdeps(unreduced[x], reduced[x], vardbapi=vardbapi, use_binaries=use_binaries)
+					candidate.append(newcand)
 				else:
 					if (reduced[x]==False):
 						candidate.append([unreduced[x]])
@@ -3128,7 +3116,22 @@ def dep_zapdeps(unreduced,reduced):
 							match=0
 							break
 				if match:
+					writemsg("Installed match: %s\n" % (x), 2)
 					return x
+
+			# Use binary packages if available.
+			if mybinapi:
+				for x in candidate:
+					match=1
+					for pkg in x:
+						if not mybinapi.match(pkg):
+							match=0
+							break
+						else:
+							writemsg("Binary match: %s\n" % (pkg), 2)
+					if match:
+						writemsg("Binary match final: %s\n" % (x), 2)
+						return x
 
 			#use no-masked package(s) in portage tree
 			if myportapi:
@@ -3139,9 +3142,11 @@ def dep_zapdeps(unreduced,reduced):
 							match=0
 							break
 					if match:
+						writemsg("Porttree match: %s\n" % (x), 2)
 						return x
 
 			#none of the no-masked pkg, use the first one
+			writemsg("Last resort candidate: %s\n" % (candidate[0]), 2)
 			return candidate[0]
 	else:
 		if dep_eval(reduced):
@@ -3152,61 +3157,12 @@ def dep_zapdeps(unreduced,reduced):
 			x=0
 			while x<len(reduced):
 				if type(reduced[x])==types.ListType:
-					returnme+=dep_zapdeps(unreduced[x],reduced[x])
+					returnme+=dep_zapdeps(unreduced[x],reduced[x], vardbapi=vardbapi, use_binaries=use_binaries)
 				else:
 					if reduced[x]==False:
 						returnme.append(unreduced[x])
 				x += 1
 			return returnme
-
-def dep_listcleanup(deplist):
-	"remove unnecessary clutter from deplists.  Remove multiple list levels, empty lists"
-
-	#
-	# This function is obsoleted.
-	# dep_zapdeps function was cleaned up, so doesn't need this function.
-	# 
-
-	newlist=[]
-	if (len(deplist)==1):
-		#remove multiple-depth lists
-		if (type(deplist[0])==types.ListType):
-			for x in deplist[0]:
-				if type(x)==types.ListType:
-					if len(x)!=0:
-						newlist.append(dep_listcleanup(x))
-				else:
-					newlist.append(x)
-		else:
-			#unembed single nodes
-			newlist.append(deplist[0])
-	else:
-		for x in deplist:
-			if type(x)==types.ListType:
-				if len(x)==1:
-					newlist.append(x[0])
-				elif len(x)!=0:
-					newlist=newlist+dep_listcleanup(x)
-			else:
-				newlist.append(x)
-	return newlist
-	
-def dep_getjiggy(mydep):
-	pos=0
-	# first, we fill in spaces where needed (for "()[]" chars)
-	while pos<len(mydep):
-		if (mydep[pos] in "()[]"):
-			if (pos>0) and (mydep[pos-1]!=" "):
-				mydep=mydep[0:pos]+" "+mydep[pos:]
-				pos += 1
-			if (pos+1<len(mydep)) and (mydep[pos+1]!=" "):
-				mydep=mydep[0:pos+1]+" "+mydep[pos+1:]
-				pos += 1
-		pos += 1
-	# next, we split our dependency string into tokens
-	mysplit=mydep.split()
-	# next, we parse our tokens and create a list-based dependency structure
-	return dep_parenreduce(mysplit)
 
 def dep_getkey(mydep):
 	if not len(mydep):
@@ -3272,6 +3228,10 @@ def key_expand(mykey,mydb=None,use_cache=1):
 		return mykey
 
 def cpv_expand(mycpv,mydb=None,use_cache=1):
+	"""Given a string (packagename or virtual) expand it into a valid
+	cat/package string. Virtuals use the mydb to determine which provided
+	virtual is a valid choice and defaults to the first element when there
+	are no installed/available candidates."""
 	myslash=mycpv.split("/")
 	mysplit=pkgsplit(myslash[-1])
 	if len(myslash)>2:
@@ -3284,9 +3244,19 @@ def cpv_expand(mycpv,mydb=None,use_cache=1):
 		else:
 			mykey=mycpv
 		if mydb:
+			writemsg("mydb.__class__: %s\n" % (mydb.__class__), 1)
 			if type(mydb)==types.InstanceType:
 				if (not mydb.cp_list(mykey,use_cache=use_cache)) and virts and virts.has_key(mykey):
-					mykey=virts[mykey][0]
+					writemsg("virts[%s]: %s\n" % (str(mykey),virts[mykey]), 1)
+					mykey_orig = mykey[:]
+					for vkey in virts[mykey]:
+						if mydb.cp_list(vkey,use_cache=use_cache):
+							mykey = vkey
+							writemsg("virts chosen: %s\n" % (mykey), 1)
+							break
+					if mykey == mykey_orig:
+						mykey=virts[mykey][0]
+						writemsg("virts defaulted: %s\n" % (mykey), 1)
 			#we only perform virtual expansion if we are passed a dbapi
 	else:
 		#specific cpv, no category, ie. "foo-1.0"
@@ -3360,7 +3330,7 @@ def dep_expand(mydep,mydb=None,use_cache=1):
 		mydep=mydep[1:]
 	return prefix+cpv_expand(mydep,mydb,use_cache=use_cache)+postfix
 
-def dep_check(depstring,mydbapi,mysettings,use="yes",mode=None,myuse=None,use_cache=1):
+def dep_check(depstring,mydbapi,mysettings,use="yes",mode=None,myuse=None,use_cache=1,use_binaries=0):
 	"""Takes a depend string and parses the condition."""
 
 	#check_config_instance(mysettings)
@@ -3386,11 +3356,19 @@ def dep_check(depstring,mydbapi,mysettings,use="yes",mode=None,myuse=None,use_ca
 		# WE ALSO CANNOT USE SETTINGS
 		myusesplit=[]
 		
-	mysplit=string.split(depstring)
 	#convert parenthesis to sublists
-	mysplit=dep_parenreduce(mysplit)
-	#mysplit can't be None here, so we don't need to check
+	mysplit = portage_dep.paren_reduce(depstring)
+
+	# XXX -- This is waiting for the "a? b : c" deps to be removed.
 	mysplit=dep_opconvert(mysplit,myusesplit,mysettings)
+	#if mysettings:
+	#	mymasks = mysettings.usemask+archlist
+	#	while mysettings["ARCH"] in mymasks:
+	#		del mymasks[mymasks.index(mysettings["ARCH"])]
+	#	mysplit = portage_dep.use_reduce(mysplit,myusesplit,masklist=mymasks)
+	#else:
+	#	mysplit = portage_dep.use_reduce(mysplit,myusesplit)
+
 	#convert virtual dependencies to normal packages.
 	mysplit=dep_virtual(mysplit)
 	#if mysplit==None, then we have a parse error (paren mismatch or misplaced ||)
@@ -3405,15 +3383,25 @@ def dep_check(depstring,mydbapi,mysettings,use="yes",mode=None,myuse=None,use_ca
 	mysplit2=dep_wordreduce(mysplit2,mydbapi,mode,use_cache=use_cache)
 	if mysplit2==None:
 		return [0,"Invalid token"]
+	
+	writemsg("\n\n\n", 1)
+	writemsg("mysplit:  %s\n" % (mysplit), 1)
+	writemsg("mysplit2: %s\n" % (mysplit2), 1)
 	myeval=dep_eval(mysplit2)
+	writemsg("myeval:   %s\n" % (myeval), 1)
+	
 	if myeval:
 		return [1,[]]
 	else:
-		mylist=flatten(dep_zapdeps(mysplit,mysplit2))
+		myzaps = dep_zapdeps(mysplit,mysplit2,vardbapi=mydbapi,use_binaries=use_binaries)
+		mylist = flatten(myzaps)
+		writemsg("myzaps:   %s\n" % (myzaps), 1)
+		writemsg("mylist:   %s\n" % (mylist), 1)
 		#remove duplicates
 		mydict={}
 		for x in mylist:
 			mydict[x]=1
+		writemsg("mydict:   %s\n" % (mydict), 1)
 		return [1,mydict.keys()]
 
 def dep_wordreduce(mydeplist,mydbapi,mode,use_cache=1):
@@ -4049,6 +4037,35 @@ class fakedbapi(dbapi):
 		if not len(self.cpdict[mycp]):
 			del self.cpdict[mycp]
 
+class bindbapi(fakedbapi):
+	def __init__(self,mybintree=None):
+		self.bintree = mybintree
+		self.cpvdict={}
+		self.cpdict={}
+
+	def aux_get(self,mycpv,wants):
+		mysplit = string.split(mycpv,"/")
+		mylist  = []
+		tbz2name = mysplit[1]+".tbz2"
+		if self.bintree and self.bintree.isremote(mycpv):
+			tbz2 = xpak.tbz2(self.bintree.getname(mycpv))
+		for x in wants:
+			if self.bintree and self.bintree.isremote(mycpv):
+				# We use the cache for remote packages
+				if self.bintree.remotepkgs[tbz2name].has_key(x):
+					mylist.append(self.bintree.remotepkgs[tbz2name][x][:]) # [:] Copy String
+				else:
+					mylist.append("")
+			else:
+				try:
+					myval = tbz2.getfile("USE")
+				except:
+					myval = ""
+				mylist.append(myval)
+
+		return mylist
+
+
 cptot=0
 class vardbapi(dbapi):
 	def __init__(self,root):
@@ -4127,6 +4144,14 @@ class vardbapi(dbapi):
 		lcfile=open(self.root+VDB_PATH+"/"+mycpv+"/COUNTER","w")
 		lcfile.write(str(counter))
 		lcfile.close()
+
+	def isInjected(self,mycpv):
+		if self.cpv_exists(mycpv):
+			if os.path.exists(self.root+VDB_PATH+"/"+mycpv+"/INJECTED"):
+				return True
+			if not os.path.exists(self.root+VDB_PATH+"/"+mycpv+"/CONTENTS"):
+				return True
+		return False
 
 	def move_ent(self,mylist):
 		origcp=mylist[1]
@@ -4724,17 +4749,10 @@ class portdbapi(dbapi):
 			print red("getfetchlist():")+" aux_get() error; aborting."
 			sys.exit(1)
 
-		myuris = myuris.replace("(", " ( ")
-		myuris = myuris.replace(")", " ) ")
-
-		if all:
-			useflags = ['*']
-		elif useflags == None:
-			useflags = string.split(mysettings["USE"])
+		useflags = string.split(mysettings["USE"])
 		
-		myurilist = myuris.split()
-		myurilist = dep_parenreduce(myurilist)
-		myurilist = dep_opconvert(myurilist,useflags,mysettings)
+		myurilist = portage_dep.paren_reduce(myuris)
+		myurilist = portage_dep.use_reduce(myurilist,useflags,matchall=all)
 		newuris = flatten(myurilist)
 
 		myfiles = []
@@ -4994,7 +5012,7 @@ class binarytree(packagetree):
 			self.root=root
 			#self.pkgdir=settings["PKGDIR"]
 			self.pkgdir=pkgdir
-			self.dbapi=fakedbapi()
+			self.dbapi=bindbapi(self)
 			self.populated=0
 			self.tree={}
 			self.remotepkgs={}
@@ -5184,9 +5202,14 @@ class binarytree(packagetree):
 		"compatibility method -- all matches, not just visible ones"
 		if not self.populated:
 			self.populate()
+		writemsg("\n\n", 1)
+		writemsg("mydep: %s\n" % mydep, 1)
 		mydep=dep_expand(mydep,self.dbapi)
+		writemsg("mydep: %s\n" % mydep, 1)
 		mykey=dep_getkey(mydep)
+		writemsg("mykey: %s\n" % mykey, 1)
 		mymatch=best(match_from_list(mydep,self.dbapi.cp_list(mykey)))
+		writemsg("mymatch: %s\n" % mymatch, 1)
 		if mymatch==None:
 			return ""
 		return mymatch
