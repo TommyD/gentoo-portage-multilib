@@ -1488,9 +1488,13 @@ def movefile(src,dest,newmtime=None,sstat=None):
 		elif S_ISLNK(sstat[ST_MODE]):
 			try:
 				target=os.readlink(src)
+				print "symlink read",
 				os.unlink(dest)
+				print " write",
 				os.symlink(target,dest)
+				print " create",
 				missingos.lchown(dest,sstat[ST_UID],sstat[ST_GID])
+				print " lchown"
 			except Exception,e:
 				print "!!! failed to properly create symlink:"
 				print "!!!",dest,"->",target
