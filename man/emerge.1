@@ -132,6 +132,11 @@ Tells emerge to build binary packages for all ebuilds processed in addition to a
 \fB\-\-debug\fR (\fB\-d\fR)
 Tells emerge to run the emerge command in \-\-debug mode.  In this mode the bash build environment will run with the \-x option, causing it to output verbose debug information to stdout.  \-\-debug is great for finding bash syntax errors.
 .TP 
+\fB\-\-deep\fR
+When used in conjunction with \fB\-\-update\fR, this flag forces \fBemerge\fR to consider the entire dependency
+tree of packages, instead of checking only the immediate dependencies of the packages.  As an example, this
+catches updates in libraries that are not directly listed in the dependencies of a package.
+.TP 
 \fB\-\-emptytree\fR (\fB\-e\fR)
 Virtually tweaks the tree of installed packages to only contain glibc; this is great to use together with \-\-pretend. This allows developers to get a complete overview of the complete dependency tree of a package, and it enables complete trees to be rebuilt using the latest libraries.
 .TP 
