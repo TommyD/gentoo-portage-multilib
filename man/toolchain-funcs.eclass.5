@@ -1,25 +1,39 @@
-.TH "GCC.ECLASS" "5" "Jun 2003" "Portage 2.0.51" "portage"
+.TH "TOOLCHAIN-FUNCS.ECLASS" "5" "Jun 2003" "Portage 2.0.51" "portage"
 .SH "NAME"
-gcc \- functions to get commonly needed info about gcc
+toolchain-funcs \- functions to get commonly needed info about the 
+toolchain (binutils/gcc/glibc/etc...)
 .SH "DESCRIPTION"
-The \fBgcc\fR eclass contains a suite of functions that are used to
-glean information about the version of gcc that is used to compile.  
+The \fBtoolchain-funcs\fR eclass contains a suite of functions that are 
+used to glean information about the toolchain that is used to compile.  
 This allows developers to worry about gcc specs rather than figuring
 out how to find the specs in the first place.
-.SH "VARIABLES"
-.TP
-.B WANT_GCC_3 = \fI"[yes|no]"\fR
-In the cases where multiple versions of the gcc compiler are
-installed (say gcc-2.95.3 and gcc-3.2.1), you can specify that
-you want to get information about gcc-3.x when calling the functions
-listed below.
 .SH "FUNCTIONS"
 .TP
-.B gcc-getCC
+.B tc-getAR
+Returns the name of the binutils archiver.  Usually 'ar'.
+.TP
+.B tc-getAS
+Returns the name of the assembler.  Usually 'as'.
+.TP
+.B tc-getBUILD_CC
+Returns the name of the compiler for the build system.  
+Useful only when you have to compile and run a utility while 
+building the package.
+.TP
+.B tc-getCC
 Returns the name of the C compiler binary.  Usually 'gcc'.
 .TP
-.B gcc-getCXX
+.B tc-getCXX
 Returns the name of the C++ compiler binary.  Usually 'g++'.
+.TP
+.B tc-getLD
+Returns the name of the linker.  Usually 'ld'.
+.TP
+.B tc-getNM
+Returns the name of the symbol/object thingy.  Usually 'nm'.
+.TP
+.B tc-getRANLIB
+Returns the name of the archiver indexer.  Usually 'ranlib'.
 .TP
 .B gcc-fullversion
 Returns the version as by `$CC -dumpversion`.
@@ -55,24 +69,12 @@ Returns the Micro version.
 GCC 2.95.\fI3\fR will return \fI3\fR
 .br
 GCC 3.2.\fI1\fR will return \fI1\fR
-.TP
-.B gcc-libpath
-Returns gcc's internal library path.
-.TP
-.B gcc-libstdcxx-version
-Returns the full version of libstdc++.so.
-.TP
-.B gcc-libstdcxx-major-version
-Returns the Major version of libstdc++.so.
-.TP
-.B gcc2-flags
-Export CFLAGS and CXXFLAGS that are compadible with gcc-2.95.3.
 .SH "REPORTING BUGS"
 Please report bugs via http://bugs.gentoo.org/
 .SH "SEE ALSO"
 .BR ebuild (5)
 .SH "FILES"
-.BR /usr/portage/eclass/gcc.eclass
+.BR /usr/portage/eclass/toolchain-funcs.eclass
 .SH "AUTHORS"
 Mike Frysinger <vapier@gentoo.org>
 .SH "CVS HEADER"
