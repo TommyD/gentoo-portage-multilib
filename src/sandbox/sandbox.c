@@ -633,9 +633,25 @@ int main(int argc, char** argv)
 				{
 					strcat(sandbox_write_var, "/tmp");
 				}
+				else if (0 == strcmp(sandbox_write_var, "/var/tmp"))
+				{
+					strcat(sandbox_write_var, portage_tmp_dir);
+					strcat(sandbox_write_var, ":");
+					strcat(sandbox_write_var, "/tmp");
+				}
+				else if (0 == strcmp(sandbox_write_var, "/tmp"))
+				{
+					strcat(sandbox_write_var, portage_tmp_dir);
+					strcat(sandbox_write_var, ":");
+					strcat(sandbox_write_var, "/var/tmp");
+				}
 				else
 				{
 					strcat(sandbox_write_var, portage_tmp_dir);
+					strcat(sandbox_write_var, ":");
+					strcat(sandbox_write_var, "/tmp");
+					strcat(sandbox_write_var, ":");
+					strcat(sandbox_write_var, "/var/tmp");
 				}
 				/* */
 				setenv(ENV_SANDBOX_WRITE, sandbox_write_var, 1);
