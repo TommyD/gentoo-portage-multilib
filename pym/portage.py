@@ -699,20 +699,19 @@ def env_update(makelinks=1):
 		mtimedb["ldpath"]={}
 
 	for x in specials["LDPATH"]+['/usr/lib','/lib']:
-		if os.path.isdir(x):
-			try:
-				newldpathtime=os.stat(x)[ST_MTIME]
-			except:
-				newldpathtime=0
-			if mtimedb["ldpath"].has_key(x):
-				if mtimedb["ldpath"][x]==newldpathtime:
-					pass
-				else:
-					mtimedb["ldpath"][x]=newldpathtime
-					ld_cache_update=True
+		try:
+			newldpathtime=os.stat(x)[ST_MTIME]
+		except:
+			newldpathtime=0
+		if mtimedb["ldpath"].has_key(x):
+			if mtimedb["ldpath"][x]==newldpathtime:
+				pass
 			else:
 				mtimedb["ldpath"][x]=newldpathtime
 				ld_cache_update=True
+		else:
+			mtimedb["ldpath"][x]=newldpathtime
+			ld_cache_update=True
 
 	if (ld_cache_update):
 		# We can't update links if we haven't cleaned other versions first, as
