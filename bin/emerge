@@ -1800,7 +1800,20 @@ class depgraph:
 									myr+=1
 								emergelog(" *** RESTARTING emerge via exec() after change of portage version.")
 								portage.portageexit()
-								os.execv("/usr/lib/portage/bin/emerge", myargv)
+								mynewargv=[]
+								for arg in myargv:
+									if arg[0:2] == "--":
+										if arg != "--ask":
+											mynewargv += [arg]
+									elif arg[0] == "-":
+										myarg = "-":
+										for ch in myarg[1:]:
+											if ch != "a":
+												myarg += ch
+										mynewargv += [myarg]
+									else:
+										mynewargv += [arg]
+								os.execv("/usr/lib/portage/bin/emerge", mynewargv)
 
 			if ("--pretend" not in myopts) and ("--fetchonly" not in myopts) and ("--fetch-all-uri" not in myopts):
 				emergelog(" ::: completed emerge ("+str(mergecount)+" of "+str(len(mymergelist))+") "+x[2]+" to "+x[1])

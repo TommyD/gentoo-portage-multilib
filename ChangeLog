@@ -9,6 +9,9 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  24 Sep 2004; Jason Stubbs <jstubbs@gentoo.org> emerge: Added the removal
+  of --ask from argv when restarting after an emerge of portage. (#47379)
+
   21 Sep 2004; Jason Stubbs <jstubbs@gentoo.org> portage_util.py: Changed
   varexpand to convert '\'-prepended newline chars to space rather than '\n'.
 
