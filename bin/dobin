@@ -27,5 +27,5 @@ do
 		echo ">>> dobin: making ${x} executable..."
 		install -m0755 --owner=root --group=root ${x} ${D}${DESTTREE}/bin
 	fi
-    done
+done
 

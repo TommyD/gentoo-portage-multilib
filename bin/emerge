@@ -322,12 +322,20 @@ for x in cmdline:
 				sys.exit(1)
 	elif (not myaction) and (x in actions):
 		myaction=x
-	else:	
+	elif x[-1]=="/":	
 		# this little conditional helps tab completion
-		if x[-1]=="/":
-			myfiles.append(x[:-1])
-		else:
-			myfiles.append(x)
+		myfiles.append(x[:-1])
+	elif (myaction) and (x in actions):
+		#catch "world system" and "world foo" issues....
+		print "emerge: please specify either \""+myaction+"\" or \""+x+"\", but not both."
+		sys.exit(1)
+	else:
+		myfiles.append(x)
+
+if (myaction in ["world", "system"]) and myfiles:
+	print "emerge: please specify a package class (\"world\" or \"system\") or individual packages, but not both."
+	sys.exit(1)
+			
 
 # Also allow -S to invoke search action (-sS)
 if ("--searchdesc" in myopts) and (not myaction):
@@ -1080,6 +1088,8 @@ def unmerge(unmerge_action, unmerge_files):
 			mysplit=string.split(y,"/")
 			#unmerge...
 			retval=portage.unmerge(mysplit[0],mysplit[1],portage.root)
+	#run ldconfig, etc...
+	portage.env_update()
 	if not numselected:
 		return 0
 	else:
@@ -1329,16 +1339,11 @@ else:
 				mytype="ebuild"
 				mykey=os.path.basename(os.path.abspath(mypkg+"/../.."))+"/"+os.path.basename(mypkg)[:-7]
 			else:
-				mykey=""
-				if "--usepkg" in myopts:
-					mykey=portage.db[portage.root]["bintree"].dep_bestmatch(mypkg)
-					mytype="binary"
+				mykey=portage.db[portage.root]["porttree"].dep_bestmatch(mypkg)
+				mytype="ebuild"
 				if not mykey:
-					mykey=portage.db[portage.root]["porttree"].dep_bestmatch(mypkg)
-					mytype="ebuild"
-					if not mykey:
-						print "!!! Couldn't find match for",mypkg+"; aborting."
-						sys.exit(1)
+					print "!!! Couldn't find match for",mypkg+"; aborting."
+					sys.exit(1)
 			#	else:
 			#		print "!!! Error:",x,"is neither an ebuild nor a .tbz2 package."
 			#		sys.exit(1)

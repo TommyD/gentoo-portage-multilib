@@ -3206,7 +3206,7 @@ class dblink:
 		mystuff=listdir(self.dbdir)
 		for x in mystuff:
 			if x[-7:]==".ebuild":
-				myebuildpath=self.dbdir+"/"+x+".ebuild"
+				myebuildpath=self.dbdir+"/"+x
 				break
 		#do prerm script
 		if myebuildpath and os.path.exists(myebuildpath):

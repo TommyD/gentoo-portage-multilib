@@ -25,7 +25,8 @@ else
 fi
 for x in "$@"
 do
-	md=${x##*.}
+	md=${x#*.}
+	suf=${x##*.}
 	mandir=man${md:0:1}
 	if [ -e ${x} ]
 	then
@@ -34,7 +35,10 @@ do
 			install -d ${D}${myloc}${myext}/man/${mandir}
 	    	fi
 	    	install -m0644 ${x} ${D}${myloc}${myext}/man/${mandir}
-	    	gzip -f -9 ${D}${myloc}${myext}/man/${mandir}/${x##*/}
+			if [ "$suf" != "gz" ]
+			then
+				gzip -f -9 ${D}${myloc}${myext}/man/${mandir}/${x##*/}
+			fi
 	else
 	    	echo "doman: ${x} does not exist."
 	fi

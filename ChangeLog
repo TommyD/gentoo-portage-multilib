@@ -1,6 +1,26 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  16 Aug 2002; Daniel Robbins <drobbins@gentoo.org> emerge: return errors when
+  two actions like "world" and "system" are specified on the command-line, or
+  when "system" or "world" are combined with package names. Closes bug #6492.
+  
+  16 Aug 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: bad string was
+  causing pkg_prerm() and pkg_postrm() to not be called; now fixed.  This
+  closes bug #6493.
+  
+  16 Aug 2002; Daniel Robbins <drobbins@gentoo.org> emerge: now calls
+  env-update() after an unmerge() run (to fix library paths, links, etc.)
+  Closes bug #6511.
+  
+  16 Aug 2002; Daniel Robbins <drobbins@gentoo.org> doman: now handles already-
+  gzipped man pages correctly, closing bug #6544.
+  
+  16 Aug 2002; Daniel Robbins <drobbins@gentoo.org> emerge: fixed a bug where a
+  dep specified on the command-line with --usepkg would use an old package if
+  it happened to match the dep. Now, it will use the ebuild instead, just like
+  how deps of deps are treated.
+
 *portage-2.0.27 (06 Aug 2002)
 
   07 Aug 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: removed some
