@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  10 Dec 2004; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Fixed a bug
+  due to the cleanup patch where zfill() was being called on an integer.
+
   09 Dec 2004; Marius Mauch <genone@gentoo.org> bin/ebuild-functions.sh:
   Fixing stupid typo that broke einstall for CONF_LIBDIR archs.
 
