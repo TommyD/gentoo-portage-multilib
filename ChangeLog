@@ -9,6 +9,9 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  09 Jul 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge:
+  Fixed incorrect assignment of depgraph.mydbapi[] objects.
+
   07 Jul 2004; Marius Mauch <genone@gentoo.org> bin/repoman:
   Solved a big memory problem in repoman where a full scan required several
   gigabytes, caused by apparently unused objects.

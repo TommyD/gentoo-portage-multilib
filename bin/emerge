@@ -741,17 +741,14 @@ class depgraph:
 		self.myaction=myaction
 		self.digraph=portage.digraph()
 		self.orderedkeys=[]
-		#the following is so we have an empty vartree (used in emerge update calculations)
-		self.fakedbapi=portage.fakedbapi()
-		#self.fakedbapi.cpv_inject("sys-libs/glibc-2.3")	
 		self.outdatedpackages=[]
 		self.mydbapi={}
-		self.mydbapi["/"]=self.fakedbapi
+		self.mydbapi["/"]=portage.fakedbapi()
 		if "empty" not in myparams:
 			for pkg in portage.db["/"]["vartree"].getallcpv():
 				self.mydbapi["/"].cpv_inject(pkg)
 		if portage.root!="/":
-			self.mydbapi[portage.root]=self.fakedbapi
+			self.mydbapi[portage.root]=portage.fakedbapi()
 			if "empty" not in myparams:
 				for pkg in portage.db[portage.root]["vartree"].getallcpv():
 					self.mydbapi[portage.root].cpv_inject(pkg)
