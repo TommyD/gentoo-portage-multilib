@@ -16,37 +16,23 @@
 # Host Setting
 # ============
 #
-# If you are using a Pentium Pro or greater processor, leave this line as-is;
-# otherwise, change to i586, i486 or i386 as appropriate. All modern systems
-# (even Athlons) should use "i686-pc-linux-gnu"
+# All PowerPC systems should use this host setting:
 
-CHOST="i686-pc-linux-gnu"
+CHOST="powerpc-unknown-linux-gnu"
 
 # Host and optimization settings 
 # ==============================
 #
 # For optimal performance, enable a CFLAGS setting appropriate for your CPU
 #
-# -mcpu=<cpu-type> means optimize code for the particular type of CPU without
-# breaking compatibility with other CPUs.
+# -mcpu=<cpu-type> for PowerPC systems means....
 #
-# -march=<cpu-type> means to take full advantage of the ABI and instructions
-# for the particular CPU; this will break compatibility with older CPUs (for
-# example, -march=athlon-xp code will not run on a regular Athlon, and
-# -march=i686 code will not run on a Pentium Classic.
+# Recommended settings:
 #
-# CPU types supported in gcc-3.2 and higher: athlon-xp, athlon-mp, athlon-4,
-# athlon-tbird, athlon, duron, k6, k6-2, k6-3, i386, i486, i586 (Pentium), i686
-# (Pentium Pro), pentium, pentium-mmx, pentiumpro, pentium2, pentium3, and
-# pentium4. Note that Gentoo Linux 1.4 and higher include at least gcc-3.2.
-# 
-# CPU types supported in gcc-2.95*: k6, i386, i486, i586 (Pentium), i686
-# (Pentium Pro), pentium, pentiumpro Gentoo Linux 1.2 and below use gcc-2.95*
+# Optimized for G4; "cat /proc/cpuinfo" to get your CPU model number and substitute
+# it for the "7400" below (could be "7400", "7450" or "7455"):
 #
-# Decent examples:
-#
-#CFLAGS="-mcpu=athlon-xp -O3 -pipe"
-#CFLAGS="-march=pentium3 -O3 -pipe"
+#CFLAGS="-O3 -pipe -mcpu=7400 -mtune=7400 -maltivec -mabi=altivec -mpowerpc-gfxopt -fsigned-char"
 
 # If you set a CFLAGS above, then this line will set your default C++ flags to
 # the same settings. If you don't set a CFLAGS above, then comment this line out.
