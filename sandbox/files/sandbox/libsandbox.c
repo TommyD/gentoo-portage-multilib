@@ -636,7 +636,7 @@ int check_syscall(const char* func, const char* file)
 			
 			if (NULL != log_path)
 			{
-				log_file = open(log_path, O_APPEND|O_WRONLY|O_CREAT, 640);
+				log_file = open(log_path, O_APPEND|O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
 				if(log_file >= 0)
 				{
 					sprintf(buffer, "%s:%*s%s\n", func, (int)(10-strlen(func)), "", absolute_path);
