@@ -7,6 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  29 Dec 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge: Sort the unmerge
+  to make the --pretend output easier to review when there is a large list.
+  Fixed depclean's attempt at modifying a tuple returned from pkgsplit.
+
   28 Dec 2004; Brian Harring <ferringb@gentoo.org> man/Makefile.am:
   Removed eclass man pages from makefile references.
 

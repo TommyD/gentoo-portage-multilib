@@ -2634,7 +2634,9 @@ def unmerge(unmerge_action, unmerge_files):
 		print "\n>>>",unmerge_action+": No packages selected for removal.\n"
 		return 0
 
-	for x in pkgmap.keys():
+	keys = pkgmap.keys()
+	keys.sort()
+	for x in keys:
 		for y in localtree.dep_match(x):
 			if y not in pkgmap[x]["omitted"] and \
 			   y not in pkgmap[x]["selected"] and \
@@ -3307,6 +3309,7 @@ elif "depclean"==myaction:
 	for x in syslist+worldlist:
 		myparts = portage_versions.catpkgsplit(x)
 		if myparts:
+			myparts = list(myparts)
 			if myparts[0][0] in ('<','>','='):
 				myparts[0] = myparts[0][1:]
 			if myparts[0][0] in ('<','>','='):
