@@ -28,6 +28,10 @@
 
 *portage-2.0.5 (24 Jun 2002)
 
+  23 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: basic keyword-
+  based masking is now active.  New support for KEYWORDS in ebuilds and
+  ACCEPT_KEYWORDS in profiles.
+
   23 Jun 2002; Daniel Robbins <drobbins@gentoo.org> conf files: removed
   references to non-functional FTP_PROXY and HTTP_PROXY and added a note about
   how to use the correct vars (ftp_proxy and http_proxy.)  Closes bug #1664.
