@@ -76,7 +76,7 @@ to the \fBworld\fR file at the end, so that they are considered for
 later updating.  
 .TP 
 .BR "\-\-clean " (\fB\-c\fR)
-Cleans the system by removing packages that will not effect the
+Cleans the system by removing packages that will not affect the
 functionality of the system.  The arguments can be \fIebuilds\fR,
 \fIclasses\fR, or \fIdependencies\fR.  For example, \fBemerge
 clean binutils\fR cleans out old versions of binutils;
@@ -135,7 +135,7 @@ and the building of dependency trees.  This command is not recommended
 for rsync users as rsync updates the cache using server\-side caches.  If
 you do not know the differences between a 'rsync user' and some other
 user, then you are a 'rsync user' :).  Rsync users should simply run 
-\fBemerge \-\-sync\fR to regenerate the cache. After a portage updated, rsync
+\fBemerge \-\-sync\fR to regenerate the cache. After a portage update, rsync
 users may find it convenient to run \fBemerge \-\-metadata\fR to rebuild the
 cache as portage does at the end of a sync operation.
 .TP 
@@ -151,9 +151,9 @@ descriptions as well, use the \fB\-\-searchdesc\fR option.
 .BR \-\-sync
 Initiates a portage tree update with one of the rsync.gentoo.org
 mirrors.  \fBNote that any changes you have made to the portage
-tree will be erased\fR.  Except for in special circumstances,
-this uses \fBrsync\fR to do the update.  See \fBmake.conf\fR(5)'s description
-of PORTDIR_OVERLAY for a method to avoid deletions.
+tree will be erased\fR.  Except for special circumstances, 
+this uses \fBrsync\fR to do the update.  See \fBmake.conf\fR(5)'s 
+description of PORTDIR_OVERLAY for a method to avoid deletions.
 .TP 
 .BR "\-\-unmerge " (\fB\-C\fR)
 \fBWARNING: This action can remove important packages!\fR Removes
@@ -182,7 +182,7 @@ live filesystem.
 .TP 
 .BR "\-\-buildpkgonly " (\fB\-B\fR)
 Creates binary packages for all ebuilds processed without actually
-merging the packages.  This comes with the caveat that all build time 
+merging the packages.  This comes with the caveat that all build-time 
 dependencies must already be emerged on the system.
 .TP 
 .BR "\-\-changelog " (\fB\-l\fR)
@@ -190,7 +190,7 @@ Use this in conjunction with the \fB\-\-pretend\fR action.  This will
 show the ChangeLog entries for all the packages that will be upgraded.
 .TP 
 .BR "\-\-columns"
-Used along side \fB\-\-pretend\fR to causes the package, new version,
+Used alongside \fB\-\-pretend\fR to cause the package name, new version, 
 and old version to be displayed in an aligned format for easy cut\-n\-paste.
 .TP 
 .BR "\-\-debug " (\fB\-d\fR)
@@ -214,11 +214,11 @@ and it enables complete trees to be rebuilt using the latest libraries.
 .TP 
 .BR "\-\-fetchonly " (\fB\-f\fR)
 Instead of doing any package building, just perform fetches for all
-packages (the main package as well as all dependencies.)
+packages (the main package as well as all dependencies).
 .TP 
 .BR "\-\-fetch\-all\-uri " (\fB\-f\fR)
 Instead of doing any package building, just perform fetches for all
-packages (the main package as well as all dependencies.), grabbing all potential
+packages (the main package as well as all dependencies), grabbing all potential
 files.
 .TP 
 .BR "\-\-getbinpkg " (\fB\-g\fR)
@@ -242,7 +242,7 @@ are having problems that this man page does not help resolve.
 .TP 
 .BR "\-\-newuse"
 Tells emerge to include installed packages where USE flags have changed
-since compilation. An asterisk mark where a USE flag has changed since
+since compilation. An asterisk marks when a USE flag has changed since
 the package was compiled.
 .TP 
 .BR "\-\-noconfmem"
@@ -259,7 +259,7 @@ the build may fail if the dependencies aren't satisfied.
 .BR "\-\-noreplace " (\fB\-n\fR)
 Skips the packages specified on the command\-line that have already
 been installed.  Without this option, any packages, ebuilds, or deps
-you specify on on the command\-line *will* cause Portage to remerge
+you specify on the command\-line *will* cause Portage to remerge
 the package, even if it is already installed.  Note that Portage will
 not remerge dependencies by default.
 .TP 
@@ -308,8 +308,8 @@ cases where skipping the package will not result in failed dependencies.
 .TP 
 .BR "\-\-tree " (\fB\-t\fR)
 Shows the dependency tree for the given target by indenting dependencies.
-Only really useful in combination with "\fB\-\-emptytree\fR" or "\fB\-\-update\fR
-and \fB\-\-deep\fR".
+This is only really useful in combination with \fB\-\-emptytree\fR or 
+\fB\-\-update\fR and \fB\-\-deep\fR.
 .TP 
 .BR "\-\-update " (\fB\-u\fR)
 Updates packages to the best version available, which may not
@@ -341,8 +341,7 @@ Tell emerge to run in verbose mode.  Currently this flag causes emerge to print 
 .TP 
 .BR "\-\-version " (\fB\-V\fR)
 Displays the version number of \fBemerge\fR.  It cannot be used in
-conjunction with other options; the name and format of the action
-is a convention.
+conjunction with other options.
 .SH "ENVIRONMENT OPTIONS"
 .TP 
 \fBROOT\fR = \fI[path]\fR
@@ -350,9 +349,9 @@ Use \fBROOT\fR to specify the target root filesystem to be used for
 merging packages or ebuilds.
 Defaults to /.
 .SH "OUTPUT"
-While utilizing emerge and the pretend/verbose flags, the output
-may be a little hard to understand for the first time.  This section
-exists to explain what the shorthanded information means.
+When utilizing \fBemerge\fR with the \fB\-\-pretend\fR and \fB\-\-verbose\fR 
+flags, the output may be a little hard to understand at first.  This section
+explains the abbreviations.
 .TP 
 .B [blocks B     ] app\-text/dos2unix (from pkg app\-text/hd2u\-0.8.0)
 Dos2unix is Blocking hd2u from being emerged.  Blockers are defined when
@@ -368,7 +367,7 @@ Sed 4.0.5 has already been emerged, but if you run the command, then
 portage will Re\-emerge the specified package (sed in this case).
 .TP 
 .B [ebuild    F  ] media\-video/realplayer\-8\-r6
-The realplayer package requires that you download the sources manually.  
+The realplayer package requires that you Fetch the sources manually.  
 When you attempt to emerge the package, if the sources are not found, 
 then portage will halt and you will be provided with instructions on how 
 to download the required files.
@@ -386,7 +385,7 @@ broken or it creates a security risk on your system and a fix has not been
 released yet.
 .br 
 Another reason this may occur is if a package you are trying to emerge requires
-an older version of a package in order to emerge succesfully.  In this case,
+an older version of a package in order to emerge successfully.  In this case,
 libgd 2.x is incompatible with libgd 1.x.  This means that packages that were
 created with libgd 1.x will not compile with 2.x and must downgrade libgd first
 before they can emerge.
@@ -398,12 +397,14 @@ or very outdated (so old that \fBSLOT\fR did not exist).  Either way, a newer ve
 of Xfree is availabe for your updating delight.
 .TP 
 .B [ebuild     U ] sys\-devel/distcc\-2.16 [2.13\-r1] \-gnome \-gtk +ipv6* (\-selinux)
-The \-gtk and \-gnome reflect the status of \fBUSE\fR variables when emerging nmap.  Here
-we see that nmap can use the \fBUSE\fR variables gtk and gnome, but that your current
-settings have gtk and gnome disabled.  So optional support for gtk and gnome will
-not be enabled in nmap when you emerge it.
-An asterisk shows that the use flags have changed since the package was last installed. In this case ipv6 is enabled but was previously disabled.
-A use flag in brackets, as in (\-selinux), is always disabled and shows that the flag is not available for the current system profile.
+The \-gtk and \-gnome reflect the status of \fBUSE\fR variables when emerging distcc.  Here
+we see that distcc can use the \fBUSE\fR variables gtk and gnome, but that your current
+settings have gtk and gnome disabled.  This means optional support for gtk and gnome will
+not be enabled in distcc when you emerge it.
+An asterisk shows that the \fBUSE\fR flags have changed since the package was last installed.  
+In this case, ipv6 is enabled but was previously disabled.  A \fBUSE\fR flag in brackets, like 
+(\-selinux), is always disabled and shows that the flag is not available for the current system 
+profile.
 .br 
 \fB*Note:\fR The \fBUSE\fR status is only displayed when you use the \fB\-\-pretend\fR
 and \fB\-\-verbose\fR options.
@@ -430,7 +431,7 @@ parameters to \fBemerge\fR.
 override those specified in the default locations, letting you
 avoid using some dependencies you may not want to have.  \fBUSE
 flags specified on the command line are NOT remembered\fR.  For
-example, \fBUSE="\-x \-gnome" emerge mc\fR will emerge mc with
+example, \fBUSE="\-X \-gnome" emerge mc\fR will emerge mc with
 those USE settings. If you want those changes to be permanent 
 please use /etc/portage/package.use too.
 .LP 
@@ -442,35 +443,33 @@ version, which should support any necessary new features.
 .SH "MASKED PACKAGES"
 \fINOTE: Please use caution when using development packages.  Problems
 and bugs resulting from misusing masked packages drains Gentoo
-developer time.  Please be sure you are capable of handling problems
+developer time.  Please be sure you are capable of handling any problems
 that may ensue.\fR
 .LP 
 Masks in \fBportage\fR provide three primary functions: they allow a
 testing period where the packages can be used in live machines; they
-prevent the use of a package when it will fail, and they mask existing
+prevent the use of a package when it will fail; and they mask existing
 packages that are broken or could pose a security risk.  Masking can be
 done by two methods: \fBpackage.mask\fR and \fBKEYWORDS\fR.  Read below
 to find out how to unmask in either case.  Also note that if you give 
-\fBemerge\fR an ebuild then all forms of masking will be ignored and
+\fBemerge\fR an ebuild, then all forms of masking will be ignored and
 \fBemerge\fR will attempt to emerge the package.
 .TP 
 .BR package.mask
-\fBpackage.mask\fR primarily blocks the use of packages that cause
-problems or are known to have issues on disparate systems.  It resides in
-\fI${PORTDIR}/profiles\fR.  Packages may be unmasked in the file by adding
-a comment character (\fB#\fR) to the beginning of the line which masks
-the package.
+The \fBpackage.mask\fR file primarily blocks the use of packages that cause
+problems or are known to have issues on different systems.  It resides in
+\fI/usr/portage/profiles\fR.
 .TP 
 .BR KEYWORDS
-\fBKEYWORDS\fR are also used for masking packages still in testing.  There are
-architecture\-specific keywords for each package that let \fBportage\fR
-know which systems are compatible with the package.  Packages which
-compile on an architecture, but have not been proven to be "stable",
-are masked with a tilde (\fB~\fR) in front of the architecture name.
-\fBemerge\fR examines the \fBACCEPT_KEYWORDS\fR environment variable
-to allow or disallow the emerging of a package masked by \fBKEYWORDS.  To
-inform \fBemerge\fR that it should build these 'testing' versions
-of packages, you may set \fBACCEPT_KEYWORDS\fR to "\fB~arch\fR", where
+The \fBKEYWORDS\fR variable in an \fBebuild\fR file is also used for masking 
+a package still in testing.  There are architecture\-specific keywords for 
+each package that let \fBportage\fR know which systems are compatible with 
+the package.  Packages which compile on an architecture, but have not been 
+proven to be "stable", are masked with a tilde (\fB~\fR) in front of the 
+architecture name.  \fBemerge\fR examines the \fBACCEPT_KEYWORDS\fR environment 
+variable to allow or disallow the emerging of a package masked by \fBKEYWORDS\fR.  
+To inform \fBemerge\fR that it should build these 'testing' versions 
+of packages, you may set \fBACCEPT_KEYWORDS\fR to "\fB~arch\fR", where 
 \fBarch\fR is one of: \fIx86 ppc sparc mips alpha arm hppa\fR.  For example, 
 \fBACCEPT_KEYWORDS="~x86" emerge xfree\fR will cause \fBemerge\fR to consider 
 \fBKEYWORDS\fR\-masked versions of XFree as potentional upgrade 
@@ -514,7 +513,7 @@ Contains profile\-specific variables for the build process.  \fBDo not
 edit this file\fR.
 .TP 
 \fB/etc/make.profile/use.defaults\fR
-Contains a list of packages which, if installed, cause the respective use
+Contains a list of packages which, if installed, cause the respective USE 
 flag to be enabled by default.  \fBDo not edit this file\fR.
 .TP 
 \fB/usr/portage/profiles/use.desc\fR 
