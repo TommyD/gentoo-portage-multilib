@@ -52,9 +52,11 @@ USE_EXPAND="VIDEO_CARDS INPUT_DEVICES LINGUAS"
 
 # By default wait 5 secs before cleaning a package
 CLEAN_DELAY="5"
+
 # Set to yes automatically run "emerge --clean" after each merge
 # Important, as without this you may experience missing symlinks when
 # downgrading libraries during a batch (world/system) update.
+# DEPRECATED, THIS IS ALWAYS ENABLED IN >=PORTAGE-2.1
 AUTOCLEAN="yes"
 
 # Number of times 'emerge --sync' will run before giving up.

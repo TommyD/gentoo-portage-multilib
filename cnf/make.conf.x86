@@ -235,12 +235,6 @@ CHOST="i686-pc-linux-gnu"
 #     reduce it further. Default is unset.
 #PORTAGE_NICENESS=3
 #
-# AUTOCLEAN enables portage to automatically clean out older or overlapping
-#     packages from the system after every successful merge. This is the
-#     same as running 'emerge -c' after every merge. Set with: "yes" or "no".
-#     This does not affect the unpacked source. See 'noclean' below.
-#AUTOCLEAN="yes"
-#
 # FEATURES are settings that affect the functionality of portage. Most of
 #     these settings are for developer use, but some are available to non-
 #     developers as well. 

@@ -55,7 +55,7 @@ actions=["help",
 # emerge search <regex>
 
 # clean does "cleaning" only; it does not do anything that would generally be considered dangerous
-# emerge clean (defaults to "world"; apply default AUTOCLEAN behavior defined in make.conf)
+# emerge clean (defaults to "world")
 # emerge --rev clean (defaults to "world", cleans out old revisions)
 # emerge --slot clean (defaults to "world", cleans out old stuff from slots)
 # emerge [--rev/--slot] clean <pkgclass>

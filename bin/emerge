@@ -1934,12 +1934,11 @@ class depgraph:
 			
 				if ("--pretend" not in myopts) and ("--fetchonly" not in myopts) and ("--fetch-all-uri" not in myopts):
 					# Clean the old package that we have merged over top of it.
-					if self.pkgsettings["AUTOCLEAN"]=="yes":
-						xsplit=portage.portage_versions.pkgsplit(x[2])
-						emergelog(" >>> AUTOCLEAN: "+xsplit[0])
-						retval=unmerge("clean", [xsplit[0]])
-						if not retval:
-							emergelog(" --- AUTOCLEAN: Nothing unmerged.")
+					xsplit=portage.portage_versions.pkgsplit(x[2])
+					emergelog(" >>> AUTOCLEAN: "+xsplit[0])
+					retval=unmerge("clean", [xsplit[0]])
+					if not retval:
+						emergelog(" --- AUTOCLEAN: Nothing unmerged.")
 
 					# Figure out if we need a restart.
 					mysplit=portage.portage_versions.pkgsplit(x[2])
@@ -2699,7 +2698,7 @@ elif "info"==myaction:
 		myvars=['GENTOO_MIRRORS', 'CONFIG_PROTECT', 'CONFIG_PROTECT_MASK',
 				'PORTDIR', 'DISTDIR', 'PKGDIR', 'PORTAGE_TMPDIR', 'PORTDIR_OVERLAY',
 				'USE', 'CHOST', 'CFLAGS', 'CXXFLAGS','ACCEPT_KEYWORDS', 
-				'MAKEOPTS', 'AUTOCLEAN', 'SYNC', 'FEATURES']
+				'MAKEOPTS', 'SYNC', 'FEATURES']
 	myvars.sort()
 	for x in myvars:
 		print x+'="'+portage.settings[x]+'"'
@@ -2947,13 +2946,7 @@ else:
 					print
 					sys.exit(1)
 			if mergecount==0:
-				if portage.settings["AUTOCLEAN"] and "yes"==portage.settings["AUTOCLEAN"]:
-					prompt="Nothing to merge; do you want me to auto-clean packages?"
-				else:
-					print
-					print "Nothing to merge; quitting."
-					print
-					sys.exit(0)
+				prompt="Nothing to merge; do you want me to auto-clean packages?"
 			elif "--fetchonly" in myopts or "--fetch-all-uri" in myopts:
 				prompt="Do you want me to fetch the source files for these packages?"
 			else:
@@ -3000,8 +2993,7 @@ else:
 
 		if portage.mtimedb.has_key("resume"):
 			del portage.mtimedb["resume"]
-		if portage.settings["AUTOCLEAN"] and "yes"==portage.settings["AUTOCLEAN"]:
-			print ">>> Auto-cleaning packages ..."
-			unmerge("clean", ["world"])
+		print ">>> Auto-cleaning packages ..."
+		unmerge("clean", ["world"])
 	post_emerge()
 

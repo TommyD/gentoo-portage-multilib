@@ -29,15 +29,6 @@ set this to '~ppc'.  This is an incremental variable.  Only define a
 .br 
 Defaults to the value of $ARCH.
 .TP 
-\fBAUTOCLEAN\fR = \fI["yes" | "no"]\fR
-Automatically cleans the system by removing outdated packages which will not
-remove functionalities or prevent your system from working. On major ABI
-changes this may need to be set to off to ensure that the system can be
-rebuilt using the new libs before the old ones are removed. Downgrading with
-this option turned off may result in missing symlinks and an inoperable system.
-.br 
-Defaults to yes.
-.TP 
 \fBBUILD_PREFIX\fR = \fI[path]\fR
 Defines the location of the package working directory. 
 .br 
@@ -129,15 +120,15 @@ Autogenerate a digest for packages.
 .TP 
 .B distcc
 Enable portage support for the distcc package.
-.TP
+.TP 
 .B distlocks
 Portage uses lockfiles to ensure competing instances don't clobber
 each other's files. This feature is enabled by default but may cause
 heartache on less intelligent remote filesystems like NFSv2 and some
-strangely configured Samba server (oplocks off, NFS re-export). A tool
+strangely configured Samba server (oplocks off, NFS re\-export). A tool
 /usr/lib/portage/bin/clean_locks exists to help handle lock issues
 when a problem arises (normally due to a crash or disconnect).
-.TP
+.TP 
 .B fixpackages
 Runs the script that will fix the dependencies in all binary packages.  This is 
 run whenever packages are moved around in the portage tree.  Please note that this 
@@ -146,10 +137,10 @@ can take a lot of time.
 .B getbinpkg
 Force emerges to always try to fetch files from the \fIPORTAGE_BINHOST\fR.  See 
 \fBmake.conf\fR(5) for more information.
-.TP
+.TP 
 .B gpg
 Check the signatures of Manifests and make sure they are correct.
-.TP
+.TP 
 .B keeptemp
 Do not delete the ${T} directory after the merge process.
 .TP 
@@ -188,11 +179,11 @@ Disables xterm titlebar updates (which contains status info).
 .TP 
 .B sandbox
 Enable sandbox\-ing when running \fBemerge\fR(1) and \fBebuild(1)\fR.
-.TP
+.TP 
 .B severe
 When checking Manifests, only accept ones that have been signed by a
 key which you trust.
-.TP
+.TP 
 .B sfperms
 Stands for Smart Filesystem Permissions.  Before merging packages to the 
 live filesystem, automatically search for and set permissions on setuid 
@@ -246,7 +237,7 @@ For more information, see \fBmake\fR(1).
 Defines if color should be disabled by default.
 .br 
 Defaults to false.
-.TP
+.TP 
 \fBPKGDIR\fR = \fI[path]\fR
 Defines the location where created .tbz2 binary packages will be stored.
 .br 
