@@ -703,7 +703,7 @@ for x in scanlist:
 			# current policy is no files over 20k, this is the check.
 			elif mystat.st_size > 20000:
 				stats["file.size"] += 1
-				fails["file.size"].append(x+"/files/"+y)
+				fails["file.size"].append("("+ str(mystat.st_size/1000) + "K) "+x+"/files/"+y)
 
 	if "ChangeLog" not in checkdirlist:
 		stats["changelog.missing"]+=1
