@@ -1397,7 +1397,7 @@ class packagetree:
 			mykey=cp[0]+"/"+cp[1]
 			if self.hasnode(mykey):
 				for x in self.getnode(mykey):
-					if pkgcmp(x[1][1:],cp[1:])>=0:
+					if pkgcmp(x[1][1:],cp[1:])>=0 and (x[1][2]==cp[2]):
 						return 1
 			return 0
 		if not isspecific(mypkgdep):
