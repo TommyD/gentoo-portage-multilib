@@ -2,6 +2,44 @@
 # Copyright 2000-2004 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  21 Jan 2004; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: TGL's fixes
+	for exec/child/wait problems. Unset GREP_OPTIONS GREP_COLOR. has() and use()
+	no longer attempt to determine if they are to be quiet or noisy -- They
+	default to noisy -- useq() and hasq() are the non-verbose versions.
+	EBUILD_PHASE set to add a hack-ish way around global scope calls in
+	eclasses -- NOTHING SHOULD BE CALLED IN THE GLOBAL SCOPE. Touchup to the
+	inherit() code that should finally allow the removal of the ECLASS and
+	INHERITED settings. Removed tty (use/has) calls. Removed dirname calls --
+	portage.py handles setting the dbkey filename now.
+	
+  21 Jan 2004; Nicholas Jones <carpaski@gentoo.org> emerge: Ed Catmur's
+	(with a	little TGL added in) patch for --ask. Added a 'metadata' target
+	that skips the sync and only updates the cache. FEATURES="getbinpkg" added.
+	TGL's exit code fixes. Fixed match code for -S so it doesn't complain about
+	specific and double versions. Unmerge via dbpath fix. Rewrote rsync's
+	options that supports --verbose and --quiet operation now and can force
+	checksumming all files using --debug. Sort the files in the cache update
+	so it's a little more predictable. 
+
+  21 Jan 2004; Nicholas Jones <carpaski@gentoo.org> prepstrip: changed 
+	--strip-debug to --strip-unneeded.
+
+  21 Jan 2004; Nicholas Jones <carpaski@gentoo.org> getbinpkg.py: Updates to
+	enable HTTP/HTTPS authentication.
+
+  21 Jan 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: best_from_dict
+	added to grab the best entry from set of dicts using a list of the keys for
+	priority. jstubb's patch to fix listdir -- splits it into a cache and list
+	setup. jstubb's patch for varexpand to handle $VAR better. Latexer's patch
+	for KernelVersion code to use Makefiles instead of the version.h. Modules
+	are loaded from /etc/portage/modules or defaults, whichever works. Fixed
+	the /etc/make.profile-is-missing traceback. Spawn can be given 3 pipes to
+	redirect stdin,stdout,stderr to specific outputs, terminals, or files.
+	TGL's patch for cache functions in portage.py so that they do not cache at
+	inappropriate times. PORTAGE_TMPFS is now used if set as a temporary file
+	operation area -- recommended to actually be a ramfs/tmpfs filesystem for
+	speed. Genone enhanced the deprecated profile patch.
+
   31 Jan 2004; Masatomo Nakano <nakano@gentoo.org> emerge: Fixed --skipfirst
   bug. This closes #36880.
 
