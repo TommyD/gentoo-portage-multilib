@@ -6507,6 +6507,9 @@ for group in groups:
 # Clear the cache
 dircache={}
 
+if not "sandbox" in features or not "usersandbox" in features:
+	portage_exec.sandbox_capable = False
+
 fetcher=None
 def get_preferred_fetcher():
 	"""get the preferred fetcher.  basically an initial check to verify FETCHCOMMAND/RESUMECOMMAND
