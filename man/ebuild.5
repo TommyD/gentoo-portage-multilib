@@ -461,9 +461,6 @@ configure \\
 	--localstatedir=/var/lib \\
 .br
 	\fIconfigure options\fR
-
-\fB*Note:\fR There is no need to use '|| \fBdie\fR' because \fBeconf\fR
-checks for you
 .TP
 \fBemake\fR \fI[make options]\fR
 This is used as a replacement for make.  Performs
@@ -475,9 +472,6 @@ default is MAKEOPTS="\-j2".
 if you are going to use \fBemake\fR, make sure your build is happy with
 paralell makes (make \-j2).  It should be tested thoroughly as parallel
 makes are notorious for failing _sometimes_ but not always.
-
-\fB*Note:\fR Be sure to use '|| \fBdie\fR' constructs to ensure
-\fBemake\fR success
 .SH "HELPER FUNCTIONS: INSTALL"
 .TP
 \fBeinstall\fR \fI[make options]\fR
@@ -497,8 +491,8 @@ make prefix=${D}/usr \\
 .br
             \fImake options\fR install
 
-\fB*Note:\fR There is no need to use '|| \fBdie\fR' because \fBeinstall\fR
-checks for you
+Please do not use this in place of 'make install DESTDIR=${D}'.  That
+is the preferred way of installing make-based packages.
 
 .PD 0
 .TP
