@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+# $Header$
+
 import sys
 sys.path.insert(0, "/usr/lib/portage/pym")
 
@@ -32,6 +34,14 @@ def isunwanted(pkgline):
 	else:
 		__uniqlist__.append(pkgline)
 		return True
+
+# show a little description if we have arguments
+if sys.argv[1] in ["-h", "--help"]:
+	print "This script regenerates the portage world file by checking the portage"
+	print "logfile for all actions that you've done in the past. It ignores any"
+	print "arguments except --help. It is recommended that you make a backup of"
+	print "your existing world file (%s) before using this tool." % portage.WORLD_FILE
+	sys.exit(0)
 
 worldlist = portage.grabfile(portage.WORLD_FILE)
 syslist = portage.grabfile(portage.profiledir+"/packages")
