@@ -1,5 +1,6 @@
 # Copyright 1998-2002 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
+# $Header$
 
 havecolor=1
 codes={}

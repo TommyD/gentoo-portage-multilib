@@ -1,4 +1,5 @@
 #!/bin/bash
+# $Header$
 
 if [ -z "$1" ]; then
 	echo

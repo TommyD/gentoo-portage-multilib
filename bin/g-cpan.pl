@@ -1,8 +1,6 @@
 #!/usr/bin/perl -w
+# $Header$
 
-# author: J Robert Ray <jrray@gentoo.org>
-# 
-#
 # History: 
 
 # 01/08/03: jrray@gentoo.org: remove dependency on Digest::MD5

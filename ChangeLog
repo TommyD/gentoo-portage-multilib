@@ -1,5 +1,6 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
-# Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
+# Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
+# $Header$
 
   14 Feb 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Added
   resume to mtimedbkeys.

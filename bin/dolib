@@ -1,4 +1,5 @@
 #!/bin/bash
+# $Header$
 
 if [ ${#} -lt 1 ] ; then
 	echo "${0}: at least one argument needed"

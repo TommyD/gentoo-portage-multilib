@@ -1,4 +1,5 @@
 #!/bin/bash
+# $Header$
 # This script tries to quickly create a gentoo binary package using the
 #
 #   /var/db/pkg/class-app/app/*  files

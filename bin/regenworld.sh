@@ -1,3 +1,5 @@
+# $Header$
+
 egrep '^[0-9]+:  \*\*\* emerge' /var/log/emerge.log |
 egrep -v 'oneshot|nodeps|emerge .* search ' |
 sed 's:^.*\* emerge ::;s:--[^ ]\+ ::;s: :\n:g' |
