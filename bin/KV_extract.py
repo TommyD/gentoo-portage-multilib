@@ -46,9 +46,9 @@ def ExtractKernelVersion(filename):
       error = error + 1
       continue
     if len(value) > 1:
-      print 'E:too many values matched for key %s' % (key)
+      print 'E:Too many values matched for key %s!' % (key)
       for (match,line_number) in value:
-        print 'E: %d:\"%s\"' % (line_number, match)
+        print 'E: Line %d reads \"%s\"' % (line_number, match)
         error = error + 1
       continue
     if len(value) == 1: # redundant
@@ -63,4 +63,7 @@ def ExtractKernelVersion(filename):
   sys.exit(error)
 
 if __name__ == "__main__":
-  ExtractKernelVersion('/usr/src/linux/Makefile')
+  filename = '/usr/src/linux/Makefile'
+  if len(sys.argv[1:]) == 1:
+    filename = sys.argv[1]
+  ExtractKernelVersion(filename)
