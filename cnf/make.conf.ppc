@@ -39,6 +39,9 @@ GENTOO_MIRRORS="http://www.ibiblio.org/pub/Linux/distributions/gentoo"
 #These are all the same CHOST
 CHOST="powerpc-unknown-linux-gnu"
 
+# These CFLAGS are for gcc 2.95.3 (pre Gentoo 1.4), using these with Gentoo 1.4
+# or newer is _not_ reccomended
+
 # PowerPC 750 > up: this works on G4s;
 #CFLAGS=" -O2 -pipe -mcpu=750 -mpowerpc-gfxopt -mmultiple -mstring "
 #CXXFLAGS=${CFLAGS}
@@ -46,6 +49,22 @@ CHOST="powerpc-unknown-linux-gnu"
 # This is safer, and thus the default
 CFLAGS=" -O2 -pipe -mmultiple -mstring "
 CXXFLAGS=${CFLAGS}
+
+# the following are gcc 3.2 CFLAGS for use with Gentoo 1.4 or higher 
+# (not safe for gcc 2.95.3)/pre Gentoo 1.4
+
+# Optimized G4 settings (substitute 7400 for your CPU model number
+# (you can get this from /proc/cpuinfo )
+#CFLAGS=" -O3 -pipe -mcpu=7400 -mtune=7400 -maltivec -mabi=altivec -mpowerpc-gfxopt -fsigned-char "
+#CXXFLAGS=${CFLAGS}
+
+# Optimized G3 settings
+#CFLAGS=" -O3 -pipe -mcpu=750 -mtune=750 -mpowerpc-gfxopt -fsigned-char "
+#CXXFLAGS=${CFLAGS}
+
+# This is safer, and should be used for all pre G3 models
+#CFLAGS=" -O3 -pipe "
+#CXXFLAGS=${CFLAGS}
 
 # If you need to set a proxy for wget or lukemftp, add the appropriate
 # "export ftp_proxy=<proxy>" and "export http_proxy=<proxy>" lines to

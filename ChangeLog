@@ -3,6 +3,9 @@
 
 *portage-2.0.32 (29 Aug 2002): Gentoo Linux 1.4 release version (ok so far)  
   
+  30 Aug 2002; Mark Guertin <gerk@gentoo.org> cnf/make.conf.ppc :
+  Updated cnf/make.conf.ppc with new CFLAGS for 1.4 release
+
   29 Aug 2002; Daniel Robbins <drobbins@gentoo.org> emerge: favorites weren't
   working since 2.0.30; they're working again now. This closes bug #7225.
 
