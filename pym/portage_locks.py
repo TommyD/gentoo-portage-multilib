@@ -182,15 +182,15 @@ def unlockfile(mytuple):
 		# the sleep here adds more time than is saved overall, so am
 		# commenting until it is proved necessary.
 		#time.sleep(0.0001)
-		locking_method(myfd,fcntl.LOCK_EX|fcntl.LOCK_NB)
-		# We won the lock, so there isn't competition for it.
-		# We can safely delete the file.
-		portage_util.writemsg("Got the lockfile...\n",1)
 		if unlinkfile:
+			locking_method(myfd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+			# We won the lock, so there isn't competition for it.
+			# We can safely delete the file.
+			portage_util.writemsg("Got the lockfile...\n",1)
 			#portage_util.writemsg("Unlinking...\n")
 			os.unlink(lockfilename)
 			portage_util.writemsg("Unlinked lockfile...\n",1)
-		locking_method(myfd,fcntl.LOCK_UN)
+			locking_method(myfd,fcntl.LOCK_UN)
 	except SystemExit, e:
 		raise
 	except Exception, e:

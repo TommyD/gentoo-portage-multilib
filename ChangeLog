@@ -7,6 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  17 Oct 2004; Brian Harring <ferringb@gentoo.org> portage-locks.py: Tweaked 
+  unlockfile, no point in attempting to relock the file for deletion, if you're 
+  not deleting the lockfile (basically moved locking w/in if unlinkfile).
+
   17 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> emerge portage_locks.py:
   Added more information to the --inject deprecation notice. Removed the sleep
   call from unlockfile as it severely affects performance (apparently only
