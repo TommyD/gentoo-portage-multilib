@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  14 Nov 2004; Brian Harring <ferringb@gentoo.org> spec/emerge.syntax:
+  Bye bye emerge.syntax, we hardly knew ye.
+
   14 Nov 2004; Marius Mauch <genone@gentoo.org> bin/emerge, man/make.conf.5,
   spec/emerge.syntax, cnf/make.conf.*, cnf/make.globals*:
   removing all support for AUTOCLEAN=no, it's breaking too many things these
