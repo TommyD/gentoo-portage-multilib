@@ -11,6 +11,7 @@
   24 Oct 2002; Nicholas Jones <carpaski@gentoo.org> emerge:
   Added missing return statements to select_dep() that caused unmet packages
   to be ignored. Touchups to 'emerge info' and 'emerge --version' output.
+	Added --delete to --delete-after so that it actually deletes in rsync.
 
   24 Oct 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
   Warning touchups. Replaced constants (9) to index("INHERITED").
