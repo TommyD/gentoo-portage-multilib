@@ -2,6 +2,11 @@
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+  4 Dec 2002; Martin Schlemmer <azarah@gentoo.org> :
+
+  Fix a segfault in libsandbox.c if canonicalize() was called with
+  first parameter = NULL.
+
   1 Sep 2002; Martin Schlemmer <azarah@gentoo.org> :
 
   Fix my braindead 'return 1;' in a void function.  Updated sandbox.c,

@@ -242,6 +242,9 @@ void _init(void)
 static void canonicalize(const char *path, char *resolved_path)
 {
   int old_errno = errno;
+
+  /* If path == NULL, return or we get a segfault */
+  if (NULL == path) return;
   
   if(!erealpath(path, resolved_path) && (path[0] != '/')) {
     /* The path could not be canonicalized, append it
