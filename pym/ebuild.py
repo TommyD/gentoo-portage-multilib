@@ -628,7 +628,7 @@ class ebuild_handler:
 				mysettings["INHERITED"],mysettings["RESTRICT"] = db[root][tree].dbapi.aux_get(
 					mycpv,["INHERITED","RESTRICT"])
 
-				mysettings["RESTRICT"]=string.join(flatten(portage_dep.use_reduce(
+				mysettings["PORTAGE_RESTRICT"]=string.join(flatten(portage_dep.use_reduce(
 					portage_dep.paren_reduce(mysettings["RESTRICT"]), 
 					uselist=mysettings["USE"].split() )),' ')
 

@@ -7,6 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  08 Mar 2005; Brian Harring <ferringb@gentoo.org> pym/ebuild.py: Revert part of 
+  the restrict/portage_restrict changes so use conditionals in restrict work
+  again.
+
   08 Mar 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py, pym/portage_dep.py,
   pym/portage_util.py, pym/config.py:  Moved match_from_list, match_to_* stuff
   into portage_dep, and updated references, and fixed a few bugs related to 
