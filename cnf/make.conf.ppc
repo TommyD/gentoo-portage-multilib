@@ -47,6 +47,9 @@ CHOST="powerpc-unknown-linux-gnu"
 # the alitvec option compiled into your kernel to take full advantage of this
 # feature.
 #
+# Further testing has shown that -O3 opts are unstable on G4's but work
+# on G3 series processors.
+#
 # Optimized for G4; "cat /proc/cpuinfo" to get your CPU model number and
 # substitute it for the "7400" below (could be "7400", "7450"):
 #
