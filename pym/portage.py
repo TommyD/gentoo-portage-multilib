@@ -1021,12 +1021,12 @@ def vercmp(val1,val2):
 	# after expansion will become (1_p2,0) vc (1,1)
 	# then 1_p2 is compared with 1 before 0 is compared with 1
 	# to solve the bug we need to convert it to (1,0_p2)
-	# by splitting _xx part and adding it back _after_expansion
-	val1_xxx = val2_xxx = ''
+	# by splitting _prepart part and adding it back _after_expansion
+	val1_prepart = val2_prepart = ''
 	if val1.count('_'):
-		val1, val1_xxx = val1.split('_', 1)
+		val1, val1_prepart = val1.split('_', 1)
 	if val2.count('_'):
-		val2, val2_xxx = val2.split('_', 1)
+		val2, val2_prepart = val2.split('_', 1)
 
 	# replace '-' by '.'
 	# FIXME: Is it needed? can val1/2 contain '-'?
@@ -1054,11 +1054,11 @@ def vercmp(val1,val2):
 	elif len(val1)<len(val2):
 		val1.extend(["0"]*(len(val2)-len(val1)))
 
-	# add back _xxx tails
-	if val1_xxx:
-		val1[-1] += '_' + val1_xxx
-	if val2_xxx:
-		val2[-1] += '_' + val2_xxx
+	# add back _prepart tails
+	if val1_prepart:
+		val1[-1] += '_' + val1_prepart
+	if val2_prepart:
+		val2[-1] += '_' + val2_prepart
 	#The above code will extend version numbers out so they
 	#have the same number of digits.
 	for x in range(0,len(val1)):
