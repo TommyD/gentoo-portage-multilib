@@ -7,6 +7,12 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  24 Feb 2005; <solar@gentoo.org> bin/ebuild-default-functions.sh:
+  - added manifest_files to USER_CONFIG_PATH+/manifest_excludes. The way it
+  works is to add a file to /etc/portage/manifest_files and this file will be
+  ignore when checking the Manifest. This is mainly only useful when you
+  rsync_exclude a file thats list in the Manifest. (embedded)
+
   21 Feb 2005; Marius Mauch <genone@gentoo.org> bin/isolated-functions.sh,
   cnf/make.conf, cnf/make.conf.alpha, cnf/make.conf.amd64,
   cnf/make.conf.arm, cnf/make.conf.hppa, cnf/make.conf.ia64,
