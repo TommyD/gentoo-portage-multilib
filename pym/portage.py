@@ -6644,6 +6644,47 @@ class dblink:
 					# old package won't yank the file with it. (non-cfgprot related)
 					os.utime(myrealdest,(thismtime,thismtime))
 					zing="---"
+				if self.settings["ARCH"] == "macos" and myrealdest[-2:] == ".a":
+
+					# XXX kludge, bug #58848; can be killed when portage stops relying on 
+					# md5+mtime, and uses refcounts
+					# alright, we've fooled w/ mtime on the file; this pisses off static archives
+					# basically internal mtime != file's mtime, so the linker (falsely) thinks 
+					# the archive is stale, and needs to have it's toc rebuilt.
+
+					myf=open(myrealdest,"r+")
+
+					# ar mtime field is digits padded with spaces, 12 bytes.
+					lms=str(thismtime+5).ljust(12)
+					myf.seek(0)
+					magic=myf.read(8)
+					if magic != "!<arch>\n":
+						# not an archive (dolib.a from portage.py makes it here fex)
+						myf.close()
+					else:
+						st=os.stat(myrealdest)
+						while myf.tell() < st.st_size - 12:
+							# skip object name
+							myf.seek(16,1)
+							
+							# update mtime
+							myf.write(lms)
+						
+							# skip uid/gid/mperm
+							myf.seek(20,1)
+								
+							# read the archive member's size
+							x=long(myf.read(10))
+							
+							# skip the trailing newlines, and add the potential 
+							# extra padding byte if it's not an even size
+							myf.seek(x + 2 + (x % 2),1)
+							
+						# and now we're at the end. yay.
+						myf.close()
+						mymd5=portage_md5.perform_md5(myrealdest)
+					os.utime(myrealdest,(thismtime,thismtime))
+
 				if mymtime!=None:
 					zing=">>>"
 					outfile.write("obj "+myrealdest+" "+mymd5+" "+str(mymtime)+"\n")

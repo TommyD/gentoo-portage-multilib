@@ -9,6 +9,13 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  23 Aug 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py: Added a 
+  macos ranlib hack; dblink.mergeme by default resets each files mtime, which 
+  makes static archives merged to the fs worthless (linker notes the files 
+  mtime differs from an internal mtime, and bails).  This closes out bug 
+  (#58848), and will be obsoleted when refcounts are used instead of mtime + 
+  md5.
+
   21 Aug 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild.sh: Expanded
   CONF_LIBDIR support, so it honors --prefix set values. (#61060)
 
