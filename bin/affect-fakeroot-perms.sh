@@ -6,9 +6,8 @@ $Header$
 
 
 echo "adjusting $2 using $1" >&2
-find "$2" | egrep -v "$2\$" | while read r; do
-		fakeroot -i "${1}" -- stat -c'%u:%g;%f=%n' "$r"
-	done | while read l; do
+fakeroot -i "$1" -- find "$2" -exec stat -c '%u:%g;%f=%n' {} \; | \
+while read l; do
 		o="${l/;*}"
 		r="${l/${o}}"
 		p="${r/=*}"

@@ -7,6 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  10 Nov 2004; Brian Harring <ferringb@gentoo.org> 
+  bin/affect-fakeroot-perms.sh:  rewrote this script so that it's less 
+  likely to piss off fakeroot by spawning multiple instances of a client.
+
   10 Nov 2004; Marius Mauch <genone@gentoo.org> +pym/portage_versions.py,
   bin/db-update.py, bin/emerge, bin/fixvirtuals, bin/pkgname, bin/repoman,
   pym/ebuild.py, pym/portage.py, pym/portage_dep.py:
