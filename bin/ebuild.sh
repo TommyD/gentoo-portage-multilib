@@ -5,7 +5,7 @@
 
 cd ${PORT_TMPDIR}
 
-if [ "$*" != "depend" ]; then
+if [ "$*" != "depend" ] && [ "$*" != "clean" ]; then
 	if [ -f ${T}/successful ]; then
 		rm -f ${T}/successful
 	fi
@@ -22,10 +22,10 @@ if [ "$*" != "depend" ]; then
 			chmod g+w "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log" &> /dev/null
 			$0 $* 2>&1 | tee -a "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log"
 			if [ "$?" != "0" ]; then
-				echo "Problem creating logfile in ${PORT_LOGDIR}"
 				exit 1
 			fi
 			if [ -f ${T}/successful ]; then
+				rm -f ${T}/successful
 				exit 0
 			else
 				exit 1
@@ -33,20 +33,14 @@ if [ "$*" != "depend" ]; then
 		fi
 	fi
 
-	# Fix the temp dirs so we don't have booboos.
-	for DIR in $(find ${BUILD_PREFIX} -type d -name temp -maxdepth 2 -mindepth 2 -print); do
-		chown -R portage $DIR &>/dev/null
-	done
-
 	if [ -f "${WORKDIR}/environment" ]; then
 		source "${WORKDIR}/environment"
 	fi
 
 	if [ `id -nu` == "portage" ] ; then
-		export CCACHE_DIR=${HOME}/.ccache
 		export USER=portage
 	fi
-fi # $*!=depend
+fi # "$*"!="depend" && "$*"!="clean"
 
 # Prevent aliases from causing portage to act inappropriately.
 unalias -a
@@ -526,6 +520,14 @@ dyn_clean() {
 	rm -rf ${BUILDDIR}/image
 	rm -rf ${BUILDDIR}/build-info
 	rm -rf ${BUILDDIR}/.compiled
+	if ! has keeptemp $FEATURES; then
+		rm -rf ${T}/*
+	fi
+	if [ -f ${BUILDDIR}/.unpacked ]; then
+		rm -rf ${BUILDDIR}/.unpacked
+		find ${BUILDDIR} -type d | sort -r | xargs rmdir &>/dev/null
+	fi
+	true
 }
 
 into() {
@@ -875,8 +877,6 @@ dyn_help() {
 	echo
 }
 
-# --- Former eclass code ---
-
 # debug-print() gets called from many places with verbose status information useful
 # for tracking down problems. The output is in $T/eclass-debug.log.
 # You can set ECLASS_DEBUG_OUTPUT to redirect the output somewhere else as well.
@@ -901,9 +901,9 @@ debug-print() {
 		fi
 		
 		# default target
-		[ -n "$T" ] && echo $1 >> ${T}/eclass-debug.log
+		echo $1 >> ${T}/eclass-debug.log
 		# let the portage user own/write to this file
-		[ -n "$T" ] && chown portage.portage ${T}/eclass-debug.log
+		chmod g+w ${T}/eclass-debug.log &>/dev/null
 		
 		shift
 	done
@@ -1108,7 +1108,6 @@ do
 		echo `echo "$PDEPEND"` >> $dbkey
 		set +f
 		#make sure it is writable by our group:
-		#chmod g+ws $dbkey
 		exit 0
 		;;
 	*)
@@ -1125,9 +1124,12 @@ do
 	fi
 done
 
-# Save current environment and touch a success file. (echo for success)
-umask 002
-set > ${T}/environment 2>/dev/null
-touch ${T}/successful 2>/dev/null
-#chmod g+w ${T}/environment ${T}/successful &>/dev/null
-echo -n ""
+if [ "$myarg" != "clean" ]; then
+	# Save current environment and touch a success file. (echo for success)
+	umask 002
+	set > ${T}/environment &>/dev/null
+	chmod g+w ${T}/environment &>/dev/null
+fi
+touch ${T}/successful  &>/dev/null
+chmod g+w ${T}/successful &>/dev/null
+true

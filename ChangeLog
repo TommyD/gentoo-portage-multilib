@@ -2,6 +2,30 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+*portage-2.0.47-r1 (16 Feb 2003): Wicked Fast + UserPriv
+
+  16 Feb 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: Changed a
+  few os.system calls to spawn calls. Added userpriv in features check to
+  spawn. HOME is now placed in BUILD_PREFIX/homedir when userpriv is enabled.
+  Valid command for doebuild() moved to the top of the function. Reorganized
+  the directory creation code in doebuild(). HOME is cleaned for every merge
+  if in userpriv. LOG_COUNTER fix for the per-ebuild logs -- Only one value
+  is used per $PF now.
+
+  16 Feb 2003; Nicholas Jones <carpaski@gentoo.org> emerge: Adjusted options
+  to remove --autoclean and make it on-by-default unless killed in FEATURES
+  with 'noclean'. Removed debug for --resume. Added RSYNC_TIMEOUT as some
+  dialup and other users are experiencing problems with rsync never finishing
+  a connection. Added check at the end of an rsync to notify the user when
+  a new version of portage is available. Added --pretend capability/fix to
+  the --resume code. No resume data and a --resume is no longer a failure.
+
+  16 Feb 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Updates to
+  logic of ${T}/successful handling to allow proper cleaning. dyn_clean()
+  will do a recursive dir removal after cleaning specific files. Recursive
+  chown removed. CCACHE_DIR handled in portage.py now. Removed a few comments
+  and unnecessary checks.
+
   16 Feb 2003; Nicholas Jones <carpaski@gentoo.org> cnf/*: added comments
   on FEATURES=noclean,noauto,userpriv,usersandbox
 

@@ -19,16 +19,15 @@ actions=[
 "regen", "rsync",  "search",   "sync", "system", "unmerge", "world"
 ]
 options=[
-"--autoclean", "--buildpkg",   "--buildpkgonly", "--changelog",
-"--debug",     "--deep",       "--emptytree",    "--fetchonly",
-"--help",      "--noconfmem",  "--nodeps",       "--noreplace",
-"--nospinner", "--oneshot",    "--onlydeps",     "--pretend",
-"--quiet",     "--resume",     "--searchdesc",   "--selective",
-"--update",    "--usepkg",     "--usepkgonly",   "--verbose",
-"--version",   "--columns"
+"--buildpkg",   "--buildpkgonly", "--changelog", "--debug",
+"--deep",       "--emptytree",    "--fetchonly", "--help",
+"--noconfmem",  "--nodeps",       "--noreplace", "--nospinner",
+"--oneshot",    "--onlydeps",     "--pretend",   "--quiet",
+"--resume",     "--searchdesc",   "--selective", "--update",
+"--usepkg",     "--usepkgonly",   "--verbose",   "--version",
+"--columns"
 ]
 shortmapping={
-"a":"--autoclean",
 "b":"--buildpkg",  "B":"--buildpkgonly",
 "c":"clean",       "C":"unmerge",
 "d":"--debug",
@@ -969,10 +968,10 @@ class depgraph:
 
 		if ("--resume" in myopts):
 			# We're resuming.
-			print "p.m.r:",portage.mtimedb["resume"]
+			print green("*** Resuming merge...")
+			emergelog(" *** Resuming merge...")
 			mymergelist=portage.mtimedb["resume"]["mergelist"][:]
 		else:
-			print "not resuming"
 			myfavs=portage.grabfile(portage.root+"var/cache/edb/world")
 			myfavdict=genericdict(myfavs)
 			mysysdict=genericdict(syslist)
@@ -994,7 +993,6 @@ class depgraph:
 			portage.mtimedb["resume"]["mergelist"]=mymergelist
 
 		mergecount=0
-		print mymergelist
 		for x in mymergelist:
 			mergecount+=1
 			myroot=x[1]
@@ -1056,14 +1054,14 @@ class depgraph:
 						print ">>> Recording",myfavkey,"in \"world\" favorites file..."
 						portage.writedict(myfavdict,myroot+"var/cache/edb/world",writekey=0)
 
-				if "--autoclean" in myopts:
+				if "noclean" not in portage.features:
 					retval=portage.doebuild(y,"clean",myroot,edebug)
 					if retval:
 						sys.exit(1)
 			
 				if ("--pretend" not in myopts) and ("--fetchonly" not in myopts):
 					# Clean the old package that we have merged over top of it.
-					if portage.settings["AUTOCLEAN"] and (portage.settings["AUTOCLEAN"]=="yes"):
+					if portage.settings.has_key("AUTOCLEAN") and (portage.settings["AUTOCLEAN"]=="yes"):
 						xsplit=portage.pkgsplit(x[2])
 						emergelog(" >>> AUTOCLEAN: "+xsplit[0])
 						if not unmerge("clean", [xsplit[0]]):
@@ -1380,9 +1378,6 @@ def post_emerge(retval=0):
 	sys.exit(retval)
 
 # general options that should be taken into account before any action
-if "noclean" not in portage.features:
-	if not "--autoclean" in myopts:
-		myopts.append("--autoclean")
 if "--debug" in myopts:
 	edebug=1
 
@@ -1405,7 +1400,13 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 			print "!!! /usr/bin/rsync does not exist, so rsync support is disabled."
 			print "!!! Type \"emerge net-misc/rsync\" to enable rsync support."
 			sys.exit(1)
-		mycommand="/usr/bin/rsync -rlptDvz --progress --stats --delete --delete-after --timeout=60 --exclude='distfiles/*' --exclude='packages/*' "
+		mytimeout=180
+		if portage.settings.has_key("RSYNC_TIMEOUT"):
+			try:
+				mytimeout=int(portage.settings["RSYNC_TIMEOUT"])
+			except:
+				pass
+		mycommand="/usr/bin/rsync -rlptDvz --progress --stats --delete --delete-after --timeout="+str(mytimeout)+" --exclude='distfiles/*' --exclude='packages/*' "
 		mycommand=mycommand+syncuri+"/* "+myportdir
 		print ">>> starting rsync with "+syncuri+"..."
 		#protect users that did not set a default umask
@@ -1465,6 +1466,9 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 				ignored=portage.portdb.aux_get(y,[],metacachedir=myportdir+"/metadata/cache")
 		sys.stdout.write("\b\b  ...done!\n\n")
 		sys.stdout.flush()
+	mynewpv=portage.portdb.xmatch("bestmatch-visible","sys-apps/portage")
+	myoldpv=portage.db[portage.root]["vartree"].portdb.xmatch("bestmatch-visible","sys-apps/portage")
+	
 elif myaction=="regen":
 	emergelog(" === regen")
 	#regenerate cache entries
@@ -1647,18 +1651,18 @@ else:
 		print darkgreen("These are the packages that I would merge, in order:")
 		print
 	if ("--resume" in myopts) and portage.mtimedb.has_key("resume"):
-		print "doing resume!"
-		myopts=portage.mtimedb["resume"]["myopts"]
-		print myopts,portage.mtimedb["resume"]["myopts"]
+		if "--pretend" in myopts:
+			myopts=portage.mtimedb["resume"]["myopts"]+["--pretend"]
+		else:
+			myopts=portage.mtimedb["resume"]["myopts"]
 		mydepgraph=depgraph("resume",myopts)
 		if "--resume" not in myopts:
 			myopts+=["--resume"]
-		print myopts,portage.mtimedb["resume"]["myopts"]
 	else:
 		if ("--resume" in myopts):
 			del myopts[myopts.index("--resume")]
-			print "*** No data for resuming. Not resuming."
-			sys.exit(1)
+			print red("!!! It seems we have nothing to resume.")
+			sys.exit(0)
 
 		mydepgraph=depgraph(myaction,myopts)
 		if myaction in ["system","world"]:
@@ -1695,7 +1699,6 @@ else:
 			favorites=portage.mtimedb["resume"]["favorites"]
 			mydepgraph.merge(portage.mtimedb["resume"]["mergelist"])
 		else:
-			print "*** Write resume data!"
 			portage.mtimedb["resume"]={}
 			portage.mtimedb["resume"]["myopts"]=myopts
 			portage.mtimedb["resume"]["favorites"]=favorites

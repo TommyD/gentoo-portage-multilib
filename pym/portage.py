@@ -89,7 +89,7 @@ try:
 				print "!!! Unable to copy file '",filename,"'."
 				print "!!!",e
 				sys.exit(1)
-			os.system("/usr/sbin/prelink --undo "+prelink_tmpfile+" &>/dev/null")
+			spawn("/usr/sbin/prelink --undo "+prelink_tmpfile+" &>/dev/null", free=1)
 			retval = fchksum.fmd5t(prelink_tmpfile)
 			os.unlink(prelink_tmpfile)
 			return retval
@@ -110,7 +110,7 @@ except ImportError:
 				print "!!! Unable to copy file '",filename,"'."
 				print "!!!",e
 				sys.exit(1)
-			os.system("/usr/sbin/prelink --undo "+prelink_tmpfile+" &>/dev/null")
+			spawn("/usr/sbin/prelink --undo "+prelink_tmpfile+" &>/dev/null", free=1)
 			myfilename=prelink_tmpfile
 
 		f = open(myfilename, 'rb')
@@ -946,7 +946,8 @@ def spawn(mystring,debug=0,free=0,droppriv=0):
 
 	# usefull if an ebuild or so needs to get the pid of our python process
 	settings["PORTAGE_MASTER_PID"]=str(os.getpid())
-	
+	droppriv=(droppriv and ("userpriv" in features))
+
 	mypid=os.fork()
 	if mypid==0:
 		myargs=[]
@@ -954,14 +955,10 @@ def spawn(mystring,debug=0,free=0,droppriv=0):
 			#drop root privileges, become the 'portage' user
 			os.setgid(portage_gid)
 			os.setuid(portage_uid)
+			os.umask(002)
 		else:
 			if droppriv:
 				print "portage: Unable to drop root for",mystring
-				if free and ("sandbox" in features):
-					# DropPriv is a normally SandBox'd condition.
-					print "portage: Enabling sandbox."
-					free=0
-		settings["HOME"]=settings["BUILD_PREFIX"]
 		settings["BASH_ENV"]=settings["HOME"]+"/.bashrc"
 
 		if ("sandbox" in features) and (not free):
@@ -1229,12 +1226,18 @@ def spawnebuild(mydo,actionmap,debug,alwaysdep=0):
 # "checkdeps" support has been deprecated.  Relying on emerge to handle it.
 def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 	global settings
+
+	if mydo not in ["help","clean","prerm","postrm","preinst","postinst","config","touch","setup",
+	                "depend","fetch","digest","unpack","compile","install","rpm","qmerge","merge","package"]:
+		print "!!! Please specify a valid command."
+		return 1
 	if not os.path.exists(myebuild):
 		print "!!! doebuild:",myebuild,"not found."
 		return 1
 	if myebuild[-7:]!=".ebuild":
 		print "!!! doebuild: ",myebuild,"does not appear to be an ebuild file."
 		return 1
+
 	settings.reset()
 	settings["PORTAGE_DEBUG"]=str(debug)
 	#settings["ROOT"]=root
@@ -1273,37 +1276,6 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 	settings["PKG_TMPDIR"]=settings["PORTAGE_TMPDIR"]+"/portage-pkg"
 	settings["BUILDDIR"]=settings["BUILD_PREFIX"]+"/"+settings["PF"]
 
-	try:
-		if mydo!="depend":
-			if not os.path.exists(settings["BUILD_PREFIX"]):
-				os.makedirs(settings["BUILD_PREFIX"])
-			if not os.path.exists(settings["BUILDDIR"]):
-				os.makedirs(settings["BUILDDIR"])
-			# Should be ok again to set $T, as sandbox do not depend on it
-			settings["T"]=settings["BUILDDIR"]+"/temp"
-			if not os.path.exists(settings["T"]) and mydo!="depend":
-				os.makedirs(settings["T"])
-			os.chown(settings["BUILD_PREFIX"],portage_uid,portage_gid)
-			os.chown(settings["BUILDDIR"],portage_uid,portage_gid)
-			os.chown(settings["T"],portage_uid,portage_gid)
-			os.chmod(settings["T"],02770)
-	except OSError, e:
-		print "!!! File system problem. (ReadOnly? Out of space?)"
-		print "!!! Perhaps: rm -Rf",settings["BUILD_PREFIX"]
-		print "!!!",str(e)
-		return 1
-
-	settings["WORKDIR"]=settings["BUILDDIR"]+"/work"
-	settings["D"]=settings["BUILDDIR"]+"/image/"
-
-	if mydo=="unmerge": 
-		return unmerge(settings["CATEGORY"],settings["PF"],myroot)
-	
-	if mydo not in ["help","clean","prerm","postrm","preinst","postinst","config","touch","setup",
-	                "depend","fetch","digest","unpack","compile","install","rpm","qmerge","merge","package"]:
-		print "!!! Please specify a valid command."
-		return 1
-
 	#set up KV variable -- DEP SPEEDUP :: Don't waste time. Keep var persistant.
 	if (mydo!="depend") or not settings.has_key("KV"):
 		mykv,err1=ExtractKernelVersion(root+"usr/src/linux")
@@ -1317,6 +1289,19 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 		myso=getstatusoutput("uname -r")
 		settings["KVERS"]=myso[1]
 
+	try:
+		if ("userpriv" in features) and portage_uid and portage_gid:
+			settings["HOME"]=settings["BUILD_PREFIX"]+"/homedir"
+			if os.path.exists(settings["HOME"]):
+				spawn("rm -Rf "+settings["HOME"], free=1)
+			if not os.path.exists(settings["HOME"]):
+				os.makedirs(settings["HOME"])
+		elif ("userpriv" in features):
+			del features[features.index("userpriv")]
+	except Exception, e:
+		print "!!! Couldn't empty HOME:",settings["HOME"]
+		print "!!!",e
+
 	# get possible slot information from the deps file
 	if mydo=="depend":
 		myso=getstatusoutput("/usr/sbin/ebuild.sh depend")
@@ -1324,9 +1309,57 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 			print myso[1]
 		return myso[0]
 
+	try:
+		# no reason to check for depend since depend returns above.
+		if not os.path.exists(settings["BUILD_PREFIX"]):
+			os.makedirs(settings["BUILD_PREFIX"])
+		os.chown(settings["BUILD_PREFIX"],portage_uid,portage_gid)
+		if not os.path.exists(settings["BUILDDIR"]):
+			os.makedirs(settings["BUILDDIR"])
+		os.chown(settings["BUILDDIR"],portage_uid,portage_gid)
+
+		# Should be ok again to set $T, as sandbox do not depend on it
+		settings["T"]=settings["BUILDDIR"]+"/temp"
+		if not os.path.exists(settings["T"]):
+			os.makedirs(settings["T"])
+		os.chown(settings["T"],portage_uid,portage_gid)
+		os.chmod(settings["T"],06770)
+
+		if ("userpriv" in features) and ("ccache" in features):
+			if (not settings.has_key("CCACHE_DIR")) or (settings["CCACHE_DIR"]==""):
+				settings["CCACHE_DIR"]=settings["PORTAGE_TMPDIR"]+"/ccache"
+			if not os.path.exists(settings["CCACHE_DIR"]):
+				os.makedirs(settings["CCACHE_DIR"])
+				os.chown(settings["CCACHE_DIR"],portage_uid,portage_gid)
+			os.chmod(settings["CCACHE_DIR"],06770)
+
+			if not os.path.exists(settings["HOME"]):
+				os.makedirs(settings["HOME"])
+			os.chown(settings["HOME"],portage_uid,portage_gid)
+			os.chmod(settings["HOME"],06770)
+	except OSError, e:
+		print "!!! File system problem. (ReadOnly? Out of space?)"
+		print "!!! Perhaps: rm -Rf",settings["BUILD_PREFIX"]
+		print "!!!",str(e)
+		return 1
+
+	settings["WORKDIR"]=settings["BUILDDIR"]+"/work"
+	settings["D"]=settings["BUILDDIR"]+"/image/"
+
+	if mydo=="unmerge": 
+		return unmerge(settings["CATEGORY"],settings["PF"],myroot)
+
 	if settings.has_key("PORT_LOGDIR"):
 		if os.access(settings["PORT_LOGDIR"]+"/",os.W_OK):
-			settings["LOG_COUNTER"]=str(counter_tick_core("/"))
+			try:
+				os.chown(settings["BUILD_PREFIX"],portage_uid,portage_gid)
+				os.chmod(settings["PORT_LOGDIR"],06770)
+				if not settings.has_key("LOG_PF") or (settings["LOG_PF"] != settings["PF"]):
+					settings["LOG_COUNTER"]=str(counter_tick_core("/"))
+			except Exception, e:
+				settings["PORT_LOGDIR"]=""
+				print "!!! Unable to chown/chmod PORT_LOGDIR. Disabling logging."
+				print "!!!",e
 		else:
 			print "!!! Cannot create log... No write access / Does not exist"
 			print "!!! PORT_LOGDIR:",settings["PORT_LOGDIR"]
@@ -1384,13 +1417,13 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 	
 	#initial dep checks complete; time to process main commands
 
-	nosandbox=("sandboxuser" not in features)
+	nosandbox=("usersandbox" not in features)
 	actionmap={
-			  "setup": {                 "args":(1,0)},  # no sandbox, as root
-			 "unpack": {"dep":"setup",   "args":(0,1)},  # w/ sandbox, as portage
-			"compile": {"dep":"unpack",  "args":(nosandbox,1)},  # no sandbox, as portage
-			"install": {"dep":"compile", "args":(0,0)},  # w/ sandbox, as root
-			    "rpm": {"dep":"install", "args":(0,0)},  # w/ sandbox, as root
+			  "setup": {                 "args":(1,0)},         # without  / root
+			 "unpack": {"dep":"setup",   "args":(0,1)},         # sandbox  / portage
+			"compile": {"dep":"unpack",  "args":(nosandbox,1)}, # optional / portage
+			"install": {"dep":"compile", "args":(0,0)},         # sandbox  / root
+			    "rpm": {"dep":"install", "args":(0,0)},         # sandbox  / root
 	}
 
 	if mydo in actionmap.keys():	
@@ -2672,7 +2705,7 @@ class vardbapi(dbapi):
 			if os.path.exists(newpath):
 				#dest already exists; keep this puppy where it is.
 				continue
-			os.system("/bin/mv "+origpath+" "+newpath)
+			spawn("/bin/mv "+origpath+" "+newpath, free=1)
 
 	def cp_list(self,mycp):
 		mysplit=mycp.split("/")
