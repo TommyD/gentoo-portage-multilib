@@ -139,6 +139,9 @@ can take a lot of time.
 Force emerges to always try to fetch files from the \fIPORTAGE_BINHOST\fR.  See 
 \fBmake.conf\fR(5) for more information.
 .TP
+.B gpg
+Check the signatures of Manifests and make sure they are correct.
+.TP
 .B keeptemp
 Do not delete the ${T} directory after the merge process.
 .TP
@@ -177,6 +180,10 @@ Disables xterm titlebar updates (which contains status info).
 .TP
 .B sandbox
 Enable sandbox\-ing when running \fBemerge\fR(1) and \fBebuild(1)\fR.
+.TP
+.B severe
+When checking Manifests, only accept ones that have been signed by a
+key which you trust.
 .TP
 .B sfperms
 Stands for Smart Filesystem Permissions.  Before merging packages to the 
