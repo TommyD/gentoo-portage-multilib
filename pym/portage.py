@@ -817,8 +817,8 @@ def digestgen(myarchives,overwrite=1):
 	
 def digestcheck(myarchives):
 	"Checks md5sums.  Assumes all files have been downloaded."
-	if settings["SRC_URI"]=="":
-		#No SRC_URI files specified; don't expect a digest
+	if not myarchives:
+		#No archives required; don't expect a digest
 		return 1
 	digestfn=settings["FILESDIR"]+"/digest-"+settings["PF"]
 	if not os.path.exists(digestfn):

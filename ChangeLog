@@ -1,8 +1,11 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
-  04 Apr 2002; Daniel Robbins <drobbins@gentoo.org>: Parse errors in /etc/env.d
-  files no longer cause a traceback.
+  05 Apr 2002; Daniel Robbins <drobbins@gentoo.org>: portage.py: fixed a bug
+  that prevented md5 digests from being compared on archives.
+  
+  04 Apr 2002; Daniel Robbins <drobbins@gentoo.org>: portage.py: Parse errors
+  in /etc/env.d files no longer cause a traceback.
 
 *portage-1.8.16 (04 Apr 2002)
 
