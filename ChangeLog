@@ -7,6 +7,18 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  07 Nov 2004; Brian Harring <ferringb@gentoo.org> transports/__init__.py,
+  transports/bundled_lib.py, transports/fetchcommand.py: Fetch refactoring.
+  Basically, a rewrite of portions of getbinpkg in httpConnection, and ftpConnection.
+  Those classes are hidden behind BundledConnection, which has an api that is 
+  the same as fetchcommand.py:CustomConnection- that class abstracts the parsing and
+  handling of (FETCH|RESUME)COMMAND, and their protocol specific settings into a central
+  class.  Code isn't in use as of this commit, but will be in use once ebd's code is 
+  fully in cvs (portage.py commit essentially).  The sync refactoring also uses it.
+  bug #23327 also is addressed, although it's ancillary- bundledConnection is able
+  to handle specific user/passwd, although for fetchcommand, we need to add a specific
+  user/password set of variables.
+
   07 Nov 2004; Brian Harring <ferringb@gentoo.org> orig_dict_cache.py:
   Transfer of the cacheddir func out of portage.py, and into it's own module.
   Current implementation isn't symlink aware, and has other issues (follow_symlinks
