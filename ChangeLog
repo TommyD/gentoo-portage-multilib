@@ -2,7 +2,7 @@
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
   10 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge :
-  added suport for 'emerge --unmerge system' which removes all old package
+  added suport for 'emerge --unmerge world' which removes all old package
   versions from the system
 
   9 Feb 2002; G.Bevin <gbevin@gentoo.org> emerge :

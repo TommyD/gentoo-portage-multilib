@@ -753,7 +753,7 @@ if "--unmerge" in myopts:
 			# a category and package name have been given
 			else:
 				localtree=portage.vartree(portage.root)	
-				if x=="ALL":
+				if x=="world":
 					mymatches=[]
 					for y in localtree.getallnodes():
 						mymatches.extend(localtree.dep_match(y))
