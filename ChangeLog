@@ -1,6 +1,10 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL
 
+  21 Feb 2002; Daniel Robbins <drobbins@gentoo.org> ebuild.sh: S now defaults
+  to ${WORKDIR}/${P} if it isn't defined.  That's right.  Defining S is now 
+  optional :)  This should eliminate around 1000 lines from our ports tree.
+  
   20 Feb 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: Fixed some
   major bugs in the new merge/config protect code.  Merging and config
   protection should now work.

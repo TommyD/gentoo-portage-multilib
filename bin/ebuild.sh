@@ -722,6 +722,11 @@ then
 	#abort if there was a parse problem
 	exit 1
 fi
+#a reasonable default for $S
+if [ "$S" = "" ]
+then
+	S=${WORKDIR}/${P}
+fi
 
 if [ "${SRC_URI}" != "" ]
 then
