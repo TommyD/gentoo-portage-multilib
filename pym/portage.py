@@ -980,12 +980,12 @@ def digestcheck(myarchives):
 	digestfn=settings["FILESDIR"]+"/digest-"+settings["PF"]
 	if not os.path.exists(digestfn):
 		if "digest" in features:
-			print ">>> No message digest file found.",digestfn
+			print ">>> No message digest file found:",digestfn
 			print ">>> \"digest\" mode enabled; auto-generating new digest..."
 			digestgen(myarchives)
 			return 1
 		else:
-			print "!!! No message digest file found.",digestfn
+			print "!!! No message digest file found:",digestfn
 			print "!!! Type \"ebuild foo.ebuild digest\" to generate a digest."
 			return 0
 	myfile=open(digestfn,"r")
@@ -1000,13 +1000,13 @@ def digestcheck(myarchives):
 	for x in myarchives:
 		if not mydigests.has_key(x):
 			if "digest" in features:
-				print ">>> No messages digest found for",x+"."
+				print ">>> No message digest entry found for archive\""+x+".\""
 				print ">>> \"digest\" mode enabled; auto-generating new digest..."
 				digestgen(myarchives)
 				return 1
 			else:
-				print "!!! No message digest found for",x+"."
-				print "!!! Type \"ebuild foo.ebuild digest\" to generate a digest."
+				print ">>> No message digest entry found for archive\""+x+".\""
+				print "!!! Type \"ebuild foo.ebuild digest\" to generate a new digest."
 				return 0
 		mymd5=perform_md5(settings["DISTDIR"]+"/"+x)
 		if mymd5 != mydigests[x][0]:
@@ -1098,15 +1098,11 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 	# get possible slot information from the deps file
 	if mydo=="depend":
 		myso=getstatusoutput("/usr/sbin/ebuild.sh depend")
-		if myso[1]:
-			#error; no output should be generated
-			raise IOError
-			#this should be caught by aux_get
 		return myso[0]
 	try: 
 		settings["SLOT"], settings["RESTRICT"], myuris = db["/"]["porttree"].dbapi.aux_get(mykey,["SLOT","RESTRICT","SRC_URI"])
 	except (IOError,KeyError):
-		print "portage.py: doebuild(): aux_get() error; aborting."
+		print "portage: doebuild(): aux_get() error; aborting."
 		sys.exit(1)
 	newuris=flatten(evaluate(tokenize(myuris),string.split(settings["USE"])))	
 	alluris=flatten(evaluate(tokenize(myuris),[],1))	
@@ -2356,6 +2352,44 @@ class vardbapi(dbapi):
 		"Tells us whether an actual ebuild exists on disk (no masking)"
 		return os.path.exists(self.root+"var/db/pkg/"+mykey)
 
+	def counter_tick(self):
+		"This method will grab the next COUNTER value and record it back to the global file.  Returns new counter value."
+		edbpath=self.root+"var/cache/edb/"
+		cpath=edbpath+"counter"
+
+		#We write our new counter value to a new file that gets moved into
+		#place to avoid filesystem corruption on XFS (unexpected reboot.)
+
+		newcpath=edbpath+"counter.new"
+		if os.path.exists(cpath):
+			cfile=open(cpath, "r")
+			try:
+				counter=long(cfile.readline())
+			except ValueError:
+				print "portage: COUNTER was corrupted; resetting to value of 9999"
+				counter=counter=long(9999)
+			cfile.close()
+		else:
+			counter=long(0)
+		#increment counter
+		counter += 1
+		# update new global counter file
+		newcfile=open(newcpath,"w")
+		newcfile.write(str(counter))
+		newcfile.close()
+		# now move global counter file into place
+		os.rename(newcpath,cpath)
+		return counter
+
+	def cpv_inject(self,mycpv):
+		"injects a real package into our on-disk database; assumes mycpv is valid and doesn't already exist"
+		os.makedirs(self.root+"var/db/pkg/"+mycpv)	
+		counter=db[self.root]["vartree"].dbapi.counter_tick()
+		# write local package counter so that emerge clean does the right thing
+		lcfile=open(self.root+"var/db/pkg/"+mycpv+"/COUNTER","w")
+		lcfile.write(str(counter))
+		lcfile.close()
+
 	def cp_list(self,mycp):
 		mysplit=mycp.split("/")
 		try:
@@ -2556,12 +2590,11 @@ class vartree(packagetree):
 		self.populated=1
 
 	
-auxdbkeys=['DEPEND','RDEPEND','SLOT','SRC_URI','RESTRICT','HOMEPAGE','LICENSE','DESCRIPTION','KEYWORDS','INHERIT']
+auxdbkeys=['DEPEND','RDEPEND','SLOT','SRC_URI','RESTRICT','HOMEPAGE','LICENSE','DESCRIPTION','KEYWORDS','INHERITED']
 auxdbkeylen=len(auxdbkeys)
 class portdbapi(dbapi):
 	"this tree will scan a portage directory located at root (passed to init)"
 	def __init__(self):
-		global mtimedb
 		self.root=settings["PORTDIR"]
 		self.auxcache={}
 		#if the portdbapi is "frozen", then we assume that we can cache everything (that no updates to it are happening)
@@ -2572,34 +2605,40 @@ class portdbapi(dbapi):
 		"stub code for returning auxilliary db information, such as SLOT, DEPEND, etc."
 		'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
 		'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or raise KeyError if error'
-		global auxdbkeys,auxdbkeylen,dbcachedir
+		global auxdbkeys,auxdbkeylen,dbcachedir,mtimedb
 		dmtime=0
-		regen=0
+		doregen=0
+		doregen2=0
+		mylines=[]
+		stale=0
 		mydbkey=dbcachedir+mycpv
 		mycsplit=catpkgsplit(mycpv)
 		mysplit=mycpv.split("/")
 		myebuild=self.root+"/"+mycsplit[0]+"/"+mycsplit[1]+"/"+mysplit[1]+".ebuild"
+		
+		#first, we take a look at the mtime of the ebuild and the cache entry to see if we need
+		#to regenerate our cache entry.
 		try:
 			dmtime=os.stat(mydbkey)[ST_MTIME]
 		except OSError:
-			regen=1
-		if not regen:
+			doregen=1
+		if not doregen:
 			emtime=os.stat(myebuild)[ST_MTIME]
 			if dmtime<emtime:
-				regen=1
-		if regen:
-			try:
-				if doebuild(myebuild,"depend","/"):
-					#depend returned non-zero exit code...
-					if strict:
-						print "portage: aux_get(): (0) Error in",mycpv,"ebuild."
-						raise KeyError
-			except IOError:
+				doregen=1
+		if doregen:
+			if doebuild(myebuild,"depend","/"):
+				#depend returned non-zero exit code...
 				if strict:
-					#depend generated output...
-					raise
-		if regen or (not self.auxcache.has_key(mycpv)) or (self.auxcache[mycpv]["mtime"]!=dmtime):
-			#update our internal cache data
+					print "portage: aux_get(): (0) Error in",mycpv,"ebuild."
+					raise KeyError
+		
+		#Now, our cache entry is possibly regenerated.  It could be up-to-date, but it may not be...
+		#If we regenerated the cache entry or we don't have an internal cache entry or or cache entry
+		#is stale, then we need to read in the new cache entry.
+		
+		if doregen or (not self.auxcache.has_key(mycpv)) or (self.auxcache[mycpv]["mtime"]!=dmtime):
+			stale=1
 			try: 
 				mycent=open(mydbkey,"r")
 			except (IOError, OSError):
@@ -2608,29 +2647,58 @@ class portdbapi(dbapi):
 				raise KeyError
 			mylines=mycent.readlines()
 			mycent.close()
-			if len(mylines)<auxdbkeylen:
-				#old cache entry, needs updating (this could raise IOError)
-				try:
-					if doebuild(myebuild,"depend","/"):
-						#depend returned non-zero exit code...
-						if strict:
-							print "portage: aux_get(): (0) Error in",mycpv,"ebuild."
-							raise KeyError
-				except IOError:
-					if strict:
-						#depend generated output...
-						raise
-				try:
-					mycent=open(mydbkey,"r")
-				except ( IOError, OSError):
-					print "portage: aux_get(): (2) couldn't open cache entry for",mycpv
-					print "(likely caused by syntax error or corruption in the",mycpv,"ebuild.)"
+			
+			#We now have the db
+			
+		if not doregen:
+			#if we regenerated our cache entry earlier, there's no point in checking all this as we know
+			#we are up-to-date.  Otherwise....
+			if not mylines:
+				pass
+			elif len(mylines)<auxdbkeylen:
+				doregen2=1
+			elif mylines[9]!="\n":
+				#INHERITED is non-zero; we now need to verify the mtimes of the eclass files listed herein.
+				#myexts = my externally-sourced files that need mtime checks:
+				myexts=mylines[9].split()	
+				for x in myexts:
+					extkey=self.root+"/eclass/"+x+".eclass"
+					try:
+						exttime=os.stat(extkey)[ST_MTIME]
+					except:
+						print "portage: aux_get(): eclass",extkey,"not found."
+						exttime=0
+					mtimedb["cur"][extkey]=exttime
+					if (not mtimedb["old"].has_key(extkey)) or (exttime!=mtimedb["old"][extkey]):
+						#update our mtime entry, turn the regenerate flag on and break out of the loop
+						mtimedb["old"][extkey]=exttime
+						doregen2=1
+						#we don't break out of the loop here because we want to update all our mtimedb
+						#entries for any updated eclasses. 
+		if doregen2:	
+			stale=1
+			#old cache entry, needs updating (this could raise IOError)
+			if doebuild(myebuild,"depend","/"):
+				#depend returned non-zero exit code...
+				if strict:
+					print "portage: aux_get(): (0) Error in",mycpv,"ebuild."
 					raise KeyError
-				mylines=mycent.readlines()
-				mycent.close()
+			try:
+				mycent=open(mydbkey,"r")
+			except ( IOError, OSError):
+				print "portage: aux_get(): (2) couldn't open cache entry for",mycpv
+				print "(likely caused by syntax error or corruption in the",mycpv,"ebuild.)"
+				raise KeyError
+			mylines=mycent.readlines()
+			mycent.close()
+			
+		if stale:
+			#due to a stale or regenerated cache entry, we need to update our internal dictionary....
 			self.auxcache[mycpv]={"mtime":dmtime}
 			for x in range(0,len(auxdbkeys)):
 				self.auxcache[mycpv][auxdbkeys[x]]=mylines[x][:-1]
+		
+		#finally, we look at our internal cache entry and return the requested data.
 		returnme=[]
 		for x in mylist:
 			if self.auxcache[mycpv].has_key(x):
@@ -2913,37 +2981,42 @@ class dblink:
 		myc=open(self.dbdir+"/CONTENTS","r")
 		mylines=myc.readlines()
 		myc.close()
+		pos=1
 		for line in mylines:
 			mydat=string.split(line)
 			# we do this so we can remove from non-root filesystems
 			# (use the ROOT var to allow maintenance on other partitions)
-			mydat[1]=os.path.normpath(root+mydat[1][1:])
-			if mydat[0]=="obj":
-				#format: type, mtime, md5sum
-				pkgfiles[string.join(mydat[1:-2]," ")]=[mydat[0], mydat[-1], mydat[-2]]
-			elif mydat[0]=="dir":
-				#format: type
-				pkgfiles[string.join(mydat[1:])]=[mydat[0] ]
-			elif mydat[0]=="sym":
-				#format: type, mtime, dest
-				x=len(mydat)-1
-				splitter=-1
-				while(x>=0):
-					if mydat[x]=="->":
-						splitter=x
-						break
-					x=x-1
-				if splitter==-1:
+			try:
+				mydat[1]=os.path.normpath(root+mydat[1][1:])
+				if mydat[0]=="obj":
+					#format: type, mtime, md5sum
+					pkgfiles[string.join(mydat[1:-2]," ")]=[mydat[0], mydat[-1], mydat[-2]]
+				elif mydat[0]=="dir":
+					#format: type
+					pkgfiles[string.join(mydat[1:])]=[mydat[0] ]
+				elif mydat[0]=="sym":
+					#format: type, mtime, dest
+					x=len(mydat)-1
+					splitter=-1
+					while(x>=0):
+						if mydat[x]=="->":
+							splitter=x
+							break
+						x=x-1
+					if splitter==-1:
+						return None
+					pkgfiles[string.join(mydat[1:splitter]," ")]=[mydat[0], mydat[-1], string.join(mydat[(splitter+1):-1]," ")]
+				elif mydat[0]=="dev":
+					#format: type
+					pkgfiles[string.join(mydat[1:]," ")]=[mydat[0] ]
+				elif mydat[0]=="fif":
+					#format: type
+					pkgfiles[string.join(mydat[1:]," ")]=[mydat[0]]
+				else:
 					return None
-				pkgfiles[string.join(mydat[1:splitter]," ")]=[mydat[0], mydat[-1], string.join(mydat[(splitter+1):-1]," ")]
-			elif mydat[0]=="dev":
-				#format: type
-				pkgfiles[string.join(mydat[1:]," ")]=[mydat[0] ]
-			elif mydat[0]=="fif":
-				#format: type
-				pkgfiles[string.join(mydat[1:]," ")]=[mydat[0]]
-			else:
-				return None
+			except (KeyError,IndexError):
+				print "portage: CONTENTS line",pos,"corrupt!"
+			pos += 1
 		return pkgfiles
 	
 	def unmerge(self,pkgfiles=None):
@@ -3195,34 +3268,12 @@ class dblink:
 		# this ensures that their mtime is current and unmerging works correctly
 		# spawn("(cd "+srcroot+"; for x in `find`; do  touch -c $x 2>/dev/null; done)",free=1)
 		print ">>> Merging",self.cat+"/"+self.pkg,"to",destroot
-		# get current counter value
-		edbpath=destroot+"/var/cache/edb/"
-		counterpath=edbpath+"counter"
-		packagecounter=long(0)
-		globalcounterfile=None
-		if not os.path.exists(edbpath):
-			os.makedirs(edbpath)
-		if os.path.exists(counterpath):
-			globalcounterfile=open(counterpath, "r+")
-			fcntl.flock(globalcounterfile.fileno(), fcntl.LOCK_EX)
-			packagecounter=long(globalcounterfile.readline())
-		else:
-			globalcounterfile=open(counterpath, "w")
-			fcntl.flock(globalcounterfile.fileno(), fcntl.LOCK_EX)
-		packagecounter=packagecounter+1
-		# write package counter
-		localcounterfile=open(inforoot+"/COUNTER","w")
-		localcounterfile.write(str(packagecounter))
-		localcounterfile.close()
-		# update global counter
-		globalcounterfile.seek(0,0)
-		globalcounterfile.truncate(0);
-		globalcounterfile.write(str(packagecounter))
-		fcntl.flock(globalcounterfile.fileno(), fcntl.LOCK_UN)
-		globalcounterfile.close()
-		#This next line just ends up confusing people and I don't think it's absolutely necessary;
-		#commented out (drobbins)
-		#print ">>> Package will have counter",packagecounter
+		# get current counter value (counter_tick also takes care of incrementing it)
+		counter=db[destroot]["vartree"].dbapi.counter_tick()
+		# write local package counter for recording
+		lcfile=open(inforoot+"/COUNTER","w")
+		lcfile.write(str(counter))
+		lcfile.close()
 		# get old contents info for later unmerging
 		oldcontents=self.getcontents()
 		# run preinst script
@@ -3672,9 +3723,15 @@ if not os.path.exists(root+"var/tmp"):
 if not os.path.exists("/var/cache/edb"):
 	os.makedirs("/var/cache/edb",0755)
 if not os.path.exists("/var/cache/edb/dep"):
-	os.makedirs("/var/cache/edb/dep",4755)
+	os.makedirs("/var/cache/edb/dep",2755)
+try:
+	os.chown("/var/cache/edb",uid,wheelgid)
+	os.chmod("/var/cache/edb",0775)
+except OSError:
+	pass
 try:
 	os.chown("/var/cache/edb/dep",uid,wheelgid)
+	os.chmod("/var/cache/edb/dep",02775)
 except OSError:
 	pass
 os.umask(022)

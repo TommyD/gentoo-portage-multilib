@@ -1,6 +1,34 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-2.0.19 (26 Jul 2002)
+
+  26 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: Portage is now
+  eclass-friendly when it comes to regenerating cache entries.  This closes bug
+  #4843.
+  
+  26 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, emerge: Closed
+  bug #5524.  Packages "emerge inject"ed will no longer get auto-cleaned
+  indiscriminantly.  Injected packages now have an official COUNTER so that
+  emerge clean doesn't get confused and schedule the package for removal.  Also
+  modularized and improved the counter-handling functions and changed the
+  counter update method so that systems with XFS filesystems that die
+  unexpectedly will no longer get corrupted COUNTER files.  This should solve
+  the an entire class of "my counter is corrupt" issues for XFS users.
+
+  26 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: added exception
+  handler to getcontents() so that it will gracefully ignore (with a warning)
+  corrupt CONTENTS file lines.  This closes bug #5464.
+  
+  26 Jul 2002; Daniel Robbins <drobbins@gentoo.org> emerge: fixed a single-line
+  indentation error that resulted in "emerge clean" ignoring some files.  This
+  closes bug #5597,#4364.
+  
+  25 Jul 2002; Daniel Robbins <drobbins@gentoo.org> emerge: --noreplace is now
+  off by default and works again; --onlydeps appears to be working again; and
+  merge() will merge things as specified in display(), which was not the case
+  before (I rolled 2.0.18 before fixing a few things I forgot about)
+
 *portage-2.0.18 (25 Jul 2002)
 
   25 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: Close bug

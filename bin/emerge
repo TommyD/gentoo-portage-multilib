@@ -365,31 +365,6 @@ class depgraph:
 		sys.stdout.write("\b"+spinner[spinpos])
 		spinpos=(spinpos+1)%8
 		sys.stdout.flush()
-		#drobbins, 19 Jul 2002: Can't trigger this code below, so I'm commenting it out.  It appears to
-		#be an old optimization that's no longer needed.
-		#if self.digraph.hasnode(mybigkey):
-		#	#if we've already hit this node before, we're already recursing on the dependencies.
-		#	#no need to recurse again.
-		#	if addme:
-		#		if myparent:
-		#			print "DEBUG: adding node",mybigkey,"with parent",myparent
-		#			self.digraph.addnode(mybigkey,myparent)
-		#	print "DEBUG: skipping double",mybigkey
-		#	return 1
-		#IMPORTANT: in the next line, ("--update" in self.myopts) should eventually be removed.
-		#It will allow childrean of already-upgraded packages to be upgraded.  Unfortunately, "fixing" this
-		#creates a new problem -- when child deps are calculated, it uses the current USE settings rather than
-		#the settings with which the package was compiled.  Meaning that USE tweaks are overridden.
-		#Too big a change for a stable version of Portage.
-		#if ("--noreplace" in self.myopts) or ("--update" in self.myopts):
-		#NEW LINE TEST:
-		
-		#Trying to call this earlier rather than later (here)
-		#if not ("--emptytree" in self.myopts):
-		#	if portage.db[myroot]["vartree"].exists_specific(mykey):
-		#		print "DEBUG: skipping",mykey
-		#		#already merged, skip.
-		#		return 1
 	
 		mytype,myroot,mykey=mybigkey
 		
@@ -406,37 +381,45 @@ class depgraph:
 		if addme:
 			#if the package is already on the system, we add a "nomerge" directive, otherwise we add a "merge" directive.
 			if mytype=="blocks":
-				#encode parent information:
-				if myparent:
+				#we've encountered a "blocks" node.  We will totally ignore this node and not add it to our digraph if it doesn't
+				#apply to us.
+				if myparent and mydbapi.match(mykey):
+					#otherwise, encode parent information where we would normally write "(no)merge" and continue:
 					mybigkey.append(myparent.split()[2])
-				else:
-					mybigkey.append(None)
+					parenttype,parentroot,parentkey,mergeme=string.split(myparent)
+					mykexp=portage.dep_expand(mykey,mydbapi)
+					pakexp=portage.dep_expand(parentkey,mydbapi)
+					myrealkey=portage.dep_getkey(mykexp)
+					parealkey=portage.dep_getkey(pakexp)
+					if myrealkey!=parealkey:
+						self.digraph.addnode(string.join(mybigkey),myparent)
+					#since our blocks doesn't match any installed packages, it doesn't apply to us and we can ignore it.
+				return 1
 			elif "--emptytree" in self.myopts:
 				#if we are in "--emptytree" mode, then we want to merge the package even if it is already installed.
 				mybigkey.append("merge")
+			elif (myaction not in ["system","world"]) and (not myparent):
+				#we're doing a normal merge and processing an item specified on the command-line. 
+				#So we need to check for the --noreplace option.
+				if "--noreplace" in self.myopts:
+					if not vardbapi.cpv_exists(mykey):
+						#the package isn't on the system, so merge it.
+						mybigkey.append("merge")
+					else:	
+						#the package is on the system, so don't merge it.
+						mybigkey.append("nomerge")
+						merging=0
+				else:
+					#--noreplace was not specified; our default behavior is to replace
+					mybigkey.append("merge")
+			#we are merging a dependency; ignore --noreplace
 			elif not vardbapi.cpv_exists(mykey):
-				#the package isn't on the system, so merge it.
 				mybigkey.append("merge")
-			else:	
-				#the package is on the system, so don't merge it.
+			else:
 				mybigkey.append("nomerge")
 				merging=0
+
 			#whatever the case, we need to add the node to our digraph so that children can depend upon it.
-		if mytype=="blocks":	
-			if not myparent:
-				if portage.db[myroot]["vartree"].dbapi.match(mykey):
-					self.digraph.addnode(string.join(mybigkey),myparent)
-			else:
-				#is our parent the same ebuild that we're blocking?  If so, ignore this blocker.
-				parenttype,parentroot,parentkey,mergeme=string.split(myparent)
-				mykexp=portage.dep_expand(mykey,mydbapi)
-				pakexp=portage.dep_expand(parentkey,mydbapi)
-				myrealkey=portage.dep_getkey(mykexp)
-				parealkey=portage.dep_getkey(pakexp)
-				if myrealkey!=parealkey:
-					self.digraph.addnode(string.join(mybigkey),myparent)
-			return 1
-		else:		
 			self.digraph.addnode(string.join(mybigkey),myparent)
 		
 		if "--nodeps" in self.myopts:
@@ -494,8 +477,9 @@ class depgraph:
 			#Now, handle unsatisfied dependencies
 			for x in mycheck[1]:
 				if addme:
-					parent=mybigkey
+					parent=string.join(mybigkey)
 				else:
+					#--onlydeps is specified and addme is off; this means that our parent doesn't exist so set parent to None
 					parent=None
 				# support mutual exclusive deps
 				mydep2=x
@@ -514,6 +498,7 @@ class depgraph:
 							print "\n!!! Error: couldn't find match for",x
 						else:
 							print "\n!!! Error: couldn't find match for",x,"in",mykey
+							raise IndexError
 						print
 						sys.exit(1)
 
@@ -536,18 +521,8 @@ class depgraph:
 				if not self.digraph.hasnode(string.join(hacko)):
 					if not self.digraph.hasnode(string.join(hacko2)):
 						#this conditional is needed to prevent infinite recursion on already-processed deps
-						self.create(myk,string.join(parent))
+						self.create(myk,parent)
 				
-				#if we have not yet added this matched dependency to our digraph...
-				#if not self.digraph.hasnode(myk):
-				#	##and the package in question has not yet been merged to myroot...
-				#	#if not portage.db[myroot]["vartree"].exists_specific(x):
-				#	#then recursively process this match dependency, returning 0 if error
-				#	if not self.create(myk,parent):
-				#		return 0
-				#else:
-				#	#if we have added this matched dependency before, just increase its reference count.
-				#	self.digraph.addnode(myk,parent)
 		return 1
 	
 	def altlist(self):
@@ -699,6 +674,8 @@ class depgraph:
 
 		#above line used by --fetchonly
 		for x in mylist:
+			if x[3]=="nomerge":
+				continue
 			myroot=x[1]
 			#the last argument in the portage.doebuild() tells doebuild to *not* do dep checking
 			#(emerge is already handling that)
@@ -859,6 +836,7 @@ def unmerge(unmerge_action, unmerge_files):
 			for mypkg in mymatch:
 				if unmerge_action=="clean":
 					myslot=localtree.getslot(mypkg)
+					print 'DEBUG:',mypkg,"has slot",myslot
 				else:
 					#since we're pruning, we don't care about slots and put all the pkgs in together
 					myslot=0
@@ -874,7 +852,7 @@ def unmerge(unmerge_action, unmerge_files):
 				pkgmap[mykey]["protected"].append(slotmap[myslot][counterkeys[-1]])
 				del counterkeys[-1]
 				#be pretty and get them in order of merge:
-			for ckey in counterkeys:
+				for ckey in counterkeys:
 					pkgmap[mykey]["selected"].append(slotmap[myslot][ckey])
 					numselected=numselected+1
 				#ok, now the last-merged package is protected, and the rest are selected
@@ -1387,7 +1365,7 @@ elif "inject"==myaction:
 		if portage.db["/"]["vartree"].exists_specific(x):
 			print "!!! Not injecting",x+"; Package already exists."
 		else:
-			os.makedirs("/var/db/pkg/"+x)
+			portage.db["/"]["vartree"].dbapi.cpv_inject(x)
 			print ">>> Injected",x+"."
 elif "unmerge"==myaction or "prune"==myaction or "clean"==myaction:
 	if 1==unmerge(myaction, myfiles):
