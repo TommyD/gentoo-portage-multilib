@@ -48,8 +48,8 @@ class database(portage_db_template.database):
 		if not key:
 			raise KeyError, "key is not set to a valid value"
 
+		mylock = portage_locks.lockfile(self.fullpath+key, wantnewlockfile=1)
 		if self.has_key(key):
-			mylock = portage_locks.lockfile(self.fullpath+key, wantnewlockfile=1)
 			mtime = os.stat(self.fullpath+key)[stat.ST_MTIME]
 			myf = open(self.fullpath+key)
 			myl = myf.readlines()
@@ -67,6 +67,8 @@ class database(portage_db_template.database):
 					dict[self.dbkeys[x]] = myl[x]
 				
 			return dict
+		else:
+			portage_locks.unlockfile(mylock)
 		return None
 	
 	def set_values(self,key,val):
@@ -79,10 +81,10 @@ class database(portage_db_template.database):
 		for x in self.dbkeys:
 			data += val[x]+"\n"
 
+		mylock = portage_locks.lockfile(self.fullpath+key, wantnewlockfile=1)
 		if os.path.exists(self.fullpath+key):
 			os.unlink(self.fullpath+key)
 
-		mylock = portage_locks.lockfile(self.fullpath+key, wantnewlockfile=1)
 		myf = open(self.fullpath+key,"w")
 		myf.write(data)
 		myf.flush()
@@ -94,13 +96,14 @@ class database(portage_db_template.database):
 		portage_locks.unlockfile(mylock)
 	
 	def del_key(self,key):
+		mylock = portage_locks.lockfile(self.fullpath+key, wantnewlockfile=1)
 		if self.has_key(key):
-			mylock = portage_locks.lockfile(self.fullpath+key, wantnewlockfile=1)
 			os.unlink(self.fullpath+key)
 			portage_locks.unlockfile(mylock)
 			self.lastkey = None
 			self.lastval = None
 			return 1
+		portage_locks.unlockfile(mylock)
 		return 0
 			
 	def sync(self):
