@@ -58,6 +58,7 @@ int 	before_syscall(const char*, const char*);
 int 	before_syscall_open_int(const char*, const char*, int);
 int 	before_syscall_open_char(const char*, const char*, const char*);
 void 	clean_env_entries(char***, int*);
+char*	filter_path(const char*);
 void 	init_env_entries(char***, int*, char*, int);
 int		is_sandbox_pid();
 void*	get_dl_symbol(char*);
@@ -502,7 +503,8 @@ void init_env_entries(char*** prefixes_array, int* prefixes_num, char* env, int 
 			{
 				prefix = (char*)malloc(sizeof(char)*(strlen(token)+1));
 				strcpy(prefix, token);
-				(*prefixes_array)[(*prefixes_num)++] = prefix;
+				(*prefixes_array)[(*prefixes_num)++] = filter_path(prefix);
+				free(prefix);
 				token = strtok(NULL, ":");
 			}
 			free(buffer);
@@ -514,7 +516,8 @@ void init_env_entries(char*** prefixes_array, int* prefixes_num, char* env, int 
 			
 			prefix = (char*)malloc(sizeof(char)*(prefixes_env_length+1));
 			strcpy(prefix, prefixes_env);
-			(*prefixes_array)[(*prefixes_num)++] = prefix;
+			(*prefixes_array)[(*prefixes_num)++] = filter_path(prefix);
+			free(prefix);
 		}
 	}
 }
@@ -530,116 +533,166 @@ void* get_dl_symbol(char* symname)
 	return result;
 }
 
+char* filter_path(const char* path)
+{
+	int		initial_path_length = strlen(path);
+	char*	filtered_path = (char*)malloc(sizeof(char)*(initial_path_length+1));
+	int		i = 0;
+	int		j = 0;
+	
+	for (i = 0, j = 0; i < initial_path_length;)
+	{
+		filtered_path[j] = path[i];
+		if ('/' == filtered_path[j])
+		{
+			while ('/' == path[i] &&
+				   i < initial_path_length)
+			{
+				i++;
+			}
+		}
+		else
+		{
+			i++;
+		}
+		j++;
+	}
+	filtered_path[j] = 0;
+
+	return filtered_path;
+}
+
 int check_access(sbcontext_t* sbcontext, const char* func, const char* path)
 {
+	int		result = -1;
 	int		i = 0;
-	char*	filtered_path = (char*)path;
+	char*	filtered_path = filter_path(path);
 
 	if ('/' != path[0])
 	{
 		return 0;
 	}
-	while ('/' == *filtered_path)
-	{
-		filtered_path++;
-	}
-	filtered_path--;
 
 	if (0 == strcmp(filtered_path, "/etc/ld.so.preload") &&
 		is_sandbox_pid())
 	{
-		return 1;
+		result = 1;
 	}
 	
-	if (NULL != sbcontext->deny_prefixes)
+	if (-1 == result)
 	{
-		for (i = 0; i < sbcontext->num_deny_prefixes; i++)
+		if (NULL != sbcontext->deny_prefixes)
 		{
-			if (0 == strncmp(filtered_path, sbcontext->deny_prefixes[i], strlen(sbcontext->deny_prefixes[i])))
+			for (i = 0; i < sbcontext->num_deny_prefixes; i++)
 			{
-				return 0;
-			}
-		}
-	}
-	
-	if (NULL != sbcontext->read_prefixes &&
-		(0 == strcmp(func, "open_rd") ||
-		 0 == strcmp(func, "popen") ||
-		 0 == strcmp(func, "opendir") ||
-		 0 == strcmp(func, "system") ||
-		 0 == strcmp(func, "execl") ||
-		 0 == strcmp(func, "execlp") ||
-		 0 == strcmp(func, "execle") ||
-		 0 == strcmp(func, "execv") ||
-		 0 == strcmp(func, "execvp") ||
-		 0 == strcmp(func, "execve")))
-	{
-		for (i = 0; i < sbcontext->num_read_prefixes; i++)
-		{
-			if (0 == strncmp(filtered_path, sbcontext->read_prefixes[i], strlen(sbcontext->read_prefixes[i])))
-			{
-				return 1;
-			}
-		}
-	}
-	else if (NULL != sbcontext->write_prefixes &&
-			 (0 == strcmp(func, "open_wr") ||
-			  0 == strcmp(func, "creat") ||
-			  0 == strcmp(func, "creat64") ||
-			  0 == strcmp(func, "mkdir") ||
-			  0 == strcmp(func, "mknod") ||
-			  0 == strcmp(func, "mkfifo") ||
-			  0 == strcmp(func, "link") ||
-			  0 == strcmp(func, "symlink") ||
-			  0 == strcmp(func, "rename") ||
-			  0 == strcmp(func, "utime") ||
-			  0 == strcmp(func, "utimes") ||
-			  0 == strcmp(func, "unlink") ||
-			  0 == strcmp(func, "rmdir") ||
-			  0 == strcmp(func, "chown") ||
-			  0 == strcmp(func, "lchown") ||
-			  0 == strcmp(func, "chmod")))
-	{
-		struct stat	tmp_stat;
-
-		for (i = 0; i < sbcontext->num_write_denied_prefixes; i++)
-		{
-			if (0 == strncmp(filtered_path, sbcontext->write_denied_prefixes[i], strlen(sbcontext->write_denied_prefixes[i])))
-			{
-				return 0;
-			}
-		}
-		for (i = 0; i < sbcontext->num_write_prefixes; i++)
-		{
-			if (0 == strncmp(filtered_path, sbcontext->write_prefixes[i], strlen(sbcontext->write_prefixes[i])))
-			{
-				return 1;
+				if (0 == strncmp(filtered_path, sbcontext->deny_prefixes[i], strlen(sbcontext->deny_prefixes[i])))
+				{
+					result = 0;
+					break;
+				}
 			}
 		}
 
-		/* hack to prevent mkdir of existing dirs to show errors */
-		if (strcmp(func, "mkdir") == 0)
+		if (-1 == result)
 		{
-			if (0 == stat(filtered_path, &tmp_stat))
+			if (NULL != sbcontext->read_prefixes &&
+				(0 == strcmp(func, "open_rd") ||
+				 0 == strcmp(func, "popen") ||
+				 0 == strcmp(func, "opendir") ||
+				 0 == strcmp(func, "system") ||
+				 0 == strcmp(func, "execl") ||
+				 0 == strcmp(func, "execlp") ||
+				 0 == strcmp(func, "execle") ||
+				 0 == strcmp(func, "execv") ||
+				 0 == strcmp(func, "execvp") ||
+				 0 == strcmp(func, "execve")))
 			{
-				sbcontext->show_access_violation = 0;
-				return 0;
+				for (i = 0; i < sbcontext->num_read_prefixes; i++)
+				{
+					if (0 == strncmp(filtered_path, sbcontext->read_prefixes[i], strlen(sbcontext->read_prefixes[i])))
+					{
+						result = 1;
+						break;
+					}
+				}
+			}
+			else if (NULL != sbcontext->write_prefixes &&
+					 (0 == strcmp(func, "open_wr") ||
+					  0 == strcmp(func, "creat") ||
+					  0 == strcmp(func, "creat64") ||
+					  0 == strcmp(func, "mkdir") ||
+					  0 == strcmp(func, "mknod") ||
+					  0 == strcmp(func, "mkfifo") ||
+					  0 == strcmp(func, "link") ||
+					  0 == strcmp(func, "symlink") ||
+					  0 == strcmp(func, "rename") ||
+					  0 == strcmp(func, "utime") ||
+					  0 == strcmp(func, "utimes") ||
+					  0 == strcmp(func, "unlink") ||
+					  0 == strcmp(func, "rmdir") ||
+					  0 == strcmp(func, "chown") ||
+					  0 == strcmp(func, "lchown") ||
+					  0 == strcmp(func, "chmod")))
+			{
+				struct stat	tmp_stat;
+
+				for (i = 0; i < sbcontext->num_write_denied_prefixes; i++)
+				{
+					if (0 == strncmp(filtered_path, sbcontext->write_denied_prefixes[i], strlen(sbcontext->write_denied_prefixes[i])))
+					{
+						result = 0;
+						break;
+					}
+				}
+				if (-1 == result)
+				{
+					for (i = 0; i < sbcontext->num_write_prefixes; i++)
+					{
+						if (0 == strncmp(filtered_path, sbcontext->write_prefixes[i], strlen(sbcontext->write_prefixes[i])))
+						{
+							result = 1;
+							break;
+						}
+					}
+
+					if (-1 == result)
+					{
+						/* hack to prevent mkdir of existing dirs to show errors */
+						if (strcmp(func, "mkdir") == 0)
+						{
+							if (0 == stat(filtered_path, &tmp_stat))
+							{
+								sbcontext->show_access_violation = 0;
+								result = 0;
+							}
+						}
+
+						if (-1 == result)
+						{
+							for (i = 0; i < sbcontext->num_predict_prefixes; i++)
+							{
+								if (0 == strncmp(filtered_path, sbcontext->predict_prefixes[i], strlen(sbcontext->predict_prefixes[i])))
+								{
+									sbcontext->show_access_violation = 0;
+									result = 0;
+									break;
+								}
+							}
+						}
+					}
+				}
 			}
 		}
-	
-		for (i = 0; i < sbcontext->num_predict_prefixes; i++)
-		{
-			if (0 == strncmp(filtered_path, sbcontext->predict_prefixes[i], strlen(sbcontext->predict_prefixes[i])))
-			{
-				sbcontext->show_access_violation = 0;
-				return 0;
-			}
-		}
-	
 	}
 	
+	if (-1 == result)
+	{
+		result = 0;
+	}
 
-	return 0;
+	free(filtered_path);
+
+	return result;
 }
 
 int check_syscall(sbcontext_t* sbcontext, const char* func, const char* file)
