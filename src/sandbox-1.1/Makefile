@@ -13,6 +13,7 @@
 CC = gcc
 LD = ld
 CFLAGS =
+OBJ_DEFINES = -D_GNU_SOURCE -DPIC -fPIC -D_REENTRANT
 LIBS =
 LDFLAGS =
 DESTDIR =
@@ -28,16 +29,16 @@ sandbox.o: sandbox.c sandbox.h
 	$(CC) $(CFLAGS) -Wall -c sandbox.c
 
 sandbox_futils.o: sandbox_futils.c sandbox.h
-	$(CC) $(CFLAGS) -Wall -c -D_GNU_SOURCE -DPIC -fPIC -D_REENTRANT sandbox_futils.c
+	$(CC) $(CFLAGS) -Wall -c $(OBJ_DEFINES) sandbox_futils.c
 
 libsandbox.so: libsandbox.o sandbox_futils.o canonicalize.o
 	$(LD) $^ -shared -fPIC -ldl -lc -o $@
 
 libsandbox.o: libsandbox.c localdecls.h
-	$(CC) $(CFLAGS) -Wall -c -D_GNU_SOURCE -DPIC -fPIC -D_REENTRANT libsandbox.c
+	$(CC) $(CFLAGS) -Wall -c $(OBJ_DEFINES) libsandbox.c
 
 canonicalize.o: canonicalize.c
-	$(CC) $(CFLAGS) -Wall -c -D_GNU_SOURCE -DPIC -fPIC -D_REENTRANT canonicalize.c
+	$(CC) $(CFLAGS) -Wall -c $(OBJ_DEFINES) canonicalize.c
 
 localdecls.h: create-localdecls libctest.c
 	./create-localdecls
