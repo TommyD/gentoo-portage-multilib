@@ -2,30 +2,28 @@
 # Copyright 1998-2002 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
 
-VERSION="2.0"
+VERSION="2.0.1"
 
 from stat import *
 from commands import *
+from select import *
 import string,os,types,sys,shlex,shutil,xpak,fcntl,signal,time,missingos
+import thread
 dircache={}
+	
+#List directory contents, using cache. (from dircache module; streamlined by drobbins)
+#Exceptions will be propogated to the caller.
 
 def listdir(path):
-    """List directory contents, using cache. (from dircache module; streamlined by drobbins)"""
-    try:
-        cached_mtime, list = dircache[path]
-    except KeyError:
-        cached_mtime, list = -1, []
-    try:
-        mtime = os.stat(path)[8]
-    except os.error:
-        return []
-    if mtime != cached_mtime:
-        try:
-            list = os.listdir(path)
-        except os.error:
-            return []
-    	dircache[path] = mtime, list
-    return list
+	try:
+		cached_mtime, list = dircache[path]
+	except KeyError:
+		cached_mtime, list = -1, []
+	mtime = os.stat(path)[8]
+	if mtime != cached_mtime:
+		list = os.listdir(path)
+		dircache[path] = mtime, list
+	return list
 
 try:
 	import fchksum
@@ -95,7 +93,9 @@ def exithandler(signum,frame):
 	# 0=send to *everybody* in process group
 	os.kill(0,signal.SIGKILL)
 	sys.exit(1)
-signal.signal(signal.SIGINT,exithandler)
+
+if not os.environ.has_key("DEBUG"):
+	signal.signal(signal.SIGINT,exithandler)
 
 def tokenize(mystring):
 	"""breaks a string like 'foo? (bar) oni? (blah (blah))' into embedded lists; returns None on paren mismatch"""
@@ -190,7 +190,7 @@ class digraph:
 				self.dict[mykey]=[0,[myparent]]
 				self.dict[myparent][0]=self.dict[myparent][0]+1
 			return
-		if not myparent in self.dict[mykey][1]:
+		if myparent and (not myparent in self.dict[mykey][1]):
 			self.dict[mykey][1].append(myparent)
 			self.dict[myparent][0]=self.dict[myparent][0]+1
 	
@@ -775,6 +775,29 @@ def spawn(mystring,debug=0,free=0):
 		#interrupted by signal
 		return 16
 
+#spawn up to a certain number of simultaneous child procesess
+mspawnmax=4
+mspawncur=0
+def multispawn(mycommand=None,myargs=None):
+	global mspawnmax,mspawncur
+	if mycommand==None:
+		mymax=1
+	else:
+		mymax=mspawnmax
+	while mspawncur>mymax:
+		myrpid,retval=os.wait()
+		mspawncur=mspawncur-1
+		return myrpid
+	if not mycommand:
+		return
+	mypid=os.fork()
+	if mypid==0:
+		os.execve(mycommand,myargs,settings.environ())
+		os._exit(1)
+		return # should never get reached
+	mspawncur=mspawncur+1
+	return mypid
+	
 def ebuildsh(mystring):
 	"Spawn ebuild.sh, optionally in a sandbox"
 	pass
@@ -972,6 +995,82 @@ def digestcheck(myarchives):
 			print ">>> md5 ;-)",x
 	return 1
 
+#(bash_in,bash_out)=os.popen4('bash','t',0)
+#inpoll=poll()
+#outpoll=poll()
+#inpoll.register(bash_out.fileno(),POLLIN)
+#outpoll.register(bash_in.fileno(),POLLOUT)
+
+def dobash(mycommands,mymarkers):
+	if not mycommands:
+		return ""
+	myoutput=""
+	started=0
+	commandpos=0
+	print "START:",commandpos,len(mycommands)
+	while (1):
+		if commandpos<len(mycommands):
+			myresults=outpoll.poll(5)
+			if myresults:
+				for myresult in myresults:
+					fd,emask=myresult
+					if emask & (POLLERR | POLLHUP | POLLNVAL):
+						return myoutput
+					if commandpos>=len(mycommands):
+						continue
+					if emask & POLLOUT:
+						print "ABOUT TO DO",mycommands[commandpos]
+						buf=bash_in.write(mycommands[commandpos]+"\n")
+						commandpos=commandpos+1
+						print "COMMANDPOS:",commandpos,"/",len(mycommands)
+						break
+				if (commandpos>=len(mycommands)) and not mymarkers:
+					break
+		myresults=inpoll.poll(5)
+		if myresults:
+			for myresult in myresults:
+				fd,emask=myresult
+				if emask & (POLLERR | POLLHUP | POLLNVAL):
+					return myoutput
+				if fd==bash_out.fileno():
+					if emask & POLLIN:
+						buf=bash_out.readline()
+						if mymarkers:
+							if not started:
+								if buf[:-1]==mymarkers[0]:
+									started=1
+									continue
+							elif buf[:-1]!=mymarkers[1]:
+								myoutput += buf
+								print "BUF:",buf
+							else:
+								return myoutput
+	return myoutput
+
+def getenvdata():
+	myorig=dobash(["echo =START","set","echo =END"],["=START","=END"])
+	returnme=[]
+	myorig2=myorig.split("\n")
+	for x in myorig2:
+		mysplit=x.split("=")
+		if len(mysplit):
+			returnme.append(mysplit[0])
+	return (myorig2,returnme)
+
+#origenv,origenvlist=getenvdata()
+
+def doebuild2():
+	global origenv,origenvlist
+	print origenv
+	dobash(origenv,None)
+	myenv,myenvlist=getenvdata()
+	mycommands=[]
+	for x in myenvlist:
+		if x not in origenvlist:
+			mycommands.append("unset "+x)
+	dobash(mycommands,None)
+	dobash(["echo foo > /dev/null"],None)
+	
 # "checkdeps" support has been depreciated.  Relying on emerge to handle it.
 def doebuild(myebuild,mydo,myroot,debug=0):
 	global settings
@@ -988,10 +1087,11 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 	settings["STARTDIR"]=getmycwd()
 	settings["EBUILD"]=os.path.abspath(myebuild)
 	settings["O"]=os.path.dirname(settings["EBUILD"])
-	settings["CATEGORY"]=os.path.basename(os.path.normpath(settings["O"]+"/.."))
+	category=settings["CATEGORY"]=os.path.basename(os.path.normpath(settings["O"]+"/.."))
 	#PEBUILD
 	settings["FILESDIR"]=settings["O"]+"/files"
-	settings["PF"]=os.path.basename(settings["EBUILD"])[:-7]
+	pf=settings["PF"]=os.path.basename(settings["EBUILD"])[:-7]
+	mykey=category+"/"+pf
 	settings["ECLASSDIR"]=settings["PORTDIR"]+"/eclass"
 	settings["SANDBOX_LOG"]=settings["PF"]
 	mysplit=pkgsplit(settings["PF"],0)
@@ -1044,26 +1144,11 @@ def doebuild(myebuild,mydo,myroot,debug=0):
 		return spawn("/usr/sbin/ebuild.sh "+mydo)
 		#initial ebuild.sh bash environment configured
 	
-	mydbkey="/var/cache/edb/dep/dep-"+os.path.basename(settings["EBUILD"])
-	if (not os.path.exists(mydbkey)) or os.stat(mydbkey)[ST_MTIME]<os.stat(settings["EBUILD"])[ST_MTIME]:
-		#cached info stale or non-existent
-		myso=getstatusoutput("/usr/sbin/ebuild.sh depend")
-		if myso[0]!=0:
-			print "\n\n!!! Portage had a problem processing this file:"
-			print "!!!",settings["EBUILD"]+"\n"+myso[1]+"\n"+"!!! aborting.\n"
-			return 1
-	if mydo=="depend":
-		return 0
-	# obtain the dependency, slot and SRC_URI information from the edb cache file
-	a=open(mydbkey,"r")
-	mydeps=eval(a.readline())
-	a.close()
-
 	# get possible slot information from the deps file
-	settings["SLOT"]=mydeps[2]
-	settings["RESTRICT"]=mydeps[4]	
-	# it's fetch time	
-	myuris=mydeps[3]
+	if mydo=="depend":
+		myso=getstatusoutput("/usr/sbin/ebuild.sh depend")
+		return 0
+	settings["SLOT"], settings["RESTRICT"], myuris = db["/"]["porttree"].dbapi.aux_get(mykey,["SLOT","RESTRICT","SRC_URI"])
 	newuris=flatten(evaluate(tokenize(myuris),string.split(settings["USE"])))	
 	alluris=flatten(evaluate(tokenize(myuris),[],1))	
 	alist=[]
@@ -2032,7 +2117,7 @@ class packagetree:
 		mykey=dep_getkey(mypkgdep)
 		nolist=self.dbapi.cp_list(mykey)
 		mymatch=match(mypkgdep,self.dbapi)
-		if match==None:
+		if not match:
 			return nolist
 		for x in mymatch:
 			if x in nolist:
@@ -2154,9 +2239,17 @@ def match(origdep,mydata):
 			return [mymatch]
 	elif cp_key==None:
 		if mydep[0]=="!":
-			reverse=1
-		else:
-			reverse=0
+			mynodes=[]
+			cp_key=mycpv.split("/")
+			for x in mylist:
+				cp_x=catpkgsplit(x)
+				if cp_x==None:
+					return None
+				if cp_key[0]==cp_x[0]:
+					mynodes.append(x)
+				elif cp_key[1]==cp_x[1]:
+					mynodes.append(x)
+			return mynodes
 		mynodes=[]
 		cp_key=mycpv.split("/")
 		for x in mylist:
@@ -2164,19 +2257,10 @@ def match(origdep,mydata):
 			if cp_x==None:
 				return None
 			if cp_key[0]!=cp_x[0]:
-				if reverse:
-					mynodes.append(x)
-				else:
-					continue
-			if cp_key[1]!=cp_x[1]:
-				if reverse:
-					mynodes.append(x)
-				else:
-					continue
-			if reverse:
 				continue
-			else:
-				mynodes.append(x)
+			if cp_key[1]!=cp_x[1]:
+				continue
+			mynodes.append(x)
 		return mynodes
 	else:
 		return None
@@ -2276,6 +2360,35 @@ class dbapi:
 		'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or [] if mycpv not found'
 		pass
 
+class fakedbapi(dbapi):
+	"This is a dbapi to use for the emptytree function.  It's empty, but things can be added to it."
+	def __init__(self):
+		self.cpvdict={}
+		self.cpdict={}
+		
+	def cpv_exists(self,mycpv):
+		return self.cpvdict.has_key(mycpv)
+
+	def cp_list(self,mycp):
+		if not self.cpdict.has_key(mycp):
+			return []
+		else:
+			return self.cpdict[mycp]
+
+	def cp_all(self):
+		returnme=[]
+		for x in self.cpdict.keys():
+			returnme.extend(self.cpdict[x])
+		return returnme
+
+	def cpv_inject(self,mycpv):
+		mycp=cpv_getkey(mycpv)
+		self.cpvdict[mycpv]=1
+		if not self.cpdict.has_key(mycp):
+			self.cpdict[mycp]=[]
+		if not mycpv in self.cpdict[mycp]:
+			self.cpdict[mycp].append(mycpv)
+	
 class vardbapi(dbapi):
 	def __init__(self,root):
 		self.root=root
@@ -2352,8 +2465,6 @@ class vartree(packagetree):
 			return mymatch
 
 	def exists_specific(self,cpv):
-		if self.root==None:
-			return 0
 		return self.dbapi.cpv_exists(cpv)
 
 	def getallnodes(self):
@@ -2362,8 +2473,6 @@ class vartree(packagetree):
 		return self.dbapi.cp_all()
 
 	def exists_specific_cat(self,cpv):
-		if self.root==None:
-			return 0
 		cpv=key_expand(cpv,self.dbapi)
 		a=catpkgsplit(cpv)
 		if not a:
@@ -2458,32 +2567,71 @@ class vartree(packagetree):
 		self.populated=1
 
 	
+auxdbkeys=['DEPEND','RDEPEND','SLOT','SRC_URI','RESTRICT','HOMEPAGE','LICENSE','DESCRIPTION']
 class portdbapi(dbapi):
 	"this tree will scan a portage directory located at root (passed to init)"
 	def __init__(self):
-		self.portroot=settings["PORTDIR"]
-						
+		self.root=settings["PORTDIR"]
+		self.auxcache={}
+	
+	def aux_get(self,mycpv,mylist):
+		"stub code for returning auxilliary db information, such as SLOT, DEPEND, etc."
+		'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
+		'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or [] if mycpv not found'
+		global auxdbkeys
+		dmtime=0
+		regen=0
+		mydbkey="/var/cache/edb/dep/"+mycpv
+		mycsplit=catpkgsplit(mycpv)
+		mysplit=mycpv.split("/")
+		myebuild=self.root+"/"+mycsplit[0]+"/"+mycsplit[1]+"/"+mysplit[1]+".ebuild"
+		try:
+			dmtime=os.stat(mydbkey)[ST_MTIME]
+		except OSError:
+			regen=1
+		if not regen:
+			emtime=os.stat(myebuild)[ST_MTIME]
+			if dmtime<emtime:
+				regen=1
+		if regen:
+			doebuild(myebuild,"depend","/")
+		if regen or (not self.auxcache.has_key(mycpv)) or (self.auxcache[mycpv]["mtime"]!=dmtime):
+			#update our internal cache data
+			mycent=open(mydbkey,"r")
+			mylines=mycent.readlines()
+			self.auxcache[mycpv]={"mtime":dmtime}
+			for x in range(0,len(auxdbkeys)):
+				self.auxcache[mycpv][auxdbkeys[x]]=mylines[x][:-1]
+		returnme=[]
+		for x in mylist:
+			if self.auxcache[mycpv].has_key(x):
+				returnme.append(self.auxcache[mycpv][x])
+			else:
+				returnme.append("")
+		return returnme
+		
 	def cpv_exists(self,mykey):
 		"Tells us whether an actual ebuild exists on disk (no masking)"
 		cps2=mykey.split("/")
 		cps=catpkgsplit(mykey,0)
-		if os.path.exists(self.portroot+"/"+cps[0]+"/"+cps[1]+"/"+cps2[1]+".ebuild"):
-			return 1
-		return 0
+		return os.path.exists(self.root+"/"+cps[0]+"/"+cps[1]+"/"+cps2[1]+".ebuild")
 
 	def cp_all(self):
 		"returns a list of all keys in our tree"
 		biglist=[]
 		for x in categories:
-			if os.path.isdir(self.portroot+"/"+x):
-				for y in listdir(self.portroot+"/"+x):
+			try:
+				for y in listdir(self.root+"/"+x):
 					biglist.append(x+"/"+y)
+			except:
+				#category directory doesn't exist
+				pass
 		return biglist
 	
 	def p_list(self,mycp):
 		returnme=[]
 		try:
-			for x in listdir(self.portroot+"/"+mycp):
+			for x in listdir(self.root+"/"+mycp):
 				if x[-7:]==".ebuild":
 					returnme.append(x[:-7])	
 		except OSError,IOError:
@@ -2494,7 +2642,7 @@ class portdbapi(dbapi):
 		mysplit=mycp.split("/")
 		returnme=[]
 		try: 
-			for x in listdir(self.portroot+"/"+mycp):
+			for x in listdir(self.root+"/"+mycp):
 				if x[-7:]==".ebuild":
 					returnme.append(mysplit[0]+"/"+x[:-7])	
 		except OSError,IOError:
@@ -3299,7 +3447,9 @@ def pkgmerge(mytbz2,myroot):
 
 if os.environ.has_key("ROOT"):
 	root=os.environ["ROOT"]
-	if root[-1]!="/":
+	if not len(root):
+		root="/"
+	elif root[-1]!="/":
 		root=root+"/"
 else:
 	root="/"

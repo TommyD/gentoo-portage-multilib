@@ -815,8 +815,21 @@ do
 	    ;;
 	depend)
 		set -f
-		#the echo commands remove newlines
-		echo "['`echo $DEPEND`', '`echo $RDEPEND`', '`echo $SLOT`', '`echo $SRC_URI`','`echo $RESTRICT`' ]" > /var/cache/edb/dep/dep-${PF}.ebuild
+		#the extra `echo` commands remove newlines
+		local dbkey
+		dbkey=/var/cache/edb/dep/${CATEGORY}/${PF}
+		if [ ! -d /var/cache/edb/dep/${CATEGORY} ]
+		then
+			install -d /var/cache/edb/dep/${CATEGORY}
+		fi
+		echo `echo "$DEPEND"` > $dbkey
+		echo `echo "$RDEPEND"` >> $dbkey
+		echo `echo "$SLOT"` >> $dbkey
+		echo `echo "$SRC_URI"` >> $dbkey
+		echo `echo "$RESTRICT"` >> $dbkey
+		echo `echo "$HOMEPAGE"` >> $dbkey
+		echo `echo "$LICENSE"` >> $dbkey
+		echo `echo "$DESCRIPTION"` >> $dbkey
 		set +f
 		exit 0
 		;;

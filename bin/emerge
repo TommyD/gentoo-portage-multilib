@@ -1,5 +1,5 @@
 #!/usr/bin/env python2.2
-import os,sys,portage,xpak,string,re,commands,time
+import os,sys,portage,xpak,string,re,commands,time,threading
 from stat import *
 from output import *
 
@@ -96,7 +96,6 @@ for x in cmdline:
 if os.getuid()!=0 and ("--help" not in myopts) and ("--version" not in myopts) and ("search"!=myaction):
 	print "!!! to be able to perform the requested action, emerge must be run by root."
 	sys.exit(1)
-
 # search functionality
 class search:
 	
@@ -257,6 +256,7 @@ class search:
 			result = ""
 		return result
 
+
 #build our package digraph
 def getlist(mode):
 	if mode=="system":
@@ -316,10 +316,11 @@ def getworldlist():
 		#only add the world node if the package is:
 		#actually installed -- this prevents the remerging of already unmerged packages when we do a world --update;
 		#actually available -- this prevents emerge from bombing out due to no match being found (we want a silent ignore)
-		if portage.db[portage.root]["vartree"].dep_match(x) and portage.db[portage.root]["porttree"].dep_match(x):
-			#note: when implementing the "anti-dep" world profile entry feature, we will need to test for "!" deps and
-			#*not* call dep_match() on those, as dep_match() doesn't expect ! deps (since nothing matches a !)
-			sysdict[x]=worlddict[x]
+		if portage.db[portage.root]["porttree"].dep_match(x):
+			if portage.db[portage.root]["vartree"].dep_match(x) or ("--emptytree" in myopts):
+				#note: when implementing the "anti-dep" world profile entry feature, we will need to test for "!" deps and
+				#*not* call dep_match() on those, as dep_match() doesn't expect ! deps (since nothing matches a !)
+				sysdict[x]=worlddict[x]
 	mylist=[]
 	for x in sysdict.keys():
 		mylist.append(sysdict[x])
@@ -334,18 +335,19 @@ class depgraph:
 		self.digraph=portage.digraph()
 		self.orderedkeys=[]
 		#the following is so we have an empty vartree (used in emerge update calculations)
-		self.emptytree=portage.vartree("/",virts,portage.db["/"]["vartree"])
-		self.emptytree.tree={}
-		self.emptytree.root=None
+		#self.emptytree=portage.vartree("/",virts,portage.db["/"]["vartree"])
+		#self.emptytree.tree={}
+		#self.emptytree.root=None
+		self.fakedbapi=portage.fakedbapi()
 		if "--emptytree" in myopts:
-			portage.db["/"]["vartree"].tree=self.emptytree.tree
+			portage.db["/"]["vartree"].dbapi=self.fakedbapi
+			portage.db["/"]["vartree"].dbapi.cpv_inject("sys-libs/glibc-1.0")
 			portage.db["/"]["vartree"].populated=1
 			#The root needs to be set to "None" to enable "empty" mode
 			#And this needs to be done before the inject() below, since inject causes recalc.
 			#of USE variables, which causes our tree to become partially populated
-			portage.db["/"]["vartree"].root=None
-			portage.db["/"]["vartree"].inject("sys-libs/glibc-1.0")
-			portage.db["/"]["vartree"].virtual={"virtual/glibc":"sys-libs/glibc"}
+			#portage.db["/"]["vartree"].root=None
+			#portage.db["/"]["vartree"].virtual={"virtual/glibc":"sys-libs/glibc"}
 		self.outdatedpackages=[]
 
 	def create(self,mybigkey,myparent=None,addme=1):
@@ -383,37 +385,30 @@ class depgraph:
 				sys.exit(1)
 				mydep={}
 			myebuild=portage.db[myroot]["porttree"].getname(mykey)
-			mydbkey="/var/cache/edb/dep/dep-"+os.path.basename(myebuild)
-			#use the cached info if it is available and more recent than the ebuild itself (mtime)
-			dbstat=0
-			regen=0
-			try:
-				dbstat=os.stat(mydbkey)[ST_MTIME]
-			except OSError:
-				regen=1
-			if not regen:
-				if dbstat<(os.stat(myebuild)[ST_MTIME]):
-					regen=1
-			if regen:
-				portage.doebuild(myebuild,"depend",myroot,edebug)
-			mydb=open(mydbkey,"r")
-			edepend=eval(mydb.readline())
-			mydb.close()
+			edepend=portage.db[myroot]["porttree"].dbapi.aux_get(mykey,portage.auxdbkeys)
 		elif mytype=="blocks":
 			edepend=None
-			parenttype,parentroot,parentkey=string.split(myparent)
-			if portage.isspecific(mykey):
-				if portage.db[myroot]["vartree"].exists_specific(mykey):
-					if portage.db[myroot]["vartree"].resolve_key(mykey) != portage.db[myroot]["vartree"].resolve_key(parentkey):
+			if not myparent:
+				if portage.isspecific(mykey):
+					if portage.db[myroot]["vartree"].exists_specific(mykey):
+						self.digraph.addnode(mybigkey,myparent)
+				else:
+					if portage.db[myroot]["vartree"].hasnode(mykey):
 						self.digraph.addnode(mybigkey,myparent)
 			else:
-				if portage.db[myroot]["vartree"].hasnode(mykey):
-					parentsplit=portage.catpkgsplit(parentkey)
-					parentkey=parentsplit[0]+"/"+parentsplit[1]
-					if portage.db[myroot]["vartree"].resolve_key(mykey) != portage.db[myroot]["vartree"].resolve_key(parentkey):
-						self.digraph.addnode(mybigkey,myparent)
-					else:
-						print "OK!"
+				parenttype,parentroot,parentkey=string.split(myparent)
+				if portage.isspecific(mykey):
+					if portage.db[myroot]["vartree"].exists_specific(mykey):
+						if portage.db[myroot]["vartree"].resolve_key(mykey) != portage.db[myroot]["vartree"].resolve_key(parentkey):
+							#add the blocker, since we are not a package like app-editors/xemacs with a !virtual/xemacs in it
+							self.digraph.addnode(mybigkey,myparent)
+				else:
+					if portage.db[myroot]["vartree"].hasnode(mykey):
+						parentsplit=portage.catpkgsplit(parentkey)
+						parentkey=parentsplit[0]+"/"+parentsplit[1]
+						if portage.db[myroot]["vartree"].resolve_key(mykey) != portage.db[myroot]["vartree"].resolve_key(parentkey):
+							#add the blocker, since we are not a package like app-editors/xemacs with a !virtual/xemacs in it
+							self.digraph.addnode(mybigkey,myparent)
 		if edepend:
 			mydep={}	
 			if myroot=="/":
@@ -429,7 +424,7 @@ class depgraph:
 				return 1
 			for dep in mydep.keys():
 				if "--update" in self.myopts:
-					mycheck=self.emptytree.depcheck(mydep[dep])
+					mycheck=portage.dep_check(mydep[dep],self.fakedbapi)
 				else:
 					mycheck=portage.db[dep]["vartree"].depcheck(mydep[dep])
 				if mycheck[0]==0:
@@ -452,8 +447,10 @@ class depgraph:
 							if not self.create(mynew,None):
 								return 0
 					else:
-						self.digraph.addnode(mynew,mybigkey)
-
+						if addme:
+							self.digraph.addnode(mynew,mybigkey)
+						else:
+							self.digraph.addnode(mynew,None)
 		return 1
 	
 	def altlist(self):
@@ -517,19 +514,19 @@ class depgraph:
 		#		self.outdatedpackages.append(myeb)
 		#		return None
 		#else:
-		myeb=portage.db[portage.root]["porttree"].dep_bestmatch(mydep2)
-		if not myeb:
-			if not mykey:
-				print "\n!!! Error: couldn't find match for",mydep
-			else:
-				print "\n!!! Error: couldn't find match for",mydep,"in",mykey
-			print
-			sys.exit(1)
-			#return None
-
 		if mydep[0]=="!":
+			#add our blocker; it will be ignored later if necessary (if we are remerging the same pkg, for example)
 			myk="blocks "+myroot+" "+mydep2
 		else:
+			myeb=portage.db[portage.root]["porttree"].dep_bestmatch(mydep2)
+			if not myeb:
+				if not mykey:
+					print "\n!!! Error: couldn't find match for",mydep
+				else:
+					print "\n!!! Error: couldn't find match for",mydep,"in",mykey
+				print
+				sys.exit(1)
+
 			if "--usepkg" in self.myopts:
 				mypk=portage.db[portage.root]["bintree"].dep_bestmatch(mydep)
 				if myeb==mypk:
@@ -551,9 +548,9 @@ class depgraph:
 				else:
 					print "["+x[0]+" "+addl+"]",red(x[2])
 			else:
-				if portage.db[x[1]]["vartree"].exists_specific(x[2]):
+				if (not "--emptytree" in myopts) and portage.db[x[1]]["vartree"].exists_specific(x[2]):
 					addl="  "+yellow("R")+"  "
-				elif portage.db[x[1]]["vartree"].exists_specific_cat(x[2]):
+				elif (not "--emptytree" in myopts) and portage.db[x[1]]["vartree"].exists_specific_cat(x[2]):
 					addl="   "+turquoise("U")+" "
 				else:
 					addl=" "+green("N")+"   "
@@ -801,8 +798,6 @@ def unmerge(unmerge_action, unmerge_files):
 			mysplit=string.split(y,"/")
 			#unmerge...
 			retval=portage.unmerge(mysplit[0],mysplit[1],portage.root)
-			#remove db entry from our "live" tree
-			localtree.zap(y)
 	if not numselected:
 		return 0
 	else:

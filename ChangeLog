@@ -1,6 +1,32 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  19 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: fixed a bug
+  where ROOT="" would not get properly converted to ROOT="/".
+  
+  18 Jun 2002; Daniel Robbins <drobbins@gentoo.org> emerge: Portage 2.0+ has
+  fixed "!" depend matching support, but some code in emerge was designed to
+  anticipate the incorrect behavior.  This emerge code has been fixed to work
+  correctly.  This closes my part of bug #3834.
+  
+  18 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, emerge: fixed
+  bug #2444, where emerge fails when "--emptytree" and "--onlydeps" are used at
+  the same time.
+  
+  18 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, emerge: new
+  fakedbapi for doing emptytree calculations; emptytree upgrades in emerge.
+  "emerge -upe world" now works correctly, accounting for items in the world
+  profile.  Yay!  Bugs #3832 and #1911 fixed.
+  
+  18 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py, emerge:
+  Integrated new aux_get() method into our portdbapi.  aux_get() provides a
+  standardized way to get cached information about ebuilds, and is now fully
+  integrated into Portage and emerge search.
+
+  18 Jun 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: fixed a bug
+  where dep_nomatch() was testing for None rather than a "zero" condition,
+  causing dep_nomatch() to choke on match()'s [] return value.
+  
   17 Jun 2002; Daniel Robbins <drobbins@gentoo.org> emerge: added an exception
   handler to catch invalid regular expressions and avoid a traceback.
   
