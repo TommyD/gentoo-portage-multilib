@@ -874,6 +874,7 @@ elif "--clean"==myaction:
 		full_paths={}
 		full_ebuild_paths={}
 		full_package_paths={}
+		current_version_mapping={}
 		
 		var_path=portage.root+"var/db/pkg"
 		# process all arguments, verify if they can be resolved to an installed
@@ -964,6 +965,7 @@ elif "--clean"==myaction:
 		if not "--all" in myopts:
 			if len(full_package_paths) > 0:
 				latest_ebuilds={}
+				old_ebuilds={}
 				# determine the latest installed packages of each cat/pkg key
 				full_paths_keys=full_package_paths.keys()
 				# sort the ebuild paths
@@ -1003,17 +1005,27 @@ elif "--clean"==myaction:
 					contents_path=dirname(full_path)+"/CONTENTS"
 					contents_mtime=os.stat(contents_path)[8]
 					# update the latest modified package version
+					if not old_ebuilds.has_key(package_set):
+						old_ebuilds[package_set]=[]
 					if contents_mtime > latest_ebuilds[package_set][1]:
+						if latest_ebuilds[package_set][0]:
+							old_ebuilds[package_set].append(latest_ebuilds[package_set][0])
 						latest_ebuilds[package_set]=[full_path,contents_mtime]
+					else:
+						old_ebuilds[package_set].append(full_path)
 					# if a new package set is being processed, remove the latest version of the previous package set
 					if previous_package_set and previous_package_set!=package_set and latest_ebuilds[previous_package_set][0]:
 						del full_package_paths[latest_ebuilds[previous_package_set][0]]
+						for old_ebuild in old_ebuilds[previous_package_set]:
+							current_version_mapping[old_ebuild]=latest_ebuilds[previous_package_set][0]
 					# update which package set has just been processed
 					previous_package_set=package_set
 					
 				# remove the latest version of the last processed package set
 				if latest_ebuilds[package_set][0]:
 					del full_package_paths[latest_ebuilds[package_set][0]]
+					for old_ebuild in old_ebuilds[package_set]:
+						current_version_mapping[old_ebuild]=latest_ebuilds[package_set][0]
 
 		full_paths=full_ebuild_paths.keys()
 		full_paths.extend(full_package_paths.keys())
@@ -1035,7 +1047,8 @@ elif "--clean"==myaction:
 			full_paths.sort()
 			for full_path in full_paths:
 				path_parts=split(full_path, "/")
-				print "    "+path_parts[4]+"/"+path_parts[5]
+				kept_path_parts=split(current_version_mapping[full_path], "/")
+				print red(path_parts[4]+"/"+path_parts[5]),"(kept "+green(kept_path_parts[4]+"/"+kept_path_parts[5])+")"
 
 			if not "--pretend" in myopts:
 				if portage.settings["CLEAN_DELAY"]:
