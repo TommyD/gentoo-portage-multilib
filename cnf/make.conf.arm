@@ -30,6 +30,7 @@
 # CHOST could easily lead to weird errors either in compiling or running.
 #
 # Netwinder (or any StrongArm110): armv4l-unknown-linux-gnu
+# nslu2: armvbe-unknown-linux-gnu
 # Generic ARM: arm-unknown-linux-gnu
 #
 CHOST="armv4l-unknown-linux-gnu"
@@ -57,8 +58,10 @@ CHOST="armv4l-unknown-linux-gnu"
 # For a full listing of supported CPU models, please refer to the GCC website:
 # http://gcc.gnu.org/onlinedocs/gcc-3.3/gcc/ARM-Options.html
 #
-# These defaults will support the Netwinder safely
+# Netwinder:
 #CFLAGS="-mcpu=strongarm110 -O2 -pipe"
+# NSLU2:
+#CFLAGS="-mcpu=armeb -O2 -pipe"
 
 # If you set a CFLAGS above, then this line will set your default C++ flags to
 # the same settings.
