@@ -55,10 +55,11 @@ def paren_reduce(mystr,tokenize=1):
 			mylist = mylist + [subsec]
 	return mylist
 
-def use_reduce(deparray, uselist=[], masklist=[], matchall=0):
+def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 	"""Takes a paren_reduce'd array and reduces the use? conditionals out
 	leaving an array with subarrays
 	"""
+	print excludeall
 	# Quick validity checks
 	for x in range(1,len(deparray)):
 		if deparray[x] in ["||","&&"]:
@@ -111,7 +112,7 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0):
 					head = head[:-1]
 					if head[0] == "!":
 						head = head[1:]
-						if not matchall and head in uselist:
+						if not matchall and head in uselist or head in excludeall:
 							ismatch = False
 							break
 					elif head not in masklist:
