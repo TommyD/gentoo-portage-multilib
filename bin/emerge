@@ -5,7 +5,7 @@
 
 import os,sys
 os.environ["PORTAGE_CALLER"]="emerge"
-sys.path = ["/usr/lib/portage/pym"]+sys.path
+#sys.path = ["/usr/lib/portage/pym"]+sys.path
 
 import emergehelp,xpak,string,re,commands,time,shutil,traceback,atexit,signal,socket,types
 from stat import *
@@ -388,8 +388,9 @@ elif portage.secpass!=2:
 	elif ("--pretend" in myopts) and (myaction in ["world","system","clean","prune","unmerge"]):
 		pass
 	else:
-		print "myaction",myaction
-		print "myopts",myopts
+		if "--debug" in myopts:
+			print "myaction",myaction
+			print "myopts",myopts
 		print "emerge: root access required."
 		sys.exit(1)
 
@@ -1104,18 +1105,41 @@ class depgraph:
 			else:
 				myk="ebuild "+myroot+" "+myeb
 
-		return myk	
-	
+		return myk
+
 	def display(self,mylist):
 		changelogs=[]
 		p=[]
-		intree=False
 		totalsize=0
 
 		if "--verbose" in myopts:
 			overlays = string.split(portage.settings['PORTDIR_OVERLAY'])
 			overlays = map(os.path.normpath, overlays)
 		
+		i = 0
+		if "--tree" in myopts:
+			mylist.reverse()
+			mygraph=self.digraph.copy()
+
+		while i < len(mylist):
+			if mylist[i][-1]=="nomerge":
+				if not ("--tree" in myopts):
+					# we don't care about this elements
+					mylist.pop(i)
+					continue
+				if (i == (len(mylist) - 1)) \
+				   or (mygraph.depth(string.join(mylist[i])) \
+				       >= mygraph.depth(string.join(mylist[i+1]))):
+					# end of a useless branch (may be the last one)
+					# -> delete the element and test the previous one
+					mylist.pop(i)
+					if i > 0:
+						i -= 1
+					continue
+			# the branch continues, or we've found a good element.
+			# -> let's see what's next, if anything
+			i += 1
+
 		for x in mylist:
 			fetch=" "
 			
@@ -1134,13 +1158,6 @@ class depgraph:
 					else:
 						print
 			else:
-				if x[-1]=="nomerge":
-					if ("--tree" in myopts):
-						if (not intree):
-							continue
-					else:
-						continue
-
 				if (x[0]!="binary") and ("fetch" in string.split(portage.portdb.aux_get(x[2],["RESTRICT"])[0])):
 					fetch = red("F")
 
@@ -1229,15 +1246,9 @@ class depgraph:
 				oldlp=mywidth-30
 				newlp=oldlp-30
 				
-				mygraph = self.digraph.copy()
 				indent=""
 				if ("--tree" in myopts):
 					indent=" "*mygraph.depth(string.join(x))
-					if indent=="":
-						intree=False
-					else:
-						intree=True
-						
 
 				if x[1]!="/":
 					if "--columns" in myopts:
@@ -1289,9 +1300,6 @@ class depgraph:
 								p.append("    A simple '"+green("emerge -u portage")+"' is sufficient.")
 								p.append("")
 				del mysplit
-
-		if ("--tree" in myopts):
-			p.reverse()
 
 		for x in p:
 			print x
@@ -2319,9 +2327,15 @@ else:
 	favorites=[]
 	syslist=getlist("system")
 	if ("--pretend" in myopts) and not ("--fetchonly" in myopts):
-		print
-		print darkgreen("These are the packages that I would merge, in order:")
-		print
+		if "--tree" in myopts:
+			print
+			print darkgreen("These are the packages that I would merge, in reverse order:")
+			print
+		else:
+			print
+			print darkgreen("These are the packages that I would merge, in order:")
+			print
+
 	if ("--resume" in myopts) and portage.mtimedb.has_key("resume"):
 		myresumeopts=portage.mtimedb["resume"]["myopts"][:]
 		if "--skipfirst" in myresumeopts:

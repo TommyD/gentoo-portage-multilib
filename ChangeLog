@@ -2,6 +2,12 @@
 # Copyright 2000-2004 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  20 Jan 2004; Masatomo Nakano <nakano@gentoo.org> emerge: Improved the
+  list of --tree by TGL's patch. This should close #38070.
+
+  20 Jan 2004; Masatomo Nakano <nakano@gentoo.org> emerge: Removed debug
+  message without --debug. This should close #23840.
+
   19 Jan 2004; Masatomo Nakano <nakano@gentoo.org> emerge: Improved
   timestamp check of rsync. This should close #37403.
 
