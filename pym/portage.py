@@ -793,6 +793,9 @@ class config:
 		self.mycpv    = None
 		self.puse     = []
 		self.modifiedkeys = []
+	
+		self.virtuals = {}
+		self.v_count  = 0
 
 		if clone:
 			self.incrementals = copy.deepcopy(clone.incrementals)
@@ -899,9 +902,6 @@ class config:
 					self.prevmaskdict[mycatpkg]=[x]
 				else:
 					self.prevmaskdict[mycatpkg].append(x)
-
-			# get virtuals
-			self.loadVirtuals('/')
 
 			# get profile-masked use flags -- INCREMENTAL Child over parent
 			usemask_lists = grab_multiple("use.mask", self.profiles, grabfile)
@@ -1021,6 +1021,9 @@ class config:
 			categories = grab_multiple("categories", locations, grabfile)
 			self.categories = stack_lists(categories, incremental=1)
 			del categories
+
+			# get virtuals -- needs categories
+			self.loadVirtuals('/')
 					
 			#package.mask
 			pkgmasklines = grab_multiple("package.mask", locations, grabfile)
@@ -1306,36 +1309,43 @@ class config:
 		myvirtdirs = copy.deepcopy(self.profiles)
 		
 		self.treeVirtuals = {}
-		user_profile_dir = None
 
-		# repoman doesn't need local virtuals.
-		if os.environ.has_key("PORTAGE_CALLER") and os.environ["PORTAGE_CALLER"] == "repoman":
-			pass
-		else:
-			# XXX: This needs to call vartree.get_all_provides()
-			#myVarTree    = getVarTree(myroot)
-			if db.has_key(myroot):
-				myVarTree    = db[myroot]["vartree"]
-				self.treeVirtuals = map_dictlist_vals(getCPFromCPV,myVarTree.get_all_provides())
-				for x in self.treeVirtuals.keys():
-					self.treeVirtuals[x] = portage_util.unique_array(self.treeVirtuals[x])
-			user_profile_dir = myroot+USER_CONFIG_PATH
+		# Repoman should ignore these.
+		user_profile_dir = None
+		if os.environ.has_key("PORTAGE_CALLER") or \
+		   os.environ["PORTAGE_CALLER"] != "repoman":
+		  user_profile_dir = myroot+USER_CONFIG_PATH
 
 		if os.path.exists("/etc/portage/virtuals"):
 			writemsg("\n\n*** /etc/portage/virtuals should be moved to /etc/portage/profile/virtuals\n")
 			writemsg("*** Please correct this by merging or moving the file. (Deprecation notice)\n\n")
 			time.sleep(1)
+
 			
 		self.dirVirtuals = grab_multiple("virtuals", myvirtdirs, grabdict)
 		self.dirVirtuals.reverse()
 		self.userVirtuals = {}
 		if user_profile_dir and os.path.exists(user_profile_dir+"/virtuals"):
 			self.userVirtuals = grabdict(user_profile_dir+"/virtuals")
+
+		# User settings and profile settings take precedence over tree.
+		profile_virtuals = stack_dictlist([self.userVirtuals]+self.dirVirtuals,incremental=1)
+
+		# repoman doesn't need local virtuals.
+		if os.environ.has_key("PORTAGE_CALLER") and os.environ["PORTAGE_CALLER"] == "repoman":
+			pass
+		else:
+			temp_vartree = vartree(myroot,profile_virtuals,categories=self.categories)
+			myTreeVirtuals = map_dictlist_vals(getCPFromCPV,temp_vartree.get_all_provides())
+			for x in myTreeVirtuals.keys():
+				myTreeVirtuals[x] = portage_util.unique_array(myTreeVirtuals[x])
+
 		# User settings and profile settings take precedence over tree.
 		val = stack_dictlist([self.userVirtuals]+[self.treeVirtuals]+self.dirVirtuals,incremental=1)
+		
 		for x in val.keys():
 			val[x].reverse()
-		return val 
+		return val
 	
 	def __delitem__(self,mykey):
 		for x in self.lookuplist:
@@ -3223,6 +3233,7 @@ def key_expand(mykey,mydb=None,use_cache=1):
 				if mydb.cp_list(x+"/"+mykey,use_cache=use_cache):
 					return x+"/"+mykey
 			if virts_p.has_key(mykey):
+				print "VIRTS_P (Report to #gentoo-portage or bugs.g.o):",mykey
 				return(virts_p[mykey][0])
 		return "null/"+mykey
 	elif mydb:
@@ -3282,8 +3293,9 @@ def cpv_expand(mycpv,mydb=None,use_cache=1):
 
 		if not mykey and type(mydb)!=types.ListType:
 			if virts_p.has_key(myp):
+				print "VIRTS_P,ce (Report to #gentoo-portage or bugs.g.o):",myp
 				mykey=virts_p[myp][0]
-			#again, we only perform virtual expansion if we have a dbapi (not a list)				
+			#again, we only perform virtual expansion if we have a dbapi (not a list)
 		if not mykey:
 			mykey="null/"+myp
 	if mysplit:
@@ -4137,7 +4149,7 @@ class bindbapi(fakedbapi):
 
 cptot=0
 class vardbapi(dbapi):
-	def __init__(self,root):
+	def __init__(self,root,categories=None):
 		self.root       = root[:]
 		#cache for category directory mtimes
 		self.mtdircache = {}
@@ -4146,6 +4158,7 @@ class vardbapi(dbapi):
 		#cache for cp_list results
 		self.cpcache    = {}	
 		self.blockers   = None
+		self.categories = copy.deepcopy(categories)
 
 	def cpv_exists(self,mykey):
 		"Tells us whether an actual ebuild exists on disk (no masking)"
@@ -4332,7 +4345,13 @@ class vardbapi(dbapi):
 	def cpv_all(self,use_cache=1):
 		returnme=[]
 		basepath = self.root+VDB_PATH+"/"
-		for x in settings.categories:
+		
+		mycats = self.categories
+		if not mycats:
+			# XXX: CIRCULAR DEP! This helps backwards compat. --NJ (10 Sept 2004)
+			mycats = settings.categories
+		
+		for x in mycats:
 			for y in listdir(basepath+x,EmptyOnError=1):
 				subpath = x+"/"+y
 				# -MERGING- should never be a cpv, nor should files.
@@ -4404,15 +4423,15 @@ class vardbapi(dbapi):
 
 class vartree(packagetree):
 	"this tree will scan a var/db/pkg database located at root (passed to init)"
-	def __init__(self,root="/",virtual=None,clone=None):
+	def __init__(self,root="/",virtual=None,clone=None,categories=None):
 		if clone:
-			self.root      = clone.root[:]
-			self.dbapi     = copy.deepcopy(clone.dbapi)
-			self.populated = 1
+			self.root       = clone.root[:]
+			self.dbapi      = copy.deepcopy(clone.dbapi)
+			self.populated  = 1
 		else:
-			self.root      = root[:]
-			self.dbapi     = vardbapi(self.root)
-			self.populated = 1
+			self.root       = root[:]
+			self.dbapi      = vardbapi(self.root,categories=categories)
+			self.populated  = 1
 
 	def zap(self,mycpv):
 		return
@@ -6576,10 +6595,10 @@ def do_vartree(mysettings):
 usedefaults=settings.use_defs
 
 # XXX: This is a circular fix.
+#do_vartree(settings)
+#settings.loadVirtuals('/')
 do_vartree(settings)
-settings.loadVirtuals('/')
-do_vartree(settings)
-settings.loadVirtuals('/')
+#settings.loadVirtuals('/')
 
 settings.reset() # XXX: Regenerate use after we get a vartree -- GLOBAL
 
