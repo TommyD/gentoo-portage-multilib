@@ -559,7 +559,6 @@ class depgraph:
 		"""creates the actual digraph of packages to merge.  return 1 on success, 0 on failure
 		mybigkey = specification of package to merge; myparent = parent package (one depending on me);
 		addme = should I be added to the tree? (for the --onlydeps mode)"""
-	
 		jbigkey=string.join(mybigkey)
 		if self.digraph.hasnode(jbigkey+" merge") or self.digraph.hasnode(jbigkey+" nomerge"):
 			#this conditional is needed to prevent infinite recursion on already-processed deps
@@ -619,9 +618,13 @@ class depgraph:
 			else:
 				mybigkey.append("nomerge")
 				merging=0
+		else:
+			mybigkey.append("nomerge")
+			#special "--onlydeps" mode
+			merging=2
 
-			#whatever the case, we need to add the node to our digraph so that children can depend upon it.
-			self.digraph.addnode(string.join(mybigkey),myparent)
+		#whatever the case, we need to add the node to our digraph so that children can depend upon it.
+		self.digraph.addnode(string.join(mybigkey),myparent)
 		
 		if "--nodeps" in myopts:
 			#if we are not processing dependencies, then, err... abort here and don't process dependencies :)
@@ -872,10 +875,6 @@ class depgraph:
 					else:
 						print
 			else:
-				#if ("--update" in myopts) and (portage.db[x[1]]["vartree"].exists_specific(x[2])):
-				#	print "DEBUG: removing",x[2],"from list"
-				#	#already merged, continue
-				#	continue
 				if x[3]=="nomerge":
 					continue
 				if (not "--emptytree" in myopts) and portage.db[x[1]]["vartree"].exists_specific(x[2]):
