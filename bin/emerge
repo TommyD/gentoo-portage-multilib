@@ -233,7 +233,7 @@ files that need to be updated in /etc, type:
 
 # find /etc -iname '._cfg????_*'
 
-You can disable this feature by setting CONFIG_PROTECT="" in /etc/make.conf.
+You can disable this feature by setting CONFIG_PROTECT="-*" in /etc/make.conf.
 Then, Portage will mercilessly auto-update your config files.  Alternatively,
 you can leave Config File Protection on but tell Portage that it can overwrite
 files in certain specific /etc subdirectories.  For example, if you wanted

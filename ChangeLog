@@ -2,12 +2,16 @@
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
   13 Oct 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
-	Bug 5926 -- If the fetchonly AND pretend flags are specified, then
-	            portage should give a list of all the SRC_URIs so that
-							they can be downloaded or sent into another app.
+  Bug 5926 -- If the fetchonly AND pretend flags are specified, then
+              portage should give a list of all the SRC_URIs so that
+              they can be downloaded or sent into another app.
 
-	13 Oct 2002; Nicholas Jones <carpaski@gentoo.org> emerge:
-	Bug 5926 -- See portage.py for today. (emerge -pf)
+  13 Oct 2002; Nicholas Jones <carpaski@gentoo.org> emerge:
+  Bug 5926 -- See portage.py for today. (emerge -pf)
+	Typo fixes.
+
+  13 Oct 2002; Nicholas Jones <carpaski@gentoo.org> ebuild.sh:
+	Added -q to unzip to make it quiet like the others.
 
   12 Oct 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: fix for
   doebuild() so that our rsync mirror will contain full digests and not just

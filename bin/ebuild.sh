@@ -153,7 +153,7 @@ unpack() {
 			tar xj --no-same-owner -f ${DISTDIR}/${x} || die "$myfail"
 			;;
 		ZIP|zip) 
-			unzip ${DISTDIR}/${x} || die "$myfail"
+			unzip -q ${DISTDIR}/${x} || die "$myfail"
 			;;
 		gz|Z|z) 
 			if [ "${y}" == "tar" ]; then
