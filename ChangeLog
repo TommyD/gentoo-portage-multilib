@@ -2,6 +2,12 @@
 # Copyright 2001 Gentoo Technologies, Inc.; Distributed under the GPL
 # Written by Daniel Robbins (drobbins@gentoo.org)
 
+* portage 1.7.7 (14 Dec 2001)
+
+  14 Dec 2001; Aron Griffis (agriffis@gentoo.org): portage.py: movefile() now
+  unlink()s the destination file first which solves shared library install
+  problems.
+
 * portage 1.7.6 (13 Dec 2001)
 
   10 Dec 2001; portage.py: env_update() now generates an /etc/csh.env file

@@ -742,6 +742,13 @@ def movefile(src,dest,unlink=1):
 	elif dest=="/bin/bash":
 		a=getstatusoutput("rm /bin/bash; /bin/cp -a "+"'"+src+"' '"+dest+"'")
 	else:
+		#Don't overwrite files... unlink them then copy in the new
+		# file.  This prevents corrupting libraries and binaries that
+		# are currently mmap'd.
+		try:
+			os.unlink(dest)
+		except:
+			pass
 		a=getstatusoutput("/bin/cp -af "+"'"+src+"' '"+dest+"'")	
 #	cp -a takes care of this
 #	mymode=os.lstat(src)[ST_MODE]
