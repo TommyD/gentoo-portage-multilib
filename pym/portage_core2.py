@@ -7,7 +7,7 @@ import string
 import re
 import os
 
-endversion={"pre":-2,"p":0,"alpha":-4,"beta":-3,"rc":-1}
+endversion={"pre":-2,"p":1,"alpha":-4,"beta":-3,"rc":-1}
 
 #The "categories" variable will eventually be moved out of portage_core2 and will
 #most likely be read from a file.
@@ -112,6 +112,17 @@ class constraint(selector):
 	
 	attributes=["version","revision"]
 
+	evpat=re.compile(
+		'^(\d+)'								# last version component
+		'([a-z])?'								# letter component
+		'(_(?:alpha|beta|pre|rc|p)\d*)?'				# suffix
+	)
+
+	evpat2=re.compile(
+		'_((?:alpha|beta|pre|rc|p))'				# suffix
+		'(\d*)'        						# trailing digit
+	)
+
 	def __init__(self,myfoo):
 		if type(myfoo)==type(self):
 			#copy supplied object
@@ -139,11 +150,11 @@ class constraint(selector):
 		mycmp=self.cmp[:]
 		othercmp=other.cmp[:]
 		while(len(mycmp)<len(othercmp)):
-			mycmp.append([0,0,0])
+			mycmp.append([0,0,0,0])
 		while(len(mycmp)>len(othercmp)):
-			othercmp.append([0,0,0])
+			othercmp.append([0,0,0,0])
 		for x in range(0,len(mycmp)-1):
-			for y in range(0,3):
+			for y in range(0,4):
 				myret=mycmp[x][y]-othercmp[x][y]
 				if myret!=0:
 					return myret
@@ -154,40 +165,33 @@ class constraint(selector):
 		cmplist=[]
 		splitversion=string.split(self.version,".")
 		for x in splitversion[:-1]:
-			cmplist.append([string.atoi(x),0,0])
-		a=string.split(splitversion[-1],"_")
-		match=0
-		p1=0
-		p2=0
-		if len(a)==2:
-			pos=len(a[1])
-			number=string.atoi(a[0])
-			if a[1][-1] in string.digits:
-				pos=0
-				while a[1][pos-1] in string.digits:
-					pos=pos-1
-			for x in endversion.keys():
-				if a[1][0:pos]==x:
-					match=1
-					#p1 stores the numerical weight of _alpha, _beta, etc.
-					p1=endversion[x]
-					try:
-						p2=string.atoi(a[1][len(x):])
-					except:
-						p2=0
-					cmplist.append([number,p1,p2])
-					cmplist.append([string.atoi(self.revision),0,0])
-					return cmplist
-		if not match:	
-			#normal number or number with letter at end
-			if self.version[-1] not in string.digits:
-				#letter at end
-				p1=ord(self.version[-1])
-				number=string.atoi(splitversion[-1][0:-1])
+			cmplist.append([string.atoi(x),0,0,0])
+		print "DEBUG:",splitversion
+		match=self.__class__.evpat.search(splitversion[1])
+		if match:
+			ver, let, suf = match.groups()
+			ver=string.atoi(ver)
+			if let:
+				p1=ord(let)
 			else:
-				number=string.atoi(splitversion[-1])		
-		cmplist.append([number,p1,p2])
-		cmplist.append([string.atoi(self.revision),0,0])
+				p1=0
+			if suf:
+				match2=self.__class__.evpat2.search(suf)
+				groups2 = match2.groups()
+				print "DEBUG2:",groups2
+				p2, p3 = groups2
+				p2=endversion[p2]
+				if not p3:
+					p3=0
+				else:
+					p3=string.atoi(p3)
+			else:
+				p2=p3=0
+			print "DEBUG FINAL:",ver,p1,p2,p3
+			cmplist.append([ver,p1,p2,p3])
+			cmplist.append([string.atoi(self.revision),0,0,0])
+		else:
+			raise TypeError
 		return cmplist
 	
 class eid(constraint):
