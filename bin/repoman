@@ -66,7 +66,7 @@ qacats=[
 "DEPEND.badmasked","RDEPEND.badmasked","PDEPEND.badmasked",
 "DEPEND.badindev","RDEPEND.badindev","PDEPEND.badindev",
 "DEPEND.badmaskedindev","RDEPEND.badmaskedindev","PDEPEND.badmaskedindev",
-"ebuild.syntax","ebuild.output",
+"ebuild.syntax","ebuild.output","variable.readonly",
 "ebuild.nesteddie","LICENSE.invalid",
 "IUSE.invalid","KEYWORDS.invalid",
 "ebuild.nostable","ebuild.allmasked",
@@ -131,6 +131,7 @@ qahelp={
 	"ebuild.syntax":"Error generating cache entry for ebuild; typically caused by ebuild syntax error",
 	"ebuild.output":"A simple sourcing of the ebuild produces output; this breaks ebuild policy.",
 	"ebuild.nesteddie":"Placing 'die' inside ( ) prints an error, but doesn't stop the ebuild.",
+	"variable.readonly":"Assigning a readonly variable",
 	"IUSE.invalid":"This build has a variable in IUSE that is not in the use.desc or use.local.desc file",
 	"LICENSE.invalid":"This ebuild is listing a license that doesnt exist in portages license/ dir.",
 	"KEYWORDS.invalid":"This ebuild contains KEYWORDS that are not listed in profiles/arch.list",
@@ -704,7 +705,6 @@ for x in scanlist:
 			portage.db["/"]["porttree"]=portage.portagetree("/",dep_settings.getvirtuals("/"))
 
 			for mytype,mypos in [["DEPEND",len(missingvars)],["RDEPEND",len(missingvars)+1],["PDEPEND",len(missingvars)+2]]:
-	
 				if not catdir+"/"+y in portage.db["/"]["porttree"].dbapi.xmatch("list-visible",x):
 					#we are testing deps for a masked package; give it some lee-way
 					suffix="masked"
@@ -778,6 +778,7 @@ for x in scanlist:
 		ignore_line = re.compile(r'(^$)|(^(\t)*#)')
 		leading_spaces = re.compile(r'^[\S\t]')
 		trailing_whitespace = re.compile(r'.*([\S]$)')
+		readonly_assignment = re.compile(r'^\s*(export\s+)?(A|P|PV|PN|PR|PVR|PF|D|WORKDIR|FILESDIR)=')
 		continuation_symbol = re.compile(r'(.*[ ]+[\\][ ].*)')
 		line_continuation_quoted = re.compile(r'(\"|\')(([\w ,:;#\[\]\.`=/|\$\^\*{}()\'-])|(\\.))*\1')
 		line_continuation = re.compile(r'([^#]*\S)(\s+|\t)\\$')
@@ -816,6 +817,13 @@ for x in scanlist:
 						myerrormsg = "Trailing whitespace Syntax Error. Line %d" % linenum
 						stats["ebuild.minorsyn"] +=1
 						fails["ebuild.minorsyn"].append(x+"/"+y+".ebuild: %s" % myerrormsg)
+					# Readonly variable assignment check
+					match = readonly_assignment.match(line)
+					if match:
+						# invalid assignment, very bad!
+						myerrormsg = "Readonly variable assignment to %s on line %d" % (match.group(2), linenum)
+						stats["variable.readonly"] += 1
+						fails["variable.readonly"].append(x+"/"+y+".ebuild: %s" % myerrormsg)
 					# Line continuation check
 					match = continuation_symbol.match(line)
 					if match:
