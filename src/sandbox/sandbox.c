@@ -646,6 +646,12 @@ int main(int argc, char** argv)
 				strcpy(sandbox_predict_var, "");
 				strcat(sandbox_predict_var, home_dir);
 				strcat(sandbox_predict_var, "/.");
+				strcat(sandbox_predict_var, ":");
+				strcat(sandbox_predict_var, "/usr/lib/python2.0/");
+				strcat(sandbox_predict_var, ":");
+				strcat(sandbox_predict_var, "/usr/lib/python2.1/");
+				strcat(sandbox_predict_var, ":");
+				strcat(sandbox_predict_var, "/usr/lib/python2.2/");
 				setenv(ENV_SANDBOX_PREDICT, sandbox_predict_var, 1);
 				/* */
 			}
