@@ -1,0 +1,56 @@
+To install under Mac OS X:
+
+Requirements:
+	Mac OS X 10.2 (Jaguar) or greater
+	Apple Developer Tools or gcc toolchain if you want to compile
+
+Steps:
+
+First, create the Portage user. Type "sudo su" to become root, then:
+
+niutil -create / /users/portage
+niutil -appendprop . /users/portage uid 250
+niutil -create / /groups/portage
+niutil -appendprop . /groups/portage gid 250
+
+The portage user and group will now be created.
+
+Now, assuming this source tree is in /Users/drobbins, perform the following:
+
+# ln -s /Users/drobbins/portage /usr/lib/portage
+# ln -s /usr/lib/portage/bin/emerge /usr/bin/emerge
+# ln -s /usr/lib/portage/bin/ebuild.sh /usr/sbin/ebuild.sh
+# cp /Users/drobbins/portage/cnf/make.conf.mac /etc/make.conf
+# cp /Users/drobbins/portage/cnf/make.globals.mac /etc/make.globals
+# mkdir /etc/make.profile
+# vi /etc/make.profile/make.defaults (add the following lines:)
+
+ARCH="ppc"
+USE=""
+ACCEPT_KEYWORDS="ppc"
+COMPILER="gcc3"
+
+Note that the "ppc" stuff above is interim as we have not started using the "mac"
+keyword yet.
+
+Now, emerge sync:
+
+# emerge sync
+
+Now, copy all files from /usr/portage/profiles/default-ppc-1.4/ to /etc/make.profile
+*except* for the already-existing /etc/make.profile/make.defaults file.
+
+You should now be able to do things like:
+
+# emerge -eup world
+
+Note that nearly everything will b0rk hard if you try to emerge it. A few things
+will work with no issues as long as use use the --nodeps option. Try:
+
+# emerge --nodeps nano
+
+Happy hacking!
+
+Email drobbins@gentoo.org and cc: pvdabeel@gentoo.org regarding any needed changes
+or improvements to this document.
+
