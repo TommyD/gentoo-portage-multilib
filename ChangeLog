@@ -2,6 +2,10 @@
 # Copyright 2000-2004 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+  23 Jan 2004; <nakano@gentoo.org> emerge, portage.py: Fixed 2 bugs. 
+  Portage doesn't read local virtuals file, which happens on only cvs
+  version. package is blocked by itself.
+
   21 Jan 2004; Nicholas Jones <carpaski@gentoo.org> portage.py, emerge:
 	Fix from genone for emerge's direct reading of packages and his patch
 	that also adds in /etc/portage/profile as a stacked profile.

@@ -887,7 +887,10 @@ class depgraph:
 			myk=None
 			binpkguseflags=None
 			if x[0]=="!":
-				#add our blocker; it will be ignored later if necessary (if we are remerging the same pkg, for example)
+				# if this package is myself, don't append it to block list.
+				if (myparent):
+					if myparent.split()[2] in portage.portdb.xmatch("match-all", x[1:]):
+						continue
 				myk=["blocks",myroot,x[1:]]
 			else:
 				#We are not processing a blocker but a normal dependency

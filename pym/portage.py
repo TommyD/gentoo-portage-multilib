@@ -1392,9 +1392,9 @@ class config:
 		if os.environ.has_key("PORTAGE_CALLER") and os.environ["PORTAGE_CALLER"] == "repoman":
 			pass
 		else:
-			myvirtfiles.append(myroot+"/var/cache/edb/virtuals")
+			myvirtdirs.append(myroot+"/var/cache/edb")
 
-		return grab_stacked("/virtuals",myvirtdirs,grabdict)
+		return grab_stacked("virtuals",myvirtdirs,grabdict)
 	
 	def __getitem__(self,mykey):
 		if mykey=="CONFIG_PROTECT_MASK":
