@@ -10,7 +10,7 @@
        It is for convenience. Do not mistake this for the actual file.
 
   20 Jul 2004; Marius Mauch <genone@gentoo.org> bin/ebuild.sh:
-  added usev() as complement to useq()
+  added usev() and hasv() as complement to useq() and hasq().
 
   18 Jul 2004; Brian Harring <ferringb@gentoo.org> bin/repoman: Corrected 
   ebuild.allmasked check, so that it checks for an available version across all

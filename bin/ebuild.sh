@@ -149,6 +149,14 @@ has() {
 	return 1
 }
 
+hasv() {
+	if hasq "$@"; then
+		echo "${1}"
+		return 0
+	fi
+	return 1
+}
+
 hasq() {
 	local x
 
