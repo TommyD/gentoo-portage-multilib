@@ -11,7 +11,7 @@ from select import *
 from output import *
 import string,os,re,types,sys,shlex,shutil,xpak,fcntl,signal,time,missingos,cPickle,atexit,grp,traceback,commands,pwd
 
-#Secpass will be set to 1 if the user is root or in the wheel group.
+#Secpass will be set to 1 if the user is root or in the portage group.
 uid=os.getuid()
 secpass=0
 if uid==0:
@@ -33,13 +33,15 @@ except KeyError:
 	portage_uid=0
 	portage_gid=wheelgid
 	print
-	print red("portage: 'portage' user or group missing. Please update baselayout")
-	print red(  "         and merge portage user(250) and group(250) into your passwd")
-	print red(  "         and group files. Non-root compilation is disabled until then.")
+	print   red("portage: 'portage' user or group missing. Please update baselayout")
+	print   red("         and merge portage user(250) and group(250) into your passwd")
+	print   red("         and group files. Non-root compilation is disabled until then.")
+	print       "         Also note that non-root/wheel users will need to be added to"
+	print       "         the portage group to do portage commands."
+	print
 	print       "         For the defaults, line 1 goes into passwd, and 2 into group."
 	print green("         portage:x:250:250:portage:/var/tmp/portage:/bin/false")
 	print green("         portage::250:portage")
-	
 	print
 
 incrementals=["USE","FEATURES","ACCEPT_KEYWORDS","ACCEPT_LICENSE","CONFIG_PROTECT_MASK","CONFIG_PROTECT","PRELINK_PATH","PRELINK_PATH_MASK"]
@@ -816,11 +818,6 @@ class config:
 		#backup-env (for recording our calculated incremental variables:)
 		self.configlist.append(self.backupenv)
 		self.configlist.append(os.environ.copy())
-		
-		# ~/.bashrc by non-root/sudo/su users can cause problems. Force.
-		self.configlist[-1]["BASH_ENV"]="/root/.bashrc"
-		self.configlist[-1]["HOME"]="/root"
-		
 		self.configdict["env"]=self.configlist[-1]
 		self.lookuplist=self.configlist[:]
 		self.lookuplist.reverse()
@@ -964,7 +961,7 @@ def spawn(mystring,debug=0,free=0,droppriv=0):
 		else:
 			if droppriv:
 				print "portage: Unable to drop root for",mystring
-		settings["BASH_ENV"]=settings["HOME"]+"/.bashrc"
+		settings["BASH_ENV"]="/etc/portage/bashrc"
 
 		if ("sandbox" in features) and (not free):
 			mycommand="/usr/lib/portage/bin/sandbox"
@@ -3037,7 +3034,7 @@ class portdbapi(dbapi):
 						mydir=os.path.dirname(mydbkey)
 						if not os.path.exists(mydir):
 							os.makedirs(mydir, 2775)
-							os.chown(mydir,uid,wheelgid)
+							os.chown(mydir,uid,portage_gid)
 						shutil.copy2(mymdkey, mydbkey)
 						usingmdcache=1
 					except Exception,e:
@@ -3424,7 +3421,11 @@ class binarytree(packagetree):
 			mycat=string.strip(mycat)
 			fullpkg=mycat+"/"+mypkg[:-5]
 			mykey=dep_getkey(fullpkg)
-			self.dbapi.cpv_inject(fullpkg)
+			try:
+				# invalid tbz2's can hurt things.
+				self.dbapi.cpv_inject(fullpkg)
+			except:
+				continue
 		self.populated=1
 
 	def inject(self,cpv):
@@ -4281,12 +4282,12 @@ if not os.environ.has_key("SANDBOX_ACTIVE"):
 			os.makedirs(cachedir+"/dep",2755)
 			print ">>>",cachedir+"/dep","doesn't exist, creating it..."
 		try:
-			os.chown(cachedir,uid,wheelgid)
+			os.chown(cachedir,uid,portage_gid)
 			os.chmod(cachedir,0775)
 		except OSError:
 			pass
 		try:
-			os.chown(cachedir+"/dep",uid,wheelgid)
+			os.chown(cachedir+"/dep",uid,portage_gid)
 			os.chmod(cachedir+"/dep",02775)
 		except OSError:
 			pass
@@ -4436,7 +4437,7 @@ if settings["PORTDIR_OVERLAY"]:
 		sys.exit(1)
 
 def portageexit():
-	global uid,wheelgid
+	global uid,portage_gid
 	if secpass:
    	# Store mtimedb
 		mymfn=mtimedbfile
@@ -4445,7 +4446,7 @@ def portageexit():
 				mtimedb["version"]=VERSION
 				cPickle.dump(mtimedb,open(mymfn,"w"))
 				#print "*** Wrote out mtimedb data successfully."
-				os.chown(mymfn,uid,wheelgid)
+				os.chown(mymfn,uid,portage_gid)
 				os.chmod(mymfn,0664)
 		except Exception, e:
 			pass
@@ -4463,7 +4464,7 @@ thirdpartymirrors=grabdict(settings["PORTDIR"]+"/profiles/thirdpartymirrors")
 features=settings["FEATURES"].split()
 
 # Defaults set at the top of perform_checksum.
-if spawn("/usr/sbin/prelink --version > /dev/null 2>&1") == 0:
+if spawn("/usr/sbin/prelink --version > /dev/null 2>&1",free=1) == 0:
 	prelink_capable=1
 
 dbcachedir=settings["PORTAGE_CACHEDIR"]

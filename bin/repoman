@@ -1,5 +1,5 @@
 #!/usr/bin/python2.2
-# Copyright 1999-2002 Gentoo Technologies, Inc.
+# Copyright 1999-2003 Gentoo Technologies, Inc.
 # Distributed under the terms of the GNU General Public License v2
 # Author: Daniel Robbins <drobbins@gentoo.org>
 # $Header$
@@ -73,7 +73,7 @@ def help():
 	print
 	print green(exename+" "+version)
 	print " \"Quality is job zero.\""
-	print " Copyright 1999-2002 Gentoo Technologies, Inc."
+	print " Copyright 1999-2003 Gentoo Technologies, Inc."
 	print " Distributed under the terms of the GNU General Public License v2"
 	print
 	print bold(" Usage:"),turquoise(exename),"[",green("option"),"] [",green("mode"),"]"

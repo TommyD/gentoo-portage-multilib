@@ -2,6 +2,44 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Header$
 
+  22 Feb 2003; Nicholas Jones <carpaski@gentoo.org> bin/: added dispatch-conf
+	and db-fix.pl to the bins. Looking at dispatch-conf to replace etc-update
+	written by Jeremy Wohl (bug 14079). db-fix.pl is a rescue tool that Blizzy
+	wrote up to recreate/repair counter files in the DB -- shouldn't be needed
+	anymore as portage fixes the counter at every load of the counter, but we
+	will hang on to it just in case.
+
+  22 Feb 2003; Nicholas Jones <carpaski@gentoo.org> portage.py: moved the
+	wheelgid references to portage_gid references. Wheel is being deprecated.
+	Added notice to baselayout message that group portage controls everything
+	now. Killed the BASH_ENV settings -- moved the reference to /etc/portage/
+	in case it's desired in some way -- This fixes AROUND ONE HUNDRED reports
+	on 2.0.47-r2. Try/catch invalid tbz2's -- should fix a couple bad tarball
+	bugs. Make the prelink call spawn'd without sandbox. buildpkg/userpriv
+	fix via actionmap (Jasmin Buchert; bug 16106).
+
+  22 Feb 2003; Nicholas Jones <carpaski@gentoo.org> emerge: --upgradeonly
+	added from jrray's patch; added some slot handling. --deep got a short
+	flag 'D'. 'info' can be run by non-root. '--quiet' kills all but package
+	names on searches. Basic slot detection added to the pretend output so
+	that it doesn't always say downgrade. Ignore block list when fetching.
+	Can use RSYNC_EXCLUDEFROM to select a from for rsync to --exclude-from;
+	(Michael Sterrett; Bug 15882). 'emerge rsync' deletes the dbcachedir
+	before it begins updates. Catch	exceptions during rsync cache regen.
+
+  22 Feb 2003; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: General fixes
+	to the spelling of things. 'cd $PORT_TMPDIR' corrected to the actual vars
+	name. Stripping distcc from PATH if it is there before portage sets it.
+	Same with ccache. If we try to compile with out unpacking, complain. Make
+	sure to chown files to user portage. 
+
+  22 Feb 2003; Nicholas Jones <carpaski@gentoo.org> cnf/*: CFLAGS notes,
+	pentium4 breaks things. Added more descriptions for FEATURES. Added
+	RSYNC_EXCLUDEFROM description.
+
+  22 Feb 2003; Nicholas Jones <carpaski@gentoo.org> *: Updates to the
+	copyright headers.
+  
 *portage-2.0.47-r2 (17 Feb 2003): Wicked Fast, BugFree, UserPriv
 
   18 Feb 2003; Alain Penders <alain@gentoo.org> portage-2.0.47-r2.ebuild:

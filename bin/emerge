@@ -1,5 +1,5 @@
 #!/usr/bin/env python2.2
-# Copyright 1999-2002 Gentoo Technologies, Inc.
+# Copyright 1999-2003 Gentoo Technologies, Inc.
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
@@ -19,18 +19,18 @@ actions=[
 "regen", "rsync",  "search",   "sync", "system", "unmerge", "world"
 ]
 options=[
-"--buildpkg",   "--buildpkgonly", "--changelog", "--debug",
-"--deep",       "--emptytree",    "--fetchonly", "--help",
-"--noconfmem",  "--nodeps",       "--noreplace", "--nospinner",
-"--oneshot",    "--onlydeps",     "--pretend",   "--quiet",
-"--resume",     "--searchdesc",   "--selective", "--update",
-"--usepkg",     "--usepkgonly",   "--verbose",   "--version",
-"--columns"
+"--buildpkg",     "--buildpkgonly", "--changelog",    "--columns",
+"--debug",        "--deep",         "--emptytree",    "--fetchonly",
+"--help",         "--noconfmem",    "--nodeps",       "--noreplace",
+"--nospinner",    "--oneshot",      "--onlydeps",     "--pretend",
+"--quiet",        "--resume",       "--searchdesc",   "--selective",
+"--update",       "--upgradeonly",  "--usepkg",       "--usepkgonly",
+"--verbose",      "--version"
 ]
 shortmapping={
 "b":"--buildpkg",  "B":"--buildpkgonly",
 "c":"clean",       "C":"unmerge",
-"d":"--debug",
+"d":"--debug",     "D":"--deep",
 "e":"--emptytree",
 "f":"--fetchonly",
 "h":"--help",
@@ -42,7 +42,7 @@ shortmapping={
 "p":"--pretend",   "P":"prune",
 "q":"--quiet",
 "s":"search",      "S":"--searchdesc",
-"u":"--update",
+"u":"--update",    "U":"--upgradeonly",
 "v":"--verbose",   "V":"--version"
 }
 
@@ -180,7 +180,7 @@ elif "--help" in myopts:
 	help()
 	sys.exit(0)
 elif portage.secpass!=2:
-	if myaction in ["search", "help" ]:
+	if myaction in ["search", "help", "info"]:
 		pass
 	elif (not myaction) and (not myfiles):
 		pass
@@ -356,13 +356,14 @@ class search:
 							print "!!! Exception:",e
 						mysum[0]=" [no/bad digest]"
 						
-					print "     ", darkgreen("Latest version available:"),myversion
-					print "     ", self.getInstallationStatus(catpack)
-					print "     ", darkgreen("Size of downloaded files:"),mysum[0]
-					print "     ", darkgreen("Homepage:")+"   ",homepage
-					print "     ", darkgreen("Description:"),desc
-					print
-		
+					if "--quiet" not in myopts:
+						print "     ", darkgreen("Latest version available:"),myversion
+						print "     ", self.getInstallationStatus(catpack)
+						print "     ", darkgreen("Size of downloaded files:"),mysum[0]
+						print "     ", darkgreen("Homepage:")+"   ",homepage
+						print "     ", darkgreen("Description:"),desc
+						print
+		print
 	#
 	# private interface
 	#
@@ -614,6 +615,24 @@ class depgraph:
 		# We're true here unless we are missing binaries.
 		return (not self.missingbins,myfavorites)
 
+	def is_newer_ver_installed(self,myroot,pkg,pkgver):
+		"if there is a version of pkg installed newer than pkgver, return it"
+		vardbapi=portage.db[myroot]["vartree"].dbapi
+
+		myslot=portage.portdb.aux_get(pkgver,["SLOT"])[0]
+		alleb=portage.portdb.xmatch("match-all",pkg)
+		while alleb:
+			cand=portage.portdb.xmatch("bestmatch-list",pkg,mylist=alleb)
+			if not cand:
+				break
+			curslot=portage.portdb.aux_get(cand,["SLOT"])[0]
+			if (curslot==myslot) and vardbapi.cpv_exists(cand):
+				# installed, is this package newer?
+				if portage.pkgcmp(portage.catpkgsplit(pkgver)[1:], portage.catpkgsplit(cand)[1:]) < 0:
+					return cand
+				break
+			alleb.remove(cand)
+
 	def select_dep(self,myroot,depstring,myparent=None,arg=None):
 		"given a dependency string, create the appropriate depgraph and return 1 on success and 0 on failure"
 		if not arg:
@@ -654,7 +673,13 @@ class depgraph:
 					else:
 						print "\nemerge: there are no masked or unmasked ebuilds to satisfy "+xinfo+"."
 					return 0
-				
+
+ 				if "--upgradeonly" in myopts:
+ 					# Check that there isn't a newer version of this package already installed
+ 					cand=self.is_newer_ver_installed(myroot,x,myeb)
+ 					if cand:
+ 						myeb=cand
+
 				if "--usepkg" in myopts:
 					#If we want to use packages, see if we have a pre-built one...
 					mypk=portage.db["/"]["bintree"].dbapi.match(x)
@@ -740,6 +765,12 @@ class depgraph:
 			if not myeb:
 				#this is an unavailable world entry; just continue
 				continue
+
+			if "--upgradeonly" in myopts:
+				cand=self.is_newer_ver_installed(portage.root,mydep,myeb)
+				if cand:
+					myeb=cand
+
 			#THIS NEXT BUNCH OF CODE NEEDS TO BE REPLACED TO SUPPORT WORLD ANTI-DEPS
 			#if mydep2[0]=="!":, etc.
 			if "--usepkg" in myopts:
@@ -812,7 +843,11 @@ class depgraph:
 					addl="  "+yellow("R")+"  "
 				elif (not "--emptytree" in myopts) and portage.db[x[1]]["vartree"].exists_specific_cat(x[2]):
 					myoldbest=portage.best(portage.db[x[1]]["vartree"].dbapi.match(portage.pkgsplit(x[2])[0]))
-					if portage.pkgcmp(portage.pkgsplit(x[2]), portage.pkgsplit(myoldbest)) < 0:
+
+					myoldslot=portage.portdb.aux_get(myoldbest,["SLOT"])[0]
+					mynewslot=portage.portdb.aux_get(x[2],["SLOT"])[0]
+
+					if (myoldslot==mynewslot) and portage.pkgcmp(portage.pkgsplit(x[2]), portage.pkgsplit(myoldbest)) < 0:
 						addl="   "+turquoise("U")+blue("D")
 					else:
 						addl="   "+turquoise("U")+" "
@@ -959,10 +994,11 @@ class depgraph:
 		mymergelist=[]
 
 		#check for blocking dependencies
-		for x in mylist:
-			if x[0]=="blocks":
-				print "\n!!! Error: the "+x[2]+" package conflicts with this package and both can't be installed on the same system together."
-				sys.exit(1)
+		if ("--fetchonly" not in myopts) and ("--buildpkgonly" not in myopts):
+			for x in mylist:
+				if x[0]=="blocks":
+					print "\n!!! Error: the "+x[2]+" package conflicts with this package and both can't be installed on the same system together."
+					sys.exit(1)
 
 		if ("--resume" in myopts):
 			# We're resuming.
@@ -1352,7 +1388,7 @@ def post_emerge(retval=0):
 
 			if badcount:
 				if "--verbose" not in myopts:
-					print " "+yellow("*")+" Processed",icount,"info files:",badcount,"errors; type "+green("emerge --verbose")+" to view errors."
+					print " "+yellow("*")+" Processed",icount,"info files:",badcount,"errors; run with "+green("emerge --verbose")+" to view errors."
 				else:
 					print " "+yellow("*")+" Processed",icount,"info files;",badcount,"errors."
 			else:
@@ -1406,7 +1442,12 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 			except:
 				pass
 		mycommand="/usr/bin/rsync -rlptDvz --progress --stats --delete --delete-after --timeout="+str(mytimeout)+" --exclude='distfiles/*' --exclude='packages/*' "
-		mycommand=mycommand+syncuri+"/* "+myportdir
+		if portage.settings.haskey("RSYNC_EXCLUDEFROM"):
+			if os.path.exists(portage.settings["RSYNC_EXCLUDEFROM"]):
+				mycommand=mycommand+" --exclude-from "+portage.settings["RSYNC_EXCLUDEFROM"]
+			else:
+				print "!!! RSYNC_EXCLUDEFROM specified, but file does not exist."
+		mycommand=mycommand+" "+syncuri+"/* "+myportdir
 		print ">>> starting rsync with "+syncuri+"..."
 		#protect users that did not set a default umask
 		exitcode=portage.spawn(mycommand,free=1)
@@ -1456,13 +1497,18 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 		sys.exit(1)
 	if os.path.exists(myportdir+"/metadata/cache"):
 		print "\n>>> Updating Portage cache...  ",
+		if os.path.exist(portage.dbcachedir):
+			portage.spawn("rm -rf "+portage.dbcachedir)
 		mynodes=portage.portdb.cp_all()
 		for x in mynodes:
 			myxsplit=x.split("/")
 			mymatches=portage.portdb.xmatch("match-all",x)
 			for y in mymatches:
 				update_spinner()
-				ignored=portage.portdb.aux_get(y,[],metacachedir=myportdir+"/metadata/cache")
+				try:
+					ignored=portage.portdb.aux_get(y,[],metacachedir=myportdir+"/metadata/cache")
+				except:
+					pass
 		sys.stdout.write("\b\b  ...done!\n\n")
 		sys.stdout.flush()
 	mynewpv=portage.portdb.xmatch("bestmatch-visible","sys-apps/portage")

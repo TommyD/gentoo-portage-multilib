@@ -1,9 +1,9 @@
-#!/bin/bash 
-# Copyright 1999-2002 Gentoo Technologies, Inc.
+#!/bin/bash
+# Copyright 1999-2003 Gentoo Technologies, Inc.
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-cd ${PORT_TMPDIR}
+cd ${PORTAGE_TMPDIR}
 
 if [ "$*" != "depend" ] && [ "$*" != "clean" ]; then
 	if [ -f ${T}/successful ]; then
@@ -261,7 +261,11 @@ if [ "$*" != "depend" ]; then
 	if has distcc ${FEATURES} &>/dev/null; then
 		if [ -d /usr/lib/distcc/bin ]; then
 			#We can enable distributed compile support
-			[ ! -z "${PATH/*distcc*/}" ] && export PATH="/usr/lib/distcc/bin:${PATH}"
+			if [ -z "${PATH/*distcc*/}" ]; then
+				# Remove the other reference.
+				PATH="$(echo ${PATH} | sed 's/:[^:]*distcc[^:]*:/:/;s/^[^:]*distcc[^:]*://;s/:[^:]*distcc[^:]*$//')"
+				export PATH="/usr/lib/distcc/bin:${PATH}"
+			fi
 			[ -z "${DISTCC_HOSTS}" ] && DISTCC_HOSTS="localhost"
 			[ ! -z "${DISTCC_LOG}" ] && addwrite "$(dirname ${DISTCC_LOG})"
 			export DISTCC_HOSTS
@@ -273,7 +277,9 @@ if [ "$*" != "depend" ]; then
 
 	if has ccache ${FEATURES} &>/dev/null; then
 		#We can enable compiler cache support
-		if [ ! -z "${PATH/*ccache*/}" ]; then
+		if [ -z "${PATH/*ccache*/}" ]; then
+			# Remove the other reference.
+			PATH="$(echo ${PATH} | sed 's/:[^:]*ccache[^:]*:/:/;s/^[^:]*ccache[^:]*://;s/:[^:]*ccache[^:]*$//')"
 			if [ -d /usr/lib/ccache/bin ]; then
 				export PATH="/usr/lib/ccache/bin:${PATH}"
 			elif [ -d /usr/bin/ccache ]; then
@@ -684,6 +690,19 @@ abort_install() {
 dyn_compile() {
 	trap "abort_compile" SIGINT SIGQUIT
 	export CFLAGS CXXFLAGS LIBCFLAGS LIBCXXFLAGS
+	if has noauto $FEATURES &>/dev/null && [ ! -f ${BUILDDIR}/.unpacked ]; then
+		echo
+		echo "!!! We apparently haven't unpacked... This is probably not what you"
+		echo "!!! want to be doing... You are using FEATURES=noauto so I'll assume"
+		echo "!!! that you know what you are doing... You have 5 seconds to abort..."
+		echo
+		echo -ne "\a"; sleep 0.25 ;	echo -ne "\a"; sleep 0.25
+		echo -ne "\a"; sleep 0.25 ;	echo -ne "\a"; sleep 0.25
+		echo -ne "\a"; sleep 0.25 ;	echo -ne "\a"; sleep 0.25
+		echo -ne "\a"; sleep 0.25 ;	echo -ne "\a"; sleep 0.25
+		sleep 3
+	fi
+	
 	if [ ${BUILDDIR}/.compiled -nt ${WORKDIR} ]
 	then
 		echo ">>> It appears that ${PN} is already compiled; skipping."
@@ -1132,8 +1151,10 @@ if [ "$myarg" != "clean" ]; then
 	# Save current environment and touch a success file. (echo for success)
 	umask 002
 	set > ${T}/environment &>/dev/null
+	chown portage:portage ${T}/environment &>/dev/null
 	chmod g+w ${T}/environment &>/dev/null
 fi
 touch ${T}/successful  &>/dev/null
+chown portage:portage ${T}/successful &>/dev/null
 chmod g+w ${T}/successful &>/dev/null
 true
