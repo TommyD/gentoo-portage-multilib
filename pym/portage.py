@@ -1145,10 +1145,22 @@ def doebuild(myebuild,mydo,myroot,debug=0,listonly=0):
 	#set up KV variable
 	mykv,err=ExtractKernelVersion(root+"usr/src/linux")
 	if mykv:
+		# Regular source tree
 		settings["KV"]=mykv
 	else:
-		print err
-		sys.exit(1)
+		print "!!! Error extracting kernel version:"
+		print "!!!",err
+		mykv,err=ExtractKernelVersion(root+"usr")
+		if mykv:
+			# Header files installed but not source tree
+			settings["KV"]=mykv
+		else:
+			print "!!! Error extracting kernel version (attempt 2):"
+			print "!!!",err
+			if settings["CATEGORY"] != "sys-kernel":
+				# No Headers at all and not installing any.
+				sys.exit(1)
+			print "!!! Ignoring. Installing kernel sources/headers."
 
 	# if any of these are being called, handle them -- running them out of the sandbox -- and stop now.
 	if mydo in ["help","clean","setup","prerm","postrm","preinst","postinst","config"]:
