@@ -187,12 +187,12 @@ econf() {
 	    --localstatedir=/var/lib \
 	    "$@" || die "econf failed" 
     else
-    	die "no configure script fond"
+    	die "no configure script found"
 	fi
 }
 
 einstall() {
-    if [ -f ./[mM]akefile ] ; then
+    if [ -f ./[mM]akefile -o -f ./GNUmakefile ] ; then
 	make prefix=${D}/usr \
 	    mandir=${D}/usr/share/man \
 	    infodir=${D}/usr/share/info \
@@ -486,7 +486,7 @@ dyn_compile() {
 	#some packages use an alternative to $S to build in, cause
 	#our libtool to create problematic .la files
 	export PWORKDIR="$WORKDIR"
-	#some users have $TMPDIR to a custom dir in theif home ...            
+	#some users have $TMPDIR to a custom dir in their home ...            
 	#this will cause sandbox errors with some ./configure            
 	#scripts, so set it to $T.
 	export TMPDIR="${T}"
@@ -531,7 +531,7 @@ dyn_package() {
 	then
 		install -d ${PKGDIR}/${CATEGORY}
 	fi
-	ln -sf ${PKGDIR}/All/${PF}.tbz2 ${PKGDIR}/${CATEGORY}/${PF}.tbz2
+	ln -sf ../All/${PF}.tbz2 ${PKGDIR}/${CATEGORY}/${PF}.tbz2
     echo ">>> Done."
     cd ${BUILDDIR}
     touch .packaged
@@ -711,19 +711,28 @@ debug-print-section() {
 
 # Sources all eclasses in parameters
 inherit() {
-
-    while [ "$1" ]; do
-   
-	# any future resolution code goes here
+	
 	local location
-	location="${ECLASSDIR}/${1}.eclass"
+    while [ "$1" ]
+	do
+		# any future resolution code goes here
+		if [ -n "$PORTDIR_OVERLAY" ]
+		then
+			location="${PORTDIR_OVERLAY}/eclass/${1}.eclass"
+			if [ -e "$location" ]
+			then
+				debug-print "inherit: $1 -> $location"
+				source "$location" || die "died sourcing $location in inherit()"
+				#continue processing, skip sourcing of one in $ECLASSDIR
+				continue
+			fi
+		fi
+			
+		location="${ECLASSDIR}/${1}.eclass"
+		debug-print "inherit: $1 -> $location"
+		source "$location" || die "died sourcing $location in inherit()"
 
-	debug-print "inherit: $1 -> $location"
-
-	source "$location" || die "died sourcing $location in inherit()"
-
-	shift
-
+		shift
     done
 
 }

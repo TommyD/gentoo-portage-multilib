@@ -448,7 +448,7 @@ class search:
 						print green("*")+"  "+white(match)+" "+red("[ Masked ]")
 					else:
 						print green("*")+"  "+white(match)
-					print "     ", "Latest version Available:",self.getVersion(full_package, search.VERSION_RELEASE)
+					print "     ", "Latest version available:",self.getVersion(full_package, search.VERSION_RELEASE)
 					print "     ", self.getInstallationStatus(match)
 					print "     ", "Homepage:",homepage
 					print "     ", "Description:",desc
@@ -462,9 +462,9 @@ class search:
 		result = ""
 		version = self.getVersion(installed_package,search.VERSION_RELEASE)
 		if len(version) > 0:
-			result = "Latest version Installed: "+version
+			result = "Latest version installed: "+version
 		else:
-			result = "Latest version Installed: [ Not Installed ]"
+			result = "Latest version installed: [ Not Installed ]"
 		return result
 
 	def getVersion(self,full_package,detail):
@@ -1250,7 +1250,7 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 			if os.path.exists(cvsdir+"/gentoo-x86"):
 				print "!!! existing",cvsdir+"/gentoo-x86 directory; exiting."
 				sys.exit(1)
-			if not portage.spawn("cd "+cvsdir+"; cvs -d "+cvsroot+" co gentoo-x86",free=1):
+			if not portage.spawn("cd "+cvsdir+"; cvs -z3 -d "+cvsroot+" co gentoo-x86",free=1):
 				print "!!! cvs checkout error; exiting."
 				sys.exit(1)
 			if cvsdir!=myportdir:
@@ -1259,7 +1259,7 @@ if myaction in ["sync","rsync"] and (not "--help" in myopts):
 		else:
 			#cvs update
 			print ">>> starting cvs update with "+syncuri+"..."
-			sys.exit(portage.spawn("cd "+myportdir+"; cvs -q update -dP",free=1)) 
+			sys.exit(portage.spawn("cd "+myportdir+"; cvs -z3 -q update -dP",free=1)) 
 	else:
 		print "!!! rsync setting: ",syncuri,"not recognized; exiting."
 		sys.exit(1)

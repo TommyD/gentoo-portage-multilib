@@ -1,10 +1,34 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+*portage-2.0.35 (03 Sep 2002): Gentoo Linux 1.4_rc1 version 
+
+  03 Sep 2002: Daniel Robbins <drobbins@gentoo.org> etc-update: new program for
+  updating config files.
+  
+  03 Sep 2002; Daniel Robbins <drobbins@gentoo.org> ebuild.sh: upgraded
+  inherit() to support $PORTDIR_OVERLAY, closing bug #6033.
+  
+  03 Sep 2002; Daniel Robbins <drobbins@gentoo.org> emerge: calls to "cvs" now
+  use "-z3" compression option, closing bug #5982.
+  
+  03 Sep 2002; Daniel Robbins <drobbins@gentoo.org> ebuild.sh: symlinks to
+  .tbz2's in the $PKGDIR/All directory (from $PKGDIR/$CATEGORY) are now
+  relative, closing bug #6881.
+
+  03 Sep 2002; Daniel Robbins <drobbins@gentoo.org> ebuild.sh: einstall now
+  sees "GNUmakefile", closing bug #4895.
+  
+  03 Sep 2002; Daniel Robbins <drobbins@gentoo.org> ebuild.sh: typo fixes,
+  closing bug #7263.
+
+  03 Sep 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: /var/tmp
+  creation now works even if /tmp already exists, closing bug #7376.
+  
   02 Sep 2002; Daniel Robbins <drobbins@gentoo.org> emerge: fixed a logic error
   that resulted in non-root emerge failure. This closes bug #7389.
 
-*portage-2.0.34 (01 Sep 2002): Gentoo Linux 1.4_rc1 version 
+*portage-2.0.34 (01 Sep 2002) 
 
   01 Sep 2002; Daniel Robbins <drobbins@gentoo.org>: portage.py, ebuild.sh:
   Azarah's ebuildsh() removed, various other little fixes like pkg_preinst and

@@ -2,7 +2,7 @@
 # Copyright 1998-2002 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
 
-VERSION="2.0.33"
+VERSION="2.0.34"
 
 from stat import *
 from commands import *
@@ -3223,9 +3223,12 @@ class dblink:
 			lstatobj=os.lstat(obj)
 			lmtime=`lstatobj[ST_MTIME]`
 			#next line: we dont rely on mtimes for symlinks anymore.
-			if (pkgfiles[obj][0] not in ("dir","fif","dev","sym")) and (lmtime != pkgfiles[obj][1]):
-				print "--- !mtime", pkgfiles[obj][0], obj
-				continue
+			try:
+				if (pkgfiles[obj][0] not in ("dir","fif","dev","sym")) and (lmtime != pkgfiles[obj][1]):
+					print "--- !mtime", pkgfiles[obj][0], obj
+					continue
+			except KeyError:
+					print "--- !error",pkgfiles[obj][0],obj
 			if pkgfiles[obj][0]=="dir":
 				if not os.path.isdir(obj):
 					print "--- !dir  ","dir", obj
@@ -3905,8 +3908,15 @@ if not os.path.exists(root+"tmp"):
 	os.mkdir(root+"tmp",01777)
 if not os.path.exists(root+"var/tmp"):
 	print ">>> "+root+"var/tmp doesn't exist, creating it..."
-	os.mkdir(root+"var",0755)
-	os.mkdir(root+"var/tmp",01777)
+	try:
+		os.mkdir(root+"var",0755)
+	except (OSError,IOError):
+		pass
+	try:
+		os.mkdir(root+"var/tmp",01777)
+	except:
+		print "portage: couldn't create /var/tmp; exiting."
+		sys.exit(1)
 
 cachedirs=["/var/cache/edb"]
 if root!="/":
