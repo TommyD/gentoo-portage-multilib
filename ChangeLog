@@ -9,6 +9,43 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  16 May 2004; Nicholas Jones <carpaski@gentoo.org> portage_exception.py: New
+  file containing portage exceptions. Added 'CorruptionError' for the db code.
+
+  16 May 2004; Nicholas Jones <carpaski@gentoo.org> portage_util.py: New file
+  that contains utility functions. Allows db_modules to use portage functions
+  without a circular dependency. CODE IS DUPLICATED and needs to be fixed in
+  portage.py to use this new module. grab*, getconfig, varexpand, pickle_*,
+  ReadOnlyConfig
+
+  16 May 2004; Nicholas Jones <carpaski@gentoo.org> portage_db_*: Modules
+  do not have an __init__ any longer -- module_init() is called by the
+  template after loading the config and setting the 5 variables inside of
+  the class. self.config is a ReadOnlyConfig object which is just a dict
+  that you can't write to. Throws CorruptionError when the read functions
+  return exceptions. 
+
+  16 May 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Reversed the
+  virtuals order so it matches the documented format. When an ebuild does not
+  exist, we now raise a KeyError with a useful string. 'couple minutes' changed
+  to 'couple of minutes' for Seemant. ;)
+
+  16 May 2004; Nicholas Jones <carpaski@gentoo.org> prepstrip, ebuild.5,
+  repoman.1: Typo corrections/text replacements.
+
+  16 May 2004; Nicholas Jones <carpaski@gentoo.org> emerge: Added deprecation
+  notice to 'emerge rsync' to favor 'emerge sync'. Modified the emerge.log
+  code to not change permissions on the files beyond what is necessary -- NEEDS
+  TO BECOME AN ADDITIVE FUNCTION. Produce a warning instead of a traceback
+  when an ebuild does not exist for -U.
+
+  16 May 2004; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Touched up the
+  logging stuff at the top. Removed extra_functions.sh. src_compile additions
+  so that it can run make without having a config file requirement.
+
+  16 May 2004; Nicholas Jones <carpaski@gentoo.org> dobin,dosbin: Removed the
+  duplicated stripping from the helper tools.
+
   09 May 2004; Jason Stubbs <jstubbs@gentoo.org> pym/portage_dep.py:
   fixed bug in use_reduce that caused returned list to be flattened.
 

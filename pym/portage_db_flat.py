@@ -7,13 +7,7 @@ from string import join
 import portage_db_template
 
 class database(portage_db_template.database):
-	def __init__(self,path,category,dbkeys,uid,gid):
-		self.path     = path
-		self.category = category
-		self.dbkeys   = dbkeys
-		self.uid      = uid
-		self.gid      = gid
-
+	def module_init(self):
 		self.lastkey  = None # Cache
 		self.lastval  = None # Cache
 

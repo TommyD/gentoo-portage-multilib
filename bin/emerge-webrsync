@@ -64,7 +64,7 @@ while (( $attempts <  40 )) ; do
 			sync_local
 			echo
 			echo " *** Completed websync, please now perform a normal rsync if possible."
-			echo "     Update is current as of the of YYMMDD: ${year}${month}${day}"
+			echo "     Update is current as of the of YYYYMMDD: ${year}${month}${day}"
 			echo
 			exit 0
 		fi

@@ -211,7 +211,7 @@ def help(myaction,myopts,havecolor=1):
 		print
 		print "       "+green("--oneshot")
 		print "              Emerge as normal, but don't add packages to the world profile."
-		print "              This package is will only be updated if it is depend on by"
+		print "              This package will only be updated if it is depended upon by"
 		print "              another package."
 		print
 		print "       "+green("--onlydeps")+" ("+green("-o")+" short option)"

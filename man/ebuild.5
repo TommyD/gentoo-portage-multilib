@@ -265,14 +265,6 @@ following syntax:
 .br
 .B jpeg? ( media-libs/jpeg)
 .TP
-.B usevar? ( Atom if true ) : ( Atom if false )
-This works much like the tertiary operator found in C.  If a package uses
-GTK2 or GTK1, but not both, then you can handle that like this:
-.br
-.B gtk2? ( =x11-libs/gtk+-2* ) : ( =x11-libs/gtk+-1* )
-.br
-That way the default is the superior GTK2 library.
-.TP
 .B !usevar? ( Atom )
 If you want to include a package only if the user does not have a certain option
 in their \fBUSE\fR variable, then use the following syntax:
@@ -281,6 +273,15 @@ in their \fBUSE\fR variable, then use the following syntax:
 .br
 This is often useful for those times when you want to want to add optional support
 for a feature and have it enabled by default.
+.TP
+.B usevar? ( Atom if true ) !usevar? ( Atom if false )
+For functionality like the tertiary operator found in C you must use
+two statements, one normal and one inverted.  If a package uses
+GTK2 or GTK1, but not both, then you can handle that like this:
+.br
+.B gtk2? ( =x11-libs/gtk+-2* ) !gtk2? ( =x11-libs/gtk+-1* )
+.br
+That way the default is the superior GTK2 library.
 .TP
 .B || ( Atom Atom ... )
 When a package can work with a few different packages but a virtual is not 
@@ -422,15 +423,15 @@ echoed and the function will return 0.  If \fIUSE item\fR is not in the
 .RS
 .TP
 .I Example:
-if [ `use gnome` ] ; then
+if use gnome; then
 .br
 	guiconf="--enable-gui=gnome --with-x"
 .br
-elif [ `use gtk` ] ; then
+elif use gtk; then
 .br
 	guiconf="--enable-gui=gtk --with-x"
 .br
-elif [ `use X` ] ; then
+elif use X; then
 .br
 	guiconf="--enable-gui=athena --with-x"
 .br
@@ -456,19 +457,19 @@ used in its place.
 .I Example:
 USE="jpeg"
 .br
-myconf="`use_with jpeg libjpeg`"
+myconf="$(use_with jpeg libjpeg)"
 .br
 (myconf now has the value "--with-libjpeg")
 
 USE=""
 .br
-myconf="`use_with jpeg libjpeg`"
+myconf="$(use_with jpeg libjpeg)"
 .br
 (myconf now has the value "--without-libjpeg")
 
 USE="pic"
 .br
-myconf="`use_with pic`"
+myconf="$(use_with pic")
 .br
 (myconf now has the value "--with-pic")
 .RE
@@ -504,7 +505,7 @@ matches \fIpackage name\fR.  Otherwise, the function will return 1.
 .RS
 .TP
 .I Example:
-VERINS=`best_version net-ftp/glftpd`
+VERINS="$(best_version net-ftp/glftpd)"
 .br
 (VERINS now has the value "net-ftp/glftpd-1.27" if glftpd-1.27 is installed)
 .RE

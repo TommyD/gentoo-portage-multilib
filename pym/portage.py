@@ -889,7 +889,7 @@ def stack_dictlist(original_dicts, incremental=0, incrementals=[], ignore_none=0
 							del final_dict[y][final_dict[y].index(thing[1:])]
 					else:
 						if thing not in final_dict[y]:
-							final_dict[y].append(thing[:])
+							final_dict[y].insert(0,thing[:])
 			if final_dict.has_key(y) and not final_dict[y]:
 				del final_dict[y]
 	return final_dict
@@ -4952,8 +4952,7 @@ class portdbapi(dbapi):
 		if not myebuild:
 			writemsg("!!! aux_get(): ebuild for '%s' does not exist at:\n" % mycpv)
 			writemsg("!!!            %s\n" % myebuild)
-			raise KeyError
-			return None
+			raise KeyError, "'%s' at %s" % (mycpv,myebuild)
 
 		if mylocation not in self.auxdb:
 			self.auxdb[mylocation] = {}
@@ -6676,7 +6675,7 @@ def do_upgrade(mykey):
 	global do_upgrade_packagesmessage
 	writemsg("\n\n")
 	writemsg(green("Performing Global Updates: ")+bold(mykey)+"\n")
-	writemsg("(Could take a couple minutes if you have a lot of binary packages.)\n")
+	writemsg("(Could take a couple of minutes if you have a lot of binary packages.)\n")
 	writemsg("  "+bold(".")+"='update pass'  "+bold("*")+"='binary update'  "+bold("@")+"='/var/db move'\n"+"  "+bold("s")+"='/var/db SLOT move' "+bold("S")+"='binary SLOT move'\n")
 	processed=1
 	#remove stale virtual entries (mappings for packages that no longer exist)

@@ -23,7 +23,7 @@ if [ "$*" != "depend" ] && [ "$*" != "clean" ] && [ "$*" != "nofetch" ]; then
 			touch "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log" &> /dev/null
 			chmod g+w "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log" &> /dev/null
 			echo "$*" >> "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log"
-			{ $0 $* || rm -f "${T}/successful" ; } 2>&1 \
+			{ $0 "$@" || rm -f "${T}/successful" ; } 2>&1 \
 			  | tee -i -a "${PORT_LOGDIR}/${LOG_COUNTER}-${PF}.log"
 			if [ -f "${T}/successful" ]; then
 				rm -f "${T}/successful"
@@ -66,9 +66,6 @@ fi
 
 export PATH="/sbin:/usr/sbin:/usr/lib/portage/bin:/bin:/usr/bin:${ROOTPATH}"
 [ ! -z "$PREROOTPATH" ] && export PATH="${PREROOTPATH%%:}:$PATH"
-
-# Grab our new utility functions.
-source /usr/lib/portage/bin/extra_functions.sh
 
 if [ -e /etc/init.d/functions.sh ]; then
 	source /etc/init.d/functions.sh  &>/dev/null
@@ -469,6 +466,8 @@ src_unpack() {
 src_compile() { 
 	if [ -x ./configure ]; then
 		econf 
+	fi
+	if [ -f Makefile ] || [ -f GNUmakefile ] || [ -f makefile ]; then
 		emake || die "emake failed"
 	fi
 }

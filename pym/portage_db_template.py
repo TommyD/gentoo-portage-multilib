@@ -1,19 +1,52 @@
 # $Header$
 
+import os.path
+from portage_util import getconfig, ReadOnlyConfig
+from portage_exception import CorruptionError
+
 class database:
-	def __init__(self,path,category,dbkeys,uid,gid):
-		raise NotImplementedError("Method not defined")
+	def __init__(self,path,category,dbkeys,uid,gid,config_path="/etc/portage/module_configs/"):
+		self.__template_init_called = True
+		self.path     = path
+		self.category = category
+		self.dbkeys   = dbkeys
+		self.uid      = uid
+		self.gid      = gid
+
+		self.config   = None
+		self.__load_config(config_path)
+
+		self.module_init()
+	
+	def getModuleName(self):
+		return self.__module__+"."+self.__class__.__name__[:]
+
+	def __load_config(self,config_path):
+		config_file = config_path + "/" + self.getModuleName()
+		self.config = ReadOnlyConfig(config_file)
+
+	def __check_init(self):
+		try:
+			if self.__template_init_called:
+				pass
+		except:
+			raise NotImplementedError("db_template.__init__ was overridden")
 
 	def check_key(self,key):
 		if not key:
-			raise KeyError, "No key provided. key:%s" % (key)
+			raise KeyError, "No key provided. key: %s" % (key)
 	
 	def clear(self):
 		for x in self.keys():
 			self.del_key(x)
 	
 	def __getitem__(self,key):
-		return self.get_values(key)
+		if self.has_key(key):
+			try:
+				return self.get_values(key)
+			except Exception, e:
+				raise CorruptionError("Corruption detected when reading key '%s'" % (key))
+		raise KeyError("Key not in db: '%s'" % (key))
 	
 	def __setitem__(self,key,values):
 		return self.set_values(key,values)
@@ -25,14 +58,9 @@ class database:
 		raise NotImplementedError("Method not defined")
 
 	def get_values(self,key):
-		if not key:
-			raise KeyError, "key is not set to a valid value"
-
 		raise NotImplementedError("Method not defined")
 	
 	def set_values(self,key,val):
-		self.check_key(key)
-		
 		raise NotImplementedError("Method not defined")
 
 	def del_key(self,key):

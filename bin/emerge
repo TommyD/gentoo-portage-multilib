@@ -160,10 +160,11 @@ for x in cmdline:
 			if x in options:
 				myopts.append(x)
 			elif x[2:] in actions:
-				if x[2:]=="rsync":
+				if x[2:]=="rsync" or x=="rsync":
 					print
 					print red("*** 'rsync' has been deprecated.")
 					print red("*** Please use 'sync' instead.")
+					print
 					x="--sync"
 				if myaction:
 					if myaction not in ["system", "world"]:
@@ -306,12 +307,15 @@ def emergelog(mystr):
 	if "notitles" not in portage.features:
 		xtermTitle(mystr)
 	try:
-		mylogfile=open("/var/log/emerge.log", "a")
+		if not os.path.exist("/var/log/emerge.log"):
+			mylogfile=open("/var/log/emerge.log", "w")
+			os.chmod("/var/log/emerge.log", S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP)
+			os.chown("/var/log/emerge.log", portage.portage_uid, portage.portage_gid)
+		else:
+			mylogfile=open("/var/log/emerge.log", "a")
 		mylogfile.write(str(time.time())[:10]+": "+mystr+"\n")
 		mylogfile.flush()
 		mylogfile.close()
-		os.chmod("/var/log/emerge.log", S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP)
-		os.chown("/var/log/emerge.log", portage.portage_uid, portage.portage_gid)
 	except Exception, e:
 		if edebug:
 			print "emergelog():",e
@@ -1055,10 +1059,14 @@ class depgraph:
 				if "--upgradeonly" in myopts:
 					# Check that there isn't a newer version of this package already installed
 					cand = None
-					if myeb:
-						cand=self.is_newer_ver_installed(myroot,x,myeb)
-					elif myeb_pkg:
-						cand=self.is_newer_ver_installed(myroot,x,myeb_pkg)
+					try:
+						# XXX: This can throw an exception if the ebuild doesn't exist
+						if myeb:
+							cand=self.is_newer_ver_installed(myroot,x,myeb)
+						elif myeb_pkg:
+							cand=self.is_newer_ver_installed(myroot,x,myeb_pkg)
+					except Exception, e:
+						print "Warning: "+str(e)
 					if cand:
 						myeb=cand
 				

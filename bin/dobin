@@ -8,24 +8,12 @@ if [ ${#} -lt 1 ] ; then
 	exit 1
 fi
 
-if [ ! -z "${CBUILD}" ] && [ "${CBUILD}" != "${CHOST}" ]; then
-	STRIP=${CHOST}-strip
-else
-	STRIP=strip
-fi
-
 if [ ! -d "${D}${DESTTREE}/bin" ] ; then
 	install -d "${D}${DESTTREE}/bin"
 fi
 
 for x in "$@" ; do
 	if [ -x "${x}" ] ; then
-		if [ "${FEATURES//*nostrip*/true}" != "true" ] && [ "${RESTRICT//*nostrip*/true}" != "true" ] ; then
-			MYVAL=`file "${x}" | grep "ELF"` 
-			if [ -n "$MYVAL" ] ; then
-				${STRIP} "${x}"
-			fi
-		fi
 		#if executable, use existing perms
 		install "${x}" "${D}${DESTTREE}/bin"
 	else
