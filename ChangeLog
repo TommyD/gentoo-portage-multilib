@@ -9,6 +9,9 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
+  07 Aug 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Fixed the
+  cache updates so that an env-update forces ld updating.
+  
   07 Aug 2004; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py
   pym/portage_dep.py: Added a new parameter to use_reduce so that !arch?
   checks can be adhered to even when matchall=1 and arch is not is masklist.
@@ -43,7 +46,7 @@
 *portage-2.0.51_pre17 (03 Aug 2004): Fixes and Public Readiness
 
   03 Aug 2004; Nicholas Jones <carpaski@gentoo.org> portage_dep.py: Again
-	fixed the || exceptions to understand nested legal || statements.
+  fixed the || exceptions to understand nested legal || statements.
 
 *portage-2.0.51_pre16 (03 Aug 2004): Fixes and Public Readiness
 
