@@ -173,7 +173,7 @@ if ("buildpkg" in portage.features) or ("--buildpkgonly" in myopts):
 
 # Also allow -S to invoke search action (-sS)
 if ("--searchdesc" in myopts):
-	if myaction != "search":
+	if myaction and myaction != "search":
 		myfiles.append(myaction)
 	if "--search" not in myopts:
 		myopts.append("--search")

@@ -2,6 +2,22 @@
 # Copyright 2000-2003 Gentoo Technologies, Inc.; Distributed under the GPL v2
 # $Id$
 
+*portage-2.0.50_pre14 (11 Jan 2004): Quick Fixes -- ~arch version
+
+  12 Jan 2004; Nicholas Jones <carpaski@gentoo.org> emerge: Fix for
+  traceback on '-S'.
+
+  12 Jan 2004; Nicholas Jones <carpaski@gentoo.org> repoman: Fix for
+  traceback on --help.
+
+  12 Jan 2004; Nicholas Jones <carpaski@gentoo.org> sandbox: Fix for
+  sandboxpids.tmp file accesses.
+
+  12 Jan 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Sandbox, as
+  above. Catch invalid package names and print a sane message about it.
+
+*portage-2.0.50_pre13 (11 Jan 2004): Fixes
+
   11 Jan 2004; Nicholas Jones <carpaski@gentoo.org> cnf/*: Updated the
   Advanced masking section to aid the reduction of user complaints and
   requests for unreasable usage of ACCEPT_KEYWORDS.

@@ -1318,6 +1318,11 @@ def spawn(mystring,mysettings,debug=0,free=0,droppriv=0,fd_pipes=None):
 				os.setgroups([portage_gid])
 				os.setuid(portage_uid)
 				os.umask(002)
+				try:
+					os.chown("/tmp/sandboxpids.tmp",uid,portage_gid)
+					os.chmod("/tmp/sandboxpids.tmp",0664)
+				except:
+					pass
 			else:
 				writemsg("portage: Unable to drop root for "+str(mystring)+"\n")
 
@@ -3292,7 +3297,11 @@ def match_from_list(mydep,candidate_list):
 
 	elif operator in [">", ">=", "<", "<="]:
 		for x in candidate_list:
-			result = pkgcmp(pkgsplit(x), [cat+"/"+pkg,ver,rev])
+			try:
+				result = pkgcmp(pkgsplit(x), [cat+"/"+pkg,ver,rev])
+			except:
+				writemsg("\nInvalid package name: %s\n" % x)
+				sys.exit(73)
 			if result == None:
 				continue
 			elif operator == ">":

@@ -58,6 +58,7 @@ optionshelp={
 "--help"   :"Show this screen",
 "--commitmsg"    :"Adds a commit message via the command line.",
 "--commitmsgfile":"Adds a commit message from a file given on the command line.",
+"--ignore-other-arches": "Instructs repoman to ignore arches that are not relevent to the committing arch. REPORT/FIX issues you work around.",
 "--verbose":"Displays every package name while checking",
 "--xmlparse":"Forces the metadata.xml parse check tobe carried out"
 }

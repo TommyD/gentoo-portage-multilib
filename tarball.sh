@@ -25,7 +25,7 @@ fi
 rm -rf ${DEST}
 install -d -m0755 ${DEST}
 #get any binaries out of the way
-cd src/sandbox
+cd src/sandbox-1.1
 make clean
 cd ../..
 for x in bin cnf man pym src 
