@@ -222,7 +222,7 @@ use_with() {
 	if [ -z "$1" ]; then
 		echo "!!! use_with() called without a parameter." >&2
 		echo "!!! use_with <USEFLAG> [<flagname> [value]]" >&2
-		return
+		return 1
 	fi
 
 	local UW_SUFFIX=""	
@@ -237,10 +237,8 @@ use_with() {
 	
 	if useq $1; then
 		echo "--with-${UWORD}${UW_SUFFIX}"
-		return 0
 	else
 		echo "--without-${UWORD}"
-		return 1
 	fi
 }
 
@@ -248,7 +246,7 @@ use_enable() {
 	if [ -z "$1" ]; then
 		echo "!!! use_enable() called without a parameter." >&2
 		echo "!!! use_enable <USEFLAG> [<flagname> [value]]" >&2
-		return
+		return 1
 	fi
 
 	local UE_SUFFIX=""	
@@ -263,10 +261,8 @@ use_enable() {
 	
 	if useq $1; then
 		echo "--enable-${UWORD}${UE_SUFFIX}"
-		return 0
 	else
 		echo "--disable-${UWORD}"
-		return 1
 	fi
 }
 
