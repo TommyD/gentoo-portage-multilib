@@ -218,7 +218,7 @@ pkg_setup()
 src_unpack() { 
 	if [ "${A}" != "" ]
 	then
-		unpack ${A} || die "unpack failed"
+		unpack ${A}
 	fi	
 }
 
