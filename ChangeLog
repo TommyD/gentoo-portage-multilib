@@ -1,7 +1,7 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
-*portage-2.0.46 (18 Dec 2002): Feature Stable Release Prelink + Bug Fixes
+*portage-2.0.46-r2 (18 Dec 2002): Feature Stable Release Prelink + Bug Fixes
 
   18 Dec 2002; Nicholas Jones <carpaski@gentoo.org> portage.py, emerge:
   Traceback fix for blocking packages in the restart check in emerge. Added
