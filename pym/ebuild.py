@@ -1009,6 +1009,7 @@ class ebuild_handler:
 			"merge"	 :  {"dep":"install", "sandbox":True,	"userpriv":False, "fakeroot":False}
 		}
 
+		merging=False
 		# this shouldn't technically ever be called, get_keys exists for this.
 		# left in for compatability while portage.doebuild still exists
 		if phase=="depend":
@@ -1017,10 +1018,14 @@ class ebuild_handler:
 			return unmerge(mysettings["CATEGORY"],mysettings["PF"],myroot,mysettings)
 		elif phase in ["fetch","digest","manifest","clean"]:
 			return retval
+		elif phase=="merge":
+			merging=True
 		elif phase=="qmerge":
 			#no phases ran.
-			return merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["D"],mysettings["BUILDDIR"]+"/build-info",myroot,\
-				mysettings)
+			phase="merge"
+			merging=True
+#			return merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["D"],mysettings["BUILDDIR"]+"/build-info",myroot,\
+#				mysettings)
 
 		elif phase in ["help","clean","prerm","postrm","preinst","postinst","config"]:
 			self.__ebp = request_ebuild_processor(userpriv=False)
@@ -1034,7 +1039,6 @@ class ebuild_handler:
 			return not retval
 
 		k=phase
-		merging=False
 		# represent the phases to run, grouping each phase based upon if it's sandboxed, fakerooted, and userpriv'd
 		# ugly at a glance, but remember a processor can run multiple phases now.
 		# best to not be wasteful in terms of env saving/restoring, and just run all applicable phases in one shot
@@ -1167,7 +1171,7 @@ class ebuild_handler:
 		# basically, if FEATURES="-buildpkg" emerge package was called, the files in the current 
 		# image directory don't have their actual perms.  so we use an ugly bit of bash
 		# to make the fakeroot (claimed) permissions/owners a reality.
-		if use_fakeroot and os.path.exists(mysettings["T"]+"/fakeroot_db") and all_phases[-1] == "merge":
+		if use_fakeroot and os.path.exists(mysettings["T"]+"/fakeroot_db") and merging:
 			print "correcting fakeroot privs"
 			retval=portage_exec.spawn(("/usr/lib/portage/bin/affect-fakeroot-perms.sh", \
 				mysettings["T"]+"/fakeroot_db", \
@@ -1176,7 +1180,7 @@ class ebuild_handler:
 				print red("!!!")+"affecting fakeroot perms after the fact failed"
 				return retval
 
-		if "merge" in all_phases:
+		if merging:
 			print "processing merge"
 			retval = merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["D"],mysettings["BUILDDIR"]+"/build-info",myroot,\
 				mysettings,myebuild=mysettings["EBUILD"])
