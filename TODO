@@ -7,10 +7,12 @@
 #
 
 Legend:
- '*' Enhancement        '#' Tricky Enhancement
- '!' Complicated        '@' Restricted in some way
+ '*' Just do it.        '#' Tricky
+ '!' Difficult          '@' Restricted in some way
 
 
+# STICKIES and related enhancements:
+  bug 9379, bug 13616, Aether's config code
 
 # Determine file lock status before starting downloads -- Prevent races.
   Patches exist for this. Integrate and find all colliding descriptors.
