@@ -8,6 +8,7 @@
 # that last one is tricky because multiple profiles need to be checked.
 
 import os,sys
+from time import sleep
 exename=os.path.basename(sys.argv[0])	
 os.environ["PORTAGE_CALLER"]="repoman"
 version="1.2"	
