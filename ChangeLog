@@ -46,6 +46,9 @@
   22 Jul 2002; Nicholas Jones <carpaski@gentoo.org> emerge: added the
   description searching code and added a spinner to the search.
 
+  21 Jul 2002; Phil Bordelon <sunflare@gentoo.org> emerge.1: Finished the
+  rewrite of the emerge man page.
+    
   21 Jul 2002; Phil Bordelon <sunflare@gentoo.org> emerge: Readded the sync
   help to the list of help options now that emerge --help sync works again.
 
