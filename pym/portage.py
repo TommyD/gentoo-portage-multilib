@@ -1751,7 +1751,7 @@ class packagetree:
 		"generates new key, taking into account virtual keys"
 		if not self.tree.has_key(mykey):
 			self.load(mykey)
-		if len(self.tree[mykey])==0:
+		if self.tree.has_key(mykey) and len(self.tree[mykey])==0:
 			#no packages correspond to the key
 			if self.virtual:
 				if self.virtual.has_key(mykey):
@@ -2249,7 +2249,10 @@ class vartree(packagetree):
 		return self.root+"var/db/pkg/"+fullpackage+"/"+package+".ebuild"
 	
 	def load(self,mykey):
-		mycat,mypkg=string.split(mykey,"/")
+		if '/' in mykey:
+			mycat,mypkg=string.split(mykey,"/")
+		else:
+			return []
 		if not self.tree.has_key(mykey):
 			self.tree[mykey]=[]
 		#This next line allows us to set root to None and disable loading (for "emptytrees")
