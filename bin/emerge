@@ -51,6 +51,8 @@ def getportageversion():
 			glibcver+=","+xs[1]+"-"+xs[2]
 		else:
 			glibcver=xs[1]+"-"+xs[2]
+	if glibcver==[]:
+		glibcver="unavailable"
 
 	gccver=commands.getstatusoutput("/usr/bin/gcc -dumpversion")[1]
 	return "Portage " + portage.VERSION +" ("+profilever+", gcc-"+gccver+", glibc-"+glibcver+")"

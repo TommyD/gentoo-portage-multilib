@@ -1,8 +1,13 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  08 Nov 2002; Nicholas Jones <carpaski@gentoo.org> emerge:
+	Fix for missing-glibc-bug in --version.
+
   08 Nov 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
-	Fix for cfgdictfile traceback when ROOT != '/'
+	Fix for cfgdictfile traceback when ROOT != '/'. Fix for missing kernel
+	headers -- checks usr/src/linux, then /usr/include, then if merging
+	from sys-kernel ignore error.
 
   07 Nov 2002; Nicholas Jones <carpaski@gentoo.org> portage.py:
 	Fix (part 2) for the USE="-*" arch-missing problem.
