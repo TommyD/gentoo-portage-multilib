@@ -80,17 +80,18 @@ import xpak
 # ensure that they all categories are read when we check the portage directory
 # for available ebuilds.
 
-categories=("app-i18n","app-admin", "app-arch", "app-cdr", "app-crypt", "app-doc",
-"app-editors", "app-emulation", "app-games", "app-misc", "app-office",
-"app-shells", "app-text", "dev-db", "dev-java", "dev-lang", "dev-libs",
-"dev-perl", "dev-python", "dev-ruby", "dev-util", "gnome-apps", "gnome-base",
-"gnome-libs", "gnome-office","kde-apps", "kde-i18n", "kde-base", "kde-libs",
-"media-gfx", "media-libs", "media-sound", "media-video", "net-analyzer",
-"net-apache", "net-dialup", "net-fs", "net-ftp", "net-im", "net-irc",
-"net-libs", "net-mail", "net-misc", "net-news", "net-nds", "net-print",
-"net-www", "packages", "sys-apps", "sys-devel", "sys-kernel", "sys-libs",
-"x11-base", "x11-libs", "x11-misc", "x11-terms", "x11-wm", "virtual",
-"dev-tcltk")
+categories=("app-i18n","app-admin", "app-arch", "app-cdr", "app-crypt",
+	    "app-doc", "app-editors", "app-emulation", "app-games", "app-misc",
+	    "app-office", "app-shells", "app-text", "dev-db", "dev-java",
+	    "dev-lang", "dev-libs", "dev-perl", "dev-python", "dev-ruby",
+	    "dev-util", "gnome-base", "gnome-extra", "kde-apps", "kde-i18n",
+	    "kde-base", "kde-libs", "media-gfx", "media-libs", "media-sound",
+	    "media-video", "net-analyzer", "net-apache", "net-dialup",
+	    "net-fs", "net-ftp", "net-im", "net-irc", "net-libs", "net-mail",
+	    "net-misc", "net-news", "net-nds", "net-print", "net-www",
+	    "packages", "sys-apps", "sys-devel", "sys-kernel", "sys-libs",
+	    "x11-base", "x11-libs", "x11-misc", "x11-terms", "x11-wm",
+	    "virtual", "dev-tcltk")
 
 def tokenize(mystring):
 	"""breaks a string like 'foo? (bar) oni? (blah (blah))' into embedded lists; returns None on paren mismatch"""
