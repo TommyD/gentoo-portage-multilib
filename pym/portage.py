@@ -2,7 +2,7 @@
 # Copyright 1998-2002 Daniel Robbins, Gentoo Technologies, Inc.
 # Distributed under the GNU Public License v2
 
-VERSION="2.0.16pre"
+VERSION="2.0.16"
 
 from stat import *
 from commands import *
@@ -2118,7 +2118,7 @@ class packagetree:
 	def dep_nomatch(self,mypkgdep):
 		mykey=dep_getkey(mypkgdep)
 		nolist=self.dbapi.cp_list(mykey)
-		mymatch=match(mypkgdep,self.dbapi)
+		mymatch=self.dbapi.match(mypkgdep)
 		if not mymatch:
 			return nolist
 		for x in mymatch:
@@ -2219,7 +2219,13 @@ class dbapi:
 		'input: "sys-apps/foo-1.0",["SLOT","DEPEND","HOMEPAGE"]'
 		'return: ["0",">=sys-libs/bar-1.0","http://www.foo.com"] or [] if mycpv not found'
 		pass
-	
+
+	def match(self,origdep):
+		mydep=dep_expand(origdep,self)
+		mykey=dep_getkey(mydep)
+		mycat=mykey.split("/")[0]
+		return self.match2(mydep,mykey,self.cp_list(mykey))
+		
 	def match2(self,mydep,mykey,mylist):
 		"Notable difference to our match() function is that we don't return None. Ever.  Just empty list."
 		mycpv=dep_getcpv(mydep)
@@ -2357,12 +2363,6 @@ class fakedbapi(dbapi):
 			self.cpdict[mycp]=[]
 		if not mycpv in self.cpdict[mycp]:
 			self.cpdict[mycp].append(mycpv)
-	
-	def match(self,origdep):
-		mydep=dep_expand(origdep,self)
-		mykey=dep_getkey(mydep)
-		mycat=mykey.split("/")[0]
-		return self.match2(mydep,mykey,self.cp_list(mykey))
 	
 cptot=0
 class vardbapi(dbapi):

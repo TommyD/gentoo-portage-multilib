@@ -1,6 +1,12 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
 
+  23 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: fixed a bug
+  pointed out by trance -- dep_nomatch() was still using the old (deleted)
+  match() function.  Now it's using a new match() method.
+
+*portage-2.0.16 (22 Jul 2002)
+
   22 Jul 2002; Daniel Robbins <drobbins@gentoo.org> portage.py: changed xcache
   behavior so that the cache gets totally thrown away when the masks are
   updated.  Also revamped carpaski's code so we can avoid loading xcache from
