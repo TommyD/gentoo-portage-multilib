@@ -13,10 +13,11 @@ import commands
 import sha
 
 prelink_capable = False
-results = commands.getstatusoutput(PRELINK_BINARY+" --version > /dev/null 2>&1")
-if (results[0] >> 8) == 0:
-  prelink_capable=1
-del results
+if os.path.exists(PRELINK_BINARY):
+	results = commands.getstatusoutput(PRELINK_BINARY+" --version > /dev/null 2>&1")
+	if (results[0] >> 8) == 0:
+		prelink_capable=1
+	del results
 
 def perform_md5(x, calc_prelink=0):
 	return perform_checksum(x, md5hash, calc_prelink)[0]
