@@ -31,6 +31,7 @@ def cleanup():
 atexit.register(cleanup)
 
 from portage_const import BASH_BINARY,SANDBOX_BINARY,SANDBOX_PIDS_FILE
+
 def spawn_bash(mycommand,env={},debug=False,opt_name=None,**keywords):
 	args=[BASH_BINARY]
 	if not opt_name:
@@ -64,22 +65,13 @@ def spawn(mycommand,env={},opt_name=None,fd_pipes=None,returnpid=False,uid=None,
 	if type(mycommand)==types.StringType:
 		mycommand=mycommand.split()
 	myc = mycommand[0]
-	if not os.path.exists(myc):
+	if not os.path.exists(myc) or not os.stat(myc)[0] & 0x0248:
 		if not path_lookup:
 			return None
-		# this sucks. badly.
-		p=os.getenv("PATH")
-		if p == None:
+		myc = find_binary(myc)
+		if myc == None:
 			return None
-		found=False
-		for x in p.split(":"):
-			if os.path.exists("%s/%s" % (x,myc)):
-				myc="%s/%s" % (x,myc)
-				found=True
-				break
-		if not found:
-			return None
-
+		
 	mypid=[]
 	if logfile:
 		pr,pw=os.pipe()
@@ -203,4 +195,16 @@ def spawn(mycommand,env={},opt_name=None,fd_pipes=None,returnpid=False,uid=None,
 		else:
 			mypid.pop(-1)
 	return 0
+
+def find_binary(myc):
+	p=os.getenv("PATH")
+	if p == None:
+		return None
+	for x in p.split(":"):
+		# if it exists, and is executable
+		if os.path.exists("%s/%s" % (x,myc)) and os.stat("%s/%s" % (x,myc))[0] & 0x0248:
+			return "%s/%s" % (x,myc)
+
+	return None
+
 

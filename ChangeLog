@@ -7,6 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  26 Oct 2004; Brian Harring <ferringb@gentoo.org> portage_exec.py, bin/ebuild:
+  bug with the path lookup code (added find_binary func for upcoming additions), 
+  and bin/ebuild was bailing due to a missing portage_util import.
+
   25 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> portage.py: Wrapped entire
   lock-holding section of fetch() in a try-finally to ensure that the lock
   file gets released regardless of exception.
