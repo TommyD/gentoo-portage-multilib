@@ -1864,7 +1864,7 @@ def digestCreateLines(filelist, mydict):
 		for sumName in mydigests[myarchive].keys():
 			mysum = mydigests[myarchive][sumName]
 			myline = sumName+" "+mysum+" "+myarchive+" "+str(mysize)
-			if False and sumName != "MD5":
+			if sumName != "MD5":
 				# XXXXXXXXXXXXXXXX This cannot be used!
 				# Older portage make very dumb assumptions about the formats.
 				# We need a lead-in period before we break everything.
