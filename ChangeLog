@@ -1,0 +1,7 @@
+portage 1.6.5 - 31 Aug 2001
+
+emerge - Fixes for handling multiple ebuilds, packages and/or dependencies on
+the command-line.
+
+portage.py - An optimization to the digraph class so that the firstzero()
+method finds matches in close to the order that keys were added to the digraph.

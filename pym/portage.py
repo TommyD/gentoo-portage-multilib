@@ -96,10 +96,12 @@ categories=("app-admin", "app-arch", "app-cdr", "app-crypt", "app-doc",
 class digraph:
 	def __init__(self):
 		self.dict={}
-
+		#okeys = keys, in order they were added (to optimize firstzero() ordering)
+		self.okeys=[]
+	
 	def addnode(self,mykey,myparent):
-	#	print digraph
 		if not self.dict.has_key(mykey):
+			self.okeys.append(mykey)
 			if myparent==None:
 				self.dict[mykey]=[0,[]]
 			else:
@@ -116,10 +118,15 @@ class digraph:
 		for x in self.dict[mykey][1]:
 			self.dict[x][0]=self.dict[x][0]-1
 		del self.dict[mykey]
-
+		while 1:
+			try:
+				self.okeys.remove(mykey)	
+			except ValueError:
+				break
+	
 	def firstzero(self):
 		"returns first node with zero references, or NULL if no such node exists"
-		for x in self.dict.keys():
+		for x in self.okeys:
 			if self.dict[x][0]==0:
 				return x
 		return None 
@@ -136,6 +143,7 @@ class digraph:
 		mygraph=digraph()
 		for x in self.dict.keys():
 			mygraph.dict[x]=self.dict[x][:]
+			mygraph.okeys=self.okeys[:]
 		return mygraph
 
 # valid end of version components; integers specify offset from release version
