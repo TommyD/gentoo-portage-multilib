@@ -506,7 +506,7 @@ class ebuild_handler:
 
 	def get_keys(self,myebuild,mysettings,myroot="/"):
 		"""request the auxdbkeys from an ebuild
-		returns a dict"""
+		returns a dict when successful, None when failed"""
 #		print "getting keys for %s" % myebuild
 		# normally,
 		# userpriv'd, minus sandbox.  which is odd.
@@ -530,7 +530,7 @@ class ebuild_handler:
 		self.__ebp.write("start_processing")
 		line=self.__generic_phase(["sending_keys"],mysettings,interpret_results=False)
 		if line != "sending_keys":
-			return {}
+			return None
 		mykeys={}
 		while line != "end_keys":
 			line=self.__ebp.read()
@@ -636,6 +636,7 @@ class ebuild_handler:
 				raise
 			except Exception, e:
 				print "caught exception %s in ebd_proc:doebuild" % str(e)
+				mysettings["RESTRICT"] = mysettings["PORTAGE_RESTRICT"] = ""
 				pass
 	
 
@@ -795,7 +796,7 @@ class ebuild_handler:
 	
 		try:
 			#XXX: negative restrict
-			myrestrict = mysettings["RESTRICT"].split()
+			myrestrict = mysettings["PORTAGE_RESTRICT"].split()
 			if ("nouserpriv" not in myrestrict and "userpriv" not in myrestrict):
 				if ("userpriv" in mysettings.features) and (portage_uid and portage_gid):
 					if (secpass==2):
@@ -1024,7 +1025,7 @@ class ebuild_handler:
 			sandbox = ("sandbox" in features)
 
 	        droppriv=(("userpriv" in features) and \
-	                ("nouserpriv" not in string.split(mysettings["RESTRICT"])) and portage_exec.userpriv_capable)
+	                ("nouserpriv" not in string.split(mysettings["PORTAGE_RESTRICT"])) and portage_exec.userpriv_capable)
 		use_fakeroot=(("userpriv_fakeroot" in features) and droppriv and portage_exec.fakeroot_capable)
 
 		# basically a nasty graph of 'w/ this phase, have it userprived/sandboxed/fakeroot', and run
@@ -1232,6 +1233,7 @@ class ebuild_handler:
 		while line not in b:
 			line=self.__ebp.read()
 			line=line[:-1]
+
 			if line[0:23] == "request_sandbox_summary":
 				self.__ebp.sandbox_summary(line[24:])
 			elif line[0:17] == "request_confcache":

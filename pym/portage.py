@@ -3116,6 +3116,8 @@ class portdbapi(dbapi):
 
 				mydata=ebuild.ebuild_handler().get_keys(myebuild,self.mysettings)
 				self.lock_held = 0
+				if mydata == None:
+					raise Exception("Failed sourcing %s" % mycpv)
 
 				mydata["_mtime_"] = emtime
 				if mydata.get("INHERITED", False):

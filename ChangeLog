@@ -7,6 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  09 Mar 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py, pym/ebuild.py:
+  Two issues- use parsed restrict handling, and depends phase not bailing when
+  a cpv's key's can't be sourced
+
   09 Mar 2005; Marius Mauch <genone@gentoo.org> pym/elog_modules/mod_mail.py:
   Add a "To" header to mails.
 
