@@ -2,6 +2,15 @@
 # Copyright 2001 Gentoo Technologies, Inc.; Distributed under the GPL
 # Written by Daniel Robbins (drobbins@gentoo.org)
 
+*portage 1.8.6-r3 (28 Jan 2002)
+
+  28 Jan 2002; G.Bevin <gbevin@gentoo.org> : added verwilst pkgsearch code,
+  which was turned into a seperate class and refactored for clarity and
+  execution speed
+
+  28 Jan 2002; G.Bevin <gbevin@gentoo.org> : renamed _xxx vars to _prepart
+  in Vitaly's code addition
+
 *portage 1.8.6-r2 (27 Jan 2002)
 
   24 Jan 2002; Vitaly Kushneriuk <vitaly@gentoo.org>: Fixed version compare code

@@ -1,5 +1,6 @@
 #!/usr/bin/env spython
 import os
+from os.path import walk, splitext
 import sys
 
 if os.getuid()!=0:
@@ -9,12 +10,128 @@ if os.getuid()!=0:
 import portage
 import xpak
 import string
+from string import strip, find, replace
 import commands
 import shutil
 import re
 
-#build our package digraph
+# search functionality
+class search:
+	
+	#
+	# class constants
+	#
+	VERSION_SHORT=1
+	VERSION_RELEASE=2
+	
+	#
+	# public interface
+	#
+	def __init__(self,searchkey=""):
+		"""Searches the available and installed packages for the supplied search key.
+		The list of available and installed packages is created at object instantiation.
+		This makes successive searches faster."""
+		self.searchkey = searchkey
+		self.treecache = portage.portagetree()
+		self.installcache = portage.vartree()
+		self.re_portagedir = re.compile('/usr/portage/')
+		self.re_description = re.compile('DESCRIPTION="')
+		self.re_quote = re.compile('"')
+		self.re_slash = re.compile('/')
+		self.initResults()
+		
+	def setKey(self,searchkey):
+		"""changes the search key"""
+		self.searchkey = searchkey
+		self.initResults()
+	
+	def execute(self):
+		"""Performs the saerch for the supplied search key"""
+		if self.searchkey:
+			self.initResults()
+			walk("/usr/portage", self.searchVisit, 0)
 
+	def output(self):
+		"""Outputs the results of the search."""
+		print "[ Results for search key :\x1b[37;01m",self.searchkey,"\x1b[0m]"
+		print "[ Applications found :\x1b[37;01m", str(len(self.packagematches)), "\x1b[0m]"
+		print " "
+		for match in self.packagematches:
+			full_package = strip(self.treecache.dep_bestmatch(match))
+			if len(full_package) > 1:
+				print "\x1b[32;01m*\x1b[0m ",   "\x1b[37;01m", match,"\x1b[0m"
+				print "     ", "Latest version Available: ", self.getVersion(full_package, search.VERSION_RELEASE)
+				print "     ", self.getInstallationStatus(match)
+				print "     ", "Description: ", self.getDescription(self.getFullPath(match, full_package),self.getVersion(full_package, search.VERSION_SHORT))
+				print " "
+			else:
+				print "\x1b[32;01m*\x1b[0m ",   "\x1b[37;01m", match,"\x1b[0m \x1b[31;01m[ Masked ]\x1b[0m"
+				print " "
+		
+	#
+	# private interface
+	#
+	def initResults(self):
+		self.packagematches = []
+	
+	def searchVisit(self,arg,dirname,names):
+		p = self.re_portagedir.split(dirname)
+		if len(p) > 1: ## Don't process /usr/portage itself ##
+			p = p[1].split('/')
+			if len(p) < 3: ## Remove 'Files' dirs, not needed for the prog ##
+				if len(p) > 1: ## Filter out main dirs, like x11-libs and such ##
+					if p[1] != 'CVS' and p[0] != 'profiles' and p[0] != 'packages' and p[0] != 'incoming' and p[0] != 'distfiles': ## For the Dev's among us :o) ##
+						if self.searchkey != "*":
+							if re.search(self.searchkey.lower(), p[1].lower()): ## Files that are searched for ##
+								self.packagematches.append(strip(p[0] + "/" + p[1]))
+						else:
+							self.packagematches.append(strip(p[0] + "/" + p[1]))
+	
+	def getInstallationStatus(self,package):
+		installed_package = self.installcache.dep_bestmatch(package)
+		result = ""
+		version = self.getVersion(installed_package,search.VERSION_RELEASE)
+		if len(version) > 1:
+			result = "Latest version Installed:  " + version
+		else:
+			result = "Latest version Installed:  [ Not Installed ]"
+		return result
+
+	def getDescription(self,ebuildPath,packageVersion): ## Gets description from latest ebuild ##
+		file = open(ebuildPath)
+		result = "";
+		while 1:
+			data = file.readline()
+			if data:
+				if self.re_description.match(data.upper()):
+					p = self.re_description.split(data)
+					p = self.re_quote.split(p[1])
+					result = replace(p[0], "${PV}", packageVersion)
+					result = replace(result, "${pv}", packageVersion)
+					result = replace(result, "${description}", "KDE "  + packageVersion + " ")
+			else:
+				break;
+		file.close()
+		return result
+
+	def getFullPath(self,packageShortName,packageFullName):  ## Returns the full path of the ebuild ##
+		absolute_path = '/usr/portage/' + strip(packageShortName)
+		package_parts = self.re_slash.split(packageFullName)
+		result = absolute_path + "/" + package_parts[1] + ".ebuild"
+		return result
+
+	def getVersion(self,full_package,detail):
+		if len(full_package) > 1:
+			package_parts = portage.catpkgsplit(full_package)
+			if detail == search.VERSION_RELEASE and package_parts[3] != 'r0':
+				result = package_parts[2]+ "-" + package_parts[3]
+			else:
+				result = package_parts[2]
+		else:
+			result = ""
+		return result
+
+#build our package digraph
 class depgraph:
 
 	def __init__(self,mymode,myopts):
@@ -301,7 +418,7 @@ def post_emerge(retval=0):
 
 #number of ebuilds merged
 merged=0
-opts=["--world","--help","--pretend","--buildpkg","--usepkg","--autoclean","--clean","--debug","--fetchonly","--noreplace","--onlydeps","--verbose"]
+opts=["--world","--help","--pretend","--buildpkg","--usepkg","--autoclean","--clean","--debug","--fetchonly","--noreplace","--onlydeps","--verbose","--search"]
 modes=["rsync","system","update","config"]
 myopts=[]
 mymode=[]
@@ -402,6 +519,18 @@ if "--help" in myopts:
 		print "              installing an unfamiliar package.  In the printout, N = new,"
 		print "              U = upgrading, R = replacing"
 		print
+		print "       \x1b[32;01m--search\x1b[0m"
+		print "              searches for matches of the supplied string in the current local"
+		print "              portage tree. The search string is a regular expression."
+		print "              A few examples: "
+		print "              emerge --search \"^kde\""
+		print "                  list all packages starting with kde"
+		print "              emerge --search \"gcc$\""
+		print "                  list all packages ending with gcc"
+		print "              emerge --search \"\" or"
+		print "              emerge --search \"*\""
+		print "                  list all available packages "
+		print
 	elif "rsync" in mymode:
 		print
 		print "       \x1b[36;01memerge rsync"
@@ -476,6 +605,19 @@ if "--pretend" in myopts:
 		print
 		print "These are the packages that I would merge, in order."
 		print
+
+if "--search" in myopts:
+	if not myfiles:
+		print
+		print "No search terms provided."
+		print
+	else:
+		searchinstance = search()
+		for mysearch in myfiles:
+			searchinstance.setKey(mysearch)
+			searchinstance.execute()
+			searchinstance.output()
+	sys.exit(1)
 
 if "rsync" in mymode:
 	if not os.path.exists("/usr/bin/rsync"):
