@@ -9,13 +9,16 @@
     4. /etc/portage/sets/world is a symlink to /var/lib/portage/world
        It is for convenience. Do not mistake this for the actual file.
 
-  03 Jul 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge.py: Added masked
+  04 Jul 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge pym/portage.py:
+  Fixed issue that allowed installed virtuals to overide user virtuals.
+
+  03 Jul 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge: Added masked
   package removal to binpkg candidates before getting the best. (#55871)
 
   01 Jul 2004; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py:
   Fixed exception catching on module import.
 
-  27 Jun 2004; Jason Stubbs <jstubbs@gentoo.org> bin/repoman.py:
+  27 Jun 2004; Jason Stubbs <jstubbs@gentoo.org> bin/repoman:
   Fixed year (2003 -> 2004) in copyright lines.
 
   27 Jun 2004; Marius Mauch <genone@gentoo.org> pym/portage.py:

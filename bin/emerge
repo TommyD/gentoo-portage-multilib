@@ -827,13 +827,8 @@ class depgraph:
 		else:
 			mybigkey.append("nomerge")
 			
-		virts = portage.db[myroot]["porttree"].dbapi.aux_get(mykey, ["PROVIDE"])[0].split()
-		cp = portage.dep_getkey(mykey)
-		for virt in virts:
-			virt = portage.dep_getkey(virt)
-			while cp in portage.virts[virt]:
-				portage.virts[virt].remove(cp)
-			portage.virts[virt].insert(0, cp)
+		# Adjust pkgsettings with any virtuals this package provides.
+		self.pkgsettings.setinst(mykey,portage.db[myroot]["porttree"].dbapi)
 		
 		# whatever the case, we need to add the node to our digraph so
 		# that children can depend upon it.

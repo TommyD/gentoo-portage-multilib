@@ -1647,6 +1647,21 @@ class config:
 		self.configdict["pkg"]["USE"]    = self.puse[:] # this gets appended to USE
 		self.reset(keeping_pkg=1,use_cache=use_cache)
 
+	def setinst(self,mycpv,mydbapi):
+		# Grab the virtuals this package provides and add them into the tree virtuals.
+		virts = mydbapi.aux_get(mykey, ["PROVIDE"])[0].split()
+		cp = portage.dep_getkey(mykey)
+		for virt in virts:
+			virt = portage.dep_getkey(virt)
+			if not self.treeVirtuals.has_key(virt):
+				self.treeVirtuals[virt] = []
+			self.treeVirtuals[virt] = unique_array(self.treeVirtuals[virt]+[cp])
+		# Reconstruct the combined virtuals.
+		val = stack_dictlist([self.userVirtuals]+[self.treeVirtuals]+self.dirVirtuals,incremental=1)
+		for x in val.keys():
+			val[x].reverse()
+		self.virtuals = val
+	
 	def regenerate(self,useonly=0,use_cache=1):
 		global incrementals,usesplit,profiledir
 		
@@ -1741,7 +1756,7 @@ class config:
 		#myvirtdirs  = prefix_array(self.profiles,myroot+"/")
 		myvirtdirs = copy.deepcopy(self.profiles)
 		
-		treeVirtuals = {}
+		self.treeVirtuals = {}
 		user_profile_dir = None
 
 		# repoman doesn't need local virtuals.
@@ -1752,19 +1767,19 @@ class config:
 			#myVarTree    = getVarTree(myroot)
 			if db.has_key(myroot):
 				myVarTree    = db[myroot]["vartree"]
-				treeVirtuals = map_dictlist_vals(getCPFromCPV,myVarTree.get_all_provides())
-				for x in treeVirtuals.keys():
-					treeVirtuals[x] = unique_array(treeVirtuals[x])
+				self.treeVirtuals = map_dictlist_vals(getCPFromCPV,myVarTree.get_all_provides())
+				for x in self.treeVirtuals.keys():
+					self.treeVirtuals[x] = unique_array(self.treeVirtuals[x])
 			user_profile_dir = myroot+USER_CONFIG_PATH
 
-		dirVirtuals = grab_multiple("virtuals", myvirtdirs, grabdict)
-		userVirtuals = {}
+		self.dirVirtuals = grab_multiple("virtuals", myvirtdirs, grabdict)
+		self.userVirtuals = {}
 		if user_profile_dir and os.path.exists(user_profile_dir+"/virtuals"):
-			userVirtuals = grabdict(user_profile_dir+"/virtuals")
+			self.userVirtuals = grabdict(user_profile_dir+"/virtuals")
 		#dirVirtuals = stack_dicts(dvirts, incremental=1)
 		#dirVirtuals = grab_stacked("virtuals",myvirtdirs,grabdict)
 		# User settings and profile settings take precedence over tree.
-		val = stack_dictlist([userVirtuals]+[treeVirtuals]+dirVirtuals,incremental=1)
+		val = stack_dictlist([self.userVirtuals]+[self.treeVirtuals]+self.dirVirtuals,incremental=1)
 		for x in val.keys():
 			val[x].reverse()
 		return val 
