@@ -3867,16 +3867,15 @@ def dep_check(depstring,mydbapi,mysettings,use="yes",mode=None,myuse=None,use_ca
 	mysplit = portage_dep.paren_reduce(depstring)
 
 	if mysettings:
-#		mymasks = mysettings.usemask+archlist
 		if use=="all":
 			mymasks=archlist
 		else:
 			mymasks=mysettings.usemask+archlist
 		while mysettings["ARCH"] in mymasks:
 			del mymasks[mymasks.index(mysettings["ARCH"])]
-		mysplit = portage_dep.use_reduce(mysplit,myusesplit,masklist=mymasks)
+		mysplit = portage_dep.use_reduce(mysplit,myusesplit,masklist=mymasks,matchall=(use=="all"))
 	else:
-		mysplit = portage_dep.use_reduce(mysplit,myusesplit)
+		mysplit = portage_dep.use_reduce(mysplit,myusesplit,matchall=(use=="all"))
 	
 	#convert virtual dependencies to normal packages.
 	mysplit=dep_virtual(mysplit)
