@@ -624,7 +624,8 @@ else:
 					myout=[0]
 					mysplit=[0,string.split(string.split(mysplit[0],"\t")[1]," ")[1]]
 				else:
-					myout=getstatusoutput("egrep -q '\$Header$|\$Id$' "+mysplit[1])
+					headerstart="'\$Header: "
+					myout=getstatusoutput("egrep -q "+headerstart+"\$' "+mysplit[1])
 				if myout[0]==0:
 					myheaders.append(mysplit[1])
 				myupdates.append(mysplit[1])
