@@ -263,6 +263,23 @@ if you are going to use emake, make sure your build is happy with paralell makes
 for failing _sometimes_ but not alway
 .SH "HELPER FUNCTIONS: INSTALL"
 .TP
+\fBeinstall\fR \fI[make options]\fR
+This is used as a replacement for make install.  Performs:
+.br
+make prefix=${D}/usr \\
+.br
+            mandir=${D}/usr/share/man \\
+.br
+            infodir=${D}/usr/share/info \\
+.br
+            datadir=${D}/usr/share \\
+.br
+            sysconfdir=${D}/etc \\
+.br
+            localstatedir=${D}/var/lib \\
+.br
+            \fI[make options]\fR install
+.TP
 \fBdodir\fR \fI[path]\fR
 Creates a directory inside of ${D}.
 .br
