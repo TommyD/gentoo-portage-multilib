@@ -13,64 +13,40 @@ can also contain pre/post install/remove commands, as required.
 Here's a simple example ebuild:
 
 .DS
-# Copyright 1999\-2002 Gentoo Technologies, Inc.
-.br
+.nf
+# Copyright 1999\-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-.br
 # $Header:
-$
-.br
-inherit some_eclass another_eclass
-.br
-DESCRIPTION="Super\-useful stream editor (sed)"
-.br
-SRC_URI="ftp://alpha.gnu.org/pub/gnu/sed/${P}.tar.gz"
-.br
-HOMEPAGE="http://www.gnu.org/software/sed/sed.html"
-.br
 
-KEYWORDS="~x86"
-.br
-SLOT="0"
-.br
+inherit some_eclass another_eclass
+DESCRIPTION="Super\-useful stream editor (sed)"
+HOMEPAGE="http://www.gnu.org/software/sed/sed.html"
+SRC_URI="ftp://alpha.gnu.org/pub/gnu/sed/${P}.tar.gz"
+
 LICENSE="GPL\-2"
-.br
+SLOT="0"
+KEYWORDS="~x86"
 IUSE=""
-.br
 
 DEPEND="virtual/libc"
-.br
 RDEPEND="virtual/libc"
-.br
 
 src_compile() {
-.br
 	econf || die "could not configure"
-.br
 	emake || die "emake failed"
-.br
 }
-.br
 
 src_install() {
-.br
 	into /usr
-.br
 	doinfo doc/sed.info
-.br
 	doman doc/sed.1
-.br
 	into /
-.br
 	dobin sed/sed
-.br
 	dodir /usr/bin
-.br
 	dosym /bin/sed /usr/bin/sed
-.br
-	dodoc COPYING NEWS README* THANKS TODO AUTHORS BUGS ANNOUNCE
-.br
+	dodoc NEWS README* THANKS TODO AUTHORS BUGS ANNOUNCE
 }
+.fi
 .SH "VARIABLES"
 .TP
 .B MISC USAGE NOTES
@@ -551,31 +527,21 @@ directory. The function will append \fIsource\fR to the \fBDISTDIR\fR variable.
 .TP
 \fBeconf\fR \fI[configure options]\fR
 This is used as a replacement for configure.  Performs:
-.br
+.nf
 configure \\
-.br
 	--prefix=/usr \\
-.br
 	--host=${CHOST} \\
-.br
 	--mandir=/usr/share/man \\
-.br
 	--infodir=/usr/share/info \\
-.br
 	--datadir=/usr/share \\
-.br
 	--sysconfdir=/etc \\
-.br
 	--localstatedir=/var/lib \\
-.br
 	\fI${EXTRA_ECONF}\fR \\
-.br
 	\fIconfigure options\fR
-.br
-So you can either pass options to \fBeconf\fR via the command line or
-via the variable \fIEXTRA_ECONF\fR.  If you call \fBeconf\fR yourself, then
-you should just pass the extra arguements to \fBeconf\fR rather than using
-the variable \fIEXTRA_ECONF\fR.
+.fi
+Note that the \fIEXTRA_ECONF\fR is for users only, not for ebuild 
+writers.  If you wish to pass more options to configure, just pass the 
+extra arguements to \fBeconf\fR.
 .TP
 \fBemake\fR \fI[make options]\fR
 This is used as a replacement for make.  Performs
@@ -591,23 +557,20 @@ makes are notorious for failing _sometimes_ but not always.
 .TP
 \fBeinstall\fR \fI[make options]\fR
 This is used as a replacement for make install.  Performs:
-.br
-make prefix=${D}/usr \\
-.br
-            mandir=${D}/usr/share/man \\
-.br
-            infodir=${D}/usr/share/info \\
-.br
-            datadir=${D}/usr/share \\
-.br
-            sysconfdir=${D}/etc \\
-.br
-            localstatedir=${D}/var/lib \\
-.br
-            \fImake options\fR install
-
+.nf
+make \\
+	prefix=${D}/usr \\
+	datadir=${D}/usr/share \\
+	infodir=${D}/usr/share/info \\
+	localstatedir=${D}/var/lib \\
+	mandir=${D}/usr/share/man \\
+	sysconfdir=${D}/etc \\
+	\fI${EXTRA_EINSTALL}\fR \\
+	\fImake options\fR install
+.fi
 Please do not use this in place of 'make install DESTDIR=${D}'.  That
-is the preferred way of installing make-based packages.
+is the preferred way of installing make-based packages.  Also, do not 
+utilize the \fIEXTRA_EINSTALL\fR variable since it is for users.
 
 .PD 0
 .TP
