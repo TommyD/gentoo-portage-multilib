@@ -7,8 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  16 Oct 2004; Brian Harring <ferringb@gentoo.org> portage_locks.py: Corrected 
+  a bug involving unlocking + lockf.
 
-  12 Oct 2003; Brian Harring <ferringb@gentoo.org> portage_exec.py: spawn_sandbox
+  12 Oct 2004; Brian Harring <ferringb@gentoo.org> portage_exec.py: spawn_sandbox
   wasn't passing the opt_name down to spawn, it now does.
 
   11 Oct 2004; Jason Stubbs; <jstubbs@gentoo.org> emerge: Reverted back to
