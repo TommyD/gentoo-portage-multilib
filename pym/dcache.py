@@ -1,5 +1,5 @@
 """list based, symlink aware fs listdir caching implementation"""
-import os,stat
+import os,stat,weakref
 
 def norm_path(mypath):
 	newpath = os.path.normpath(mypath)
@@ -17,60 +17,62 @@ def abs_link(sym):
 
 class node:
 	"""class representing a directory"""
-	instances = 0
+	__slots__=["dir_node_name","dir_node_ref","dirs","files","others","sdirs","sfiles","mtime"]
+#	instances = 0
 	def __init__(self):#,dirs=[],others=[],files=[],mtime=-1):
-		self.dir_node_n=[]
-		self.dir_node_l=[]
+		self.dir_node_ref=[]
+		self.dir_node_name=[]
 		self.dirs=[]
 		self.files=[]
 		self.others=[]
 		self.sdirs=[]
 		self.sfiles=[]
 		self.mtime=-1
-		node.instances += 1
 
 	def __del__(self):
-#		print "deleting a node"
-		node.instances -= 1
-		del self.dir_node_n
-		del self.dir_node_l
-		del self.sdirs
-		del self.sfiles
-		del self.dirs
-		del self.files
-		del self.others
-		del self.mtime
+		print "del'ing a node"
+#		del self.dir_node_n
+#		del self.sdirs
+#		del self.sfiles
+#		del self.dirs
+#		del self.files
+#		del self.others
+#		del self.mtime
 
 	def get_node(self,nnode):
 		"""retrieve directory node if exists"""
 		try:	
-			x=self.dir_node_n.index(nnode)
-			return self.dir_node_l[x]
-		except:
+			x=self.dir_node_name.index(nnode)
+			return self.dir_node_ref[x]
+		except (ReferenceError,ValueError),e :
+#			print "ref exception",e
 			return None
 
-	def add_node(self,nnode,ref_node=None):
-		self.dir_node_n.append(nnode)
+	def add_node(self,nnode,ref_node=None,symlink=False):
+		self.dir_node_name.append(nnode)
 		if ref_node:
-			self.dir_node_l.append(ref_node)
+			if symlink:
+				self.dir_node_ref.append(weakref.proxy(ref_node))
+			else:
+				self.dir_node_ref.append(ref_node)
 		else:
-			self.dir_node_l.append(node())
-		return self.dir_node_l[-1]
+			self.dir_node_ref.append(node())
+		return self.dir_node_ref[-1]
 
 	def del_node(self,nnode):
 		try:
-			x=self.dir_node_n.index(nnode)
-			del self.dir_node_n[x]
-			del self.dir_node_l[x]
+			x=self.dir_node_name.index(nnode)
+			del self.dir_node_name[x]
+			del self.dir_node_ref[x]
 		except Exception,e:
 			print "warning, dcache was asked to delete a non_existant node: lacks node %s" % nnode
 			print "e=",e
 	
 	def rec_del_node(self):
-		while len(self.dir_node_l):
-			self.dir_node_l[0].rec_del_node()
-			del self.dir_node_l[0]
-			del self.dir_node_n[0]
+		while len(self.dir_node_n):
+			self.dir_node_name[0].rec_del_node()
+			del self.dir_node_name[0][0]
+			del self.dir_node_ref[0]
 
 class dcache:
 	def __init__(self):
@@ -91,7 +93,7 @@ class dcache:
 
 			g=c.get_node(p[0])
 			if not g:
-				st=os.stat(fullpath)
+				st=os.lstat(fullpath)
 				if stat.S_ISLNK(st.st_mode):
 					# yippee
 					fullpath=abs_link(fullpath)
@@ -114,16 +116,21 @@ class dcache:
 			ent=self.cache
 		else:
 			ent = self._get_dir_ent(mypath)
-		listing_needed = ent.mtime == -1
+#		print "nodes mtime=",ent.mtime
+		listing_needed = (ent.mtime == -1)
 
 		mtime = os.stat(mypath).st_mtime
 		if not listing_needed:
+#			print "nost listing needed"
 			if mtime != ent.mtime:
+				print "mtime flipped it"
 				self._invalidate_dir_node(ent)
 				listing_needed = True
 
+#		print "ent = ",ent,"listing_needed=",listing_needed
 		if listing_needed:
 			ent.mtime=mtime
+#			print "set nodes mtime to",ent.mtime,"from",mtime
 			l = os.listdir(mypath)
 			for x in l:
 				try:
@@ -142,7 +149,6 @@ class dcache:
 						ent.others.append(x)
 				except:
 					ent.others.append(x)
-
-		return ent.dirs + ent.sdirs + ent.files + ent.sfiles + ent.others, \
+		return list(ent.dirs + ent.sdirs + ent.files + ent.sfiles + ent.others),\
 			[1 for x in ent.dirs]+[3 for x in ent.sdirs]+	\
 			[0 for x in ent.files]+	[2 for x in ent.sfiles]+[4 for x in ent.others]
