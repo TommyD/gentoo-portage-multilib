@@ -501,6 +501,18 @@ VERINS=`best_version net-ftp/glftpd`
 .br
 (VERINS now has the value "net-ftp/glftpd-1.27" if glftpd-1.27 is installed)
 .RE
+.SH "HELPER FUNCTIONS: OUTPUT"
+.TP
+\fBeinfo\fR \fI"informative message"\fR
+If you need to display an message that you wish the user to read and take 
+notice of, then use \fBeinfo\fR.  It works just like \fBecho\fR(1), but 
+adds a little more to the output so as to catch the user's eye.
+.TP
+\fBewarn\fR \fI"warning message"\fR
+Same as \fBeinfo\fR, but should be used when showing a warning to the user.
+.TP
+\fBeerror\fR \fI"error message"\fR
+Same as \fBeinfo\fR, but should be used when showing an error to the user.
 .SH "HELPER FUNCTIONS: UNPACK"
 .TP
 \fBunpack\fR \fI<source>\fR \fI[list of more sources]\fR
@@ -660,6 +672,10 @@ Creates a directory inside of ${D}.
 .BR 'dodir\ /usr/lib/apache'
 creates ${D}/usr/lib/apache
 .TP
+\fBdiropts\fR \fI[options for install(1)]\fR
+Can be used to define options for the install function used in
+\fBdodir\fR.  The default is \fI-m0755\fR.
+.TP
 \fBinto\fR \fI<path>\fR
 Sets the root (\fIDESTTREE\fR) for other functions like \fBdobin\fR,
 \fBdosbin\fR, \fBdoman\fR, \fBdoinfo\fR, \fBdolib\fR.
@@ -689,12 +705,14 @@ Creates all necessary dirs.
 Installs a library or a list of libraries into \fIDESTTREE\fR/lib.
 Creates all necessary dirs.
 .TP
+\fBlibopts\fR \fI[options for install(1)]\fR
+Can be used to define options for the install function used in
+the \fBdolib\fR functions.  The default is \fI-m0644\fR.
+.TP
 \fBdoman\fR \fI<man-page> [list of more man\-pages]\fR
 Installs manual\-pages into \fIDESTDIR\fR/man/man[1\-8n] depending on the
 manual file ending. The files are gzipped if they are not already. Creates
 all necessary dirs.
-
-.PD 0
 .TP
 \fBdohard\fR \fI<filename> <linkname>\fR
 .TP
