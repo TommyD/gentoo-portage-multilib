@@ -1,0 +1,22 @@
+# ChangeLog for Path Sandbox
+# Copyright 2002 Gentoo Technologies, Inc.; Distributed under the GPL v2
+# $Header$
+
+  18 Aug 2002; Martin Schlemmer <azarah@gentoo.org> :
+
+  Ripped out all the wrappers, and implemented those of InstallWatch.
+  Losts of cleanups and bugfixes.  Implement a execve that forces
+  $LIBSANDBOX in $LD_PRELOAD.  We can now thus do away with the feared
+  /etc/ld.so.preload (*g*) ... Made the needed changes to sandbox.c,
+  sandbox.h and sandbox_futils.c.  Rewrote the Makefile for most
+  parts; it now have an install target.
+  
+  Reformat the whole thing to look somewhat like the reworked sandbox.c
+  and new sandbox.h and sandbox_futils.c from:
+  
+    Brad House <brad@mainstreetsoftworks.com>.
+
+  Additional Copyrights now due to the InstallWatch code:
+  
+    Copyright (C) 1998-9 Pancrazio `Ezio' de Mauro <p@demauro.net>
+
