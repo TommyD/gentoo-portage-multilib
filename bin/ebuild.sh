@@ -104,7 +104,7 @@ useq() {
 	local x
 	
 	# Make sure we have this USE flag in IUSE
-	if ! hasq "${u}" ${IUSE} && ! hasq "${u}" ${PORTAGE_ARCHLIST}; then
+	if ! hasq "${u}" ${IUSE} && ! hasq "${u}" ${PORTAGE_ARCHLIST} selinux; then
 		echo "QA Notice: USE Flag '${u}' not in IUSE for ${CATEGORY}/${PF}" >&2
 	fi
 

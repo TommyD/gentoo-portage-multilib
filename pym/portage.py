@@ -1704,6 +1704,7 @@ class config:
 		myvirtdirs = copy.deepcopy(self.profiles)
 		
 		treeVirtuals = {}
+		user_profile_dir = None
 
 		# repoman doesn't need local virtuals.
 		if os.environ.has_key("PORTAGE_CALLER") and os.environ["PORTAGE_CALLER"] == "repoman":
@@ -1716,13 +1717,18 @@ class config:
 				treeVirtuals = map_dictlist_vals(getCPFromCPV,myVarTree.get_all_provides())
 				for x in treeVirtuals.keys():
 					treeVirtuals[x] = unique_array(treeVirtuals[x])
-			myvirtdirs.append(myroot+USER_CONFIG_PATH)
+			user_profile_dir = myroot+USER_CONFIG_PATH
 
 		dirVirtuals = grab_multiple("virtuals", myvirtdirs, grabdict)
+		userVirtuals = {}
+		if user_profile_dir and os.path.exists(user_profile_dir+"/virtuals"):
+			userVirtuals = grabdict(user_profile_dir+"/virtuals")
 		#dirVirtuals = stack_dicts(dvirts, incremental=1)
 		#dirVirtuals = grab_stacked("virtuals",myvirtdirs,grabdict)
 		# User settings and profile settings take precedence over tree.
-		val = stack_dictlist([treeVirtuals]+dirVirtuals)
+		val = stack_dictlist(dirVirtuals+[treeVirtuals]+[userVirtuals],incremental=1)
+		for x in val.keys():
+			val[x].reverse()
 		return val 
 	
 	def __delitem__(self,mykey):
@@ -2449,6 +2455,11 @@ def doebuild(myebuild,mydo,myroot,mysettings,debug=0,listonly=0,fetchonly=0,clea
 
 		retval = spawn(EBUILD_SH_BINARY+" depend",mysettings)
 		return retval
+		
+	try:
+		mysettings["INHERITED"] = db[root]["porttree"].dbapi.aux_get(mycpv,["INHERITED"])[0]
+	except:
+		pass
 
 	# Build directory creation isn't required for any of these.
 	if mydo not in ["fetch","digest","manifest"]:

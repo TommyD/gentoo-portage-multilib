@@ -33,7 +33,7 @@ def isunwanted(pkgline):
 		__uniqlist__.append(pkgline)
 		return True
 
-worldlist = portage.grabfile("/var/cache/edb/world")
+worldlist = portage.grabfile(portage.WORLD_FILE)
 syslist = portage.grabfile(portage.profiledir+"/packages")
 syslist = filter(issyspkg, syslist)
 
@@ -76,6 +76,6 @@ for mykey in biglist:
 			print "add to world:",myfavkey
 			worldlist.append(myfavkey)
 
-myfile=open("/var/cache/edb/world", "w")
+myfile=open(portage.WORLD_FILE, "w")
 myfile.write(string.join(worldlist, '\n')+'\n')
 myfile.close()
