@@ -14,8 +14,8 @@
   As bug #60147 demonstrated, profiles occasionally need to adjust 
   SANDBOX_WRITE (current case being for /usr/lib64/{conftest,cf}).
 
-  13 Aug 2004; Brian Harring <ferringb@gentoo.org> bin/emerge: Fixed a 
-  traceback related to attempting to concat an int/long to a str. (#60256)
+  13 Aug 2004; Brian Harring <ferringb@gentoo.org> bin/emerge: Related to 
+  bug #60256, adjusted format_size so that is always returns a string.
 
   13 Aug 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge:
   Relocated blocker checking code to before pkgsettings.setcpv() is called
