@@ -484,6 +484,10 @@ Sets the root (\fIDESTTREE\fR) for other functions like \fBdobin\fR, \fBdosbin\f
 .br
 The default root is /usr.
 .TP
+\fBkeepdir\fR \fI<path>\fR
+Tells portage to leave a directory behind even if it is empty.  Functions the same as
+\fBdodir\fR.
+.TP
 \fBdobin\fR \fI<binary> [list of more binaries]\fR
 Installs a \fIbinary\fR or a list of binaries into \fIDESTTREE\fR/bin.  Creates all necessary dirs.
 .TP
