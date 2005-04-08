@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  08 Apr 2005; Marius Mauch <genone@gentoo.org> bin/emerge:
+  Add a list of active user config files to emerge --info.
+  
   06 Apr 2005; Marius Mauch <genone@gentoo.org> pym/set_modules/*.py:
   Added a basic framework for package sets including modules for "system",
   general filelists (including "world") and "security", the latter currently

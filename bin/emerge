@@ -3271,6 +3271,15 @@ elif "info"==myaction:
 		print "Unset:  "+", ".join(unset_vars)
 	print
 
+	config_files = [portage.MAKE_CONF_FILE,
+	                portage.MODULES_FILE_PATH,
+	                portage.USER_VIRTUALS_FILE,
+	                portage.EBUILD_SH_ENV_FILE,
+	                portage.CUSTOM_MIRRORS_FILE]
+	config_files += [portage.USER_CONFIG_PATH+"/package."+x for x in ["mask","unmask","keywords","env"]]
+	config_files += [portage.CUSTOM_PROFILE_PATH+"/"+x for x in ["make.defaults","packages","use.mask","virtuals","profile.bashrc","use.defaults"]]
+	print "Config files: "+(", ".join([x for x in config_files if os.path.exists(x)]))
+
 	if "--debug" in myopts:
 		for x in dir(portage):
 			module = getattr(portage, x)
