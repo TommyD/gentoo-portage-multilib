@@ -4908,7 +4908,7 @@ class dblink:
 		return os.path.exists(self.dbdir+"/CATEGORY")
 
 def cleanup_pkgmerge(mypkg,origdir=None):
-	shutil.rmtree(settings["PORTAGE_TMPDIR"]+"/portage-pkg/"+mypkg)
+	shutil.rmtree(settings["PORTAGE_TMPDIR"]+"/binpkgs/"+mypkg)
 	if os.path.exists(settings["PORTAGE_TMPDIR"]+"/portage/"+mypkg+"/temp/environment"):
 		os.unlink(settings["PORTAGE_TMPDIR"]+"/portage/"+mypkg+"/temp/environment")
 	if origdir:
@@ -4930,7 +4930,7 @@ def pkgmerge(mytbz2,myroot,mysettings):
 		return None
 	mycat=mycat.strip()
 	mycatpkg=mycat+"/"+mypkg
-	tmploc=mysettings["PORTAGE_TMPDIR"]+"/portage-pkg/"
+	tmploc=mysettings["PORTAGE_TMPDIR"]+"/binpkgs/"
 	pkgloc=tmploc+"/"+mypkg+"/bin/"
 	infloc=tmploc+"/"+mypkg+"/inf/"
 	myebuild=tmploc+"/"+mypkg+"/inf/"+os.path.basename(mytbz2)[:-4]+"ebuild"

@@ -659,7 +659,7 @@ class ebuild_handler:
 			mysettings["BUILD_PREFIX"] += "-pkg"
 
 		mysettings["HOME"]         = mysettings["BUILD_PREFIX"]+"/homedir"
-		mysettings["PKG_TMPDIR"]   = mysettings["PORTAGE_TMPDIR"]+"/portage-pkg"
+		mysettings["PKG_TMPDIR"]   = mysettings["PORTAGE_TMPDIR"]+"/binpkgs"
 
 		if cleanup and os.path.exists(mysettings["BUILDDIR"]):
 			print "cleansing builddir"+mysettings["BUILDDIR"]
