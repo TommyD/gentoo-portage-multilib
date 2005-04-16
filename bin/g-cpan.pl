@@ -192,7 +192,9 @@ sub portage_dir {
     if ( $file =~ m|.*/(.*)-[0-9]+\.| ) { return $1; }
     if ( $file =~ m|.*/([a-zA-Z-]*)[0-9]+\.| ) { return $1; }
     if ( $file =~ m|.*/([^.]*)\.| ) { return $1; }
+    
     warn "$0: Unable to coerce $file into a portage dir name";
+    
     return;
 }
 
@@ -254,6 +256,7 @@ HERE
     if ( $prereq_pm && keys %$prereq_pm ) {
 
         print EBUILD q|DEPEND="|;
+        #MPC print EBUILD q|DEPEND="dev-perl/module-build |;
 
         my $first = 1;
         my %dup_check;
@@ -261,6 +264,7 @@ HERE
 
             my $obj = CPAN::Shell->expandany($_);
             my $dir = portage_dir($obj);
+    	    if ( $dir eq "Module-Build" ) { $dir = "module-build" }
             next if $dir eq "perl";
             if ( ( !$dup_check{$dir} ) && ( !module_check($dir) ) ) {
                 $dup_check{$dir} = 1;
@@ -324,6 +328,9 @@ sub install_module {
     my $pack = $CPAN::META->instance( 'CPAN::Distribution', $file );
     $pack->called_for( $obj->id );
     $pack->make;
+    # A cheap ploy, but this lets us add module-build as needed instead of forcing it on everyone
+    my $add_mb = 0;
+    if (-f "Build.PL") { $add_mb = 1 }
     $pack->unforce if $pack->can("unforce") && exists $obj->{'force_update'};
     delete $obj->{'force_update'};
 
@@ -347,6 +354,7 @@ sub install_module {
 
     # make ebuilds for all the prereqs
     my $prereq_pm = $pack->prereq_pm;
+    if ($add_mb) {$prereq_pm->{'Module::Build'} = "0" }
     install_module($_, 1) for ( keys %$prereq_pm );
 
     # get the build dir from CPAN, this will tell us definitively
