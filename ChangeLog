@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  19 Apr 2005; Mike Frysinger <vapier@gentoo.org> bin/etc-update:
+  Clean up some silly `cat` usages and make the output format pretty.
+
   12 Apr 2005; Mike Frysinger <vapier@gentoo.org> bin/quickpkg pym/ebuild.py 
   pym/portage.py:
   Rename 'portage-pkg' to 'binpkgs' so tab completion for 'portage' works.
