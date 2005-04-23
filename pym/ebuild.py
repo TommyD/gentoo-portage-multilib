@@ -767,9 +767,9 @@ class ebuild_handler:
 
 			elif mydo=="digest":
 				#since we are calling "digest" directly, recreate the digest even if it already exists
-				return (not digestgen(checkme,mysettings,overwrite=1,verbosity=verbosity))
+				return (not digestgen(aalist,mysettings,overwrite=1,verbosity=verbosity))
 			if mydo=="manifest":
-				return (not digestgen(checkme,mysettings,overwrite=1,manifestonly=1,verbosity=verbosity))
+				return (not digestgen(aalist,mysettings,overwrite=1,manifestonly=1,verbosity=verbosity))
 	
 			if not digestcheck(checkme, mysettings, ("strict" in features),verbosity=verbosity):
 				return 1
