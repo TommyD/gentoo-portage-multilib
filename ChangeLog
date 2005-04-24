@@ -7,6 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  24 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage_syntax.py:
+  Added a class called DependSpec which handles parsing *DEPEND and SRC_URI
+  strings. Read-only at the moment, but will probably change later.
+
   24 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> bin/emerge pym/portage.py:
   Removed support for --inject and --upgradeonly as well as the now unused
   digraph class.
