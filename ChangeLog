@@ -7,6 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  24 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> bin/emerge pym/portage.py:
+  Removed support for --inject and --upgradeonly as well as the now unused
+  digraph class.
+
   23 Apr 2005; Marius Mauch <genone@gentoo.org> pym/ebuild.py:
   forward port fix for bug 77794.
 
