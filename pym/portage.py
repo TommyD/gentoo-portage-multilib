@@ -2821,7 +2821,6 @@ class portdbapi(dbapi):
 					kmask=None
 					break
 				elif gp=="-*":
-					kmask="-*"
 					break
 				elif gp=="-"+myarch:
 					kmask="-"+myarch
