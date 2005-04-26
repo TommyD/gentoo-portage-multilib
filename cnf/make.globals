@@ -42,7 +42,7 @@ CXXFLAGS=${CFLAGS}
 # Default maintainer options
 #FEATURES="digest sandbox noclean noauto buildpkg usersandbox"
 # Default user options
-FEATURES="sandbox distlocks ccache autoaddcvs"
+FEATURES="sandbox distlocks ccache autoaddcvs strict"
 
 # By default output colored text where possible, set to "true" to output only
 #black&white text
