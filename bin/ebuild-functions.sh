@@ -73,15 +73,14 @@ econf() {
 	local ret
 	ECONF_SOURCE="${ECONF_SOURCE:-.}"
 	if [ -x "${ECONF_SOURCE}/configure" ]; then
-		if hasq autoconfig $FEATURES && ! hasq autoconfig $RESTRICT; then
-			if [ -e /usr/share/gnuconfig/ ]; then
-				local x
-				for x in $(find ${WORKDIR} -type f -name config.guess -o -name config.sub); do
-					echo " * econf: updating ${x/${WORKDIR}\/} with /usr/share/gnuconfig/${x##*/}"
-					cp -f "/usr/share/gnuconfig/${x##*/}" "${x}"
-				done
-			fi
+		if [ -e /usr/share/gnuconfig/ ]; then
+			local x
+			for x in $(find "${WORKDIR}" -type f -name config.guess -o -name config.sub) ; do
+				echo " * econf: updating ${x/${WORKDIR}\/} with /usr/share/gnuconfig/${x##*/}"
+				cp -f "/usr/share/gnuconfig/${x##*/}" "${x}"
+			done
 		fi
+
 		if [ ! -z "${CBUILD}" ]; then
 			EXTRA_ECONF="--build=${CBUILD} ${EXTRA_ECONF}"
 		fi
