@@ -50,5 +50,5 @@ def process(mysettings, cpv, logentries, fulltext):
 	except smtplib.SMTPException, e:
 		raise portage_exception.PortageException("!!! An error occured while trying to send logmail:\n"+e)
 	except socket.error, e:
-		raise portage_exception.PortageException("!!! A network error occured while trying to send logmail:\n"+e+"\nSure you configured PORTAGE_LOG_MAILURI correctly?"))
+		raise portage_exception.PortageException("!!! A network error occured while trying to send logmail:\n"+e+"\nSure you configured PORTAGE_LOG_MAILURI correctly?")
 	return
