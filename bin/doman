@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2004 Gentoo Foundation
+# Copyright 1999-2005 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
@@ -30,7 +30,7 @@ for x in "$@" ; do
 		continue
 	fi
 
-  if [ "${x}" == ".keep" ]; then
+	if [ "${x}" == ".keep" ] ; then
 		continue
 	fi
 
@@ -53,7 +53,7 @@ for x in "$@" ; do
 
 	mandir=${i18n}man${suffix:0:1}
 
-	if echo ${mandir} | egrep -q 'man[1-8n]$' -; then
+	if echo ${mandir} | egrep -q 'man[0-9n](f|p|pm)$' -; then
 		if [ -e "${x}" ] ; then
 			if [ ! -d "${D}${BASE}/man/${mandir}" ] ; then
 				install -d "${D}${BASE}/man/${mandir}"
@@ -65,9 +65,9 @@ for x in "$@" ; do
 				gzip -f -9 "${D}${BASE}/man/${mandir}/${x##*/}"
 			fi
 		else
-			echo "doman: ${x} does not exist." 1>&2
+			echo "doman: ${x} does not exist" 1>&2
 		fi
 	else
-		echo -e "\adoman: '${x}' is probably not a man page." 1>&2
+		echo -e "\adoman: '${x}' is probably not a man page; skipping" 1>&2
 	fi
 done
