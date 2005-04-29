@@ -33,7 +33,6 @@ if not os.path.exists(SANDBOX_BINARY):
 	if os.path.exists(PORTAGE_BIN_PATH+"/sandbox"):
 		SANDBOX_BINARY=PORTAGE_BIN_PATH+"/sandbox"
 
-DEPSCAN_SH_BINARY       = "/sbin/depscan.sh"
 BASH_BINARY             = "/bin/bash"
 MOVE_BINARY             = "/bin/mv"
 PRELINK_BINARY          = "/usr/sbin/prelink"
