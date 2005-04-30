@@ -36,7 +36,7 @@ for x in "$@" ; do
 
 	BASE="$OLDBASE"
 	suffix="${x##*.}"
-		
+
 	if [ "$suffix" == "gz" ] ; then
 		compressed="gz"
 		realname="${x%.*}"
