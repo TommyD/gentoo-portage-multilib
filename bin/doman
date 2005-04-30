@@ -53,7 +53,7 @@ for x in "$@" ; do
 
 	mandir=${i18n}man${suffix:0:1}
 
-	if echo ${mandir} | egrep -q 'man[0-9n](f|p|pm)$' -; then
+	if echo ${mandir} | egrep -q 'man[0-9n](|f|p|pm)$' -; then
 		if [ -e "${x}" ] ; then
 			if [ ! -d "${D}${BASE}/man/${mandir}" ] ; then
 				install -d "${D}${BASE}/man/${mandir}"
