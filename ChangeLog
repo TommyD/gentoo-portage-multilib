@@ -7,6 +7,13 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  03 May 2005; Jason Stubbs <jstubbs@gentoo.org> man/portage.5:
+  Removed invalid example from package.keywords section.
+
+  03 May 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage_dep.py
+  pym/portage_syntax.py: Mostly completed DependSpec and started on
+  TargetGraph.
+
   29 Apr 2005; Mike Frysinger <vapier@gentoo.org> bin/doman:
   Recognize more subchapters than just [1-8n] #32584.
 

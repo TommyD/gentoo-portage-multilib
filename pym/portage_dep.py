@@ -21,6 +21,7 @@ cvs_id_string="$Id$"[5:-2]
 import os,string,types,sys,copy
 import portage_exception
 import portage_versions
+import portage_syntax
 
 OPERATORS="*<=>~!"
 ENDVERSION_KEYS = ["pre", "p", "alpha", "beta", "rc"]
@@ -128,11 +129,11 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 	if deparray and deparray[-1] and deparray[-1][-1] == "?":
 		# Conditional with no target
 		raise portage_exception.InvalidDependString("INVALID "+deparray[x]+" DEPEND STRING: "+str(deparray))
-	
+
 	#XXX: Compatibility -- Still required?
 	if ("*" in uselist):
 		matchall=1
-	
+
 	mydeparray = deparray[:]
 	rlist = []
 	while mydeparray:
@@ -215,7 +216,7 @@ def dep_opconvert(deplist):
 
 
 
-class DependencyGraph:
+class DependencyGraph(object):
 	"""Self-contained directed graph of abstract nodes.
 
 	This is a enhanced version of the digraph class. It supports forward
@@ -422,7 +423,7 @@ class DependencyGraph:
 
 			# And add them to our list of root nodes.
 			roots.extend(newroots)
-			
+
 			# If the graph is empty, stop processing.
 			if not clone.graph:
 				break
@@ -611,7 +612,7 @@ def match_from_list(mydep,candidate_list):
 	elif operator == "=": # Exact match
 		if mycpv in candidate_list:
 			mylist = [mycpv]
-	
+
 	elif operator == "=*": # glob match
 		# The old verion ignored _tag suffixes... This one doesn't.
 		for x in candidate_list:
@@ -654,7 +655,25 @@ def match_from_list(mydep,candidate_list):
 				raise KeyError, "Unknown operator: %s" % mydep
 	else:
 		raise KeyError, "Unknown operator: %s" % mydep
-	
 
 	return mylist
-				
+
+
+class GluePkg(portage_syntax.CPV):
+
+	def __init__(self, cpv, db, use, bdeps, rdeps):
+		portage_syntax.CPV.__init__(self, cpv)
+		self.__dict__["db"] = db
+		self.__dict__["use"] = use.split()
+		self.__dict__["bdeps"] = portage_syntax.DependSpec(bdeps).resolve_conditions(self.use)
+		self.__dict__["rdeps"] = portage_syntax.DependSpec(rdeps).resolve_conditions(self.use)
+
+
+class TargetGraph(object):
+
+	def __init__(self):
+		# keys
+		self.graph = DependencyGraph()
+
+		# key : ([Atom], [GLuePkg], [GluePkg])
+		self.pkgrec = {}

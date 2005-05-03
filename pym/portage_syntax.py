@@ -11,11 +11,11 @@ class CPV(object):
 	"""
 	Attributes
 
-        str category
-        str package
+	str category
+	str package
 	str key (cat/pkg)
-        str version
-        int revision
+	str version
+	int revision
 
 	Methods
 
@@ -204,12 +204,13 @@ class Atom(object):
 	Attributes
 
 	bool blocks
-	str operator
+	str  operator
 	bool glob_match
-	CPV cpv
+	CPV  cpv
 
 	Methods
 	int __hash__()
+	str __str__()
 	str __repr__()
 	bool match(CPV)
 	"""
@@ -223,8 +224,11 @@ class Atom(object):
 	def __hash__(self):
 		return self.hash
 
-	def __repr__(self):
+	def __str__(self):
 		return self.atomstr
+
+	def __repr__(self):
+		return "Atom('" + self.atomstr + "')"
 
 	def __setattr__(self, name, value):
 		raise Exception()
@@ -323,103 +327,212 @@ class Atom(object):
 
 class DependSpec:
 
-	def __init__(self, dependstr):
-		dependstr = " ".join(dependstr.split())
+	"""
+	Attributes
+
+	list elements
+	bool preferential
+	str  condition
+
+	Methods
+
+	int __str__()
+	str __repr__()
+	"""
+
+	def __init__(self, dependstr, element_class=str):
+
 		if not isinstance(dependstr, str):
 			raise ValueError(dependstr)
-		self.__dict__["origstr"] = dependstr
-		self.__dict__["hash"] = hash(dependstr)
-		self.__dict__["preferential"] = dependstr.startswith("||")
-		if self.preferential:
-			if dependstr[-1] != ")":
-				raise ValueError(self.dependstr)
-			dependstr = " ".join(dependstr[2:-1].split())
-			if not dependstr.startswith("("):
-				raise ValueError(self.dependstr)
-			self.__dict__["dependstr"] = " ".join(dependstr[1:])
-		else:
-			self.__dict__["dependstr"] = dependstr
-		self.__dict__["depstrlen"] = len(dependstr)
-		self.__dict__["parseidx"] = 0
+		if isinstance(element_class, DependSpec):
+			raise ValueEro
+
+		dependstr = " ".join(dependstr.split())
+		self.__dict__["dependstr"] = dependstr
+		self.__dict__["condition"] = None
+		self.__dict__["preferential"] = False
 		self.__dict__["elements"] = []
 
-	def __hash__(self):
-		return self.hash
+		depstrlen = len(dependstr)
+		parseidx = 0
+		condition = None
+		element = None
 
-	def __repr__(self):
-		return "DependSpec('" + self.origstr + "')"
+		while parseidx != depstrlen:
+			c = dependstr[parseidx]
+
+			if c == " ":
+				parseidx += 1
+				continue
+
+			if c == ")":
+				raise ValueError(self.dependstr)
+
+			if c == "|" and not element and dependstr[parseidx:].startswith("||"):
+				parseidx += 2
+				(subdependstr, parseidx) = self._extract_dependstr(dependstr, parseidx)
+				element = DependSpec(subdependstr, element_class)
+				if len(element.elements) > 1:
+					element.__dict__["preferential"] = True
+				if condition:
+					element.__dict__["condition"] = condition
+					condition = None
+				self.elements.append(element)
+				element = None
+				continue
+
+			if c == "(":
+				(subdependstr, parseidx) = self._extract_dependstr(dependstr, parseidx)
+				element = DependSpec(subdependstr, element_class)
+				if condition:
+					element.__dict__["condition"] = condition
+					condition = None
+				self.elements.append(element)
+				element = None
+				continue
+
+			if dependstr.find(" ", parseidx) != -1:
+				element = dependstr[parseidx:dependstr.find(" ", parseidx)]
+			else:
+				element = dependstr[parseidx:]
+			parseidx += len(element)
+
+			if element[-1] == "?":
+				if condition:
+					raise ValueError(self.dependstr)
+				condition = element[:-1]
+				if not condition:
+					raise ValueError(self.dependstr)
+				element = None
+			elif condition:
+				if not element:
+					raise ValueError(self.dependstr)
+				if not isinstance(element, DependSpec):
+					element = DependSpec(element, element_class)
+				element.__dict__["condition"] = condition
+				condition = None
+				self.elements.append(element)
+				element = None
+			else:
+				element = element_class(element)
+				self.elements.append(element)
+				element = None
+
+		self.__dict__["dependstr"] = None
+
+	def _extract_dependstr(self, dependstr, parseidx):
+		depstrlen = len(dependstr)
+
+		while dependstr[parseidx] != "(":
+			parseidx += 1
+			if parseidx == depstrlen or dependstr[parseidx] not in [" ", "("]:
+				raise ValueError(self.dependstr)
+
+		parseidx += 1
+		startpos = parseidx
+		bracketcount = 1
+
+		while bracketcount:
+			if parseidx == depstrlen:
+				raise ValueError(self.dependstr)
+
+			nextopen = dependstr.find("(", parseidx)
+			nextclose = dependstr.find(")", parseidx)
+			if nextopen == -1 and nextclose == -1:
+				raise ValueError(self.dependstr)
+
+			if nextclose == -1 or nextopen != -1 and nextopen < nextclose:
+				parseidx = nextopen + 1
+				bracketcount += 1
+			else:
+				parseidx = nextclose + 1
+				bracketcount -= 1
+
+		subdependstr = dependstr[startpos:parseidx-1]
+		return (subdependstr, parseidx)
 
 	def __setattr__(self, name, value):
 		raise Exception()
 
-	def __getitem__(self, index):
-		if index < len(self.elements):
-			return self.elements[index]
-		index -= len(self.elements)
-		while True:
-			use = None
-			element = ""
-			parseidx = self.parseidx
-			while parseidx < self.depstrlen:
-				c = self.dependstr[parseidx]
-				if c == "|" and not element and self.dependstr[parseidx:].startswith("||"):
-					parseidx += 2
-					(subdependstr, parseidx) = self._extract_dependstr(parseidx)
-					subdependstr = "|| (" + subdependstr + ")"
-					element = DependSpec(subdependstr)
-					break
-				if c == "(":
-					if element:
-						break
-					(subdependstr, parseidx) = self._extract_dependstr(parseidx)
-					element = DependSpec(subdependstr)
-					break
-				if c == ")":
-					raise ValueError(self.dependstr)
-				if c == " ":
-					parseidx += 1
-					if not element:
-						continue
-					if element[-1] == "?":
-						use = element[:-1]
-						if not use:
-							raise ValueError(self.dependstr)
-						element = ""
-						continue
-					break
-				element += c
-				parseidx += 1
-			self.__dict__["parseidx"] = parseidx
-			if use and not element:
-				raise ValueError(self.dependstr)
-			self.elements.append((use, element))
-			if index == 0:
-				return self.elements[-1]
-			if self.parseidx == self.depstrlen:
-				break
-			index -= 1
-		raise IndexError(index)
+	def __repr__(self):
+		return "DependSpec('" + str(self) + "')"
 
-	def _extract_dependstr(self, parseidx):
-		while self.dependstr[parseidx] != "(":
-			parseidx += 1
-			if parseidx == self.depstrlen or self.dependstr[parseidx] not in [" ", "("]:
-				raise ValueError(self.dependstr)
-		parseidx += 1
-		c = self.dependstr[parseidx]
-		subdependstr = ""
-		bracketcount = 0
-		while bracketcount or c != ")":
-			subdependstr += c
-			if c == "(":
-				bracketcount += 1
-			elif c == ")":
-				bracketcount -= 1
-			parseidx += 1
-			if parseidx == self.depstrlen:
-				break
-			c = self.dependstr[parseidx]
-		if bracketcount:
-			raise ValueError(self.dependstr)
-		parseidx += 1
-		return (subdependstr, parseidx)
+	def __str__(self):
+		if self.dependstr:
+			return self.dependstr
+
+		self.compact()
+		dependstr = ""
+		if self.condition:
+			dependstr = self.condition + "? ( "
+		if self.preferential:
+			dependstr += "|| ( "
+		for element in self.elements:
+			if isinstance(element, DependSpec) and len(element.elements) > 1 and not element.preferential:
+				dependstr += "( " + str(element) + " )"
+			else:
+				dependstr += str(element)
+			dependstr += " "
+		if self.elements:
+			dependstr = dependstr[:-1]
+		if self.preferential:
+			dependstr += " )"
+		if self.condition:
+			dependstr += " )"
+		self.__dict__["dependstr"] == dependstr
+		return dependstr
+
+	def compact(self):
+		changed = True
+		while changed:
+			for element in self.elements:
+				if isinstance(element, DependSpec):
+					element.compact()
+			changed = False
+			for x in range(len(self.elements)-1, -1, -1):
+				if isinstance(self.elements[x], DependSpec) and not len(self.elements[x].elements):
+					del self.elements[x]
+					changed = True
+			if not self.condition and not self.preferential:
+				for x in range(len(self.elements)-1, -1, -1):
+					if isinstance(self.elements[x], DependSpec):
+						if not self.elements[x].condition and not self.elements[x].preferential:
+							self.elements.extend(self.elements[x].elements)
+							del self.elements[x]
+							changed = True
+
+		if not self.condition and not self.preferential and len(self.elements) == 1 and isinstance(self.elements[0], DependSpec):
+			element = self.elements[0]
+			self.__dict__["condition"] = element.condition
+			self.__dict__["preferential"] = element.preferential
+			self.__dict__["elements"] = element.elements
+
+	def resolve_conditions(self, truths):
+		dependstr = ""
+		if self.condition and self.condition not in truths:
+			return DependSpec(dependstr)
+
+		if self.condition:
+			dependstr = self.condition + "? ( "
+		if self.preferential:
+			dependstr += "|| ( "
+		for element in self.elements:
+			if isinstance(element, DependSpec) and len(element.elements) > 1:
+				dependstr += "( " + str(element.resolve_conditions(truths)) + " )"
+			elif isinstance(element, DependSpec):
+				dependstr += str(element.resolve_conditions(truths))
+			else:
+				dependstr += str(element)
+			dependstr += " "
+		if self.elements:
+			dependstr = dependstr[:-1]
+		if self.preferential:
+			dependstr += " )"
+		if self.condition:
+			dependstr += " )"
+
+		depspec = DependSpec(dependstr)
+		depspec.compact()
+
+		return depspec
+
