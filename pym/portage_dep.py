@@ -663,10 +663,10 @@ class GluePkg(portage_syntax.CPV):
 
 	def __init__(self, cpv, db, use, bdeps, rdeps):
 		portage_syntax.CPV.__init__(self, cpv)
-		self.__dict__["db"] = db
-		self.__dict__["use"] = use.split()
-		self.__dict__["bdeps"] = portage_syntax.DependSpec(bdeps).resolve_conditions(self.use)
-		self.__dict__["rdeps"] = portage_syntax.DependSpec(rdeps).resolve_conditions(self.use)
+		self.db = db
+		self.use = use.split()
+		self.bdeps = portage_syntax.DependSpec(bdeps).resolve_conditions(self.use)
+		self.rdeps = portage_syntax.DependSpec(rdeps).resolve_conditions(self.use)
 
 
 class TargetGraph(object):
@@ -677,3 +677,7 @@ class TargetGraph(object):
 
 		# key : ([Atom], [GLuePkg], [GluePkg])
 		self.pkgrec = {}
+
+	def add_package(self, pkg):
+		self.pkgrec[pkg.key][0].append(pkg)
+		self.graph.add_node(pkg.key)

@@ -1,4 +1,4 @@
-import re,string
+import re,string,copy
 
 
 pkg_regexp = re.compile("^[a-zA-Z0-9]([-_+a-zA-Z0-9]*[+a-zA-Z0-9])?$")
@@ -324,6 +324,77 @@ class Atom(object):
 		#else:
 		return False
 
+	def intersects(self, atom):
+		if self == other:
+			return True
+		if self.key != atom.key:
+			return False
+		if self.blocks != other.blocks:
+			return False
+		if not self.operator or not other.operator:
+			return True
+		if self.cpv == other.cpv:
+			if self.operator == other.operator:
+				return True
+			if self.operator == "<":
+				return (other.operator[0] == "<")
+			if self.operator == ">":
+				return (other.operator[0] == ">" or other.operator == "~")
+			if self.operator == "=":
+				return (other.operator != "<" and other.operator != ">")
+			if self.operator == "~" or self.operator == ">=":
+				return (other.operator != "<")
+			return (other.operator != ">")
+		elif self.cpv.version == other.cpv.version:
+			if self.cpv > other.cpv:
+				if self.operator == "=" and other.operator == "~":
+					return True
+			elif self.operator == "~" and other.operator == "=":
+					return True
+		if self.operator in ["=","~"] and other.operator in ["=","~"]:
+			return False
+		if self.cpv > other.cpv:
+			if self.operator in ["<","<="]:
+				return True
+			if other.operator in [">",">="]:
+				return True
+			return False
+		if self.operator in [">",">="]:
+			return True
+		if other.operator in ["<","<="]:
+			return True
+		return False
+
+	def encapsulates(self, atom):
+		if not self.intersects(atom):
+			return False
+
+		if self.operator and not other.operator:
+			return False
+		if not self.operator:
+			return True
+
+		if self.cpv == other.cpv:
+			if self.operator == other.operator:
+				return True
+			if other.operator == "=":
+				return True
+			if self.operator == "<=" and other.operator == "<":
+				return True
+			if self.operator == ">=" and other.operator == ">":
+				return True
+			return False
+		elif self.cpv.version == other.cpv.version:
+			if self.cpv < other.cpv and self.operator == "~":
+				return true
+		if self.cpv > other.cpv:
+			if self.operator in ["<","<="] and other.operator not in [">",">="]:
+				return True
+			return False
+		if self.operator in [">",">="] and other.operator not in ["<","<="]:
+			return True
+		return False
+
 
 class DependSpec:
 
@@ -340,7 +411,7 @@ class DependSpec:
 	str __repr__()
 	"""
 
-	def __init__(self, dependstr, element_class=str):
+	def __init__(self, dependstr="", element_class=str):
 
 		if not isinstance(dependstr, str):
 			raise ValueError(dependstr)
@@ -457,18 +528,20 @@ class DependSpec:
 	def __repr__(self):
 		return "DependSpec('" + str(self) + "')"
 
+	def __eq__(self, other):
+		return str(self) == str(other)
+
 	def __str__(self):
 		if self.dependstr:
 			return self.dependstr
 
-		self.compact()
 		dependstr = ""
 		if self.condition:
 			dependstr = self.condition + "? ( "
 		if self.preferential:
 			dependstr += "|| ( "
 		for element in self.elements:
-			if isinstance(element, DependSpec) and len(element.elements) > 1 and not element.preferential:
+			if isinstance(element, DependSpec) and len(element.elements) > 1 and not element.preferential and not element.condition:
 				dependstr += "( " + str(element) + " )"
 			else:
 				dependstr += str(element)
@@ -483,11 +556,12 @@ class DependSpec:
 		return dependstr
 
 	def compact(self):
+		for element in self.elements:
+			if isinstance(element, DependSpec):
+				element.compact()
+
 		changed = True
 		while changed:
-			for element in self.elements:
-				if isinstance(element, DependSpec):
-					element.compact()
 			changed = False
 			for x in range(len(self.elements)-1, -1, -1):
 				if isinstance(self.elements[x], DependSpec) and not len(self.elements[x].elements):
@@ -501,38 +575,34 @@ class DependSpec:
 							del self.elements[x]
 							changed = True
 
+		elements = self.elements[:]
+		del self.elements[:]
+		for element in elements:
+			if element not in self.elements:
+				self.elements.append(element)
+
 		if not self.condition and not self.preferential and len(self.elements) == 1 and isinstance(self.elements[0], DependSpec):
 			element = self.elements[0]
 			self.__dict__["condition"] = element.condition
 			self.__dict__["preferential"] = element.preferential
 			self.__dict__["elements"] = element.elements
 
-	def resolve_conditions(self, truths):
-		dependstr = ""
-		if self.condition and self.condition not in truths:
-			return DependSpec(dependstr)
-
-		if self.condition:
-			dependstr = self.condition + "? ( "
-		if self.preferential:
-			dependstr += "|| ( "
+	def __copy__(self):
+		dependspec = DependSpec()
+		dependspec.__dict__["condition"] = self.condition
+		dependspec.__dict__["preferential"] = self.preferential
 		for element in self.elements:
-			if isinstance(element, DependSpec) and len(element.elements) > 1:
-				dependstr += "( " + str(element.resolve_conditions(truths)) + " )"
-			elif isinstance(element, DependSpec):
-				dependstr += str(element.resolve_conditions(truths))
-			else:
-				dependstr += str(element)
-			dependstr += " "
-		if self.elements:
-			dependstr = dependstr[:-1]
-		if self.preferential:
-			dependstr += " )"
-		if self.condition:
-			dependstr += " )"
+			dependspec.elements.append(copy.copy(element))
+		return dependspec
 
-		depspec = DependSpec(dependstr)
-		depspec.compact()
+	def resolve_conditions(self, truths):
+		if self.condition and self.condition not in truths:
+			del self.elements[:]
+			return
 
-		return depspec
+		dependspec.__dict__["preferential"] = self.preferential
+		for element in self.elements:
+			if isinstance(element, DependSpec):
+				element.resolve_conditions(truths)
 
+		self.compact()
