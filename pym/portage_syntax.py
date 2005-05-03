@@ -325,19 +325,19 @@ class Atom(object):
 		return False
 
 	def intersects(self, atom):
-		if self == other:
+		if self == atom:
 			return True
-		if self.key != atom.key:
+		if self.cpv.key != atom.cpv.key:
 			return False
-		if self.blocks != other.blocks:
+		if self.blocks != atom.blocks:
 			return False
-		if not self.operator or not other.operator:
+		if not self.operator or not atom.operator:
 			return True
 		if self.cpv == other.cpv:
-			if self.operator == other.operator:
+			if self.operator == atom.operator:
 				return True
 			if self.operator == "<":
-				return (other.operator[0] == "<")
+				return (atom.operator[0] == "<")
 			if self.operator == ">":
 				return (other.operator[0] == ">" or other.operator == "~")
 			if self.operator == "=":
@@ -369,12 +369,12 @@ class Atom(object):
 		if not self.intersects(atom):
 			return False
 
-		if self.operator and not other.operator:
+		if self.operator and not atom.operator:
 			return False
 		if not self.operator:
 			return True
 
-		if self.cpv == other.cpv:
+		if self.cpv == atom.cpv:
 			if self.operator == other.operator:
 				return True
 			if other.operator == "=":

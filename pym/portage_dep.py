@@ -669,6 +669,49 @@ class GluePkg(portage_syntax.CPV):
 		self.rdeps = portage_syntax.DependSpec(rdeps).resolve_conditions(self.use)
 
 
+def transform_dependspec(dependspec, preferences):
+	def dotransform(dependspec, preferences):
+		dependspec = copy.copy(dependspec)
+		elements = dependspec.elements
+		dependspec.elements = []
+		neworder = []
+		prio = len(preferences)+1
+		idx = -1
+		for element in elements[:]:
+			if isinstance(element, portage_syntax.DependSpec):
+				neworder.append(dotransform(element, preferences))
+				elements.remove(element)
+		for pref in preferences:
+			idx += 1
+			for element in elements[:]:
+				if pref.intersects(element):
+					if idx < prio:
+						prio = idx
+					if pref.encapsulates(element):
+						neworder.append((idx, element))
+						elements.remove(element)
+					else:
+						subdependspec = portage_syntax.DependSpec(element_class=portage_syntax.Atom)
+						if element.encapsulates(pref):
+							subsubdependspec = portage_syntax.DependSpec(element_class=portage_syntax.Atom)
+							subsubdependspec.add_element(pref)
+							subsubdependspec.add_element(element)
+							subdependspec.add_element(subsubdependspec)
+						else:
+							subdependspec.add_element(pref)
+						subdependspec.add_element(element)
+						subdependspec.preferential = True
+						neworder.append((idx, subdependspec))
+						elements.remove(element)
+		neworder.sort()
+		for element in neworder:
+			dependspec.add_element(element[1])
+		for element in elements:
+			dependspec.add_element(element)
+		return (prio, dependspec)
+	return dotransform(dependspec, preferences)[1]
+
+
 class TargetGraph(object):
 
 	def __init__(self):
