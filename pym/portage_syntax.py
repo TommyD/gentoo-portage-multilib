@@ -416,13 +416,14 @@ class DependSpec:
 		if not isinstance(dependstr, str):
 			raise ValueError(dependstr)
 		if isinstance(element_class, DependSpec):
-			raise ValueEro
+			raise ValueError
 
 		dependstr = " ".join(dependstr.split())
-		self.__dict__["dependstr"] = dependstr
-		self.__dict__["condition"] = None
-		self.__dict__["preferential"] = False
-		self.__dict__["elements"] = []
+		self.element_class = element_class
+		self.dependstr = dependstr
+		self.condition = None
+		self.preferential = False
+		self.elements = []
 
 		depstrlen = len(dependstr)
 		parseidx = 0
@@ -444,9 +445,9 @@ class DependSpec:
 				(subdependstr, parseidx) = self._extract_dependstr(dependstr, parseidx)
 				element = DependSpec(subdependstr, element_class)
 				if len(element.elements) > 1:
-					element.__dict__["preferential"] = True
+					element.preferential = True
 				if condition:
-					element.__dict__["condition"] = condition
+					element.condition = condition
 					condition = None
 				self.elements.append(element)
 				element = None
@@ -456,7 +457,7 @@ class DependSpec:
 				(subdependstr, parseidx) = self._extract_dependstr(dependstr, parseidx)
 				element = DependSpec(subdependstr, element_class)
 				if condition:
-					element.__dict__["condition"] = condition
+					element.condition = condition
 					condition = None
 				self.elements.append(element)
 				element = None
@@ -480,7 +481,7 @@ class DependSpec:
 					raise ValueError(self.dependstr)
 				if not isinstance(element, DependSpec):
 					element = DependSpec(element, element_class)
-				element.__dict__["condition"] = condition
+				element.condition = condition
 				condition = None
 				self.elements.append(element)
 				element = None
@@ -489,7 +490,7 @@ class DependSpec:
 				self.elements.append(element)
 				element = None
 
-		self.__dict__["dependstr"] = None
+		self.dependstr = None
 
 	def _extract_dependstr(self, dependstr, parseidx):
 		depstrlen = len(dependstr)
@@ -522,9 +523,6 @@ class DependSpec:
 		subdependstr = dependstr[startpos:parseidx-1]
 		return (subdependstr, parseidx)
 
-	def __setattr__(self, name, value):
-		raise Exception()
-
 	def __repr__(self):
 		return "DependSpec('" + str(self) + "')"
 
@@ -552,7 +550,7 @@ class DependSpec:
 			dependstr += " )"
 		if self.condition:
 			dependstr += " )"
-		self.__dict__["dependstr"] == dependstr
+		self.dependstr == dependstr
 		return dependstr
 
 	def compact(self):
@@ -583,16 +581,18 @@ class DependSpec:
 
 		if not self.condition and not self.preferential and len(self.elements) == 1 and isinstance(self.elements[0], DependSpec):
 			element = self.elements[0]
-			self.__dict__["condition"] = element.condition
-			self.__dict__["preferential"] = element.preferential
-			self.__dict__["elements"] = element.elements
+			self.condition = element.condition
+			self.preferential = element.preferential
+			self.elements = element.elements
+
+		self.dependstr = None
 
 	def __copy__(self):
-		dependspec = DependSpec()
-		dependspec.__dict__["condition"] = self.condition
-		dependspec.__dict__["preferential"] = self.preferential
+		dependspec = DependSpec(element_class=self.element_class)
+		dependspec.condition = self.condition
+		dependspec.preferential = self.preferential
 		for element in self.elements:
-			dependspec.elements.append(copy.copy(element))
+			dependspec.add_element(copy.copy(element))
 		return dependspec
 
 	def resolve_conditions(self, truths):
@@ -600,9 +600,20 @@ class DependSpec:
 			del self.elements[:]
 			return
 
-		dependspec.__dict__["preferential"] = self.preferential
+		dependspec.preferential = self.preferential
 		for element in self.elements:
 			if isinstance(element, DependSpec):
 				element.resolve_conditions(truths)
 
 		self.compact()
+
+	def add_element(self, element):
+		if isinstance(element, self.element_class) or (isinstance(element, DependSpec) and element.element_class is self.element_class):
+			self.elements.append(element)
+		else:
+			raise ValueError(element)
+		self.dependstr = None
+
+	def remove_element(self, element):
+		self.elements.remove(element)
+		self.dependstr = None

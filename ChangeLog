@@ -8,6 +8,9 @@
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
   03 May 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage_syntax.py:
+  Added methods for modifying DependSpec externally.
+
+  03 May 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage_syntax.py:
   Added intersects() and encapsulates() functions to the Atom class for
   comparing relationships between similar atoms.
 
