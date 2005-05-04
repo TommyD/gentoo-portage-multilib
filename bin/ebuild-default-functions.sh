@@ -1,6 +1,6 @@
 #!/bin/bash
 # ebuild-default-functions.sh; default functions for ebuild env that aren't saved- specific to the portage instance.
-# Copyright 2004 Gentoo Foundation
+# Copyright 2005 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 $Header$
 
@@ -210,7 +210,7 @@ dyn_unpack() {
 	echo ">>> Unpacking source..."
 	src_unpack
 	echo ">>> Source unpacked."
-	cd "$BUILDDIR"
+	cd "${PORTAGE_BUILDDIR}"
 	trap SIGINT SIGQUIT
 }
 
@@ -236,7 +236,7 @@ abort_compile() {
 
 abort_unpack() {
 	abort_handler "src_unpack" $1
-	rm -rf "${BUILDDIR}/work"
+	rm -rf "${PORTAGE_BUILDDIR}/work"
 	exit 1
 }
 
@@ -253,7 +253,7 @@ abort_test() {
 
 abort_install() {
 	abort_handler "src_install" $1
-	rm -rf "${BUILDDIR}/image"
+	rm -rf "${PORTAGE_BUILDDIR}/image"
 	exit 1
 }
 
@@ -292,7 +292,7 @@ dyn_compile() {
 		sleep 3
 	fi
 
-	cd "${BUILDDIR}"
+	cd "${PORTAGE_BUILDDIR}"
 	if [ ! -e "build-info" ];	then
 		mkdir build-info
 	fi
@@ -309,7 +309,7 @@ dyn_compile() {
 	export PWORKDIR="$WORKDIR"
 	src_compile 
 	#|| abort_compile "fail" 
-	cd "${BUILDDIR}"
+	cd "${PORTAGE_BUILDDIR}"
 	cd build-info
 
 	echo "$ASFLAGS"		> ASFLAGS
@@ -338,7 +338,7 @@ dyn_compile() {
 	echo "$RESTRICT"	> RESTRICT
 	echo "$SLOT"		> SLOT
 	echo "$USE"		> USE
-	export_environ "${BUILDDIR}/build-info/environment.bz2" 'bzip2 -c9'
+	export_environ "${PORTAGE_BUILDDIR}/build-info/environment.bz2" 'bzip2 -c9'
 	cp "${EBUILD}" "${PF}.ebuild"
 	if hasq nostrip $FEATURES $RESTRICT; then
 		touch DEBUGBUILD
@@ -348,13 +348,13 @@ dyn_compile() {
 
 dyn_package() {
 	trap "abort_package" SIGINT SIGQUIT
-	cd "${BUILDDIR}/image"
+	cd "${PORTAGE_BUILDDIR}/image"
 	tar cpvf - ./ | bzip2 -f > ../bin.tar.bz2 || die "Failed to create tarball"
 	cd ..
 	xpak build-info inf.xpak
 	tbz2tool join bin.tar.bz2 inf.xpak "${PF}.tbz2"
 	echo ">>> Done."
-	cd "${BUILDDIR}"
+	cd "${PORTAGE_BUILDDIR}"
 	MUST_EXPORT_ENV="yes"
 	trap SIGINT SIGQUIT
 }
@@ -380,7 +380,7 @@ dyn_test() {
 			cd "${S}"
 		fi
 		src_test
-		cd "${BUILDDIR}"
+		cd "${PORTAGE_BUILDDIR}"
 	fi
 	trap SIGINT SIGQUIT
 }
@@ -396,8 +396,8 @@ function stat_perms() {
 
 dyn_install() {
 	trap "abort_install" SIGINT SIGQUIT
-	rm -rf "${BUILDDIR}/image"
-	mkdir "${BUILDDIR}/image"
+	rm -rf "${PORTAGE_BUILDDIR}/image"
+	mkdir "${PORTAGE_BUILDDIR}/image"
 	if [ -d "${S}" ]; then
 		cd "${S}"
 	fi
@@ -485,7 +485,7 @@ dyn_install() {
 
 	echo ">>> Completed installing ${PF} into ${D}"
 	echo
-	cd ${BUILDDIR}
+	cd ${PORTAGE_BUILDDIR}
 	MUST_EXPORT_ENV="yes"
 	trap SIGINT SIGQUIT
 }

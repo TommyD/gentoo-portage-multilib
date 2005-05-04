@@ -163,7 +163,7 @@ Here's what happens:
     *  Set a boatload of keys in the ``settings`` instance of the config class
         - PORTAGE_DEBUG, ROOT, STARTDIR, EBUILD, O, CATEGORY, FILESDIR,
           PF, ECLASSDIR, SANDBOX_LOG, P, PN, PV, PR, PVR, SLOT, BUILD_PREFIX,
-          PKG_TMPDIR, BUILDDIR, KV, KVERS
+          PKG_TMPDIR, PORTAGE_BUILDDIR, KV, KVERS
     *  If the action is ``depend``, then return dependency info (eclasses?).
        If ``--debug`` was also set, then the deps are printed on the cmd line.
     *  If necessary (meaning not ``fetch``, ``digest``, or ``manifest``), 

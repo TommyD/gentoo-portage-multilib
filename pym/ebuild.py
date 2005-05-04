@@ -1,6 +1,6 @@
 #!/usr/bin/python
 # ebuild.py; Ebuild classes/abstraction of phase processing, and communicating with a ebuild-daemon.sh instance
-# Copyright 2004 Gentoo Foundation
+# Copyright 2005 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 #$Header$
 
@@ -612,10 +612,10 @@ class ebuild_handler:
 		# ensure this is set for all phases, setup included.
 		# Should be ok again to set $T, as sandbox does not depend on it
 		mysettings["BUILD_PREFIX"] = mysettings["PORTAGE_TMPDIR"]+"/portage"
-		mysettings["BUILDDIR"]	= mysettings["BUILD_PREFIX"]+"/"+mysettings["PF"]
-		mysettings["T"]		= mysettings["BUILDDIR"]+"/temp"
-		mysettings["WORKDIR"] 	= mysettings["BUILDDIR"]+"/work"
-		mysettings["D"]		= mysettings["BUILDDIR"]+"/image/"
+		mysettings["PORTAGE_BUILDDIR"]	= mysettings["BUILD_PREFIX"]+"/"+mysettings["PF"]
+		mysettings["T"]		= mysettings["PORTAGE_BUILDDIR"]+"/temp"
+		mysettings["WORKDIR"] 	= mysettings["PORTAGE_BUILDDIR"]+"/work"
+		mysettings["D"]		= mysettings["PORTAGE_BUILDDIR"]+"/image/"
 	
 
 		# bailing now, probably horks a few things up, but neh.
@@ -661,9 +661,9 @@ class ebuild_handler:
 		mysettings["HOME"]         = mysettings["BUILD_PREFIX"]+"/homedir"
 		mysettings["PKG_TMPDIR"]   = mysettings["PORTAGE_TMPDIR"]+"/binpkgs"
 
-		if cleanup and os.path.exists(mysettings["BUILDDIR"]):
-			print "cleansing builddir"+mysettings["BUILDDIR"]
-			shutil.rmtree(mysettings["BUILDDIR"])
+		if cleanup and os.path.exists(mysettings["PORTAGE_BUILDDIR"]):
+			print "cleansing builddir"+mysettings["PORTAGE_BUILDDIR"]
+			shutil.rmtree(mysettings["PORTAGE_BUILDDIR"])
 
 		if mydo=="clean":
 			# if clean, just flat out skip the rest of this crap.
@@ -818,9 +818,9 @@ class ebuild_handler:
 			if not os.path.exists(mysettings["BUILD_PREFIX"]):
 				os.makedirs(mysettings["BUILD_PREFIX"])
 			os.chown(mysettings["BUILD_PREFIX"],portage_uid,portage_gid)
-			if not os.path.exists(mysettings["BUILDDIR"]):
-				os.makedirs(mysettings["BUILDDIR"])
-			os.chown(mysettings["BUILDDIR"],portage_uid,portage_gid)
+			if not os.path.exists(mysettings["PORTAGE_BUILDDIR"]):
+				os.makedirs(mysettings["PORTAGE_BUILDDIR"])
+			os.chown(mysettings["PORTAGE_BUILDDIR"],portage_uid,portage_gid)
 
 	
 		except OSError, e:
@@ -837,7 +837,7 @@ class ebuild_handler:
 
 		except OSError, e:
 			print "!!! File system problem. (ReadOnly? Out of space?)"
-			print "!!! Failed to create fake home directory in BUILDDIR"
+			print "!!! Failed to create fake home directory in PORTAGE_BUILDDIR"
 			print "!!!",str(e)
 			return 1
 
@@ -962,10 +962,10 @@ class ebuild_handler:
 		elif mydo=="qmerge": 
 			#check to ensure install was run.  this *only* pops up when users forget it and are using ebuild
 			bail=False
-			if not os.path.exists(mysettings["BUILDDIR"]+"/.completed_stages"):
+			if not os.path.exists(mysettings["PORTAGE_BUILDDIR"]+"/.completed_stages"):
 				bail=True
 			else:
-				myf=open(mysettings["BUILDDIR"]+"/.completed_stages")
+				myf=open(mysettings["PORTAGE_BUILDDIR"]+"/.completed_stages")
 				myd=myf.readlines()
 				myf.close()
 				if len(myd) == 0:
@@ -978,14 +978,14 @@ class ebuild_handler:
 
 			#qmerge is specifically not supposed to do a runtime dep check
 			return 0
-#			return merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["D"],mysettings["BUILDDIR"]+"/build-info",myroot,mysettings)
+#			return merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["D"],mysettings["PORTAGE_BUILDDIR"]+"/build-info",myroot,mysettings)
 		elif mydo=="merge":
 			return 0
 #			retval=spawnebuild("install",actionmap,mysettings,debug,alwaysdep=1,logfile=logfile)
 			if retval:
 				return retval
 
-#			return merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["D"],mysettings["BUILDDIR"]+"/build-info",myroot,mysettings,myebuild=mysettings["EBUILD"])
+#			return merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["D"],mysettings["PORTAGE_BUILDDIR"]+"/build-info",myroot,mysettings,myebuild=mysettings["EBUILD"])
 		else:
 			print "!!! Unknown mydo:",mydo
 			sys.exit(1)
@@ -1058,7 +1058,7 @@ class ebuild_handler:
 			#no phases ran.
 			phase="merge"
 			merging=True
-#			return merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["D"],mysettings["BUILDDIR"]+"/build-info",myroot,\
+#			return merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["D"],mysettings["PORTAGE_BUILDDIR"]+"/build-info",myroot,\
 #				mysettings)
 
 		elif phase in ["help","clean","prerm","postrm","preinst","postinst","config"]:
@@ -1167,7 +1167,7 @@ class ebuild_handler:
 				os.makedirs(mysettings["PKGDIR"]+"/"+mysettings["CATEGORY"])
 			if os.path.exists("%s/All/%s.tbz2" % (mysettings["PKGDIR"],mysettings["PF"])):
 				os.remove("%s/All/%s.tbz2" % (mysettings["PKGDIR"],mysettings["PF"]))
-			retval = not portage_util.movefile("%s/%s.tbz2" % (mysettings["BUILDDIR"],mysettings["PF"]),
+			retval = not portage_util.movefile("%s/%s.tbz2" % (mysettings["PORTAGE_BUILDDIR"],mysettings["PF"]),
 				mysettings["PKGDIR"]+"/All/"+mysettings["PF"]+".tbz2") > 0
 			if retval:	return False
 			if os.path.exists("%s/%s/%s.tbz2" % (mysettings["PKGDIR"],mysettings["CATEGORY"],mysettings["PF"])):
@@ -1186,7 +1186,7 @@ class ebuild_handler:
 				return False
 
 			retval=portage_exec.spawn(("rpmbuild","-bb","%s/%s.spec" % \
-				(mysettings["BUILDDIR"],mysettings["PF"])))
+				(mysettings["PORTAGE_BUILDDIR"],mysettings["PF"])))
 			if retval:
 				print "Failed to integrate rpm spec file"
 				return retval
@@ -1216,7 +1216,7 @@ class ebuild_handler:
 
 		if merging:
 			print "processing merge"
-			retval = merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["D"],mysettings["BUILDDIR"]+"/build-info",myroot,\
+			retval = merge(mysettings["CATEGORY"],mysettings["PF"],mysettings["D"],mysettings["PORTAGE_BUILDDIR"]+"/build-info",myroot,\
 				mysettings,myebuild=mysettings["EBUILD"])
 		return retval
 

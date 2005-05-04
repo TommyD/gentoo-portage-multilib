@@ -7,6 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  03 May 2005; Mike Frysinger <vapier@gentoo.org> bin/ebuild.sh 
+  portage.txt pym/ebuild.py bin/ebuild-default-functions.sh:
+  Change internal variable BUILDDIR to PORTAGE_BUILDDIR #68269.
+
   03 May 2005; Mike Frysinger <vapier@gentoo.org> bin/dodoc bin/doinfo 
   bin/newdoc bin/newman bin/prepallman bin/prepallinfo:
   Clean up code a bit to make it smaller and nicer.
