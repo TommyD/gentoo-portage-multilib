@@ -1,4 +1,4 @@
-# TODO list for Portage; the Gentoo Linux package system 
+# TODO list for Portage; the Gentoo package system 
 # $Id$
 
 #
@@ -53,8 +53,5 @@ Legend:
   used at random as servers may differ. bug 21794
 
 ! Rename all undocumented variables used in bash to prefixed values that
-  are not easy to accidently duplicate. BUILDDIR --> PORTAGE_BUILDDIR or
-  something like that. Prevent ebuilds from clobbering system variables.
-
-
-
+  are not easy to accidently duplicate.  Prevent ebuilds from clobbering 
+  system variables.
