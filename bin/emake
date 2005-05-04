@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2004 Gentoo Foundation
+# Copyright 1999-2005 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 #
@@ -11,4 +11,4 @@
 #        /etc/make.globals here because emake is only called from an
 #        ebuild.
 
-make ${MAKEOPTS} ${EXTRA_EMAKE} "$@"
+exec make ${MAKEOPTS} ${EXTRA_EMAKE} "$@"

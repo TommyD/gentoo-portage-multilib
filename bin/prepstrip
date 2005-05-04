@@ -1,19 +1,20 @@
 #!/bin/bash
-# Copyright 1999-2004 Gentoo Foundation
+# Copyright 1999-2005 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
 if [ "${FEATURES//*nostrip*/true}" == "true" ] || [ "${RESTRICT//*nostrip*/true}" == "true" ] ; then
 	echo "nostrip"
 	STRIP="/bin/false"
+	PORTAGE_STRIP_FLAGS=""
 else
 	STRIP="${STRIP:-${CHOST}-strip}"
 	type -p ${STRIP} > /dev/null || STRIP=strip
+
+	PORTAGE_STRIP_FLAGS=${PORTAGE_STRIP_FLAGS:---strip-unneeded}
 fi
 
-PORTAGE_STRIP_FLAGS="${PORTAGE_STRIP_FLAGS:---strip-unneeded}"
-
-echo "strip: ${PORTAGE_STRIP_FLAGS}"
+banner=1
 retval=0
 
 for x in "$@" ; do
@@ -22,6 +23,11 @@ for x in "$@" ; do
 		find "${x}" -type f \( -perm -0100 -or -perm -0010 -or -perm -0001 -or -name '*.so' -or -name '*.so.*' \) -print0 |
 				$XARGS -0 -n500 prepstrip
 	else
+		if [ ${banner} -eq 1 ] ; then
+			echo "strip: ${STRIP} ${PORTAGE_STRIP_FLAGS}"
+			banner=0
+		fi
+
 		f=$(file "${x}")
 		if [ -z "${f/*current ar archive*/}" ]; then
 			echo "   ${x:${#D}:${#x}}"
