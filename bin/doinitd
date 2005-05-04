@@ -1,15 +1,12 @@
 #!/bin/bash
-# Copyright 1999-2004 Gentoo Foundation
+# Copyright 1999-2005 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-if [ ${#} -lt 1 ] ; then
-	echo "doinitd: at least one argument needed"
+if [ $# -lt 1 ] ; then
+	echo "$0: at least one argument needed" 1>&2
 	exit 1 	
 fi
 
-tmp_EXEDESTTREE="${EXEDESTTREE}"
-EXEDESTTREE=/etc/init.d/
-doexe "$@"
-EXEDESTTREE="${tmp_EXEDESTTREE}"
-unset tmp_EXEDESTTREE
+exec env EXEDESTTREE=/etc/init.d/ \
+	doexe "$@"

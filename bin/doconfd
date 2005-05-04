@@ -1,15 +1,12 @@
 #!/bin/bash
-# Copyright 1999-2004 Gentoo Foundation
+# Copyright 1999-2005 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-if [ ${#} -lt 1 ] ; then
-	echo "doconfd: at least one argument needed"
+if [ $# -lt 1 ] ; then
+	echo "$0: at least one argument needed" 1>&2
 	exit 1 	
 fi
 
-tmp_INSDESTTREE="${INSDESTTREE}"
-INSDESTTREE=/etc/conf.d/
-doins "$@"
-INSDESTTREE="${tmp_INSDESTTREE}"
-unset tmp_INSDESTTREE
+exec env INSDESTTREE=/etc/conf.d/ INSOPTIONS="-m0644" \
+	doins "$@"
