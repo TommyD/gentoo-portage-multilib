@@ -233,9 +233,17 @@ class Atom(object):
 	def __setattr__(self, name, value):
 		raise Exception()
 
+	def __eq__(self, other):
+		if isinstance(other, Atom):
+			return hash(self) == other.hash
+		return False
+
+	def __copy__(self):
+		return self
+
 	def __getattr__(self, name):
 
-		if not self.__dict__.has_key("category"):
+		if "operator" not in self.__dict__:
 
 			myatom = self.atomstr
 
@@ -300,6 +308,7 @@ class Atom(object):
 				return False
 			if self.cpv.revision != cpv.revision:
 				return False
+			return True
 
 		if self.operator == "~" and self.cpv.version == cpv.version:
 			return True
@@ -553,6 +562,33 @@ class DependSpec:
 		self.dependstr == dependstr
 		return dependstr
 
+	def flatten(self):
+		for element in self.elements:
+			if isinstance(element, DependSpec):
+				element.flatten()
+
+		self.compact()
+
+		if not self.preferential:
+			for idx in range(len(self.elements)):
+				if isinstance(self.elements[idx], DependSpec) and self.elements[idx].preferential:
+					otherelements = []
+					for idx2 in range(len(self.elements)):
+						if idx2 != idx:
+							otherelements.append(self.elements[idx2])
+					newelements = []
+					for element in self.elements[idx].elements:
+						dependspec = DependSpec(element_class=self.element_class)
+						dependspec.elements.extend(otherelements)
+						dependspec.elements.append(DependSpec(element_class=self.element_class))
+						dependspec.elements[-1].condition = self.elements[idx].condition
+						dependspec.elements[-1].elements.append(element)
+						newelements.append(dependspec)
+					self.elements = newelements
+					self.preferential = True
+					self.flatten()
+					return
+
 	def compact(self):
 		for element in self.elements:
 			if isinstance(element, DependSpec):
@@ -564,20 +600,21 @@ class DependSpec:
 			for x in range(len(self.elements)-1, -1, -1):
 				if isinstance(self.elements[x], DependSpec) and not len(self.elements[x].elements):
 					del self.elements[x]
-					changed = True
-			if not self.condition and not self.preferential:
-				for x in range(len(self.elements)-1, -1, -1):
-					if isinstance(self.elements[x], DependSpec):
-						if not self.elements[x].condition and not self.elements[x].preferential:
-							self.elements.extend(self.elements[x].elements)
-							del self.elements[x]
-							changed = True
+			for x in range(len(self.elements)-1, -1, -1):
+				if isinstance(self.elements[x], DependSpec):
+					if self.elements[x].condition == self.condition and self.elements[x].preferential == self.preferential:
+						self.elements.extend(self.elements[x].elements)
+						del self.elements[x]
+						changed = True
 
 		elements = self.elements[:]
 		del self.elements[:]
 		for element in elements:
 			if element not in self.elements:
 				self.elements.append(element)
+
+		if self.preferential and len(self.elements) == 1:
+			self.preferential = False
 
 		if not self.condition and not self.preferential and len(self.elements) == 1 and isinstance(self.elements[0], DependSpec):
 			element = self.elements[0]
@@ -596,24 +633,22 @@ class DependSpec:
 		return dependspec
 
 	def resolve_conditions(self, truths):
-		if self.condition and self.condition not in truths:
-			del self.elements[:]
-			return
+		mycondition = self.condition
+		self.condition = None
 
-		dependspec.preferential = self.preferential
+		if mycondition:
+			if mycondition[0] == "!":
+				mycondition = mycondition[1:]
+				keep = (mycondition not in truths)
+			else:
+				keep = (mycondition in truths)
+			if not keep:
+				del self.elements[:]
+				return
+
 		for element in self.elements:
 			if isinstance(element, DependSpec):
 				element.resolve_conditions(truths)
-
-		self.compact()
-
-	def remove_preferentials(self):
-		if self.preferential and self.elements:
-			self.elements = [self.elements[0]]
-		for element in self.elements:
-			if isinstance(element, DependSpec):
-				element.remove_preferentials()
-		self.compact()
 
 	def add_element(self, element):
 		if isinstance(element, self.element_class) or (isinstance(element, DependSpec) and element.element_class is self.element_class):
@@ -625,3 +660,16 @@ class DependSpec:
 	def remove_element(self, element):
 		self.elements.remove(element)
 		self.dependstr = None
+
+
+class GluePkg(CPV):
+
+	def __init__(self, cpv, db, slot, use, bdeps, rdeps):
+		CPV.__init__(self, cpv)
+		self.__dict__["db"] = db
+		self.__dict__["slot"] = slot
+		self.__dict__["use"] = use
+		bdeps.flatten()
+		self.__dict__["bdeps"] = bdeps
+		rdeps.flatten()
+		self.__dict__["rdeps"] = rdeps

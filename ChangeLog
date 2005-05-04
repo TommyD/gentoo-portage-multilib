@@ -7,6 +7,14 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  04 May 2005; Jason Stubbs <jstubbs@gentoo.org> bin/test_target_graph.py:
+  Just a script to help test and show the usage of TargetGraph.
+
+  04 May 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage_syntax.py
+  pym/portage_dep.py: Filled out most of TargetGraph. Still need to complete
+  support for OR deps. Added a bit some more support functions to Atom and
+  DependSpec.
+
   04 May 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage_syntax.py
   pym/portage_dep.py: Added remove_preferentials() method to the DependSpec
   class. Simplified PkgGlue to just being a container.

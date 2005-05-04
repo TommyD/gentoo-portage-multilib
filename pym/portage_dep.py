@@ -276,6 +276,11 @@ class DependencyGraph(object):
 			self.graph[child][0].append(parent)
 			self.graph[parent][1].append(child)
 
+	def remove_relationship(self, parent, child):
+		"""Remove an existing relationship between two nodes."""
+		self.graph[child][0].remove(parent)
+		self.graph[parent][1].remove(child)
+
 	def get_relationships(self, node):
 		"""Retrieve parent and children lists of a node.
 
@@ -659,57 +664,57 @@ def match_from_list(mydep,candidate_list):
 	return mylist
 
 
-class GluePkg(portage_syntax.CPV):
+def prepare_prefdict(preferences):
+	myprefdict = {}
+	idx = 0
+	for atom in preferences:
+		if atom.cpv.key not in myprefdict:
+			myprefdict[atom.cpv.key] = []
+		myprefdict[atom.cpv.key].append((idx, atom))
+		idx += 1
+	myprefdict["____"] = idx
+	return myprefdict
 
-	def __init__(self, cpv, db, use, bdeps, rdeps):
-		portage_syntax.CPV.__init__(self, cpv)
-		self.db = db
-		self.use = use
-		self.bdeps = bdeps
-		self.rdeps = rdeps
 
-
-def transform_dependspec(dependspec, preferences):
-	def dotransform(dependspec, preferences):
+def transform_dependspec(dependspec, prefdict):
+	def dotransform(dependspec, prefdict):
 		dependspec = copy.copy(dependspec)
 		elements = dependspec.elements
 		dependspec.elements = []
 		neworder = []
-		prio = len(preferences)+1
-		idx = -1
+		prio = prefdict["____"]
 		for element in elements[:]:
 			if isinstance(element, portage_syntax.DependSpec):
-				neworder.append(dotransform(element, preferences))
+				neworder.append(dotransform(element, prefdict))
 				elements.remove(element)
-		for pref in preferences:
-			idx += 1
-			for element in elements[:]:
-				if pref.intersects(element):
-					if idx < prio:
-						prio = idx
-					if pref.encapsulates(element):
-						neworder.append((idx, element))
-						elements.remove(element)
-					else:
-						subdependspec = portage_syntax.DependSpec(element_class=portage_syntax.Atom)
-						if element.encapsulates(pref):
-							subsubdependspec = portage_syntax.DependSpec(element_class=portage_syntax.Atom)
-							subsubdependspec.add_element(pref)
-							subsubdependspec.add_element(element)
-							subdependspec.add_element(subsubdependspec)
+			elif element.cpv.key in prefdict:
+				for (idx, pref) in prefdict[element.cpv.key]:
+					if pref.intersects(element):
+						if idx < prio:
+							prio = idx
+						if pref.encapsulates(element):
+							neworder.append((idx, element))
+							elements.remove(element)
 						else:
-							subdependspec.add_element(pref)
-						subdependspec.add_element(element)
-						subdependspec.preferential = True
-						neworder.append((idx, subdependspec))
-						elements.remove(element)
+							subdependspec = portage_syntax.DependSpec(element_class=portage_syntax.Atom)
+							if element.encapsulates(pref):
+								subsubdependspec = portage_syntax.DependSpec(element_class=portage_syntax.Atom)
+								subsubdependspec.add_element(pref)
+								subsubdependspec.add_element(element)
+								subdependspec.add_element(subsubdependspec)
+							else:
+								subdependspec.add_element(pref)
+							subdependspec.add_element(element)
+							subdependspec.preferential = True
+							neworder.append((idx, subdependspec))
+							elements.remove(element)
 		neworder.sort()
 		for element in neworder:
 			dependspec.add_element(element[1])
 		for element in elements:
 			dependspec.add_element(element)
 		return (prio, dependspec)
-	return dotransform(dependspec, preferences)[1]
+	return dotransform(dependspec, prefdict)[1]
 
 
 class TargetGraph(object):
@@ -718,19 +723,125 @@ class TargetGraph(object):
 		# keys
 		self.graph = DependencyGraph()
 
-		# key : ([GLuePkg], [GluePkg], [Atom])
+		# key : ([GluePkg], [GluePkg], [Atom])
 		self.pkgrec = {}
-		self.unresolved = []
+
+		self.unmatched_atoms = {}
 
 	def add_package(self, pkg):
-		self.graph.add_node(pkg.key)
-		if not self.pkgrec.has_key(pkg.key):
-			self.pkgrec[pkg.key] = ([], [], [])
-		if self.pkgrec[pkg.key][0] or self.pkgrec[pkg.key][2]:
-			self.pkgrec[pkg.key][1].append(pkg)
-			self._validate(pkg.key)
+		key = pkg.key
+		if key not in self.pkgrec:
+			self.pkgrec[key] = ([], [pkg], [])
 		else:
-			self.pkgrec[pkg.key][0].append(pkg)
+			self.pkgrec[key][1].append(pkg)
+		self._recheck(key)
 
-	def _validate(self, key):
-		pkgs = self[pkg.key]
+	def _recheck(self, key):
+		(used, unused, unmatched) = self._select_pkgs(key)
+		for pkg in used:
+			if pkg not in self.pkgrec[key][0]:
+				self._promote_pkg(pkg)
+		for pkg in unused:
+			if pkg not in self.pkgrec[key][1]:
+				self._demote_pkg(pkg)
+		if unmatched:
+			self.unmatched_atoms[key] = unmatched
+		elif key in self.unmatched_atoms:
+			del self.unmatched_atoms[key]
+
+	def _select_pkgs(self, key):
+		allpkgs = self.pkgrec[key][0] + self.pkgrec[key][1]
+		unused = []
+		regular_atoms = []
+		unmatched = []
+		for atom in self.pkgrec[key][2]:
+			if atom.blocks:
+				for pkg in allpkgs[:]:
+					if atom.match(pkg):
+						allpkgs.remove(pkg)
+						unused.append(pkg)
+			elif atom not in regular_atoms:
+				regular_atoms.append(atom)
+
+		if regular_atoms:
+			slots = {}
+			for pkg in allpkgs:
+				if pkg.slot not in slots:
+					slots[pkg.slot] = []
+				slots[pkg.slot].append(pkg)
+
+			used_slots = []
+			multislot_atoms = []
+			for atom in regular_atoms:
+				matched_slots = []
+				for slot in slots:
+					for pkg in slots[slot]:
+						if atom.match(pkg):
+							matched_slots.append(slot)
+							break
+					if len(matched_slots) > 1:
+						multislot_atoms.append(atom)
+						break
+				if atom in multislot_atoms:
+					continue
+				if not matched_slots:
+					unmatched.append(atom)
+					continue
+				slot = matched_slots[0]
+				if slot not in used_slots:
+					used_slots.append(slot)
+				for idx in range(len(slots[slot])-1, -1, -1):
+					if not atom.match(slots[slot][idx]):
+						unused.append(slots[slot][idx])
+						del slots[slot][idx]
+			used = []
+			uncertain = []
+			for slot in slots:
+				if slot in used_slots:
+					used.extend(slots[slot])
+				else:
+					uncertain.extend(slots[slot])
+			for atom in multislot_atoms:
+				matched = False
+				for pkg in used[:]:
+					if atom.match(pkg):
+						matched = True
+						break
+				if matched:
+					continue
+				for pkg in uncertain:
+					if atom.match(pkg):
+						uncertain.remove(pkg)
+						used.append(pkg)
+						matched = True
+						break
+				if not matched:
+					unmatched.append(atom)
+			unused.extend(uncertain)
+		else:
+			used = allpkgs
+		return (used, unused, unmatched)
+
+	def _promote_pkg(self, pkg):
+		key = pkg.key
+		self.pkgrec[key][1].remove(pkg)
+		self.pkgrec[key][0].append(pkg)
+		if not pkg.rdeps.preferential:
+			for atom in pkg.rdeps.elements:
+				if atom.cpv.key not in self.pkgrec:
+					self.pkgrec[atom.cpv.key] = ([], [], [atom])
+				else:
+					self.pkgrec[atom.cpv.key][2].append(atom)
+				self._recheck(atom.cpv.key)
+
+	def _demote_pkg(self, pkg):
+		key = pkg.key
+		self.pkgrec[key][0].remove(pkg)
+		self.pkgrec[key][1].append(pkg)
+		if not pkg.rdeps.preferential:
+			for atom in pkg.rdeps.elements:
+				self.pkgrec[atom.cpv.key][2].remove(atom)
+				if not self.pkgrec[atom.cpv.key][0] and not self.pkgrec[atom.cpv.key][1] and not self.pkgrec[atom.cpv.key][2]:
+					del self.pkgrec[atom.cpv.key]
+				else:
+					self._recheck(atom.cpv.key)
