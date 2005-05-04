@@ -1,21 +1,23 @@
 #!/bin/bash
-# Copyright 1999-2004 Gentoo Foundation
+# Copyright 1999-2005 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
 if [ ${#} -lt 1 ] ; then
-	echo "doinfo: at least one argument needed"
+	echo "doinfo: at least one argument needed" 1>&2
 	exit 1 	
 fi
-if [ ! -d "${D}usr/share/info" ] ; then
-	install -d "${D}usr/share/info"
+
+dir="${D}/usr/share/info"
+if [ ! -d "${dir}" ] ; then
+	install -d "${dir}"
 fi
 
 for x in "$@" ; do
 	if [ -e "${x}" ] ; then
-		install -m0644 "${x}" "${D}usr/share/info"
-		gzip -f -9 "${D}usr/share/info/${x##*/}"
+		install -m0644 "${x}" "${dir}"
+		gzip -f -9 "${dir}/${x##*/}"
 	else
-		echo "doinfo: ${x} does not exist"
+		echo "doinfo: ${x} does not exist" 1>&2
 	fi
 done
