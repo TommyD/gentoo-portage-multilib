@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  03 May 2005; Mike Frysinger <vapier@gentoo.org> bin/doman:
+  Remove old unused options (-x11/-gnome/-kde/etc...) and cleanup.
+
   03 May 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage_syntax.py
   pym/portage_dep.py: Fixed some bugs in the new intersects() and
   encapsulates() methods. Created a transform_dependspec() function that
