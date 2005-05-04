@@ -7,6 +7,11 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  04 May 2005; Mike Frysinger <vapier@gentoo.org> bin/do{doc,info,man} 
+  bin/prepall{docs,info,man} bin/prep{info,man}:
+  Clean up and standardize the output.  Also allow for selecting of compression 
+  method via new env vars PORTAGE_COMPRESS / PORTAGE_COMPRESS_FLAGS #9870.
+
   04 May 2005; Mike Frysinger <vapier@gentoo.org> bin/prepstrip bin/emake:
   Only echo the strip banner once per dir and don't try to pass strip args 
   to `false` if we aren't stripping.  Add a simple 'exec' to emake.

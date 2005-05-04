@@ -3,10 +3,13 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-if [ ${#} -lt 1 ] ; then
-	echo "${0}: at least one argument needed" 1>&2
+if [ $# -lt 1 ] ; then
+	echo "$0: at least one argument needed" 1>&2
 	exit 1
 fi
+
+PORTAGE_COMPRESS=${PORTAGE_COMPRESS:-gzip}
+PORTAGE_COMPRESS_FLAGS=${PORTAGE_COMPRESS_FLAGS:--9}
 
 BASE="/usr/share"
 i18n=""
@@ -21,19 +24,22 @@ for x in "$@" ; do
 
 	suffix=${x##*.}
 
-	if [ "$suffix" == "gz" ] ; then
-		compressed="gz"
-		realname="${x%.*}"
-		suffix="${realname##*.}"
-	else
-		realname="$x"
-		compressed=""
-	fi
+	case ${suffix} in
+		gz|bz2|Z)
+			compressed=${suffix}
+			realname=${x%.*}
+			suffix=${realname##*.}
+			;;
+		*)
+			realname=${x}
+			compressed=""
+			;;
+	esac
 
 	mandir=${i18n}man${suffix:0:1}
 
 	if echo ${mandir} | egrep -q 'man[0-9n](|f|p|pm)$' -; then
-		if [ -e "${x}" ] ; then
+		if [ -s "${x}" ] ; then
 			if [ ! -d "${D}${BASE}/man/${mandir}" ] ; then
 				install -d "${D}${BASE}/man/${mandir}"
 			fi
@@ -41,7 +47,8 @@ for x in "$@" ; do
 			install -m0644 "${x}" "${D}${BASE}/man/${mandir}"
 
 			if [ -z "${compressed}" ] ; then
-				gzip -f -9 "${D}${BASE}/man/${mandir}/${x##*/}"
+				"${PORTAGE_COMPRESS}" ${PORTAGE_COMPRESS_FLAGS} -f \
+					"${D}${BASE}/man/${mandir}/${x##*/}"
 			fi
 		else
 			echo "doman: ${x} does not exist" 1>&2
