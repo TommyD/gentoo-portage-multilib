@@ -1,15 +1,22 @@
 #!/bin/bash
-# Copyright 1999-2004 Gentoo Foundation
+# Copyright 1999-2005 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-if [ ${#} -lt 2 ] ; then
-	echo "${0}: at least two arguments needed"
+if [ $# -lt 2 ] ; then
+	echo "${0}: at least two arguments needed" 1>&2
 	exit 1
 fi
 
-PERM="${1}"
+OPTS=""
+while [ "${1:0:1}" = "-" ] ; do
+	OPTS="${OPTS} $1"
+	shift
+done
+
+PERM=$1
 shift
-for FILE in $*; do
-	chmod "${PERM}" "${D}${FILE}"
+
+for FILE in "$@" ; do
+	chmod ${OPTS} "${PERM}" "${D}${FILE}"
 done

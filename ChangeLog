@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  04 May 2005; Mike Frysinger <vapier@gentoo.org> bin/fowners bin/fperms:
+  Add recursive (-R) support to fowners/fperms.
+
   04 May 2005; Jason Stubbs <jstubbs@gentoo.org> bin/test_target_graph.py:
   Just a script to help test and show the usage of TargetGraph.
 
