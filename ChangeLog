@@ -7,6 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  04 May 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage_syntax.py
+  pym/portage_dep.py: Added remove_preferentials() method to the DependSpec
+  class. Simplified PkgGlue to just being a container.
+
   03 May 2005; Mike Frysinger <vapier@gentoo.org> bin/ebuild.sh 
   portage.txt pym/ebuild.py bin/ebuild-default-functions.sh:
   Change internal variable BUILDDIR to PORTAGE_BUILDDIR #68269.

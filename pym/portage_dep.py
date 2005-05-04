@@ -664,9 +664,9 @@ class GluePkg(portage_syntax.CPV):
 	def __init__(self, cpv, db, use, bdeps, rdeps):
 		portage_syntax.CPV.__init__(self, cpv)
 		self.db = db
-		self.use = use.split()
-		self.bdeps = portage_syntax.DependSpec(bdeps).resolve_conditions(self.use)
-		self.rdeps = portage_syntax.DependSpec(rdeps).resolve_conditions(self.use)
+		self.use = use
+		self.bdeps = bdeps
+		self.rdeps = rdeps
 
 
 def transform_dependspec(dependspec, preferences):
@@ -718,9 +718,19 @@ class TargetGraph(object):
 		# keys
 		self.graph = DependencyGraph()
 
-		# key : ([Atom], [GLuePkg], [GluePkg])
+		# key : ([GLuePkg], [GluePkg], [Atom])
 		self.pkgrec = {}
+		self.unresolved = []
 
 	def add_package(self, pkg):
-		self.pkgrec[pkg.key][0].append(pkg)
 		self.graph.add_node(pkg.key)
+		if not self.pkgrec.has_key(pkg.key):
+			self.pkgrec[pkg.key] = ([], [], [])
+		if self.pkgrec[pkg.key][0] or self.pkgrec[pkg.key][2]:
+			self.pkgrec[pkg.key][1].append(pkg)
+			self._validate(pkg.key)
+		else:
+			self.pkgrec[pkg.key][0].append(pkg)
+
+	def _validate(self, key):
+		pkgs = self[pkg.key]

@@ -607,6 +607,14 @@ class DependSpec:
 
 		self.compact()
 
+	def remove_preferentials(self):
+		if self.preferential and self.elements:
+			self.elements = [self.elements[0]]
+		for element in self.elements:
+			if isinstance(element, DependSpec):
+				element.remove_preferentials()
+		self.compact()
+
 	def add_element(self, element):
 		if isinstance(element, self.element_class) or (isinstance(element, DependSpec) and element.element_class is self.element_class):
 			self.elements.append(element)
