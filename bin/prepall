@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 1999-2004 Gentoo Foundation
+# Copyright 1999-2005 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
@@ -20,20 +20,4 @@ for i in "${D}"opt/*/lib{,32,64} \
 		echo "making executable: /${j/${D}/}"
 		chmod +x "${j}"
 	done
-done
-
-# Move aclocals
-for i in `find "${D}"/ -name "aclocal" -type d 2>/dev/null` ; do
-	[ -z "${i}" ] && continue
-
-	# Strip double '/'
-	dir1="`echo "${i}" | sed  -e 's:/\{2,\}:/:g'`"
-	dir2="`echo "${D}/usr/share/aclocal" | sed  -e 's:/\{2,\}:/:g'`"
-	
-	[ "${dir1}" == "${dir2}" ] && continue
-
-	echo "moving aclocal: /${i/${D}/}"
-	install -d "${D}"usr/share/aclocal
-	mv "${i}"/* "${D}"usr/share/aclocal
-	rm -fr "${i}"
 done
