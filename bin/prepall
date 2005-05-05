@@ -17,6 +17,7 @@ for i in "${D}"opt/*/lib{,32,64} \
 	for j in "${i}"/*.so.* "${i}"/*.so ; do
 		[ ! -e "${j}" ] && continue
 		[ -L "${j}" ] && continue
+		[ -x "${j}" ] && continue
 		echo "making executable: /${j/${D}/}"
 		chmod +x "${j}"
 	done
