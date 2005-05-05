@@ -7,6 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  05 May 2005; Jason Stubbs <jstubbs@gentoo.org> bin/test_target_graph.py
+  pym/portage_dep.py: Added full support for OR-based dependencies. Still
+  need to sort out virtuals and provide a public interface for TargetGraph.
+
   04 May 2005; Mike Frysinger <vapier@gentoo.org> pym/ebuild.py:
   Do not check the digests of files except when unpacking/fetching #29333.
 

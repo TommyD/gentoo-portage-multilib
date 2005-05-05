@@ -35,8 +35,19 @@ for x in tgraph.unmatched_atoms.keys():
 		pkg = GluePkg(cpv, "virtual", slot, use, DependSpec(), rdeps)
 		tgraph.add_package(pkg)
 
-for x in tgraph.pkgrec:
-	if tgraph.pkgrec[x][1]:
-		print x, tgraph.pkgrec[x]
+#for x in tgraph.pkgrec:
+#	print x, tgraph.pkgrec[x]
 
+import sys
+sys.exit(0)
+
+print
+print tgraph.pkgrec
+print
 print tgraph.unmatched_atoms
+print
+print tgraph.unmatched_preferentials
+print
+print tgraph.preferential_atoms
+print
+print tgraph.reverse_preferentials

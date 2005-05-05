@@ -720,18 +720,21 @@ def transform_dependspec(dependspec, prefdict):
 class TargetGraph(object):
 
 	def __init__(self):
-		# keys
-		self.graph = DependencyGraph()
-
-		# key : ([GluePkg], [GluePkg], [Atom])
+		# key : (bool, [GluePkg], [GluePkg], [Atom], [Atom])
 		self.pkgrec = {}
-
+		# key : [Atom]
 		self.unmatched_atoms = {}
+		# [Atom]
+		self.unmatched_preferentials = []
+		# key : [pkg, [[Atom]]]
+		self.preferential_atoms = {}
+		# key : [key]
+		self.reverse_preferentials = {}
 
-	def add_package(self, pkg):
+	def add_package(self, pkg, keep=False):
 		key = pkg.key
 		if key not in self.pkgrec:
-			self.pkgrec[key] = ([], [pkg], [])
+			self.pkgrec[key] = ([], [pkg], [], [], keep)
 		else:
 			self.pkgrec[key][1].append(pkg)
 		self._recheck(key)
@@ -744,17 +747,27 @@ class TargetGraph(object):
 		for pkg in unused:
 			if pkg not in self.pkgrec[key][1]:
 				self._demote_pkg(pkg)
-		if unmatched:
-			self.unmatched_atoms[key] = unmatched
-		elif key in self.unmatched_atoms:
+		if key in self.unmatched_atoms:
 			del self.unmatched_atoms[key]
+		for idx in range(len(self.unmatched_preferentials)-1, -1, -1):
+			if self.unmatched_preferentials[idx].cpv.key == key:
+				del self.unmatched_preferentials[idx]
+		if unmatched:
+			self.unmatched_atoms[key] = []
+			for atom in unmatched:
+				if atom in self.pkgrec[key][2]:
+					self.unmatched_atoms[key].append(atom)
+				else:
+					self.unmatched_preferentials.append(atom)
+		if not self.pkgrec[key][0] and not self.pkgrec[key][1] and not self.pkgrec[key][2] and not self.pkgrec[key][3] and not self.pkgrec[key][4]:
+			del self.pkgrec[key]
 
 	def _select_pkgs(self, key):
 		allpkgs = self.pkgrec[key][0] + self.pkgrec[key][1]
 		unused = []
 		regular_atoms = []
 		unmatched = []
-		for atom in self.pkgrec[key][2]:
+		for atom in self.pkgrec[key][2] + self.pkgrec[key][3]:
 			if atom.blocks:
 				for pkg in allpkgs[:]:
 					if atom.match(pkg):
@@ -824,24 +837,132 @@ class TargetGraph(object):
 
 	def _promote_pkg(self, pkg):
 		key = pkg.key
+		checks = {}
 		self.pkgrec[key][1].remove(pkg)
 		self.pkgrec[key][0].append(pkg)
 		if not pkg.rdeps.preferential:
 			for atom in pkg.rdeps.elements:
 				if atom.cpv.key not in self.pkgrec:
-					self.pkgrec[atom.cpv.key] = ([], [], [atom])
+					self.pkgrec[atom.cpv.key] = ([], [], [atom], [], False)
 				else:
 					self.pkgrec[atom.cpv.key][2].append(atom)
-				self._recheck(atom.cpv.key)
+				if atom.cpv.key not in checks:
+					checks[atom.cpv.key] = True
+		else:
+			preflist = [pkg, []]
+			if isinstance(pkg.rdeps.elements[0], portage_syntax.Atom):
+				for atom in pkg.rdeps.elements:
+					preflist[1].append([atom])
+			else:
+				for option in pkg.rdeps.elements:
+					preflist[1].append([])
+					for atom in option.elements:
+						preflist[1][-1].append(atom)
+			for option in preflist[1]:
+				for atom in option:
+					if atom.cpv.key not in self.pkgrec:
+						self.pkgrec[atom.cpv.key] = ([], [], [], [atom], False)
+					else:
+						self.pkgrec[atom.cpv.key][3].append(atom)
+					if atom.cpv.key not in self.reverse_preferentials:
+						self.reverse_preferentials[atom.cpv.key] = {}
+					if key not in self.reverse_preferentials[atom.cpv.key]:
+						self.reverse_preferentials[atom.cpv.key][key] = 1
+					else:
+						self.reverse_preferentials[atom.cpv.key][key] += 1
+					checks[atom.cpv.key] = True
+			if key not in self.preferential_atoms:
+				self.preferential_atoms[key] = [preflist]
+			else:
+				self.preferential_atoms[key].append(preflist)
+			self._check_preferentials(key)
+		if key in self.reverse_preferentials:
+			for parent in self.reverse_preferentials[key].keys():
+				self._check_preferentials(parent)
+		for key in checks:
+			if key in self.pkgrec:
+				self._recheck(key)
 
 	def _demote_pkg(self, pkg):
 		key = pkg.key
+		checks = {}
 		self.pkgrec[key][0].remove(pkg)
 		self.pkgrec[key][1].append(pkg)
 		if not pkg.rdeps.preferential:
 			for atom in pkg.rdeps.elements:
 				self.pkgrec[atom.cpv.key][2].remove(atom)
-				if not self.pkgrec[atom.cpv.key][0] and not self.pkgrec[atom.cpv.key][1] and not self.pkgrec[atom.cpv.key][2]:
+				if not self.pkgrec[atom.cpv.key][0] and not self.pkgrec[atom.cpv.key][1] and not self.pkgrec[atom.cpv.key][2] and not self.pkgrec[atom.cpv.key][3]:
 					del self.pkgrec[atom.cpv.key]
+					if atom.cpv.key in self.unmatched_atoms:
+						del self.unmatched_atoms[atom.cpv.key]
 				else:
-					self._recheck(atom.cpv.key)
+					checks[atom.cpv.key] = True
+		else:
+			for idx in range(self.preferential_atoms[key]):
+				if self.preferential_atoms[key][idx][0] == pkg:
+					for atomlist in self.preferential_atoms[key][idx][1]:
+						for atom in atomlist:
+							self.pkgrec[atom.cpv.key][3].remove(atom)
+							self.reverse_preferentials[atom.cpv.key][key] -= 1
+							if not self.reverse_preferentials[atom.cpv.key][key]:
+								del self.reverse_preferentials[atom.cpv.key][key]
+								if not self.reverse_preferentials[atom.cpv.key]:
+									del self.reverse_preferentials[atom.cpv.key]
+							checks[atom.cpv.key] = True
+					del self.preferential_atoms[key][idx]
+					if not self.preferential_atoms[key]:
+						del self.preferential_atoms[key]
+		if key in self.reverse_preferentials:
+			for parent in self.reverse_preferentials[key].keys():
+				self._check_preferentials(parent)
+		for key in checks:
+			if key in self.pkgrec:
+				self._recheck(key)
+
+	def _check_preferentials(self, key):
+		checks = {}
+		for preflist in self.preferential_atoms[key]:
+			if len(preflist[1]) == 1:
+				all_matched = True
+				for atom in preflist[1][0]:
+					matched = False
+					for pkg in self.pkgrec[atom.cpv.key][0]:
+						if atom.match(pkg):
+							matched = True
+							break
+					if not matched:
+						all_matched = False
+						break
+				if not all_matched:
+					pkg = preflist[0]
+					self._demote_pkg(pkg)
+					self._promote_pkg(pkg)
+					self._check_preferentials(key)
+					return
+			else:
+				for idx in range(len(preflist[1])):
+					all_matched = True
+					for atom in preflist[1][idx]:
+						matched = False
+						for pkg in self.pkgrec[atom.cpv.key][0]:
+							if atom.match(pkg):
+								matched = True
+								break
+						if not matched:
+							all_matched = False
+							break
+					if all_matched:
+						removable = preflist[1][:idx] + preflist[1][idx+1:]
+						preflist[1] = [preflist[1][idx]]
+						for option in removable:
+							for atom in option:
+								self.pkgrec[atom.cpv.key][3].remove(atom)
+								self.reverse_preferentials[atom.cpv.key][key] -= 1
+								if not self.reverse_preferentials[atom.cpv.key][key]:
+									del self.reverse_preferentials[atom.cpv.key][key]
+									if not self.reverse_preferentials[atom.cpv.key]:
+										del self.reverse_preferentials[atom.cpv.key]
+								checks[atom.cpv.key] = True
+						break
+		for key in checks:
+			self._recheck(key)
