@@ -751,12 +751,59 @@ class StateGraph(object):
 		# key : [key]
 		self.reverse_preferentials = {}
 
+	def get_unmatched_atoms(self):
+		unmatched = []
+		for key in self.unmatched_atoms:
+			unmatched.append(self.unmatched_atoms[key][0])
+		return unmatched
+
+	def get_unmatched_preferentials(self):
+		return self.unmatched_preferentials[:]
+
+	def get_unneeded_packages(self):
+		unneeded = []
+		for key in self.pkgrec:
+			unneeded.extend(self.pkgrec[key][1])
+		return unneeded
+
+	def get_needed_packages(self):
+		needed = []
+		for key in self.pkgrec:
+			needed.extend(self.pkgrec[key][0])
+		return needed
+
+	def get_conflicts(self):
+		conflicts = []
+		for key in self.pkgrec:
+			slots = {}
+			in_conflict = False
+			for pkg in self.pkgrec[key][0]:
+				if pkg.slot in slots:
+					slots[pkg.slot].append(pkg)
+					in_conflict = True
+				else:
+					slots[pkg.slot] = [pkg]
+			if in_conflict:
+				for slot in slots:
+					if len(slots[slot]) > 1:
+						conflicts.append(slots[slot])
+		return conflicts
+
 	def add_package(self, pkg, keep=False):
 		key = pkg.key
 		if key not in self.pkgrec:
-			self.pkgrec[key] = ([], [pkg], [], [], keep)
+			self.pkgrec[key] = ([], [pkg], [], [], [keep])
 		else:
+			if not self.pkgrec[key][4][0]:
+				self.pkgrec[key][4][0] = keep
 			self.pkgrec[key][1].append(pkg)
+		self._recheck(key)
+
+	def remove_package(self, pkg):
+		key = pkg.key
+		if pkg not in self.pkgrec[key][1]:
+			self._demote_pkg(pkg)
+		self.pkgrec[key][1].remove(pkg)
 		self._recheck(key)
 
 	def _recheck(self, key):
@@ -773,17 +820,20 @@ class StateGraph(object):
 			if self.unmatched_preferentials[idx].cpv.key == key:
 				del self.unmatched_preferentials[idx]
 		if unmatched:
-			self.unmatched_atoms[key] = []
 			for atom in unmatched:
 				if atom in self.pkgrec[key][2]:
-					self.unmatched_atoms[key].append(atom)
+					if key in self.unmatched_atoms:
+						self.unmatched_atoms[key].append(atom)
+					else:
+						self.unmatched_atoms[key] = [atom]
 				else:
 					self.unmatched_preferentials.append(atom)
-		if not self.pkgrec[key][0] and not self.pkgrec[key][1] and not self.pkgrec[key][2] and not self.pkgrec[key][3] and not self.pkgrec[key][4]:
+		if not self.pkgrec[key][0] and not self.pkgrec[key][1] and not self.pkgrec[key][2] and not self.pkgrec[key][3] and not self.pkgrec[key][4][0]:
 			del self.pkgrec[key]
 
 	def _select_pkgs(self, key):
 		allpkgs = self.pkgrec[key][0] + self.pkgrec[key][1]
+		used = []
 		unused = []
 		regular_atoms = []
 		unmatched = []
@@ -851,8 +901,10 @@ class StateGraph(object):
 				if not matched:
 					unmatched.append(atom)
 			unused.extend(uncertain)
-		else:
+		elif self.pkgrec[key][4][0]:
 			used = allpkgs
+		else:
+			unused = allpkgs
 		return (used, unused, unmatched)
 
 	def _promote_pkg(self, pkg):
@@ -863,7 +915,7 @@ class StateGraph(object):
 		if not pkg.rdeps.preferential:
 			for atom in pkg.rdeps.elements:
 				if atom.cpv.key not in self.pkgrec:
-					self.pkgrec[atom.cpv.key] = ([], [], [atom], [], False)
+					self.pkgrec[atom.cpv.key] = ([], [], [atom], [], [False])
 				else:
 					self.pkgrec[atom.cpv.key][2].append(atom)
 				if atom.cpv.key not in checks:
@@ -881,7 +933,7 @@ class StateGraph(object):
 			for option in preflist[1]:
 				for atom in option:
 					if atom.cpv.key not in self.pkgrec:
-						self.pkgrec[atom.cpv.key] = ([], [], [], [atom], False)
+						self.pkgrec[atom.cpv.key] = ([], [], [], [atom], [False])
 					else:
 						self.pkgrec[atom.cpv.key][3].append(atom)
 					if atom.cpv.key not in self.reverse_preferentials:
