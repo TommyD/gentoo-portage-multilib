@@ -7,6 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  04 May 2005; Mike Frysinger <vapier@gentoo.org> 
+  bin/ebuild-default-functions.sh:
+  Allow people to pass files in $PWD to unpack via ./FILE syntax #24637.
+
   04 May 2005; Mike Frysinger <vapier@gentoo.org> bin/do{doc,info,man} 
   bin/prepall{docs,info,man} bin/prep{info,man}:
   Clean up and standardize the output.  Also allow for selecting of compression 

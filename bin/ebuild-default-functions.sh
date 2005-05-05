@@ -89,50 +89,56 @@ addpredict()
 }
 
 unpack() {
-	local x
-	local y
+	local x y
 	local myfail
 	local tarvars
+	local srcdir
 
-	if [ "$USERLAND" == "BSD" ]; then
+	if [ "$USERLAND" == "BSD" ] ; then
 		tarvars=""
 	else
-		tarvars="--no-same-owner"	
-	fi	
+		tarvars="--no-same-owner"
+	fi
 
 	[ -z "$*" ] && die "Nothing passed to the 'unpack' command"
 
 	for x in "$@"; do
 		myfail="failure unpacking ${x}"
-		echo ">>> Unpacking ${x} to $(pwd)"
-		y="${x%.*}"
-		y="${y##*.}"
+		echo ">>> Unpacking ${x} to ${PWD}"
+		y=${x%.*}
+		y=${y##*.}
+
+		if [ "${x:0:2}" = "./" ] ; then
+			srcdir=""
+		else
+			srcdir="${DISTDIR}/"
+		fi
 
 		case "${x##*.}" in
-			tar) 
-				tar ${tarvars} -xf "${DISTDIR}/${x}" || die "$myfail"
+			tar)
+				tar ${tarvars} -xf "${srcdir}${x}" || die "$myfail"
 				;;
-			tgz) 
-				tar ${tarvars} -xzf "${DISTDIR}/${x}" || die "$myfail"
+			tgz)
+				tar ${tarvars} -xzf "${srcdir}${x}" || die "$myfail"
 				;;
-			tbz2) 
-				bzip2 -dc "${DISTDIR}/${x}" | tar ${tarvars} -xf - || die "$myfail"
+			tbz2)
+				bzip2 -dc "${srcdir}${x}" | tar ${tarvars} -xf - || die "$myfail"
 				;;
-			ZIP|zip) 
-				unzip -qo "${DISTDIR}/${x}" || die "$myfail"
+			ZIP|zip)
+				unzip -qo "${srcdir}${x}" || die "$myfail"
 				;;
-			gz|Z|z) 
-				if [ "${y}" == "tar" ]; then
-					tar ${tarvars} -xzf "${DISTDIR}/${x}" || die "$myfail"
+			gz|Z|z)
+				if [ "${y}" == "tar" ] ; then
+					tar ${tarvars} -xzf "${srcdir}${x}" || die "$myfail"
 				else
-					gzip -dc "${DISTDIR}/${x}" > ${x%.*} || die "$myfail"
+					gzip -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
 				fi
 				;;
-			bz2) 
-				if [ "${y}" == "tar" ]; then
-					bzip2 -dc "${DISTDIR}/${x}" | tar ${tarvars} -xf - || die "$myfail"
+			bz2)
+				if [ "${y}" == "tar" ] ; then
+					bzip2 -dc "${srcdir}${x}" | tar ${tarvars} -xf - || die "$myfail"
 				else
-					bzip2 -dc "${DISTDIR}/${x}" > ${x%.*} || die "$myfail"
+					bzip2 -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
 				fi
 				;;
 			*)
