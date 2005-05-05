@@ -770,10 +770,11 @@ class ebuild_handler:
 				return (not digestgen(aalist,mysettings,overwrite=1,verbosity=verbosity))
 			if mydo=="manifest":
 				return (not digestgen(aalist,mysettings,overwrite=1,manifestonly=1,verbosity=verbosity))
-	
-			if not digestcheck(checkme, mysettings, ("strict" in features),verbosity=verbosity):
-				return 1
-		
+
+			if mydo=="fetch" or mydo=="unpack":
+				if not digestcheck(checkme, mysettings, ("strict" in features),verbosity=verbosity):
+					return 1
+
 			if mydo=="fetch":
 				return 0
 

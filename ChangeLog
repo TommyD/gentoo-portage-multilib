@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  04 May 2005; Mike Frysinger <vapier@gentoo.org> pym/ebuild.py:
+  Do not check the digests of files except when unpacking/fetching #29333.
+
   04 May 2005; Mike Frysinger <vapier@gentoo.org> bin/prepall:
   Remove old unused aclocal code #81419.  Don't chmod +x files that are already 
   +x #81427.  Make sure all shared/static library pairs have proper linker 
