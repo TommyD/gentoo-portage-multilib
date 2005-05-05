@@ -22,3 +22,18 @@ for i in "${D}"opt/*/lib{,32,64} \
 		chmod +x "${j}"
 	done
 done
+
+# When installing static libraries into /usr/lib and shared libraries into 
+# /lib, we have to make sure we have a linker script in /usr/lib along side 
+# the static library, or gcc will utilize the static lib when linking :(.
+# http://bugs.gentoo.org/show_bug.cgi?id=4411
+for a in "${D}"/usr/lib/*.a ; do
+	s=${a%.a}.so
+	if [ ! -e "${s}" ] ; then
+		s=${s##*/}
+		if [ -e "${D}/lib/${s}" ] ; then
+			echo -e "\aQA Notice: missing gen_usr_ldscript for ${s}\a"
+			sleep 1
+		fi
+	fi
+done

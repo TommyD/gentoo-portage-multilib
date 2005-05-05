@@ -9,7 +9,8 @@
 
   04 May 2005; Mike Frysinger <vapier@gentoo.org> bin/prepall:
   Remove old unused aclocal code #81419.  Don't chmod +x files that are already 
-  +x #81427.
+  +x #81427.  Make sure all shared/static library pairs have proper linker 
+  scripts in /usr/lib when appropriate #81420.
 
   04 May 2005; Mike Frysinger <vapier@gentoo.org> 
   bin/ebuild-default-functions.sh:
