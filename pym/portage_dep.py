@@ -717,7 +717,27 @@ def transform_dependspec(dependspec, prefdict):
 	return dotransform(dependspec, prefdict)[1]
 
 
-class TargetGraph(object):
+def transform_virtuals(pkg, dependspec, virtuals):
+	dependspec = copy.copy(dependspec)
+	elements = dependspec.elements
+	dependspec.elements = []
+	for element in elements:
+		if isinstance(element, portage_syntax.DependSpec):
+			dependspec.elements.append(transform_virtuals(pkg, element, virtuals))
+		elif element.cpv.key not in virtuals:
+			dependspec.elements.append(element)
+		else:
+			subdepspec = portage_syntax.DependSpec(element_class=portage_syntax.Atom)
+			subdepspec.preferential = True
+			for virtual in virtuals[element.cpv.key]:
+				atom = element.with_key(virtual)
+				if not atom.match(pkg):
+					subdepspec.add_element(element.with_key(virtual))
+			dependspec.elements.append(subdepspec)
+	return dependspec
+
+
+class StateGraph(object):
 
 	def __init__(self):
 		# key : (bool, [GluePkg], [GluePkg], [Atom], [Atom])
@@ -898,7 +918,7 @@ class TargetGraph(object):
 				else:
 					checks[atom.cpv.key] = True
 		else:
-			for idx in range(self.preferential_atoms[key]):
+			for idx in range(len(self.preferential_atoms[key])):
 				if self.preferential_atoms[key][idx][0] == pkg:
 					for atomlist in self.preferential_atoms[key][idx][1]:
 						for atom in atomlist:

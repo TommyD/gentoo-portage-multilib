@@ -7,6 +7,14 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  05 May 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage_syntax.py: Added
+  with_key() method to Atom for creating a new atom of a different key with
+  the same constraints.
+
+  05 May 2005; Jason Stubbs <jstubbs@gentoo.org> bin/test_target_graph.py
+  pym/portage_dep.py: Added transform_virtuals() function to just that. Added
+  testing code to show how it is used. Renamed TargetGraph to StateGraph.
+
   05 May 2005; Jason Stubbs <jstubbs@gentoo.org> bin/test_target_graph.py
   pym/portage_dep.py: Added full support for OR-based dependencies. Still
   need to sort out virtuals and provide a public interface for TargetGraph.

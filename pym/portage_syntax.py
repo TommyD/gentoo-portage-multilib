@@ -333,6 +333,9 @@ class Atom(object):
 		#else:
 		return False
 
+	def with_key(self, key):
+		return Atom(self.atomstr.replace(self.cpv.key, key))
+
 	def intersects(self, atom):
 		if self == atom:
 			return True
