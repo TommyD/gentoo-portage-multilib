@@ -713,7 +713,7 @@ class config:
 		for k in mydict.keys():
 			# quotes and escaped chars suck.
 			s=mydict[k].replace("\\","\\\\\\\\")
-			s=s.replace("'","\\'")
+			s=s.replace("'","\\\\'")
 			s=s.replace("\n","\\\n")
 			final[k]="$'%s'" % s
 		return final

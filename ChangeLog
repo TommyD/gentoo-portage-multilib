@@ -7,6 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  06 May 2005; Brian Harring <ferringb@gentoo.org> pym/config.py: Dsd supplied 
+  a tweak to the quote escaping; should solve the issues transferring from 
+  python side to bash.
+
   05 May 2005; Jason Stubbs <jstubbs@gentoo.org> bin/test_target_graph.py
   pym/portage_dep.py: Added some basic utility methods to StateGraph. Reworked
   the test script into a functional equivalent of --pretend depclean.
