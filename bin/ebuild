@@ -3,8 +3,9 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-import os,sys,portage_util
+import os,sys
 sys.path = ["/usr/lib/portage/pym"]+sys.path
+import portage_util
 
 def getroot():
 	try:
