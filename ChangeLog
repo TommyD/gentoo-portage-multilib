@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  11 May 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage_syntax.py:
+  Redesigned and rewrote DependSpec.
+
   06 May 2005; Brian Harring <ferringb@gentoo.org> pym/config.py: Dsd supplied 
   a tweak to the quote escaping; should solve the issues transferring from 
   python side to bash.

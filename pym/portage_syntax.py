@@ -1,4 +1,6 @@
-import re,string,copy
+import re
+
+from copy import *
 
 
 pkg_regexp = re.compile("^[a-zA-Z0-9]([-_+a-zA-Z0-9]*[+a-zA-Z0-9])?$")
@@ -134,8 +136,8 @@ class CPV(object):
 
 			# building lists of the version parts before the suffix
 			# first part is simple
-			list1 = [string.atoi(match1.group(2))]
-			list2 = [string.atoi(match2.group(2))]
+			list1 = [int(match1.group(2))]
+			list2 = [int(match2.group(2))]
 
 			# this part would greatly benefit from a fixed-length version pattern
 			if len(match1.group(3)) or len(match2.group(3)):
@@ -144,18 +146,18 @@ class CPV(object):
 				for i in range(0, max(len(vlist1), len(vlist2))):
 					if len(vlist1) <= i or len(vlist1[i]) == 0:
 						list1.append(0)
-						list2.append(string.atoi(vlist2[i]))
+						list2.append(int(vlist2[i]))
 					elif len(vlist2) <= i or len(vlist2[i]) == 0:
-						list1.append(string.atoi(vlist1[i]))
+						list1.append(int(vlist1[i]))
 						list2.append(0)
 					# Let's make life easy and use integers unless we're forced to use floats
 					elif (vlist1[i][0] != "0" and vlist2[i][0] != "0"):
-						list1.append(string.atoi(vlist1[i]))
-						list2.append(string.atoi(vlist2[i]))
+						list1.append(int(vlist1[i]))
+						list2.append(int(vlist2[i]))
 					# now we have to use floats so 1.02 compares correctly against 1.1
 					else:
-						list1.append(string.atof("0."+vlist1[i]))
-						list2.append(string.atof("0."+vlist2[i]))
+						list1.append(float("0."+vlist1[i]))
+						list2.append(float("0."+vlist2[i]))
 
 			# and now the final letter
 			if len(match1.group(5)):
@@ -189,9 +191,9 @@ class CPV(object):
 				if s1[1] != s2[1]:
 					# it's possible that the s(1|2)[1] == ''
 					# in such a case, fudge it.
-					try:			r1 = string.atoi(s1[1])
+					try:			r1 = int(s1[1])
 					except ValueError:	r1 = 0
-					try:			r2 = string.atoi(s2[1])
+					try:			r2 = int(s2[1])
 					except ValueError:	r2 = 0
 					return r1 - r2
 
@@ -286,7 +288,7 @@ class Atom(object):
 				raise ValueError(self.atomstr)
 
 		if not self.__dict__.has_key(name):
-			raise AttributeError(name)
+			return self.cpv.__getattr__(name)
 
 		return self.__dict__[name]
 
@@ -408,271 +410,349 @@ class Atom(object):
 		return False
 
 
-class DependSpec:
 
-	"""
-	Attributes
 
-	list elements
-	bool preferential
-	str  condition
 
-	Methods
+class UseCondition(object):
 
-	int __str__()
-	str __repr__()
-	"""
+	_use_regex = re.compile("^!?[\\w-]+\?$")
 
-	def __init__(self, dependstr="", element_class=str):
+	def can_parse(cls, condition_str):
+		return (cls._use_regex.match(condition_str) is not None)
+	can_parse = classmethod(can_parse)
 
-		if not isinstance(dependstr, str):
-			raise ValueError(dependstr)
-		if isinstance(element_class, DependSpec):
-			raise ValueError
+	def __init__(self, condition_str):
+		condition_str = condition_str[:-1]
+		self.__dict__["_hash"] = hash(condition_str)
+		self.__dict__["negated"] = (condition_str[0] == "!")
+		if self.negated:
+			self.__dict__["flag"] = condition_str[1:]
+		else:
+			self.__dict__["flag"] = condition_str
 
-		dependstr = " ".join(dependstr.split())
-		self.element_class = element_class
-		self.dependstr = dependstr
-		self.condition = None
-		self.preferential = False
-		self.elements = []
+	def __setattr__(self, name, value):
+		raise TypeError("UseCondition has only read-only attributes (assign to "+name+")")
 
-		depstrlen = len(dependstr)
-		parseidx = 0
-		condition = None
-		element = None
-
-		while parseidx != depstrlen:
-			c = dependstr[parseidx]
-
-			if c == " ":
-				parseidx += 1
-				continue
-
-			if c == ")":
-				raise ValueError(self.dependstr)
-
-			if c == "|" and not element and dependstr[parseidx:].startswith("||"):
-				parseidx += 2
-				(subdependstr, parseidx) = self._extract_dependstr(dependstr, parseidx)
-				element = DependSpec(subdependstr, element_class)
-				if len(element.elements) > 1:
-					element.preferential = True
-				if condition:
-					element.condition = condition
-					condition = None
-				self.elements.append(element)
-				element = None
-				continue
-
-			if c == "(":
-				(subdependstr, parseidx) = self._extract_dependstr(dependstr, parseidx)
-				element = DependSpec(subdependstr, element_class)
-				if condition:
-					element.condition = condition
-					condition = None
-				self.elements.append(element)
-				element = None
-				continue
-
-			if dependstr.find(" ", parseidx) != -1:
-				element = dependstr[parseidx:dependstr.find(" ", parseidx)]
-			else:
-				element = dependstr[parseidx:]
-			parseidx += len(element)
-
-			if element[-1] == "?":
-				if condition:
-					raise ValueError(self.dependstr)
-				condition = element[:-1]
-				if not condition:
-					raise ValueError(self.dependstr)
-				element = None
-			elif condition:
-				if not element:
-					raise ValueError(self.dependstr)
-				if not isinstance(element, DependSpec):
-					element = DependSpec(element, element_class)
-				element.condition = condition
-				condition = None
-				self.elements.append(element)
-				element = None
-			else:
-				element = element_class(element)
-				self.elements.append(element)
-				element = None
-
-		self.dependstr = None
-
-	def _extract_dependstr(self, dependstr, parseidx):
-		depstrlen = len(dependstr)
-
-		while dependstr[parseidx] != "(":
-			parseidx += 1
-			if parseidx == depstrlen or dependstr[parseidx] not in [" ", "("]:
-				raise ValueError(self.dependstr)
-
-		parseidx += 1
-		startpos = parseidx
-		bracketcount = 1
-
-		while bracketcount:
-			if parseidx == depstrlen:
-				raise ValueError(self.dependstr)
-
-			nextopen = dependstr.find("(", parseidx)
-			nextclose = dependstr.find(")", parseidx)
-			if nextopen == -1 and nextclose == -1:
-				raise ValueError(self.dependstr)
-
-			if nextclose == -1 or nextopen != -1 and nextopen < nextclose:
-				parseidx = nextopen + 1
-				bracketcount += 1
-			else:
-				parseidx = nextclose + 1
-				bracketcount -= 1
-
-		subdependstr = dependstr[startpos:parseidx-1]
-		return (subdependstr, parseidx)
-
-	def __repr__(self):
-		return "DependSpec('" + str(self) + "')"
+	def __hash__(self):
+		return self._hash
 
 	def __eq__(self, other):
-		return str(self) == str(other)
-
-	def __str__(self):
-		if self.dependstr:
-			return self.dependstr
-
-		dependstr = ""
-		if self.condition:
-			dependstr = self.condition + "? ( "
-		if self.preferential:
-			dependstr += "|| ( "
-		for element in self.elements:
-			if isinstance(element, DependSpec) and len(element.elements) > 1 and not element.preferential and not element.condition:
-				dependstr += "( " + str(element) + " )"
-			else:
-				dependstr += str(element)
-			dependstr += " "
-		if self.elements:
-			dependstr = dependstr[:-1]
-		if self.preferential:
-			dependstr += " )"
-		if self.condition:
-			dependstr += " )"
-		self.dependstr == dependstr
-		return dependstr
-
-	def flatten(self):
-		for element in self.elements:
-			if isinstance(element, DependSpec):
-				element.flatten()
-
-		self.compact()
-
-		if not self.preferential:
-			for idx in range(len(self.elements)):
-				if isinstance(self.elements[idx], DependSpec) and self.elements[idx].preferential:
-					otherelements = []
-					for idx2 in range(len(self.elements)):
-						if idx2 != idx:
-							otherelements.append(self.elements[idx2])
-					newelements = []
-					for element in self.elements[idx].elements:
-						dependspec = DependSpec(element_class=self.element_class)
-						dependspec.elements.extend(otherelements)
-						dependspec.elements.append(DependSpec(element_class=self.element_class))
-						dependspec.elements[-1].condition = self.elements[idx].condition
-						dependspec.elements[-1].elements.append(element)
-						newelements.append(dependspec)
-					self.elements = newelements
-					self.preferential = True
-					self.flatten()
-					return
-
-	def compact(self):
-		for element in self.elements:
-			if isinstance(element, DependSpec):
-				element.compact()
-
-		changed = True
-		while changed:
-			changed = False
-			for x in range(len(self.elements)-1, -1, -1):
-				if isinstance(self.elements[x], DependSpec) and not len(self.elements[x].elements):
-					del self.elements[x]
-			for x in range(len(self.elements)-1, -1, -1):
-				if isinstance(self.elements[x], DependSpec):
-					if self.elements[x].condition == self.condition and self.elements[x].preferential == self.preferential:
-						self.elements.extend(self.elements[x].elements)
-						del self.elements[x]
-						changed = True
-
-		elements = self.elements[:]
-		del self.elements[:]
-		for element in elements:
-			if element not in self.elements:
-				self.elements.append(element)
-
-		if self.preferential and len(self.elements) == 1:
-			self.preferential = False
-
-		if not self.condition and not self.preferential and len(self.elements) == 1 and isinstance(self.elements[0], DependSpec):
-			element = self.elements[0]
-			self.condition = element.condition
-			self.preferential = element.preferential
-			self.elements = element.elements
-
-		self.dependstr = None
+		return (isinstance(other, UseCondition) and self._hash == other._hash)
 
 	def __copy__(self):
-		dependspec = DependSpec(element_class=self.element_class)
-		dependspec.condition = self.condition
-		dependspec.preferential = self.preferential
-		for element in self.elements:
-			dependspec.add_element(copy.copy(element))
+		return self
+
+	def conflicts_with(self, other):
+		return (self.flag == other.flag and self.negated != other.negated)
+
+
+class ParseError(Exception):
+	pass
+
+
+class DependSpec(object):
+
+	def __init__(self, dependstr="", element_class=str):
+		dependstr = " ( ".join(dependstr.split("("))
+		dependstr = " ) ".join(dependstr.split(")"))
+		dependstr = " ".join(dependstr.split())
+		self.__dict__["_origstr"] = dependstr
+		self.__dict__["_str"] = None
+		self.__dict__["_element_class"] = element_class
+		self.__dict__["_needs_brackets"] = True
+		self.__dict__["_specials"] = []
+		self.__dict__["condition"] = None
+
+	def __copy__(self):
+		dependspec = self.__class__()
+		dependspec.__dict__["_element_class"] = self._element_class
+		dependspec.__dict__["_specials"] = self._specials[:]
+		dependspec.__dict__["condition"] = copy(self.condition)
+		dependspec.__dict__["_needs_brackets"] = self._needs_brackets
+		self._parsed
+		dependspec.__dict__["_elements"] = self._elements[:]
+		dependspec.__dict__["_parsed"] = True
 		return dependspec
 
-	def resolve_conditions(self, truths):
-		mycondition = self.condition
-		self.condition = None
+	def __setattr__(self, name, value):
+		raise TypeError("DependSpec has only read-only attributes (assign to "+name+")")
 
-		if mycondition:
-			if mycondition[0] == "!":
-				mycondition = mycondition[1:]
-				keep = (mycondition not in truths)
+	def __str__(self):
+		if self._str is not None:
+			return self._str
+		self._parsed
+		mystr = []
+		for element in self._elements:
+			x = str(element)
+			if x:
+				if isinstance(element, DependSpec) and element._needs_brackets:
+					x = "( "+x+" )"
+				mystr.append(x)
+		mystr = " ".join(mystr)
+		if self.condition:
+			mystr = str(self.condition)+" ( "+mystr+" )"
+		self.__dict__["_str"] = mystr
+		return mystr
+
+	def _needs_brackets(self):
+		return True
+
+	def __hash__(self):
+		return hash(str(self))
+
+	def __eq__(self, other):
+		return (isinstance(other, DependSpec) and str(self) == str(other))
+
+	def __getattr__(self, name):
+		if "_parsed" not in self.__dict__:
+			self._parse()
+		return self.__dict__[name]
+
+	def __getitem__(self, idx):
+		self._parsed
+		return self._elements[idx]
+
+	def __len__(self):
+		self._parsed
+		return len(self._elements)
+
+	def _parse(self):
+		dependstr = self._origstr
+		if dependstr.count("(") != dependstr.count(")"):
+			raise ParseError(dependstr)
+		self.__dict__["_elements"] = []
+		specials_found = []
+		condition = None
+		strlen = len(dependstr)
+		pos = 0
+		while pos != strlen:
+			if dependstr[pos] == " ":
+				pos += 1
+				continue
+			if dependstr[pos] == ")":
+				raise ParseError(dependstr)
+			if dependstr[pos] == "(":
+				pos += 1
+				bracket_count = 1
+				nextpos = pos
+				while bracket_count:
+					nextpos_d = {}
+					nextpos_d[dependstr.find("(", nextpos)] = True
+					nextpos_d[dependstr.find(")", nextpos)] = True
+					if -1 in nextpos_d:
+						del nextpos_d[-1]
+					nextpos = min(nextpos_d.keys())
+					if dependstr[nextpos] == "(":
+						bracket_count += 1
+					else:
+						bracket_count -= 1
+					nextpos += 1
+				element = self.__class__(dependstr[pos:nextpos-1])
+				element.__dict__["_element_class"] = self._element_class
+				if condition:
+					element.__dict__["condition"] = condition
+					condition = None
+				pos = nextpos
+				self._elements.append(element)
+				continue
+			nextpos_d = {strlen:True}
+			nextpos_d[dependstr.find(" ", pos)] = True
+			nextpos_d[dependstr.find("(", pos)] = True
+			nextpos_d[dependstr.find(")", pos)] = True
+			if -1 in nextpos_d:
+				del nextpos_d[-1]
+			nextpos = min(nextpos_d.keys())
+			element = dependstr[pos:nextpos]
+			if element in self._specials:
+				specials_found += [(element, len(self._elements))]
+			elif UseCondition.can_parse(element):
+				if condition:
+					raise ParseError(dependstr)
+				condition = UseCondition(element)
 			else:
-				keep = (mycondition in truths)
-			if not keep:
-				del self.elements[:]
-				return
+				if condition:
+					raise ParseError(dependstr)
+				self._elements.append(self._element_class(element))
+			pos = nextpos
+		if condition:
+			raise ParseError(dependstr)
+		for special in specials_found:
+			if special[1] == len(self._elements):
+				raise ParseError(dependstr)
+			try:
+				self._do_special(special[0], special[1])
+			except ParseError:
+				raise ParseError(dependstr)
+		self.__dict__["_parsed"] = True
 
-		for element in self.elements:
+	def all_conditions(self):
+		cond_d = {}
+		if self.condition:
+			cond_d[self.condition] = True
+			yield self.condition
+
+		self._parsed
+		for element in self._elements:
 			if isinstance(element, DependSpec):
-				element.resolve_conditions(truths)
+				for cond in element.all_conditions():
+					if cond not in cond_d:
+						cond_d[cond] = True
+						yield cond
 
-	def add_element(self, element):
-		if isinstance(element, self.element_class) or (isinstance(element, DependSpec) and element.element_class is self.element_class):
-			self.elements.append(element)
+	def with_only_conditions(self, conditions):
+		if self.condition and self.condition not in conditions:
+			return self.__class__()
+		self._parsed
+		dependspec = copy(self)
+		dependspec.__dict__["condition"] = None
+		for idx in range(len(dependspec._elements)):
+			if isinstance(dependspec._elements[idx], DependSpec):
+				dependspec._elements[idx] = dependspec._elements[idx].with_only_conditions(conditions)
+		return dependspec
+
+	def _can_combine_with(self, other):
+		return self.condition == other.condition
+
+	def compacted(self):
+		elements = []
+		element_d = {}
+		self._parsed
+		for element in self._elements:
+			if element in element_d:
+				continue
+			if isinstance(element, DependSpec):
+				element = element.compacted()
+				if not len(element._elements):
+					continue
+				if self._can_combine_with(element):
+					for element in element._elements:
+						if element in element_d:
+							continue
+						elements.append(element)
+						element_d[element] = True
+				else:
+					elements.append(element)
+					element_d[element] = True
+			else:
+				elements.append(element)
+				element_d[element] = True
+		if not elements:
+			return self.__class__()
+		dependspec = copy(self)
+		dependspec.__dict__["_elements"] = elements
+		return dependspec
+
+
+class AtomDependSpec(DependSpec):
+
+	def create_from(atoms, preferential=False):
+		dependstr = []
+		for atom in atoms:
+			dependstr.append(str(atom))
+		dependstr = " ".join(dependstr)
+		if preferential:
+			dependstr = "|| ( "+dependstr+" )"
+		return AtomDependSpec(dependstr)
+	create_from = staticmethod(create_from)
+
+	def __init__(self, dependstr=""):
+		super(self.__class__, self).__init__(dependstr, element_class=Atom)
+		self.__dict__["preferential"] = False
+		self.__dict__["_specials"] = ["||"]
+
+	def __copy__(self):
+		atomdependspec = super(self.__class__, self).__copy__()
+		atomdependspec.__dict__["preferential"] = self.preferential
+		return atomdependspec
+
+	def __str__(self):
+		if self._str is not None:
+			return self._str
+		mystr = super(self.__class__, self).__str__()
+		if self.preferential:
+			mystr = "|| ( "+mystr+" )"
+		self.__dict__["_str"] = mystr
+		return mystr
+
+	def _do_special(self, special, idx):
+		if not isinstance(self._elements[idx], AtomDependSpec) or self._elements[idx].preferential:
+			raise ParseError()
+		self._elements[idx].__dict__["preferential"] = True
+		self._elements[idx].__dict__["_needs_brackets"] = False
+
+	def _can_combine_with(self, other):
+		if self.preferential != other.preferential:
+			return False
+		return super(self.__class__, self)._can_combine_with(other)
+
+	def compacted(self):
+		atomdependspec = super(self.__class__, self).compacted()
+		if atomdependspec.preferential and len(atomdependspec._elements) <= 1:
+			atomdependspec.__dict__["preferential"] = False
+			atomdependspec.__dict__["_needs_brackets"] = True
+			atomdependspec = atomdependspec.compacted()
+		return atomdependspec
+
+	def with_keys_transformed(self, key_map):
+		atomdependspec = copy(self)
+		atomdependspec._parsed
+		for x in range(len(atomdependspec._elements)):
+			if isinstance(atomdependspec._elements[x], AtomDependSpec):
+				atomdependspec._elements[x] = atomdependspec._elements[x].with_keys_transformed()
+			elif atomdependspec._elements[x].key in key_map:
+				elements = []
+				for newkey in key_map[atomdependspec._elements[x].key]:
+					elements.append(atomdependspec._elements[x].with_key(newkey))
+				atomdependspec._elements[x] = AtomDependSpec.create_from(elements, preferential=True)
+		atomdependspec.__dict__["_str"] = None
+		return atomdependspec
+
+	def combinations(self):
+		if not self._elements:
+			return []
+
+		if self.condition:
+			raise NotImplementedError()
+
+		combinations = []
+
+		if self.preferential:
+			for element in self._elements:
+				if isinstance(element, AtomDependSpec):
+					combinations += element.combinations()
+				else:
+					combinations += [[element]]
 		else:
-			raise ValueError(element)
-		self.dependstr = None
-
-	def remove_element(self, element):
-		self.elements.remove(element)
-		self.dependstr = None
-
-
-class GluePkg(CPV):
-
-	def __init__(self, cpv, db, slot, use, bdeps, rdeps):
-		CPV.__init__(self, cpv)
-		self.__dict__["db"] = db
-		self.__dict__["slot"] = slot
-		self.__dict__["use"] = use
-		bdeps.flatten()
-		self.__dict__["bdeps"] = bdeps
-		rdeps.flatten()
-		self.__dict__["rdeps"] = rdeps
+			singles = []
+			others = []
+			for element in self._elements:
+				if isinstance(element, AtomDependSpec):
+					others += [element.combinations()]
+				else:
+					singles += [element]
+			if others:
+				indexes = []
+				endindex = len(others)
+				for x in range(endindex):
+					indexes.append(0)
+				index = 0
+				while index != endindex:
+					if indexes[index] >= len(others[index]):
+						index += 1
+						if index == endindex:
+							continue
+						for x in range(index):
+							indexes[x] = 0
+						indexes[index] += 1
+						continue
+					else:
+						index = 0
+					newcomb = singles[:]
+					for x in range(endindex):
+						if others[x]:
+							newcomb.extend(others[x][indexes[x]])
+					combinations.append(newcomb)
+					indexes[index] += 1
+			else:
+				combinations = [singles]
+		return combinations
