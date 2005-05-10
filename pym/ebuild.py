@@ -140,7 +140,6 @@ class ebuild_processor:
 				sys.exit(1)
 			self.__sandbox = True
 			spawn_func = portage_exec.spawn_sandbox
-			env.update({"SANDBOX_DEBUG":"1","SANDBOX_DEBUG_LOG":"/var/tmp/test"})
 
 		elif fakeroot:
 			self.__fakeroot = True
