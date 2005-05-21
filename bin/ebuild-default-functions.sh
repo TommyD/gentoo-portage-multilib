@@ -395,7 +395,7 @@ function stat_perms() {
 	local f
 	f=$(stat -c '%f' "$1")
 	f=$(printf "%o" 0x$f)
-	f="${f:${#f}-4}"
+	f=${f:${#f}-4}
 	echo $f
 }
 
@@ -422,44 +422,79 @@ dyn_install() {
 
 	declare -i UNSAFE=0
 	for i in $(find "${D}/" -type f -perm -2002); do
-		UNSAFE=$(($UNSAFE + 1))
+		((UNSAFE++))
 		echo "UNSAFE SetGID: $i"
 	done
 	for i in $(find "${D}/" -type f -perm -4002); do
-		UNSAFE=$(($UNSAFE + 1))
+		((UNSAFE++))
 		echo "UNSAFE SetUID: $i"
 	done
-	
-	if [ -x /usr/bin/readelf -a -x /usr/bin/file ]; then
-		for x in $(find "${D}/" -type f \( -perm -04000 -o -perm -02000 \) ); do
-			f=$(file "${x}")
-			if [ -z "${f/*SB executable*/}" -o -z "${f/*SB shared object*/}" ]; then
-				/usr/bin/readelf -d "${x}" | egrep '\(FLAGS(.*)NOW' > /dev/null
-				if [ "$?" != "0" ]; then
-					if [ ! -z "${f/*statically linked*/}" ]; then
-						#uncomment this line out after developers have had ample time to fix pkgs.
-						#UNSAFE=$(($UNSAFE + 1))
-						echo -ne '\a'
-						echo "QA Notice: ${x:${#D}:${#x}} is setXid, dynamically linked and using lazy bindings."
-						echo "This combination is generally discouraged. Try: CFLAGS='-Wl,-z,now' emerge ${PN}"
-						echo -ne '\a'
-						sleep 1
-					fi
-				fi
-			fi
-		done
+
+	if type -p scanelf > /dev/null ; then
+		# Make sure we disallow insecure RUNPATH/RPATH's
+		f=$(scanelf -qyRF '%r %F' "${D}" | grep "${PORTAGE_BUILDDIR}")
+		if [[ -n ${f} ]] ; then
+			echo -ne '\a\n'
+			echo "QA Notice: the following files contain insecure RUNPATH's"
+			echo " Please file a bug about this at http://bugs.gentoo.org/"
+			echo " For more information on this issue, kindly review:"
+			echo " http://bugs.gentoo.org/81745"
+			echo "${f//${D}\/}"
+			echo -ne '\a\n'
+			die "Insecure binaries detected"
+		fi
+
+		# Check for setid binaries but are not built with BIND_NOW
+		f=$(scanelf -qyRF '%b %F' "${D}")
+		if [[ -n ${f} ]] ; then
+			echo -ne '\a\n'
+			echo "QA Notice: the following files are setXid, dyn linked, and using lazy bindings"
+			echo " This combination is generally discouraged.  Try re-emerging the package:"
+			echo " LDFLAGS='-Wl,-z,now' emerge ${PN}"
+			echo "${f//${D}\/}"
+			echo -ne '\a\n'
+			sleep 1
+		fi
+
+		# TEXTREL's are baaaaaaaad
+		f=$(scanelf -qyRF '%t %F' "${D}")
+		if [[ -n ${f} ]] ; then
+			echo -ne '\a\n'
+			echo "QA Notice: the following files contain runtime text relocations"
+			echo " Text relocations require a lot of extra work to be preformed by the"
+			echo " dynamic linker which will cause serious performance impact on IA-32"
+			echo " and might not function properly on other architectures hppa for example."
+			echo " If you are a programmer please take a closer look at this package and"
+			echo " consider writing a patch which addresses this problem."
+			echo "${f//${D}\/}"
+			echo -ne '\a\n'
+		fi
+
+		# Check for files with executable stacks
+		f=$(scanelf -qyRF '%e %F' "${D}")
+		if [[ -n ${f} ]] ; then
+			echo -ne '\a\n'
+			echo "QA Notice: the following files contain executable stacks"
+			echo " Files with executable stacks will not work properly (or at all!)"
+			echo " on some architectures/operating systems.  A bug should be filed"
+			echo " at http://bugs.gentoo.org/ to make sure the file is fixed."
+			echo "${f//${D}\/}"
+			echo -ne '\a\n'
+		fi
+
+		# Save NEEDED information
+		scanelf -qyRF '%F %n' "${D}" | sed -e "s:${D}::g" > "${PORTAGE_BUILDDIR}"/build-info/NEEDED
 	fi
 
-
-	if [[ $UNSAFE > 0 ]]; then
-		die "There are ${UNSAFE} unsafe files. Portage will not install them."
+	if [[ ${UNSAFE} > 0 ]] ; then
+		die "There are ${UNSAFE} unsafe files.  Portage will not install them."
 	fi
 
 	local file s
 
 	find "${D}/" -user  portage -print | while read file; do
 		ewarn "file $file was installed with user portage!"
-		s=$(stat_perms $file)
+		s=$(stat_perms "$file")
 		chown root "$file"
 		#XXX: Stable does not have the symlink test
 		[ -h "$file" ] || chmod "$s" "$file"

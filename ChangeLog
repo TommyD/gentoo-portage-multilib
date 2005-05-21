@@ -7,6 +7,11 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  20 May 2005; Mike Frysinger <vapier@gentoo.org> bin/prepstrip
+  bin/ebuild-default-functions.sh:
+  Removed calls to readelf and replaced with scanelf.  Added more QA checks 
+  for various issues related to ELF binaries.
+
   11 May 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage_syntax.py:
   Redesigned and rewrote DependSpec.
 
