@@ -2,7 +2,7 @@
 # ebuild-default-functions.sh; default functions for ebuild env that aren't saved- specific to the portage instance.
 # Copyright 2005 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-$Header$
+# $Header$
 
 has_version() {
 	# if there is a predefined portageq call, use it.
@@ -37,8 +37,7 @@ best_version() {
 	return $e
 }
 
-check_KV()
-{
+check_KV() {
 	if [ -z "${KV}" ]; then
 		eerror ""
 		eerror "Could not determine your kernel version."
@@ -53,8 +52,7 @@ check_KV()
 }
 
 # adds ".keep" files so that dirs aren't auto-cleaned
-keepdir()
-{
+keepdir() {
 	dodir "$@"
 	local x
 	if [ "$1" == "-R" ] || [ "$1" == "-r" ]; then
@@ -68,23 +66,19 @@ keepdir()
 }
 
 # sandbox support functions
-addread()
-{
+addread() {
 	export SANDBOX_READ="$SANDBOX_READ:$1"
 }
 
-addwrite()
-{
+addwrite() {
 	export SANDBOX_WRITE="$SANDBOX_WRITE:$1"
 }
 
-adddeny()
-{
+adddeny() {
 	export SANDBOX_DENY="$SANDBOX_DENY:$1"
 }
 
-addpredict()
-{
+addpredict() {
 	export SANDBOX_PREDICT="$SANDBOX_PREDICT:$1"
 }
 
@@ -148,19 +142,18 @@ unpack() {
 	done
 }
 
-dyn_setup()
-{
+dyn_setup() {
 	if hasq setup ${COMPLETED_EBUILD_PHASES:-unset}; then
 		echo ">>> looks like ${PF} has already been setup, bypassing."
 		MUST_EXPORT_ENV="no"
 		return
 	fi
 	MUST_EXPORT_ENV="yes"
-	if [ "$USERLAND" == "Linux" ]; then	
+	if [ "$USERLAND" == "Linux" ]; then
 		# The next bit is to ease the broken pkg_postrm()'s
 		# some of the gcc ebuilds have that nuke the new
 		# /lib/cpp and /usr/bin/cc wrappers ...
-	
+
 		# Make sure we can have it disabled somehow ....
 		if [ "${DISABLE_GEN_GCC_WRAPPERS}" != "yes" ]; then
 			# Create /lib/cpp if missing or a symlink
@@ -210,7 +203,7 @@ dyn_unpack() {
 			rm -rf "${WORKDIR}"
 		fi
 	fi
-	
+
 	install -m0700 -d "${WORKDIR}" || die "Failed to create dir '${WORKDIR}'"
 	[ -d "$WORKDIR" ] && cd "${WORKDIR}"
 	echo ">>> Unpacking source..."
@@ -227,8 +220,8 @@ abort_handler() {
 	else
 		msg="${EBUILD}: ${1} failed; exiting."
 	fi
-	echo 
-	echo "$msg" 
+	echo
+	echo "$msg"
 	echo
 	eval ${3}
 	#unset signal handler
@@ -303,7 +296,7 @@ dyn_compile() {
 		mkdir build-info
 	fi
 	cp "${EBUILD}" "build-info/${PF}.ebuild"
-	
+
 	if [ -d "${S}" ]; then
 		cd "${S}"
 	fi
@@ -313,8 +306,8 @@ dyn_compile() {
 	#some packages use an alternative to $S to build in, cause
 	#our libtool to create problematic .la files
 	export PWORKDIR="$WORKDIR"
-	src_compile 
-	#|| abort_compile "fail" 
+	src_compile
+	#|| abort_compile "fail"
 	cd "${PORTAGE_BUILDDIR}"
 	cd build-info
 
@@ -415,7 +408,7 @@ dyn_install() {
 	#some packages uses an alternative to $S to build in, cause
 	#our libtool to create problematic .la files
 	export PWORKDIR="$WORKDIR"
-	src_install 
+	src_install
 	#|| abort_install "fail"
 	prepall
 	cd "${D}"
@@ -692,10 +685,10 @@ dyn_rpm() {
 dyn_help() {
 	echo
 	echo "Portage"
-	echo "Copyright 1999-2004 Gentoo Foundation"
-	echo 
+	echo "Copyright 1999-2005 Gentoo Foundation"
+	echo
 	echo "How to use the ebuild command:"
-	echo 
+	echo
 	echo "The first argument to ebuild should be an existing .ebuild file."
 	echo
 	echo "One or more of the following options can then be specified.  If more"
@@ -723,25 +716,25 @@ dyn_help() {
 	echo
 	echo "The following settings will be used for the ebuild process:"
 	echo
-	echo "  package     : ${PF}" 
-	echo "  slot        : ${SLOT}" 
-	echo "  category    : ${CATEGORY}" 
+	echo "  package     : ${PF}"
+	echo "  slot        : ${SLOT}"
+	echo "  category    : ${CATEGORY}"
 	echo "  description : ${DESCRIPTION}"
-	echo "  system      : ${CHOST}" 
-	echo "  c flags     : ${CFLAGS}" 
-	echo "  c++ flags   : ${CXXFLAGS}" 
-	echo "  make flags  : ${MAKEOPTS}" 
+	echo "  system      : ${CHOST}"
+	echo "  c flags     : ${CFLAGS}"
+	echo "  c++ flags   : ${CXXFLAGS}"
+	echo "  make flags  : ${MAKEOPTS}"
 	echo -n "  build mode  : "
 	if hasq nostrip $FEATURES $RESTRICT;	then
 		echo "debug (large)"
 	else
 		echo "production (stripped)"
 	fi
-	echo "  merge to    : ${ROOT}" 
+	echo "  merge to    : ${ROOT}"
 	echo
 	if [ -n "$USE" ]; then
 		echo "Additionally, support for the following optional features will be enabled:"
-		echo 
+		echo
 		echo "  ${USE}"
 	fi
 	echo
@@ -760,24 +753,24 @@ debug-print() {
 	if [ "$EBUILD_PHASE" == "depend" ] && [ -z "${PORTAGE_DEBUG}" ]; then
 		return
 	fi
-	# if $T isn't defined, we're in dep calculation mode and 
+	# if $T isn't defined, we're in dep calculation mode and
 	# shouldn't do anything
 	[ -z "$T" ] && return 0
 
 	while [ "$1" ]; do
-	
+
 		# extra user-configurable targets
 		if [ "$ECLASS_DEBUG_OUTPUT" == "on" ]; then
 			echo "debug: $1"
 		elif [ -n "$ECLASS_DEBUG_OUTPUT" ]; then
 			echo "debug: $1" >> $ECLASS_DEBUG_OUTPUT
 		fi
-		
+
 		# default target
 		echo "$1" >> "${T}/eclass-debug.log"
 		# let the portage user own/write to this file
 		chmod g+w "${T}/eclass-debug.log" &>/dev/null
-		
+
 		shift
 	done
 }
@@ -785,7 +778,7 @@ debug-print() {
 # The following 2 functions are debug-print() wrappers
 
 debug-print-function() {
-	str="$1: entering function" 
+	str="$1: entering function"
 	shift
 	debug-print "$str, parameters: $*"
 }
@@ -851,7 +844,7 @@ inherit() {
 
 		#We need to back up the value of DEPEND and RDEPEND to B_DEPEND and B_RDEPEND
 		#(if set).. and then restore them after the inherit call.
-	
+
 		#turn off glob expansion
 		set -f
 
@@ -871,7 +864,7 @@ inherit() {
 			source "$location" || export ERRORMSG="died sourcing $location in inherit()"
 		fi
 		[ -z "${ERRORMSG}" ] || die "${ERRORMSG}"
-		
+
 		#turn off glob expansion
 		set -f
 
@@ -900,7 +893,7 @@ inherit() {
 
 		#turn on glob expansion
  		set +f
-		
+
 		if hasq $1 $INHERITED && [ $INHERITED_ALREADY == 0 ]; then
 #
 # enable this one eclasses no longer full with eclass and inherited.
@@ -917,7 +910,7 @@ inherit() {
 	done
 	ECLASS_DEPTH=$(($ECLASS_DEPTH - 1))
 	if [[ $ECLASS_DEPTH == 0 ]]; then
-		ECLASS_DEPTH=$(($SAVED_INHERIT_COUNT - 1)) 
+		ECLASS_DEPTH=$(($SAVED_INHERIT_COUNT - 1))
 	fi
 }
 
@@ -931,7 +924,7 @@ EXPORT_FUNCTIONS() {
 		exit 1
 	fi
 	while [ "$1" ]; do
-		debug-print "EXPORT_FUNCTIONS: ${1} -> ${ECLASS}_${1}" 
+		debug-print "EXPORT_FUNCTIONS: ${1} -> ${ECLASS}_${1}"
 		eval "$1() { ${ECLASS}_$1 "\$@" ; }" > /dev/null
 		shift
 	done
@@ -1004,7 +997,7 @@ do_newdepend() {
 	done
 }
 
-# this is a function for removing any directory matching a passed in pattern from 
+# this is a function for removing any directory matching a passed in pattern from
 # PATH
 remove_path_entry() {
 	save_IFS
@@ -1029,7 +1022,7 @@ enable_qa_interceptors() {
 
 	# Turn of extended glob matching so that g++ doesn't get incorrectly matched.
 	shopt -u extglob
-	
+
 	# QA INTERCEPTORS
 	local FUNC_SRC BIN BODY BIN_PATH
 	for BIN in ${QA_INTERCEPTORS}; do
@@ -1043,7 +1036,7 @@ enable_qa_interceptors() {
 			echo -n \"QA Notice: ${BIN} in global scope: \" >&2
 			if [ \$ECLASS_DEPTH -gt 0 ]; then
 				echo \"eclass \${ECLASS}\" >&2
-			else 
+			else
 				echo \"\${CATEGORY}/\${PF}\" >&2
 			fi
 			${BODY}
@@ -1066,7 +1059,7 @@ useq() {
 		neg=1
 	fi
 	local x
-	
+
 	# Make sure we have this USE flag in IUSE
 	if ! hasq "${u}" ${IUSE} ${E_IUSE} && ! hasq "${u}" ${PORTAGE_ARCHLIST} selinux; then
 		echo "QA Notice: USE Flag '${u}' not in IUSE for ${CATEGORY}/${PF}" >&2

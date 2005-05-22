@@ -1,6 +1,6 @@
 #!/bin/bash
 # ebuild-functions.sh; ebuild env functions, saved with the ebuild (not specific to the portage version).
-# Copyright 2004 Gentoo Foundation
+# Copyright 2004-2005 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 $Header$
 
@@ -24,7 +24,7 @@ use_with() {
 		return
 	fi
 
-	local UW_SUFFIX=""	
+	local UW_SUFFIX=""
 	if [ ! -z "${3}" ]; then
 		UW_SUFFIX="=${3}"
 	fi
@@ -33,7 +33,7 @@ use_with() {
 	if [ -z "${UWORD}" ]; then
 		UWORD="$1"
 	fi
-	
+
 	if useq $1; then
 		echo "--with-${UWORD}${UW_SUFFIX}"
 		return 0
@@ -50,7 +50,7 @@ use_enable() {
 		return
 	fi
 
-	local UE_SUFFIX=""	
+	local UE_SUFFIX=""
 	if [ ! -z "${3}" ]; then
 		UE_SUFFIX="=${3}"
 	fi
@@ -59,7 +59,7 @@ use_enable() {
 	if [ -z "${UWORD}" ]; then
 		UWORD="$1"
 	fi
-	
+
 	if useq $1; then
 		echo "--enable-${UWORD}${UE_SUFFIX}"
 		return 0
@@ -163,7 +163,7 @@ econf() {
 	fi
 }
 
-strip_duplicate_slashes () { 
+strip_duplicate_slashes() {
 	if [ -n "${1}" ]; then
 		local removed="${1/\/\///}"
 		[ "${removed}" != "${removed/\/\///}" ] && removed=$(strip_duplicate_slashes "${removed}")
@@ -171,8 +171,7 @@ strip_duplicate_slashes () {
 	fi
 }
 
-einstall() 
-{
+einstall() {
 	# CONF_PREFIX is only set if they didn't pass in libdir above
 	LIBDIR_VAR="LIBDIR_${ABI}"
 	if [ -n "${ABI}" -a -n "${!LIBDIR_VAR}" ]; then
@@ -204,19 +203,17 @@ einstall()
 			mandir=${D}/usr/share/man \
 			sysconfdir=${D}/etc \
 			${EXTRA_EINSTALL} \
-			"$@" install || die "einstall failed" 
+			"$@" install || die "einstall failed"
 	else
 		die "no Makefile found"
 	fi
 }
 
-pkg_setup()
-{
-	return 
+pkg_setup() {
+	return
 }
 
-pkg_nofetch()
-{
+pkg_nofetch() {
 	[ -z "${SRC_URI}" ] && return
 
 	echo "!!! The following are listed in SRC_URI for ${PN}:"
@@ -225,23 +222,22 @@ pkg_nofetch()
 	done
 }
 
-src_unpack() { 
+src_unpack() {
 	if [ "${A}" != "" ]; then
 		unpack ${A}
-	fi	
+	fi
 }
 
-src_compile() { 
+src_compile() {
 	if [ -x ./configure ]; then
-		econf 
+		econf || die "econf failed"
 	fi
 	if [ -f Makefile ] || [ -f GNUmakefile ] || [ -f makefile ]; then
 		emake || die "emake failed"
 	fi
 }
 
-src_test() 
-{ 
+src_test() {
 	addpredict /
 	if make check -n &> /dev/null; then
 		echo ">>> Test phase [check]: ${CATEGORY}/${PF}"
@@ -261,28 +257,23 @@ src_test()
 	SANDBOX_PREDICT="${SANDBOX_PREDICT%:/}"
 }
 
-src_install() 
-{ 
-	return 
-}
-
-pkg_preinst()
-{
+src_install() {
 	return
 }
 
-pkg_postinst()
-{
+pkg_preinst() {
 	return
 }
 
-pkg_prerm()
-{
+pkg_postinst() {
 	return
 }
 
-pkg_postrm()
-{
+pkg_prerm() {
+	return
+}
+
+pkg_postrm() {
 	return
 }
 
