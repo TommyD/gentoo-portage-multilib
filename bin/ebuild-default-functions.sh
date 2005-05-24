@@ -448,6 +448,8 @@ dyn_install() {
 			echo " LDFLAGS='-Wl,-z,now' emerge ${PN}"
 			echo "${f//${D}\/}"
 			echo -ne '\a\n'
+			[[ ${FEATURES/elf-bind-now} != "${FEATURES}" ]] 
+				&& die "Aborting due to lazy bindings"
 			sleep 1
 		fi
 
@@ -463,6 +465,9 @@ dyn_install() {
 			echo " consider writing a patch which addresses this problem."
 			echo "${f//${D}\/}"
 			echo -ne '\a\n'
+			[[ ${FEATURES/elf-textrel} != "${FEATURES}" ]] 
+				&& die "Aborting due to textrels"
+			sleep 1
 		fi
 
 		# Check for files with executable stacks
@@ -475,6 +480,9 @@ dyn_install() {
 			echo " at http://bugs.gentoo.org/ to make sure the file is fixed."
 			echo "${f//${D}\/}"
 			echo -ne '\a\n'
+			[[ ${FEATURES/elf-xstack} != "${FEATURES}" ]] 
+				&& die "Aborting due to +x stack"
+			sleep 1
 		fi
 
 		# Save NEEDED information
