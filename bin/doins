@@ -20,7 +20,15 @@ if [ ${INSDEPTH} -gt 30 ] ; then
 	exit 1
 fi
 
-[ ! -d "${INSDESTTREE}" ] && dodir "${INSDESTTREE}"
+if [ "${INSDESTTREE%${D}*}" == "" ]; then
+	echo "-------------------------------------------------------" 1>&2
+	echo "You should not use \${D} with helpers." 1>&2
+	echo "  --> ${INSDESTTREE}" 1>&2
+	echo "-------------------------------------------------------" 1>&2
+	#exit 1
+fi
+
+[ ! -d "${D}${INSDESTTREE}" ] && dodir "${INSDESTTREE}"
 
 for x in "$@" ; do
 	if [ -L "$x" ] ; then
