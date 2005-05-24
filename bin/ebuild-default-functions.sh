@@ -97,17 +97,19 @@ unpack() {
 	[ -z "$*" ] && die "Nothing passed to the 'unpack' command"
 
 	for x in "$@"; do
-		myfail="failure unpacking ${x}"
 		echo ">>> Unpacking ${x} to ${PWD}"
 		y=${x%.*}
 		y=${y##*.}
 
+		myfail="${x} does not exist"
 		if [ "${x:0:2}" = "./" ] ; then
 			srcdir=""
 		else
 			srcdir="${DISTDIR}/"
 		fi
+		[ ! -s "${srcdir}${x}" ] && die "$myfail"
 
+		myfail="failure unpacking ${x}"
 		case "${x##*.}" in
 			tar)
 				tar ${tarvars} -xf "${srcdir}${x}" || die "$myfail"

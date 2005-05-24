@@ -7,6 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  23 May 2005; Mike Frysinger <vapier@gentoo.org> 
+  bin/ebuild-default-functions.sh:
+  Make sure the files passed to unpack actually exist.
+
   20 May 2005; Mike Frysinger <vapier@gentoo.org> bin/prepstrip
   bin/ebuild-default-functions.sh:
   Removed calls to readelf and replaced with scanelf.  Added more QA checks 
