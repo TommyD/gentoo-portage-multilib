@@ -10,7 +10,7 @@
   24 May 2005; Mike Frysinger <vapier@gentoo.org>
   bin/ebuild-default-functions.sh:
   Allow src_install() to abort if scanelf locates questionable binaries and 
-  user has their FEATURES set (elf-xstack / elf-textrel / elf-bind-now).
+  user has 'stricter' in their FEATURES.
 
   23 May 2005; Mike Frysinger <vapier@gentoo.org> 
   bin/ebuild-default-functions.sh:
