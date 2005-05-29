@@ -10,7 +10,6 @@ if [ "${FEATURES//*nostrip*/true}" == "true" ] || [ "${RESTRICT//*nostrip*/true}
 else
 	STRIP="${STRIP:-${CHOST}-strip}"
 	type -p ${STRIP} > /dev/null || STRIP=strip
-
 	PORTAGE_STRIP_FLAGS=${PORTAGE_STRIP_FLAGS:---strip-unneeded}
 fi
 
