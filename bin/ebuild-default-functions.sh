@@ -293,6 +293,8 @@ dyn_compile() {
 		sleep 3
 	fi
 
+	echo ">>> Compiling source ..."
+
 	cd "${PORTAGE_BUILDDIR}"
 	if [ ! -e "build-info" ];	then
 		mkdir build-info
@@ -345,10 +347,13 @@ dyn_compile() {
 		touch DEBUGBUILD
 	fi
 	trap SIGINT SIGQUIT
+
+	echo ">>> Finished compiling"
 }
 
 dyn_package() {
 	trap "abort_package" SIGINT SIGQUIT
+	echo ">>> Generating binary package ..."
 	cd "${PORTAGE_BUILDDIR}/image"
 	tar cpvf - ./ | bzip2 -f > ../bin.tar.bz2 || die "Failed to create tarball"
 	cd ..
