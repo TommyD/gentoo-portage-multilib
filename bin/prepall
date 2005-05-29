@@ -37,3 +37,12 @@ for a in "${D}"/usr/lib/*.a ; do
 		fi
 	fi
 done
+
+# Verify that the libtool files don't contain bogus $D entries.
+for a in "${D}"/usr/lib/*.la ; do
+	s=${a##*/}
+	if grep -qs "${PORTAGE_TMPDIR}" "${a}" ; then
+		echo -e "\aQA Notice: ${s} appears to contain PORTAGE_TMPDIR paths\a"
+		sleep 1
+	fi
+done

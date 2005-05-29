@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  29 May 2005; Mike Frysinger <vapier@gentoo.org> bin/prepall:
+  Add a QA check to see if PORTAGE_TMPDIR leaked into libtool scripts (*.la).
+
   24 May 2005; Mike Frysinger <vapier@gentoo.org>
   bin/ebuild-default-functions.sh:
   Allow src_install() to abort if scanelf locates questionable binaries and 
