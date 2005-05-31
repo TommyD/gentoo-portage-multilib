@@ -432,7 +432,7 @@ dyn_install() {
 
 	if type -p scanelf > /dev/null ; then
 		# Make sure we disallow insecure RUNPATH/RPATH's
-		f=$(scanelf -qyRF '%r %F' "${D}" | grep "${PORTAGE_BUILDDIR}")
+		f=$(scanelf -qyRF '%r %F' "${D}" | sed -e "s:${D}::" | grep "${BUILDDIR}")
 		if [[ -n ${f} ]] ; then
 			echo -ne '\a\n'
 			echo "QA Notice: the following files contain insecure RUNPATH's"
