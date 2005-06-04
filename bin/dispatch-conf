@@ -23,7 +23,6 @@ FIND_EXTANT_CONFIGS  = "find %s/ -iname '._cfg????_*' | sed -e 's://:/:g'"
 DIFF_CONTENTS        = 'diff -Nu %s %s'
 DIFF_CVS_INTERP      = 'diff -Nu %s %s | grep "^[+-][^+-]" | grep -v "# .Header:.*"'
 DIFF_WSCOMMENTS      = 'diff -Nu %s %s | grep "^[+-][^+-]" | grep -v "^[-+]#" | grep -v "^[-+][:space:]*$"'
-MERGE                = 'sdiff --suppress-common-lines --output=%s %s %s'
 
 # We need a secure scratch dir and python does silly verbose errors on the use of tempnam
 oldmask = os.umask(0077)
@@ -52,7 +51,7 @@ def cleanup(mydir=SCRATCH_DIR):
     shutil.rmtree(mydir)
 atexit.register(cleanup)
 
-MANDATORY_OPTS  = [ 'archive-dir', 'diff', 'pager', 'replace-cvs', 'replace-wscomments' ]
+MANDATORY_OPTS  = [ 'archive-dir', 'diff', 'replace-cvs', 'replace-wscomments', 'merge' ]
 
 class dispatch:
     options = {}
@@ -61,11 +60,13 @@ class dispatch:
         confs = []
         count = 0
 
+
         self.options = dispatch_conf.read_config(MANDATORY_OPTS)
 
         if self.options.has_key("log-file"):
             if os.path.exists(self.options["log-file"]):
-                shutil.move(self.options["log-file"], self.options["log-file"] + '.old')
+                shutil.copyfile(self.options["log-file"], self.options["log-file"] + '.old')
+                os.remove(self.options["log-file"])
         else:
             self.options["log-file"] = "/dev/null"
 
@@ -99,15 +100,15 @@ class dispatch:
             mrgconf = re.sub(r'\._cfg', '._mrg', conf['new'])
             archive = os.path.join(self.options['archive-dir'], conf['current'].lstrip('/'))
             if self.options['use-rcs'] == 'yes':
-                dispatch_conf.rcs_archive(archive, conf['current'], conf['new'], mrgconf)
+                mrgfail = dispatch_conf.rcs_archive(archive, conf['current'], conf['new'], mrgconf)
             else:
-                dispatch_conf.file_archive(archive, conf['current'], conf['new'], mrgconf)
+                mrgfail = dispatch_conf.file_archive(archive, conf['current'], conf['new'], mrgconf)
             if os.path.exists(archive + '.dist'):
                 unmodified = len(commands.getoutput(DIFF_CONTENTS % (conf['current'], archive + '.dist'))) == 0
             else:
                 unmodified = 0
             if os.path.exists(mrgconf):
-                if len(commands.getoutput(DIFF_CONTENTS % (conf['new'], mrgconf))) == 0:
+                if mrgfail or len(commands.getoutput(DIFF_CONTENTS % (conf['new'], mrgconf))) == 0:
                     os.unlink(mrgconf)
                     newconf = conf['new']
                 else:
@@ -158,10 +159,10 @@ class dispatch:
 
             while 1:
                 if show_new_diff:
-                    os.system((self.options['diff'] + '| %s') % (conf['new'], mrgconf, self.options['pager']))
+                    os.system((self.options['diff']) % (conf['new'], mrgconf))
                     show_new_diff = 0
                 else:
-                    os.system((self.options['diff'] + '| %s') % (conf['current'], newconf, self.options['pager']))
+                    os.system((self.options['diff']) % (conf['current'], newconf))
 
                 print
                 print '>> (%i of %i) -- %s' % (count, len(confs), conf ['current'])
@@ -185,8 +186,9 @@ class dispatch:
                 elif c == 'm':
                     merged = SCRATCH_DIR+"/"+os.path.basename(conf['current'])
                     print
-                    os.system (MERGE % (merged, conf ['current'], newconf))
-                    shutil.move (merged, mrgconf)
+                    os.system (self.options['merge'] % (merged, conf ['current'], newconf))
+                    shutil.copyfile(merged, mrgconf)
+                    os.remove(merged)
                     mystat = os.lstat(conf['new'])
                     os.chmod(mrgconf, mystat[ST_MODE])
                     os.chown(mrgconf, mystat[ST_UID], mystat[ST_GID])
@@ -220,7 +222,8 @@ class dispatch:
         the diff of what changed into the configured log file."""
         os.system((DIFF_CONTENTS % (curconf, newconf)) + '>>' + self.options["log-file"])
         try:
-            shutil.move(newconf, curconf)
+            shutil.copyfile(newconf, curconf)
+            os.remove(newconf)
         except (IOError, os.error), why:
             print >> sys.stderr, 'dispatch-conf: Error renaming %s to %s: %s; fatal' % \
                   (newconf, curconf, str(why))

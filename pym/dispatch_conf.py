@@ -33,9 +33,14 @@ def read_config(mandatory_opts):
 
     for key in mandatory_opts:
         if not opts.has_key(key):
-            print >> sys.stderr, 'dispatch-conf: Missing option "%s" in /etc/dispatch-conf.conf; fatal' % (key,)
+            if key == "merge":
+                opts["merge"] = "sdiff --suppress-common-lines --output=%s %s %s"
+            else:
+                print >> sys.stderr, 'dispatch-conf: Missing option "%s" in /etc/dispatch-conf.conf; fatal' % (key,)
 
-    if not (os.path.exists(opts['archive-dir']) and os.path.isdir(opts['archive-dir'])):
+    if not os.path.exists(opts['archive-dir']):
+        os.mkdir(opts['archive-dir'])
+    elif not os.path.isdir(opts['archive-dir']):
         print >> sys.stderr, 'dispatch-conf: Config archive dir [%s] must exist; fatal' % (opts['archive-dir'],)
         sys.exit(1)
 
@@ -63,6 +68,7 @@ def rcs_archive(archive, curconf, newconf, mrgconf):
         os.system(RCS_LOCK + ' ' + archive)
     os.system(RCS_PUT + ' ' + archive)
 
+    ret = 0
     if newconf != '':
         os.system(RCS_GET + ' -r' + RCS_BRANCH + ' ' + archive)
         has_branch = os.path.exists(archive)
@@ -78,11 +84,12 @@ def rcs_archive(archive, curconf, newconf, mrgconf):
         if has_branch:
             if mrgconf != '':
                 # This puts the results of the merge into mrgconf.
-                os.system(RCS_MERGE % (archive, mrgconf))
+                ret = os.system(RCS_MERGE % (archive, mrgconf))
                 mystat = os.lstat(newconf)
                 os.chmod(mrgconf, mystat[ST_MODE])
                 os.chown(mrgconf, mystat[ST_UID], mystat[ST_GID])
         os.rename(archive, archive + '.dist.new')
+    return ret
 
 
 def file_archive(archive, curconf, newconf, mrgconf):
@@ -125,12 +132,15 @@ def file_archive(archive, curconf, newconf, mrgconf):
             print >> sys.stderr, 'dispatch-conf: Error copying %s to %s: %s; fatal' % \
                   (newconf, archive + '.dist.new', str(why))
 
+        ret = 0
         if mrgconf != '' and os.path.exists(archive + '.dist'):
             # This puts the results of the merge into mrgconf.
-            os.system(DIFF3_MERGE % (curconf, archive + '.dist', newconf, mrgconf))
+            ret = os.system(DIFF3_MERGE % (curconf, archive + '.dist', newconf, mrgconf))
             mystat = os.lstat(newconf)
             os.chmod(mrgconf, mystat[ST_MODE])
             os.chown(mrgconf, mystat[ST_UID], mystat[ST_GID])
+
+        return ret
 
 
 def rcs_archive_post_process(archive):
