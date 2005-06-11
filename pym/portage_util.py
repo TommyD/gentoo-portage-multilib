@@ -7,14 +7,14 @@ import sys,string,shlex,os.path,stat,types
 import shutil
 
 try:
-        #XXX: This should get renamed to bsd_chflags, I think.
-        import chflags
-        bsd_chflags = chflags
+	#XXX: This should get renamed to bsd_chflags, I think.
+	import chflags
+	bsd_chflags = chflags
 except SystemExit, e:
-        raise
+	raise
 except:
-        # XXX: This should get renamed to bsd_chflags, I think.
-        bsd_chflags = None
+	# XXX: This should get renamed to bsd_chflags, I think.
+	bsd_chflags = None
 
 noiselimit = 0
 def writemsg(mystr,noiselevel=0):
