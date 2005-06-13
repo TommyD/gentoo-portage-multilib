@@ -432,26 +432,26 @@ dyn_install() {
 
 	if type -p scanelf > /dev/null ; then
 		# Make sure we disallow insecure RUNPATH/RPATH's
-		f=$(scanelf -qyRF '%r %F' "${D}" | sed -e "s:${D}::" | grep "${BUILDDIR}")
+		f=$(scanelf -qyRF '%r %p' "${D}" | grep "${BUILDDIR}")
 		if [[ -n ${f} ]] ; then
 			echo -ne '\a\n'
 			echo "QA Notice: the following files contain insecure RUNPATH's"
 			echo " Please file a bug about this at http://bugs.gentoo.org/"
 			echo " For more information on this issue, kindly review:"
 			echo " http://bugs.gentoo.org/81745"
-			echo "${f//${D}\/}"
+			echo "${f}"
 			echo -ne '\a\n'
 			die "Insecure binaries detected"
 		fi
 
 		# Check for setid binaries but are not built with BIND_NOW
-		f=$(scanelf -qyRF '%b %F' "${D}")
+		f=$(scanelf -qyRF '%b %p' "${D}")
 		if [[ -n ${f} ]] ; then
 			echo -ne '\a\n'
 			echo "QA Notice: the following files are setXid, dyn linked, and using lazy bindings"
 			echo " This combination is generally discouraged.  Try re-emerging the package:"
 			echo " LDFLAGS='-Wl,-z,now' emerge ${PN}"
-			echo "${f//${D}\/}"
+			echo "${f}"
 			echo -ne '\a\n'
 			[[ ${FEATURES/stricter} != "${FEATURES}" ]] \
 				&& die "Aborting due to lazy bindings"
@@ -459,7 +459,7 @@ dyn_install() {
 		fi
 
 		# TEXTREL's are baaaaaaaad
-		f=$(scanelf -qyRF '%t %F' "${D}")
+		f=$(scanelf -qyRF '%t %p' "${D}")
 		if [[ -n ${f} ]] ; then
 			echo -ne '\a\n'
 			echo "QA Notice: the following files contain runtime text relocations"
@@ -468,7 +468,7 @@ dyn_install() {
 			echo " and might not function properly on other architectures hppa for example."
 			echo " If you are a programmer please take a closer look at this package and"
 			echo " consider writing a patch which addresses this problem."
-			echo "${f//${D}\/}"
+			echo "${f}"
 			echo -ne '\a\n'
 			[[ ${FEATURES/stricter} != "${FEATURES}" ]] \
 				&& die "Aborting due to textrels"
@@ -476,14 +476,14 @@ dyn_install() {
 		fi
 
 		# Check for files with executable stacks
-		f=$(scanelf -qyRF '%e %F' "${D}")
+		f=$(scanelf -qyRF '%e %p' "${D}")
 		if [[ -n ${f} ]] ; then
 			echo -ne '\a\n'
 			echo "QA Notice: the following files contain executable stacks"
 			echo " Files with executable stacks will not work properly (or at all!)"
 			echo " on some architectures/operating systems.  A bug should be filed"
 			echo " at http://bugs.gentoo.org/ to make sure the file is fixed."
-			echo "${f//${D}\/}"
+			echo "${f}"
 			echo -ne '\a\n'
 			[[ ${FEATURES/stricter} != "${FEATURES}" ]] \
 				&& die "Aborting due to +x stack"
@@ -491,7 +491,7 @@ dyn_install() {
 		fi
 
 		# Save NEEDED information
-		scanelf -qyRF '%F %n' "${D}" | sed -e "s:${D}::g" > "${PORTAGE_BUILDDIR}"/build-info/NEEDED
+		scanelf -qyRF '%p %n' "${D}" | sed -e 's:^:/:' > "${PORTAGE_BUILDDIR}"/build-info/NEEDED
 	fi
 
 	if [[ ${UNSAFE} > 0 ]] ; then
