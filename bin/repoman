@@ -1388,6 +1388,8 @@ else:
 		rValue = os.system(gpgcmd+" "+filename)
 		if rValue == 0:
 			os.rename(filename+".asc", filename)
+		else:
+			print "!!! gpg exited with '" + str(rValue) + "' status"
 		return rValue
 
 	mychanges=[]

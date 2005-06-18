@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  17 Jun 2005; Mike Frysinger <vapier@gentoo.org> bin/repoman:
+  Report exit status if gpg failed to return with 0.
+
   14 Jun 2005; Marius Mauch <genone@gentoo.org> man/portage.5:
   Remove references to non-existant $PORTDIR/profiles/use.mask.
 
