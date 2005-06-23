@@ -7,6 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  23 Jun 2005; Mike Frysinger <vapier@gentoo.org>
+  bin/ebuild-default-functions.sh:
+  Update the scanelf RUNPATH check to abort on null paths.
+
   17 Jun 2005; Mike Frysinger <vapier@gentoo.org> bin/repoman:
   Report exit status if gpg failed to return with 0.
 
