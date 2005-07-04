@@ -2,7 +2,7 @@
 # ebuild-functions.sh; ebuild env functions, saved with the ebuild (not specific to the portage version).
 # Copyright 2004-2005 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-$Header$
+# $Header$
 
 use() {
 	if useq ${1}; then
@@ -75,7 +75,7 @@ econf() {
 	if [ -x "${ECONF_SOURCE}/configure" ]; then
 		if [ -e /usr/share/gnuconfig/ ]; then
 			local x
-			for x in $(find "${WORKDIR}" -type f -name config.guess -o -name config.sub) ; do
+			for x in $(find "${WORKDIR}" -type f '(' -name config.guess -o -name config.sub ')') ; do
 				echo " * econf: updating ${x/${WORKDIR}\/} with /usr/share/gnuconfig/${x##*/}"
 				cp -f "/usr/share/gnuconfig/${x##*/}" "${x}"
 				chmod a+x "${x}"
