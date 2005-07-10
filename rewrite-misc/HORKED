@@ -1,0 +1,32 @@
+list what's horked, note your name by it if you want dibs.
+This ain't complete either.
+
+namespace fixes required, plus potentially a bit of rewrite
+portage.sync
+portage.transports		# transports needs to be unified behind fetcher design.
+								# need a fetchable class also.
+
+not finished-
+portage.cache.multiplex # should be a master/slave class, master for querying, both for updates/deletions
+portage.restrictions
+potage.config.central	# need's to be renamed, and needs new.instancemethod hacks, read intro for explanation.
+
+portage.vdb		# consult harring if you're after this, since this is a helluva lot more complex then just a repo
+portage.binpkg	# bind it to portage.ebuild whereever possible
+
+not started
+portage.config.domain	# consult intro doc if you attempt it, and collect feedback from jason/brian regarding it please
+								# harring will want it one way which probably slightly conflicts with what jason wants (and vice versa),
+								# so be aware it's probably going to be a shifting class definition.
+								# still need a prototype though.
+
+
+not started
+portage.ebuild.repository.gpgtree
+# ebuild repository derivative, bind gpg verification within metadata creation.  including manifest verification (not just signed).
+# need a design for having gpg trust mapped into repositories (overkill?  really need multiple trust rings?)
+
+not even a scratched out yet
+portage.*.fetchable 		# find a place for this.  simple one however.
+portage.*.(merge|build)operation
+# no base class defined yet, see intro
