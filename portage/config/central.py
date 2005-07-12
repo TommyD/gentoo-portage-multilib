@@ -16,7 +16,7 @@ class config:
 		self._cparser = cparser
 		self.type_handler = load_conf_definitions(conf_defaults)
 		self.type_conversions = {}
-		# add auto exec shit
+		# add auto exec stuff goes here
 		# weakref .instantiated?
 		self.instantiated = {}
 		for t in self.type_handler:
