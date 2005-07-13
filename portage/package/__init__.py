@@ -4,4 +4,5 @@
 # $Header$
 
 import metadata
-from cpv import CPV as cpv
+import cpv
+import atom
