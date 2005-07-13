@@ -44,11 +44,11 @@ class ebuild_package(package.metadata.package):
 			# ah hell.
 			data = self._parent._update_metadata(self)
 
-		for k,v in data.items():
-			self.__dict__[k] = v
+#		for k,v in data.items():
+#			self.__dict__[k] = v
 
-		self.__dict__["_finalized"] = True
-		return
+#		self.__dict__["_finalized"] = True
+		return data
 
 
 class ebuild_factory(package.metadata.factory):

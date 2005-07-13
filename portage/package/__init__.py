@@ -4,3 +4,4 @@
 # $Header$
 
 import metadata
+from cpv import CPV as cpv

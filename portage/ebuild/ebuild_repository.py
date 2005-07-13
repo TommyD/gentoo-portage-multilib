@@ -26,7 +26,8 @@ class tree(prototype.tree):
 		if eclass_cache == None:
 			import eclass_cache
 			eclass_cache = eclass_cache.cache(self.base)
-		self.metadata = ebuild_package.ebuild_factory(self, cache, eclass_cache)
+		self.package_class = ebuild_package.ebuild_factory(self, cache, eclass_cache).new_package
+
 
 	def _get_categories(self, *optionalCategory):
 		# why the auto return?  current porttrees don't allow/support categories deeper then one dir.
@@ -40,6 +41,7 @@ class tree(prototype.tree):
 		except (OSError, IOError), e:
 			raise KeyError("failed fetching categories: %s" % str(e))
 
+
 	def _get_packages(self, category):
 
 		cpath = os.path.join(self.base,category.lstrip(os.path.sep))
@@ -49,6 +51,7 @@ class tree(prototype.tree):
 		except (OSError, IOError), e:
 			raise KeyError("failed fetching packages for category %s: %s" % \
 			(os.path.join(self.base,category.lstrip(os.path.sep)), str(e)))
+
 
 	def _get_versions(self, catpkg):
 

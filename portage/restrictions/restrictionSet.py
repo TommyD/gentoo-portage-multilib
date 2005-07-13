@@ -5,46 +5,23 @@
 
 import restriction
 
-class RestrictionSet(restriction.Restriction):
-	__slots__ = ("restrictions")
+class RestrictionSet(restriction.base):
+	__slots__ = tuple(["restrictions"] + restriction.base.__slots__)
 
-	def __init__(self, initialRestrictions=[]):
-		for x in initialRestrictions:
-			if not isinstance(x, Restriction.Restriction):
+	def __init__(self, *restrictions, **kwds):
+		super(RestrictionSet, self).__init__(**kwds)
+		for x in restrictions:
+			if not isinstance(x, restriction.base):
 				#bad monkey.
 				raise TypeError, x
-		self.restrictions = list(initialRestrictions)
+		self.restrictions = restrictions
 
 
 	def addRestriction(self, NewRestriction):
-		if not isinstance(NewRestriction, Restriction.Restriction):
+		if not isinstance(NewRestriction, restriction.base):
 			raise TypeError, NewRestriction
 
 		self.restrictions.append(NewRestriction)
-
-
-	def get_tree_restrictions(self):
-		l = []
-		for x in self.restrictions:
-			if isinstance(x, restriction.RestrictionSet):
-				l2 = x.get_tree_restrictions()
-				if len(l2):
-					l.append(l2)
-			elif not isinstance(x, restriction.ConfigRestriction):
-				l.append(x)
-		return self.__class__(l)
-				
-
-	def get_conditionals(self):
-		l = []
-		for x in self.restrictions:
-			if isinstance(x, restriction.RestrictionSet):
-				l2 = x.get_conditionals()
-				if len(l2):
-					l.append(l2)
-			elif isinstance(x, restriction.ConfigRestriction):
-				l.append(x)
-		return self.__class__(l)
 
 
 	def pmatch(self, packagedataInstance):
@@ -60,9 +37,9 @@ class AndRestrictionSet(RestrictionSet):
 	
 	def match(self, packagedataInstance):
 		for rest in self.restrictions:
-			if not rest.pmatch(packagedataInstance):
-				return False
-		return True
+			if not rest.match(packagedataInstance):
+				return self.negate
+		return not self.negate
 
 
 class OrRestrictionSet(RestrictionSet):
@@ -70,13 +47,8 @@ class OrRestrictionSet(RestrictionSet):
 	
 	def match(self, packagedataInstance):
 		for rest in self.restrictions:
-			if rest.pmatch(packagedataInstance):
-				return True
-		return False
+			if rest.match(packagedataInstance):
+				return self.negate
+		return not self.negate
 
-
-# this may not be used.  intended as a way to identify a restrictionSet as specifically identifying a package.
-# resolver shouldn't need it anymore
-class PackageRestriction(AndRestrictionSet):
-        pass
 
