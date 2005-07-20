@@ -5,26 +5,41 @@
 
 import os
 from portage import package
+from conditionals import DepSet
+from portage.package.atom import atom
+#from portage.fetch import fetchable
+#from digest import parse_digest
+from portage.util.dicts import LazyValDict
+from portage.restrictions.restriction import PackageRestriction, StrExactMatch
+from portage.restrictions.restrictionSet import AndRestrictionSet, OrRestrictionSet
 
-class ebuild_package(package.metadata.package):
+class EbuildPackage(package.metadata.package):
 
 	def __getattr__(self, key):
+		val = None
 		if key == "path":
-			return self.__dict__.setdefault("path", os.path.join(self.__dict__["_parent"].base, \
-				self.category,	self.package, "%s-%s.ebuild" % (self.package, self.fullver)))
-
-		if key == "_mtime_":
+			val = os.path.join(self.__dict__["_parent"].base, self.category, self.package, \
+				"%s-%s.ebuild" % (self.package, self.fullver))
+		elif key == "_mtime_":
 			#XXX wrap this.
-			return self.__dict__.setdefault("_mtime_",long(os.stat(self.path).st_mtime))
+			val = long(os.stat(self.path).st_mtime)
 		elif key == "P":
-			return self.__dict__.setdefault("P", self.package + "-" + self.version)
+			val = self.package + "-" + self.version
 		elif key == "PN":
-			return self.__dict__.setdefault("PN", self.package)
+			val = self.package
 		elif key == "PR":
-			return self.__dict__.setdefault("PR", "-r"+str(self.revision))
-
-		return super(ebuild_package, self).__getattr__(key)
-
+			val = "-r"+str(self.revision)
+		elif key in ("depends", "rdepends", "bdepends"):
+			# drop the s, and upper it.
+			val = DepSet(self.data[key.upper()[:-1]], atom)
+		elif key == "uri":
+			val = DepSet(self.data["SRC_URI"], str, operators={})
+		elif key == "license":
+			val = DepSet(self.data["LICENSE"], str)
+		else:
+			return super(EbuildPackage, self).__getattr__(key)
+		self.__dict__[key] = val
+		return val
 
 	def _fetch_metadata(self):
 #		import pdb;pdb.set_trace()
@@ -51,11 +66,11 @@ class ebuild_package(package.metadata.package):
 		return data
 
 
-class ebuild_factory(package.metadata.factory):
-	child_class = ebuild_package
+class EbuildFactory(package.metadata.factory):
+	child_class = EbuildPackage
 
 	def __init__(self, parent, cachedb, eclass_cache, *args,**kwargs):
-		super(ebuild_factory, self).__init__(parent, *args,**kwargs)
+		super(EbuildFactory, self).__init__(parent, *args,**kwargs)
 		self._cache = cachedb
 		self._ecache = eclass_cache
 		self.base = self._parent_repo.base
@@ -77,7 +92,7 @@ class ebuild_factory(package.metadata.factory):
 
 		mydata["_mtime_"] = pkg._mtime_
 		if mydata.get("INHERITED", False):
-			mydata["_eclasses_"] = self.eclassdb.get_eclass_data(mydata["INHERITED"].split() )
+			mydata["_eclasses_"] = self._ecache.get_eclass_data(mydata["INHERITED"].split() )
 			del mydata["INHERITED"]
 		else:
 			mydata["_eclasses_"] = {}
@@ -87,3 +102,18 @@ class ebuild_factory(package.metadata.factory):
 
 		return mydata
 
+
+class ConfiguredEbuild(package.metadata.package):
+
+	def __init__(self, pkg, use_flags):
+		self.__dict__["use"] = dict(zip(use_flags, [True]*len(use_flags)))
+		self.__dict__["pkg"] = pkg
+
+
+	def __getattr__(self, attr):
+		if attr in ("depends", "rdepends", "bdepends", "uri", "license", "restrict"):
+			val = getattr(self.pkg, attr).evaluate_depset(self.use)
+		else:
+			return getattr(self.pkg, attr)
+		self.__dict__[attr] = val
+		return val

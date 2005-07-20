@@ -9,6 +9,7 @@ from portage.restrictions.restrictionSet import AndRestrictionSet
 
 class VersionMatch(restriction.base):
 	__slots__ = tuple(["ver","rev", "vals"] + restriction.StrMatch.__slots__)
+
 	def __init__(self, operator, ver, rev=None, **kwd):
 		super(self.__class__, self).__init__(**kwd)
 		self.ver, self.rev = ver, rev
@@ -18,13 +19,14 @@ class VersionMatch(restriction.base):
 		if "=" in operator:	l.append(0)
 		self.vals = tuple(l)
 
+
 	def match(self, pkginst):
 		return (ver_cmp(self.ver, self.rev, pkginst.version, pkginst.revision) in self.vals) ^ self.negate
 
 
 class atom(AndRestrictionSet):
-	def __init__(self, atom, slot=None, use=[]):
 
+	def __init__(self, atom, slot=None, use=[]):
 		super(self.__class__, self).__init__()
 
 		pos=0
@@ -47,6 +49,7 @@ class atom(AndRestrictionSet):
 		self.use, self.slot = use, slot
 		# force jitting of it.
 		del self.restrictions
+
 
 	def __getattr__(self, attr):
 		if attr in ("category", "package", "version", "revision", "cpvstr", "fullver", "key"):
@@ -73,3 +76,9 @@ class atom(AndRestrictionSet):
 			return r
 
 		raise AttributeError(attr)
+
+	def __str__(self):
+		s=self.op+self.category+"/"+self.package
+		if self.version:		s+="-"+self.fullver
+		if self.glob:			s+="*"
+		return s

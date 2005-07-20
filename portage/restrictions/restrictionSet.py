@@ -14,18 +14,14 @@ class RestrictionSet(restriction.base):
 			if not isinstance(x, restriction.base):
 				#bad monkey.
 				raise TypeError, x
-		self.restrictions = restrictions
+		self.restrictions = list(restrictions)
 
 
-	def addRestriction(self, NewRestriction):
-		if not isinstance(NewRestriction, restriction.base):
+	def add_restriction(self, NewRestriction, strict=True):
+		if strict and not isinstance(NewRestriction, restriction.base):
 			raise TypeError, NewRestriction
 
 		self.restrictions.append(NewRestriction)
-
-
-	def pmatch(self, packagedataInstance):
-		raise NotImplementedError
 
 
 	def finalize(self):

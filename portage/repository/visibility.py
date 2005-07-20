@@ -7,7 +7,7 @@
 # ~harring
 import prototype, errors
 
-class filterTreee(prototype.tree):
+class filterTree(prototype.tree):
 	"""wrap an existing repository filtering results based upon passed in restrictions."""
 	def __init__(self, repo, restrictions):
 		self.raw_repo = repo

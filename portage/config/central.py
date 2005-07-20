@@ -8,7 +8,7 @@ from portage.const import CONF_DEFAULTS
 from portage.util.modules import load_attribute
 from ConfigParser import ConfigParser
 from portage.util.dicts import LazyValDict
-from portage.util.currying import curry
+from portage.util.currying import pref_curry
 
 class config:
 	"""Central configuration manager.
@@ -32,7 +32,7 @@ class config:
 			for x,f in (("list", list_parser), ("str", str_parser), ("bool", bool_parser)):
 				if x in self.type_handler[t]:
 					for y in list_parser(self.type_handler[t][x]):
-						conversions[y.lower()] = f
+						conversions[y] = f
 					del self.type_handler[t][x]
 
 			if "positional" in self.type_handler[t]:
@@ -54,7 +54,7 @@ class config:
 #				except errors.QuoteInterpretationError, qe:
 #					qe.var = v
 #					raise qe
-			setattr(self, t, LazyValDict(curry(self.sections, t), self.instantiate_section))
+			setattr(self, t, LazyValDict(pref_curry(self.sections, t), self.instantiate_section))
 
 	def collapse_config(self, section, verify=True):
 		"""collapse a section's config down to a dict for use in instantiating that section.

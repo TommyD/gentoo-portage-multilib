@@ -16,7 +16,8 @@ class cache:
 	get_eclass_path should be defined when local path is possible/preferable.
 	get_eclass_data should be defined when dumping the eclass down the pipe is preferable/required (think remote tree)
 
-	Base defaults to having both set (it's local, and i.  Override as needed.
+	Base defaults to having both set.  Override as needed.
+	Set to None if that method isn't possible.
 	"""
 	def __init__(self, porttree, *additional_porttrees):
 		self.eclasses = {} # {"Name": ("location","_mtime_")}

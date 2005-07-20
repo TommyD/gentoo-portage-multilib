@@ -18,13 +18,16 @@ class IndexableSequence(object):
 			self.__del_func = delfunc
 			self.__update_func = updatefunc
 
+
 	def __getitem__(self, key):
 		if not (self.__cache_complete or self.__cache.has_key(key)):
 			self.__cache[key] = self.__get_values(key)
 		return self.__cache[key]
 
+
 	def keys(self):
 		return list(self.iterkeys())
+
 	
 	def __delitem__(self, key):
 		if self._frozen:
@@ -33,12 +36,14 @@ class IndexableSequence(object):
 			raise KeyError(key)
 		return self.__del_func(key)
 
+
 	def __setitem__(self, key, value):
 		if self._frozen:
 			raise AttributeError
 		if not key in self:
 			raise KeyError(key)
 		return self.__update_func(key, value)
+
 
 	def __contains__(self, key):
 		try:	
@@ -47,20 +52,21 @@ class IndexableSequence(object):
 		except KeyError:
 			return False
 
+
 	def iterkeys(self):
-#		print "iterkeys called, cache-complete=",self.__cache_complete
 		if self.__cache_complete:
 			return self.__cache.keys()
 		return self.__gen_keys()
+
 
 	def __gen_keys(self):
 		for key in self.__get_keys():
 			if not self.__cache.has_key(key):
 				self.__cache[key] = self.__get_values(key)
-#				print "adding %s:%s" % (str(key), str(self.__cache[key]))
 			yield key
 		self.__cache_complete = self.__cache_can_be_complete
 		return
+
 
 	def __iter__(self):
 		if self.__returnFunc:
@@ -81,14 +87,16 @@ class IndexableSequence(object):
 						yield key+'/'+x
 		return
 
+
 	def items(self):
 		return list(self.iteritems())
 	
+
 	def iteritems(self):
-#		print "iteritems called, cache-complete=",self.__cache_complete
 		if self.__cache_complete:
 			return self.__cache.items()
 		return self.__gen_items()
+
 
 	def __gen_items(self):
 		for key in self.iterkeys():
@@ -135,8 +143,10 @@ class LazyValDict(object):
 		for k in self.__vals.keys():
 			yield k
 
+
 	def keys(self):
 		return list(self.iterkeys())
+
 
 	def __contains__(self, key):
 		if self.__keys_func != None:
@@ -146,6 +156,67 @@ class LazyValDict(object):
 
 	__iter__ = iterkeys
 	has_key 	= __contains__
+
+
+	def iteritems(self):
+		for k in self.iterkeys():
+			yield k, self[k]
+
+
+	def items(self):
+		return list(self.iteritems())
+
+
+class ProtectedDict(object):
+	__slots__=("orig","new","blacklist")
+
+	def __init__(self, orig):
+		self.orig = orig
+		self.new = {}
+		self.blacklist = {}
+
+
+	def __setitem__(self, key, val):
+		self.new[key] = val
+		if key in self.blacklist:
+			del self.blacklist[key]
+
+
+	def __getitem__(self, key):
+		if key in self.new:
+			return self.new[key]
+		if key in self.blacklist:
+			raise KeyError(key)
+		return self.orig[key]
+
+
+	def __delitem__(self, key):
+		if key in self.new:
+			del self.new[key]
+		elif key in self.orig:
+			if key not in self.blacklist:
+				self.blacklist[key] = True
+				return
+		raise KeyError(key)
+			
+
+	def iterkeys(self):
+		for k in self.new.iterkeys():
+			yield k
+		for k in self.orig.iterkeys():
+			if k not in self.blacklist and k not in self.new:
+				yield k
+
+
+	def keys(self):
+		return list(self.iterkeys())
+
+
+	def __contains__(self, key):
+		return key in self.new or (key not in self.blacklist and key in self.orig)
+
+	__iter__ = iterkeys
+	has_key = __contains__
 
 
 	def iteritems(self):

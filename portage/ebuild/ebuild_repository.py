@@ -13,7 +13,7 @@ class tree(prototype.tree):
 
 	def __init__(self, location, cache=None, eclass_cache=None):
 		super(tree, self).__init__()
-		self.base = location
+		self.base = self.location = location
 		try:	
 			st = os.lstat(self.base)
 			if not stat.S_ISDIR(st.st_mode):
@@ -26,7 +26,7 @@ class tree(prototype.tree):
 		if eclass_cache == None:
 			import eclass_cache
 			eclass_cache = eclass_cache.cache(self.base)
-		self.package_class = ebuild_package.ebuild_factory(self, cache, eclass_cache).new_package
+		self.package_class = ebuild_package.EbuildFactory(self, cache, eclass_cache).new_package
 
 
 	def _get_categories(self, *optionalCategory):
