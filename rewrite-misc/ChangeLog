@@ -1,3 +1,4 @@
+06/11/05: harring: negate added to restriction base, work in package.* and ebuild.package
 06/07/05: harring: config.{repo,cache,domain,sync} works fine, new dict type.  portage.util.dicts holds the dict variants, including
 	IndexableSequence.  added portage.util.currying.  Use it.  it rocks.
 06/07/05: harring: config instantation of repo works now.  config.repo is a bit screwed up, but will be fixed.

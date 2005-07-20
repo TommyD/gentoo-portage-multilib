@@ -11,8 +11,8 @@ portage.cache.multiplex # should be a master/slave class, master for querying, b
 portage.restrictions
 potage.config.central	# need's to be renamed, and needs new.instancemethod hacks, read intro for explanation.
 
-portage.vdb		# consult harring if you're after this, since this is a helluva lot more complex then just a repo
-portage.binpkg	# bind it to portage.ebuild whereever possible
+portage.vdb					# consult harring if you're after this, since this is a helluva lot more complex then just a repo
+portage.binpkg				# bind it to portage.ebuild whereever possible
 
 not started
 portage.config.domain	# consult intro doc if you attempt it, and collect feedback from jason/brian regarding it please

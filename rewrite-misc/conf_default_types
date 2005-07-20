@@ -42,7 +42,7 @@
 # decide if this is good or bad.  in effect, require's are generalized for a section type, which may not apply
 #
 # there isn't any mechanism for noting what supports interop (think sync + repo), aside from instantiating
-# and having it bitch.  fluid design/intention of the final parsing of user config, but this is a drawback of 
+# and having it complain.  fluid design/intention of the final parsing of user config, but this is a drawback of 
 # said design.
 # think about ways to curb that, lest users get too annoying with tracebacks ;)
 #
@@ -54,7 +54,7 @@
 # a location on the fs that defines further defaults, although that makes parsing this file fun.
 #
 # short version, with the rules established, you would need to define a metasection, and apply the 
-# inherit/incrementals crap to constructing at run time the section definitions.
+# inherit/incrementals cruft to constructing at run time the section definitions.
 # or you need a smarter parser/generator for this file.
 # leave that to the schmuck who writes the autotools integration for this
 # (why oh why do I suspect that's going to be my stupid ass? :)
@@ -79,11 +79,10 @@
 
 
 [profile]
-incrementals = USE FEATURES ACCEPT_KEYWORDS ACCEPT_LICENSE CONFIG_PROTECT_MASK CONFIG_PROTECT PRELINK_PATH PRELINK_PATH_MASK
-list = USE FEATURES ACCEPT_KEYWORDS ACCEPT_LICENSE CONFIG_PROTECT_MASK CONFIG_PROTECT PRELINK_PATH PRELINK_PATH_MASK 
-	package.keywords package.use package.unmask package.mask
-defaults = class
-class = portage.ebuild.profiles.oldstyle
+incrementals = %(default_incrementals)s 
+list = %(default_incrementals)s package.keywords package.use package.unmask package.mask
+defaults = class incrementals
+class = portage.ebuild.ebuild.profile.OnDiskProfile
 required = class
 
 [domain]
@@ -91,9 +90,8 @@ instantiate = portage.config.parser.domain
 required = repositories profile root class
 section_ref = repositories profile
 pre = config repositories
-incrementals = USE FEATURES ACCEPT_KEYWORDS ACCEPT_LICENSE CONFIG_PROTECT_MASK CONFIG_PROTECT PRELINK_PATH PRELINK_PATH_MASK
-list = USE FEATURES ACCEPT_KEYWORDS ACCEPT_LICENSE CONFIG_PROTECT_MASK CONFIG_PROTECT PRELINK_PATH PRELINK_PATH_MASK
-	package.keywords package.use package.unmask package.mask repositories
+incrementals = %(default_incrementals)s
+list = %(default_incrementals)s package.keywords package.use package.unmask package.mask repositories
 defaults = class root
 class =  portage.config.domain
 root = /
@@ -130,3 +128,5 @@ class = portage.sync.rsync
 metadata_keys = DEPEND RDEPEND SLOT SRC_URI RESTRICT HOMEPAGE LICENSE DESCRIPTION KEYWORDS INHERITED IUSE CDEPEND
    PDEPEND PROVIDE
 cache_base_loc = /var/cache/edb/dep/
+default_incrementals = USE FEATURES ACCEPT_KEYWORDS ACCEPT_LICENSE CONFIG_PROTECT_MASK CONFIG_PROTECT PRELINK_PATH PRELINK_PATH_MASK
+

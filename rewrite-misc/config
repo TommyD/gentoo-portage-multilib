@@ -13,7 +13,6 @@ cache = '/usr/portage'
 #location = /var/db/pkg
 
 [base config]
-type = config
 USE = nptl nptlonly -gnome -oss mad matroska faad mpg avi -arts mmx mmxext flac bidi dvd ssl sdl xvid 3dnow 3dnowext 
 	sse sse2 mythtv rtc -svga -ipv6 win32codecs -esd
 DISTDIR = "/space/distfiles"
@@ -34,11 +33,10 @@ CHOST = "i686-pc-linux-gnu"
 profile = profile
 inherit = 'base config'
 ACCEPT_KEYWORDS = "x86"
-inherit = 'base config'
 
 [livefs domain]
-inherit = x86
 type = domain
+inherit = x86
 default = yes
 repositories = "rsync repo" 
 #vdb
