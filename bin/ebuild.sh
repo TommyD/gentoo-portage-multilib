@@ -1,6 +1,6 @@
 #!/bin/bash
 # ebuild.sh; ebuild phase processing, env handling
-# Copyright 2005 Gentoo Foundation
+# Copyright 2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 $Header$
 
@@ -29,11 +29,16 @@ DONT_EXPORT_FUNCS='portageq speak'
 DONT_EXPORT_VARS="ORIG_VARS GROUPS ORIG_FUNCS FUNCNAME DAEMONIZED CCACHE.* DISTCC.* AUTOCLEAN CLEAN_DELAY SYNC
 COMPLETED_EBUILD_PHASES (TMP|)DIR FEATURES CONFIG_PROTECT.* (P|)WORKDIR (FETCH|RESUME) COMMAND RSYNC_.* GENTOO_MIRRORS 
 (DIST|FILES|RPM|ECLASS)DIR HOME MUST_EXPORT_ENV QA_CONTROLLED_EXTERNALLY COLORTERM COLS ROWS HOSTNAME
-ROOTPATH myarg SANDBOX_.* BASH.* EUID PPID SHELLOPTS UID ACCEPT_(KEYWORDS|LICENSE) BUILD(_PREFIX|DIR) T DIRSTACK
+myarg SANDBOX_.* BASH.* EUID PPID SHELLOPTS UID ACCEPT_(KEYWORDS|LICENSE) BUILD(_PREFIX|DIR) T DIRSTACK
 DISPLAY (EBUILD|)_PHASE PORTAGE_.* RC_.* SUDO_.* IFS PATH LD_PRELOAD ret line phases D EMERGE_FROM
 PORT(_LOGDIR|DIR(|_OVERLAY)) ROOT TERM _ done e ENDCOLS PROFILE_.* BRACKET BAD WARN GOOD NORMAL"
 # flip this on to enable extra noisy output for debugging.
 #DEBUGGING="yes"
+
+# XXX: required for migration from .51 to this.
+if [ -z "$PORTAGE_BIN_PATH" ]; then
+	declare -rx PORTAGE_BIN_PATH="/usr/lib/portage/bin"
+fi
 
 # knock the sandbox vars back to the defaults.
 reset_sandbox() {
@@ -252,7 +257,8 @@ load_environ() {
 	local SANDBOX_STATE=$SANDBOX_ON
 	local EBUILD_PHASE=$EBUILD_PHASE
 	SANDBOX_ON=0
-	SANDBOX_READ="/bin:${SANDBOX_READ}:/dev/urandom:/dev/random:/usr/lib/portage/bin/"
+
+	SANDBOX_READ="/bin:${SANDBOX_READ}:/dev/urandom:/dev/random:$PORTAGE_BIN_PATH"
 	SANDBOX_ON=$SANDBOX_STATE
 
 	if [ ! -z $DEBUGGING ]; then
@@ -262,7 +268,7 @@ load_environ() {
 	if [ -n "$1" ]; then
 		src="$1"
 		local c=COMPLETED_EBUILD_PHASES
-		COMPLETED_EBUILD_PHASES="`cat ${PORTAGE_BUILDDIR}/.completed_stages 2> /dev/null`"
+		COMPLETED_EBUILD_PHASES="`cat ${BUILDDIR}/.completed_stages 2> /dev/null`"
 		[ -z "$COMPLETED_EBUILD_PHASES" ] && COMPLETED_EBUILD_PHASES="$c"
 	fi
 	[ ! -z $DEBUGGING ] && echo "loading environment from $src" >&2
@@ -287,8 +293,8 @@ load_environ() {
 		return 1
 	fi
 	unset declare
-	if [ -f "${PORTAGE_BUILDDIR}/.completed_stages" ]; then
-		COMPLETED_EBUILD_PHASES=`cat ${PORTAGE_BUILDDIR}/.completed_stages`
+	if [ -f "${BUILDDIR}/.completed_stages" ]; then
+		COMPLETED_EBUILD_PHASES=`cat ${BUILDDIR}/.completed_stages`
 	else
 		COMPLETED_EBUILD_PHASES=''
 	fi
@@ -299,6 +305,7 @@ load_environ() {
 source_profiles() {
 	local dir
 	save_IFS
+
 	# XXX: Given the following unset, is this set needed?
 	IFS=$'\n'
 	for dir in ${PROFILE_PATHS}; do
@@ -322,7 +329,8 @@ init_environ() {
 	OCXX="$CXX"
 
 
-	export PATH="/sbin:/usr/sbin:/usr/lib/portage/bin:/bin:/usr/bin${ROOTPATH:+:${ROOTPATH}}"
+	# XXX this too, sucks.
+	export PATH="/sbin:/usr/sbin:/usr/lib/portage/bin:/bin:/usr/bin"
 	if [ "${EBUILD_PHASE}" == "setup" ]; then
 		#we specifically save the env so it's not stomped on by sourcing.
 		#bug 51552
@@ -351,9 +359,6 @@ init_environ() {
 
 	fi
 
-	[ ! -z "$PREROOTPATH" ] && export PATH="${PREROOTPATH%%:}:$PATH"
-
-
 	export DESTTREE=/usr
 	export INSDESTTREE=""
 	export EXEDESTTREE=""
@@ -366,7 +371,7 @@ init_environ() {
 
 	# if daemonized, it's already loaded these funcs.
 	if [ "$DAEMONIZED" != "yes" ]; then
-		source "/usr/lib/portage/bin/ebuild-functions.sh" || die "failed sourcing ebuild-functions.sh"
+		source "${PORTAGE_BIN_PATH}/ebuild-functions.sh" || die "failed sourcing ebuild-functions.sh"
 	fi
 	SANDBOX_ON="1"
 	export S=${WORKDIR}/${P}
@@ -382,7 +387,7 @@ init_environ() {
 	unset E_IUSE E_DEPEND E_RDEPEND E_CDEPEND E_PDEPEND
 
 	if [ ! -f "${EBUILD}" ]; then
-		echo "bailing, ebuild not found"
+		echo "bailing, ebuild not found at '$EBUILD'"
 		die "EBUILD=${EBUILD}; problem is, it doesn't exist.  bye." >&2
 	fi
 
@@ -435,8 +440,9 @@ init_environ() {
 #	echo "DONT_EXPORT_FUNCS=$DONT_EXPORT_FUNCS" >&2
 }
 
-source "/usr/lib/portage/bin/ebuild-default-functions.sh" || die "failed sourcing ebuild-default-functions.sh"
-source "/usr/lib/portage/bin/isolated-functions.sh" || die "failed sourcing stripped down functions.sh"
+# short version.  think these should be sourced via at the daemons choice, rather then defacto.
+source "${PORTAGE_BIN_PATH}/ebuild-default-functions.sh" || die "failed sourcing ebuild-default-functions.sh"
+source "${PORTAGE_BIN_PATH}/isolated-functions.sh" || die "failed sourcing stripped down functions.sh"
 
 # general func to call for phase execution.  this handles necessary env loading/dumping, and executing pre/post/dyn
 # calls.
@@ -513,7 +519,7 @@ execute_phases() {
 
 			export SANDBOX_ON="0"
 
-			temp_ebuild_phase=`cat "${PORTAGE_BUILDDIR}/.completed_stages" 2> /dev/null`
+			temp_ebuild_phase=`cat "${BUILDDIR}/.completed_stages" 2> /dev/null`
 #			echo "temp_ebuild_phase=$temp_ebuild_phase"
 			if hasq setup ${temp_ebuild_phase}; then
 				unset temp_ebuild_phase
@@ -609,7 +615,7 @@ execute_phases() {
 			COMPLETED_EBUILD_PHASES="${COMPLETED_EBUILD_PHASES} ${EBUILD_PHASE}"
 			;;
 		depend)
-			SANDBOX_ON="0"
+			SANDBOX_ON="1"
 			MUST_EXPORT_ENV="no"
 
 			trap 'killparent' INT
@@ -625,22 +631,20 @@ execute_phases() {
 			trap - INT
 
 			set -f
-			speak 'sending_keys'
-			[ "${DEPEND:-unset}" != "unset" ] && 		speak "DEPEND=$(echo $DEPEND)"
-			[ "${RDEPEND:-unset}" != "unset" ] && 		speak "RDEPEND=$(echo $RDEPEND)"
-			[ "$SLOT:-unset}" != "unset" ] && 		speak "SLOT=$(echo $SLOT)"
-			[ "$SRC_URI:-unset}" != "unset" ] && 		speak "SRC_URI=$(echo $SRC_URI)"
-			[ "$RESTRICT:-unset}" != "unset" ] && 		speak "RESTRICT=$(echo $RESTRICT)"
-			[ "$HOMEPAGE:-unset}" != "unset" ] && 		speak "HOMEPAGE=$(echo $HOMEPAGE)"
-			[ "$LICENSE:-unset}" != "unset" ] && 		speak "LICENSE=$(echo $LICENSE)"
-			[ "$DESCRIPTION:-unset}" != "unset" ] && 	speak "DESCRIPTION=$(echo $DESCRIPTION)"
-			[ "$KEYWORDS:-unset}" != "unset" ] && 		speak "KEYWORDS=$(echo $KEYWORDS)"
-			[ "$INHERITED:-unset}" != "unset" ] && 		speak "INHERITED=$(echo $INHERITED)"
-			[ "$IUSE:-unset}" != "unset" ] && 		speak "IUSE=$(echo $IUSE)"
-			[ "$CDEPEND:-unset}" != "unset" ] && 		speak "CDEPEND=$(echo $CDEPEND)"
-			[ "$PDEPEND:-unset}" != "unset" ] && 		speak "PDEPEND=$(echo $PDEPEND)"
-			[ "$PROVIDE:-unset}" != "unset" ] && 		speak "PROVIDE=$(echo $PROVIDE)"
-			speak 'end_keys'
+			[ "${DEPEND:-unset}" != "unset" ] && 		speak "key DEPEND=$(echo $DEPEND)"
+			[ "${RDEPEND:-unset}" != "unset" ] && 		speak "key RDEPEND=$(echo $RDEPEND)"
+			[ "$SLOT:-unset}" != "unset" ] && 		speak "key SLOT=$(echo $SLOT)"
+			[ "$SRC_URI:-unset}" != "unset" ] && 		speak "key SRC_URI=$(echo $SRC_URI)"
+			[ "$RESTRICT:-unset}" != "unset" ] && 		speak "key RESTRICT=$(echo $RESTRICT)"
+			[ "$HOMEPAGE:-unset}" != "unset" ] && 		speak "key HOMEPAGE=$(echo $HOMEPAGE)"
+			[ "$LICENSE:-unset}" != "unset" ] && 		speak "key LICENSE=$(echo $LICENSE)"
+			[ "$DESCRIPTION:-unset}" != "unset" ] && 	speak "key DESCRIPTION=$(echo $DESCRIPTION)"
+			[ "$KEYWORDS:-unset}" != "unset" ] && 		speak "key KEYWORDS=$(echo $KEYWORDS)"
+			[ "$INHERITED:-unset}" != "unset" ] && 		speak "key INHERITED=$(echo $INHERITED)"
+			[ "$IUSE:-unset}" != "unset" ] && 		speak "key IUSE=$(echo $IUSE)"
+			[ "$CDEPEND:-unset}" != "unset" ] && 		speak "key CDEPEND=$(echo $CDEPEND)"
+			[ "$PDEPEND:-unset}" != "unset" ] && 		speak "key PDEPEND=$(echo $PDEPEND)"
+			[ "$PROVIDE:-unset}" != "unset" ] && 		speak "key PROVIDE=$(echo $PROVIDE)"
 			set +f
 			;;
 		*)
@@ -652,7 +656,7 @@ execute_phases() {
 			;;
 		esac
 
-		cd ${PORTAGE_BUILDDIR} &> /dev/null
+		cd ${BUILDDIR} &> /dev/null
 		if [ "${MUST_EXPORT_ENV}" == "yes" ]; then
 #			echo "exporting environ ${EBUILD_PHASE} to ${T}/environment" >&2
 			export_environ "${T}/environment"
@@ -664,9 +668,9 @@ execute_phases() {
 			done
 			COMPLETED_EBUILD_PHASES="${list}"
 			unset list
-			echo "$COMPLETED_EBUILD_PHASES" > "${PORTAGE_BUILDDIR}/.completed_stages"
-			chown portage:portage "${PORTAGE_BUILDDIR}/.completed_stages" &> /dev/null
-			chmod g+w "${PORTAGE_BUILDDIR}/.completed_stages" &> /dev/null
+			echo "$COMPLETED_EBUILD_PHASES" > "${BUILDDIR}/.completed_stages"
+			chown portage:portage "${BUILDDIR}/.completed_stages" &> /dev/null
+			chmod g+w "${BUILDDIR}/.completed_stages" &> /dev/null
 			MUST_EXPORT_ENV="no"
 		fi
 	done
@@ -674,9 +678,12 @@ execute_phases() {
 }
 
 #echo, everything has been sourced.  now level the read-only's.
-for x in ${DONT_EXPORT_FUNCS}; do
-	declare -fr "$x"
-done
+if [ "$*" != "daemonize" ]; then
+	for x in ${DONT_EXPORT_FUNCS}; do
+		declare -fr "$x"
+	done
+	unset x
+fi
 
 f="$(declare | { 
 	read l; 
@@ -694,7 +701,8 @@ else
 	DONT_EXPORT_VARS="${DONT_EXPORT_VARS} $(echo "${f}" | egrep -v "^`gen_filter ${ORIG_VARS}`\$")"
 fi
 unset f
-                 
+
+# I see no differance here...
 if [ -z "${ORIG_FUNCS}" ]; then
 	DONT_EXPORT_FUNCS="${DONT_EXPORT_FUNCS} $(declare -F | cut -s -d ' ' -f 3)"
 else  
@@ -721,6 +729,7 @@ if [ "$*" != "daemonize" ]; then
 	else
 		unset_colors
 	fi
+	unset x
 	execute_phases $*
 	exit 0
 else

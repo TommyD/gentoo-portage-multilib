@@ -1,8 +1,8 @@
 #!/bin/bash
 # ebuild-functions.sh; ebuild env functions, saved with the ebuild (not specific to the portage version).
-# Copyright 2004-2005 Gentoo Foundation
+# Copyright 2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header$
+$Header$
 
 use() {
 	if useq ${1}; then
@@ -24,7 +24,7 @@ use_with() {
 		return
 	fi
 
-	local UW_SUFFIX=""
+	local UW_SUFFIX=""	
 	if [ ! -z "${3}" ]; then
 		UW_SUFFIX="=${3}"
 	fi
@@ -33,7 +33,7 @@ use_with() {
 	if [ -z "${UWORD}" ]; then
 		UWORD="$1"
 	fi
-
+	
 	if useq $1; then
 		echo "--with-${UWORD}${UW_SUFFIX}"
 		return 0
@@ -50,7 +50,7 @@ use_enable() {
 		return
 	fi
 
-	local UE_SUFFIX=""
+	local UE_SUFFIX=""	
 	if [ ! -z "${3}" ]; then
 		UE_SUFFIX="=${3}"
 	fi
@@ -59,7 +59,7 @@ use_enable() {
 	if [ -z "${UWORD}" ]; then
 		UWORD="$1"
 	fi
-
+	
 	if useq $1; then
 		echo "--enable-${UWORD}${UE_SUFFIX}"
 		return 0
@@ -71,17 +71,16 @@ use_enable() {
 
 econf() {
 	local ret
-	ECONF_SOURCE="${ECONF_SOURCE:-.}"
-	if [ -x "${ECONF_SOURCE}/configure" ]; then
-		if [ -e /usr/share/gnuconfig/ ]; then
-			local x
-			for x in $(find "${WORKDIR}" -type f '(' -name config.guess -o -name config.sub ')') ; do
-				echo " * econf: updating ${x/${WORKDIR}\/} with /usr/share/gnuconfig/${x##*/}"
-				cp -f "/usr/share/gnuconfig/${x##*/}" "${x}"
-				chmod a+x "${x}"
-			done
+	if [ -x ./configure ]; then
+		if hasq autoconfig $FEATURES && ! hasq autoconfig $RESTRICT; then
+			if [ -e /usr/share/gnuconfig/ ]; then
+				local x
+				for x in $(find ${WORKDIR} -type f -name config.guess -o -name config.sub); do
+					echo " * econf: updating ${x/${WORKDIR}\/} with /usr/share/gnuconfig/${x##*/}"
+					cp "/usr/share/gnuconfig/${x##*/}" "${x}"
+				done
+			fi
 		fi
-
 		if [ ! -z "${CBUILD}" ]; then
 			EXTRA_ECONF="--build=${CBUILD} ${EXTRA_ECONF}"
 		fi
@@ -122,7 +121,7 @@ econf() {
 		if request_confcache "${T}/local_cache"; then
 			EECONF_CACHE="--cache-file=${T}/local_cache"
 		fi
-		echo "${ECONF_SOURCE}/configure" \
+		echo ./configure \
 			--prefix=/usr \
 			--host=${CHOST} \
 			--mandir=/usr/share/man \
@@ -134,7 +133,8 @@ econf() {
 			${EECONF_CACHE} \
 			"$@"
 
-		if ! "${ECONF_SOURCE}/configure" \
+		#XXX: This is "${ECONF_SOURCE}/configure" in stable
+		if ! ./configure \
 			--prefix=/usr \
 			--host=${CHOST} \
 			--mandir=/usr/share/man \
@@ -163,7 +163,7 @@ econf() {
 	fi
 }
 
-strip_duplicate_slashes() {
+strip_duplicate_slashes () { 
 	if [ -n "${1}" ]; then
 		local removed="${1/\/\///}"
 		[ "${removed}" != "${removed/\/\///}" ] && removed=$(strip_duplicate_slashes "${removed}")
@@ -171,7 +171,8 @@ strip_duplicate_slashes() {
 	fi
 }
 
-einstall() {
+einstall() 
+{
 	# CONF_PREFIX is only set if they didn't pass in libdir above
 	LIBDIR_VAR="LIBDIR_${ABI}"
 	if [ -n "${ABI}" -a -n "${!LIBDIR_VAR}" ]; then
@@ -203,17 +204,19 @@ einstall() {
 			mandir=${D}/usr/share/man \
 			sysconfdir=${D}/etc \
 			${EXTRA_EINSTALL} \
-			"$@" install || die "einstall failed"
+			"$@" install || die "einstall failed" 
 	else
 		die "no Makefile found"
 	fi
 }
 
-pkg_setup() {
-	return
+pkg_setup()
+{
+	return 
 }
 
-pkg_nofetch() {
+pkg_nofetch()
+{
 	[ -z "${SRC_URI}" ] && return
 
 	echo "!!! The following are listed in SRC_URI for ${PN}:"
@@ -222,22 +225,23 @@ pkg_nofetch() {
 	done
 }
 
-src_unpack() {
+src_unpack() { 
 	if [ "${A}" != "" ]; then
 		unpack ${A}
-	fi
+	fi	
 }
 
-src_compile() {
+src_compile() { 
 	if [ -x ./configure ]; then
-		econf || die "econf failed"
+		econf 
 	fi
 	if [ -f Makefile ] || [ -f GNUmakefile ] || [ -f makefile ]; then
 		emake || die "emake failed"
 	fi
 }
 
-src_test() {
+src_test() 
+{ 
 	addpredict /
 	if make check -n &> /dev/null; then
 		echo ">>> Test phase [check]: ${CATEGORY}/${PF}"
@@ -257,23 +261,28 @@ src_test() {
 	SANDBOX_PREDICT="${SANDBOX_PREDICT%:/}"
 }
 
-src_install() {
+src_install() 
+{ 
+	return 
+}
+
+pkg_preinst()
+{
 	return
 }
 
-pkg_preinst() {
+pkg_postinst()
+{
 	return
 }
 
-pkg_postinst() {
+pkg_prerm()
+{
 	return
 }
 
-pkg_prerm() {
-	return
-}
-
-pkg_postrm() {
+pkg_postrm()
+{
 	return
 }
 
