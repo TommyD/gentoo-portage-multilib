@@ -257,6 +257,7 @@ domain = some-section-label
 .run()		# high level, calls whatever funcs needed.  individual methods are mainly for ui, this is if you don't display
 				# "doing install now... done... doing remove now... done" stuff.
 
+
 :remove operation:
 # derivative of repo change operation
 .remove()	# guess.
@@ -393,6 +394,7 @@ setup operation, which does building/whatever.
 				# why might this be desirable?  if setup of matching is expensive, this gives you a way to amoritize the cost.
 				# jason/marius/alec, thoughts?
 				# might have use for glsa set target.  define a restriction that limits to installed pkgs, yay/nay if update is avail...
+
 
 :restrictionSet:
 # mentioning it merely cause it's a grouping (boolean and/or) of individual restrictions

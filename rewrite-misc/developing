@@ -1,0 +1,12 @@
+So... got this thing, how do I develop it, how do I get it setup so I can actually work on this framework?
+PYTHONPATH is your friend, first of all.
+
+Second, you're likely developing this in your home dir (I know I am).  everything hinges on PORTAGE_BASE_PATH
+
+if a portage_custom_path module exists, it is loaded.  it is the hook for defining your own constants-
+PORTAGE_BIN_PATH can be defined
+DEFAULT_CONF_FILE can be defined (this is the new config, the example config in this directory)
+CONF_DEFAULTS is the meta configuration definition, conf_default_types
+
+these settings all default to PORTAGE_BASE_PATH ; if you define it in portage_custom_path, the settings above will be based off of it.
+if no portage_custom_path, then it defaults to "/home/bharring/new/" which probably isn't what you want.
