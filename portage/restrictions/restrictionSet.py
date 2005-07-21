@@ -8,7 +8,12 @@ import restriction
 class RestrictionSet(restriction.base):
 	__slots__ = tuple(["restrictions"] + restriction.base.__slots__)
 
-	def __init__(self, *restrictions, finalize=False, **kwds):
+	def __init__(self, *restrictions, **kwds):
+		if "finalize" in kwds:
+			finalize = kdws["finalize"]
+			del kwds["finalize"]
+		else:
+			finalize = False
 		super(RestrictionSet, self).__init__(**kwds)
 		for x in restrictions:
 			if not isinstance(x, restriction.base):
