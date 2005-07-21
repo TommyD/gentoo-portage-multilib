@@ -24,6 +24,15 @@ class base(object):
 	def match(self, *arg, **kwargs):
 		raise NotImplementedError
 
+class AlwaysTrue(base):
+	__slots__ = ()
+	def match(self, *a, **kw):
+		return True
+
+class AlwaysFalse(base):
+	__slots__ = ()
+	def match(self, *a, **kw):
+		return False
 
 class VersionRestriction(base):
 	"""use this as base for version restrictions, gives a clue to what the restriction does"""

@@ -4,6 +4,8 @@
 # Distributed under the terms of the GNU General Public License v2
 #$Header$
 
+# this will die a horrible death soon.
+# held onto strictly for the doebuild type info.
 
 import os,sys,traceback
 import portage_const,types

@@ -24,9 +24,8 @@ class config:
 		# weakref .instantiated?
 		self.instantiated = {}
 		for t in self.type_handler:
-			from string import lower
 			for x in ("required", "incrementals", "defaults", "section_ref", "positional"):
-				self.type_handler[t][x] = tuple(map(lower, list_parser(self.type_handler[t].get(x,""))))
+				self.type_handler[t][x] = tuple(list_parser(self.type_handler[t].get(x,"")))
 				
 			conversions = {}
 			for x,f in (("list", list_parser), ("str", str_parser), ("bool", bool_parser)):

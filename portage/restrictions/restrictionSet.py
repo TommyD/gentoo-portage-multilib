@@ -8,13 +8,17 @@ import restriction
 class RestrictionSet(restriction.base):
 	__slots__ = tuple(["restrictions"] + restriction.base.__slots__)
 
-	def __init__(self, *restrictions, **kwds):
+	def __init__(self, *restrictions, finalize=False, **kwds):
 		super(RestrictionSet, self).__init__(**kwds)
 		for x in restrictions:
 			if not isinstance(x, restriction.base):
 				#bad monkey.
 				raise TypeError, x
-		self.restrictions = list(restrictions)
+
+		if finalize:
+			self.restrictions = tuple(restrictions)
+		else:
+			self.restrictions = list(restrictions)
 
 
 	def add_restriction(self, NewRestriction, strict=True):
@@ -47,4 +51,14 @@ class OrRestrictionSet(RestrictionSet):
 				return self.negate
 		return not self.negate
 
+class XorRestrictionSet(RestrictionSet):
+	__slots__ = tuple(RestrictionSet.__slots__)
 
+	def match(self, pkginst):
+		armed = False
+		for rest in self.restrictions:
+			if rest.match(pkginst):
+				if armed:
+					return self.negate
+				armed = True
+		return armed ^ self.negate

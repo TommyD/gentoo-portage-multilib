@@ -9,8 +9,9 @@ import prototype, errors
 
 class filterTree(prototype.tree):
 	"""wrap an existing repository filtering results based upon passed in restrictions."""
-	def __init__(self, repo, restrictions):
+	def __init__(self, repo, restrictions, sentinel_val=False):
 		self.raw_repo = repo
+		self.sentinel_val = sentinel_val
 		if not isinstance(self.raw_repo, prototype.tree):
 			raise errors.InitializationError("%s is not a repository tree derivative" % str(self.raw_repo))
 		if not isinstance(restrictions, list):
@@ -20,5 +21,5 @@ class filterTree(prototype.tree):
 	def itermatch(self, atom):
 		for cpv in self.raw_repo.itermatch(atom):
 			for r in self._restrictions:
-				if not r.match(cpv):
+				if r.match(cpv) == self.sentinel_val:
 					yield cpv

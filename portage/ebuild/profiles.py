@@ -82,6 +82,7 @@ class OnDiskProfile(profiles.base):
 				# system set.
 				sys.append(atom(p[1:]))
 			else:
+				# tweak this.
 				visibility.append(atom(p))
 		del pkgs
 		self.sys = sys
