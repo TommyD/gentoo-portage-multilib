@@ -17,14 +17,13 @@ USER_CONFIG_PATH        = "/etc/portage"
 #PORTAGE_BASE_PATH       = "/usr/lib/portage"
 try:
 	import portage_custom_path
-	PORTAGE_BASE_PATH	= portage_custom_path.PORTAGE_BASE_PATH
 
-except ImportError:
+except (ImportError, AttributeError):
 	portage_custom_path = None
 	print "warning, can't find portage_custom_path.  which means no custom PORTAGE_BASE_PATH"
 	print "so... that means you're getting /home/bharring/new/ , which quite likely isn't what you want"
-	PORTAGE_BASE_PATH			= "/home/bharring/new"
 
+PORTAGE_BASE_PATH	= getattr(portage_custom_path, "PORTAGE_BASE_PATH", "/usr/lib/portage/")
 PORTAGE_BIN_PATH	= getattr(portage_custom_path, "PORTAGE_BIN_PATH", PORTAGE_BASE_PATH+"/bin")
 DEFAULT_CONF_FILE = getattr(portage_custom_path, "DEFAULT_CONF_FILE", USER_CONFIG_PATH+"/config")
 CONF_DEFAULTS		= getattr(portage_custom_path, "CONF_DEFAULTS", PORTAGE_BASE_PATH+"/conf_default_types")
