@@ -1,5 +1,9 @@
 So... got this thing, how do I develop it, how do I get it setup so I can actually work on this framework?
-PYTHONPATH is your friend, first of all.
+PYTHONPATH is your friend, first of all.  Set it to the directory you place the portage directory in.
+So... gentoo-src/portage/portage <-- rewrite lives here, I place the portage directory in 
+/home/bharring/new/portage
+then export PYTHONPATH="/home/bharring/new/"
+
 
 Second, you're likely developing this in your home dir (I know I am).  everything hinges on PORTAGE_BASE_PATH
 
@@ -27,7 +31,7 @@ so... after you've done this, try this- load up the python interpretter, and try
 >=dev-libs/openssl-0.9.6j >=sys-libs/zlib-1.1.4 >=app-arch/bzip2-1.0.2
 
 
-If you've change your tree name (my tree name is "rsync repo"), you'll have to change what you try above.
+If you've changed your tree name (my tree name is "rsync repo"), you'll have to change what you try above.
 if load_config() bails, then you have your paths wrong.  if you see an error msg upon the initial import stating you're going to get 
 /home/bharring/new/ , you've defined portage_custom_path.py incorrectly, or it can't be read/found in a python directory; or, you've 
 defined the vars wrong, look at portage/const.py and grok what's going on.
