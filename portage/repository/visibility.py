@@ -9,6 +9,7 @@ import prototype, errors
 
 class filterTree(prototype.tree):
 	"""wrap an existing repository filtering results based upon passed in restrictions."""
+
 	def __init__(self, repo, restrictions, sentinel_val=False):
 		self.raw_repo = repo
 		self.sentinel_val = sentinel_val
@@ -18,8 +19,13 @@ class filterTree(prototype.tree):
 			restrictions = [restrictions]
 		self._restrictions = restrictions
 
+
 	def itermatch(self, atom):
 		for cpv in self.raw_repo.itermatch(atom):
+			ret = True
 			for r in self._restrictions:
 				if r.match(cpv) == self.sentinel_val:
-					yield cpv
+					ret = False
+					break
+			if ret:
+				yield cpv
