@@ -82,11 +82,12 @@ class OnDiskProfile(profiles.base):
 				# system set.
 				sys.append(atom(p[1:]))
 			else:
-				# tweak this.
-				visibility.append(atom(p))
+				# note the negation.  this means cat/pkg matchs, but ver must not, else it's masked.
+				visibility.append(atom(p, negate_vers=True))
 		del pkgs
 		self.sys = sys
 		self.visibility = visibility
+
 		fp = os.path.join(basepath, "thirdpartymirrors")
 		if os.path.isfile(fp):
 			mirrors = read_dict(fp, splitter='\t')
@@ -94,6 +95,7 @@ class OnDiskProfile(profiles.base):
 			mirrors = {}
 
 		maskers = []
+
 		for fp in [os.path.join(prof, "package.mask") for prof in stack + [basepath]]:
 			if os.path.exists(fp):
 				try:	maskers.extend(map(atom, iter_read_bash(fp)))
@@ -117,6 +119,7 @@ class OnDiskProfile(profiles.base):
 					if k in d:		d[k] += v
 					else:				d[k] = v
 				else:					d[k] = v
+
 		del confs
 		# use_expand
 		d["USE_EXPAND"] = d.get("USE_EXPAND",'').split()
@@ -127,5 +130,6 @@ class OnDiskProfile(profiles.base):
 				del d[u]
 
 		# collapsed make.defaults.  now chunkify the bugger.
-		self.d = d		
+		self.conf = d
 
+		
