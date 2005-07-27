@@ -47,6 +47,10 @@ class AndRestrictionSet(RestrictionSet):
 		return not self.negate
 
 
+	def intersect(self, other):
+		
+
+
 class OrRestrictionSet(RestrictionSet):
 	__slots__ = tuple(RestrictionSet.__slots__)
 	

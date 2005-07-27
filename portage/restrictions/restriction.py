@@ -14,25 +14,29 @@ class base(object):
 	def __init__(self, negate=False):
 		self.negate = negate
 
-	def __setattr__(self, name, value):
-		try:	getattr(self, name)
-			
-		except AttributeError:
-			object.__setattr__(self, name, value)
-		else:	raise AttributeError
+#	def __setattr__(self, name, value):
+#		import traceback;traceback.print_stack()
+#		object.__setattr__(self, name, value)
+#		try:	getattr(self, name)
+#			
+#		except AttributeError:
+#			object.__setattr__(self, name, value)
+#		else:	raise AttributeError
 
 	def match(self, *arg, **kwargs):
 		raise NotImplementedError
 
-class AlwaysTrue(base):
-	__slots__ = ()
-	def match(self, *a, **kw):
-		return True
+	def intersect(self, other):
+		raise NotImplementedError
 
-class AlwaysFalse(base):
-	__slots__ = ()
+class AlwaysBoolMatch(base):
+	__slots__ = base.__slots__
 	def match(self, *a, **kw):
-		return False
+		return self.negate
+
+AlwaysFalse = AlwaysBoolMatch(False)
+AlwaysTrue  = AlwaysBoolMatch(True)
+
 
 class VersionRestriction(base):
 	"""use this as base for version restrictions, gives a clue to what the restriction does"""
@@ -41,13 +45,13 @@ class VersionRestriction(base):
 
 class StrMatch(base):
 	""" Base string matching restriction.  all derivatives must be __slot__ based classes"""
-	__slots__ = base.__slots__
+	__slots__ = ["flags"] + base.__slots__
 	pass
 
 
 class StrRegexMatch(StrMatch):
 	#potentially redesign this to jit the compiled_re object
-	__slots__ = tuple(["regex", "compiled_re", "flags"] + StrMatch.__slots__)
+	__slots__ = tuple(["regex", "compiled_re"] + StrMatch.__slots__)
 
 	def __init__(self, regex, CaseSensitive=True, **kwds):
 		super(StrRegexMatch, self).__init__(**kwds)
@@ -61,6 +65,12 @@ class StrRegexMatch(StrMatch):
 
 	def match(self, value):
 		return (self.compiled_re.match(str(value)) != None) ^ self.negate
+
+
+	def intersect(self, other):
+		if self.regex == other.regex and self.negate == other.negate and self.flags == other.flags:
+			return self
+		return None
 
 
 class StrExactMatch(StrMatch):
@@ -79,6 +89,19 @@ class StrExactMatch(StrMatch):
 	def match(self, value):
 		if self.flags & re.I:	return (self.exact == str(value).lower()) ^ self.negate
 		else:			return (self.exact == str(value)) ^ self.negate
+
+
+	def intersect(self, other):
+		s1, s2 = self.exact, other.exact
+		if other.flags and not self.flags:
+			s1 = s1.lower()
+		elif self.flags and not other.flags:
+			s2 = s2.lower()
+		if s1 == s2 and self.negate == other.negate:
+			if other.flags:
+				return other
+			return self
+		return None
 
 
 class StrSubstringMatch(StrMatch):
@@ -100,6 +123,24 @@ class StrSubstringMatch(StrMatch):
 		return (value.find(self.substr) != -1) ^ self.negate
 
 
+	def intersect(self, other):
+		if self.negate == other.negate:
+			if self.substr == other.substr and self.flags == other.flags:
+				return self
+		else:
+			return None
+		s1, s2 = self.substr, other.substr
+		if other.flags and not self.flags:
+			s1 = s1.lower()
+		elif self.flags and not other.flags:
+			s2 = s2.lower()
+		if s1.find(s2) != -1:
+			return self
+		elif s2.find(s1) != -1:
+			return other
+		return None			
+
+
 class StrGlobMatch(StrMatch):
 	__slots__ = tuple(["glob"] + StrMatch.__slots__)
 	def __init__(self, glob, CaseSensitive=True, **kwds):
@@ -108,12 +149,25 @@ class StrGlobMatch(StrMatch):
 			self.flags = re.I
 			self.glob = str(glob).lower()
 		else:
-			self.glags = 0
+			self.flags = 0
 			self.glob = str(glob)
+
+
 	def match(self, value):
 		value = str(value)
 		if self.flags & re.I:	value = value.lower()
 		return value.startswith(self.glob) ^ self.negate
+
+
+	def intersect(self, other):
+		if self.match(other.glob):
+			if self.negate == other.negate:
+				return other
+		elif other.match(self.glob):
+			if self.negate == other.negate:
+				return self
+		return None
+
 
 class PackageRestriction(base):
 	"""cpv data restriction.  Inherit for anything that's more then cpv mangling please"""
@@ -136,3 +190,20 @@ class PackageRestriction(base):
 			logging.debug("failed getting attribute %s from %s, exception %s" % \
 				(".".join(self.attr), str(packageinstance), str(ae)))
 			return self.negate
+
+
+	def intersect(self, other):
+		if self.negate != other.negate or self.attr != other.attr:
+			return None
+		if isinstance(self.strmatch, other.strmatch.__class__):
+			s = self.strmatch.intersect(other.strmatch)
+		elif isinstance(other.strmatch, self.strmatch.__class__):
+			s = other.strmatch.intersect(self.strmatch)
+		else:	return None
+		if s == None:
+			return None
+		if s == self.strmatch:		return self
+		elif s == other.strmatch:	return other
+
+		# this can probably bite us in the ass self or other is a derivative, and the other isn't.
+		return self.__class__(self.attr, s)
