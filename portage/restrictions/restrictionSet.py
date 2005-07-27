@@ -47,7 +47,7 @@ class AndRestrictionSet(RestrictionSet):
 		return not self.negate
 
 
-	def intersect(self, other):
+#	def intersect(self, other):
 		
 
 
