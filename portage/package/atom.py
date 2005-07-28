@@ -6,19 +6,66 @@
 from portage.restrictions import restriction 
 from cpv import ver_cmp, CPV
 from portage.restrictions.restrictionSet import AndRestrictionSet
+from portage.util.lists import unique
 
 class VersionMatch(restriction.base):
 	__slots__ = tuple(["ver","rev", "vals"] + restriction.StrMatch.__slots__)
+	"""any overriding of this class *must* maintain numerical order of self.vals, see intersect for reason why
+	vals also must be a tuple"""
 
-	def __init__(self, operator, ver, rev=None, **kwd):
+	def __init__(self, operator, ver, rev=None, negate=False, **kwd):
+		kwd["negate"] = False
 		super(self.__class__, self).__init__(**kwd)
 		self.ver, self.rev = ver, rev
 		l=[]
-		if ">" in operator:	l.append(1)
 		if "<" in operator:	l.append(-1)
 		if "=" in operator:	l.append(0)
+		if ">" in operator:	l.append(1)
 		self.vals = tuple(l)
 
+	def intersect(self, other, allow_hand_off=True):
+		if not isinstance(self.__class__, other):
+			if allow_hand_off:
+				return other.intersect(self, allow_hand_off=False)
+			return None
+
+		vc = ver_cmp(self.ver, self.rev, other.ver, other.ver)
+		# ick.  28 possible valid combinations.
+		if vc == 0:
+			if 0 in self.vals and 0 in other.vals:
+				for x in (-1, 1):
+					if x in self.vals and x in other.vals:
+						return self
+				# need a '=' restrict.
+				if self.vals == (0,):
+					return self
+				elif other.vals == (0,):
+					return other
+				return self.__class__("=", self.ver, rev=self.rev)
+
+			# hokay, no > in each.  potentially disjoint
+			for x, v in ((-1, "<"), (1,">")):
+				if x in self.vals and x in other.vals:
+					return self.__class__(v, self.ver, rev=self.rev)
+
+			# <, > ; disjoint.
+			return None
+
+		# this handles a node already containing the intersection
+		for x in (-1, 1):
+			if x in self.vals and x in other.vals:
+				if vc == x:
+					return self
+				return other
+
+		# remaining permutations are interesections
+		for x in (-1, 1):
+			needed = x * -1
+			if (x in self.vals and needed in other.vals) or (x in other.vals and needed in self.vals):
+				return AndRestrictionSet(self, other)
+				
+		# disjoint.
+		return None
 
 	def match(self, pkginst):
 		return (ver_cmp(self.ver, self.rev, pkginst.version, pkginst.revision) in self.vals) ^ self.negate
