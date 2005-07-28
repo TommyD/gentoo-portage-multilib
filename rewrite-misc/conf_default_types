@@ -96,6 +96,7 @@ incrementals = %(default_incrementals)s
 defaults = class root incrementals
 class =  portage.config.domain
 root = /
+positional = incrementals root profile repositories 
 
 [repo]
 required = class location
@@ -109,12 +110,14 @@ section_ref = cache sync sync_cache
 
 [cache]
 required = class location label auxdbkeys
-defaults = class auxdbkeys location label
+defaults = class auxdbkeys location label readonly
 class = portage.cache.flat_list.database
 auxdbkeys = %(metadata_keys)s
 location = %(cache_base_loc)s
+readonly = false
 list = auxdbkeys
 positional = location label auxdbkeys
+bool = readonly
 
 [exec]
 autoexec = true

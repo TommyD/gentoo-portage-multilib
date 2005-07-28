@@ -1,11 +1,14 @@
-[/usr/portage]
+[metadata-cache]
 type = cache
+class = portage.cache.metadata.database
+location = /usr/portage
+readonly = true
 
 [rsync repo]
 type = repo 
 class = portage.ebuild.repository
 location = /usr/portage
-cache = '/usr/portage'
+cache = 'metadata-cache'
 
 #[vdb]
 #type = repo
