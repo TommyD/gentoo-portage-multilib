@@ -27,7 +27,7 @@ class base(object):
 		raise NotImplementedError
 
 	def intersect(self, other):
-		raise NotImplementedError
+		return None
 
 class AlwaysBoolMatch(base):
 	__slots__ = base.__slots__
