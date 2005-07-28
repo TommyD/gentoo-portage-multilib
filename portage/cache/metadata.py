@@ -6,6 +6,8 @@
 import os, stat
 import fs_template
 import cache_errors
+from portage.ebuild import eclass_cache 
+from template import reconstruct_eclasses
 
 # store the current key order *here*.
 class database(fs_template.FsBased):
@@ -17,14 +19,16 @@ class database(fs_template.FsBased):
 
 	def __init__(self, *args, **config):
 		super(database,self).__init__(*args, **config)
-		self.location = os.path.join(self.location, 
-			self.label.lstrip(os.path.sep).rstrip(os.path.sep))
+		location = self.location
+		self.location = os.path.join(self.location, "metadata/cache")
+#			self.label.lstrip(os.path.sep).rstrip(os.path.sep))
 
 		if len(self._known_keys) > len(self.auxdbkey_order):
 			raise Exception("less ordered keys then auxdbkeys")
 		if not os.path.exists(self.location):
 			self._ensure_dirs()
 
+		self.ec = eclass_cache.cache(location)
 
 	def __getitem__(self, cpv):
 		d = {}
@@ -36,6 +40,12 @@ class database(fs_template.FsBased):
 			if isinstance(e,IOError) and e.errno == 2:
 				raise KeyError(cpv)
 			raise cache_errors.CacheCorruption(cpv, e)
+		if "_eclasses_" not in d:
+			if "INHERITED" in d:
+				d["_eclasses_"] = self.ec.get_eclass_data(d["INHERITED"].split(), from_master_only=True)
+				del d["INHERITED"]
+		else:
+			d["_eclasses_"] = reconstruct_eclasses(cpv, d["_eclasses_"])
 
 		try:		d["_mtime_"] = os.lstat(os.path.join(self.location, cpv)).st_mtime
 		except OSError, e:raise cache_errors.CacheCorruption(cpv, e)
@@ -66,6 +76,12 @@ class database(fs_template.FsBased):
 #				os._ensure_dirs(s)
 #
 #			except (OSError, IOError), e:
+
+		# hack.  proper solution is to make this a __setitem__ override, since template.__setitem__ 
+		# serializes _eclasses_, then we reconstruct it.
+		if "_eclasses_" in d:
+			d["INHERITED"] = serialize_eclasses(d["_eclasses_"]).keys()
+			del d["_eclasses_"]
 
 		myf.writelines( [ values.get(x,"")+"\n" for x in self.auxdbkey_order] )
 		myf.close()

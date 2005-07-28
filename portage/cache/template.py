@@ -91,6 +91,13 @@ class database(object):
 	def iterkeys(self):
 		raise NotImplementedError
 
+	def iteritems(self):
+		for x in self.iterkeys():
+			yield x, self[x]
+
+	def items(self):
+		return list(self.iteritems())
+
 	def sync(self, rate=0):
 		self.sync_rate = rate
 		if(rate == 0):
