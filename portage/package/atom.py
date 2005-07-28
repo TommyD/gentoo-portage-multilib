@@ -17,6 +17,18 @@ class VersionMatch(restriction.base):
 		kwd["negate"] = False
 		super(self.__class__, self).__init__(**kwd)
 		self.ver, self.rev = ver, rev
+		if operator not in ("<=","<", "=", ">", ">="):
+			# XXX: hack
+			raise Exception("invalid operator, '%s'", operator)
+
+		if negate:
+			if "=" in operator:		operator = operator.strip("=")
+			else:					operator += "="
+			for x,v in (("<",">"),(">","<")):
+				if x in operator:
+					operator = operator.strip(x) + v
+					break
+			
 		l=[]
 		if "<" in operator:	l.append(-1)
 		if "=" in operator:	l.append(0)
