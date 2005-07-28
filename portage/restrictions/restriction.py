@@ -108,7 +108,7 @@ class StrSubstringMatch(StrMatch):
 	__slots__ = tuple(["substr"] + StrMatch.__slots__)
 
 	def __init__(self, substr, CaseSensitive=True, **kwds):
-		super(StrSubString, self).__init__(**kwds)
+		super(StrSubstringMatch, self).__init__(**kwds)
 		if not CaseSensitive:
 			self.flags = re.I
 			self.substr = str(substr).lower()
