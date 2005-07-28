@@ -281,4 +281,7 @@ def str_parser(s):
 		return ''
 	
 def bool_parser(s):
-	return bool(str_parser(s))
+	s = str_parser(s).lower()
+	if s in ("", "no", "false", "0"):
+		return False
+	return True
