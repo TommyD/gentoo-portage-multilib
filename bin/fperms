@@ -3,20 +3,5 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-if [ $# -lt 2 ] ; then
-	echo "${0}: at least two arguments needed" 1>&2
-	exit 1
-fi
-
-OPTS=""
-while [ "${1:0:1}" = "-" ] ; do
-	OPTS="${OPTS} $1"
-	shift
-done
-
-PERM=$1
-shift
-
-for FILE in "$@" ; do
-	chmod ${OPTS} "${PERM}" "${D}${FILE}"
-done
+slash=/
+exec chmod "${@/#${slash}/${D}${slash}}"
