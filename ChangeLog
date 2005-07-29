@@ -7,6 +7,11 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  25 Jul 2005; Mike Frysinger <vapier@gentoo.org> 
+  bin/ebuild-default-functions.sh:
+  Fix IMAGE / D confusion in the pkg_preinst function.  Now ebuilds do not
+  have to care/screw around with IMAGE.
+
   20 Jul 2005; Brian Harring <ferringb@gentoo.org> bin/ebuild*.{sh,lib}:
   Harring broke cvs.  If people ignored the warnings, I'll fix it till the 
   next time changes in rewrite cause it to break again.

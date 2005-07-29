@@ -1,8 +1,8 @@
 #!/bin/bash
 # ebuild-default-functions.sh; default functions for ebuild env that aren't saved- specific to the portage instance.
-# Copyright 2004 Gentoo Foundation
+# Copyright 2004-2005 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-$Header$
+# $Header$
 
 has_version() {
 	# if there is a predefined portageq call, use it.
@@ -498,24 +498,25 @@ dyn_postinst() {
 
 dyn_preinst() {
 	# set IMAGE depending if this is a binary or compile merge
-	[ "${EMERGE_FROM}" == "binary" ] && IMAGE=${PKG_TMPDIR}/${PF}/bin \
-					|| IMAGE=${D}
+	local IMAGE=${D}
+	[ "${EMERGE_FROM}" == "binary" ] && IMAGE=${PKG_TMPDIR}/${PF}/bin/
 
-	pkg_preinst
+	# Make sure D is where the package expects it
+	D=${IMAGE} pkg_preinst
 
 	# remove man pages
 	if hasq noman $FEATURES; then
-		rm -fR "${IMAGE}/usr/share/man"
+		rm -fR "${IMAGE}"/usr/share/man
 	fi
 
 	# remove info pages
 	if hasq noinfo $FEATURES; then
-		rm -fR "${IMAGE}/usr/share/info"
+		rm -fR "${IMAGE}"/usr/share/info
 	fi
 
 	# remove docs
 	if hasq nodoc $FEATURES; then
-		rm -fR "${IMAGE}/usr/share/doc"
+		rm -fR "${IMAGE}"/usr/share/doc
 	fi
 
 	# hopefully this will someday allow us to get rid of the no* feature flags
@@ -527,9 +528,9 @@ dyn_preinst() {
 		set +o noglob
 		einfo "Removing ${no_inst}"
 		# normal stuff
-		rm -Rf ${IMAGE}/${no_inst} >&/dev/null
+		rm -Rf "${IMAGE}"/${no_inst} &> /dev/null
 		# we also need to handle globs (*.a, *.h, etc)
-		find "${IMAGE}" -name ${no_inst} -exec rm -fR {} \; >&/dev/null
+		find "${IMAGE}" -name ${no_inst} -exec rm -fR {} \; &> /dev/null
 	done
 	# set everything back the way we found it
 	set +o noglob
@@ -537,17 +538,17 @@ dyn_preinst() {
 
 	# remove share dir if unnessesary
 	if hasq nodoc $FEATURES -o hasq noman $FEATURES -o hasq noinfo $FEATURES; then
-		rmdir "${IMAGE}/usr/share" &> /dev/null
+		rmdir "${IMAGE}"/usr/share &> /dev/null
 	fi
 
 	# Smart FileSystem Permissions
 	if hasq sfperms $FEATURES; then
-		for i in $(find ${IMAGE}/ -type f -perm -4000); do
+		for i in $(find "${IMAGE}"/ -type f -perm -4000); do
 			ebegin ">>> SetUID: [chmod go-r] $i "
 			chmod go-r "$i"
 			eend $?
 		done
-		for i in $(find ${IMAGE}/ -type f -perm -2000); do
+		for i in $(find "${IMAGE}"/ -type f -perm -2000); do
 			ebegin ">>> SetGID: [chmod o-r] $i "
 			chmod o-r "$i"
 			eend $?
@@ -558,9 +559,9 @@ dyn_preinst() {
 	if hasq suidctl $FEATURES > /dev/null ; then
 		sfconf=/etc/portage/suidctl.conf
 		echo ">>> Preforming suid scan in ${IMAGE}"
-		for i in $(find ${IMAGE}/ -type f \( -perm -4000 -o -perm -2000 \) ); do
+		for i in $(find "${IMAGE}"/ -type f \( -perm -4000 -o -perm -2000 \) ); do
 			if [ -s "${sfconf}" ]; then
-				suid="`grep ^${i/${IMAGE}/}$ ${sfconf}`"
+				suid=$(grep ^${i/${IMAGE}/}$ ${sfconf})
 				if [ "${suid}" = "${i/${IMAGE}/}" ]; then
 					echo "- ${i/${IMAGE}/} is an approved suid file"
 				else
