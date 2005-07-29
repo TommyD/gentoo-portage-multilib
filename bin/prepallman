@@ -3,9 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-for x in "${D}"opt/*/man "${D}"usr/share/man "${D}"usr/local/man "${D}"usr/X11R6/man ; do
-	if [ -d "${x}" ] ; then
-		prepman "`echo "${x}" | sed -e "s:${D}::" -e "s:/man[/]*$::"`"
-		export prepallman_banner=no
-	fi
+for x in $(find "${D}" -name man -type d -printf '%P\n') ; do
+	prepman ${x%/man}
+	export prepallman_banner=no
 done
