@@ -3,7 +3,7 @@
 # License: GPL2
 # $Header$
 
-def pref_curry(*args, **kwargs):
+def pre_curry(*args, **kwargs):
 	"""passed in args are prefixed, with further args appended"""
 	def callit(*moreargs, **morekwargs):
 		kw = kwargs.copy()
