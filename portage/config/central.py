@@ -8,7 +8,7 @@ from portage.const import CONF_DEFAULTS
 from portage.util.modules import load_attribute
 from ConfigParser import ConfigParser
 from portage.util.dicts import LazyValDict
-from portage.util.currying import pref_curry
+from portage.util.currying import pre_curry
 
 class config:
 	"""Central configuration manager.
@@ -53,7 +53,7 @@ class config:
 #				except errors.QuoteInterpretationError, qe:
 #					qe.var = v
 #					raise qe
-			setattr(self, t, LazyValDict(pref_curry(self.sections, t), self.instantiate_section))
+			setattr(self, t, LazyValDict(pre_curry(self.sections, t), self.instantiate_section))
 
 	def collapse_config(self, section, verify=True):
 		"""collapse a section's config down to a dict for use in instantiating that section.
