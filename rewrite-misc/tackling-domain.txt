@@ -32,4 +32,5 @@ distlocks is a fetcher thing, specifically (probably) class type.
 
 buildpkgs is binpkg + filters.
 
-how to handle packages.provided?  Just return a Null package whenever requested of that repo?  seems hackish
+package.provided is used to generate a seperate vdb, a null vdb that returns those packages as installed.
+
