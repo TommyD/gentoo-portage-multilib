@@ -362,6 +362,7 @@ class ebuild_processor:
 
 		return metadata_keys
 
+
 	def _receive_key(self, line, keys_dict):
 		line=line.split("=",1)
 		l=len(line)
@@ -437,6 +438,7 @@ class ebuild_processor:
 		except FinishedProcessing, fp:
 			v = fp.val; del fp
 			return v
+
 
 def chuck_UnhandledCommand(processor, line):
 	print "chucking unhandled"

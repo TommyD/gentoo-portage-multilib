@@ -7,8 +7,10 @@ from portage.config import profiles
 import os, logging
 from portage.util.lists import unique
 from portage.util.file import iter_read_bash, read_dict, read_bash_dict
+from portage.util.currying import pre_curry
 from portage.package.atom import atom
 from portage.config.central import list_parser
+from portage.util.dicts import ProtectedDict
 
 class OnDiskProfile(profiles.base):
 	positional = ("base_repo","profile")
@@ -58,26 +60,29 @@ class OnDiskProfile(profiles.base):
 
 		del parents
 
-		# build up visibility limiters.
+		def loop_iter_read(files, callable=iter_read_bash):
+			for fp in files:
+				if os.path.exists(fp):
+					try: 
+						yield fp, callable(fp)
+					except (OSError, IOError), e:
+						raise profiles.ProfileException("failed reading '%s': %s" % (e.filename, str(e)))
 
+
+		# build up visibility limiters.
 		stack.reverse()
-		pkgs = {}
-		for fp in [os.path.join(prof, "packages") for prof in stack]:
-			if os.path.exists(fp):
-				try:	i = iter_read_bash(os.path.join(prof, "packages"))
-				except (IOError, OSError), e:
-					raise profiles.ProfileException("failed reading '%s': %s" % (e.filename, str(e)))
-				for p in i:
-					if p[0] == "-":
-						try:	del pkgs[p[0]]
-						except KeyError:
-							logger.warn("%s is reversed in %s, but isn't set yet!" % (p[1:], fp))
-					else:
-						pkgs[p] = None
+		pkgs = set()
+		for fp, i in loop_iter_read(os.path.join(prof, "packages") for prof in stack):
+			for p in i:
+				if p[0] == "-":
+					try:	pkgs.remove(p[1:])
+					except KeyError:
+						logger.warn("%s is reversed in %s, but isn't set yet!" % (p[1:], fp))
+				else:	pkgs.add(p)
 
 		visibility = []
 		sys = []
-		for p in pkgs.keys():
+		for p in pkgs:
 			if p[0] == "*":
 				# system set.
 				sys.append(atom(p[1:]))
@@ -88,6 +93,18 @@ class OnDiskProfile(profiles.base):
 		self.sys = sys
 		self.visibility = visibility
 
+		use_mask = set()
+		for fp, i in loop_iter_read(os.path.join(prof, "use.mask") for prof in stack):
+			for p in i:
+				if p[0] == "-":
+					try:	use_mask.remove(p[1:])
+					except KeyError:
+						logger.warn("%s is reversed in %s, but isn't set yet!" % (p[1:], fp))
+				else:
+					use_mask.add(p)
+		self.use_mask = list(use_mask)
+		del use_mask
+
 		fp = os.path.join(basepath, "thirdpartymirrors")
 		if os.path.isfile(fp):
 			mirrors = read_dict(fp, splitter='\t')
@@ -95,23 +112,14 @@ class OnDiskProfile(profiles.base):
 			mirrors = {}
 
 		maskers = []
-
-		for fp in [os.path.join(prof, "package.mask") for prof in stack + [basepath]]:
-			if os.path.exists(fp):
-				try:	maskers.extend(map(atom, iter_read_bash(fp)))
-				except (IOError, OSError), e:
-					raise profiles.ProfileException("failed reading '%s': %s" % (fp, str(e)))
+		for fp, i in loop_iter_read(os.path.join(prof, "package.mask") for prof in stack + [basepath]):
+			maskers.extend(map(atom,i))
 
 		self.maskers = maskers
-		confs = [{}] # oh yay.
-		for fp in [os.path.join(prof, "make.defaults") for prof in stack]:
-			if os.path.exists(fp):
-				try:	confs.append(read_bash_dict(fp, vars_dict=confs[-1]))
-				except (IOError, OSError), e:
-					raise profiles.ProfileException("failed reading '%s': %s" % (fp, str(e)))
+
 		d = {}
-		confs.pop(0)
-		for dc in confs:
+		for fp, dc in loop_iter_read((os.path.join(prof, "make.defaults") for prof in stack), 
+			lambda x:read_bash_dict(x, vars_dict=ProtectedDict(d))):
 			for k,v in dc.items():
 				# potentially make incrementals a dict for ~O(1) here, rather then O(N)
 				if k in incrementals:
@@ -120,7 +128,7 @@ class OnDiskProfile(profiles.base):
 					else:				d[k] = v
 				else:					d[k] = v
 
-		del confs
+
 		# use_expand
 		d["USE_EXPAND"] = d.get("USE_EXPAND",'').split()
 		for u in d["USE_EXPAND"]:

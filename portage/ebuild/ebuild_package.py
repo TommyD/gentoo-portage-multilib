@@ -38,6 +38,8 @@ class EbuildPackage(package.metadata.package):
 			val = DepSet(self.data["LICENSE"], str)
 		elif key == "description":
 			val = self.data["DESCRIPTION"]
+		elif key == "keywords":
+			val = self.data["KEYWORDS"].split()
 		else:
 			return super(EbuildPackage, self).__getattr__(key)
 		self.__dict__[key] = val

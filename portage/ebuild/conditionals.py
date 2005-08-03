@@ -102,8 +102,6 @@ class DepSet(RestrictionSet):
 		self.has_conditionals = has_conditionals[0]
 
 	def __str__(self):	return ' '.join(map(str,self.restrictions))
-	def __iter__(self):	return iter(self.restrictions)
-
 
 	def evaluate_depset(self, cond_dict):
 		"""passed in a depset, does lookups of the node in cond_dict.
