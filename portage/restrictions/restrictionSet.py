@@ -10,7 +10,7 @@ class RestrictionSet(restriction.base):
 
 	def __init__(self, *restrictions, **kwds):
 		if "finalize" in kwds:
-			finalize = kdws["finalize"]
+			finalize = kwds["finalize"]
 			del kwds["finalize"]
 		else:
 			finalize = False
@@ -32,10 +32,17 @@ class RestrictionSet(restriction.base):
 
 		self.restrictions.append(NewRestriction)
 
-
 	def finalize(self):
 		self.restrictions = tuple(self.restrictions)
 
+	def total_len(self):	return sum(map(lambda x: x.total_len(), self.restrictions)) + 1
+
+	def __len__(self):	return len(self.restrictions)
+
+	def __iter__(self):	return iter(self.restrictions)
+
+	def __getitem__(self, key):
+		return self.restrictions[key]
 
 class AndRestrictionSet(RestrictionSet):
 	__slots__ = tuple(RestrictionSet.__slots__)
@@ -48,7 +55,11 @@ class AndRestrictionSet(RestrictionSet):
 
 
 #	def intersect(self, other):
-		
+
+	def __str__(self):
+		if self.negate:	s=" !& "
+		else:					s=" && "
+		return '( %s )' % s.join(map(str,self.restrictions))
 
 
 class OrRestrictionSet(RestrictionSet):
@@ -57,8 +68,14 @@ class OrRestrictionSet(RestrictionSet):
 	def match(self, packagedataInstance):
 		for rest in self.restrictions:
 			if rest.match(packagedataInstance):
-				return self.negate
-		return not self.negate
+				return not self.negate
+		return self.negate
+
+	def __str__(self):
+		if self.negate:	s=" !| "
+		else:					s=" || "
+		return '( %s )' % s.join(map(str,self.restrictions))
+
 
 class XorRestrictionSet(RestrictionSet):
 	__slots__ = tuple(RestrictionSet.__slots__)
@@ -71,3 +88,11 @@ class XorRestrictionSet(RestrictionSet):
 					return self.negate
 				armed = True
 		return armed ^ self.negate
+
+	def __str__(self):
+		if self.negate:	s=" !^ "
+		else:					s=" ^^ "
+		return '( %s )' % s.join(map(str,self.restrictions))
+
+
+bases = (AndRestrictionSet, OrRestrictionSet, XorRestrictionSet)
