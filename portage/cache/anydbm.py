@@ -4,7 +4,11 @@
 # $Header$
 
 anydbm_module = __import__("anydbm")
-import cPickle, os
+try:
+	import cPickle as pickle
+except ImportError:
+	import pickl
+import os
 import fs_template
 import cache_errors
 
@@ -12,6 +16,7 @@ import cache_errors
 class database(fs_template.FsBased):
 
 	autocommits = True
+	cleanse_keys = True
 
 	def __init__(self, *args, **config):
 		super(database,self).__init__(*args, **config)
@@ -46,11 +51,11 @@ class database(fs_template.FsBased):
 
 	def __getitem__(self, cpv):
 		# we override getitem because it's just a cpickling of the data handed in.
-		return cPickle.loads(self.__db[cpv])
+		return pickle.loads(self.__db[cpv])
 
 
 	def _setitem(self, cpv, values):
-		self.__db[cpv] = cPickle.dumps(values,cPickle.HIGHEST_PROTOCOL)
+		self.__db[cpv] = pickle.dumps(values,pickle.HIGHEST_PROTOCOL)
 
 	def _delitem(self, cpv):
 		del self.__db[cpv]
@@ -62,9 +67,6 @@ class database(fs_template.FsBased):
 
 	def has_key(self, cpv):
 		return cpv in self.__db
-
-
-	def commit(self):	pass
 
 
 	def __del__(self):

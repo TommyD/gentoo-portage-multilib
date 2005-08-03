@@ -110,5 +110,3 @@ class database(fs_template.FsBased):
 				yield p[len_base+1:]
 			dirs.pop(0)
 
-
-	def commit(self):	pass

@@ -7,7 +7,7 @@ import os, stat
 import fs_template
 import cache_errors
 from portage.ebuild import eclass_cache 
-from template import reconstruct_eclasses
+from template import reconstruct_eclasses, serialize_eclasses
 
 # store the current key order *here*.
 class database(fs_template.FsBased):
@@ -17,7 +17,15 @@ class database(fs_template.FsBased):
 		'KEYWORDS',  'INHERITED', 'IUSE', 'CDEPEND',
 		'PDEPEND',   'PROVIDE')
 
+	autocommits = True
+
 	def __init__(self, *args, **config):
+		if "unused_padding" in config:
+			self.unused_padding = int(config["unused_padding"])
+			del config["unused_padding"]
+		else:
+			self.unused_padding = 0
+
 		super(database,self).__init__(*args, **config)
 		location = self.location
 		self.location = os.path.join(self.location, "metadata/cache")
@@ -27,7 +35,6 @@ class database(fs_template.FsBased):
 			raise Exception("less ordered keys then auxdbkeys")
 		if not os.path.exists(self.location):
 			self._ensure_dirs()
-
 		self.ec = eclass_cache.cache(location)
 
 	def __getitem__(self, cpv):
@@ -79,11 +86,12 @@ class database(fs_template.FsBased):
 
 		# hack.  proper solution is to make this a __setitem__ override, since template.__setitem__ 
 		# serializes _eclasses_, then we reconstruct it.
-		if "_eclasses_" in d:
-			d["INHERITED"] = serialize_eclasses(d["_eclasses_"]).keys()
-			del d["_eclasses_"]
+		if "_eclasses_" in values:
+			values["INHERITED"] = ' '.join(reconstruct_eclasses(cpv, values["_eclasses_"]).keys())
+			del values["_eclasses_"]
 
-		myf.writelines( [ values.get(x,"")+"\n" for x in self.auxdbkey_order] )
+		myf.writelines(values.get(x,"")+"\n" for x in self.auxdbkey_order)
+		myf.write("\n"*self.unused_padding)
 		myf.close()
 		self._ensure_access(fp, mtime=values["_mtime_"])
 		#update written.  now we move it.

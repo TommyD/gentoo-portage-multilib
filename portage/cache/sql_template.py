@@ -36,6 +36,7 @@ class SQLDatabase(template.database):
 	_dbClass = None
 
 	autocommits = False
+#	cleanse_keys = True
 
 	# boolean indicating if the derived RDBMS class supports replace syntax
 	_supports_replace = False
@@ -149,7 +150,7 @@ class SQLDatabase(template.database):
 			# so we store only what's handed to us and is a known key
 			db_values = []
 			for key in self._known_keys:
-				if values.has_key(key):
+				if values.has_key(key) and values[key] != '':
 					db_values.append({"key":key, "value":values[key]})
 
 			if len(db_values) > 0:
