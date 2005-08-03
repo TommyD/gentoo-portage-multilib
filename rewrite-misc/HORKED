@@ -5,6 +5,10 @@ Right now, majority of discussion/questions are via irc, although ml will be use
 flesh out (need to get a solid kernel/core)
 
 
+**important**
+portage.package.cpv.ver_cmp fails on this;
+dev-lang/icc-7.1.029 > dev-lang/icc-7.1.006 # thinks .006 is gt .029
+
 [namespace fixes required, plus potentially a bit of rewrite]
 :portage.sync:
 :portage.transports:
