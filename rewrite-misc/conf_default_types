@@ -88,13 +88,13 @@ section_ref = base_repo
 positional = base_repo profile incrementals
 
 [domain]
-instantiate = portage.config.parser.domain
+#instantiate = portage.config.parser.domain
 required = repositories profile root class incrementals
 section_ref = repositories profile
 list = %(default_incrementals)s package.keywords package.use package.unmask package.mask repositories
 incrementals = %(default_incrementals)s
 defaults = class root incrementals
-class =  portage.config.domain
+class =  portage.config.domain.domain
 root = /
 positional = incrementals root profile repositories 
 
