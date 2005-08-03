@@ -9,7 +9,7 @@ from portage.restrictions.restrictionSet import AndRestrictionSet
 from portage.util.lists import unique
 
 class VersionMatch(restriction.base):
-	__slots__ = tuple(["ver","rev", "vals"] + restriction.StrMatch.__slots__)
+	__slots__ = tuple(["ver","rev", "vals", "droprev"] + restriction.StrMatch.__slots__)
 	"""any overriding of this class *must* maintain numerical order of self.vals, see intersect for reason why
 	vals also must be a tuple"""
 
@@ -17,23 +17,30 @@ class VersionMatch(restriction.base):
 		kwd["negate"] = False
 		super(self.__class__, self).__init__(**kwd)
 		self.ver, self.rev = ver, rev
-		if operator not in ("<=","<", "=", ">", ">="):
+		if operator not in ("<=","<", "=", ">", ">=", "~"):
 			# XXX: hack
 			raise Exception("invalid operator, '%s'", operator)
 
 		if negate:
+			if operator == "~":
+				raise Exception("Cannot negate '~' operator")
 			if "=" in operator:		operator = operator.strip("=")
 			else:					operator += "="
 			for x,v in (("<",">"),(">","<")):
 				if x in operator:
 					operator = operator.strip(x) + v
 					break
-			
-		l=[]
-		if "<" in operator:	l.append(-1)
-		if "=" in operator:	l.append(0)
-		if ">" in operator:	l.append(1)
-		self.vals = tuple(l)
+
+		if operator == "~":
+			self.droprev = True
+			self.vals = (0,)
+		else:
+			self.droprev = False
+			l=[]
+			if "<" in operator:	l.append(-1)
+			if "=" in operator:	l.append(0)
+			if ">" in operator:	l.append(1)
+			self.vals = tuple(l)
 
 	def intersect(self, other, allow_hand_off=True):
 		if not isinstance(other, self.__class__):
@@ -41,7 +48,11 @@ class VersionMatch(restriction.base):
 				return other.intersect(self, allow_hand_off=False)
 			return None
 
-		vc = ver_cmp(self.ver, self.rev, other.ver, other.ver)
+		if self.droprev or other.droprev:
+			vc = ver_cmp(self.ver, None, other.ver, None)
+		else:
+			vc = ver_cmp(self.ver, self.rev, other.ver, other.rev)
+
 		# ick.  28 possible valid combinations.
 		if vc == 0:
 			if 0 in self.vals and 0 in other.vals:
@@ -86,8 +97,22 @@ class VersionMatch(restriction.base):
 		return None
 
 	def match(self, pkginst):
-		return (ver_cmp(self.ver, self.rev, pkginst.version, pkginst.revision) in self.vals) ^ self.negate
+		if self.droprev:			r1, r2 = None, None
+		else:							r1, r2 = self.rev, pkginst.revision
 
+		return (ver_cmp(pkginst.version, r2, self.ver, r1) in self.vals) ^ self.negate
+
+	def __str__(self):
+		l = []
+		for x in self.vals:
+			if x == -1:		l.append("<")
+			elif x == 0:	l.append("=")
+			elif x == 1:	l.append(">")
+		l.sort()
+		l = ''.join(l)
+		if self.droprev or self.rev == None:
+			return "ver %s %s" % (l, self.ver)
+		return "fullver %s %s-r%s" % (l, self.ver, self.rev)
 
 class atom(AndRestrictionSet):
 	__slots__ = ("glob","atom","blocks","op", "negate_vers","cpv","use","slot") + tuple(AndRestrictionSet.__slots__)
@@ -110,7 +135,6 @@ class atom(AndRestrictionSet):
 		else:
 			self.glob = False
 			self.atom = atom[pos:]
-
 		self.negate_vers = negate_vers
 		self.cpv = CPV(self.atom)
 		self.use, self.slot = use, slot
@@ -148,3 +172,9 @@ class atom(AndRestrictionSet):
 		if self.version:		s+="-"+self.fullver
 		if self.glob:			s+="*"
 		return s
+
+	def __iter__(self):
+		return iter(self.restrictions)
+
+	def __getitem__(self, index):
+		return self.restrictions[index]
