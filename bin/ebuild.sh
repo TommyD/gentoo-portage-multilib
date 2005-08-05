@@ -1,8 +1,8 @@
 #!/bin/bash
 # ebuild.sh; ebuild phase processing, env handling
-# Copyright 2004 Gentoo Foundation
+# Copyright 2004-2005 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-$Header$
+# $Header$
 
 # general phase execution path-
 # execute_phases is called, which sets EBUILD_PHASE, and then depending on the phase, 
