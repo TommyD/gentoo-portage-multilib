@@ -23,17 +23,17 @@ if __name__ == "__main__":
 	if not cache2.autocommits:
 		cache2.sync_rate = 1000
 	if verbose:	print "grabbing cache2's existing keys"
-	valid = {}
+	valid = set()
 	start = time.time()
 	if verbose:
 		for k,v in cache1.iteritems():
 			print "updating %s" % k
 			cache2[k] = v
-			valid[k] = True
+			valid.add(k)
 	else:
 		for k,v in cache1.iteritems():
 			cache2[k] = v
-			valid[k] = True
+			valid.add(k)
 
 	for x in cache2.iterkeys():
 		if not x in valid:
