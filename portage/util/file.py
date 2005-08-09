@@ -5,7 +5,7 @@
 
 import re
 from shlex import shlex
-from portage.util.dicts import ProtectedDict
+from mappings import ProtectedDict
 
 def iter_read_bash(file):
 	"""read file honoring bash commenting rules.  Note that it's considered good behaviour to close filehandles, as such, 
@@ -24,6 +24,9 @@ def read_bash(file):
 	return list(iter_read_bash(file))
 
 def read_dict(file, splitter="=", ignore_malformed=False, source_isiter=False):
+	"""
+	read key value pairs, splitting on specified splitter, using iter_read_bash for filtering comments
+	"""
 	d = {}
 	if not source_isiter:
 		i = iter_read_bash(file)
@@ -47,6 +50,11 @@ def read_dict(file, splitter="=", ignore_malformed=False, source_isiter=False):
 	return d
 
 def read_bash_dict(file, vars_dict={}, ignore_malformed=False, sourcing_command=None):
+	"""read bash source, yielding a dict of vars
+	vars_dict is the initial 'env' for the sourcing, and is protected from modification.
+	sourcing_command controls whether a source command exists, if one does and is encountered, then this func
+	recursively sources that file
+	"""
 	from shlex import shlex
 	from types import StringTypes
 	f = open(file, "r")

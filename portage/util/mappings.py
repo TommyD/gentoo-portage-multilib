@@ -3,6 +3,8 @@
 # License: GPL2
 # $Header$
 
+from itertools import imap
+
 class IndexableSequence(object):
 	def __init__(self, get_keys, get_values, recursive=False, returnEmpty=False, 
 			returnIterFunc=None, modifiable=False, delfunc=None, updatefunc=None):
@@ -105,7 +107,10 @@ class IndexableSequence(object):
 
 
 class LazyValDict(object):
-
+	"""
+	given a function to get keys, and to look up the val for those keys, it'll 
+	lazy load key definitions, and values as requested
+	"""
 	def __init__(self, get_keys_func, get_val_func):
 		self.__val_func = get_val_func
 		self.__keys_func = get_keys_func
@@ -168,6 +173,10 @@ class LazyValDict(object):
 
 
 class ProtectedDict(object):
+	"""
+	given an initial dict, this wraps that dict storing changes in a secondary dict, protecting
+	the underlying dict from changes
+	"""
 	__slots__=("orig","new","blacklist")
 
 	def __init__(self, orig):
@@ -227,3 +236,72 @@ class ProtectedDict(object):
 	def items(self):
 		return list(self.iteritems())
 
+class Unchangable(Exception):
+	def __init__(self, key):	self.key = key
+	def __str__(self):			return "key '%s' is unchangable" % self.key
+
+
+class LimitedChangeSet(object):
+	"""
+	set that supports limited changes, specifically deleting/adding a key only once per commit, 
+	optionally blocking changes to certain keys.
+	"""
+	_removed 	= 0
+	_added		= 1
+
+	def __init__(self, initial_keys, unchangable_keys=[]):
+		self.__new = set(initial_keys)
+		self.__blacklist = set(unchangable_keys)
+		self.__changed = set()
+		self.__change_order = []
+		self.__orig = frozenset(self.__new)
+
+	def add(self, key):
+		if key in self.__new:
+			return
+
+		if key in self.__changed or key in self.__blacklist:
+			# it's been del'd already once upon a time.
+			raise Unchangable(key)
+
+		self.__new.add(key)
+		self.__changed.add(key)
+		self.__change_order.append((self._added, key))
+
+	def remove(self, key):
+		if key in self.__changed or key in self.__blacklist:
+			raise Unchangable(key)
+		
+		self.__new.remove(key)
+		self.__changed.add(key)
+		self.__change_order.append((self._removed, key))
+
+	def __contains__(self, key):
+		return key in self.__new
+
+	def changes_count(self):
+		return len(self.__change_order)
+
+	def commit(self):
+		self.__orig = frozenset(self.__new)
+		self.__changed.clear()
+		self.__change_order = []
+
+	def rollback(self, point=0):
+		l = self.changes_count()
+		if point < 0 or point > l:
+			raise TypeError("%s point must be >=0 and <= changes_count()" % point)
+		while l > point:
+			change, key = self.__change_order.pop(-1)
+			self.__changed.remove(key)
+			if change == self._removed:
+				self.__new.add(key)
+			else:
+				self.__new.remove(key)					
+			l -= 1
+
+	def __str__(self):
+		return str(self.__new).replace("set(","LimitedChangeSet(", 1)
+
+	def __iter__(self):
+		return iter(self.__new)

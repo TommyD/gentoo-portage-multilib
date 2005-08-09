@@ -54,3 +54,7 @@ def iterflatten(l):
 				yield x
 		except StopIteration:
 			iters.pop(-1)
+
+def flatten(l):
+	"""flatten, returning a list rather then an iterable"""
+	return list(iterflatten(l))

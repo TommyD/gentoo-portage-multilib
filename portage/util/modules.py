@@ -8,6 +8,7 @@ class FailedImport(ImportError):
 	def __str__(self):	return "Failed importing target '%s': '%s'" % (self.trg, self.e)
 
 def load_module(name):
+	"""load a module, throwing a FailedImport if __import__ fails"""
 	try:
 		m = __import__(name)
 		nl = name.split('.')
@@ -22,6 +23,7 @@ def load_module(name):
 	
 
 def load_attribute(name):
+	"""load a specific attribute, rather then a module"""
 	try:
 		i = name.rfind(".")
 		if i == -1:

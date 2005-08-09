@@ -4,6 +4,7 @@
 # $Header$
 
 def iter_tokens(s, splitter=(" ")):
+	"""iterable yielding of splitting of a string"""
 	pos = 0
 	strlen = len(s)
 	while pos < strlen:
