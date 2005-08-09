@@ -8,46 +8,25 @@
 import logging
 from portage.restrictions.restrictionSet import RestrictionSet, OrRestrictionSet
 from portage.util.strings import iter_tokens
+from portage.package.conditionals import base as Conditional
 
-class base(object):
-	"""base object representing a conditional node"""
+def conditional_converter(node, payload):
+	if node[0] == "!":
+		return Conditional(node[1:], payload, negate=True)
+	return Conditional(node, payload)
 
-class Conditional(base):
-
-	def __init__(self, node, payload):
-		if node[0] == "!":
-			self.negate = True
-			self.cond = node[1:]
-		else:
-			self.negate = False
-			self.cond = node
-		self.restrictions = payload
-
-
-	def __str__(self):	
-		if self.negate:	s="!"+self.cond
-		else:					s=self.cond
-		try:		s2=" ".join(self.restrictions)
-		except TypeError:
-			s2=str(self.restrictions)
-		return "%s? ( %s )" % (s, s2)
-
-
-	def __iter__(self):
-		return iter(self.restrictions)
-
-
+	
 class DepSet(RestrictionSet):
 	__slots__ = tuple(["has_conditionals", "conditional_class"] + list(RestrictionSet.__slots__))
 	def __init__(self, dep_str, element_func, operators={"||":OrRestrictionSet}, \
-		conditional_class=Conditional, empty=False):
+		conditional_converter=conditional_converter, conditional_class=Conditional, empty=False):
 
 		"""dep_str is a dep style syntax, element_func is a callable returning the obj for each element, and
 		cleanse_string controls whether or translation of tabs/newlines is required"""
 
 		super(DepSet, self).__init__()
 		self.conditional_class = conditional_class
-
+		
 		if empty:	return
 
 		# anyone who uses this routine as fodder for pushing a rewrite in lisp I reserve the right to deliver an 
@@ -65,7 +44,7 @@ class DepSet(RestrictionSet):
 					if len(depsets[-1].restrictions) == 0:
 						raise ParseError(dep_str)
 					elif conditionals[-1].endswith('?'):
-						depsets[-2].restrictions.append(conditional_class(conditionals.pop(-1)[:-1], depsets[-1]))
+						depsets[-2].restrictions.append(conditional_converter(conditionals.pop(-1)[:-1], depsets[-1]))
 					else:
 						depsets[-2].restrictions.append(operators[conditionals.pop(-1)](depsets[-1]))
 						if not has_conditionals[-2]:
@@ -82,7 +61,8 @@ class DepSet(RestrictionSet):
 						raise ParseError(dep_str)
 
 					# push another frame on
-					depsets.append(self.__class__(None, element_func, empty=True, conditional_class=self.conditional_class))
+					depsets.append(self.__class__(None, element_func, empty=True, conditional_converter=conditional_converter,
+						conditional_class=self.conditional_class))
 					conditionals.append(k)
 					if k.endswith("?"):
 						has_conditionals[-1] = True
@@ -115,7 +95,10 @@ class DepSet(RestrictionSet):
 		while len(stack) != 0:
 			for node in stack[0]:
 				if isinstance(node, self.conditional_class):
-					if cond_dict.get(node.cond, False) ^ node.negate:
+					if node.cond in cond_dict:
+						if not node.negate:
+							stack.append(node.restrictions)
+					elif node.negate:
 						stack.append(node.restrictions)
 				else:
 					flat_deps.restrictions.append(node)
