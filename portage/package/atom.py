@@ -8,6 +8,15 @@ from cpv import ver_cmp, CPV
 from portage.restrictions.restrictionSet import AndRestrictionSet
 from portage.util.lists import unique
 
+class MalformedAtom(Exception):
+	def __init__(self, atom, err=''):	self.atom, self.err = atom, err
+	def __str__(self):	return "atom '%s' is malformed: error %s" % (self.atom, self.err)
+
+class InvalidVersion(Exception):
+	def __init__(self, ver, rev, err=''):	self.ver, self.rev, self.err = ver, rev, err
+	def __str__(self):	return "Version restriction ver='%s', rev='%s', is malformed: error %s" % (self.ver, self.rev, self.err)
+
+
 class VersionMatch(restriction.base):
 	__slots__ = tuple(["ver","rev", "vals", "droprev"] + restriction.StrMatch.__slots__)
 	"""any overriding of this class *must* maintain numerical order of self.vals, see intersect for reason why
@@ -19,7 +28,7 @@ class VersionMatch(restriction.base):
 		self.ver, self.rev = ver, rev
 		if operator not in ("<=","<", "=", ">", ">=", "~"):
 			# XXX: hack
-			raise Exception("invalid operator, '%s'", operator)
+			raise InvalidVersion(self.ver, self.rev, "invalid operator, '%s'" % operator)
 
 		if negate:
 			if operator == "~":
@@ -117,7 +126,7 @@ class VersionMatch(restriction.base):
 class atom(AndRestrictionSet):
 	__slots__ = ("glob","atom","blocks","op", "negate_vers","cpv","use","slot") + tuple(AndRestrictionSet.__slots__)
 
-	def __init__(self, atom, slot=None, use=[], negate_vers=False):
+	def __init__(self, atom, negate_vers=False):
 		super(self.__class__, self).__init__()
 
 		pos=0
@@ -129,6 +138,28 @@ class atom(AndRestrictionSet):
 		else:
 			self.blocks = False
 			self.op = atom[:pos]
+
+		u = atom.find("[")
+		if u != -1:
+			# use dep
+			u2 = atom.find("]", u)
+			if u2 == -1:
+				raise MalformedAtom(atom, "use restriction isn't completed")
+			self.use = atom[u+1:u2].split(',')
+			atom = atom[0:u]+atom[u2 + 1:]
+		else:
+			self.use = ()
+		s = atom.find(":")
+		if s != -1:
+			if atom.find(":", s+1) != -1:
+				raise MalformedAtom(atom, "second specification of slotting")
+			# slot dep.
+			self.slot = atom[s + 1:].rstrip().split(",")
+			atom = atom[:s]
+		else:
+			self.slot = ()
+		del u,s
+			
 		if atom.endswith("*"):
 			self.glob = True
 			self.atom = atom[pos:-1]
@@ -137,7 +168,6 @@ class atom(AndRestrictionSet):
 			self.atom = atom[pos:]
 		self.negate_vers = negate_vers
 		self.cpv = CPV(self.atom)
-		self.use, self.slot = use, slot
 		# force jitting of it.
 		del self.restrictions
 
@@ -160,21 +190,32 @@ class atom(AndRestrictionSet):
 				else:
 					r.append(VersionMatch(self.op, self.version, self.revision, negate=self.negate_vers))
 			if self.use or self.slot:
-				raise Exception("yo.  I don't support use or slot yet, fix me pls kthnx")
+				raise MalformedAtom(self.atom, "yo.  I don't support use or slot yet, fix me pls kthnx")
 #			self.__dict__[attr] = r
 			setattr(self, attr, r)
 			return r
 
 		raise AttributeError(attr)
 
-	def __str__(self):
-		s=self.op+self.category+"/"+self.package
-		if self.version:		s+="-"+self.fullver
-		if self.glob:			s+="*"
-		return s
+#	def __str__(self):
+#		s=self.op+self.category+"/"+self.package
+#		if self.version:		s+="-"+self.fullver
+#		if self.glob:			s+="*"
+#		return s
 
 	def __iter__(self):
 		return iter(self.restrictions)
 
 	def __getitem__(self, index):
 		return self.restrictions[index]
+
+	def __cmp__(self, other):
+		if not isinstance(other, self.__class__):
+			raise TypeError("other isn't of %s type, is %s" % (self.__class__, other.__class__))
+		c = cmp(self.category, other.category)
+		if c != 0:	return c
+		c = cmp(self.package, other.package)
+		if c != 0:	return c
+		c = ver_cmp(self.version, self.revision, other.version, other.revision)
+		if c != 0:	return c
+		return cmp(self.op, other.op)
