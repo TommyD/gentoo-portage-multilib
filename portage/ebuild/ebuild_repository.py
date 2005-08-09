@@ -8,11 +8,15 @@ from portage.repository import prototype, errors
 #import ebuild_internal
 import ebuild_package
 
-class tree(prototype.tree):
+def convert_depset(instance, conditionals):
+	return instance.evaluate_depset(conditionals)
+
+
+class UnconfiguredTree(prototype.tree):
 	false_categories = ("eclass","profiles","packages","distfiles","licenses","scripts")
 
 	def __init__(self, location, cache=None, eclass_cache=None):
-		super(tree, self).__init__()
+		super(UnconfiguredTree, self).__init__()
 		self.base = self.location = location
 		try:	
 			st = os.lstat(self.base)
@@ -66,3 +70,18 @@ class tree(prototype.tree):
 			raise KeyError("failed fetching versions for package %s: %s" % \
 			(os.path.join(self.base,catpkg.lstrip(os.path.sep)), str(e)))
 
+
+class ConfiguredTree(UnconfiguredTree):
+	configured = True
+	configurable = ("use",)
+	l=["license","depends","rdepends","bdepends", "fetchables", "keywords"]
+	wrappable = dict(zip(l, len(l)*[convert_depset]))
+	def configure_it(self, key):
+		return PackageWrapper("use", initial_settings=[self.default_use], unchangable_settings=[self.arch],
+			attributes_to_wrap=wrappable)
+
+	def __init__(self, tree, default_use, arch):
+		self.default_use = default_use
+		self.tree = tree
+
+UnconfiguredTree.configured = ConfiguredTree

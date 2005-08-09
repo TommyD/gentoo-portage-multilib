@@ -9,7 +9,7 @@ from conditionals import DepSet
 from portage.package.atom import atom
 #from portage.fetch import fetchable
 #from digest import parse_digest
-from portage.util.dicts import LazyValDict
+from portage.util.mappings import LazyValDict
 from portage.restrictions.restriction import PackageRestriction, StrExactMatch
 from portage.restrictions.restrictionSet import AndRestrictionSet, OrRestrictionSet
 
@@ -32,7 +32,7 @@ class EbuildPackage(package.metadata.package):
 		elif key in ("depends", "rdepends", "bdepends"):
 			# drop the s, and upper it.
 			val = DepSet(self.data[key.upper()[:-1]], atom)
-		elif key == "uri":
+		elif key == "fetchables":
 			val = DepSet(self.data["SRC_URI"], str, operators={})
 		elif key == "license":
 			val = DepSet(self.data["LICENSE"], str)
@@ -46,7 +46,6 @@ class EbuildPackage(package.metadata.package):
 		return val
 
 	def _fetch_metadata(self):
-#		import pdb;pdb.set_trace()
 		data = self._parent._get_metadata(self)
 		doregen = False
 		if data == None:
@@ -63,10 +62,6 @@ class EbuildPackage(package.metadata.package):
 			# ah hell.
 			data = self._parent._update_metadata(self)
 
-#		for k,v in data.items():
-#			self.__dict__[k] = v
-
-#		self.__dict__["_finalized"] = True
 		return data
 
 
@@ -107,17 +102,3 @@ class EbuildFactory(package.metadata.factory):
 		return mydata
 
 
-class ConfiguredEbuild(package.metadata.package):
-
-	def __init__(self, pkg, use_flags):
-		self.__dict__["use"] = dict(zip(use_flags, [True]*len(use_flags)))
-		self.__dict__["pkg"] = pkg
-
-
-	def __getattr__(self, attr):
-		if attr in ("depends", "rdepends", "bdepends", "uri", "license", "restrict"):
-			val = getattr(self.pkg, attr).evaluate_depset(self.use)
-		else:
-			return getattr(self.pkg, attr)
-		self.__dict__[attr] = val
-		return val

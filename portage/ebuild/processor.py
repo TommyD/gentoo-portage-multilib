@@ -93,11 +93,14 @@ def release_ebuild_processor(ebp):
 class ebuild_processor:
 	"""abstraction of a running ebuild.sh instance- the env, functions, etc that ebuilds expect."""
 	def __init__(self, userpriv, sandbox, fakeroot, save_file):
-		"""ebuild_daemon_path shouldn't be fooled with unless the caller knows what they're doing.
+		"""
 		sandbox enables a sandboxed processor
 		userpriv enables a userpriv'd processor
 		fakeroot enables a fakeroot'd processor- this is a mutually exclusive option to sandbox, and 
-		requires userpriv to be enabled.  Violating this will result in nastyness"""
+		requires userpriv to be enabled.  
+		
+		Violating this will result in nastyness
+		"""
 
 		from portage.const import EBUILD_DAEMON_PATH, PORTAGE_BIN_PATH
 
@@ -398,8 +401,8 @@ class ebuild_processor:
 		additional_commands is a dict of command:callable.  If you need to slip in extra args, look into portage.util.currying.
 
 		commands names cannot have spaces.  the callable is called with the processor as first arg, and 
-		remaining string (None if no remaining fragment) as second arg
-		(if you need to split the args to command, whitespace splitting falls to your func.)
+		remaining string (None if no remaining fragment) as second arg.
+		If you need to split the args to command, whitespace splitting falls to your func.
 		
 		Chucks an UnhandledCommand exception when an unknown command is encountered.
 		"""

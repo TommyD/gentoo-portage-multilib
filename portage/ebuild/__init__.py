@@ -1,2 +1,2 @@
 import ebuild_repository
-repository	= ebuild_repository.tree
+repository	= ebuild_repository.UnconfiguredTree

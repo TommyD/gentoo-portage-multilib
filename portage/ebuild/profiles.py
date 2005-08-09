@@ -10,7 +10,7 @@ from portage.util.file import iter_read_bash, read_dict, read_bash_dict
 from portage.util.currying import pre_curry
 from portage.package.atom import atom
 from portage.config.central import list_parser
-from portage.util.dicts import ProtectedDict
+from portage.util.mappings import ProtectedDict
 
 class OnDiskProfile(profiles.base):
 	positional = ("base_repo","profile")
