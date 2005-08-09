@@ -89,13 +89,14 @@ positional = base_repo profile incrementals
 
 [domain]
 #instantiate = portage.config.parser.domain
-required = repositories profile root class incrementals
+required = repositories profile root class incrementals ACCEPT_LICENSE
 section_ref = repositories profile
-list = %(default_incrementals)s package.keywords package.use package.unmask package.mask repositories
+list = %(default_incrementals)s %(package_filters)s package.unmask repositories
 incrementals = %(default_incrementals)s
-defaults = class root incrementals
+defaults = class root incrementals ACCEPT_LICENSE
 class =  portage.config.domain.domain
 root = /
+ACCEPT_LICENSE = 
 positional = incrementals root profile repositories 
 
 [repo]
@@ -132,4 +133,4 @@ metadata_keys = DEPEND RDEPEND SLOT SRC_URI RESTRICT HOMEPAGE LICENSE DESCRIPTIO
    PDEPEND PROVIDE
 cache_base_loc = /var/cache/edb/dep/
 default_incrementals = USE FEATURES ACCEPT_KEYWORDS ACCEPT_LICENSE CONFIG_PROTECT_MASK CONFIG_PROTECT PRELINK_PATH PRELINK_PATH_MASK
-
+package_filters = package.mask package.keywords package.license package.use
