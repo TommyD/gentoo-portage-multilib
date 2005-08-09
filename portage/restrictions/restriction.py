@@ -26,6 +26,9 @@ class base(object):
 	def match(self, *arg, **kwargs):
 		raise NotImplementedError
 
+	def cmatch(self, *arg, **kwargs):
+		return self.match(*arg, **kwargs)
+
 	def intersect(self, other):
 		return None
 
@@ -119,43 +122,6 @@ class StrExactMatch(StrMatch):
 		return "== "+self.exact
 
 
-class StrSubstringMatch(StrMatch):
-	__slots__ = tuple(["substr"] + StrMatch.__slots__)
-
-	def __init__(self, substr, CaseSensitive=True, **kwds):
-		super(StrSubstringMatch, self).__init__(**kwds)
-		if not CaseSensitive:
-			self.flags = re.I
-			self.substr = str(substr).lower()
-		else:
-			self.flags = 0
-			self.substr = str(substr)
-
-	def match(self, value):
-		if self.flags & re.I:	value = str(value).lower()
-		else:			value = str(value)
-		return (value.find(self.substr) != -1) ^ self.negate
-
-	def intersect(self, other):
-		if self.negate == other.negate:
-			if self.substr == other.substr and self.flags == other.flags:
-				return self
-		else:
-			return None
-		s1, s2 = self.substr, other.substr
-		if other.flags and not self.flags:
-			s1 = s1.lower()
-		elif self.flags and not other.flags:
-			s2 = s2.lower()
-		if s1.find(s2) != -1:
-			return self
-		elif s2.find(s1) != -1:
-			return other
-		return None			
-
-	def __eq__(self, other):
-		return self.substr == other.substr and self.negate == other.negate and self.flags == other.flags
-
 
 class StrGlobMatch(StrMatch):
 	__slots__ = tuple(["glob"] + StrMatch.__slots__)
@@ -169,9 +135,16 @@ class StrGlobMatch(StrMatch):
 			self.glob = str(glob)
 
 	def match(self, value):
-		value = str(value)
-		if self.flags & re.I:	value = value.lower()
-		return value.startswith(self.glob) ^ self.negate
+		if isinstance(value, (list, tuple)):
+			for x in value:
+				print "trying %s against %s" % (x,  self.glob)
+				if self.match(x):
+					return not self.negate
+			return self.negate
+		else:
+			value = str(value)
+			if self.flags & re.I:	value = value.lower()
+			return value.startswith(self.glob) ^ self.negate
 
 	def intersect(self, other):
 		if self.match(other.glob):
@@ -252,18 +225,30 @@ class PackageRestriction(base):
 
 class ContainmentMatch(base):
 	"""used for an 'in' style operation, 'x86' in ['x86','~x86'] for example"""
-	__slots__ = tuple(["vals"] + base.__slots__)
+	__slots__ = tuple(["vals", "vals_len"] + base.__slots__)
 	
-	def __init__(self, vals, **kwds):
+	def __init__(self, *vals, **kwds):
 		"""vals must support a contaiment test"""
 		super(ContainmentMatch, self).__init__(**kwds)
-		self.vals = vals
-
+		self.vals = set(vals)
+		self.vals_len = len(self.vals)
+		
 	def match(self, val):
-		return (val in self.vals) ^ self.negate
+		if isinstance(val, (str, unicode)):
+			return val in self.vals ^ self.negate
+		try:
+			# assume our lookup is faster, since we don't know if val is constant lookup or not
+			l = len(val)
+			for x in val:
+				if x in self.vals:
+					return not self.negate
+			return self.negate
+		except TypeError:
+			return val in self.vals ^ self.negate
+
 
 	def __str__(self):
-		if self.negate:	s="not in [%s]"
-		else:			s="in [%s]"
+		if self.negate:	s="not contains [%s]"
+		else:			s="contains [%s]"
 		return s % ', '.join(map(str, self.vals))
 

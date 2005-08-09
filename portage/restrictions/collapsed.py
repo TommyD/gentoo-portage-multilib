@@ -3,12 +3,31 @@
 # License: GPL2
 # $Header$
 
+__all__=("DictBased")
 from restriction import base, AlwaysTrue
 from inspect import isroutine
 from restrictionSet import bases, OrRestrictionSet
 from portage.util.inheritance import check_for_base
 
 class DictBased(base):
+	"""Restrictions are (by default) executed in a depth/breadth method; for long chains of restrictions,
+	this grows inneficient.  For example, package.mask'ing has over 300 atoms, effectively over 1800 objects in use.
+	
+	Running the filter on each package instance returned from a repo would be exceedingly slow, a way to get as close to
+	constant lookup as possible is needed.
+	
+	DictBased works by using supplied functions to collapse long chains of restrictions into a dict, with key 
+	defined by get_key_from_atom (with get_key_from_package returning the key of a pkg instance), and with the 
+	value of that key holding the remaining restrictions (if any).
+	
+	Common usage at this point is to collapse category and package attribute restrictions into constant lookup, with 
+	any remaining version restrictions being handed off as a val.
+	
+	Example usage of this class should be available in portage.config.domain.domain
+
+	Aside from that, method of generating keys/collapsing restrictions is subject to change, still need to push metadata 
+	in re: what restriction types are being collapsed; short version, api isn't declared stable yet.
+	"""
 	__slots__ = tuple(["restricts_dict", "get_pkg_key", "get_atom_key"] + base.__slots__)
 
 	def __init__(self, restriction_items, get_key_from_package, get_key_from_atom, *args, **kwargs):
