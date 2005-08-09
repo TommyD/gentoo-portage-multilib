@@ -6,8 +6,8 @@
 import errors, new
 from portage.const import CONF_DEFAULTS
 from portage.util.modules import load_attribute
-from ConfigParser import ConfigParser
-from portage.util.dicts import LazyValDict
+from cparser import CaseSensitiveConfigParser as ConfigParser
+from portage.util.mappings import LazyValDict
 from portage.util.currying import pre_curry
 
 class config:
