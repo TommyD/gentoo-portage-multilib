@@ -3,7 +3,7 @@
 # License: GPL2
 # $Header$
 
-from portage.util.dicts import IndexableSequence
+from portage.util.mappings import IndexableSequence
 from weakref import proxy
 from portage.package.atom import atom
 
@@ -12,6 +12,7 @@ def ix_cat_callable(*cat):
 
 class tree(object):
 	package_class = None
+	configured = True
 
 	def __init__(self, frozen=True):
 		self.categories = IndexableSequence(self._get_categories, self._get_categories, 
