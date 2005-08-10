@@ -7,6 +7,9 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  10 Aug 2005; Mike Frysinger <vapier@gentoo.org> bin/quickpkg:
+  Call gawk instead of awk so non-GNU systems work #102050 by Stephen Bennett.
+
   29 Jul 2005; Mike Frysinger <vapier@gentoo.org> bin/prepallman:
   Rather than use a hardcoded list and bash expansion, let find locate man
   directories for us.  This fixes the issues of running prepman on symlinks 

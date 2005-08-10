@@ -59,7 +59,7 @@ do_pkg() {
 		cp ${SRCDIR}/* ${MYDIR}/temp/
 
 		# create filelist and a basic tbz2
-		awk '{
+		gawk '{
 			if ($1 != "dir") {
 				if ($1 == "obj")
 					NF=NF-2
@@ -86,7 +86,7 @@ do_pkg() {
 
 	if [ -e ${PKGDIR}/All/$1.tbz2 ] ; then
 		rm -f ${LOG}
-		PKGSTATS="${PKGSTATS}"$'\n'"$(einfo $1: `ls -alh ${PKGDIR}/All/$1.tbz2 | awk '{print $5}'`)"
+		PKGSTATS="${PKGSTATS}"$'\n'"$(einfo $1: `ls -alh ${PKGDIR}/All/$1.tbz2 | gawk '{print $5}'`)"
 		eend 0
 	else
 		cat ${LOG}
