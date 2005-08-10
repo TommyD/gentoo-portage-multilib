@@ -14,8 +14,8 @@ if [ "`whoami`" != "root" ] ; then
 	exit 1
 fi
 
-export PORTAGE_DB="$(portageq vdb_path)"
-if [ -z $1 ] || [ $1 == "-h" ] || [ $1 == "--help" ] ; then
+export PORTAGE_DB=$(portageq vdb_path)
+if [ -z "$1" ] || [ $1 == "-h" ] || [ $1 == "--help" ] ; then
 	echo "QUICKPKG ver 1.2"
 	echo "USAGE: quickpkg <list of pkgs>"
 	echo "    a pkg can be of the form:"
@@ -34,8 +34,8 @@ if [ -z $1 ] || [ $1 == "-h" ] || [ $1 == "--help" ] ; then
 	exit 1
 fi
 
-export PKGDIR="`portageq envvar PKGDIR`"
-export PORTAGE_TMPDIR="`portageq envvar PORTAGE_TMPDIR`"
+export PKGDIR=$(portageq envvar PKGDIR)
+export PORTAGE_TMPDIR=$(portageq envvar PORTAGE_TMPDIR)
 
 source /sbin/functions.sh
 
@@ -43,20 +43,20 @@ source /sbin/functions.sh
 # $1 = package-name w/version
 # $2 = category
 do_pkg() {
-	mkdir -p "${PORTAGE_TMPDIR}/binpkgs" || exit 1
-	chmod 0750 "${PORTAGE_TMPDIR}/binpkgs"
-	MYDIR="${PORTAGE_TMPDIR}/binpkgs/$1"
+	mkdir -p "${PORTAGE_TMPDIR}/portage-pkg" || exit 1
+	chmod 0750 "${PORTAGE_TMPDIR}/portage-pkg"
+	MYDIR="${PORTAGE_TMPDIR}/portage-pkg/$1"
 	SRCDIR="${PORTAGE_DB}/$2/$1"
-	LOG="${PORTAGE_TMPDIR}/binpkgs/$1-quickpkglog"
+	LOG="${PORTAGE_TMPDIR}/portage-pkg/$1-quickpkglog"
 
 	ebegin "Building package for $1"
 	(
 		# clean up temp directory
-		rm -rf ${MYDIR}
+		rm -rf "${MYDIR}"
 
 		# get pkg info files
-		mkdir -p ${MYDIR}/temp
-		cp ${SRCDIR}/* ${MYDIR}/temp/
+		mkdir -p "${MYDIR}"/temp
+		cp "${SRCDIR}"/* "${MYDIR}"/temp/
 
 		# create filelist and a basic tbz2
 		gawk '{
@@ -67,26 +67,26 @@ do_pkg() {
 					NF=NF-3
 				print
 			}
-		}' ${SRCDIR}/CONTENTS | cut -f2- -d" " - > ${MYDIR}/filelist
-		tar -vjcf ${MYDIR}/bin.tar.bz2 --files-from=${MYDIR}/filelist --no-recursion
+		}' "${SRCDIR}"/CONTENTS | cut -f2- -d" " - > "${MYDIR}"/filelist
+		tar vjcf "${MYDIR}"/bin.tar.bz2 --files-from="${MYDIR}"/filelist --no-recursion
 
 		# join together the basic tbz2 and the pkg info files
-		xpak ${MYDIR}/temp ${MYDIR}/inf.xpak
-		tbz2tool join ${MYDIR}/bin.tar.bz2 ${MYDIR}/inf.xpak ${MYDIR}/$1.tbz2
+		xpak "${MYDIR}"/temp "${MYDIR}"/inf.xpak
+		tbz2tool join "${MYDIR}"/bin.tar.bz2 "${MYDIR}"/inf.xpak "${MYDIR}"/$1.tbz2
 
 		# move the final binary package to PKGDIR
-		[ -d ${PKGDIR}/All ] ||  mkdir -p ${PKGDIR}/All
-		[ -d ${PKGDIR}/$2 ] || mkdir -p ${PKGDIR}/$2
-		mv ${MYDIR}/$1.tbz2 ${PKGDIR}/All
-		( cd ${PKGDIR}/$2 && ln -s ../All/$1.tbz2 )
+		[ -d "${PKGDIR}"/All ] ||  mkdir -p "${PKGDIR}"/All
+		[ -d "${PKGDIR}/$2" ] || mkdir -p "${PKGDIR}/$2"
+		mv "${MYDIR}"/$1.tbz2 "${PKGDIR}"/All
+		( cd "${PKGDIR}/$2" && ln -s ../All/$1.tbz2 )
 
 		# cleanup again
-		rm -rf ${MYDIR}
-	) >& ${LOG}
+		rm -rf "${MYDIR}"
+	) >& "${LOG}"
 
-	if [ -e ${PKGDIR}/All/$1.tbz2 ] ; then
-		rm -f ${LOG}
-		PKGSTATS="${PKGSTATS}"$'\n'"$(einfo $1: `ls -alh ${PKGDIR}/All/$1.tbz2 | gawk '{print $5}'`)"
+	if [ -e "${PKGDIR}/All/$1.tbz2" ] ; then
+		rm -f "${LOG}"
+		PKGSTATS="${PKGSTATS}"$'\n'"$(einfo $1: $(du -h "${PKGDIR}/All/$1.tbz2" | gawk '{print $1}'))"
 		eend 0
 	else
 		cat ${LOG}
@@ -101,15 +101,15 @@ export PKGSTATS=""
 for x in "$@" ; do
 
 	# they gave us full path
-	if [ -e ${x}/CONTENTS ] ; then
-		x="`readlink -f $x`"
-		pkg="`echo ${x} | cut -d/ -f6`"
-		cat="`echo ${x} | cut -d/ -f5`"
-		do_pkg ${pkg} ${cat}
+	if [ -e "${x}"/CONTENTS ] ; then
+		x=$(readlink -f $x)
+		pkg=$(echo ${x} | cut -d/ -f6)
+		cat=$(echo ${x} | cut -d/ -f5)
+		do_pkg "${pkg}" "${cat}"
 
 	# lets figure out what they want
 	else
-		DIRLIST="`portageq match / ${x}`"
+		DIRLIST=$(portageq match / "${x}")
 		if [ -z "${DIRLIST}" ] ; then
 			eerror "Could not find anything to match '${x}'; skipping"
 			export PKGERROR="${PKGERROR} ${x}"
@@ -117,8 +117,8 @@ for x in "$@" ; do
 		fi
 
 		for d in ${DIRLIST} ; do
-			pkg="`echo ${d} | cut -d/ -f2`"
-			cat="`echo ${d} | cut -d/ -f1`"
+			pkg=$(echo ${d} | cut -d/ -f2)
+			cat=$(echo ${d} | cut -d/ -f1)
 			if [ -f "${PORTAGE_DB}/${cat}/${pkg}/CONTENTS" ] ; then
 				do_pkg ${pkg} ${cat}
 			elif [ -d "${PORTAGE_DB}/${cat}/${pkg}" ] ; then
@@ -144,3 +144,5 @@ if [ ! -z "${PKGERROR}" ] ; then
 	ewarn "${PKGERROR}"
 	exit 2
 fi
+
+exit 0
