@@ -1,4 +1,4 @@
-import smtplib, email.Message, socket
+import smtplib, email.Message, socket, portage_exception
 
 def process(mysettings, cpv, logentries, fulltext):
 	mymailhost = "localhost"
@@ -48,7 +48,7 @@ def process(mysettings, cpv, logentries, fulltext):
 		myconn.sendmail("portage", myrecipient, mymessage.as_string())
 		myconn.quit()
 	except smtplib.SMTPException, e:
-		raise portage_exception.PortageException("!!! An error occured while trying to send logmail:\n"+e)
+		raise portage_exception.PortageException("!!! An error occured while trying to send logmail:\n"+str(e))
 	except socket.error, e:
-		raise portage_exception.PortageException("!!! A network error occured while trying to send logmail:\n"+e+"\nSure you configured PORTAGE_LOG_MAILURI correctly?")
+		raise portage_exception.PortageException("!!! A network error occured while trying to send logmail:\n"+str(e)+"\nSure you configured PORTAGE_LOG_MAILURI correctly?")
 	return
