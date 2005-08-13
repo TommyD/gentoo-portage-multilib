@@ -7,6 +7,10 @@
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
+  13 Aug 2005; Brian Harring <ferringb@gentoo.org> bin/ebuild-default-functions.sh, 
+  bin/ebuild-functions.sh: merging spankys original changes (which I stupidly stomped)
+  forward.
+
   11 Aug 2005; Marius Mauch <genone@gentoo.org> pym/elog_modules/mod_mail.py:
   Fixed missing portage_exception import and type errors in the exception
   handler.

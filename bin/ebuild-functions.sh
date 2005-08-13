@@ -4,20 +4,24 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-use() {
+use()
+{
 	if useq ${1}; then
 		return 0
 	fi
 	return 1
 }
-has() {
+
+has()
+{
 	if hasq "$@"; then
 		return 0
 	fi
 	return 1
 }
 
-use_with() {
+use_with()
+{
 	if [ -z "$1" ]; then
 		echo "!!! use_with() called without a parameter." >&2
 		echo "!!! use_with <USEFLAG> [<flagname> [value]]" >&2
@@ -43,7 +47,8 @@ use_with() {
 	fi
 }
 
-use_enable() {
+use_enable()
+{
 	if [ -z "$1" ]; then
 		echo "!!! use_enable() called without a parameter." >&2
 		echo "!!! use_enable <USEFLAG> [<flagname> [value]]" >&2
@@ -69,15 +74,18 @@ use_enable() {
 	fi
 }
 
-econf() {
+econf()
+{
 	local ret
-	if [ -x ./configure ]; then
-		if hasq autoconfig $FEATURES && ! hasq autoconfig $RESTRICT; then
+	ECONF_SOURCE="${ECONF_SOURCE:-.}"
+	if [ -x "${ECONF_SOURCE}/configure" ]; then
+		if ! hasq autoconfig $RESTRICT; then
 			if [ -e /usr/share/gnuconfig/ ]; then
 				local x
-				for x in $(find ${WORKDIR} -type f -name config.guess -o -name config.sub); do
+				for x in $(find ${WORKDIR} -type f '(' -name config.guess -o -name config.sub ')' ); do
 					echo " * econf: updating ${x/${WORKDIR}\/} with /usr/share/gnuconfig/${x##*/}"
-					cp "/usr/share/gnuconfig/${x##*/}" "${x}"
+					cp -f "/usr/share/gnuconfig/${x##*/}" "${x}"
+					chmod a+x "${x}"
 				done
 			fi
 		fi
@@ -121,7 +129,7 @@ econf() {
 		if request_confcache "${T}/local_cache"; then
 			EECONF_CACHE="--cache-file=${T}/local_cache"
 		fi
-		echo ./configure \
+		echo ${ECONF_SOURCE}/configure \
 			--prefix=/usr \
 			--host=${CHOST} \
 			--mandir=/usr/share/man \
@@ -133,8 +141,7 @@ econf() {
 			${EECONF_CACHE} \
 			"$@"
 
-		#XXX: This is "${ECONF_SOURCE}/configure" in stable
-		if ! ./configure \
+		if ! ${ECONF_SOURCE}/configure \
 			--prefix=/usr \
 			--host=${CHOST} \
 			--mandir=/usr/share/man \
@@ -163,7 +170,8 @@ econf() {
 	fi
 }
 
-strip_duplicate_slashes () { 
+strip_duplicate_slashes ()
+{
 	if [ -n "${1}" ]; then
 		local removed="${1/\/\///}"
 		[ "${removed}" != "${removed/\/\///}" ] && removed=$(strip_duplicate_slashes "${removed}")
@@ -225,15 +233,17 @@ pkg_nofetch()
 	done
 }
 
-src_unpack() { 
+src_unpack()
+{
 	if [ "${A}" != "" ]; then
 		unpack ${A}
 	fi	
 }
 
-src_compile() { 
+src_compile()
+{
 	if [ -x ./configure ]; then
-		econf 
+		econf || die "econf failed"
 	fi
 	if [ -f Makefile ] || [ -f GNUmakefile ] || [ -f makefile ]; then
 		emake || die "emake failed"
@@ -286,7 +296,8 @@ pkg_postrm()
 	return
 }
 
-into() {
+into()
+{
 	if [ $1 == "/" ]; then
 		export DESTTREE=""
 	else
@@ -297,7 +308,8 @@ into() {
 	fi
 }
 
-insinto() {
+insinto()
+{
 	if [ "$1" == "/" ]; then
 		export INSDESTTREE=""
 	else
@@ -308,7 +320,8 @@ insinto() {
 	fi
 }
 
-exeinto() {
+exeinto()
+{
 	if [ "$1" == "/" ]; then
 		export EXEDESTTREE=""
 	else
@@ -319,7 +332,8 @@ exeinto() {
 	fi
 }
 
-docinto() {
+docinto()
+{
 	if [ "$1" == "/" ]; then
 		export DOCDESTTREE=""
 	else

@@ -4,7 +4,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-has_version() {
+has_version()
+{
 	# if there is a predefined portageq call, use it.
 	# why?  Because if we're being called from an ebuild daemon/processor, it can hijack the call, and access the
 	# running portage instance already, saving at least .5s in load up of portageq.
@@ -16,27 +17,16 @@ has_version() {
 	# Takes single depend-type atoms.
 
 	# XXX: harring; portageq should be in path if there isn't a func.  if not, well, tough cookies
-#	if declare -F portageq &> /dev/null; then
-		portageq 'has_version' "${ROOT}" "$1"
-		e=$?
-#	else
-#		/usr/lib/portage/bin/portageq 'has_version' "${ROOT}" "$1"
-#		e=$?
-#	fi
-	return $e
+	portageq 'has_version' "${ROOT}" "$1"
+	return $?
 }
 
-best_version() {
+best_version() 
+{
 	local -i e
 	# see above
-#	if declare -F portageq &> /dev/null; then
-		portageq 'best_version' "${ROOT}" "$1"
-		e=$?
-#	else
-#		/usr/lib/portage/bin/portageq 'best_version' "${ROOT}" "$1"
-#		e=$?
-#	fi
-	return $e
+	portageq 'best_version' "${ROOT}" "$1"
+	return $?
 }
 
 check_KV()
@@ -90,51 +80,57 @@ addpredict()
 	export SANDBOX_PREDICT="$SANDBOX_PREDICT:$1"
 }
 
-unpack() {
-	local x
-	local y
-	local myfail
-	local tarvars
+unpack()
+{
+	local x y myfail tarvars srcdir
 
 	if [ "$USERLAND" == "BSD" ]; then
 		tarvars=""
 	else
-		tarvars="--no-same-owner"	
+		tarvars="--no-same-owner"
 	fi	
 
 	[ -z "$*" ] && die "Nothing passed to the 'unpack' command"
 
 	for x in "$@"; do
+		echo ">>> Unpacking ${x} to ${PWD}"
 		myfail="failure unpacking ${x}"
-		echo ">>> Unpacking ${x} to $(pwd)"
 		y="${x%.*}"
 		y="${y##*.}"
+		if [ "${x:0:2}" == "./" ]; then
+			srcdir=''
+		else
+			srcdir="${DESTDIR}"
+		fi
+		[ ! -s "${srcdir}/${x}" ] && die "$myfail"
 
 		case "${x##*.}" in
-			tar) 
-				tar ${tarvars} -xf "${DISTDIR}/${x}" || die "$myfail"
+			tar)
+				tar ${tarvars} -xf "${src}${x}" || die "$myfail"
 				;;
-			tgz) 
-				tar ${tarvars} -xzf "${DISTDIR}/${x}" || die "$myfail"
+			tgz)
+				tar ${tarvars} -xzf "${srcdir}${x}" || die "$myfail"
 				;;
-			tbz2) 
-				bzip2 -dc "${DISTDIR}/${x}" | tar ${tarvars} -xf - || die "$myfail"
+			tbz2)
+				bzip2 -dc "${srcdir}${x}" | tar ${tarvars} -xf - || die "$myfail"
 				;;
-			ZIP|zip) 
-				unzip -qo "${DISTDIR}/${x}" || die "$myfail"
+			ZIP|zip)
+				unzip -qo "${srcdir}${x}" || die "$myfail"
 				;;
-			gz|Z|z) 
+			gz|Z|z)
 				if [ "${y}" == "tar" ]; then
-					tar ${tarvars} -xzf "${DISTDIR}/${x}" || die "$myfail"
+					gzip -dc "${srcdir}${x}" | tar ${tarvars} -xf -
+					assert "$myfail"
 				else
-					gzip -dc "${DISTDIR}/${x}" > ${x%.*} || die "$myfail"
+					gzip -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
 				fi
 				;;
-			bz2) 
+			bz2)
 				if [ "${y}" == "tar" ]; then
-					bzip2 -dc "${DISTDIR}/${x}" | tar ${tarvars} -xf - || die "$myfail"
+					bzip2 -dc "${srcdir}${x}" | tar ${tarvars} -xf -
+					assert "$myfail"
 				else
-					bzip2 -dc "${DISTDIR}/${x}" > ${x%.*} || die "$myfail"
+					bzip2 -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
 				fi
 				;;
 			*)
@@ -152,11 +148,11 @@ dyn_setup()
 		return
 	fi
 	MUST_EXPORT_ENV="yes"
-	if [ "$USERLAND" == "Linux" ]; then	
+	if [ "$USERLAND" == "Linux" ]; then
 		# The next bit is to ease the broken pkg_postrm()'s
 		# some of the gcc ebuilds have that nuke the new
 		# /lib/cpp and /usr/bin/cc wrappers ...
-	
+
 		# Make sure we can have it disabled somehow ....
 		if [ "${DISABLE_GEN_GCC_WRAPPERS}" != "yes" ]; then
 			# Create /lib/cpp if missing or a symlink
@@ -174,7 +170,8 @@ dyn_setup()
 	pkg_setup
 }
 
-dyn_unpack() {
+dyn_unpack()
+{
 	if hasq unpack ${COMPLETED_EBUILD_PHASES:-unset}; then
 		echo ">>> ${PF} has alreay been unpacked, bypassing."
 		MUST_EXPORT_ENV="no"
@@ -212,11 +209,12 @@ dyn_unpack() {
 	echo ">>> Unpacking source..."
 	src_unpack
 	echo ">>> Source unpacked."
-	cd "$BUILDDIR"
+	cd "${PORTAGE_BUILDDIR}"
 	trap SIGINT SIGQUIT
 }
 
-abort_handler() {
+abort_handler()
+{
 	local msg
 	if [ "$2" != "fail" ]; then
 		msg="${EBUILD}: ${1} aborted; exiting."
@@ -231,35 +229,41 @@ abort_handler() {
 	trap SIGINT SIGQUIT
 }
 
-abort_compile() {
+abort_compile()
+{
 	abort_handler "src_compile" $1
 	exit 1
 }
 
-abort_unpack() {
+abort_unpack()
+{
 	abort_handler "src_unpack" $1
-	rm -rf "${BUILDDIR}/work"
+	rm -rf "${PORTAGE_BUILDDIR}/work"
 	exit 1
 }
 
-abort_package() {
+abort_package()
+{
 	abort_handler "dyn_package" $1
 	rm -f "${PKGDIR}"/All/${PF}.t*
 	exit 1
 }
 
-abort_test() {
+abort_test()
+{
 	abort_handler "dyn_test" $1
 	exit 1
 }
 
-abort_install() {
+abort_install()
+{
 	abort_handler "src_install" $1
-	rm -rf "${BUILDDIR}/image"
+	rm -rf "${PORTAGE_BUILDDIR}/image"
 	exit 1
 }
 
-dyn_compile() {
+dyn_compile()
+{
 	if hasq compile ${COMPLETED_EBUILD_PHASES:-unset}; then
 		echo ">>> It appears that ${PN} is already compiled; skipping."
 		echo ">>> (clean to force compilation)"
@@ -294,7 +298,7 @@ dyn_compile() {
 		sleep 3
 	fi
 
-	cd "${BUILDDIR}"
+	cd "${PORTAGE_BUILDDIR}"
 	if [ ! -e "build-info" ];	then
 		mkdir build-info
 	fi
@@ -311,7 +315,7 @@ dyn_compile() {
 	export PWORKDIR="$WORKDIR"
 	src_compile 
 	#|| abort_compile "fail" 
-	cd "${BUILDDIR}"
+	cd "${PORTAGE_BUILDDIR}"
 	cd build-info
 
 	echo "$ASFLAGS"		> ASFLAGS
@@ -340,7 +344,7 @@ dyn_compile() {
 	echo "$RESTRICT"	> RESTRICT
 	echo "$SLOT"		> SLOT
 	echo "$USE"		> USE
-	export_environ "${BUILDDIR}/build-info/environment.bz2" 'bzip2 -c9'
+	export_environ "${PORTAGE_BUILDDIR}/build-info/environment.bz2" 'bzip2 -c9'
 	cp "${EBUILD}" "${PF}.ebuild"
 	if hasq nostrip $FEATURES $RESTRICT; then
 		touch DEBUGBUILD
@@ -348,20 +352,22 @@ dyn_compile() {
 	trap SIGINT SIGQUIT
 }
 
-dyn_package() {
+dyn_package()
+{
 	trap "abort_package" SIGINT SIGQUIT
-	cd "${BUILDDIR}/image"
+	cd "${PORTAGE_BUILDDIR}/image"
 	tar cpvf - ./ | bzip2 -f > ../bin.tar.bz2 || die "Failed to create tarball"
 	cd ..
 	xpak build-info inf.xpak
 	tbz2tool join bin.tar.bz2 inf.xpak "${PF}.tbz2"
 	echo ">>> Done."
-	cd "${BUILDDIR}"
+	cd "${PORTAGE_BUILDDIR}"
 	MUST_EXPORT_ENV="yes"
 	trap SIGINT SIGQUIT
 }
 
-dyn_test() {
+dyn_test()
+{
 	if hasq test ${COMPLETED_EBUILD_PHASES}; then
 		echo ">>> TEST has already been run, skipping..." >&2
 		MUST_EXPORT_ENV="no"
@@ -382,24 +388,26 @@ dyn_test() {
 			cd "${S}"
 		fi
 		src_test
-		cd "${BUILDDIR}"
+		cd "${PORTAGE_BUILDDIR}"
 	fi
 	trap SIGINT SIGQUIT
 }
 
-function stat_perms() {
+stat_perms()
+{
 	local f
 	f=$(stat -c '%f' "$1")
 	f=$(printf "%o" 0x$f)
-	f="${f:${#f}-4}"
+	f=${f:${#f}-4}
 	echo $f
 }
 
 
-dyn_install() {
+dyn_install()
+{
 	trap "abort_install" SIGINT SIGQUIT
-	rm -rf "${BUILDDIR}/image"
-	mkdir "${BUILDDIR}/image"
+	rm -rf "${PORTAGE_BUILDDIR}/image"
+	mkdir "${PORTAGE_BUILDDIR}/image"
 	if [ -d "${S}" ]; then
 		cd "${S}"
 	fi
@@ -426,36 +434,82 @@ dyn_install() {
 		echo "UNSAFE SetUID: $i"
 	done
 	
-	if [ -x /usr/bin/readelf -a -x /usr/bin/file ]; then
-		for x in $(find "${D}/" -type f \( -perm -04000 -o -perm -02000 \) ); do
-			f=$(file "${x}")
-			if [ -z "${f/*SB executable*/}" -o -z "${f/*SB shared object*/}" ]; then
-				/usr/bin/readelf -d "${x}" | egrep '\(FLAGS(.*)NOW' > /dev/null
-				if [ "$?" != "0" ]; then
-					if [ ! -z "${f/*statically linked*/}" ]; then
-						#uncomment this line out after developers have had ample time to fix pkgs.
-						#UNSAFE=$(($UNSAFE + 1))
-						echo -ne '\a'
-						echo "QA Notice: ${x:${#D}:${#x}} is setXid, dynamically linked and using lazy bindings."
-						echo "This combination is generally discouraged. Try: CFLAGS='-Wl,-z,now' emerge ${PN}"
-						echo -ne '\a'
-						sleep 1
-					fi
-				fi
-			fi
-		done
+	if type -p scanelf > /dev/null ; then
+		# Make sure we disallow insecure RUNPATH/RPATH's
+		# Don't want paths that point to the tree where the package was built
+		# (older, broken libtools would do this).  Also check for null paths
+		# because the loader will search $PWD when it finds null paths.
+		f=$(scanelf -qyRF '%r %p' "${D}" | grep -E "(${PORTAGE_BUILDDIR}|: |::|^ )")
+		if [[ -n ${f} ]] ; then
+			echo -ne '\a\n'
+			echo "QA Notice: the following files contain insecure RUNPATH's"
+			echo " Please file a bug about this at http://bugs.gentoo.org/"
+			echo " For more information on this issue, kindly review:"
+			echo " http://bugs.gentoo.org/81745"
+			echo "${f}"
+			echo -ne '\a\n'
+			die "Insecure binaries detected"
+		fi
+
+		# Check for setid binaries but are not built with BIND_NOW
+		f=$(scanelf -qyRF '%b %p' "${D}")
+		if [[ -n ${f} ]] ; then
+			echo -ne '\a\n'
+			echo "QA Notice: the following files are setXid, dyn linked, and using lazy bindings"
+			echo " This combination is generally discouraged.  Try re-emerging the package:"
+			echo " LDFLAGS='-Wl,-z,now' emerge ${PN}"
+			echo "${f}"
+			echo -ne '\a\n'
+			[[ ${FEATURES/stricter} != "${FEATURES}" ]] \
+				&& die "Aborting due to lazy bindings"
+			sleep 1
+		fi
+
+		# TEXTREL's are baaaaaaaad
+		f=$(scanelf -qyRF '%t %p' "${D}")
+		if [[ -n ${f} ]] ; then
+			echo -ne '\a\n'
+			echo "QA Notice: the following files contain runtime text relocations"
+			echo " Text relocations require a lot of extra work to be preformed by the"
+			echo " dynamic linker which will cause serious performance impact on IA-32"
+			echo " and might not function properly on other architectures hppa for example."
+			echo " If you are a programmer please take a closer look at this package and"
+			echo " consider writing a patch which addresses this problem."
+			echo "${f}"
+			echo -ne '\a\n'
+			[[ ${FEATURES/stricter} != "${FEATURES}" ]] \
+				&& die "Aborting due to textrels"
+			sleep 1
+		fi
+
+		# Check for files with executable stacks
+		f=$(scanelf -qyRF '%e %p' "${D}")
+		if [[ -n ${f} ]] ; then
+			echo -ne '\a\n'
+			echo "QA Notice: the following files contain executable stacks"
+			echo " Files with executable stacks will not work properly (or at all!)"
+			echo " on some architectures/operating systems.  A bug should be filed"
+			echo " at http://bugs.gentoo.org/ to make sure the file is fixed."
+			echo "${f}"
+			echo -ne '\a\n'
+			[[ ${FEATURES/stricter} != "${FEATURES}" ]] \
+				&& die "Aborting due to +x stack"
+			sleep 1
+		fi
+
+		# Save NEEDED information
+		scanelf -qyRF '%p %n' "${D}" | sed -e 's:^:/:' > "${PORTAGE_BUILDDIR}"/build-info/NEEDED
 	fi
 
-
 	if [[ $UNSAFE > 0 ]]; then
-		die "There are ${UNSAFE} unsafe files. Portage will not install them."
+		die "There are ${UNSAFE} unsafe files.  Portage will not install them."
 	fi
 
 	local file s
 
 	find "${D}/" -user  portage -print | while read file; do
 		ewarn "file $file was installed with user portage!"
-		s=$(stat_perms $file)
+		s=$(stat_perms "$file")
 		chown root "$file"
 		#XXX: Stable does not have the symlink test
 		[ -h "$file" ] || chmod "$s" "$file"
@@ -463,7 +517,7 @@ dyn_install() {
 
 	find "${D}/" -group portage -print | while read file; do
 		# Too annoying - uncommenting this as it's a regression
-		ewarn "file $file was installed with group portage!"
+		#ewarn "file $file was installed with group portage!"
 		s=$(stat_perms "$file")
 		if [ "$USERLAND" == "BSD" ]; then
 			chgrp wheel "$file"
@@ -487,16 +541,18 @@ dyn_install() {
 
 	echo ">>> Completed installing ${PF} into ${D}"
 	echo
-	cd ${BUILDDIR}
+	cd ${PORTAGE_BUILDDIR}
 	MUST_EXPORT_ENV="yes"
 	trap SIGINT SIGQUIT
 }
 
-dyn_postinst() {
+dyn_postinst()
+{
 	pkg_postinst
 }
 
-dyn_preinst() {
+dyn_preinst()
+{
 	# set IMAGE depending if this is a binary or compile merge
 	local IMAGE=${D}
 	[ "${EMERGE_FROM}" == "binary" ] && IMAGE=${PKG_TMPDIR}/${PF}/bin/
@@ -612,7 +668,8 @@ dyn_preinst() {
 	trap SIGINT SIGQUIT
 }
 
-dyn_spec() {
+dyn_spec()
+{
 #	tar czf "/usr/src/redhat/SOURCES/${PF}.tar.gz" "${O}/${PF}.ebuild" "${O}/files" || die "Failed to create base rpm tarball."
 	tar czf "${T}/${PF}.tar.gz" "${O}/${PF}.ebuild" "${O}/files" || die "Failed to create base rpm tarball."
 	echo "pwd=$(pwd)" >&2
@@ -646,15 +703,17 @@ __END1__
 
 }
 
-dyn_rpm() {
+dyn_rpm()
+{
 	dyn_spec
 	MUST_EXPORT_ENV="yes"
 }
 
-dyn_help() {
+dyn_help()
+{
 	echo
 	echo "Portage"
-	echo "Copyright 1999-2004 Gentoo Foundation"
+	echo "Copyright 1999-2005 Gentoo Foundation"
 	echo 
 	echo "How to use the ebuild command:"
 	echo 
@@ -685,21 +744,21 @@ dyn_help() {
 	echo
 	echo "The following settings will be used for the ebuild process:"
 	echo
-	echo "  package     : ${PF}" 
-	echo "  slot        : ${SLOT}" 
-	echo "  category    : ${CATEGORY}" 
+	echo "  package     : ${PF}"
+	echo "  slot        : ${SLOT}"
+	echo "  category    : ${CATEGORY}"
 	echo "  description : ${DESCRIPTION}"
-	echo "  system      : ${CHOST}" 
-	echo "  c flags     : ${CFLAGS}" 
-	echo "  c++ flags   : ${CXXFLAGS}" 
-	echo "  make flags  : ${MAKEOPTS}" 
+	echo "  system      : ${CHOST}"
+	echo "  c flags     : ${CFLAGS}"
+	echo "  c++ flags   : ${CXXFLAGS}"
+	echo "  make flags  : ${MAKEOPTS}"
 	echo -n "  build mode  : "
 	if hasq nostrip $FEATURES $RESTRICT;	then
 		echo "debug (large)"
 	else
 		echo "production (stripped)"
 	fi
-	echo "  merge to    : ${ROOT}" 
+	echo "  merge to    : ${ROOT}"
 	echo
 	if [ -n "$USE" ]; then
 		echo "Additionally, support for the following optional features will be enabled:"
@@ -718,7 +777,8 @@ dyn_help() {
 # set a new default in make.*. Here the default is "" or unset.
 
 # in the future might use e* from /etc/init.d/functions.sh if i feel like it
-debug-print() {
+debug-print()
+{
 	if [ "$EBUILD_PHASE" == "depend" ] && [ -z "${PORTAGE_DEBUG}" ]; then
 		return
 	fi
@@ -746,18 +806,21 @@ debug-print() {
 
 # The following 2 functions are debug-print() wrappers
 
-debug-print-function() {
+debug-print-function()
+{
 	str="$1: entering function" 
 	shift
 	debug-print "$str, parameters: $*"
 }
 
-debug-print-section() {
+debug-print-section()
+{
 	debug-print "now in section $*"
 }
 
 
-internal_inherit() {
+internal_inherit()
+{
 	# default, backwards compatible beast.
 	local location overlay
 	location="${ECLASSDIR}/${1}.eclass"
@@ -778,7 +841,8 @@ internal_inherit() {
 
 # Sources all eclasses in parameters
 declare -ix ECLASS_DEPTH=0
-inherit() {
+inherit()
+{
 	local SAVED_INHERIT_COUNT=0 INHERITED_ALREADY=0
 
 	if [[ $ECLASS_DEPTH < 0 ]] && [ "${EBUILD_PHASE}" == "depend" ]; then
@@ -890,7 +954,8 @@ inherit() {
 # For example, if ECLASS="base" and you call "EXPORT_FUNCTIONS src_unpack", the following
 # code will be eval'd:
 # src_unpack() { base_src_unpack; }
-EXPORT_FUNCTIONS() {
+EXPORT_FUNCTIONS()
+{
 	if [ -z "$ECLASS" ]; then
 		echo "EXPORT_FUNCTIONS without a defined ECLASS" >&2
 		exit 1
@@ -912,7 +977,8 @@ EXPORT_FUNCTIONS() {
 # getting its value from DEPEND. This is a side-effect that made eclasses
 # have unreliable dependencies.
 
-newdepend() {
+newdepend()
+{
 	debug-print-function newdepend $*
 	debug-print "newdepend: E_DEPEND=$E_DEPEND E_RDEPEND=$E_RDEPEND"
 
@@ -933,22 +999,26 @@ newdepend() {
 	done
 }
 
-newrdepend() {
+newrdepend()
+{
 	debug-print-function newrdepend $*
 	do_newdepend RDEPEND $1
 }
 
-newcdepend() {
+newcdepend()
+{
 	debug-print-function newcdepend $*
 	do_newdepend CDEPEND $1
 }
 
-newpdepend() {
+newpdepend()
+{
 	debug-print-function newpdepend $*
 	do_newdepend PDEPEND $1
 }
 
-do_newdepend() {
+do_newdepend()
+{
 	# This function does a generic change determining whether we're in an
 	# eclass or not. If we are, we change the E_* variables for deps.
 	debug-print-function do_newdepend $*
@@ -971,7 +1041,8 @@ do_newdepend() {
 
 # this is a function for removing any directory matching a passed in pattern from 
 # PATH
-remove_path_entry() {
+remove_path_entry()
+{
 	save_IFS
 	IFS=":"
 	stripped_path="${PATH}"
@@ -990,7 +1061,8 @@ remove_path_entry() {
 }
 
 QA_INTERCEPTORS="javac java-config python python-config perl grep egrep fgrep sed gcc g++ cc bash awk nawk pkg-config"
-enable_qa_interceptors() {
+enable_qa_interceptors()
+{
 
 	# Turn of extended glob matching so that g++ doesn't get incorrectly matched.
 	shopt -u extglob
@@ -1017,13 +1089,15 @@ enable_qa_interceptors() {
 	done
 }
 
-disable_qa_interceptors() {
+disable_qa_interceptors()
+{
 	for x in $QA_INTERCEPTORS; do
 		unset -f $x
 	done
 }
 
-useq() {
+useq()
+{
 	local u="${1}"
 	local neg=0
 	if [ "${u:0:1}" == "!" ]; then
@@ -1053,7 +1127,8 @@ useq() {
 	fi
 }
 
-usev() {
+usev()
+{
 	if useq ${1}; then
 		echo "${1}"
 		return 0
@@ -1062,7 +1137,8 @@ usev() {
 }
 
 # Used to generate the /lib/cpp and /usr/bin/cc wrappers
-gen_wrapper() {
+gen_wrapper()
+{
 	cat > $1 << END
 #!/bin/sh
 
@@ -1072,7 +1148,8 @@ END
 	chmod 0755 $1
 }
 
-insopts() {
+insopts()
+{
 	INSOPTIONS=""
 	for x in $*; do
 		#if we have a debug build, let's not strip anything
@@ -1085,7 +1162,8 @@ insopts() {
 	export INSOPTIONS
 }
 
-diropts() {
+diropts()
+{
 	DIROPTIONS=""
 	for x in $*; do
 		DIROPTIONS="${DIROPTIONS} $x"
@@ -1093,7 +1171,8 @@ diropts() {
 	export DIROPTIONS
 }
 
-exeopts() {
+exeopts()
+{
 	EXEOPTIONS=""
 	for x in $*; do
 		#if we have a debug build, let's not strip anything
@@ -1106,7 +1185,8 @@ exeopts() {
 	export EXEOPTIONS
 }
 
-libopts() {
+libopts()
+{
 	LIBOPTIONS=""
 	for x in $*; do
 		#if we have a debug build, let's not strip anything
