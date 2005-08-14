@@ -5,7 +5,7 @@
 
 from portage.restrictions import restriction 
 from cpv import ver_cmp, CPV
-from portage.restrictions.restrictionSet import AndRestrictionSet
+from portage.restrictions.restriction_set import AndRestrictionSet
 from portage.util.lists import unique
 
 class MalformedAtom(Exception):
@@ -197,11 +197,11 @@ class atom(AndRestrictionSet):
 
 		raise AttributeError(attr)
 
-#	def __str__(self):
-#		s=self.op+self.category+"/"+self.package
-#		if self.version:		s+="-"+self.fullver
-#		if self.glob:			s+="*"
-#		return s
+	def atom_str(self):
+			s=self.op+self.category+"/"+self.package
+			if self.version:		s+="-"+self.fullver
+			if self.glob:			s+="*"
+			return s
 
 	def __iter__(self):
 		return iter(self.restrictions)
