@@ -6,7 +6,7 @@
 # TODO: move exceptions elsewhere, bind them to a base exception for portage
 
 import logging
-from portage.restrictions.restrictionSet import RestrictionSet, OrRestrictionSet
+from portage.restrictions.restriction_set import RestrictionSet, OrRestrictionSet
 from portage.util.strings import iter_tokens
 from portage.package.conditionals import base as Conditional
 

@@ -13,7 +13,8 @@ def ix_cat_callable(*cat):
 class tree(object):
 	package_class = None
 	configured = True
-
+	configure = ()
+	
 	def __init__(self, frozen=True):
 		self.categories = IndexableSequence(self._get_categories, self._get_categories, 
 			returnIterFunc=ix_cat_callable, returnEmpty=True, modifiable=(not frozen))

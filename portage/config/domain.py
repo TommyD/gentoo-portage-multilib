@@ -4,7 +4,7 @@
 # $Header$
 
 from portage.restrictions.collapsed import DictBased
-from portage.restrictions.restrictionSet import OrRestrictionSet, AndRestrictionSet
+from portage.restrictions.restriction_set import OrRestrictionSet, AndRestrictionSet
 import os
 from errors import BaseException
 from portage.util.file import iter_read_bash
@@ -36,7 +36,11 @@ def package_keywords_splitter(val):
 
 # ow ow ow ow ow ow....
 # this manages a *lot* of crap.  so... this is fun.
+#
+# note also, that this is rather ebuild centric.  it shouldn't be, and should be redesigned to be a seperation of 
+# configuration instantiation manglers, and then the ebuild specific chunk (which is selected by config)
 # ~harring
+
 class domain:
 	def __init__(self, incrementals, root, profile, repositories, **settings):
 		# voodoo, unfortunately (so it goes)
@@ -153,5 +157,15 @@ class domain:
 
 		del master_license, license
 
-		self.repos = map(post_curry(filterTree, filter, False), repositories)
+		
+		self.repos = []
+		for repo in repositories:
+			print "repo=",repo,"configured?",repo.configured
+			if not repo.configured:
+				print "configuring",repo
+				self.repos.append(repo.configure(repo, settings))
+			else:
+				self.repos.append(repo)
+
+		self.repos = map(post_curry(filterTree, filter, False), self.repos)
 		self.settings = settings

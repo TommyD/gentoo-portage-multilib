@@ -11,7 +11,7 @@ from portage.package.atom import atom
 #from digest import parse_digest
 from portage.util.mappings import LazyValDict
 from portage.restrictions.restriction import PackageRestriction, StrExactMatch
-from portage.restrictions.restrictionSet import AndRestrictionSet, OrRestrictionSet
+from portage.restrictions.restriction_set import AndRestrictionSet, OrRestrictionSet
 
 class EbuildPackage(package.metadata.package):
 
