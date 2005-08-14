@@ -40,6 +40,7 @@ class PackageWrapper(object):
 			raise ValueError("can only wrap first level attributes, 'obj.dar' fex, not '%s'" % (configurable_attribute_name))
 		setattr(self, configurable_attribute_name, LimitedChangeSet(initial_settings, unchangable_settings))
 		self.__configurable = getattr(self, configurable_attribute_name)
+		self.__configurable_name = configurable_attribute_name
 		self.__reuse_pt = 0
 		self.__cached_wrapped = {}		
 
@@ -77,3 +78,5 @@ class PackageWrapper(object):
 		else:
 			return getattr(self.__wrapped_pkg, attr)
 
+	def __str__(self):
+		return "config wrapper: %s, configurable('%s'):%s" % (self.__wrapped_pkg, self.__configurable_name, self.__configurable)
