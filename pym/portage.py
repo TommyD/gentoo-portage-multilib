@@ -5322,7 +5322,7 @@ for group in groups:
 # Clear the cache
 dircache={}
 
-if not "sandbox" in features or not "usersandbox" in features:
+if not "sandbox" in features and not "usersandbox" in features:
 	portage_exec.sandbox_capable = False
 
 fetcher=None
