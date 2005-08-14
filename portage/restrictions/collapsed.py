@@ -6,7 +6,7 @@
 __all__=("DictBased")
 from restriction import base, AlwaysTrue
 from inspect import isroutine
-from restrictionSet import bases, OrRestrictionSet
+from restriction_set import bases, OrRestrictionSet
 from portage.util.inheritance import check_for_base
 
 class DictBased(base):
