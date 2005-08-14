@@ -10,7 +10,7 @@ def process(mysettings, cpv, logentries, fulltext):
 	os.chown(elogdir, portage_uid, portage_gid)
 	os.chmod(elogdir, 0770)
 
-	elogfilename = elogdir+"/"+cpv_path+"-"+time.strftime("%Y%m%d-%H%M%S", time.gmtime(time.time()))+".log"
+	elogfilename = elogdir+"/"+cpv_path+":"+time.strftime("%Y%m%d-%H%M%S", time.gmtime(time.time()))+".log"
 	elogfile = open(elogfilename, "w")
 	elogfile.write(fulltext)
 	elogfile.close()
