@@ -77,7 +77,7 @@ class UnconfiguredTree(prototype.tree):
 
 class ConfiguredTree(UnconfiguredTree):
 	configured = True
-	l=["license","depends","rdepends","bdepends", "fetchables"]
+	l=["license","depends","rdepends","bdepends", "fetchables", "license", "slot"]
 	wrappables = dict(zip(l, len(l)*[convert_depset]))
 
 	def __init__(self, raw_repo, domain_settings):

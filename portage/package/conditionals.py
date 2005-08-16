@@ -4,7 +4,9 @@
 # $Header$
 
 #from metadata import package as package_base
-from portage.util.mappings import LimitedChangeSet
+from portage.util.mappings import LimitedChangeSet, Unchangable
+from portage.util.lists import unique, flatten
+import copy
 
 class base(object):
 	"""base object representing a conditional node"""
@@ -39,10 +41,15 @@ class PackageWrapper(object):
 		if configurable_attribute_name.find(".") != -1:
 			raise ValueError("can only wrap first level attributes, 'obj.dar' fex, not '%s'" % (configurable_attribute_name))
 		setattr(self, configurable_attribute_name, LimitedChangeSet(initial_settings, unchangable_settings))
+		self.__unchangable = unchangable_settings
 		self.__configurable = getattr(self, configurable_attribute_name)
 		self.__configurable_name = configurable_attribute_name
 		self.__reuse_pt = 0
 		self.__cached_wrapped = {}		
+
+	def __copy__(self):
+		return self.__class__(self.__wrapped_pkg, self.__configurable_name, initial_settings=set(self.__configurable), 
+			unchangable_settings=self.__unchangable, attributes_to_wrap=self.__wrapped_attr)
 
 	def rollback(self, point=0):
 		self.__configurable.rollback(point)
@@ -52,20 +59,64 @@ class PackageWrapper(object):
 	
 	def commit(self):
 		self.__configurable.commit()
+		self.__reuse_pt = 0
 		
 	def changes_count(self):
 		return self.__configurable.changes_count()
 	
-	def push_add(self, key):
-		if key not in self.__configurable:
-			self.__configurable.add(key)
-			self.__reuse_pt += 1
-	
-	def push_remove(self, key):
-		if key in self.__configurable:
-			self.__configurable.remove(key)
-			self.__reuse_pt += 1
-	
+	def request_enable(self, attr, *vals):
+		if attr not in self.__wrapped_attr:
+			if attr == self.__configurable_name:
+				entry_point = self.changes_count()
+				try:
+					map(self.__configurable.add, vals)
+					self.__reuse_pt += 1
+					return True
+				except Unchangable:
+					self.rollback_changes(entry_point)
+			return False
+		entry_point = self.changes_count()
+		a = getattr(self.__wrapped_pkg, attr)
+		try:
+			for x in vals:
+				if x in a.node_conds:
+					map(self.__configurable.add, a.node_conds[x])
+				else:
+					if x not in a:
+						self.rollback(entry_point)
+						return False
+		except Unchangable:
+			self.rollback(entry_point)
+			return False
+		self.__reuse_pt += 1
+		return True
+
+	def request_disable(self, attr, *vals):
+		if attr not in self.__wrapped_attr:
+			if attr == self.__configurable_name:
+				entry_point = self.changes_count()
+				try:
+					map(self.__configurable.remove, vals)
+					return True
+				except Unchangable:
+					self.rollback_changes(entry_point)
+			return False
+		entry_point = self.changes_count()
+		a = getattr(self.__wrapped_pkg, attr)
+		try:
+			for x in vals:
+				if x in a.node_conds:
+						map(self.__configurable.remove, a.node_conds[x])
+				else:
+					if x in a:
+						self.rollback(entry_point)
+						return False
+		except Unchangable:
+			self.rollback(entry_point)
+			return False
+		self.__reuse_pt += 1
+		return True
+
 	def __getattr__(self, attr):
 		if attr in self.__wrapped_attr:
 			if attr in self.__cached_wrapped:
@@ -80,3 +131,12 @@ class PackageWrapper(object):
 
 	def __str__(self):
 		return "config wrapper: %s, configurable('%s'):%s" % (self.__wrapped_pkg, self.__configurable_name, self.__configurable)
+
+	def freeze(self):
+		o = copy.copy(self)
+		o.lock()
+		return o
+
+	def lock(self):
+		self.commit()
+		self.__configurable = list(self.__configurable)		
