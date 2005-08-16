@@ -14,11 +14,12 @@ Here's a simple example ebuild:
 
 .DS
 .nf
-# Copyright 1999\-2004 Gentoo Foundation
+# Copyright 1999\-2005 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # $Header:
 
 inherit some_eclass another_eclass
+
 DESCRIPTION="Super\-useful stream editor (sed)"
 HOMEPAGE="http://www.gnu.org/software/sed/sed.html"
 SRC_URI="ftp://alpha.gnu.org/pub/gnu/sed/${P}.tar.gz"
@@ -303,22 +304,25 @@ the program has been merged.
 .br
 You may use the same syntax to vary dependencies as seen above in \fBDEPEND\fR.
 .TP
-\fBRESTRICT\fR = \fI[nostrip,nomirror,fetch,nouserpriv]\fR
+\fBRESTRICT\fR = \fI[strip,mirror,fetch,userpriv]\fR
 This should be a space delimited list of portage features to restrict.
 .PD 0
 .RS
 .TP
-.I nostrip
-final binaries/libraries will not be stripped of debug symbols.
-.TP
-.I nouserpriv
-Disables userpriv for specific packages.
-.TP
-.I nomirror
-files in \fBSRC_URI\fR will not be downloaded from the \fBGENTOO_MIRRORS\fR.
-.TP
 .I fetch
 like \fInomirror\fR but the files will not be fetched via \fBSRC_URI\fR either.
+.TP
+.I mirror
+files in \fBSRC_URI\fR will not be downloaded from the \fBGENTOO_MIRRORS\fR.
+.TP
+.I primaryuri
+fetch from URL's in \fBSRC_URI\fR before \fBGENTOO_MIRRORS\fR.
+.TP
+.I strip
+final binaries/libraries will not be stripped of debug symbols.
+.TP
+.I userpriv
+Disables userpriv for specific packages.
 .RE
 .PD 1
 .TP
@@ -694,10 +698,11 @@ Creates all necessary dirs.
 Can be used to define options for the install function used in
 the \fBdolib\fR functions.  The default is \fI-m0644\fR.
 .TP
-\fBdoman\fR \fI<man-page> [list of more man\-pages]\fR
-Installs manual\-pages into /usr/share/man/man[1\-8n] depending on the
-manual file ending.  The files are gzipped if they are not already.  
-Creates all necessary dirs.
+\fBdoman\fR \fI[\-i18n=<locale>]\fR \fI<man-page> [list of more man\-pages]\fR
+Installs manual\-pages into /usr/share/man/man[0\-9n] depending on the
+manual file ending.  The files are compressed if they are not already.  You 
+can specify locale-specific manpages with the \fI\-i18n\fR option.  Then the
+man-page will be installed into /usr/share/man/\fI<locale>\fR/man[0\-9n].
 .PD 0
 .TP
 \fBdohard\fR \fI<filename> <linkname>\fR
@@ -708,10 +713,10 @@ Performs the ln command as either a hard link or symlink.
 .TP
 \fBdohtml\fR \fI [\-a filetypes] [\-r] [\-x list\-of\-dirs\-to\-ignore] [list\-of\-files\-and\-dirs]\fR
 Installs the files in the list of files (space\-separated list) into
-/usr/share/doc/${PF}/html provided the file ends in .html, .png, .js,
-.jpg or .css.  Setting \-a limits what types of files will be included,
-\-A appends to the default list, setting \-x sets which dirs to exclude
-(CVS excluded by default), \-r sets recursive.
+/usr/share/doc/${PF}/html provided the file ends in .html, .png, .js, .jpg,
+or .css.  Setting \fI\-a\fR limits what types of files will be included,
+\fI\-A\fR appends to the default list, setting \fI\-x\fR sets which dirs to
+exclude (CVS excluded by default), \fI\-r\fR sets recursive.
 .TP
 \fBdoinfo\fR \fI<info-file> [list of more info\-files]\fR
 Installs info\-pages into \fIDESTDIR\fR/info.  Files are automatically
