@@ -4,9 +4,9 @@
 # $Header$
 
 __all__=("DictBased")
-from restriction import base, AlwaysTrue
 from inspect import isroutine
-from restriction_set import bases, OrRestrictionSet
+from boolean import base as bool_base
+from packages import AndRestriction, OrRestriction, AlwaysTrue, AlwaysFalse, base
 from portage.util.inheritance import check_for_base
 
 class DictBased(base):
@@ -29,7 +29,7 @@ class DictBased(base):
 	in re: what restriction types are being collapsed; short version, api isn't declared stable yet.
 	"""
 	__slots__ = tuple(["restricts_dict", "get_pkg_key", "get_atom_key"] + base.__slots__)
-
+	
 	def __init__(self, restriction_items, get_key_from_package, get_key_from_atom, *args, **kwargs):
 		"""restriction_items is a source of restriction keys and remaining restriction (if none, set it to None)
 		get_key is a function to get the key from a pkg instance"""
@@ -46,16 +46,17 @@ class DictBased(base):
 			else:
 				if len(remaining) == 1 and (isinstance(remaining, list) or isinstance(remaining, tuple)):
 					remaining = remaining[0]
-				if not isinstance(remaining, base):
-					b = check_for_base(r, bases)
-					if b == None:
-						raise KeyError("unable to convert '%s', remaining '%s' isn't of a known base" % (str(r), str(remaining)))
-					remaining = b(*remaining)
+				elif isinstance(remaining, (tuple, list)):
+					remaining = AndRestriction(*remaining)
+				elif not isinstance(remaining, base):
+					print "remaining=",remaining
+					print "base=",base
+					raise KeyError("unable to convert '%s', remaining '%s' isn't of a known base" % (str(r), str(remaining)))
 
 			if key in self.restricts_dict:
 				self.restricts_dict[key].add_restriction(remaining)
 			else:
-				self.restricts_dict[key] = OrRestrictionSet(remaining)
+				self.restricts_dict[key] = OrRestriction(remaining)
 
 		self.get_pkg_key, self.get_atom_key = get_key_from_package, get_key_from_atom
 
