@@ -3,9 +3,10 @@
 # License: GPL2
 # $Header$
 
-from portage.restrictions import restriction 
+from portage.restrictions.values import StrExactMatch, StrGlobMatch, ContainmentMatch, StrMatch
+from portage.restrictions.packages import PackageRestriction, base
 from cpv import ver_cmp, CPV
-from portage.restrictions.restriction_set import AndRestrictionSet
+from portage.restrictions.packages import AndRestriction
 from portage.util.lists import unique
 
 class MalformedAtom(Exception):
@@ -17,8 +18,8 @@ class InvalidVersion(Exception):
 	def __str__(self):	return "Version restriction ver='%s', rev='%s', is malformed: error %s" % (self.ver, self.rev, self.err)
 
 
-class VersionMatch(restriction.base):
-	__slots__ = tuple(["ver","rev", "vals", "droprev"] + restriction.StrMatch.__slots__)
+class VersionMatch(base):
+	__slots__ = tuple(["ver","rev", "vals", "droprev"])
 	"""any overriding of this class *must* maintain numerical order of self.vals, see intersect for reason why
 	vals also must be a tuple"""
 
@@ -96,7 +97,7 @@ class VersionMatch(restriction.base):
 		for x in (-1, 1):
 			needed = x * -1
 			if (x in self.vals and needed in other.vals) or (x in other.vals and needed in self.vals):
-				return AndRestrictionSet(self, other)
+				return AndRestriction(self, other)
 
 		if vc == -1 and 1 in self.vals and 0 in other.vals:
 				return self.__class__("=", other.ver, rev=other.rev)
@@ -123,8 +124,8 @@ class VersionMatch(restriction.base):
 			return "ver %s %s" % (l, self.ver)
 		return "fullver %s %s-r%s" % (l, self.ver, self.rev)
 
-class atom(AndRestrictionSet):
-	__slots__ = ("glob","atom","blocks","op", "negate_vers","cpv","use","slot") + tuple(AndRestrictionSet.__slots__)
+class atom(AndRestriction):
+	__slots__ = ("glob","atom","blocks","op", "negate_vers","cpv","use","slot") + tuple(AndRestriction.__slots__)
 
 	def __init__(self, atom, negate_vers=False):
 		super(self.__class__, self).__init__()
@@ -178,19 +179,29 @@ class atom(AndRestrictionSet):
 #			self.__dict__[attr] = g
 			return g
 		elif attr == "restrictions":
-			r = [restriction.PackageRestriction("package", restriction.StrExactMatch(self.package))]
+			r = [PackageRestriction("package", StrExactMatch(self.package))]
 			try:
 				cat = self.category
-				r.append(restriction.PackageRestriction("category", restriction.StrExactMatch(cat)))
+				r.append(PackageRestriction("category", StrExactMatch(cat)))
 			except AttributeError:
 				pass
 			if self.version:
 				if self.glob:
-					r.append(restriction.PackageRestriction("fullver", restriction.StrGlobMatch(self.fullver)))
+					r.append(PackageRestriction("fullver", StrGlobMatch(self.fullver)))
 				else:
 					r.append(VersionMatch(self.op, self.version, self.revision, negate=self.negate_vers))
-			if self.use or self.slot:
-				raise MalformedAtom(self.atom, "yo.  I don't support use or slot yet, fix me pls kthnx")
+			if self.use:
+				false_use = map(lambda x: x[1:], filter(lambda x: x.startswith("-"), self.use))
+				true_use = filter(lambda x: not x.startswith("-"), self.use)
+				if false_use:
+					# XXX: convert this to a value AndRestriction whenever harring gets off his ass and 
+					# decides another round of tinkering with restriction subsystem is viable (burnt out now)
+					# ~harring
+					r.append(PackageRestriction("use", ContainmentMatch(all=True, *false_use), negate=True))
+				if true_use:
+					r.append(PackageRestriction("use", ContainmentMatch(all=True, *true_use)))
+				if self.slot:
+					r.append(PackageRestriction("slot", ContainmentMatch(*self.slot)))
 #			self.__dict__[attr] = r
 			setattr(self, attr, r)
 			return r
