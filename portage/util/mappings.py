@@ -257,9 +257,6 @@ class LimitedChangeSet(object):
 		self.__orig = frozenset(self.__new)
 
 	def add(self, key):
-		if key in self.__new:
-			return
-
 		if key in self.__changed or key in self.__blacklist:
 			# it's been del'd already once upon a time.
 			raise Unchangable(key)
@@ -272,7 +269,8 @@ class LimitedChangeSet(object):
 		if key in self.__changed or key in self.__blacklist:
 			raise Unchangable(key)
 		
-		self.__new.remove(key)
+		if key in self.__new:
+			self.__new.remove(key)
 		self.__changed.add(key)
 		self.__change_order.append((self._removed, key))
 
@@ -305,3 +303,6 @@ class LimitedChangeSet(object):
 
 	def __iter__(self):
 		return iter(self.__new)
+
+	def __len__(self):
+		return len(self.__new)
