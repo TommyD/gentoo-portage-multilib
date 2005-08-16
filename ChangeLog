@@ -25,6 +25,9 @@
   Call gawk instead of awk so non-GNU systems work #102050 by Stephen Bennett.
   Also clean up the script a bit.
 
+  07 Aug 2005; Mike Frysinger <vapier@gentoo.org> bin/ebuild.sh:
+  Add support for unpacking rar archives.
+
   29 Jul 2005; Mike Frysinger <vapier@gentoo.org> bin/prepallman:
   Rather than use a hardcoded list and bash expansion, let find locate man
   directories for us.  This fixes the issues of running prepman on symlinks 

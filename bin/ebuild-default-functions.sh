@@ -112,7 +112,8 @@ unpack()
 				tar ${tarvars} -xzf "${srcdir}${x}" || die "$myfail"
 				;;
 			tbz2)
-				bzip2 -dc "${srcdir}${x}" | tar ${tarvars} -xf - || die "$myfail"
+				bzip2 -dc "${srcdir}${x}" | tar ${tarvars} -xf -
+				assert "$myfail"
 				;;
 			ZIP|zip)
 				unzip -qo "${srcdir}${x}" || die "$myfail"
@@ -132,6 +133,9 @@ unpack()
 				else
 					bzip2 -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
 				fi
+				;;
+			RAR|rar)
+				unrar x -idq "${srcdir}/${x}" || die "$myfail"
 				;;
 			*)
 				echo "unpack ${x}: file format not recognized. Ignoring."
