@@ -4,13 +4,13 @@
 # $Header$
 
 from portage.restrictions.collapsed import DictBased
-from portage.restrictions.restriction_set import OrRestrictionSet, AndRestrictionSet
+from portage.restrictions.packages import OrRestriction, AndRestriction, PackageRestriction
 import os
 from errors import BaseException
 from portage.util.file import iter_read_bash
 from portage.package.atom import atom
 from portage.repository.visibility import filterTree
-from portage.restrictions.restriction import StrGlobMatch, PackageRestriction, StrExactMatch, ContainmentMatch
+from portage.restrictions.values import StrGlobMatch, StrExactMatch, ContainmentMatch
 from portage.util.currying import post_curry
 from portage.util.lists import unique
 from itertools import imap
@@ -77,10 +77,10 @@ class domain:
 		# visibility mask...
 		# if ((package.mask or visibility) and not package.unmask) or not (package.keywords or accept_keywords)
 
-		filter = OrRestrictionSet()
+		filter = OrRestriction()
 		masker_d = DictBased(maskers, get_key_from_package, split_atom)
 		if len(unmaskers):
-			masker_d = AndRestrictionSet(masker_d, DictBased(unmaskers, get_key_from_package, split_atom, negate=True))
+			masker_d = AndRestriction(masker_d, DictBased(unmaskers, get_key_from_package, split_atom, negate=True))
 		filter.add_restriction(masker_d)
 
 		use, license, key = [], [], []
@@ -95,7 +95,8 @@ class domain:
 						if len(x) == 1:
 							raise Failure("negation of a setting in '%s', but name negated isn't completed-" % (k, v))
 						x=x[1:]
-						if x in l:	l.remove(x)
+						if x in l:	
+							l.remove(x)
 				else:	
 					l.add(x)
 			return l
@@ -105,6 +106,7 @@ class domain:
 			if k not in settings:
 				raise Failure("No %s setting detected from profile, or user config" % k)
 			v.extend(filter_negations(k, settings[k]))
+			settings[k] = v
 
 		if "ARCH" not in settings:
 			raise Failure("No ARCH setting detected from profile, or user config")
@@ -121,7 +123,7 @@ class domain:
 				# note that we created the atom above- so we can toy with it's innards if we want. :)
 				r = ContainmentMatch(ukey)
 			else:
-				r = OrRestrictionSet()
+				r = OrRestriction()
 				per_node = []
 				exact = []
 				for x in v:
@@ -137,7 +139,7 @@ class domain:
 
 		key_filter = ContainmentMatch(*key)
 		if len(keyword_filter) != 0:
-			filter.add_restriction(OrRestrictionSet(PackageRestriction("keywords", key_filter), 
+			filter.add_restriction(OrRestriction(PackageRestriction("keywords", key_filter), 
 				DictBased(keyword_filter, get_key_from_package, split_atom), negate=True))
 		else:
 			filter.add_restriction(PackageRestriction("keywords", key_filter, negate=True))
@@ -146,7 +148,7 @@ class domain:
 		# we can finally close that fricking "DISALLOW NON FOSS LICENSES" bug via this >:)
 		if len(master_license) != 0:
 			if len(license) != 0:
-				r = OrRestrictionSet(negate=True)
+				r = OrRestriction(negate=True)
 				r.add_restriction(PackageRestriction("license", ContainmentMatch(*master_license)))
 				r.add_restriction(DictBased(license, get_key_from_package, split_atom))
 				filter.add_restriction(r)
@@ -160,9 +162,7 @@ class domain:
 		
 		self.repos = []
 		for repo in repositories:
-			print "repo=",repo,"configured?",repo.configured
 			if not repo.configured:
-				print "configuring",repo
 				self.repos.append(repo.configure(repo, settings))
 			else:
 				self.repos.append(repo)
