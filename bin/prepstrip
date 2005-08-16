@@ -27,7 +27,9 @@ for x in "$@" ; do
 			banner=0
 		fi
 
-		f=$(file "${x}")
+		f=$(file "${x}") || continue
+		[ -z "${f}" ] && continue
+
 		if [ -z "${f/*current ar archive*/}" ]; then
 			echo "   ${x:${#D}:${#x}}"
 			${STRIP} -g "${x}"
