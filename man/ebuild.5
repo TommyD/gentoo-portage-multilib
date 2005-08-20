@@ -424,41 +424,41 @@ fi
 .fi
 .RE
 .TP
-\fBuse_with\fR \fI<USE item>\fR \fI[configure option]\fR
-Useful for creating custom options to pass to a configure script. If
-\fIUSE item\fR is in the \fBUSE\fR variable, then the string
-\fI--with-[configure option]\fR will be echoed.  If \fIUSE item\fR is
-not in the \fBUSE\fR variable, then the string
-\fI--without-[configure option]\fR will be echoed.  If
-\fIconfigure option\fR is not specified, then \fIUSE item\fR will be
-used in its place.
+\fBuse_with\fR \fI<USE item>\fR \fI[configure name]\fR \fI[configure opt]\fR
+Useful for creating custom options to pass to a configure script. If \fIUSE 
+item\fR is in the \fBUSE\fR variable and a \fIconfigure opt\fR is specified, 
+then the string \fI--with-[configure name]=[configure opt]\fR will be echoed.  
+If \fIconfigure opt\fR is not specified, then just \fI--with-[configure 
+name]\fR will be echoed.  If \fIUSE item\fR is not in the \fBUSE\fR variable, 
+then the string \fI--without-[configure name]\fR will be echoed. If 
+\fIconfigure name\fR is not specified, then \fIUSE item\fR will be used in 
+its place.
 .RS
 .TP
-.I Example:
+.I Examples:
 .nf
+USE="opengl"
+myconf=$(use_with opengl)
+(myconf now has the value "--with-opengl")
+
 USE="jpeg"
-myconf="$(use_with jpeg libjpeg)"
+myconf=$(use_with jpeg libjpeg)
 (myconf now has the value "--with-libjpeg")
 
 USE=""
-myconf="$(use_with jpeg libjpeg)"
+myconf=$(use_with jpeg libjpeg)
 (myconf now has the value "--without-libjpeg")
 
-USE="opengl"
-myconf="$(use_with opengl")
-(myconf now has the value "--with-opengl")
+USE="sdl"
+myconf=$(use_with sdl SDL all-plugins)
+(myconf now has the value "--with-SDL=all-plugins")
 .fi
 .RE
 .TP
-\fBuse_enable\fR \fI<USE item>\fR \fI[configure option]\fR
-Useful for creating custom options to pass to a configure script. If
-\fIUSE item\fR is in the \fBUSE\fR variable, then the string
-\fI--enable-[configure option]\fR will be echoed.  If \fIUSE item\fR is
-not in the \fBUSE\fR variable, then the string
-\fI--disable-[configure option]\fR will be echoed. If \fIconfigure option\fR
-is not specified, then \fIUSE item\fR will be used in its place.
-.br
-See \fBuse_with\fR for an example.
+\fBuse_enable\fR \fI<USE item>\fR \fI[configure name]\fR \fI[configure opt]\fR
+Same as \fBuse_with\fR above, except that the configure options are 
+\fI--enable-\fR instead of \fI--with-\fR and \fI--disable-\fR instead of 
+\fI--without-\fR.
 .TP
 \fBhas\fR \fI<item>\fR \fI<item list>\fR
 If \fIitem\fR is in \fIitem list\fR, then \fIitem\fR is echoed and \fBhas\fR
