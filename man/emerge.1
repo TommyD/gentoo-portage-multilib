@@ -348,9 +348,10 @@ time\-consuming compiles.  This option is useful for CD installs; you can export
 and then use this option to have emerge "pull" binary packages from the CD in order to satisfy dependencies.
 .TP
 .BR "\-\-usepkgonly " (\fB\-K\fR)
-Behaves just as \fB\-\-usepkg\fR except that this will only emerge
-binary packages.  All the binary packages must be available at the
-time of dependency calculation or emerge will simply abort.
+Tells emerge to only use binary packages (from $PKGDIR).  All the binary 
+packages must be available at the time of dependency calculation or emerge 
+will simply abort.  Portage does not use $PORTDIR when calculating dependency 
+information so all masking information is ignored.
 .TP
 .BR "\-\-verbose " (\fB\-v\fR)
 Tell emerge to run in verbose mode.  Currently this flag causes emerge to print out GNU info errors, if any, and to show the USE flags that will be used for each package when pretending.
