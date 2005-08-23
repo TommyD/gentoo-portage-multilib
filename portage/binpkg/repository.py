@@ -3,14 +3,17 @@
 # License: GPL2
 # $Header$
 
+
+#yoink when fixed
+raise Exception("sorry bub, doesn't work atm do to changes in portage namespace.  plsfix kthnx")
+
 import os,stat
-from portage.repository import prototype, errors
+import prototype, errors
 
 #needed to grab the PN
-from portage.package.cpv import CPV as cpv
+import portage_versions
 
-class tree(prototype.tree):
-	package_class = str
+class tree(prototype.PrototypeTree):
 	def __init__(self, base):
 		super(tree,self).__init__()
 		self.base = base
@@ -39,11 +42,11 @@ class tree(prototype.tree):
 	def _get_packages(self, category):
 		cpath = os.path.join(self.base,category.lstrip(os.path.sep))
 		#-5 == len(".tbz2")
-		l=set
+		l=[]
 		try:    
 			for x in os.listdir(cpath):
 				if x.endswith(".tbz2"):
-					l.add(cpv(x[:-5]).package)
+					l.append(portage_versions.pkgsplit(x[:-5])[0])
 			return tuple(l)
 
 		except (OSError, IOError), e:
@@ -52,11 +55,20 @@ class tree(prototype.tree):
 
 	def _get_versions(self, catpkg):
 		pkg = catpkg.split("/")[-1]
-		l=set()
+		l=[]
 		try:
 			for x in os.listdir(os.path.join(self.base, os.path.dirname(catpkg.lstrip("/").rstrip("/")))):
 				if x.startswith(pkg):
-					l.add(cpv(x[:-5]).fullver)
+					ver=portage_versions.pkgsplit(x[:-5])
+
+					#pkgsplit returns -r0, when it's not always there
+					if ver[2] == "r0":
+						if x.endswith(ver[2]+".tbz2"):
+							l.append("%s-%s" % (ver[1], ver[2]))
+						else:
+							l.append(ver[1])
+					else:
+						l.append("%s-%s" % (ver[1], ver[2]))
 			return tuple(l)
 		except (OSError, IOError), e:
 			raise KeyError("failed fetching packages for package %s: %s" % \

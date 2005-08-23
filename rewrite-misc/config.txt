@@ -1,10 +1,13 @@
 ===NOTE===
 If you're _truly_ interested in what config does/supports currently, look at conf_default_types.  lot of info there.
-This is general idea of it, actual code/current intentions may differ.
+This is kept for historical reasons, and cause it explains the idea/layout a bit more
+That said, it _is_ out of date (sorry, shit moves fast), config section no longer exists, it was merged into domain
+
+make.conf backwards compatibility bit still applies, and is pretty straightforward/easy to pull off actually.
 ~harring
 ===BACK TO YOUR PREVIOUSLY SCHEDULED PROGRAMMING===
 
-win.ini style format (no you cannot burn me at the stake for this, but you're free to try).
+win.ini style format (yay).
 
 sections that define type are acted upon.  no type definition, and the section is ignored unless explicitly inherited
 if type is defined, exempting configs type, class must be defined.
@@ -18,13 +21,15 @@ class = portage.ebuild.repository
 location = /usr/portage
 
 each section is capable of specifying inherit targets.  inherit's specify the base section to pull in, and override.
-depending on the top level type, certain settings may be specified as incrementals.  use flags fex, are incremental.
+can still access the original value via similar bash trick- 
+CFLAGS = %(CFLAGS) -g
+for example.
 
-few words on each section (note the type of the section is declared explicitly, otherwise it's just a config 'group' that is only
+few words on each section (note the type of the section is declareed explicitly, otherwise it's just a config 'group' that is only
 used by inherit's)
 
 [repo]
-	class defaults to portage.ebuild.repository
+	must specify class
 	REPO_LABEL is automatically defined for all cache instances.
 	frozen is a boolean, specifies if cache staleness is corrected, or errored out.
 	can (and is advisable for rsync) specify a sync_cache.
@@ -41,7 +46,7 @@ used by inherit's)
 [cache]
 	must specify class
 	REPO_LABEL is available; it's the repo 'label' (section, really) that the cache is associated with (repo specifies this)
-	if no path is specified, assumed path is portage's base cache path, usually /var/cache/edb/dep
+	if no path is specified, assumed path is %(CONFIG_PATH)/%(REPO_LABEL) (# change in behaviour, but not user visible)
 	can only be bound to a repo
 
 [config]

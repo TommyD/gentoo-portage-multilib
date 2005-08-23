@@ -8,20 +8,12 @@ from portage.repository import prototype, errors
 #import ebuild_internal
 import ebuild_package
 
-from weakref import proxy
-from portage.package.conditionals import PackageWrapper
+class tree(prototype.tree):
+	false_categories = ("eclass","profiles","packages","distfiles","licenses","scripts")
 
-def convert_depset(instance, conditionals):
-	return instance.evaluate_depset(conditionals)
-
-
-class UnconfiguredTree(prototype.tree):
-	false_categories = set(["eclass","profiles","packages","distfiles","licenses","scripts"])
-	configured=False
-	configure = None
 	def __init__(self, location, cache=None, eclass_cache=None):
-		super(UnconfiguredTree, self).__init__()
-		self.base = self.location = location
+		super(tree, self).__init__()
+		self.base = location
 		try:	
 			st = os.lstat(self.base)
 			if not stat.S_ISDIR(st.st_mode):
@@ -34,7 +26,7 @@ class UnconfiguredTree(prototype.tree):
 		if eclass_cache == None:
 			import eclass_cache
 			eclass_cache = eclass_cache.cache(self.base)
-		self.package_class = ebuild_package.EbuildFactory(self, cache, eclass_cache).new_package
+		self.package_class = ebuild_package.ebuild_factory(self, cache, eclass_cache).new_package
 
 
 	def _get_categories(self, *optionalCategory):
@@ -74,28 +66,3 @@ class UnconfiguredTree(prototype.tree):
 			raise KeyError("failed fetching versions for package %s: %s" % \
 			(os.path.join(self.base,catpkg.lstrip(os.path.sep)), str(e)))
 
-
-class ConfiguredTree(UnconfiguredTree):
-	configured = True
-	l=["license","depends","rdepends","bdepends", "fetchables", "license", "slot"]
-	wrappables = dict(zip(l, len(l)*[convert_depset]))
-
-	def __init__(self, raw_repo, domain_settings):
-		for x in ("USE", "ARCH"):
-			if x not in domain_settings:
-				raise errors.InitializationError("%s requires the following settings: '%s', not supplied" % 
-					(str(self.__class__), x))
-
-		self.default_use = domain_settings["USE"][:]
-		self.arch = domain_settings["ARCH"]
-		self.default_use.append(self.arch)
-		self.raw_repo = raw_repo
-
-	def package_class(self, *a):
-		return PackageWrapper(self.raw_repo.package_class(*a), "use", initial_settings=self.default_use, unchangable_settings=self.arch,
-			attributes_to_wrap=self.wrappables)
-
-	def __getattr__(self, attr, default=None):
-		return getattr(self.raw_repo, attr, default)
-
-UnconfiguredTree.configure = ConfiguredTree

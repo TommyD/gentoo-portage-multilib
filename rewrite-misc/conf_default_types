@@ -42,7 +42,7 @@
 # decide if this is good or bad.  in effect, require's are generalized for a section type, which may not apply
 #
 # there isn't any mechanism for noting what supports interop (think sync + repo), aside from instantiating
-# and having it complain.  fluid design/intention of the final parsing of user config, but this is a drawback of 
+# and having it bitch.  fluid design/intention of the final parsing of user config, but this is a drawback of 
 # said design.
 # think about ways to curb that, lest users get too annoying with tracebacks ;)
 #
@@ -54,7 +54,7 @@
 # a location on the fs that defines further defaults, although that makes parsing this file fun.
 #
 # short version, with the rules established, you would need to define a metasection, and apply the 
-# inherit/incrementals cruft to constructing at run time the section definitions.
+# inherit/incrementals crap to constructing at run time the section definitions.
 # or you need a smarter parser/generator for this file.
 # leave that to the schmuck who writes the autotools integration for this
 # (why oh why do I suspect that's going to be my stupid ass? :)
@@ -79,46 +79,44 @@
 
 
 [profile]
-list = %(default_incrementals)s package.keywords package.use package.unmask package.mask
-defaults = class incrementals 
-incrementals = %(default_incrementals)s 
-class = portage.ebuild.profiles.OnDiskProfile
-required = class incrementals base_repo profile
-section_ref = base_repo
-positional = base_repo profile incrementals
+incrementals = USE FEATURES ACCEPT_KEYWORDS ACCEPT_LICENSE CONFIG_PROTECT_MASK CONFIG_PROTECT PRELINK_PATH PRELINK_PATH_MASK
+list = USE FEATURES ACCEPT_KEYWORDS ACCEPT_LICENSE CONFIG_PROTECT_MASK CONFIG_PROTECT PRELINK_PATH PRELINK_PATH_MASK 
+	package.keywords package.use package.unmask package.mask
+defaults = class
+class = portage.ebuild.profiles.oldstyle
+required = class
 
 [domain]
-#instantiate = portage.config.parser.domain
-required = repositories profile root class incrementals ACCEPT_LICENSE
+instantiate = portage.config.parser.domain
+required = repositories profile root class
 section_ref = repositories profile
-list = %(default_incrementals)s %(package_filters)s package.unmask repositories
-incrementals = %(default_incrementals)s
-defaults = class root incrementals ACCEPT_LICENSE
-class =  portage.config.domain.domain
+pre = config repositories
+incrementals = USE FEATURES ACCEPT_KEYWORDS ACCEPT_LICENSE CONFIG_PROTECT_MASK CONFIG_PROTECT PRELINK_PATH PRELINK_PATH_MASK
+list = USE FEATURES ACCEPT_KEYWORDS ACCEPT_LICENSE CONFIG_PROTECT_MASK CONFIG_PROTECT PRELINK_PATH PRELINK_PATH_MASK
+	package.keywords package.use package.unmask package.mask repositories
+defaults = class root
+class =  portage.config.domain
 root = /
-ACCEPT_LICENSE = 
-positional = incrementals root profile repositories 
 
 [repo]
+#instantiate = portage.config.instantiation.repo
 required = class location
 defaults = class
 class = portage.ebuild.repository
 section_ref = cache sync sync_cache
-
-#package.keywords = portage.config.handler.keywords
-#package.mask = portage.config.handler.mask
-#package.unmask = portage.config.handler.unmask
+#list = cache
+package.keywords = portage.config.handler.keywords
+package.mask = portage.config.handler.mask
+package.unmask = portage.config.handler.unmask
 
 [cache]
 required = class location label auxdbkeys
-defaults = class auxdbkeys location label readonly
+defaults = class auxdbkeys location label
 class = portage.cache.flat_list.database
 auxdbkeys = %(metadata_keys)s
 location = %(cache_base_loc)s
-readonly = false
 list = auxdbkeys
 positional = location label auxdbkeys
-bool = readonly
 
 [exec]
 autoexec = true
@@ -132,5 +130,3 @@ class = portage.sync.rsync
 metadata_keys = DEPEND RDEPEND SLOT SRC_URI RESTRICT HOMEPAGE LICENSE DESCRIPTION KEYWORDS INHERITED IUSE CDEPEND
    PDEPEND PROVIDE
 cache_base_loc = /var/cache/edb/dep/
-default_incrementals = USE FEATURES ACCEPT_KEYWORDS ACCEPT_LICENSE CONFIG_PROTECT_MASK CONFIG_PROTECT PRELINK_PATH PRELINK_PATH_MASK
-package_filters = package.mask package.keywords package.license package.use

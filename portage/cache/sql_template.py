@@ -4,7 +4,6 @@
 # $Header$
 
 import template, cache_errors
-from template import reconstruct_eclasses
 
 class SQLDatabase(template.database):
 	"""template class for RDBM based caches
@@ -36,16 +35,15 @@ class SQLDatabase(template.database):
 	_dbClass = None
 
 	autocommits = False
-#	cleanse_keys = True
 
 	# boolean indicating if the derived RDBMS class supports replace syntax
 	_supports_replace = False
 
-	def __init__(self, location, label, auxdbkeys, *args, **config):
+	def __init__(self, label, auxdbkeys, **config):
 		"""initialize the instance.
 		derived classes shouldn't need to override this"""
 
-		super(SQLDatabase, self).__init__(location, label, auxdbkeys, *args, **config)
+		super(SQLDatabase, self).__init__(label, auxdbkeys, **config)
 
 		config.setdefault("host","127.0.0.1")
 		config.setdefault("autocommit", self.autocommits)
@@ -134,9 +132,8 @@ class SQLDatabase(template.database):
 
 	def __del__(self):
 		# just to be safe.
-		if "db" in self.__dict__ and self.db != None:
-			self.commit()
-			self.db.close()
+		self.commit()
+		self.db.close()
 
 	def _setitem(self, cpv, values):
 
@@ -150,7 +147,7 @@ class SQLDatabase(template.database):
 			# so we store only what's handed to us and is a known key
 			db_values = []
 			for key in self._known_keys:
-				if values.has_key(key) and values[key] != '':
+				if values.has_key(key):
 					db_values.append({"key":key, "value":values[key]})
 
 			if len(db_values) > 0:
@@ -222,31 +219,6 @@ class SQLDatabase(template.database):
 #		return [ row[0] for row in self.con.fetchall() ]
 		for x in self.con.fetchall():
 			yield x[0]
-
-	def iteritems(self):
-		try:	self.con.execute("SELECT cpv, key, value FROM %s NATURAL JOIN %s "
-			"WHERE label=%s" % (self.SCHEMA_PACKAGE_NAME, self.SCHEMA_VALUES_NAME,
-			self.label))
-		except self._BaseError, e:
-			raise cache_errors.CacheCorruption(self, cpv, e)
-		
-		oldcpv = None
-		l = []
-		for x, y, v in self.con.fetchall():
-			if oldcpv != x:
-				if oldcpv != None:
-					d = dict(l)
-					if "_eclasses_" in d:
-						d["_eclasses_"] = reconstruct_eclasses(oldcpv, d["_eclasses_"])
-					yield cpv, d
-				l.clear()
-				oldcpv = x
-			l.append((y,v))
-		if oldcpv != None:
-			d = dict(l)
-			if "_eclasses_" in d:
-				d["_eclasses_"] = reconstruct_eclasses(oldcpv, d["_eclasses_"])
-			yield cpv, d			
 
 	def commit(self):
 		self.db.commit()

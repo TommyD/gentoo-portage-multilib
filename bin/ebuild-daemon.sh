@@ -2,13 +2,13 @@
 # ebuild-daemon.sh; core ebuild processor handling code
 # Copyright 2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header$
-
+$Header$
+ 
+source /usr/lib/portage/bin/ebuild.sh daemonize
 
 alias die='diefunc "$FUNCNAME" "$LINENO" "$?"'
 #alias listen='read -u 3 -t 10'
 alias assert='_pipestatus="${PIPESTATUS[*]}"; [[ "${_pipestatus// /}" -eq 0 ]] || diefunc "$FUNCNAME" "$LINENO" "$_pipestatus"'
-
 
 # use listen/speak for talking to the running portage instance instead of echo'ing to the fd yourself.
 # this allows us to move the open fd's w/out issues down the line.
@@ -32,14 +32,6 @@ if [ "$com" != "dude?" ]; then
 	exit 1
 fi
 speak "dude!"
-listen PORTAGE_BIN_PATH
-[ -z "$PORTAGE_BIN_PATH" ] && die "PORTAGE_BIN_PATH=$PORTAGE_BIN_PATH , bailing"
-declare -rx PORTAGE_BIN_PATH
-
-if ! source "${PORTAGE_BIN_PATH}/ebuild.sh" daemonize; then
-	speak "failed"
-	die "failed sourcing ${PORTAGE_BIN_PATH}/ebuild.sh"
-fi
 
 if [ ! -z "$SANDBOX_LOG" ]; then
 	listen com
@@ -52,6 +44,30 @@ if [ ! -z "$SANDBOX_LOG" ]; then
 	addwrite $SANDBOX_LOG
 fi
 
+# portageq hijack- redirects all requests back through the pipes and has the python side execute it.
+# much faster, also avoids the gpg/sandbox being active issues.
+portageq() {
+	local line e alive
+	if [ "${EBUILD_PHASE}" == "depend" ]; then
+		echo "QA Notice: portageq() in global scope for ${CATEGORY}/${PF}" >&2
+	fi
+	speak "portageq $*"
+	listen line
+	declare -i e
+	e=$(( ${line/return_code=} + 0 ))
+	alive=1
+	while [ $alive == 1 ]; do
+		listen line
+		if [ "$line" == "stop_text" ]; then
+			alive=0
+		else
+			echo "$line"
+		fi
+	done
+	return $e
+}
+declare -fr portageq
+
 alive='1'
 re="$(readonly | cut -s -d '=' -f 1 | cut -s -d ' ' -f 3)"
 for x in $re; do
@@ -61,12 +77,74 @@ for x in $re; do
 done
 speak $re
 unset x re
+	
+# ask the python side to display sandbox complaints.
+request_sandbox_summary() {
+	local line
+	speak "request_sandbox_summary ${SANDBOX_LOG}"
+	listen line
+	while [ "$line" != "end_sandbox_summary" ]; do	
+		echo "$line"
+		listen line
+	done
+}		
 
+# request the global confcache be transferred to $1 for usage.
+# flips the sandbox vars as needed.
+request_confcache() {
+	if ! hasq confcache $FEATURES || ! hasq sandbox $FEATURES || hasq confcache $RESTRICT; then
+		return 1
+	fi
+	local line
+	speak "request_confcache $1"
+	listen line s
+	while [ "${line#request}" != "${line}" ]; do
+		# var requests for updating the cache's ac_cv_env
+		# send set, then val
+		line="$(echo ${line#request})"
+		if [ "${!line:+set}" == "set" ]; then
+			speak set
+			speak "${!line}"
+		else
+			speak unset
+		fi
+		listen line
+	done
+	if [ "${line:0:9}" == "location:" ]; then
+		cp -v "${line:10}" $1
+	elif [ "${line}" == "empty" ]; then
+		echo ">>> Confcache is empty, starting anew"
+	fi
+	if hasq "${line/: *}" location empty; then
+		echo ">>> Temporary configure cache file is $1"
+		export PORTAGE_CONFCACHE_STATE=1
+		export SANDBOX_DEBUG_LOG="${T}/debug_log"
+		export SANDBOX_DEBUG=1
+		return 0
+	fi
+	return 1
+}
 
-if ! source "${PORTAGE_BIN_PATH}/ebuild-daemon.lib"; then
-	speak failed
-	die "failed source ${PORTAGE_BIN_PATH}/ebuild-daemon.lib"
-fi
+# notify python side configure calls are finished.
+update_confcache() {
+	local line
+	if [ "$PORTAGE_CONFCACHE_STATE" != "1" ]; then
+		return 0
+	fi
+	unset SANDBOX_DEBUG
+	unset PORTAGE_CONFCACHE_STATE
+	if ! hasq sandbox $FEATURES; then
+		echo "not updating confcache, sandbox isn't set in features" >&2
+		return 1
+	fi
+	speak "update_confcache $SANDBOX_DEBUG_LOG $1"
+	unset SANDBOX_DEBUG_LOG
+	listen line
+	if [ "$line" == "updated" ]; then
+		return 0
+	fi
+	return 1
+}
 
 DONT_EXPORT_FUNCS="$(declare -F | cut -s -d ' ' -f 3)"
 DONT_EXPORT_VARS="${DONT_EXPORT_VARS} alive com PORTAGE_LOGFILE cont"
@@ -76,17 +154,13 @@ DONT_EXPORT_VARS="${DONT_EXPORT_VARS} alive com PORTAGE_LOGFILE cont"
 export QA_CONTROLLED_EXTERNALLY="yes"
 enable_qa_interceptors
 
-if ! source "${PORTAGE_BIN_PATH}/ebuild-functions.sh"; then
-	speak failed
-	die "failed sourcing ${PORTAGE_LIB}/ebuild-functions.sh"
-fi
+source "/usr/lib/portage/bin/ebuild-functions.sh" || die "failed sourcing ebuild-functions.sh"
 
 export PORTAGE_PRELOADED_ECLASSES=''
 unset_colors
 
 
-# XXX this sucks even more then the rest, we're talking loss of chrome on a trailer hitch type suck.
-PATH='/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:${PORTAGE_BIN_PATH}'
+PATH='/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:/usr/lib/portage/bin'
 while [ "$alive" == "1" ]; do
 	com=''
 	listen com
@@ -102,34 +176,18 @@ while [ "$alive" == "1" ]; do
 		fi
 		line=''
 		cont=0
-
 		while [ "$cont" == 0 ]; do
 			line=''
 			listen line
 			if [ "$line" == "start_receiving_env" ]; then
 				while listen line && [ "$line" != "end_receiving_env" ]; do #[ "$line" != "end_receiving_env" ]; do
-#					if [[ "${line/SUDO_COMMAND}" != "${line}" ]] && 
-#						[[ "${line/export}" == "${line}" ]]; then
-#						on=1
-#						echo "received $line" >&2
-#					fi
-					save_IFS
-					IFS=$'\0'
-					eval ${line};
-					val=$?;
-					restore_IFS
-					if [ $val != "0" ]; then
+					eval "$line"
+					if [ $? != "0" ]; then
 					 	echo "err, env receiving threw an error for '$line': $?" >&2
 						echo "env_receiving_failed" >&2
 						speak "env_receiving_failed"
 						cont=1
 						break
-					fi
-					if [ "${on:-unset}" != "unset" ]; then
-						echo "sudo = ${SUDO_COMMAND}" >&2
-						declare | grep -i sudo_command >&@
-						echo "disabling" >&2
-						unset on
 					fi
 				done
 				if [ "$cont" == "0" ]; then
@@ -168,9 +226,6 @@ while [ "$alive" == "1" ]; do
 				set_colors
 			fi
 			DONT_EXPORT_FUNCS="${DONT_EXPORT_FUNCS} ${PORTAGE_PRELOADED_ECLASSES}"
-			for x in $DONT_EXPORT_FUNCS; do
-				declare -fr $x &> /dev/null
-			done
 			for e in $phases; do
 				if [ -z $PORTAGE_LOGFILE ]; then
 					execute_phases ${e}

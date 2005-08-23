@@ -1,6 +1,6 @@
+# portage.py -- core Portage functionality
 # Copyright 2004-2005 Gentoo Foundation
-# Author(s): Nicholas Carpaski (carpaski@gentoo.org), Brian Harring (ferringb@gentoo.org)
-# License: GPL2
+# Distributed under the terms of the GNU General Public License v2
 # $Header$
 cvs_id_string="$Id$"[5:-2]
 
@@ -14,10 +14,13 @@ sandbox_capable = os.path.exists(SANDBOX_BINARY)
 userpriv_capable = (os.getuid() == 0)
 fakeroot_capable = False
 
+
 try:
 	import resource
-	max_fd_limit=resource.getrlimit(resource.RLIMIT_NOFILE)[0] # get soft limit
-except (ImportError, AttributeError):
+	max_fd_limit=resource.getrlimit(RLIMIT_NOFILE)
+except SystemExit, e:
+	raise
+except:
 	# hokay, no resource module.
 	max_fd_limit=256
 
@@ -133,7 +136,6 @@ def spawn(mycommand,env={},raw_exit_code=False,opt_name=None,fd_pipes=None,retur
 	
 	non-returnpid calls to spawn will block till the process has exited, returning the exitcode/signal
 	raw_exit_code controls whether the actual waitpid result is returned, or intrepretted."""
-
 	myc=''
 	if not func_call:
 		if type(mycommand)==types.StringType:
@@ -215,18 +217,25 @@ def spawn(mycommand,env={},raw_exit_code=False,opt_name=None,fd_pipes=None,retur
 		# wax all open descriptors that weren't requested be left open.
 		for x in range(0,max_fd_limit):
 			if x not in trg_fd:
-				try: 					os.close(x)
-				except OSError:	pass
+				try: 
+					os.close(x)
+				except SystemExit, e:
+					raise
+				except:
+					pass
 
 		# note this order must be preserved- can't change gid/groups if you change uid first.
 		if selinux_capable and selinux_context:
 			import selinux
 			selinux.setexec(selinux_context)
-
-		if gid:			os.setgid(gid)
-		if groups:		os.setgroups(groups)
-		if uid:			os.setuid(uid)
-		if umask:		os.umask(umask)
+		if gid:
+			os.setgid(gid)
+		if groups:
+			os.setgroups(groups)
+		if uid:
+			os.setuid(uid)
+		if umask:
+			os.umask(umask)
 
 		try:
 			#print "execing", myc, myargs
@@ -304,9 +313,10 @@ def spawn_get_output(mycommand,spawn_type=spawn,raw_exit_code=False,emulate_gso=
 	spawn_type is the passed in function to call- typically spawn_bash, spawn, spawn_sandbox, or spawn_fakeroot"""
 	global selinux_capable
 	pr,pw=os.pipe()
-	import inspect
-	if inspect.isroutine(spawn_type):
-		raise ValueError("spawn type must be a function")
+
+	if type(spawn_type) not in [types.FunctionType, types.MethodType]:
+		s="spawn_type must be passed a function, not",type(spawn_type),spawn_type
+		raise Exception,s
 
 	if fd_pipes==None:
 		fd_pipes={}
@@ -358,7 +368,6 @@ def spawn_fakeroot(mycommand, save_file, env={}, opt_name=None,**keywords):
 			return None
 	myc.extend(mycl)
 	return spawn(myc,env=env,opt_name=opt_name,**keywords)
-
 
 if os.path.exists(FAKEROOT_PATH):
 	r,s=spawn_get_output((FAKEROOT_PATH, "--version"),emulate_gso=False,

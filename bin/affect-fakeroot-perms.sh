@@ -2,7 +2,7 @@
 # affect-fakeroot-perms.sh; Make claimed fakeroot permissions, a reality.
 # Copyright 2004-2005 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header$
+$Header$
 
 
 echo "adjusting $2 using $1" >&2

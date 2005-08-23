@@ -3,15 +3,11 @@
 # License: GPL2
 # $Header$
 
-# this needs work.  it's been pruned heavily from what ebd used originally, but it still isn't what 
-# I would define as 'right'
-
 inactive_ebp_list = []
 active_ebp_list = []
 
 import portage.spawn, os, logging
 from inspect import isroutine, isclass
-from portage.util.currying import post_curry
 
 def shutdown_all_processors():
 	"""kill off all known processors"""
@@ -93,14 +89,11 @@ def release_ebuild_processor(ebp):
 class ebuild_processor:
 	"""abstraction of a running ebuild.sh instance- the env, functions, etc that ebuilds expect."""
 	def __init__(self, userpriv, sandbox, fakeroot, save_file):
-		"""
+		"""ebuild_daemon_path shouldn't be fooled with unless the caller knows what they're doing.
 		sandbox enables a sandboxed processor
 		userpriv enables a userpriv'd processor
 		fakeroot enables a fakeroot'd processor- this is a mutually exclusive option to sandbox, and 
-		requires userpriv to be enabled.  
-		
-		Violating this will result in nastyness
-		"""
+		requires userpriv to be enabled.  Violating this will result in nastyness"""
 
 		from portage.const import EBUILD_DAEMON_PATH, PORTAGE_BIN_PATH
 
@@ -277,7 +270,7 @@ class ebuild_processor:
 	def is_alive(self):
 		"""returns if it's known if the processor has been shutdown.
 		Currently doesn't check to ensure the pid is still running, yet it should"""
-		return self.pid > None
+		return self.pid != None
 
 
 	def shutdown_processor(self):
@@ -289,9 +282,8 @@ class ebuild_processor:
 				self.ebd_read.close()
 
 				# now we wait.
-				os.waitpid(self.pid, 0)
-
-		except (IOError,OSError):
+				os.waitpid(self.pid,0)
+		except (IOError,OSError,ValueError):
 			pass
 
 		# currently, this assumes all went well.
@@ -330,12 +322,8 @@ class ebuild_processor:
 	def __del__(self):
 		"""simply attempts to notify the daemon to die"""
 		# for this to be reached means we ain't in a list no more.
-		if self.is_alive():
-			# I'd love to know why the exception wrapping is required...
-			try:
-				self.shutdown_processor()
-			except TypeError:
-				pass
+		if self.pid:
+			self.shutdown_processor()
 
 
 	def get_keys(self, package_inst, eclass_cache):
@@ -356,15 +344,14 @@ class ebuild_processor:
 		self.expect("starting depend")
 		metadata_keys = {}
 		val=self.generic_handler(additional_commands={ \
-			"request_inherit":post_curry(self.__class__._inherit, eclass_cache), \
-			"key":post_curry(self.__class__._receive_key, metadata_keys) } )
+			"inherit":(self.__class__._inherit, [eclass_cache],{}), \
+			"key":(self.__class__._receive_key, [metadata_keys], {})} )
 
 		if not val:
 			logging.error("returned val from get_keys was '%s'" % str(val))
 			raise Exception(val)
 
 		return metadata_keys
-
 
 	def _receive_key(self, line, keys_dict):
 		line=line.split("=",1)
@@ -398,12 +385,13 @@ class ebuild_processor:
 	def generic_handler(self, additional_commands={}):
 		"""internal function that responds to the running ebuild processor's requests
 		
-		additional_commands is a dict of command:callable.  If you need to slip in extra args, look into portage.util.currying.
+		additional_commands is a dict of command:callable, or command:(callable,args,kwargs)
+		Note that the processor still is inserted as the first arg for positional, with line as second.
 
-		commands names cannot have spaces.  the callable is called with the processor as first arg, and 
-		remaining string (None if no remaining fragment) as second arg.
-		If you need to split the args to command, whitespace splitting falls to your func.
-		
+		commands cannot have spaces.  the callable is called with the processor as first arg, and 
+		remaining string (None if no remaining fragment) as second arg
+		(if you need to split the args to command, whitespace splitting falls to your func.)
+
 		Chucks an UnhandledCommand exception when an unknown command is encountered.
 		"""
 
@@ -412,36 +400,38 @@ class ebuild_processor:
 		# so dig through self.__class__ for it. :P
 
 		handlers = {"request_sandbox_summary":(self.__class__.sandbox_summary,[],{})}
-		f = post_curry(chuck_UnhandledCommand, False)
 		for x in ("prob", "env_receiving_failed"):
-			handlers[x] = f
-		del f
-
-		handlers["phases"] = post_curry(chuck_StoppingCommand, lambda f: f.lower().strip()=="succeeded")
-
-		for x in additional_commands.keys():
-			if not isroutine(additional_commands[x]):
-				raise TypeError(additional_commands[x])
+			handlers[x] = (chuck_UnhandledCommand, [False], {})
+		handlers["phases"] = (chuck_StoppingCommand, [lambda f: f.lower().strip()=="succeeded"], {})
 
 		handlers.update(additional_commands)
 
+		for x in handlers.keys():
+			if isroutine(handlers[x]):
+				handlers[x] = (handlers[x], [], {})
+			# if it's a list, must be len 3 and isroutine==true for [0]
+			elif not (isinstance(handlers[x], list) or isinstance(handlers[x], tuple)) or \
+				not (len(handlers[x]) == 3 and isroutine(handlers[x][0])):
+				raise TypeError(handlers[x])
+
 		try:
 			while True:
-				line=self.read().strip()
+				line=self.read().rstrip()
 				# split on first whitespace.
+
 				s=line.split(None,1)
 				if s[0] in handlers:
 					if len(s) == 1:
 						s.append(None)
-					handlers[s[0]](self, s[1])
+					# looks nasty, but isn't.  just inserts self + line for positional expansion
+					handlers[s[0]][0](self, s[1], *handlers[s[0]][1], **handlers[s[0]][2])
 				else:
-					logging.error("unhandled command '%s', line '%s'" % (s[0], line))
-					raise UnhandledCommand(line)
+					print "chucking unhandled here, baby.s=",s
+					raise UnhandledCommand(s[0])
 
 		except FinishedProcessing, fp:
 			v = fp.val; del fp
 			return v
-
 
 def chuck_UnhandledCommand(processor, line):
 	print "chucking unhandled"

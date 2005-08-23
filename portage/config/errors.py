@@ -70,4 +70,3 @@ class BrokenSectionDefinition(BaseException):
 		self.section, self.errmsg = section, errormsg
 	def __str__(self):
 		return "Section '%s' definition: error %s" % (self.section, self.errmsg)
-

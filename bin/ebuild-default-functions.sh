@@ -4,8 +4,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header$
 
-has_version()
-{
+has_version() {
 	# if there is a predefined portageq call, use it.
 	# why?  Because if we're being called from an ebuild daemon/processor, it can hijack the call, and access the
 	# running portage instance already, saving at least .5s in load up of portageq.
@@ -16,21 +15,29 @@ has_version()
 	# return shell-true/shell-false if exists.
 	# Takes single depend-type atoms.
 
-	# XXX: harring; portageq should be in path if there isn't a func.  if not, well, tough cookies
-	portageq 'has_version' "${ROOT}" "$1"
-	return $?
+	if declare -F portageq &> /dev/null; then
+		portageq 'has_version' "${ROOT}" "$1"
+		e=$?
+	else
+		/usr/lib/portage/bin/portageq 'has_version' "${ROOT}" "$1"
+		e=$?
+	fi
+	return $e
 }
 
-best_version() 
-{
+best_version() {
 	local -i e
-	# see above
-	portageq 'best_version' "${ROOT}" "$1"
-	return $?
+	if declare -F portageq &> /dev/null; then
+		portageq 'best_version' "${ROOT}" "$1"
+		e=$?
+	else
+		/usr/lib/portage/bin/portageq 'best_version' "${ROOT}" "$1"
+		e=$?
+	fi
+	return $e
 }
 
-check_KV()
-{
+check_KV() {
 	if [ -z "${KV}" ]; then
 		eerror ""
 		eerror "Could not determine your kernel version."
@@ -45,8 +52,7 @@ check_KV()
 }
 
 # adds ".keep" files so that dirs aren't auto-cleaned
-keepdir()
-{
+keepdir() {
 	dodir "$@"
 	local x
 	if [ "$1" == "-R" ] || [ "$1" == "-r" ]; then
@@ -60,53 +66,53 @@ keepdir()
 }
 
 # sandbox support functions
-addread()
-{
+addread() {
 	export SANDBOX_READ="$SANDBOX_READ:$1"
 }
 
-addwrite()
-{
+addwrite() {
 	export SANDBOX_WRITE="$SANDBOX_WRITE:$1"
 }
 
-adddeny()
-{
+adddeny() {
 	export SANDBOX_DENY="$SANDBOX_DENY:$1"
 }
 
-addpredict()
-{
+addpredict() {
 	export SANDBOX_PREDICT="$SANDBOX_PREDICT:$1"
 }
 
-unpack()
-{
-	local x y myfail tarvars srcdir
+unpack() {
+	local x y
+	local myfail
+	local tarvars
+	local srcdir
 
-	if [ "$USERLAND" == "BSD" ]; then
+	if [ "$USERLAND" == "BSD" ] ; then
 		tarvars=""
 	else
 		tarvars="--no-same-owner"
-	fi	
+	fi
 
 	[ -z "$*" ] && die "Nothing passed to the 'unpack' command"
 
 	for x in "$@"; do
 		echo ">>> Unpacking ${x} to ${PWD}"
-		myfail="failure unpacking ${x}"
-		y="${x%.*}"
-		y="${y##*.}"
-		if [ "${x:0:2}" == "./" ]; then
-			srcdir=''
-		else
-			srcdir="${DESTDIR}"
-		fi
-		[ ! -s "${srcdir}/${x}" ] && die "$myfail"
+		y=${x%.*}
+		y=${y##*.}
 
+		myfail="${x} does not exist"
+		if [ "${x:0:2}" = "./" ] ; then
+			srcdir=""
+		else
+			srcdir="${DISTDIR}/"
+		fi
+		[ ! -s "${srcdir}${x}" ] && die "$myfail"
+
+		myfail="failure unpacking ${x}"
 		case "${x##*.}" in
 			tar)
-				tar ${tarvars} -xf "${src}${x}" || die "$myfail"
+				tar ${tarvars} -xf "${srcdir}${x}" || die "$myfail"
 				;;
 			tgz)
 				tar ${tarvars} -xzf "${srcdir}${x}" || die "$myfail"
@@ -119,15 +125,14 @@ unpack()
 				unzip -qo "${srcdir}${x}" || die "$myfail"
 				;;
 			gz|Z|z)
-				if [ "${y}" == "tar" ]; then
-					gzip -dc "${srcdir}${x}" | tar ${tarvars} -xf -
-					assert "$myfail"
+				if [ "${y}" == "tar" ] ; then
+					tar ${tarvars} -xzf "${srcdir}${x}" || die "$myfail"
 				else
 					gzip -dc "${srcdir}${x}" > ${x%.*} || die "$myfail"
 				fi
 				;;
 			bz2)
-				if [ "${y}" == "tar" ]; then
+				if [ "${y}" == "tar" ] ; then
 					bzip2 -dc "${srcdir}${x}" | tar ${tarvars} -xf -
 					assert "$myfail"
 				else
@@ -136,7 +141,6 @@ unpack()
 				;;
 			RAR|rar)
 				unrar x -idq "${srcdir}/${x}" || die "$myfail"
-				;;
 			*)
 				echo "unpack ${x}: file format not recognized. Ignoring."
 				;;
@@ -144,8 +148,7 @@ unpack()
 	done
 }
 
-dyn_setup()
-{
+dyn_setup() {
 	if hasq setup ${COMPLETED_EBUILD_PHASES:-unset}; then
 		echo ">>> looks like ${PF} has already been setup, bypassing."
 		MUST_EXPORT_ENV="no"
@@ -174,8 +177,7 @@ dyn_setup()
 	pkg_setup
 }
 
-dyn_unpack()
-{
+dyn_unpack() {
 	if hasq unpack ${COMPLETED_EBUILD_PHASES:-unset}; then
 		echo ">>> ${PF} has alreay been unpacked, bypassing."
 		MUST_EXPORT_ENV="no"
@@ -207,7 +209,7 @@ dyn_unpack()
 			rm -rf "${WORKDIR}"
 		fi
 	fi
-	
+
 	install -m0700 -d "${WORKDIR}" || die "Failed to create dir '${WORKDIR}'"
 	[ -d "$WORKDIR" ] && cd "${WORKDIR}"
 	echo ">>> Unpacking source..."
@@ -217,57 +219,50 @@ dyn_unpack()
 	trap SIGINT SIGQUIT
 }
 
-abort_handler()
-{
+abort_handler() {
 	local msg
 	if [ "$2" != "fail" ]; then
 		msg="${EBUILD}: ${1} aborted; exiting."
 	else
 		msg="${EBUILD}: ${1} failed; exiting."
 	fi
-	echo 
-	echo "$msg" 
+	echo
+	echo "$msg"
 	echo
 	eval ${3}
 	#unset signal handler
 	trap SIGINT SIGQUIT
 }
 
-abort_compile()
-{
+abort_compile() {
 	abort_handler "src_compile" $1
 	exit 1
 }
 
-abort_unpack()
-{
+abort_unpack() {
 	abort_handler "src_unpack" $1
 	rm -rf "${PORTAGE_BUILDDIR}/work"
 	exit 1
 }
 
-abort_package()
-{
+abort_package() {
 	abort_handler "dyn_package" $1
 	rm -f "${PKGDIR}"/All/${PF}.t*
 	exit 1
 }
 
-abort_test()
-{
+abort_test() {
 	abort_handler "dyn_test" $1
 	exit 1
 }
 
-abort_install()
-{
+abort_install() {
 	abort_handler "src_install" $1
 	rm -rf "${PORTAGE_BUILDDIR}/image"
 	exit 1
 }
 
-dyn_compile()
-{
+dyn_compile() {
 	if hasq compile ${COMPLETED_EBUILD_PHASES:-unset}; then
 		echo ">>> It appears that ${PN} is already compiled; skipping."
 		echo ">>> (clean to force compilation)"
@@ -302,12 +297,14 @@ dyn_compile()
 		sleep 3
 	fi
 
+	echo ">>> Compiling source ..."
+
 	cd "${PORTAGE_BUILDDIR}"
 	if [ ! -e "build-info" ];	then
 		mkdir build-info
 	fi
 	cp "${EBUILD}" "build-info/${PF}.ebuild"
-	
+
 	if [ -d "${S}" ]; then
 		cd "${S}"
 	fi
@@ -317,8 +314,8 @@ dyn_compile()
 	#some packages use an alternative to $S to build in, cause
 	#our libtool to create problematic .la files
 	export PWORKDIR="$WORKDIR"
-	src_compile 
-	#|| abort_compile "fail" 
+	src_compile
+	#|| abort_compile "fail"
 	cd "${PORTAGE_BUILDDIR}"
 	cd build-info
 
@@ -354,11 +351,13 @@ dyn_compile()
 		touch DEBUGBUILD
 	fi
 	trap SIGINT SIGQUIT
+
+	echo ">>> Finished compiling"
 }
 
-dyn_package()
-{
+dyn_package() {
 	trap "abort_package" SIGINT SIGQUIT
+	echo ">>> Generating binary package ..."
 	cd "${PORTAGE_BUILDDIR}/image"
 	tar cpvf - ./ | bzip2 -f > ../bin.tar.bz2 || die "Failed to create tarball"
 	cd ..
@@ -370,8 +369,7 @@ dyn_package()
 	trap SIGINT SIGQUIT
 }
 
-dyn_test()
-{
+dyn_test() {
 	if hasq test ${COMPLETED_EBUILD_PHASES}; then
 		echo ">>> TEST has already been run, skipping..." >&2
 		MUST_EXPORT_ENV="no"
@@ -397,8 +395,7 @@ dyn_test()
 	trap SIGINT SIGQUIT
 }
 
-stat_perms()
-{
+function stat_perms() {
 	local f
 	f=$(stat -c '%f' "$1")
 	f=$(printf "%o" 0x$f)
@@ -407,8 +404,7 @@ stat_perms()
 }
 
 
-dyn_install()
-{
+dyn_install() {
 	trap "abort_install" SIGINT SIGQUIT
 	rm -rf "${PORTAGE_BUILDDIR}/image"
 	mkdir "${PORTAGE_BUILDDIR}/image"
@@ -423,21 +419,21 @@ dyn_install()
 	#some packages uses an alternative to $S to build in, cause
 	#our libtool to create problematic .la files
 	export PWORKDIR="$WORKDIR"
-	src_install 
+	src_install
 	#|| abort_install "fail"
 	prepall
 	cd "${D}"
 
 	declare -i UNSAFE=0
 	for i in $(find "${D}/" -type f -perm -2002); do
-		UNSAFE=$(($UNSAFE + 1))
+		((UNSAFE++))
 		echo "UNSAFE SetGID: $i"
 	done
 	for i in $(find "${D}/" -type f -perm -4002); do
-		UNSAFE=$(($UNSAFE + 1))
+		((UNSAFE++))
 		echo "UNSAFE SetUID: $i"
 	done
-	
+
 	if type -p scanelf > /dev/null ; then
 		# Make sure we disallow insecure RUNPATH/RPATH's
 		# Don't want paths that point to the tree where the package was built
@@ -505,7 +501,7 @@ dyn_install()
 		scanelf -qyRF '%p %n' "${D}" | sed -e 's:^:/:' > "${PORTAGE_BUILDDIR}"/build-info/NEEDED
 	fi
 
-	if [[ $UNSAFE > 0 ]]; then
+	if [[ ${UNSAFE} > 0 ]] ; then
 		die "There are ${UNSAFE} unsafe files.  Portage will not install them."
 	fi
 
@@ -520,7 +516,7 @@ dyn_install()
 	done
 
 	find "${D}/" -group portage -print | while read file; do
-		# Too annoying - uncommenting this as it's a regression
+		# Too annoying - uncommenting this as it's a regression - it's not, commenting again
 		#ewarn "file $file was installed with group portage!"
 		s=$(stat_perms "$file")
 		if [ "$USERLAND" == "BSD" ]; then
@@ -550,33 +546,29 @@ dyn_install()
 	trap SIGINT SIGQUIT
 }
 
-dyn_postinst()
-{
+dyn_postinst() {
 	pkg_postinst
 }
 
-dyn_preinst()
-{
+dyn_preinst() {
 	# set IMAGE depending if this is a binary or compile merge
-	local IMAGE=${D}
-	[ "${EMERGE_FROM}" == "binary" ] && IMAGE=${PKG_TMPDIR}/${PF}/bin/
+	[ "${EMERGE_FROM}" == "binary" ] && IMAGE=${PKG_TMPDIR}/${PF}/bin
 
-	# Make sure D is where the package expects it
 	D=${IMAGE} pkg_preinst
 
 	# remove man pages
 	if hasq noman $FEATURES; then
-		rm -fR "${IMAGE}"/usr/share/man
+		rm -fR "${IMAGE}/usr/share/man"
 	fi
 
 	# remove info pages
 	if hasq noinfo $FEATURES; then
-		rm -fR "${IMAGE}"/usr/share/info
+		rm -fR "${IMAGE}/usr/share/info"
 	fi
 
 	# remove docs
 	if hasq nodoc $FEATURES; then
-		rm -fR "${IMAGE}"/usr/share/doc
+		rm -fR "${IMAGE}/usr/share/doc"
 	fi
 
 	# hopefully this will someday allow us to get rid of the no* feature flags
@@ -588,7 +580,7 @@ dyn_preinst()
 		set +o noglob
 		einfo "Removing ${no_inst}"
 		# normal stuff
-		rm -Rf "${IMAGE}"/${no_inst} &> /dev/null
+		rm -Rf "${IMAGE}"/${no_inst} >&/dev/null
 		# we also need to handle globs (*.a, *.h, etc)
 		find "${IMAGE}" -name ${no_inst} -exec rm -fR {} \; &> /dev/null
 	done
@@ -598,17 +590,17 @@ dyn_preinst()
 
 	# remove share dir if unnessesary
 	if hasq nodoc $FEATURES -o hasq noman $FEATURES -o hasq noinfo $FEATURES; then
-		rmdir "${IMAGE}"/usr/share &> /dev/null
+		rmdir "${IMAGE}/usr/share" &> /dev/null
 	fi
 
 	# Smart FileSystem Permissions
 	if hasq sfperms $FEATURES; then
-		for i in $(find "${IMAGE}"/ -type f -perm -4000); do
+		for i in $(find "${IMAGE}/" -type f -perm -4000); do
 			ebegin ">>> SetUID: [chmod go-r] $i "
 			chmod go-r "$i"
 			eend $?
 		done
-		for i in $(find "${IMAGE}"/ -type f -perm -2000); do
+		for i in $(find ${IMAGE}/ -type f -perm -2000); do
 			ebegin ">>> SetGID: [chmod o-r] $i "
 			chmod o-r "$i"
 			eend $?
@@ -619,7 +611,7 @@ dyn_preinst()
 	if hasq suidctl $FEATURES > /dev/null ; then
 		sfconf=/etc/portage/suidctl.conf
 		echo ">>> Preforming suid scan in ${IMAGE}"
-		for i in $(find "${IMAGE}"/ -type f \( -perm -4000 -o -perm -2000 \) ); do
+		for i in $(find ${IMAGE}/ -type f \( -perm -4000 -o -perm -2000 \) ); do
 			if [ -s "${sfconf}" ]; then
 				suid=$(grep ^${i/${IMAGE}/}$ ${sfconf})
 				if [ "${suid}" = "${i/${IMAGE}/}" ]; then
@@ -672,8 +664,7 @@ dyn_preinst()
 	trap SIGINT SIGQUIT
 }
 
-dyn_spec()
-{
+dyn_spec() {
 #	tar czf "/usr/src/redhat/SOURCES/${PF}.tar.gz" "${O}/${PF}.ebuild" "${O}/files" || die "Failed to create base rpm tarball."
 	tar czf "${T}/${PF}.tar.gz" "${O}/${PF}.ebuild" "${O}/files" || die "Failed to create base rpm tarball."
 	echo "pwd=$(pwd)" >&2
@@ -707,20 +698,18 @@ __END1__
 
 }
 
-dyn_rpm()
-{
+dyn_rpm() {
 	dyn_spec
 	MUST_EXPORT_ENV="yes"
 }
 
-dyn_help()
-{
+dyn_help() {
 	echo
 	echo "Portage"
 	echo "Copyright 1999-2005 Gentoo Foundation"
-	echo 
+	echo
 	echo "How to use the ebuild command:"
-	echo 
+	echo
 	echo "The first argument to ebuild should be an existing .ebuild file."
 	echo
 	echo "One or more of the following options can then be specified.  If more"
@@ -766,7 +755,7 @@ dyn_help()
 	echo
 	if [ -n "$USE" ]; then
 		echo "Additionally, support for the following optional features will be enabled:"
-		echo 
+		echo
 		echo "  ${USE}"
 	fi
 	echo
@@ -781,72 +770,47 @@ dyn_help()
 # set a new default in make.*. Here the default is "" or unset.
 
 # in the future might use e* from /etc/init.d/functions.sh if i feel like it
-debug-print()
-{
+debug-print() {
 	if [ "$EBUILD_PHASE" == "depend" ] && [ -z "${PORTAGE_DEBUG}" ]; then
 		return
 	fi
-	# if $T isn't defined, we're in dep calculation mode and 
+	# if $T isn't defined, we're in dep calculation mode and
 	# shouldn't do anything
 	[ -z "$T" ] && return 0
 
 	while [ "$1" ]; do
-	
+
 		# extra user-configurable targets
 		if [ "$ECLASS_DEBUG_OUTPUT" == "on" ]; then
 			echo "debug: $1"
 		elif [ -n "$ECLASS_DEBUG_OUTPUT" ]; then
 			echo "debug: $1" >> $ECLASS_DEBUG_OUTPUT
 		fi
-		
+
 		# default target
 		echo "$1" >> "${T}/eclass-debug.log"
 		# let the portage user own/write to this file
 		chmod g+w "${T}/eclass-debug.log" &>/dev/null
-		
+
 		shift
 	done
 }
 
 # The following 2 functions are debug-print() wrappers
 
-debug-print-function()
-{
-	str="$1: entering function" 
+debug-print-function() {
+	str="$1: entering function"
 	shift
 	debug-print "$str, parameters: $*"
 }
 
-debug-print-section()
-{
+debug-print-section() {
 	debug-print "now in section $*"
 }
 
-
-internal_inherit()
-{
-	# default, backwards compatible beast.
-	local location overlay
-	location="${ECLASSDIR}/${1}.eclass"
-
-	if [ -n "$PORTDIR_OVERLAY" ]; then
-		local overlay
-		for overlay in ${PORTDIR_OVERLAY}; do
-			if [ -e "${overlay}/eclass/${1}.eclass" ]; then
-				location="${overlay}/eclass/${1}.eclass"
-				debug-print "  eclass exists: ${location}"
-			fi
-		done
-	fi
-	debug-print "inherit: $1 -> $location"
-	source "$location" || die "died sourcing $location in inherit()"
-	return 0
-}		
-
 # Sources all eclasses in parameters
 declare -ix ECLASS_DEPTH=0
-inherit()
-{
+inherit() {
 	local SAVED_INHERIT_COUNT=0 INHERITED_ALREADY=0
 
 	if [[ $ECLASS_DEPTH < 0 ]] && [ "${EBUILD_PHASE}" == "depend" ]; then
@@ -872,6 +836,7 @@ inherit()
 	local B_CDEPEND
 	local B_PDEPEND
 	while [ "$1" ]; do
+		location="${ECLASSDIR}/${1}.eclass"
 
 		# PECLASS is used to restore the ECLASS var after recursion.
 		PECLASS="$ECLASS"
@@ -885,9 +850,22 @@ inherit()
 			fi
 		fi
 
+		# any future resolution code goes here
+		if [ -n "$PORTDIR_OVERLAY" ]; then
+			local overlay
+			for overlay in ${PORTDIR_OVERLAY}; do
+				olocation="${overlay}/eclass/${1}.eclass"
+				if [ -e "$olocation" ]; then
+					location="${olocation}"
+					debug-print "  eclass exists: ${location}"
+				fi
+			done
+		fi
+		debug-print "inherit: $1 -> $location"
+
 		#We need to back up the value of DEPEND and RDEPEND to B_DEPEND and B_RDEPEND
 		#(if set).. and then restore them after the inherit call.
-	
+
 		#turn off glob expansion
 		set -f
 
@@ -901,9 +879,12 @@ inherit()
 		unset   IUSE   DEPEND   RDEPEND   CDEPEND   PDEPEND
 		#turn on glob expansion
 		set +f
-		if ! internal_inherit $1; then
-			die "failed sourcing $1 in inherit()"
+		if type -p eclass_${1}_inherit; then
+			eclass_${1}_inherit
+		else
+			source "$location" || export ERRORMSG="died sourcing $location in inherit()"
 		fi
+		[ -z "${ERRORMSG}" ] || die "${ERRORMSG}"
 
 		#turn off glob expansion
 		set -f
@@ -933,10 +914,10 @@ inherit()
 
 		#turn on glob expansion
  		set +f
-		
+
 		if hasq $1 $INHERITED && [ $INHERITED_ALREADY == 0 ]; then
 #
-# enable this one eclasses no longer fool with eclass and inherited.
+# enable this one eclasses no longer full with eclass and inherited.
 #			if [ "${EBUILD_PHASE}" == "depend" ]; then
 #				echo "QA Notice: ${CATEGORY}/${PF}: eclass $1 is incorrectly setting \$INHERITED." >&2
 #			fi
@@ -950,7 +931,7 @@ inherit()
 	done
 	ECLASS_DEPTH=$(($ECLASS_DEPTH - 1))
 	if [[ $ECLASS_DEPTH == 0 ]]; then
-		ECLASS_DEPTH=$(($SAVED_INHERIT_COUNT - 1)) 
+		ECLASS_DEPTH=$(($SAVED_INHERIT_COUNT - 1))
 	fi
 }
 
@@ -958,14 +939,13 @@ inherit()
 # For example, if ECLASS="base" and you call "EXPORT_FUNCTIONS src_unpack", the following
 # code will be eval'd:
 # src_unpack() { base_src_unpack; }
-EXPORT_FUNCTIONS()
-{
+EXPORT_FUNCTIONS() {
 	if [ -z "$ECLASS" ]; then
 		echo "EXPORT_FUNCTIONS without a defined ECLASS" >&2
 		exit 1
 	fi
 	while [ "$1" ]; do
-		debug-print "EXPORT_FUNCTIONS: ${1} -> ${ECLASS}_${1}" 
+		debug-print "EXPORT_FUNCTIONS: ${1} -> ${ECLASS}_${1}"
 		eval "$1() { ${ECLASS}_$1 "\$@" ; }" > /dev/null
 		shift
 	done
@@ -981,8 +961,7 @@ EXPORT_FUNCTIONS()
 # getting its value from DEPEND. This is a side-effect that made eclasses
 # have unreliable dependencies.
 
-newdepend()
-{
+newdepend() {
 	debug-print-function newdepend $*
 	debug-print "newdepend: E_DEPEND=$E_DEPEND E_RDEPEND=$E_RDEPEND"
 
@@ -1003,26 +982,22 @@ newdepend()
 	done
 }
 
-newrdepend()
-{
+newrdepend() {
 	debug-print-function newrdepend $*
 	do_newdepend RDEPEND $1
 }
 
-newcdepend()
-{
+newcdepend() {
 	debug-print-function newcdepend $*
 	do_newdepend CDEPEND $1
 }
 
-newpdepend()
-{
+newpdepend() {
 	debug-print-function newpdepend $*
 	do_newdepend PDEPEND $1
 }
 
-do_newdepend()
-{
+do_newdepend() {
 	# This function does a generic change determining whether we're in an
 	# eclass or not. If we are, we change the E_* variables for deps.
 	debug-print-function do_newdepend $*
@@ -1043,10 +1018,9 @@ do_newdepend()
 	done
 }
 
-# this is a function for removing any directory matching a passed in pattern from 
+# this is a function for removing any directory matching a passed in pattern from
 # PATH
-remove_path_entry()
-{
+remove_path_entry() {
 	save_IFS
 	IFS=":"
 	stripped_path="${PATH}"
@@ -1065,12 +1039,11 @@ remove_path_entry()
 }
 
 QA_INTERCEPTORS="javac java-config python python-config perl grep egrep fgrep sed gcc g++ cc bash awk nawk pkg-config"
-enable_qa_interceptors()
-{
+enable_qa_interceptors() {
 
 	# Turn of extended glob matching so that g++ doesn't get incorrectly matched.
 	shopt -u extglob
-	
+
 	# QA INTERCEPTORS
 	local FUNC_SRC BIN BODY BIN_PATH
 	for BIN in ${QA_INTERCEPTORS}; do
@@ -1084,7 +1057,7 @@ enable_qa_interceptors()
 			echo -n \"QA Notice: ${BIN} in global scope: \" >&2
 			if [ \$ECLASS_DEPTH -gt 0 ]; then
 				echo \"eclass \${ECLASS}\" >&2
-			else 
+			else
 				echo \"\${CATEGORY}/\${PF}\" >&2
 			fi
 			${BODY}
@@ -1093,15 +1066,13 @@ enable_qa_interceptors()
 	done
 }
 
-disable_qa_interceptors()
-{
+disable_qa_interceptors() {
 	for x in $QA_INTERCEPTORS; do
 		unset -f $x
 	done
 }
 
-useq()
-{
+useq() {
 	local u="${1}"
 	local neg=0
 	if [ "${u:0:1}" == "!" ]; then
@@ -1109,7 +1080,7 @@ useq()
 		neg=1
 	fi
 	local x
-	
+
 	# Make sure we have this USE flag in IUSE
 	if ! hasq "${u}" ${IUSE} ${E_IUSE} && ! hasq "${u}" ${PORTAGE_ARCHLIST} selinux; then
 		echo "QA Notice: USE Flag '${u}' not in IUSE for ${CATEGORY}/${PF}" >&2
@@ -1131,8 +1102,7 @@ useq()
 	fi
 }
 
-usev()
-{
+usev() {
 	if useq ${1}; then
 		echo "${1}"
 		return 0
@@ -1141,8 +1111,7 @@ usev()
 }
 
 # Used to generate the /lib/cpp and /usr/bin/cc wrappers
-gen_wrapper()
-{
+gen_wrapper() {
 	cat > $1 << END
 #!/bin/sh
 
@@ -1152,8 +1121,7 @@ END
 	chmod 0755 $1
 }
 
-insopts()
-{
+insopts() {
 	INSOPTIONS=""
 	for x in $*; do
 		#if we have a debug build, let's not strip anything
@@ -1166,8 +1134,7 @@ insopts()
 	export INSOPTIONS
 }
 
-diropts()
-{
+diropts() {
 	DIROPTIONS=""
 	for x in $*; do
 		DIROPTIONS="${DIROPTIONS} $x"
@@ -1175,8 +1142,7 @@ diropts()
 	export DIROPTIONS
 }
 
-exeopts()
-{
+exeopts() {
 	EXEOPTIONS=""
 	for x in $*; do
 		#if we have a debug build, let's not strip anything
@@ -1189,8 +1155,7 @@ exeopts()
 	export EXEOPTIONS
 }
 
-libopts()
-{
+libopts() {
 	LIBOPTIONS=""
 	for x in $*; do
 		#if we have a debug build, let's not strip anything

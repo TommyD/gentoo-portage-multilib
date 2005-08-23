@@ -3,15 +3,16 @@
 # License: GPL2
 # $Header$
 
+# hack, remove when it's fixed
+raise Exception("sorry, this won't work with current portage namespace layout.  plsfix, kthnx")
+
 import os,stat
-from portage.repository import prototype, errors
+import prototype, errors
 
 #needed to grab the PN
-from portage.package.cpv import CPV as cpv
-from portage.util.lists import unique
+import portage_versions
 
 class tree(prototype.tree):
-	package_class = str
 	def __init__(self, base):
 		super(tree,self).__init__()
 		self.base = base
@@ -39,11 +40,11 @@ class tree(prototype.tree):
 	
 	def _get_packages(self, category):
 		cpath = os.path.join(self.base,category.lstrip(os.path.sep))
-		l=set()
+		l=[]
 		try:    
 			for x in os.listdir(cpath):
 				if stat.S_ISDIR(os.stat(os.path.join(cpath,x)).st_mode) and not x.endswith(".lockfile"):
-					l.add(cpv(x).package)
+					l.append(portage_versions.pkgsplit(x)[0])
 			return tuple(l)
 
 		except (OSError, IOError), e:
@@ -53,12 +54,21 @@ class tree(prototype.tree):
 
 	def _get_versions(self, catpkg):
 		pkg = catpkg.split("/")[-1]
-		l=set()
+		l=[]
 		try:
 			cpath=os.path.join(self.base, os.path.dirname(catpkg.lstrip("/").rstrip("/")))
 			for x in os.listdir(cpath):
 				if x.startswith(pkg) and stat.S_ISDIR(os.stat(os.path.join(cpath,x)).st_mode) and not x.endswith(".lockfile"):
-					l.add(cpv(x).fullver)
+					ver=portage_versions.pkgsplit(x)
+
+					#pkgsplit returns -r0, when it's not always there
+					if ver[2] == "r0":
+						if x.endswith(ver[2]):
+							l.append("%s-%s" % (ver[1], ver[2]))
+						else:
+							l.append(ver[1])
+					else:
+						l.append("%s-%s" % (ver[1], ver[2]))
 			return tuple(l)
 		except (OSError, IOError), e:
 			raise KeyError("failed fetching packages for package %s: %s" % \

@@ -6,9 +6,9 @@
 import errors, new
 from portage.const import CONF_DEFAULTS
 from portage.util.modules import load_attribute
-from cparser import CaseSensitiveConfigParser as ConfigParser
-from portage.util.mappings import LazyValDict
-from portage.util.currying import pre_curry
+from ConfigParser import ConfigParser
+from portage.util.dicts import LazyValDict
+from portage.util.currying import curry
 
 class config:
 	"""Central configuration manager.
@@ -24,14 +24,15 @@ class config:
 		# weakref .instantiated?
 		self.instantiated = {}
 		for t in self.type_handler:
+			from string import lower
 			for x in ("required", "incrementals", "defaults", "section_ref", "positional"):
-				self.type_handler[t][x] = tuple(list_parser(self.type_handler[t].get(x,"")))
+				self.type_handler[t][x] = tuple(map(lower, list_parser(self.type_handler[t].get(x,""))))
 				
 			conversions = {}
 			for x,f in (("list", list_parser), ("str", str_parser), ("bool", bool_parser)):
 				if x in self.type_handler[t]:
 					for y in list_parser(self.type_handler[t][x]):
-						conversions[y] = f
+						conversions[y.lower()] = f
 					del self.type_handler[t][x]
 
 			if "positional" in self.type_handler[t]:
@@ -53,7 +54,7 @@ class config:
 #				except errors.QuoteInterpretationError, qe:
 #					qe.var = v
 #					raise qe
-			setattr(self, t, LazyValDict(pre_curry(self.sections, t), self.instantiate_section))
+			setattr(self, t, LazyValDict(curry(self.sections, t), self.instantiate_section))
 
 	def collapse_config(self, section, verify=True):
 		"""collapse a section's config down to a dict for use in instantiating that section.
@@ -281,7 +282,4 @@ def str_parser(s):
 		return ''
 	
 def bool_parser(s):
-	s = str_parser(s).lower()
-	if s in ("", "no", "false", "0"):
-		return False
-	return True
+	return bool(str_parser(s))
