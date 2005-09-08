@@ -121,7 +121,7 @@ unpack() {
 				bzip2 -dc "${srcdir}${x}" | tar ${tarvars} -xf -
 				assert "$myfail"
 				;;
-			ZIP|zip)
+			ZIP|zip|jar)
 				unzip -qo "${srcdir}${x}" || die "$myfail"
 				;;
 			gz|Z|z)
