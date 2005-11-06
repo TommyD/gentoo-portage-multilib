@@ -1,8 +1,8 @@
 # portage_checksum.py -- core Portage functionality
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header$
-cvs_id_string="$Id$"[5:-2]
+# $Id: /var/cvsroot/gentoo-src/portage/pym/portage_checksum.py,v 1.10.2.2 2005/08/10 05:42:03 ferringb Exp $
+
 
 from portage_const import PRIVATE_PATH,PRELINK_BINARY
 import os
@@ -11,12 +11,15 @@ import stat
 import portage_exec
 import portage_util
 import portage_locks
+import commands
 import sha
 
 prelink_capable = False
 if os.path.exists(PRELINK_BINARY):
-	if portage_exec.spawn(PRELINK_BINARY+" --version",fd_pipes={}) == 0:
+	results = commands.getstatusoutput(PRELINK_BINARY+" --version > /dev/null 2>&1")
+	if (results[0] >> 8) == 0:
 		prelink_capable=1
+	del results
 
 def perform_md5(x, calc_prelink=0):
 	return perform_checksum(x, md5hash, calc_prelink)[0]
@@ -108,24 +111,18 @@ def perform_checksum(filename, hash_function=md5hash, calc_prelink=0):
 	
 	if calc_prelink and prelink_capable:
 		mylock = portage_locks.lockfile(prelink_tmpfile, wantnewlockfile=1)
-		# Create non-prelinked temporary file to md5sum.
-		# Raw data is returned on stdout, errors on stderr.
-		# Non-prelinks are just returned.
-		try:
-			shutil.copy2(filename,prelink_tmpfile)
-		except SystemExit, e:
-			raise
-		except Exception,e:
-			portage_util.writemsg("!!! Unable to copy file '"+str(filename)+"'.\n")
-			portage_util.writemsg("!!! "+str(e)+"\n")
-			sys.exit(1)
-		portage_exec.spawn(PRELINK_BINARY+" --undo "+prelink_tmpfile,fd_pipes={})
-		myfilename=prelink_tmpfile
+		# Create non-prelinked temporary file to checksum.
+		# Files rejected by prelink are summed in place.
+		retval=portage_exec.spawn([PRELINK_BINARY,"--undo","-o",prelink_tmpfile,filename],fd_pipes={})
+		if retval==0:
+			#portage_util.writemsg(">>> prelink checksum '"+str(filename)+"'.\n")
+			myfilename=prelink_tmpfile
 
 	myhash, mysize = hash_function(myfilename)
 
 	if calc_prelink and prelink_capable:
-		os.unlink(prelink_tmpfile)
+		if os.path.exists(prelink_tmpfile):
+			os.unlink(prelink_tmpfile)
 		portage_locks.unlockfile(mylock)
 
 	return (myhash,mysize)

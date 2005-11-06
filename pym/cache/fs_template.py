@@ -1,21 +1,29 @@
+# Copyright: 2005 Gentoo Foundation
+# Author(s): Brian Harring (ferringb@gentoo.org)
+# License: GPL2
+# $Id: fs_template.py 1911 2005-08-25 03:44:21Z ferringb $
+
 import os
 import template, cache_errors
+from portage_data import portage_gid
 
 class FsBased(template.database):
 	"""template wrapping fs needed options, and providing _ensure_access as a way to 
 	attempt to ensure files have the specified owners/perms"""
 
-	def __init__(self, label, auxdbkeys, basepath=None, gid=-1, perms=0664, **config):
-		"""throws InitializationError if needs args aren't specified"""
-		if not gid:	
-			raise cache_errors.InitializationError(self.__class__, "must specify gid!")
-		if not basepath:
-			raise cache_errors.InitializationError(self.__class__, "must specify basepath!")
+	def __init__(self, *args, **config):
+		"""throws InitializationError if needs args aren't specified
+		gid and perms aren't listed do to an oddity python currying mechanism
+		gid=portage_gid
+		perms=0665"""
 
-		self._gid = gid
-		self._base = basepath
-		self._perms = perms
-		super(FsBased, self).__init__(label, auxdbkeys, **config)
+		for x,y in (("gid",portage_gid),("perms",0664)):
+			if x in config:
+				setattr(self, "_"+x, config[x])
+				del config[x]
+			else:
+				setattr(self, "_"+x, y)
+		super(FsBased, self).__init__(*args, **config)
 
 		if self.label.startswith(os.path.sep):
 			# normpath.
@@ -36,12 +44,12 @@ class FsBased(template.database):
 		return True
 
 	def _ensure_dirs(self, path=None):
-		"""with path!=None, ensure beyond self._base.  otherwise, ensure self._base"""
+		"""with path!=None, ensure beyond self.location.  otherwise, ensure self.location"""
 		if path:
 			path = os.path.dirname(path)
-			base = self._base
+			base = self.location
 		else:
-			path = self._base
+			path = self.location
 			base='/'
 
 		for dir in path.lstrip(os.path.sep).rstrip(os.path.sep).split(os.path.sep):

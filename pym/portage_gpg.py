@@ -1,23 +1,21 @@
 # portage_gpg.py -- core Portage functionality
 # Copyright 2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header$
-cvs_id_string="$Id$"[5:-2]
+# $Id: /var/cvsroot/gentoo-src/portage/pym/portage_gpg.py,v 1.6.2.1 2005/01/16 02:35:33 carpaski Exp $
+
 
 import os
 import copy
 import types
+import commands
 import portage_exception
 import portage_checksum
-import portage_exec
 
 GPG_BINARY       = "/usr/bin/gpg"
-GPG_OPTIONS      = ["--lock-never","--no-random-seed-file",
-                    "--no-greeting", "--no-sig-cache"]
-GPG_VERIFY_FLAGS = ["--verify"]
-
-GPG_KEYDIR       = "--homedir" 
-GPG_KEYRING      = "--keyring"
+GPG_OPTIONS      = " --lock-never --no-random-seed-file --no-greeting --no-sig-cache "
+GPG_VERIFY_FLAGS = " --verify "
+GPG_KEYDIR       = " --homedir '%s' "
+GPG_KEYRING      = " --keyring '%s' "
 
 UNTRUSTED = 0
 EXISTS    = UNTRUSTED + 1
@@ -105,17 +103,17 @@ class FileChecker:
 		if not os.path.isfile(filename):
 			raise portage_exception.CommandNotFound, filename
 
-		command = [GPG_BINARY] + GPG_VERIFY_FLAGS + GPG_OPTIONS
+		command = GPG_BINARY + GPG_VERIFY_FLAGS + GPG_OPTIONS
 		if self.keydir:
-			command += [GPG_KEYDIR]  + [self.keydir]
+			command += GPG_KEYDIR % (self.keydir)
 		if self.keyring:
-			command += [GPG_KEYRING] + [self.keyring]
+			command += GPG_KEYRING % (self.keyring)
 		
 		if sigfile:
-			command += [sigfile]
-		command += [filename]
+			command += " '"+sigfile+"'"
+		command += " '"+filename+"'"
 	
-		result,output = portage_exec.spawn_get_output(command,raw_exit_code=True,collect_fds=[1,2])
+		result,output = commands.getstatusoutput(command)
 		
 		signal = result & 0xff
 		result = (result >> 8)
@@ -124,10 +122,6 @@ class FileChecker:
 			raise SignalCaught, "Signal: %d" % (signal)
 	
 		trustLevel     = UNTRUSTED
-
-		if len(output) == 0:
-			raise portage_exception.UnknownCondition, "GPG generated no output: exited with %d" % (result)
-
 		if result == 0:
 			trustLevel   = TRUSTED
 			#if output.find("WARNING") != -1:

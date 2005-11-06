@@ -1,3 +1,8 @@
+# Copyright: 2005 Gentoo Foundation
+# Author(s): Nicholas Carpaski (carpaski@gentoo.org), Brian Harring (ferringb@gentoo.org)
+# License: GPL2
+# $Id:$
+
 from portage_util import writemsg
 import portage_file
 import os, sys
@@ -7,7 +12,7 @@ class cache:
 	"""
 	Maintains the cache information about eclasses used in ebuild.
 	"""
-	def __init__(self,porttree_root,overlays=[]):
+	def __init__(self, porttree_root, overlays=[]):
 		self.porttree_root = porttree_root
 
 		self.eclasses = {} # {"Name": ("location","_mtime_")}
@@ -47,12 +52,10 @@ class cache:
 				self.eclasses[ys] = (x, long(mtime))
 	
 	def is_eclass_data_valid(self, ec_dict):
-#		print "checking", ec_dict
 		if not isinstance(ec_dict, dict):
 			return False
 		for eclass, tup in ec_dict.iteritems():
 			if eclass not in self.eclasses or tuple(tup) != self.eclasses[eclass]:
-#				print "failed"
 				return False
 
 		return True

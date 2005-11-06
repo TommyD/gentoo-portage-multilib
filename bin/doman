@@ -1,15 +1,12 @@
 #!/bin/bash
 # Copyright 1999-2005 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header$
+# $Id: /var/cvsroot/gentoo-src/portage/bin/doman,v 1.13.2.2 2005/07/29 05:55:34 vapier Exp $
 
 if [ $# -lt 1 ] ; then
 	echo "$0: at least one argument needed" 1>&2
 	exit 1
 fi
-
-PORTAGE_COMPRESS=${PORTAGE_COMPRESS:-gzip}
-PORTAGE_COMPRESS_FLAGS=${PORTAGE_COMPRESS_FLAGS:--9}
 
 BASE="/usr/share"
 i18n=""
@@ -25,17 +22,14 @@ for x in "$@" ; do
 
 	suffix=${x##*.}
 
-	case ${suffix} in
-		gz|bz2|Z)
-			compressed=${suffix}
-			realname=${x%.*}
-			suffix=${realname##*.}
-			;;
-		*)
-			realname=${x}
-			compressed=""
-			;;
-	esac
+	if [ "$suffix" == "gz" ] ; then
+		compressed="gz"
+		realname="${x%.*}"
+		suffix="${realname##*.}"
+	else
+		realname="$x"
+		compressed=""
+	fi
 
 	mandir=${i18n}man${suffix:0:1}
 
@@ -48,8 +42,7 @@ for x in "$@" ; do
 			install -m0644 "${x}" "${D}${BASE}/man/${mandir}"
 
 			if [ -z "${compressed}" ] ; then
-				"${PORTAGE_COMPRESS}" ${PORTAGE_COMPRESS_FLAGS} -f \
-					"${D}${BASE}/man/${mandir}/${x##*/}"
+				gzip -f -9 "${D}${BASE}/man/${mandir}/${x##*/}"
 			fi
 		else
 			echo "doman: ${x} does not exist" 1>&2

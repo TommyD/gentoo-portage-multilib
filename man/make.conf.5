@@ -28,22 +28,30 @@ set this to '~ppc'.  This is an incremental variable.  Only define a
 ~arch.
 .br 
 Defaults to the value of $ARCH.
-.TP 
+.TP
+\fBAUTOCLEAN\fR = \fI["yes" | "no"]\fR
+Automatically cleans the system by removing outdated packages which will not
+remove functionalities or prevent your system from working. On major ABI
+changes this may need to be set to off to ensure that the system can be
+rebuilt using the new libs before the old ones are removed. Downgrading with
+this option turned off may result in missing symlinks and an inoperable system.
+.br 
+Defaults to yes.
+.TP
 \fBBUILD_PREFIX\fR = \fI[path]\fR
 Defines the location of the package working directory. 
 .br 
 Defaults to ${PORTAGE_TMPDIR}/portage
-.TP 
-\fBCBUILD\fR
+.TP
+.B CBUILD
 This variable is passed by the \fIebuild scripts\fR to the \fIconfigure\fR
-as \fI\-\-build=${CBUILD}\fR only if it is defined. Presently HPPA is the
-only arch to require this.
-.TP 
+as \fI\-\-build=${CBUILD}\fR only if it is defined.
+.TP
 \fBCCACHE_SIZE\fR = \fI"size"\fR
 This controls the space use limitations for ccache.  The default is 2 gigabytes 
 ('2G').  Sizes are specified with 'G', 'M', or 'K'.
-.TP 
-\fBCFLAGS CXXFLAGS\fR 
+.TP
+.B CFLAGS CXXFLAGS
 Use these variables to set the desired optimization/CPU instruction settings
 for applications that you compile.  Nearly all ebuild files will take advantage
 of your custom settings, resulting in a Gentoo Linux that is fully customized
@@ -132,15 +140,15 @@ Autogenerate a digest for packages.
 .TP
 .B distcc
 Enable portage support for the distcc package.
-.TP 
+.TP
 .B distlocks
 Portage uses lockfiles to ensure competing instances don't clobber
 each other's files. This feature is enabled by default but may cause
 heartache on less intelligent remote filesystems like NFSv2 and some
-strangely configured Samba server (oplocks off, NFS re\-export). A tool
+strangely configured Samba server (oplocks off, NFS re-export). A tool
 /usr/lib/portage/bin/clean_locks exists to help handle lock issues
 when a problem arises (normally due to a crash or disconnect).
-.TP 
+.TP
 .B fixpackages
 Runs the script that will fix the dependencies in all binary packages.  This is 
 run whenever packages are moved around in the portage tree.  Please note that this 
@@ -149,10 +157,10 @@ can take a lot of time.
 .B getbinpkg
 Force emerges to always try to fetch files from the \fIPORTAGE_BINHOST\fR.  See 
 \fBmake.conf\fR(5) for more information.
-.TP 
+.TP
 .B gpg
 Check the signatures of Manifests and make sure they are correct.
-.TP 
+.TP
 .B keeptemp
 Do not delete the ${T} directory after the merge process.
 .TP
@@ -186,11 +194,11 @@ Disables xterm titlebar updates (which contains status info).
 .TP
 .B sandbox
 Enable sandbox\-ing when running \fBemerge\fR(1) and \fBebuild(1)\fR.
-.TP 
+.TP
 .B severe
 When checking Manifests, only accept ones that have been signed by a
 key which you trust.
-.TP 
+.TP
 .B sfperms
 Stands for Smart Filesystem Permissions.  Before merging packages to the 
 live filesystem, automatically search for and set permissions on setuid 
@@ -248,7 +256,7 @@ For more information, see \fBmake\fR(1).
 Defines if color should be disabled by default.
 .br 
 Defaults to false.
-.TP 
+.TP
 \fBPKGDIR\fR = \fI[path]\fR
 Defines the location where created .tbz2 binary packages will be stored.
 .br 
@@ -294,18 +302,21 @@ This variable contains the command used for resuming package\-sources that
 have been partially downloaded by the \fBFETCHCOMMAND\fR.
 .TP
 \fBROOT\fR = \fI[path]\fR
-Use \fBROOT\fR to specify the target root filesystem to be used for
-merging packages or ebuilds.  Typically, you should set this setting
-in the environment rather than in \fI/etc/make.conf\fR itself.  It's
-typically used for creating new build images.
+Use \fBROOT\fR to specify the target root filesystem to be used for merging 
+packages or ebuilds.  All \fBRDEPEND\fR and \fBPDEPEND\fR will be installed 
+into \fBROOT\fR while all \fBDEPEND\fR will be still be installed into /.  
+Typically, you should set this setting in the environment rather than in 
+\fI/etc/make.conf\fR itself.  It's commonly used for creating new build 
+images.
 .br 
 Defaults to /.
 .TP
 \fBRSYNC_EXCLUDEFROM\fR = \fI"/etc/portage/rsync_excludes"\fR
-This is a file that portage will pass to rsync when it updates the portage tree.  
-Specific chucks of the tree may be excluded from the sync process.  This may cause 
-dependency failures if you are not careful.  The file format is pattern per line, 
-blanks and ';' or '#' lines are comments.  See \fBrsync\fR(1) for more details.
+This is a file that portage will pass to rsync when it updates the portage 
+tree.  Specific chucks of the tree may be excluded from the sync process.  
+This may cause dependency failures if you are not careful.  The file format 
+is pattern per line, blanks and ';' or '#' lines are comments.  See 
+\fBrsync\fR(1) for more details.
 .TP
 \fBRSYNC_RETRIES\fR = \fI[NUMBER]\fR
 The number of times rsync should retry on failed connections before
@@ -352,15 +363,12 @@ Defaults to "env:pkg:conf:auto:defaults".
 
 .SH "REPORTING BUGS"
 Please report bugs via http://bugs.gentoo.org/
-.SH "SEE ALSO"
-.BR emerge (1),
-.BR portage (5),
-.BR ebuild (1),
-.BR ebuild (5)
-.TP
-The \fI/usr/sbin/ebuild.sh\fR script. 
-.TP
-The helper apps in \fI/usr/lib/portage/bin\fR.
+.SH "AUTHORS"
+.nf
+Daniel Robbins <drobbins@gentoo.org>
+Nicholas Jones <carpaski@gentoo.org>
+Mike Frysinger <vapier@gentoo.org>
+.fi
 .SH "FILES"
 .TP
 \fB/etc/make.conf\fR 
@@ -374,9 +382,12 @@ Contains a list of all global USE flags.
 .TP
 \fB/usr/portage/profiles/use.local.desc\fR
 Contains a list of all local USE variables.
-.SH "AUTHORS"
-Daniel Robbins <drobbins@gentoo.org>
-.br 
-Nicholas Jones <carpaski@gentoo.org>
-.br 
-Mike Frysinger <vapier@gentoo.org>
+.SH "SEE ALSO"
+.BR emerge (1),
+.BR portage (5),
+.BR ebuild (1),
+.BR ebuild (5)
+.TP
+The \fI/usr/sbin/ebuild.sh\fR script. 
+.TP
+The helper apps in \fI/usr/lib/portage/bin\fR.

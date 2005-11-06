@@ -1,7 +1,7 @@
 #!/bin/bash
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header$
+# $Id: /var/cvsroot/gentoo-src/portage/bin/env-update.sh,v 1.2 2004/10/04 13:56:50 vapier Exp $
 
 ############################################
 ############################################
@@ -217,3 +217,5 @@ cat << EOF > ${CSHENV}
 
 $(set | grep '^my_envd_' | sed -e 's:^my_envd_\([[:alpha:]_][[:alnum:]_]*\)=:setenv \1 :')
 EOF
+
+[[ ${ROOT} == / ]] && /sbin/depscan.sh

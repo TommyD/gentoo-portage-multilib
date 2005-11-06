@@ -1,8 +1,8 @@
 # portage_contents.py -- (Persistent) Contents File Management
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header$
-cvs_id_string="$Id$"[5:-2]
+# $Id: /var/cvsroot/gentoo-src/portage/pym/portage_contents.py,v 1.3.2.1 2005/01/16 02:35:33 carpaski Exp $
+
 
 import os,string,types,sys,copy
 import portage_exception

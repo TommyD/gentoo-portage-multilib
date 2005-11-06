@@ -16,7 +16,7 @@ Here's a simple example ebuild:
 .nf
 # Copyright 1999\-2005 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header:
+# $Header: $
 
 inherit some_eclass another_eclass
 
@@ -111,8 +111,7 @@ whatever you like.
 \fBD\fR = \fI"${PORTAGE_TMPDIR}/portage/${PF}/image"\fR
 Contains the path to the temporary \fIinstall directory\fR.  Every write 
 operation that does not involve the helper tools and functions (found below) 
-should be prefixed with ${D}.  Do not modify this variable.  This will not be 
-available inside of the pkg_* functions.
+should be prefixed with ${D}.  Do not modify this variable.
 .TP
 \fBDESCRIPTION\fR = \fI"A happy little package"\fR
 Should contain a short description of the package.
@@ -304,7 +303,7 @@ the program has been merged.
 .br
 You may use the same syntax to vary dependencies as seen above in \fBDEPEND\fR.
 .TP
-\fBRESTRICT\fR = \fI[strip,mirror,fetch,userpriv]\fR
+\fBRESTRICT\fR = \fI[fetch,mirror,nostrip,sandbox,test,userpriv]\fR
 This should be a space delimited list of portage features to restrict.
 .PD 0
 .RS
@@ -318,8 +317,14 @@ files in \fBSRC_URI\fR will not be downloaded from the \fBGENTOO_MIRRORS\fR.
 .I primaryuri
 fetch from URL's in \fBSRC_URI\fR before \fBGENTOO_MIRRORS\fR.
 .TP
-.I strip
+.I nostrip
 final binaries/libraries will not be stripped of debug symbols.
+.TP
+.I sandbox
+disable sandbox (do not use without very good reason).
+.TP
+.I test
+do not run src_test even if user has \fBFEATURES\fR=test.
 .TP
 .I userpriv
 Disables userpriv for specific packages.
@@ -354,7 +359,7 @@ end the function with a call to \fBdie\fR.
 This function can be used if the package needs specific setup actions or
 checks to be preformed before anything else.
 .br
-Initial working directory of ${PORTAGE_TMPDIR}.
+Initial working directory of $PORTAGE_TMPDIR.
 .TP
 .B src_unpack
 This function is used to unpack all the sources in \fIA\fR to \fIWORKDIR\fR.
@@ -424,41 +429,41 @@ fi
 .fi
 .RE
 .TP
-\fBuse_with\fR \fI<USE item>\fR \fI[configure name]\fR \fI[configure opt]\fR
-Useful for creating custom options to pass to a configure script. If \fIUSE 
-item\fR is in the \fBUSE\fR variable and a \fIconfigure opt\fR is specified, 
-then the string \fI--with-[configure name]=[configure opt]\fR will be echoed.  
-If \fIconfigure opt\fR is not specified, then just \fI--with-[configure 
-name]\fR will be echoed.  If \fIUSE item\fR is not in the \fBUSE\fR variable, 
-then the string \fI--without-[configure name]\fR will be echoed. If 
-\fIconfigure name\fR is not specified, then \fIUSE item\fR will be used in 
-its place.
+\fBuse_with\fR \fI<USE item>\fR \fI[configure option]\fR
+Useful for creating custom options to pass to a configure script. If
+\fIUSE item\fR is in the \fBUSE\fR variable, then the string
+\fI--with-[configure option]\fR will be echoed.  If \fIUSE item\fR is
+not in the \fBUSE\fR variable, then the string
+\fI--without-[configure option]\fR will be echoed.  If
+\fIconfigure option\fR is not specified, then \fIUSE item\fR will be
+used in its place.
 .RS
 .TP
-.I Examples:
+.I Example:
 .nf
-USE="opengl"
-myconf=$(use_with opengl)
-(myconf now has the value "--with-opengl")
-
 USE="jpeg"
-myconf=$(use_with jpeg libjpeg)
+myconf="$(use_with jpeg libjpeg)"
 (myconf now has the value "--with-libjpeg")
 
 USE=""
-myconf=$(use_with jpeg libjpeg)
+myconf="$(use_with jpeg libjpeg)"
 (myconf now has the value "--without-libjpeg")
 
-USE="sdl"
-myconf=$(use_with sdl SDL all-plugins)
-(myconf now has the value "--with-SDL=all-plugins")
+USE="opengl"
+myconf="$(use_with opengl")
+(myconf now has the value "--with-opengl")
 .fi
 .RE
 .TP
-\fBuse_enable\fR \fI<USE item>\fR \fI[configure name]\fR \fI[configure opt]\fR
-Same as \fBuse_with\fR above, except that the configure options are 
-\fI--enable-\fR instead of \fI--with-\fR and \fI--disable-\fR instead of 
-\fI--without-\fR.
+\fBuse_enable\fR \fI<USE item>\fR \fI[configure option]\fR
+Useful for creating custom options to pass to a configure script. If
+\fIUSE item\fR is in the \fBUSE\fR variable, then the string
+\fI--enable-[configure option]\fR will be echoed.  If \fIUSE item\fR is
+not in the \fBUSE\fR variable, then the string
+\fI--disable-[configure option]\fR will be echoed. If \fIconfigure option\fR
+is not specified, then \fIUSE item\fR will be used in its place.
+.br
+See \fBuse_with\fR for an example.
 .TP
 \fBhas\fR \fI<item>\fR \fI<item list>\fR
 If \fIitem\fR is in \fIitem list\fR, then \fIitem\fR is echoed and \fBhas\fR
@@ -700,9 +705,11 @@ the \fBdolib\fR functions.  The default is \fI-m0644\fR.
 .TP
 \fBdoman\fR \fI[\-i18n=<locale>]\fR \fI<man-page> [list of more man\-pages]\fR
 Installs manual\-pages into /usr/share/man/man[0\-9n] depending on the
-manual file ending.  The files are compressed if they are not already.  You 
-can specify locale-specific manpages with the \fI\-i18n\fR option.  Then the
-man-page will be installed into /usr/share/man/\fI<locale>\fR/man[0\-9n].
+manual file ending.  The files are gzipped if they are not already.  You can 
+specify locale-specific manpages with the \fI\-i18n\fR option.  Then the 
+man-page will be installed into /usr/share/man/\fI<locale>\fR/man[0\-9n].  
+Creates all necessary dirs.
+
 .PD 0
 .TP
 \fBdohard\fR \fI<filename> <linkname>\fR
@@ -713,9 +720,9 @@ Performs the ln command as either a hard link or symlink.
 .TP
 \fBdohtml\fR \fI [\-a filetypes] [\-r] [\-x list\-of\-dirs\-to\-ignore] [list\-of\-files\-and\-dirs]\fR
 Installs the files in the list of files (space\-separated list) into
-/usr/share/doc/${PF}/html provided the file ends in .html, .png, .js, .jpg,
+/usr/share/doc/${PF}/html provided the file ends in .html, .png, .js, .jpg, 
 or .css.  Setting \fI\-a\fR limits what types of files will be included,
-\fI\-A\fR appends to the default list, setting \fI\-x\fR sets which dirs to
+\fI\-A\fR appends to the default list, setting \fI\-x\fR sets which dirs to 
 exclude (CVS excluded by default), \fI\-r\fR sets recursive.
 .TP
 \fBdoinfo\fR \fI<info-file> [list of more info\-files]\fR
@@ -804,21 +811,6 @@ All these functions act like the do* functions, but they only work with one
 file and the file is installed as \fI[new filename]\fR.
 .SH "REPORTING BUGS"
 Please report bugs via http://bugs.gentoo.org/
-.SH "SEE ALSO"
-.BR ebuild (1),
-.BR make.conf (5)
-.TP
-The \fI/usr/sbin/ebuild.sh\fR script.
-.TP
-The helper apps in \fI/usr/lib/portage/bin\fR.
-.SH "FILES"
-.TP
-\fB/etc/make.conf\fR 
-Contains variables for the build\-process and overwrites those in make.defaults.
-.TP
-\fB/etc/make.globals\fR
-Contains the default variables for the build\-process, you should edit
-\fI/etc/make.conf\fR instead.
 .SH "AUTHORS"
 .nf
 Achim Gottinger <achim@gentoo.org>
@@ -826,3 +818,18 @@ Mark Guertin <gerk@gentoo.org>
 Nicholas Jones <carpaski@gentoo.org>
 Mike Frysinger <vapier@gentoo.org>
 .fi
+.SH "FILES"
+.TP
+The \fI/usr/sbin/ebuild.sh\fR script.
+.TP
+The helper apps in \fI/usr/lib/portage/bin\fR.
+.TP
+\fB/etc/make.conf\fR 
+Contains variables for the build\-process and overwrites those in make.defaults.
+.TP
+\fB/etc/make.globals\fR
+Contains the default variables for the build\-process, you should edit
+\fI/etc/make.conf\fR instead.
+.SH "SEE ALSO"
+.BR ebuild (1),
+.BR make.conf (5)

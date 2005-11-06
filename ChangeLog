@@ -1,57 +1,108 @@
 # ChangeLog for Portage; the Gentoo Linux ports system 
 # Copyright 1999-2005 Gentoo Foundation; Distributed under the GPL v2
-# $Id$
+# $Id: ChangeLog,v 1.796.2.146 2005/08/20 17:24:30 jstubbs Exp $
 
   MAJOR CHANGES in 2.0.51:
     1. /var/cache/edb/virtuals is no longer used at all. It's calculated now.
     2. /var/cache/edb/world is now /var/lib/portage/world.
     3. /etc/portage/profile/virtuals is _USER_ configs only.
 
-  02 Oct 2005; Mike Frysinger <vapier@gentoo.org> bin/prepall:
-  Touchup the library checks to handle ABI dirs, make sure .a/.la files aren't
-  installed into /lib* dirs, make sure .a/.la files are chmod a-x, and make 
-  sure all shared libraries are built with SONAME/NEEDED ELF markings.
+  01 Oct 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py:
+  selinux_enabled tweak, instead of relying on exception thrown on import,
+  check the actual enabled value (forward compatibility).
+
+  01 Oct 2005; Brian Harring <ferringb@gentoo.org> bin/repoman:
+  Touch ups to file.name check.
+
+  01 Oct 2005; Brian Harring <ferringb@gentoo.org> bin/ebuild, 
+  pym/portage.py:
+  Fixed ebuild some-ebuild setup unpack so it functions like
+  ebuild some-ebuild unpack does (execute just unpack due to 
+  env issues, see comments in ebuild clarifying if curious).
+
+  28 Sep 2005; Brian Harring <ferringb@gentoo.org> bin/repoman:
+  Fixup of the file.name check so it doesn't catch CVS dirs.
+
+  27 Sep 2005; Brian Harring <ferringb@gentoo.org> bin/ebuild.sh:
+  No more portageq in the global scope.
+  Instant die.
+
+  27 Sep 2005; Brian Harring <ferringb@gentoo.org> bin/ebuild.sh, 
+  pym/portage.py:
+  Tweak to make EAPI work for existing vdb entries.
+
+  24 Sep 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py, 
+  bin/emerge:
+  Final emerge metadata/cache cleanups; emerge --metadata no longer
+  requires root (we run searches as non root, which can update the cache,
+  so emerge --metadata as root is daft), and silenced auxdb exceptions
+  when doing metadata transfers- preparation for when the default backend
+  is changed.  If that weren't in, user would see > 20,0000 lines of 
+  pointless cruft output.
+
+  24 Sep 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py,
+  +pym/portage_db_metadata.py, +pym/portage_db_flat_hash.py, 
+  pym/portage_db_flat.py, pym/portage_const.py:
+  EAPI awareness, and support for flat_hash metadata/cache.
+  Later autodetects if the rsync cache is flat_hash, or flat_list, 
+  and interprets accordingly.
+  
+  Flat_hash is intended to make it such that rsync cache breakages 
+  for older portage versions no longer occur; the container format 
+  can hold pretty much anything across EAPI versions.
+  Additionally... EAPI is intended such that additions to the ebuild 
+  env/helpers don't puke if you're running to old of a portage version; 
+  it allows us to 'version' the ebuild env/funcs, and do masking dependant
+  on that versioning.
+
+  23 Sep 2005; Brian Harring <ferringb@gentoo.org> bin/emerge:
+  cleanse_cache cleanups, should kill off all remaining issues 
+  in bug #100444 .
+
+  23 Sep 2005; Brian Harring <ferringb@gentoo.org> bin/repoman:
+  bug #106544, glep31 enforcement checks.
+
+  20 Sep 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py:
+  Cleanup after python, remove module from sys.modules that was a failed import 
+  for selinux code- identified by Tudor Alexandru Dragos in bug #106363 .
 
   18 Sep 2005; Mike Frysinger <vapier@gentoo.org> bin/etc-update:
   Make sure diff works before checking config files #48184.
 
-  23 Aug 2005; Marius Mauch <genone@gentoo.org> *:
-  Moved the repository to SVN.
+  08 Sep 2005; Brian Harring <ferringb@gentoo.org> bin/ebuild.sh: Fixed 
+  unpack so that it actually works now.  ${tarvars} placement was a bit 
+  wrong, which is odd considering it shouldn't have changed.
 
-  15 Aug 2005; Marius Mauch <genone@gentoo.org> pym/portage.py:
-  Fix logic error with sandbox.
+  08 Sep 2005; Jason Stubbs <jstubbs@gentoo.org> bin/emerge: Only warn on
+  removal of system virtuals if there is only one satisfying package.
+
+  21 Aug 2005; Jason Stubbs <jstubbs@gentoo.org> bin/ebuild.sh: Skip protecting
+  ownership of symlinks. Patch by truedfx #94199
 
   14 Aug 2005; Mike Frysinger <vapier@gentoo.org> bin/prepstrip:
   Don't try to strip if `file` failed #102499 by Daniel Drake.
-
-  13 Aug 2005; Brian Harring <ferringb@gentoo.org> bin/ebuild-default-functions.sh, 
-  bin/ebuild-functions.sh: merging spankys original changes (which I stupidly stomped)
-  forward.
-
-  11 Aug 2005; Marius Mauch <genone@gentoo.org> pym/elog_modules/mod_mail.py:
-  Fixed missing portage_exception import and type errors in the exception
-  handler.
 
   10 Aug 2005; Mike Frysinger <vapier@gentoo.org> bin/quickpkg:
   Call gawk instead of awk so non-GNU systems work #102050 by Stephen Bennett.
   Also clean up the script a bit.
 
+  08 Aug 2005; Brian Harring <ferringb@gentoo.org> bin/ebuild.sh:
+  fixed bug #101035 , basically checking pipestatus during unpack for 
+  piped unpacks.
+
   07 Aug 2005; Mike Frysinger <vapier@gentoo.org> bin/ebuild.sh:
   Add support for unpacking rar archives.
 
-  29 Jul 2005; Mike Frysinger <vapier@gentoo.org> bin/prepallman:
-  Rather than use a hardcoded list and bash expansion, let find locate man
-  directories for us.  This fixes the issues of running prepman on symlinks 
-  to paths outside of $D #98017 by Andrej Filipcic.
+  04 Aug 2005; Brian Harring <ferringb@gentoo.org> bin/emerge: 
+  bug 64585, sanity check on cache cleansing.
 
-  29 Jul 2005; Mike Frysinger <vapier@gentoo.org> bin/fowners bin/fperms:
-  Rewrite by Aron Griffis to use bash code so we don't have to parse arguments 
-  ourselves #97324.
+  04 Aug 2005: Brian Harring <ferringb@gentoo.org> bin/emerge:
+  It's not perfect, but a fix for bug #96410.  A better fix would be 
+  to get the categories limiter out of settings...
 
-  25 Jul 2005; Mike Frysinger <vapier@gentoo.org> 
-  bin/ebuild-default-functions.sh:
-  Fix IMAGE / D confusion in the pkg_preinst function.  Now ebuilds do not
-  have to care/screw around with IMAGE.
+  29 Jul 2005; Mike Frysinger <vapier@gentoo.org> bin/doman:
+  Back port from portage HEAD:
+  Remove old unused options (-x11/-gnome/-kde/etc...) and cleanup.
 
   04 Jul 2005; Mike Frysinger <vapier@gentoo.org>
   bin/ebuild-default-functions.sh:
@@ -65,776 +116,734 @@
   Report exit status if gpg failed to return with 0.
 
   14 Jun 2005; Marius Mauch <genone@gentoo.org> man/portage.5:
-  Remove references to non-existant $PORTDIR/profiles/use.mask.
+  Remove references to non-existant $PORTDIR/profiles/use.mask and revert
+  the "fix" for bug 87173.
 
   13 Jun 2005; Mike Frysinger <vapier@gentoo.org> bin/ebuild.sh:
   Use the %p output modifier instead of %F so we don't have to update the
   output by removing all the $D references.
 
-  06 Jun 2005; Jason Stubbs <jstubbs@gentoo.org> bin/dispatch-conf
-  pym/dispatch_conf.py: Brought forward updates in stable.
+  29 May 2005; Jason Stubbs <jstubbs@gentoo.org> bin/ebuild.sh: Made
+  /etc/profile.env sourced regardless of USERLAND. Made copying of config.sub
+  and config.guess --force'd as they are sometimes u-w. Replaced a if/else of
+  chgrp root/wheel with chgrp 0.
 
-  29 May 2005; Mike Frysinger <vapier@gentoo.org>
-  bin/ebuild-default-functions.sh:
-  Add some banner messages to the compile / package steps.
+  29 May 2005; Jason Stubbs <jstubbs@gentoo.org> bin/emerge: Moved the system
+  package unmerge check after slots are checked and removed the countdown for
+  when --ask is specified. Added a chdir to the removal of old cache call so
+  that there are no errors due to userpriv and being in a non-portage-readable
+  directory.
 
-  29 May 2005; Mike Frysinger <vapier@gentoo.org> bin/prepall:
-  Add a QA check to see if PORTAGE_TMPDIR leaked into libtool scripts (*.la).
+  29 May 2005; Jason Stubbs <jstubbs@gentoo.org> bin/etc-update: Moved the
+  temporary work dir from /tmp/$$ to ${PORTAGE_TMPDIR}/$$.
 
-  24 May 2005; Mike Frysinger <vapier@gentoo.org>
-  bin/ebuild-default-functions.sh:
-  Allow src_install() to abort if scanelf locates questionable binaries and 
-  user has 'stricter' in their FEATURES.
+  29 May 2005; Jason Stubbs <jstubbs@gentoo.org> bin/prepinfo bin/prepman:
+  Reordered the -{min,max}depth and -name arguments to find so that warnings
+  are not produced.
 
-  23 May 2005; Mike Frysinger <vapier@gentoo.org> 
-  bin/ebuild-default-functions.sh:
-  Make sure the files passed to unpack actually exist.
+  29 May 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Added support
+  for FreeBSD's ldconfig. Fixed an incorrect chown of BUILD_PREFIX instead of
+  PORT_LOGDIR.
 
-  20 May 2005; Mike Frysinger <vapier@gentoo.org> bin/prepstrip
-  bin/ebuild-default-functions.sh:
-  Removed calls to readelf and replaced with scanelf.  Added more QA checks 
-  for various issues related to ELF binaries.
+  29 May 2005; Mike Frysinger <vapier@gentoo.org> bin/ebuild.sh bin/prepstrip:
+  Backport scanelf QA checks from HEAD.
 
-  11 May 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage_syntax.py:
-  Redesigned and rewrote DependSpec.
+  25 May 2005; Brian Harring <ferringb@gentoo.org> bin/ebuild.sh: Bug 93293, 
+  die + stat_perms issues.  Tweaked do_stat definition so it's one time instead 
+  of ongoing also.
 
-  06 May 2005; Brian Harring <ferringb@gentoo.org> pym/config.py: Dsd supplied 
-  a tweak to the quote escaping; should solve the issues transferring from 
-  python side to bash.
+  19 May 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Disabled
+  userpriv as a user globally instead of only in fetch.
 
-  05 May 2005; Jason Stubbs <jstubbs@gentoo.org> bin/test_target_graph.py
-  pym/portage_dep.py: Added some basic utility methods to StateGraph. Reworked
-  the test script into a functional equivalent of --pretend depclean.
+  19 May 2005; Jason Stubbs <jstubbs@gentoo.org> bin/emake: Made the
+  make command configurable but defaulted to "make".
 
-  05 May 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage_syntax.py: Added
-  with_key() method to Atom for creating a new atom of a different key with
-  the same constraints.
+  19 May 2005; Jason Stubbs <jstubbs@gentoo.org> bin/emerge: Fixed an
+  issue that would cause binary package reinstalls when IUSE disagreed.
 
-  05 May 2005; Jason Stubbs <jstubbs@gentoo.org> bin/test_target_graph.py
-  pym/portage_dep.py: Added transform_virtuals() function to just that. Added
-  testing code to show how it is used. Renamed TargetGraph to StateGraph.
+  19 May 2005; Jason Stubbs <jstubbs@gentoo.org> bin/repoman: Fixed an
+  issue where the portage version wasn't appended to the commit message
+  when specified on the command line. Fixed the detection of files above
+  the package level during Manifest generation.
 
-  05 May 2005; Jason Stubbs <jstubbs@gentoo.org> bin/test_target_graph.py
-  pym/portage_dep.py: Added full support for OR-based dependencies. Still
-  need to sort out virtuals and provide a public interface for TargetGraph.
+  19 May 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Renamed
+  the userpriv FEATURE to userfetch for the fetch() phase and fixed a bug
+  where privileges would try to be dropped even as non-root. Fixed a bug
+  where files were attempted to be fetched when only a manifest recreation
+  is requested.
 
-  04 May 2005; Mike Frysinger <vapier@gentoo.org> pym/ebuild.py:
-  Do not check the digests of files except when unpacking/fetching #29333.
+  17 May 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Stopped
+  attempting to fetch files when only the manifest is being generated.
 
-  04 May 2005; Mike Frysinger <vapier@gentoo.org> bin/prepall:
-  Remove old unused aclocal code #81419.  Don't chmod +x files that are already 
-  +x #81427.  Make sure all shared/static library pairs have proper linker 
-  scripts in /usr/lib when appropriate #81420.
+*portage-2.0.51.22 (15 May 2005): Maintainence Release
 
-  04 May 2005; Mike Frysinger <vapier@gentoo.org> 
-  bin/ebuild-default-functions.sh:
-  Allow people to pass files in $PWD to unpack via ./FILE syntax #24637.
+  15 May 2005; Jason Stubbs <jstubbs@gentoo.org> bin/dodoc: Removed the dodoc
+  new testing features from head's version of dodoc.
 
-  04 May 2005; Mike Frysinger <vapier@gentoo.org> bin/do{doc,info,man} 
-  bin/prepall{docs,info,man} bin/prep{info,man}:
-  Clean up and standardize the output.  Also allow for selecting of compression 
-  method via new env vars PORTAGE_COMPRESS / PORTAGE_COMPRESS_FLAGS #9870.
+  15 May 2005; Jason Stubbs <jstubbs@gentoo.org> bin/emerge: Made --newuse
+  take priority over --usepkg.
 
-  04 May 2005; Mike Frysinger <vapier@gentoo.org> bin/prepstrip bin/emake:
-  Only echo the strip banner once per dir and don't try to pass strip args 
-  to `false` if we aren't stripping.  Add a simple 'exec' to emake.
+  15 May 2005; Jason Stubbs <jstubbs@gentoo.org> bin/repoman: Added HOMEPAGE
+  to the list of vars that must be defined. Restored detection of the
+  digest.partial check. Made a commit message required.
 
-  04 May 2005; Mike Frysinger <vapier@gentoo.org> bin/{do,new}{env,conf,init}d:
-  Touch up and simplify.
+  15 May 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Fixed the
+  definition of PYTHONPATH in env_update(). Fixed the handling of quotes in
+  env_update().
 
-  04 May 2005; Mike Frysinger <vapier@gentoo.org> bin/fowners bin/fperms:
-  Add recursive (-R) support to fowners/fperms.
+  13 May 2005; Jason Stubbs <jstubbs@gentoo.org> cnf/dispatch-conf.conf
+  bin/dispatch-conf: Removed the pager config option and made if part of the
+  diff command option.
 
-  04 May 2005; Jason Stubbs <jstubbs@gentoo.org> bin/test_target_graph.py:
-  Just a script to help test and show the usage of TargetGraph.
+  13 May 2005; Jason Stubbs <jstubbs@gentoo.org> bin/dodoc: Backported vapier's
+  fix for 0-byte files causing a spurious "file not found" error.
 
-  04 May 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage_syntax.py
-  pym/portage_dep.py: Filled out most of TargetGraph. Still need to complete
-  support for OR deps. Added a bit some more support functions to Atom and
-  DependSpec.
+  13 May 2005; Jason Stubbs <jstubbs@gentoo.org> bin/emerge: Remove --verbose
+  and --tree from options when using --resume as the combination is currently
+  broken.
 
-  04 May 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage_syntax.py
-  pym/portage_dep.py: Added remove_preferentials() method to the DependSpec
-  class. Simplified PkgGlue to just being a container.
+  13 May 2005; Jason Stubbs <jstubbs@gentoo.org> bin/repoman: Added three new
+  checks on ebuild's PROVIDEs. Optimized out a lot of unnecessary aux_get()
+  calls. Modified to commit an unsigned Manifest before committing the signed
+  one to help ensure broken digests don't make it to rsync.
 
-  03 May 2005; Mike Frysinger <vapier@gentoo.org> bin/ebuild.sh 
-  portage.txt pym/ebuild.py bin/ebuild-default-functions.sh:
-  Change internal variable BUILDDIR to PORTAGE_BUILDDIR #68269.
+  13 May 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Added SCCS to
+  the list of directories to ignore when ignorecvs is set in cacheddir. Drop
+  priveleges during fetch when userpriv is set. Added message display when
+  changing permissions on ccache dirs.
 
-  03 May 2005; Mike Frysinger <vapier@gentoo.org> bin/dodoc bin/doinfo 
-  bin/newdoc bin/newman bin/prepallman bin/prepallinfo:
-  Clean up code a bit to make it smaller and nicer.
+  06 May 2005; Brian Harring <ferringb@gentoo.org> bin/ebuild: fix portage_util 
+  import on osx.
 
-  03 May 2005; Mike Frysinger <vapier@gentoo.org> bin/doman:
-  Remove old unused options (-x11/-gnome/-kde/etc...) and cleanup.
+  05 May 2005; Jason Stubbs <jstubbs@gentoo.org> bin/etc-update: Fixed the
+  regex and added locale overrides to the use of cut as per bug #91159.
 
-  03 May 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage_syntax.py
-  pym/portage_dep.py: Fixed some bugs in the new intersects() and
-  encapsulates() methods. Created a transform_dependspec() function that
-  reorders DependSpec elements based on supplied preferences.
+  05 May 2005; Jason Stubbs <jstubbs@gentoo.org> cnf/make.globals: Made
+  CONFIG_PROTECT default to /etc only as packages are augmenting it via env.d
+  where necessary.
 
-  03 May 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage_syntax.py:
-  Added methods for modifying DependSpec externally.
+  05 May 2005; Jason Stubbs <jstubbs@gentoo.org> bin/emerge: Reverted deletion
+  of apparently unused code as it was being used in the case of --noreplace.
 
-  03 May 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage_syntax.py:
-  Added intersects() and encapsulates() functions to the Atom class for
-  comparing relationships between similar atoms.
+  04 May 2005; Marius Mauch <genone@gentoo.org> bin/g-cpan.pl, man/g-cpan.pl.1:
+  removed g-cpan.pl as it's now a standalone tool.
 
-  03 May 2005; Jason Stubbs <jstubbs@gentoo.org> man/portage.5:
-  Removed invalid example from package.keywords section.
+  02 May 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Added back
+  support for ~* and * in package.keywords as it got dropped at some point.
 
-  03 May 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage_dep.py
-  pym/portage_syntax.py: Mostly completed DependSpec and started on
-  TargetGraph.
+*portage-2.0.51.21 (01 May 2005): Maintainence Release
 
-  29 Apr 2005; Mike Frysinger <vapier@gentoo.org> bin/doman:
-  Recognize more subchapters than just [1-8n] #32584.
+  01 May 2005; Jason Stubbs <jstubbs@gentoo.org> bin/ebuild.sh: Fixed an
+  inverse logic bug in the setting of ccache size.
 
-  29 Apr 2005; Mike Frysinger <vapier@gentoo.org> bin/env-update.sh 
-  pym/portage.py pym/portage_const.py:
-  Remove execution of depscan.sh #86523.
+  01 May 2005; Jason Stubbs <jstubbs@gentoo.org>: Removed g-cpan.pl as it
+  is now maintained externally. Removed other old and/or unmaintained
+  scripts.
 
-  26 Apr 2005; Marius Mauch <genone@gentoo.org> cnf/make.globals*:
-  Add FEATURES=strict.
+  01 May 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Dropped
+  confmem from 16 previous files down to 1 previous file so that upgrading
+  and downgrading behaves in terms of config files.
 
-  25 Apr 2005; Mike Frysinger <vapier@gentoo.org> bin/ebuild-functions.sh:
-  Remove autoconfig FEATURE and make it always run Bug #81822.
+  01 May 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Added
+  checking of overlays for package.mask, categories and others.
 
-  25 Apr 2005; Marius Mauch <genone@gentoo.org> pym/portage.py:
-  remove the stupid "masked by -* keyword" message.
+  01 May 2005; Jason Stubbs <jstubbs@gentoo.org> bin/ebuild.sh: Skip testing
+  if has already been performed (indicated by .tested)
 
-  24 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage_syntax.py:
-  Added a class called DependSpec which handles parsing *DEPEND and SRC_URI
-  strings. Read-only at the moment, but will probably change later.
+  01 May 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Removed
+  debugging information and added a fix for merging a symlink to a
+  directory over a file.
 
-  24 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> bin/emerge pym/portage.py:
-  Removed support for --inject and --upgradeonly as well as the now unused
-  digraph class.
+  01 May 2005; Jason Stubbs <jstubbs@gentoo.org> cnf/make.globals: Added
+  a basic CONFIG_PROTECT setting for those users who use only binary
+  packages and don't have a portage tree.
 
-  23 Apr 2005; Marius Mauch <genone@gentoo.org> pym/ebuild.py:
-  forward port fix for bug 77794.
+  29 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> bin/doman: Added Mike's
+  patch to broaden the accepted man pages from [1-8n] to [0-9n](|f|p|pm)
 
-  19 Apr 2005; Mike Frysinger <vapier@gentoo.org> bin/etc-update:
-  Clean up some silly `cat` usages and make the output format pretty.
+  29 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> bin/emerge pym/portage.py:
+  Added an implementation for the emerge config action and a supporting
+  method findname on the vardbapi class.
 
-  12 Apr 2005; Mike Frysinger <vapier@gentoo.org> bin/quickpkg pym/ebuild.py 
-  pym/portage.py:
-  Rename 'portage-pkg' to 'binpkgs' so tab completion for 'portage' works.
+  29 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> man/portage.5: Removed
+  invalid example from portage.keywords.
 
-  08 Apr 2005; Marius Mauch <genone@gentoo.org> bin/emerge:
-  Add a list of active user config files to emerge --info.
-  
-  06 Apr 2005; Marius Mauch <genone@gentoo.org> pym/set_modules/*.py:
-  Added a basic framework for package sets including modules for "system",
-  general filelists (including "world") and "security", the latter currently
-  depending on glsa.py from gentoolkit.
+  29 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> bin/emerge: Drop privs
+  when doing cache cleansing after syncing.
 
-  03 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage_dep.py:
-  Added shortcut to circular dep "resolution" as per bug 85130. Removed
-  the traversed cache dict from __traverse_nodes and made the original
-  list into a dict.
+  29 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Fixed
+  several issues with userpriv.
 
-  27 Mar 2005; Brian Harring <ferringb@gentoo.org> bin/ebuild-functions.sh:
-  Pushed ECONF_SOURCE support forward from stable.  Seems kind of fluffish.
+  29 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> bin/ebuild.sh: Made the
+  autoconfig feature non-optional.
+
+  29 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Removed
+  running of depscan.sh from env-update.
+
+  29 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Applied
+  solar's patches from bug #90720 that allow most ebuild operations to work
+  as any user in the portage group.
+
+  29 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Fixed a bug
+  that would cause an empty CBUILD to be defined if CHOST is not defined.
+
+  29 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> cnf/make.globals.*: Removed
+  the now deprecated arch-specific make.globals files.
+
+  29 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> bin/dispatch-conf
+  pym/dispatch-conf.py: Fixed a typo with the added merge option. Added
+  hard-coded default merge option so that dispatch-conf can be used to do
+  a line by line of dispatch-conf.conf.
+
+  29 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> bin/ebuild.sh: Updated econf
+  to use LOCAL_EXTRA_ECONF rather than EXTRA_ECONF directly, as noted by
+  eradicator. Removed the forced resizing of ccache when CCACHE_SIZE is
+  undefined.
+
+  29 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> bin/emerge: Fixed bug in
+  --info during sorting when two versions have only differing -r component.
+  Ported Brian's regen method to --metadata for faster updates.
+
+  29 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> bin/repoman: Fixed an
+  off-by-one indexing into a list during scanning for Manfiest commits.
+
+  29 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Fixed a bug
+  in the checking of whether sandbox is usable when usersandbox is enabled.
+  Combined u+w and g+w mods on ccache dir into the one exec. Added missing g+s
+  mods on ccache dir, which was causing mods at each check. Moved mtime check
+  in aux_get so that it applies to updating from the metadata cache as well.
+  Relocated the fix for mynewcat outside of the loop to prevent needless
+  re-calculation. Added debugging code for bug #71787.
+
+  24 Apr 2005; Masatomo Nakano <nakano@gentoo.org> pym/portage.py
+  Fixed undefined value causing traceback when moving package in binarytree.
+
+*portage-2.0.51.20 (23 Apr 2005): Maintainence Release
+
+  23 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage_const.py:
+  Adjusted sandbox path to match the external sandbox.
+
+  23 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> bin/repoman: Added a 3 second
+  delay after a failed Manifest commit. Fixed bug where files at the category
+  level were being treated as packages.
+
+  23 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py portage_util.py
+  portage_db_cpickle.py: Replaced HIGHEST_PROTOCOL with it's equivalent -1 to
+  ensure python-2.2 compatibility. Added back ChangeLog and metadata.xml to
+  Manifest generation for portage compatibility.
+
+  21 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Adding
+  setting of CBUILD to CHOST if it is not set. Fixed getmaskingstatus to
+  choose an arch-based keyword over -*.
+
+  21 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> bin/ebuild.sh: Removed
+  stale code from dyn_setup.
+
+  19 Apr 2005; Brian Harring <ferringb@gentoo.org> pym/portage_db_flat.py: 
+  Correction for string method name, again, danke to swegener.
+
+  19 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> bin/ebuild: Added a missing
+  import of portage_util.
+
+  19 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Fixed my
+  assumption that ChangeLog and metadata.xml will exist during digest creation.
+
+  17 Apr 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py: eclass cache
+  touche up, mtime wasn't being properly checked (thanks to swegener for catching
+  it).
+
+  17 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage_exec.py
+  pym/portage.py: Added checks to see if the sandbox is executable and disabled
+  when it isn't.
+
+  17 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> bin/dispatch-conf
+  cnf/dispatch-conf.conf pym/dispatch-conf.py: Made the merge command
+  configurable. Fixed a bug that caused conflicts to make their way into the
+  final configuration file. Made the config archive dir automatically created
+  if there is nothing in the way.
+
+  17 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> pym/output.py: Reverted the
+  feature to make use of screen titles.
+
+  17 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> bin/emerge: Made detection
+  of --ask capability use stdin instead of stdout.
+
+  15 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Removed
+  ChangeLog and metadata.xml from Manifest creation and checking. Quietened
+  failed mtimedb writes. Added patch to allow fetching to read-only DISTDIR.
+  Added logic to detect changing between userpriv and non-userpriv and
+  update the ccache permissions at each change.
+
+  15 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> cnf/make.globals*: Removed
+  vars not directly related to portage. Architecture specific ones are going
+  into the relevant profiles. USE_ORDER and CONFIG_PROTECT* will likely be
+  going into base.
+
+  14 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Applied
+  patch from #69763 to allow fetching to a read-only distfiles dir.
+
+  13 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> bin/repoman: Downgraded
+  the nesteddie check to a warning as it sometimes has false positives.
+
+  13 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> cnf/make.conf*: Removed
+  size estimation of PORTDIR.
+
+  13 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Added
+  verification of package.provided contents. Fixed a bug with an incorrect
+  error on binary package category moves. Fixed a small bug that would
+  cause a crash on an invalid PRELINK_PATH_MASK. Added signal handling of
+  SIGPIPE. Added deep fixing of permissions on CCACHE_DIR when changing
+  between userpriv states.
+
+  13 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> bin/emerge: Added sorting to
+  versions listed in emerge info output.
+
+  13 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> man/emerge.1: Removed --inject
+  documentation.
+
+  12 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> bin/emerge: Added --nocolor
+  option courtesy of Jason Cooper on gentoo-user@g.o.
+
+  12 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> bin/repoman: Fixed the date
+  parsing of repoman to allow ranged and single years beginning 1999. #85242
+
+  12 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Added
+  pusedict optimization. #85786
+
+  12 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> bin/emerge: Fixed emerge to
+  always add packages to world unless --oneshot is specified.
+
+  12 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> bin/dispatch-conf:
+  Replaced shutil.movefile() calls for python-2.2 compatibility.
+
+  12 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> bin/portageq pym/portage.py:
+  Utilized PORTAGE_CALLER to only print profile deprecation noticies when
+  emerge first starts up.
+
+  12 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> bin/repoman: 
+  Limited digest.assumed and ebuild.allmasked (by default) to scans at
+  the package level only. Removed IUSE from required variables. Fixed
+  duplicate reporting of required variables. Adjusted size limit of
+  files/* to 20480 bytes. Fixed allmasked check. Removed reinitialization
+  of each profile at every usage.
+
+  12 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Fixed
+  spelling error. Removed code from portdbapi.gvisible that was only
+  utilized by repoman's (broken) allmasked check.
+
+  03 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> bin/emerge: Modified to
+  ignore blockers when using --buildpkgonly.
+
+  02 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py:
+  Made autouse calculated only at import time to ensure that use flags
+  from dep calculation are the same as those used at build time.
+
+  02 Apr 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage_dep.py:
+  Fixed a bug where a return type was a tuple instead of a list in
+  paren_reduce().
 
   23 Mar 2005; Jason Stubbs <jstubbs@gentoo.org> bin/dispatch-conf:
   Removed the -a argument from all diff usage.
 
-  21 Mar 2005; Marius Mauch <genone@gentoo.org> pym/portage_const.py:
-  Adding prerm and postrm to EBUILD_PHASES so logging works there too.
-  
-  21 Mar 2005; Marius Mauch <genone@gentoo.org> bin/ebuild-functions.sh:
-  Force the copy by removing the destination first in econf/autoconfig,
-  prevents sandbox violations by libtoolize calls without --copy.
-
-  15 Mar 2005; Brian Harring <ferringb@gentoo.org> pym/cache/*;
-  Cache updates moving _eclasses_ handling up into the template layer, 
-  added delayed sync'ing support (see database.autocommit) which is relevant 
-  for rdbms backends.
-
-  13 Mar 2005; Brian Harring <ferringb@gentoo.org> pym/portage_dep.py:
-  Addded a traversed cache dict to __traversed per call, the slowdown was 
-  pointed out by Thomas de Grenier de Latour (TGL).  56s, to ~6s.  Probably 
-  should be using a dict for traversed, but is dependant on whether the returned
-  list is order, or can be random.
-
-  10 Mar 2005; Marius Mauch <genone@gentoo.org> pym/portage.py:
-  fix breakage wrt portage_const.EBUILD_PHASES
-
-  09 Mar 2005; Brian Harring <ferringb@gentoo.org> bin/emerge:
-  emerge --metadata can now be ran by non-root users.
-
-  09 Mar 2005: Brian Harring <ferringb@gentoo.org> pym/ebuild.py, bin/emerge:
-  Don't set 02775 on depcache_dir.
-  Ever.
-  If the cache backend is stupid and can't get the perms right, fix the backend.
-
-  09 Mar 2005; Brian Harring <ferringb@gentoo.org> pym/cache/fs_template.py:
-  _ensure_dirs didn't account for umask.
-
-  09 Mar 2005; Brian Harring <ferringb@gentoo.org> pym/cache/flat_list.py:
-  Damn I'm cool- _eclasses_ are now properly returned.
-
-  09 Mar 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py, pym/ebuild.py:
-  Two issues- use parsed restrict handling, and depends phase not bailing when
-  a cpv's key's can't be sourced
-
-  09 Mar 2005; Marius Mauch <genone@gentoo.org> pym/elog_modules/mod_mail.py:
-  Add a "To" header to mails.
-
-  09 Mar 2005; Marius Mauch <genone@gentoo.org> bin/ebuild-daemon.sh:
-  portageq shouldn't prefix its output as it's used in variables.
-
-  08 Mar 2005; Brian Harring <ferringb@gentoo.org> pym/ebuild.py: Revert part of 
-  the restrict/portage_restrict changes so use conditionals in restrict work
-  again.
-
-  08 Mar 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py, pym/portage_dep.py,
-  pym/portage_util.py, pym/config.py:  Moved match_from_list, match_to_* stuff
-  into portage_dep, and updated references, and fixed a few bugs related to 
-  match_* locations from last check in.
-  Threw out match_from_list_original func- it's dead code.
-
-  08 Mar 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py: Harring's law 
-  in effect- stupid one line bugs do not rear their head till the delta hits the 
-  repository... :/
-  Fix for the INHERITED auto-determination in portdbapi.aux_get
-
-  08 Mar 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py, bin/emerge, 
-  cache/*, pym/eclass_cache.py :  Cache refactoring.  Eclass_cache is now just 
-  a dict of stacked eclasses, but doesn't track per pkg eclasses.
-  That is left up to the cache.  The cache now ignores/drops INHERITED- this 
-  is replaced by _eclasses_, which is a serialized dict of 
-  {eclass name: (on disk location, long(mtime))}.  Note the tuple- returns from the 
-  cache subsystem *should* be tuples, just the same as mtime should be a long.
-  aux_get *should* return INHERITED, but it should do it dynamically.
-  Basically, INHERITED is determined on the fly from the cache's _eclasses_ setting.
-  Beyond that, a sql cache template was added, along with a sqlite example.
-  flat_list, along with a metadata/cache specific backend, and cache.util.mirror_cache, 
-  for metadata transfers.
-  Note all existing cache modules/implementations are now invalidated.  Sorry.  Upgrade em.
-  Existing cache's on disk are invalidated also, with the exemption of portdir/metadata/cache.
-  Old cache classes have been banished to the attic.
-
-  08 Mar 2005; Marius Mauch <genone@gentoo.org> pym/portage.py, pym/ebuild.py:
-  Fixing fetch restriction code. Replace references to PORTAGE_RESTRICT with 
-  just RESTRICT and fix broken writemsg() calls.
-
-  08 Mar 2005; Marius Mauch <genone@gentoo.org> pym/portage.py:
-  Reverting broken patch for fakedbapi.cp_all(): it returned a nested list 
-  instead of a simple list and was weird at best.
-
-  06 Mar 2005; Brian Harring <ferringb@gentoo.org> autogen.sh:
-  used for autogenerating auto* crap after a checkout.
-
-  06 Mar 2005; Brian Harring <ferringb@gentoo.org> bin/emerge, pym/portage_dep.py, 
-  pym/portage_file.py, pym/portage_util.py, pym/portage.py, pym/config.py, 
-  pym/eclass_cache:
-  Broke config class out into it's own module.  Minimal hacks, 3 from portage
-  imports that can't be gutted till reliance on global db is gone.  Aside 
-  from that, shifts of funcs around.
-  Also broke eclass_cache out.
+  08 Mar 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py: 
+  Tweak to ensure restrict is dumped to the env, with PORTAGE_RESTRICT 
+  being dumped also.
 
   06 Mar 2005; Jason Stubbs <jstubbs@gentoo.org> bin/emerge: Added a check
   to make sure the file exists before working with it, when called with an
-  ebuild path. #84102  Fixed the invalid call to isvalidatom() #84144
-  Expanded syslist during the unmerge phase so that all packages listed in
-  system are correctly checked and warned against.  #83670
+  ebuild path. #84102
 
-  02 Mar 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Fixed a
-  var substitution that caused installed virtuals to not be considered.
+*portage-2.0.51.19 (04 Mar 2005): Maintainence Release
 
-  02 Mar 2005; Brian Harring <ferringb@gentoo.org> pym/ebuild.py: added a 
-  check to force PORTAGE_LOGFILE to have the appropriate owner/perms.
+  02 Feb 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Fixing
+  ferringb's fix by adding the full scope of normpath.
 
-  02 Mar 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage_util.py: Added
-  missing bsd_chflags import required after forward porting.
+  02 Mar 2005; Nicholas Jones <carpaski@gentoo.org> pemerge.py: Add it back
+  since I seem to have removed it by changing/refreshing dirs at some point.
 
-  02 Mar 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Added -* to
-  FEATURES before saving back to the env after modification.
+  01 Mar 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py: bug 83712,
+  a lovely normalized path bug in eclass_cache resulting in false positives on
+  eclass cache staleness...
 
-  27 Feb 2005; Jason Stubbs <jstubbs@gentoo.org> bin/emerge pym/ebuild.py:
-  Fixed a couple of syntax errors.
+  01 Mar 2005; Brian Harring <ferringb@gentoo.org> bin/prepman: bug 83704, 
+  prepman getting stupid about gzip'ing already bzip2'd man pages.
 
-  26 Feb 2005; Jason Stubbs <jstubbs@gentoo.org> src/chflags/*: Added
-  spb's bsd chflags support.
+  01 Mar 2005; Jason Stubbs <jstubbs@gentoo.org> bin/emerge: Expanded
+  syslist during the unmerge phase so that all packages listed in system
+  are correctly checked and warned against.  #83670
 
-  26 Feb 2005; Jason Stubbs <jstubbs@gentoo.org> cnf/*: Brought forward
-  changes from portage_2_0.
+*portage-2.0.51.18 (28 Feb 2005): Maintainence Release
+  
+  28 Feb 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Added a
+  -* to updated FEATURES before saving back to the env.  #79566
 
-  26 Feb 2005; Jason Stubbs <jstubbs@gentoo.org> pym/*: Brought forward
-  changes from portage_2_0.
+  27 Feb 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Added back
+  sorting of the final list from portdbapi.cp_all() so that emerge regen
+  is ordered correctly.
 
-  26 Feb 2005; Jason Stubbs <jstubbs@gentoo.org> bin/*: Brought forward
-  changes from portage_2_0. Repoman is broken until pym/* is updated.
+*portage-2.0.51.17 (26 Feb 2005): Maintainence Release
 
-  25 Feb 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py: 
-  yanked PORTAGE_TMPFS support, no longer relevant since data is fed 
-  back via daemon pipes, not via file on disk.
+  26 Feb 2005; Nicholas Jones <carpaski@gentoo.org> *: Darwin userland patch
+  from Kito (bug 82312). Adjusted a couple bits like the file was installed
+  with message and etc-update's USERLAND check per Jason suggestion.
 
-  24 Feb 2005; <solar@gentoo.org> bin/ebuild-default-functions.sh:
-  - added manifest_files to USER_CONFIG_PATH+/manifest_excludes. The way it
-  works is to add a file to /etc/portage/manifest_files and this file will be
-  ignore when checking the Manifest. This is mainly only useful when you
-  rsync_exclude a file thats list in the Manifest. (embedded)
+  26 Feb 2005; Nicholas Jones <carpaski@gentoo.org> portage_data.py: Added
+  the 'gnu' suffix check for the BSD/GNU people. (bug 80018)
 
-  21 Feb 2005; Marius Mauch <genone@gentoo.org> bin/isolated-functions.sh,
-  cnf/make.conf, cnf/make.conf.alpha, cnf/make.conf.amd64,
-  cnf/make.conf.arm, cnf/make.conf.hppa, cnf/make.conf.ia64,
-  cnf/make.conf.mips, cnf/make.conf.ppc, cnf/make.conf.ppc64,
-  cnf/make.conf.s390, cnf/make.conf.sh, cnf/make.conf.sparc,
-  cnf/make.conf.x86, pym/ebuild.py, pym/portage.py, pym/portage_const.py,
-  +pym/elog_modules/__init__.py, +pym/elog_modules/mod_custom.py,
-  +pym/elog_modules/mod_mail.py, +pym/elog_modules/mod_save.py,
-  +pym/elog_modules/mod_syslog.py:
-  New shiny flexible modular logging system. Supports logging of ebuild
-  messages via syslog, mail and storing on disc with an optional command for
-  post-processing. See make.conf on how to configure it. On the technical side
-  it's one of the first pluggable subsystems, you can just put mod_foo in
-  /usr/lib/portage/pym/elog_modules, set PORTAGE_LOG_SYSTEM=foo and all logs
-  are processed by your new module (see existing modules for the very simple
-  API).
+  26 Feb 2005; Nicholas Jones <carpaski@gentoo.org> pym/xpak.py: Added in a
+  method to get both the data and index segments for use with the other memory
+  based functions.
 
-  17 Feb 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py, 
-  pym/portage_db_flat.py: Collection of speedups, some massive. 
-  J?rgen H?tzel <gentoo@hoetzel.info> deserves massive props for identifying
-  a huge slow down in cp_all.  Aside from that, pushed the locking 
-  rewrite for flat_list forward from stable, and cleaned up aux_get and
-  eclass.is_valid.
+  21 Feb 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py: So yeah.
+  Don't fool with the eclass_cache.porttree ordering unless you understand that
+  it -must- match bash's inherit order (where overlays override portdir).
 
-  06 Jan 2005; Marius Mauch <genone@gentoo.org> bin/emerge:
-  Fixing some calls to pkgsplit to not modify the returned tuple.
+  15 Feb 2005; Jason Stubbs <jstubbs@gentoo.org> emerge: Disabled the cache
+  update output when using --quiet.  #81678
 
-  29 Dec 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge: Sort the unmerge
-  to make the --pretend output easier to review when there is a large list.
-  Fixed depclean's attempt at modifying a tuple returned from pkgsplit.
+  15 Feb 2005; Jason Stubbs <jstubbs@gentoo.org> make.conf*: Added
+  warning with regard to changing CHOST.  #81007
 
-  28 Dec 2004; Brian Harring <ferringb@gentoo.org> man/Makefile.am:
-  Removed eclass man pages from makefile references.
+  13 Feb 2005; Jason Stubbs <jstubbs@gentoo.org> make.conf*: Added warning
+  with regard to changing PORTDIR and /etc/make.profile.
 
-  15 Dec 2004; Marius Mauch <genone@gentoo.org>
-  bin/ebuild-default-functions.sh:
-  Disabling the warning for GID=portage as it affects most/all packages and
-  gets really annoying.
+  13 Feb 2005; Jason Stubbs <jstubbs@gentoo.org> portage.py: Fixed the global
+  features usage in the config class and made sure that any adjustments are
+  propogated back to the env.
 
-  14 Dec 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge pym/portage.py:
-  Fixed emerge so that the "emerge by path" message is only shown when the
-  "path" ends in .ebuild or .tbz2. Fixed the package.keywords bug that caused
-  all packages to become unmasked.
+  13 Feb 2005; Jason Stubbs <jstubbs@gentoo.org> chflags.c: Replaced stat
+  call with an lstat call in lhasproblems as the calling code expects the
+  function to operate directly on symlinks.
 
-  11 Dec 2004; Jason Stubbs <jstubbs@gentoo.org> pym/portage_syntax.py:
-  Modified atom.match() to reflect the change of cpv becoming an attribute of
-  atom.
+*portage-2.0.51.16 (06 Feb 2005): Maintainence Release + BSD chflags
 
-  10 Dec 2004; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Fixed a bug
-  due to the cleanup patch where zfill() was being called on an integer.
+  06 Feb 2005; Nicholas Jones <carpaski@gentoo.org> portage.py, src/chflags:
+  Addition of BSD chflags support (from spb@gentoo.org). Wrapped all the
+  calls within a check for the modules existance so we can reduce any problems
+  due to a failing or missing module. Internally renamed it bsd_chflags.
 
-  09 Dec 2004; Marius Mauch <genone@gentoo.org> bin/ebuild-functions.sh:
-  Fixing stupid typo that broke einstall for CONF_LIBDIR archs.
+  06 Feb 2005; Jason Stubbs <jstubbs@gentoo.org> bin/ebuild.sh: Completed
+  renaming of "maketest" to "test". RESTRICT supports both. #77446
 
-  09 Dec 2004; Marius Mauch <genone@gentoo.org>
-  bin/ebuild-default-functions.sh:
-  Changing LDFLAGS to CFLAGS for the setXid check.
+  06 Feb 2005; Jason Stubbs <jstubbs@gentoo.org> pym/output.py: Added checking
+  of whether stderr is a tty before changing xterm titles. #73824
 
-  08 Dec 2004; Marius Mauch <genone@gentoo.org> pym/portage.py:
-  Changing CWD back to the original value broke verify-rdepend, fixing it with
-  the same code as used for collision-protect. Also made the time displays in
-  treewalk more readable.
+  05 Feb 2005; Jason Stubbs <jstubbs@gentoo.org> bin/emerge: Added removal of
+  --tree and --changelog upon a restart of emerge. Added --ask support to
+  emerge metadata.
 
-  08 Dec 2004; Jason Stubbs <jstubbs@gentoo.org> portage_syntax.py: Inital
-  commit. Refactors all of portage_versions.py and some functions from
-  portage.py into a CPV class and an Atom class.
+  05 Feb 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Removed the
+  requisite that a profile must depend on ">=sys-apps/portage-2.0.51" to be
+  able to use package.mask.
 
-  08 Dec 2004; Jason Stubbs <jstubbs@gentoo.org> ebuild-default-functions.sh
-  emerge portageq portage.py portage_dep.py portage_exec.py portage_util.py
-  portage_versions.py: Added Ludal's clean up patch. #69523
+  05 Feb 2005; Jason Stubbs <jstubbs@gentoo.org> bin/repoman pym/portage.py:
+  Removed the disabling of PORTDIR_OVERLAY from portage.py and added code to
+  repoman to set PORTDIR to the current directory's repo unless it doesn't
+  contain a profiles directory. If that is the case, PORTDIR is kept and
+  PORTDIR_OVERLAY is set to the current overlay -only-.
 
-  05 Dec 2004; Brian Harring <ferringb@gentoo.org> tarball.sh: Yanked
-  the script- A) it's specific to nicks setup, B) the tarball/release 
-  creation functionality is already handled by the autotooling of portage
-  (make dist), C) make dist does it better, and automatically handles
-  pulling in all required deps as an ancillary function of it's building/installing,
-  D) make dist requires no specific maintenance while tarball.sh does.
+  03 Feb 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py: bug 80506,
+  fixed RESTRICT="(no|)userpriv".
 
-  05 Dec 2004; Brian Harring <ferringb@gentoo.org> pym/cache, pym/cache/template.py,
-  pym/cache/fs_template.py, pym/cache/sql_template.py, pym/cache/flat_list.py, 
-  pym/cache/anydbm.py, pym/cache/sqlite.py, pym/cache/cache_errors.py, 
-  pym/cache/__init__.py:  Cache refactoring, not active in the code currently.
-  All backends should work, although the code is not finished.  Locking support
-  needs to be added into fs_template- possibly do it in the derived fsbased 
-  backeends, since locking for flat_list is quite different from locking for 
-  anydbm.
+  31 Jan 2005; Brian Harring <ferringb@gentoo.org> pym/portage.py: Spanky pointed
+  a bug assuming the intermediate directories for WORLD_FILE existed already.
+
+  30 Jan 2005; Brian Harring <ferringb@gentoo.org> bin/ebuild.sh: Update from 
+  eradicator, bug #75420.  Multilib stuff. :)
+
+  30 Jan 2005; Brian Harring <ferringb@gentoo.org> bin/prepman: Fixing bug
+  #79788.  Some screwy syntax for a find call was screwing up gzip'ing of man
+  pages for osx boxes.
+
+  30 Jan 2005; Jason Stubbs <jstubbs@gentoo.org> emerge emerge.1: Added short
+  -N option for --newuse. Moved virtuals updating for packages that are about
+  to be installed so that the update happens after the virtuals within that
+  package's direct dependencies are resolved. Made the blocking message
+  slightly easier to understand. Added a suggestion to run emerge with --newuse
+  before running depclean.
+
+  30 Jan 2005; Jason Stubbs <jstubbs@gentoo.org> etc-update: Removed the
+  unsetting of various options that happens when using graphical mode.
+
+  30 Jan 2005; Jason Stubbs <jstubbs@gentoo.org> quickpkg: Added -h and --help
+  options.
+
+  30 Jan 2005; Jason Stubbs <jstubbs@gentoo.org> repoman: Added patch to call
+  xmllint directly on metadata.xml rather than piping it. This prevents the
+  need (and possible failure) to escape quote characters.
+
+  30 Jan 2005; Jason Stubbs <jstubbs@gentoo.org> portage.py: Fixed a bug with
+  calculations using PRELINK_PATH_MASK where paths matching those in
+  PRELINK_PATH_MASK were not removed.
+
+  28 Jan 2005; Brian Harring <ferringb@gentoo.org> portage_db_flat.py: removed
+  the portage_locks locking that was added, using a different strategy reliant
+  on rename.  Basically, for a pull- you open the file.  If that fails, then
+  the cache lacks that entry.  If it succeeds, you do your stat calls (to get
+  mtime) against the -file handle-, via fstat.  You can read from that inode 
+  without issue, but do not assume that that inode is the still accessible via
+  another open call (it may've been updated since).  Pushes are accomplished 
+  via writing everything to a temp file, then renaming that file to the correct
+  name- chmod/chown/utime calls need to be done prior to the rename.
+  So, if a pull is ongoing while a push starts up and finishes, the pull still
+  is accessing the old cache entry- worst case scenario, it goes and reupdates
+  the cache entry.  This is acceptable, since the overhead from using a seperate
+  lockfile is much more costly (in some cases, a difference of 3m to 20m).
+  Normal cases, roughly 13% improvement.
+
+  24 Jan 2005; Nicholas Jones <carpaski@gentoo.org> portage.py: Fixed the
+  fetch/nofetch RESTRICT bug introduced in -r14. Completely disable overlay
+  when calling from repoman.
+
+  24 Jan 2005; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Test print out
+  fix.
+
+  19 Jan 2005; Brian Harring <ferringb@gentoo.org> ebuild.sh: Quick change to
+  features=autoconfig, avoiding an extra subshell.
+
+*portage-2.0.51-r14 (15 Jan 2005): Stable Candidate
+
+  18 Jan 2005; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Unset IFS
+  after entering the for loop for bashrc's. The IFS setting applies to the
+  source command and messes up the assumptions about bash scripts and IFS.
+
+  18 Jan 2005; Jason Stubbs <jstubbs@gentoo.org> portage.py emerge-webrsync:
+  Fixed the bash syntax error in emerge-webrsync as per #77941. Fixed the
+  blocking virtuals bug as per #78201. Removed the warning about negations
+  and reapplied negations to profile virtuals.
+
+  17 Jan 2005; Nicholas Jones <carpaski@gentoo.org> portage.py: Prevented
+  negations from applying in virtuals and provided a warning.
+
+  16 Jan 2005; Nicholas Jones <carpaski@gentoo.org> repoman: Fix to match up
+  to the namespace changes in portage.
+
+  16 Jan 2005; Nicholas Jones <carpaski@gentoo.org> portage.py: Patch from a
+  bug report on a traceback that occurs when re-digesting a file without any
+  distfiles but with a preexisting digest.
+
+  16 Jan 2005; Nicholas Jones <carpaski@gentoo.org> *.py: Added a cvs_id_str
+  to each portage module so we can account for them easily. Added printing
+  of those versions on a 'emerge -d info'. Cleaned up the * imports in the
+  modules so there shouldn't be any namespace pollution left.
+
+*portage-2.0.51-r13 (15 Jan 2005): Testing for virtuals changes
+
+  15 Jan 2005; Nicholas Jones <carpaski@gentoo.org> portage.py: Adjusted the
+  virtuals handling into an advanced for of what Jason started using promotion
+  instead of blanket settings. Removed the user_profile dir completely when
+  using repoman via a new user_profile_dir variable that is stored on creation.
+  Split the getvirtuals() call into two pieces so that setinst() can also
+  recreate the virtuals properly when modifying the vartree.
+
+  15 Jan 2005; Nicholas Jones <carpaski@gentoo.org> portage_util.py: Modified
+  the stack_dictlist function to handle '-*' and do it in the proper order.
+
+  13 Jan 2005; Nicholas Jones <carpaski@gentoo.org> portage.py, emerge:
+  Adjusted the version handling for portage so that we can use CVS versions
+  and ignore the restarts when using livecvsportage.
+
+  13 Jan 2005; Nicholas Jones <carpaski@gentoo.org> repoman: Added the
+  portage/repoman version used to the commit messages.
+
+  13 Jan 2005; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Fixed the
+  reverse ordering of profile virtuals before installed virtuals stacking.
+  Turn a reference assignment into a copy to fix a bug where digesting would
+  not include files that were already fetched previously. Added information
+  about which package is causing an error to some aux_get() errors.
+
+*portage-2.0.51-r11 (13 Jan 2005): Cleanup
+
+  13 Jan 2005; Nicholas Jones <carpaski@gentoo.org> cnf/*: Updates for the
+  OSUOSL -> distfiles.gentoo.org changeover. Addition of PORTAGE_TMPFS to
+  the config files.
+
+  13 Jan 2005; Nicholas Jones <carpaski@gentoo.org> portage.py: Fix for a
+  typo in the primaryuri index.
+
+*portage-2.0.51-r10 (11 Jan 2005): Cleanup
+
+  12 Jan 2005; Nicholas Jones <carpaski@gentoo.org> repoman: Fixed the
+  namespace collision in the time module and calls.
+
+  11 Jan 2005; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Fixes for the
+  libdir patch -- libtool can't handle "usr//lib".
+
+  10 Jan 2005; Nicholas Jones <carpaski@gentoo.org> portage.py: Made maketest
+  enable 'test' in features. Marked a couple more negative flags for restrict.
+  Made tmpfs checking a little smarter and let us enable /dev/shm by default.
+
+  10 Jan 2005; Nicholas Jones <carpaski@gentoo.org> output.py: Fixed the
+  colors and overscore problems. Added a larger section and better code
+  for generating colors and effects -- Unused at the moment. Added a patch
+  that included screen title handling.
+
+  10 Jan 2005; Nicholas Jones <carpaski@gentoo.org> repoman: Rewrite the
+  datetime code to use time.gmtime() instead so python2.2 works still.
+
+  10 Jan 2005; Nicholas Jones <carpaski@gentoo.org> regenworld: Made it work
+  with cascade profiles by using the proper system reference.
+
+  10 Jan 2005; Nicholas Jones <carpaski@gentoo.org> emerge: Fix for the gcc
+  hardened version printing. Moved the stdin close on rsync down below the
+  rsync part to allow --ask to work.
+
+  10 Jan 2005; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Die if unpack
+  is not given any files to unpack. Modification for the no_inst stuff to be
+  less crazy with the echo redirection stuff.
+
+  08 Dec 2005; Jason Stubbs <jstubbs@gentoo.org> ebuild.sh: Moved the "true" to
+  the end of the dyn_clean() function.
+
+  06 Dec 2005; Jason Stubbs <jstubbs@gentoo.org> ebuild.sh: Added eradicator's
+  multilib-strict patch, which allows checking and failing if binaries are
+  about to be installed into an incorrect directory. The feature is configured
+  via the MUTLILIB_STRICT_DIRS and MULTILIB_STRICT_DENY and has no effect if
+  either they are not defined or the feature is not enabled.
+
+  04 Dec 2005; Jason Stubbs <jstubbs@gentoo.org> ebuild.sh: Added removal of
+  the .packaged and .tested files to the clean stage. Adjusted cleaning of the
+  temp dir to include the directory as well, rather than only the files
+  therein. Added a check and appropriate removal of the entire scratch dir if
+  it is empty at the end of the clean phase.
+
+  04 Dec 2005; Jason Stubbs <jstubbs@gentoo.org> portage.py: Turned the
+  primaryuri global counter into separate counters per file, so that urls
+  are inserted at the appropriate places.
+
+  04 Dec 2005; Jason Stubbs <jstubbs@gentoo.org> portage.py: Adjusted virtuals
+  stacking so that /etc/portage/virtuals is stacked on top of the profile
+  virtuals (including the custom /etc/portage/profile), reordered the list
+  of installed virtuals to match that of the combined profile virtuals and
+  then stacked the installed virtuals on top of those. Also added back the
+  deprecation notice.
+
+  04 Dec 2005; Jason Stubbs <jstubbs@gentoo.org> emerge: Added code to
+  "emerge info" to summarise variables that aren't set rather than hide them.
+
+  02 Dec 2005; Jason Stubbs <jstubbs@gentoo.org> dolib ebuild.sh preplib:
+  Applied eradicator's libdir patch for multilib support. #75420
+
+  02 Dec 2005; Jason Stubbs <jstubbs@gentoo.org> ebuild.sh: Added support for
+  INSTALL_MASK. #67190
+
+  02 Dec 2005; Jason Stubbs <jstubbs@gentoo.org> portage.py portage_util.py:
+  Added support for the "source" keyword to make.conf. #74842
+
+  02 Dec 2005; Jason Stubbs <jstubbs@gentoo.org> ebuild.sh: Adjusted autoconfig
+  to work on ${WORKDIR} instead of ${S} and modified output. #72360
+  Added notice on econf failure to include config.log (if it exists) into any
+  bug report. #75268  Don't prepend "/" to CONF_LIBDIR if it already begins
+  with "/" #75523
+
+  02 Dec 2005; Jason Stubbs <jstubbs@gentoo.org> emerge: Don't update info dirs
+  if noinfo FEATURE is enabled. #76378
+
+  02 Dec 2005; Jason Stubbs <jstubbs@gentoo.org> emerge: Set the processing of
+  profiles/info_vars to only include those which have been set to some value.
+  #75920
+
+  02 Dec 2005; Jason Stubbs <jstubbs@gentoo.org> repoman: Modified header check
+  to use the year of the mtime of the ebuild rather than the current year.
+
+  24 Dec 2004; Jason Stubbs <jstubbs@gentoo.org> portage.py: Removed assumption
+  that /etc/make.profile/make.defaults must exist for configdict["defaults"] to
+  be populated (and thus ARCH prepended to USE).
+
+  23 Dec 2004; Jason Stubbs <jstubbs@gentoo.org> portage.py: Adjusted fetching
+  on digest creation such that any preexisting digest entries are used, but
+  fetching and digesting occurs for all SRC_URI entries otherwise.
+
+  22 Dec 2004; Jason Stubbs <jstubbs@gentoo.org> portage.py: Removed the
+  virtuals deprecation notice as the "preferred" location does not yet
+  provide the required behaviour.
+
+  14 Dec 2004; Nicholas Jones <carpaski@gentoo.org> doins: Fix and notices
+  for $D handling.
+
+  14 Dec 2004; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: spb's chflags
+  adjustment for dyn_clean. stat_perms() overhaul for bsd and ppc.
+
+  14 Dec 2004; Nicholas Jones <carpaski@gentoo.org> webrsync: TMPDIR is
+  used properly and a tar-failure fix.
+
+  14 Dec 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: RESTRICT
+  changes -- nomirror and mirror are now the same (use 'mirror') -- lmirror
+  is a temporary way to sidestep mirror restrictions -- primaryuri makes
+  portage attempt to retrieve from the source mirror before falling back to
+  other mirrors (corrects behavior some impose for 'mirror').
+
+  14 Dec 2004; Nicholas Jones <carpaski@gentoo.org> portage_db_flat.py: Do
+  not fail when we're on a readonly FS and we're only reading (lockfiles).
+
+  09 Dec 2004; Marius Mauch <genone@gentoo.org> bin/ebuild.sh:
+  change LDFLAGS to CFLAGS for the setXid check.
 
   05 Dec 2004; Nicholas Jones <carpaski@gentoo.org> pym/portage.py: swegener
   made quite a find in portdbapi.cpv_exists, the comparison on the tuple
   returned by findname2 always evaluated true.
 
-  05 Dec 2004; Nicholas Jones <carpaski@gentoo.org> bin/: Added SpanKY's
-  patch for stripping coherency -- All stripping is performed in prepstrip.
+*portage-2.0.51-r8 (03 Dec 2004): Cleanup
 
-  28 Nov 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild-daemon.sh: 
-  Correction of return code for execute_phases w/ logging.
+  03 Dec 2004; Nicholas Jones <carpaski@gentoo.org> repoman: A patch to
+  handle stray digests.
 
-  26 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge: Fixed a bug in
-  graph_display.use_flags().
+  03 Dec 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Patches to
+  fix the matching bug #73136 and the '-atom' profile bug #73167.
 
-  24 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge: Fixed a bug in
-  the relevant package calculation for dep display.
+*portage-2.0.51-r7 (01 Dec 2004): Cleanup
 
-  24 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge: Added the removal
-  of fully installed dependency subtrees causing faster calculation due to less
-  circular dependencies.
+  01 Dec 2004; Nicholas Jones <carpaski@gentoo.org> sandbox: updated with
+  ferringb's code for the pids file overrun issue.
 
-  23 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge: --columns
-  support is in and working. Algorithm has changed a little so that the minimum
-  space is used while keeping 2 spaces between all columns.
+  01 Dec 2004; Jason Stubbs <jstubbs@gentoo.org> repoman: Reverted repoman
+  profile selection to previous behaviour. Kept verbosity, but modified
+  messages according to the behaviour.
 
-  23 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> bin/emerge: Added class
-  graph_display and moved most of depgraph.display() into various functions
-  of it. --columns and --resume are not yet supported with it, so the
-  depgraph.display() has been kept for the time being.
+*portage-2.0.51-r5/6 (30 Nov 2004): Cleanup
 
-  23 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> pym/portage.py: Commented
-  the deprecation notice for /etc/portage/virtuals as it does not yet have
-  a newer counterpart.
+  29 Nov 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: Added a
+  (backport?) missing return to treewalk.
 
-  22 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/transports/fetchcommand.py:
-  spawn_bash, not spawn.
+  29 Nov 2004; Nicholas Jones <carpaski@gentoo.org> cnf/*: Removed the
+  prozilla references. Adjusted the default mirrors to a gentoo round-
+  robin.
 
-  22 Nov 2004; Brian Harring <ferringb@gentoo.org> src/filter-env/posix.c:
-  Anchor generated regex filters, fix to the damned looping over stdin still.
+  29 Nov 2004; Nicholas Jones <carpaski@gentoo.org> portage_exec.py: Modified
+  the magic constants to be os.access calls.
 
-  22 Nov 2004; Brian Harring <ferringb@gentoo.org> src/filter-env/posix.c:
-  Final bugs should be shaken out of the pipe reading now.
-  realloc and I don't get along.
+  29 Nov 2004; Nicholas Jones <carpaski@gentoo.org> portage.py: A few XXX
+  comments. Removed 'aumtime' from the global space. Removed the virtuals
+  code that created an empty and unused virtuals file in /var/cache/edb.
 
-  22 Nov 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild-functions.sh:
-  econf now ignores update_confcache's exit_code, and uses configure's.  Should
-  kill off the occasionaly "couldn't update confcache" and killing of compile phase.
+  29 Nov 2004; Nicholas Jones <carpaski@gentoo.org> emerge: Added a few XXX
+  comments to bad code/calls. Adjusted emerge info so that it can read more
+  variables and atoms to print out from the portage tree.
 
-  22 Nov 2004; Brian Harring <ferringb@gentoo.org> src/filter-env/posix.c:
-  Commited what should be a fix for the "lets randomly drop part of the env"
-  issue that's been around lately.   Basically, it looks like it wasn't reading
-  all of what was dumped to stdin.  Converted it to fread/fopen based, and used
-  feof.  General cleanup aside from that, close fd's on the way out, etc.
-
-  20 Nov 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild.sh:
-  filter-env is now in use.  In other words, you *will* have to do 
-  the configure/install to get the binary, since it *is* required for
-  correct env processing.  I tried a host of other solutions, so far 
-  I can't break this one (aside from dumb typos in the code).  Processing 
-  the envs from kdelibs/arts is now possible again.
-
-  20 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage_const.py:
-  Added compatibility hack due to sandbox being moved.  Will remove it once 
-  people have shifted over to using the split out sandbox's new location.
-
-  20 Nov 2004; Brian Harring <ferringb@gentoo.org> <collection-of-files>:
-  Portage is now autotool'd, w/ relevant configure.  Needs work, specifically,
-  cnf installation isn't there yet- would prefer to add that when the 101 arch 
-  specific make.conf's are collapsed down to one file.  Note sandbox was busted 
-  out, and moved into it's own module.
-
-  18 Nov 2004; Marius Mauch <genone@gentoo.org> pym/portage_versions.py:
-  Fixing version regexp to allow weird package names.
-
-  15 Nov 2004; Marius Mauch <genone@gentoo.org> bin/ebuild-default-functions.sh:
-  NEVER try to change permissions on symlinks, stupid chmod will change the
-  referenced files instead (fixed the portage uid/gid checks in dyn_install)
-
-  15 Nov 2004; Nicholas Jones <carpaski@gentoo.org> portage.py, portage_gpg.py:
-  Fixes for the gso changes in gpg. Removed the 'virtuals' file handling
-  which caused an empty file to be recreated. Added XXX marks on potentially
-  bad calls.
-
-  14 Nov 2004; Brian Harring <ferringb@gentoo.org> spec/emerge.syntax:
-  Bye bye emerge.syntax, we hardly knew ye.
-
-  14 Nov 2004; Marius Mauch <genone@gentoo.org> bin/emerge, man/make.conf.5,
-  spec/emerge.syntax, cnf/make.conf.*, cnf/make.globals*:
-  removing all support for AUTOCLEAN=no, it's breaking too many things these
-  days and has no real use anyway.
-
-  10 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/dcache.py:
-  Updated to make it more memory efficient- slots based, uses weakref
-  to handle symlink'd dirs.  Still a bit slower, but it's also stat'ing
-  all directories upto the target directory.  That can probably be removed.
-  Note, there is a bug in it currently- invalidate isn't a valid node method.
-  Nobody should hit this though, since dcache is only used in treewalk.
-  I'll correct it in a few days.
-
-  10 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage_locks.py:
-  Reversion of lock choice strategy to what I stuck in originally, and 
-  removal of the 3s sleep in hardlink.  The 3s is obviously bad, the 
-  reason for reverting to trying flock then lockf then hardlink is simple-
-  hardlink is slow, and requires creation of extra files on disk.  It
-  also won't behave with fd's passed in (which should be used often, 
-  rather then this lets default to creating lots of files strategy.  This makes 
-  a huge difference in runtime in certain cases.  Case that exposed this- 
-  9m relying on lockf -> hardlink reduced to 1.5m for flock -> lockf -> 
-  hardlink.  The difference?  lockf didn't work on that fs, so it was using
-  hardlink.  Leave it in, it's faster, it's redundant, and it works.
-
-  10 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py,
-  pym/portage_versions.py: Moved catsplit into versions and updated
-  references to it.  Likely just broke a few external tools (assuming
-  they were coded correctly and weren't abusing string.split("/")).
-
-  10 Nov 2004; Brian Harring <ferringb@gentoo.org> 
-  bin/ebuild-default-functions.sh, bin/affect-fakeroot-perms.sh:
-  Closing out bug where suid/sgid is wiped by chowning,
-  noticed a similar issue in affect-fakeroot-perms. (#56129)
+  29 Nov 2004; Nicholas Jones <carpaski@gentoo.org> ebuild.sh: Fixed/Backport
+  the changes to stat_perms so that it works. Fixed the read commands.
 
   10 Nov 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild.sh:
-  Dropping all support for reloading env attributes from a .51 dump.
-  It wasn't implemented correctly, and it's not worth the duct tape
-  and questionable code to try and half-ass support it.
+  dyn_install was attempting to be helpful and chown files owned
+  by portage, resulting in suid/sgid being stripped. bug #56129.
 
-  10 Nov 2004; Brian Harring <ferringb@gentoo.org> bin/etc-update:
-  Fixed etc-update so it actually runs; long story short, the portageq
-  calls for getting CONFIG_PROTECT(|_MASK) were wrong.
-
-  10 Nov 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild.sh:
-  Added kludge to filtering for env reloading to match the export kludge
-  added to 2.0.51.  This code must stay in as long as .51 env's 
-  *potentially* exist on a users system.
-
-  10 Nov 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild-daemon.sh:
-  Made it much more noisy when a violation is hit.
-
-  10 Nov 2004; Brian Harring <ferringb@gentoo.org> 
-  bin/affect-fakeroot-perms.sh:  rewrote this script so that it's less 
-  likely to piss off fakeroot by spawning multiple instances of a client.
-
-  10 Nov 2004; Marius Mauch <genone@gentoo.org> +pym/portage_versions.py,
-  bin/db-update.py, bin/emerge, bin/fixvirtuals, bin/pkgname, bin/repoman,
-  pym/ebuild.py, pym/portage.py, pym/portage_dep.py:
-  Integrated the new version parsing and comparison code from bug #37406, moved
-  pkgsplit, catpkgsplit, pkgcmp, vercmp and ververify in portage_versions.py
-  and changed all calls to them. The new code allows for more flexible 
-  version strings, some functions probably still have to be fixed to work
-  with those new extensions.
-
-  09 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/dcache.py, 
-  pym/orig_dict_cache.py, portage.py:  Removed listdir optional arg
-  EmptyOnError- wasn't abided by for non-recursive calls, for recursive calls
-  it only returned None when recursing.  Optional arg wasn't used, so it's gone.
-  Moved followSymlink logic into listdir, so that orig_dict_cache is strictly
-  a caching mechanism.  Added dcache, a symlink aware list based cache class.
-  dcache needs work, but reduces listdir($IMAGE_OF_XORG,recursive=1) from 
-  spending hours to return (on my machine), to around a minute.
-  Made dcache active *only* for treewalk currently, since that's the 
-  instance where the original cache implementation's lack of symlink-awareness
-  made things bad.
-
-  09 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/ebuild.py: make
-  prelink + confcache play nice (calc_prelink=1).
-
-  09 Nov 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild-daemon.sh:
-  Added appropriate addwrites for logs for -r3 sandbox, and corrected logging
-  for bash v2 systems.
-
-  09 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py: Corrected
-  som idiocy I introduced into listdir.
-
-  09 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py: buggy logic
-  in listdir w/ ignorecvs on. (#70170)
-
-  08 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py: tweaked
-  portage.exit_callbacks so it's more flexible.  
-  Call portage.append_exit_callback to append to it, optionally specifying args
-  and keyword args.
-
-  08 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portageq.py, bin/portageq:
-  Tied portageq script into using the portageq module.
-
-  07 Nov 2004; Brian Harring <ferringb@gentoo.org> bin/repoman: converted repoman
-  over to using the users preferred fetcher (via portage.get_preferred_fetcher,
-  oddly enough).
-
-  07 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/transports/fetchcommmand.py:
-  corrected an issue where it wasn't correctly parsing out an appropriate distdir
-  when file_name was specified.
-
-  07 Nov 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild-default-functions.sh: 
-  addition of INSTALL_MASK support to dyn_preinst.   #67190
-
-  07 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage_db_flat.py: added a
-  mtime cache to revert the the # of stats to 1 for aux_get calls (which calls 
-  get_timestamp).
-
-  07 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage_exec.py, sync/rsync.py:
-  Bug fixes for selinux.setexec typo, and noisy rsync.  Aside from that, a collection
-  of header updates.
-
-  07 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage_util.py,pym/portage.py:
-  tweak to make movefile not implode, and get_preferred_fetcher not implode.
-
-  07 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage_metadata.py, 
-  pym/orig_dict_cache.py, pym/portage.py, pym/portage_util.py: Added missing 
-  metadata module (contributed via solar iirc), and corrected circular dependency
-  issue regarding portage_util trying to provide backwards compatability via
-  portage_util.normpath.
-
-  07 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/ebuild.py: forgot to commit this
-  in the last commit.  Kind of required. :)
-
-  07 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py, bin/emerge, 
-  bin/env-update, bin/repoman, cnf/make.conf, pym/ebuild.py, bin/affect-fakeroot-perms.sh:  Merge of the 
-  ebuild-daemon code (ebuild.py), along with massive shifts/cleanup/fixes.  At this
-  point, the env of an ebuild *should* be perfectly preserved, and used.  This deprecates
-  portage.doebuild, in favor of eventually calling an ebuild.py:process_phase.  The 
-  code of doebuild now exists as ebuild.py:__adjust_env.  That code needs cleanup, 
-  and splitting.  Rough stats for the daemonized ebuild processor code is a 33% reduction
-  in run time for a full regen, with the initial framework laid out to allow parallel
-  regens on smp systems.  Aside from making all of the previous refactorings active
-  (sync refactoring in emerge, transports refactoring in portage.py and repoman), this 
-  adds the following-
-  portage.exit_callbacks- append a function to this list, and it'll be called at shutdown
-  FEATURES="verify-rdepend"- don't trust the packages stated rdepends, ldd the crap out of 
-  the package to verify it.  When severe is on, bail, if unstated rdepends are encountered.
-  FEATURES="prelink"- do prelinking of binaries after merging.  Initial patch submitted by
-  Urilith.
-  FEATURES="userpriv_fakeroot"- run the install phase in userpriv'd fakeroot instance, removing
-  the root requirement for all building phases but setup
-  FEATURES="confcache"- a implementation of stuart's confcache alg, minus the sandbox
-  modifications.
-  FEATURES="parallel-fetch"- bug #1661, fork and fetch while merging.  Requires distlocks to be 
-  enabled, and only kicks in when more then one package is being merged.  This is based on 
-  portage_exec.spawn_func, and depgraph.__fetch.
-  Aside from the feature additions, a large amount of code shifting to break the need for 
-  globals, and try to centralize the code for modularizing (this is the start of it).
-  A large amount of code cleanup in addition.
-
-  07 Nov 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild-default-functions.sh:
-  Compatability hack to treat USE="selinux" as both a feature, and use.  With the 
-  env saving/restoring, it's possible a binpkg is created on a non-selinux system- 
-  the use vars are preserved and reused, so that systems USE="-selinux", merged on a 
-  selinux system results in preinst's selinux code not being executed.  No labels.
-  That's bad.
-
-  07 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portageq.py: 
-  Isolated functions from bin/portageq.
-
-  07 Nov 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild: missing
-  portage_util import.  Only exposed when intentionally bailing out of a
-  phase that is executing.
-
-  07 Nov 2004; Brian Harring <ferringb@gentoo.org> bin/ebuild.sh, 
-  bin/ebuild-default-functions.sh, bin/ebuild-function.sh, 
-  bin/ebuild-isolated-functions.sh: Env clean ups, fixups.  Not compatable
-  with doebuild at this commit, since it tries to write back via pipes.  
-  To make it compatible (should a revert occur), define an appropriate speak
-  funciton.  This commit closes out #52652, #51552, #51370, #46223, potential issues
-  from installed ebuilds not functioning correctly due to assuming use/has behave a
-  certain way #40993, ultimately #56408.  Essentially, this is all the required
-  bash modifications to properly save/restore the env, allowing for ebuilds to 
-  be uninstalled despite eclasses/ebuilds no longer existing.  Also contains a 
-  fair amount of protective code, since older env savings were incorrect.  Additionally,
-  it properly restores variables attributes- export fex, shopt, etc.  This is the basis
-  of the ebuild-daemon.
-  Finally, adds (pre|post) hooks for all relevant ebuild phases.  Required, since 
-  /etc/portage/bashrc is sourced only once.
-
-  07 Nov 2004; Brian Harring <ferringb@gentoo.org> pym/portage_util.py: 
-  fixed import issue.
-
-  07 Nov 2004; Brian Harring <ferringb@gentoo.org> portage_dep.py: code
-  transfer out of portage.py.  Functions are still in portage.py at this point, 
-  removed shortly.  Closes a few bugs with paren_reduce not returning a list, 
-  but a tuple also.
-
-  07 Nov 2004; Brian Harring <ferringb@gentoo.org> portage_db_template.py,
-  portage_db_flat.py: Addition of get_timestamp, way of requesting -just- the
-  mtime.  Useful for speeding up checking if an entry is stale, if the mtime 
-  differs, no need to read the file in- you know it's stale already.  Cuts down
-  on a few syscalls.
-
-  07 Nov 2004; Brian Harring <ferringb@gentoo.org> sync/__init__.py, 
-  sync/parseuri.py, sync/cvs.py, sync/rsync.py, sync/snapshot.py, 
-  bin/emerge-webrsync: Rewrite of Marius Mauch's (genone) sync refactoring code.  
-  Relies on the transport refactoring for snapshots module.  This obsoletes 
-  emerge-webrsync.  Supports old SYNC format for cvs, and new- new being
-  SYNC="cvs://[CVS_RSH:]user@host:cvsroot:cvs-module".  New is preferred, otherwise
-  have to assume CVS_RSH=ssh, and cvs-module=gentoo-x86.  Example of new-
-  SYNC="cvs://ssh:ferringb@cvs.gentoo.org:/var/cvsroot:gentoo-x86"
-  The snapshot uri is a bit odd, possible to rework it I'd think- either
-  SYNC="snapshot"
-  which pulls a mirror to use from portage.thirdpartymirrors["gentoo"], or explicitly
-  SYNC="snapshot-[mirror-uri]".  fex
-  SYNC="snapshot-http://gentoo.chem.wisc.edu/gentoo/snapshots" would use 
-  snapshots from gentoo.chem.wisc.edu. Sync uri for rsync is unchanged.
-  This is just the requisite code, the conversion to emerge to use it shall follow.
-  (#35535).
-
-  07 Nov 2004; Brian Harring <ferringb@gentoo.org> transports/__init__.py,
-  transports/bundled_lib.py, transports/fetchcommand.py: Fetch refactoring.
-  Basically, a rewrite of portions of getbinpkg in httpConnection, and ftpConnection.
-  Those classes are hidden behind BundledConnection, which has an api that is 
-  the same as fetchcommand.py:CustomConnection- that class abstracts the parsing and
-  handling of (FETCH|RESUME)COMMAND, and their protocol specific settings into a central
-  class.  Code isn't in use as of this commit, but will be in use once ebd's code is 
-  fully in cvs (portage.py commit essentially).  The sync refactoring also uses it.
-  bug #23327 also is addressed, although it's ancillary- bundledConnection is able
-  to handle specific user/passwd, although for fetchcommand, we need to add a specific
-  user/password set of variables.
-
-  07 Nov 2004; Brian Harring <ferringb@gentoo.org> orig_dict_cache.py:
-  Transfer of the cacheddir func out of portage.py, and into it's own module.
-  Current implementation isn't symlink aware, and has other issues (follow_symlinks
-  fex).  This shift of it is intended so replacing it just involves creation and 
-  importation of an alternative caching module.
-
-  07 Nov 2004; Brian Harring <ferringb@gentoo.org> portage_exec.py, 
-  portage_checksums.py, portage_gpg.py, portage_const.py, portage_util.py,
-  portage_locks.py:  Code cleanup, moves, and shifting away from 
-  commands.gso to portage_exec.spawn_get_output.  Multiple additions to 
-  portage_exec adding fakeroot support, a native collect status output, 
-  and centralized code for killing off a set of pids.  Correction to 
-  portage_exec so that the spawned_list is correctly pruned- previously it 
-  was a list of _all_ pids spawned, so portage could try to kill off a pid 
-  that was previous a child, but by chance a new process runs as (depends on
-  how random the pid selection is).  Aside from changes to cleanup, these changes
-  are mostly standalone.
-  Additionally, moved selinux context switching into portage_exec post-fork- 
-  just specify the desired selinux_context, and it'll make the switch- if
-  portage_exec.selinux_capable, it makes the switch.  Otherwise, it ignores it.
-  Finally, new function added, spawn_func.  Pass in a python function, it'll fork,
-  then call the function w/ the args/kwargs passed to it- optionally using an additional
-  passed in function to interpret the results, and return an appropriate exitcode.
-  Also, a *large* amount of inline documentation is contained in this commit.
+  07 Nov 2004; Brian Harring <ferringb@gentoo.org> portage.py: buggy
+  logic in listdir w/ ignorecvs, rewrote. (#70170).
 
   07 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> dispatch-conf: Moved back
   to the version of dispatch-conf that was released (due to python-2.2
   compatibility) and fixed a small type in that version. #70282
 
-  07 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> portage_dep.py emerge: Added
-  a few more readable optimizations to the DependencyGraph class along with
-  apprioriate comments. Changed all usage of digraph in emerge to use the new
-  DependencyGraph class.
-
-  06 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> portage_dep.py emerge:
-  Added full code comments to the DependencyGraph class. Did some code
-  optimization where readability was not adversly affected. Removed the
-  testing output from emerge.
-
-  06 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> portage_dep.py emerge:
-  Added a reimplementation of digraph. Still some work to do (including
-  comments) in order to support the differences between *DEPEND. Modified
-  emerge a little to build up both dep graphs for testing purposes.
+*portage-2.0.51-r4 (05 Nov 2004): Internal Release
 
   05 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> doins: Added vapier's fix
   for doins changing existing directory permissions. #69896
 
-  04 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> tbz2tool.c: Added include
-  for stdlib.h as per vapier's bug report. #70001
-
-  04 Nov 2004; Marius Mauch <genone@gentoo.org> pym/portage.py: Added
-  a 'return 0' in treewalk() to avoid the "Unable to run required binary"
-  problem.
+  04 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> tbz2tool.c: Added vapier's
+  fix for tbz2tool on ia64. #70001
 
   03 Nov 2004; Brian Harring <ferringb@gentoo.org> portage_dep.py: Bug in
-  paren_reduce where it was returning a tuple, not a list.
+  paren_reduce where it was returning a tuple (supposed to return a list).
 
   03 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> dispatch-conf: Simplified
   the temp file creation and usage.
@@ -842,8 +851,10 @@
   03 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> portage.py: Fixed issues
   with PROVIDE calculation by flattening the dep array. #32114
 
-  02 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> portage.py: Fixed two bugs
-  in the ExtractKernelVersion changes as per dsd's patch. #67804
+  02 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> portage.py: Updated
+  ExtractKernelVersion() to support 2.6.9's new localversion. #67804
+  Reordered a cache update and a return statement so that the cache is
+  actually updated in ververify. #69523
 
   02 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> ebuild.sh: Turned off
   shell option extglob as it interferes with the g++ QA interceptor. #69690
@@ -855,20 +866,6 @@
   02 Nov 2004; Jason Stubbs <jstubbs@gentoo.org> quickpkg: Applied vapier's
   fix for processing file names that contain spaces. #36997  Applied
   vapier's fix for parallel quickpkg's writing to a single log file. #37270
-
-  31 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> g-cpan.pl: Applied fix
-  for case-less matching of packages names. #69464
-
-  31 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> portage.py: Updated
-  ExtractKernelVersion() to support 2.6.9's new localversion. #67804
-  Reordered a cache update and a return statement so that the cache is
-  actually updated in ververify. #69523
-
-  31 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> bin/ebuild: Added missing
-  portage_util import.
-
-  29 Oct 2004; Brian Harring <ferringb@gentoo.org> emerge: Close stdin after 
-  the spawn fork for rsync, not in global scope.  #68946
 
   29 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> emerge: Fixed issue where
   emerge adds package to world when --onlydeps is specified. #69260
@@ -882,9 +879,8 @@
   29 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> getbinpkg.py: Reversed the
   logic of ftp passive-mode selection. #69371
 
-  28 Oct 2004; Brian Harring <ferringb@gentoo.org> portage.py: Closed out 
-  an issue with config.reset() gradually nuking items out of backupenv- 
-  identified by Ludovic Aubry, solved w/ his provided fix. (#69388)
+  29 Oct 2004; Brian Harring <ferringb@gentoo.org> portage.py: config.reset
+  was pruning vars out of backupenv on each reset call. #69388
 
   28 Oct 2004; Jason Stubbs <jstubbs@gentoo.org> emergehelp.py: Fixed up
   some incorrect descriptions. Added documentation for new and changed
@@ -1473,7 +1469,7 @@
   Added Michael Stewart's patch correcting optional args being specified 
   via position- bug #61881.
 
-  01 Sep 2004; Brian Harring <ferringb@gentoo.org> pym/portage.py, 
+  01 Sep 2004; Brian Harring <ferrignb@gentoo.org> pym/portage.py, 
   pym/portage_exec.py, pym/portage_checksum.py: Restructured spawn
   so that we don't have two versions; all spawn calls trace back to 
   portage_exec.spawn, either through spawn_bash or spawn_sandbox.

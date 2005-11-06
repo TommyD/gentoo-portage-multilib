@@ -1,20 +1,9 @@
 # Copyright 2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header$
-cvs_id_string="$Id$"[5:-2]
+# $Id: /var/cvsroot/gentoo-src/portage/pym/portage_util.py,v 1.11.2.6 2005/04/23 07:26:04 jstubbs Exp $
 
-import sys,string,shlex,os.path,stat,types
-import shutil
 
-try:
-	#XXX: This should get renamed to bsd_chflags, I think.
-	import chflags
-	bsd_chflags = chflags
-except SystemExit, e:
-	raise
-except:
-	# XXX: This should get renamed to bsd_chflags, I think.
-	bsd_chflags = None
+import sys,string,shlex,os.path
 
 noiselimit = 0
 def writemsg(mystr,noiselevel=0):
@@ -57,6 +46,15 @@ def grabfile(myfilename, compat_level=0):
 				continue
 		newlines.append(myline)
 	return newlines
+
+def map_dictlist_vals(func,myDict):
+	"""Performs a function on each value of each key in a dictlist.
+	Returns a new dictlist."""
+	new_dl = {}
+	for key in myDict.keys():
+		new_dl[key] = []
+		new_dl[key] = map(func,myDict[key])
+	return new_dl
 
 def stack_dictlist(original_dicts, incremental=0, incrementals=[], ignore_none=0):
 	"""Stacks an array of dict-types into one array. Optionally merging or
@@ -146,19 +144,18 @@ def grabdict(myfilename,juststrings=0,empty=0):
 		#into single spaces.
 		if x[0] == "#":
 			continue
-		myline = x.split()
+		myline=string.split(x)
 		if len(myline)<2 and empty==0:
 			continue
 		if len(myline)<1 and empty==1:
 			continue
 		if juststrings:
-			newdict[myline[0]]=" ".join( myline[1:] )
+			newdict[myline[0]]=string.join(myline[1:])
 		else:
 			newdict[myline[0]]=myline[1:]
 	return newdict
 
 def grabdict_package(myfilename,juststrings=0):
-	from portage_dep import isvalidatom
 	pkgs=grabdict(myfilename, juststrings, empty=1)
 	for x in pkgs.keys():
 		if not isvalidatom(x):
@@ -167,7 +164,6 @@ def grabdict_package(myfilename,juststrings=0):
 	return pkgs
 
 def grabfile_package(myfilename,compatlevel=0):
-	from portage_dep import isvalidatom
 	pkgs=grabfile(myfilename,compatlevel)
 	for x in range(len(pkgs)-1,-1,-1):
 		pkg = pkgs[x]
@@ -175,7 +171,7 @@ def grabfile_package(myfilename,compatlevel=0):
 			pkg = pkg[1:]
 		if pkg[0] == "*": # Kill this so we can deal the "packages" file too
 			pkg = pkg[1:]
-		if not isvalidatom(pkg): #XXX: isvalidatom is not available from this context
+		if not isvalidatom(pkg):
 			writemsg("--- Invalid atom in %s: %s\n" % (myfilename, pkgs[x]))
 			del(pkgs[x])
 	return pkgs
@@ -191,10 +187,10 @@ def grabints(myfilename):
 	for x in mylines:
 		#the split/join thing removes leading and trailing whitespace, and converts any whitespace in the line
 		#into single spaces.
-		myline=x.split()
+		myline=string.split(x)
 		if len(myline)!=2:
 			continue
-		newdict[myline[0]]=int(myline[1])
+		newdict[myline[0]]=string.atoi(myline[1])
 	return newdict
 
 def writeints(mydict,myfilename):
@@ -280,15 +276,17 @@ def getconfig(mycfg,tolerant=0,allow_sourcing=False):
 #cache expansions of constant strings
 cexpand={}
 def varexpand(mystring,mydict={}):
+	try:
+		return cexpand[" "+mystring]
+	except KeyError:
+		pass
 	"""
 	new variable expansion code.  Removes quotes, handles \n, etc.
 	This code is used by the configfile code, as well as others (parser)
 	This would be a good bunch of code to port to C.
 	"""
-	mystring=" "+mystring
-	if mystring in cexpand:
-		return cexpand[mystring]
 	numvars=0
+	mystring=" "+mystring
 	#in single, double quotes
 	insing=0
 	indoub=0
@@ -380,13 +378,14 @@ def varexpand(mystring,mydict={}):
 			pos=pos+1
 	if numvars==0:
 		cexpand[mystring]=newstring[1:]
-	return newstring[1:]
+	return newstring[1:]	
 
 def pickle_write(data,filename,debug=0):
 	import cPickle,os
 	try:
 		myf=open(filename,"w")
-		cPickle.dump(data,myf,cPickle.HIGHEST_PROTOCOL)
+		cPickle.dump(data,myf,-1)
+		myf.flush()
 		myf.close()
 		writemsg("Wrote pickle: "+str(filename)+"\n",1)
 		os.chown(myefn,uid,portage_gid)
@@ -449,199 +448,18 @@ class ReadOnlyConfig:
 
 def unique_array(array):
 	"""Takes an array and makes sure each element is unique."""
-	newarray = []
+	mya = []
 	for x in array:
-		if x not in newarray:
-			newarray.append(x)
-	return newarray
-
-def movefile(src,dest,newmtime=None,sstat=None,mysettings=None):
-	"""moves a file from src to dest, preserving all permissions and attributes; mtime will
-	be preserved even when moving across filesystems.  Returns true on success and false on
-	failure.  Move is atomic."""
-	#print "movefile("+str(src)+","+str(dest)+","+str(newmtime)+","+str(sstat)+")"
-	global lchown
-	from portage_exec import selinux_capable
-	if selinux_capable:
-		import selinux
-	from portage_data import lchown
-	try:
-		if not sstat:
-			sstat=os.lstat(src)
-		if bsd_chflags:
-			sflags=bsd_chflags.lgetflags(src)
-			if sflags < 0:
-				# Problem getting flags...
-				print "!!! Couldn't get flags for "+dest+"\n"
-				return None
-			
-	except SystemExit, e:
-		raise
-	except Exception, e:
-		print "!!! Stating source file failed... movefile()"
-		print "!!!",e
-		return None
-
-	destexists=1
-	try:
-		dstat=os.lstat(dest)
-	except SystemExit, e:
-		raise
-	except:
-		dstat=os.lstat(os.path.dirname(dest))
-		destexists=0
-
-	if bsd_chflags:
-		# Check that we can actually unset schg etc flags...
-		# Clear the flags on source and destination; we'll reinstate them after merging
-		if(destexists):
-			if bsd_chflags.lchflags(dest, 0) < 0:
-				print "!!! Couldn't clear flags on file being merged: \n"
-		# We might have an immutable flag on the parent dir; save and clear.
-		pflags=bsd_chflags.lgetflags(os.path.dirname(dest))
-		bsd_chflags.lchflags(os.path.dirname(dest), 0)
-		
-		# Don't bother checking the return value here; if it fails then the next line will catch it.
-		bsd_chflags.lchflags(src, 0)
-		
-		if bsd_chflags.lhasproblems(src)>0 or (destexists and bsd_chflags.lhasproblems(dest)>0) or bsd_chflags.lhasproblems(os.path.dirname(dest))>0:
-			# This is bad: we can't merge the file with these flags set.
-			print "!!! Can't merge file "+dest+" because of flags set\n"
-			return None		
-
-	if destexists:
-		if stat.S_ISLNK(dstat[stat.ST_MODE]):
-			try:
-				os.unlink(dest)
-				destexists=0
-			except SystemExit, e:
-				raise
-			except Exception, e:
-				pass
-
-	if stat.S_ISLNK(sstat[stat.ST_MODE]):
-		try:
-			target=os.readlink(src)
-			if mysettings and mysettings["D"]:
-				if target.find(mysettings["D"])==0:
-					target=target[len(mysettings["D"]):]
-			if destexists and not stat.S_ISDIR(dstat[stat.ST_MODE]):
-				os.unlink(dest)
-			if selinux_capable:
-				sid = selinux.get_lsid(src)
-				selinux.secure_symlink(target,dest,sid)
-			else:
-				os.symlink(target,dest)
-			lchown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
-			if bsd_chflags:
-				# Restore the flags we saved before moving
-				if bsd_chflags.lchflags(dest, sflags) < 0 or bsd_chflags.lchflags(os.path.dirname(dest), pflags) < 0:
-					writemsg("!!! Couldn't restore flags ("+str(flags)+") on " + dest+":\n")
-					writemsg("!!! %s\n" % str(e))
-					return None
-			return os.lstat(dest)[stat.ST_MTIME]
-		except SystemExit, e:
-			raise
-		except Exception, e:
-			print "!!! failed to properly create symlink:"
-			print "!!!",dest,"->",target
-			print "!!!",e
-			return None
-
-	renamefailed=1
-	if sstat[stat.ST_DEV]==dstat[stat.ST_DEV] or selinux_capable:
-		try:
-			if selinux_capable:
-				ret=selinux.secure_rename(src,dest)
-			else:
-				ret=os.rename(src,dest)
-			renamefailed=0
-		except SystemExit, e:
-			raise
-		except Exception, e:
-			import errno
-			if e[0]!=errno.EXDEV:
-				# Some random error.
-				print "!!! Failed to move",src,"to",dest
-				print "!!!",e
-				return None
-			# Invalid cross-device-link 'bind' mounted or actually Cross-Device
-	if renamefailed:
-		didcopy=0
-		if stat.S_ISREG(sstat[stat.ST_MODE]):
-			try: # For safety copy then move it over.
-				if selinux_capable:
-					selinux.secure_copy(src,dest+"#new")
-					selinux.secure_rename(dest+"#new",dest)
-				else:
-					shutil.copyfile(src,dest+"#new")
-					os.rename(dest+"#new",dest)
-				didcopy=1
-			except SystemExit, e:
-				raise
-			except Exception, e:
-				print '!!! copy',src,'->',dest,'failed.'
-				print "!!!",e
-				return None
-		else:
-			#we don't yet handle special, so we need to fall back to /bin/mv
-			if selinux_capable:
-				a=portage_exec.spawn_get_output(MOVE_BINARY+" -c -f '%s' '%s'" % (src,dest))
-			else:
-				a=portage_exec.spawn_get_output(MOVE_BINARY+" -f '%s' '%s'" % (src,dest))
-				if a[0]!=0:
-					print "!!! Failed to move special file:"
-					print "!!! '"+src+"' to '"+dest+"'"
-					print "!!!",a
-					return None # failure
-		try:
-			if didcopy:
-				lchown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
-				os.chmod(dest, stat.S_IMODE(sstat[stat.ST_MODE])) # Sticky is reset on chown
-				os.unlink(src)
-		except SystemExit, e:
-				os.unlink(src)
-		except SystemExit, e:
-			raise
-		except Exception, e:
-			print "!!! Failed to chown/chmod/unlink in movefile()"
-			print "!!!",dest
-			print "!!!",e
-			return None
-
-	if newmtime:
-		os.utime(dest,(newmtime,newmtime))
-	else:
-		os.utime(dest, (sstat[stat.ST_ATIME], sstat[stat.ST_MTIME]))
-		newmtime=sstat[stat.ST_MTIME]
-
-	if bsd_chflags:
-		# Restore the flags we saved before moving
-		if bsd_chflags.lchflags(dest, sflags) < 0 or bsd_chflags.lchflags(os.path.dirname(dest), pflags) < 0:
-			writemsg("!!! Couldn't restore flags ("+str(sflags)+") on " + dest+":\n")
-			return None
-		
-	return newmtime
-
-def flatten(mytokens):
-	"""this function now turns a [1,[2,3]] list into
-	a [1,2,3] list and returns it."""
-	newlist=[]
-	for x in mytokens:
-		if type(x)==list:
-			newlist.extend(flatten(x))
-		else:
-			newlist.append(x)
-	return newlist
+		if x not in mya:
+			mya.append(x)
+	return mya
 
 
-def abssymlink(symlink):
-	"""
-	This reads symlinks, resolving the relative symlinks, and returning the absolute.
-	"""
-	mylink=os.readlink(symlink)
-	if mylink[0] != '/':
-		mydir=os.path.dirname(symlink)
-		mylink=mydir+"/"+mylink
-	return os.path.normpath(mylink)
-
+def dump_traceback(msg):
+	import sys, traceback
+	writemsg("\n====================================\n", noiselevel=1)
+	writemsg("Warning: %s\n" % msg, noiselevel=1)
+	for line in traceback.format_list(traceback.extract_stack()[:-1]):
+		writemsg(line, noiselevel=1)
+	writemsg("Please file a bug for %s\n" % sys.argv[0], noiselevel=1)
+	writemsg("====================================\n\n", noiselevel=1)

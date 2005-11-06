@@ -1,7 +1,7 @@
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header$
-cvs_id_string="$Id$"[5:-2]
+# $Id: /var/cvsroot/gentoo-src/portage/pym/output.py,v 1.24.2.4 2005/04/17 09:01:55 jstubbs Exp $
+
 
 import os,sys,re
 
@@ -62,26 +62,26 @@ def color(fg, bg="default", attr=["normal"]):
 
 codes={}
 codes["reset"]     = esc_seq + "39;49;00m"
- 
+
 codes["bold"]      = esc_seq + "01m"
 codes["faint"]     = esc_seq + "02m"
 codes["standout"]  = esc_seq + "03m"
 codes["underline"] = esc_seq + "04m"
 codes["blink"]     = esc_seq + "05m"
 codes["overline"]  = esc_seq + "06m"  # Who made this up? Seriously.
- 
+
 codes["teal"]      = esc_seq + "36m"
 codes["turquoise"] = esc_seq + "36;01m"
- 
+
 codes["fuchsia"]   = esc_seq + "35;01m"
 codes["purple"]    = esc_seq + "35m"
- 
+
 codes["blue"]      = esc_seq + "34;01m"
 codes["darkblue"]  = esc_seq + "34m"
- 
+
 codes["green"]     = esc_seq + "32;01m"
 codes["darkgreen"] = esc_seq + "32m"
- 
+
 codes["yellow"]    = esc_seq + "33;01m"
 codes["brown"]     = esc_seq + "33m"
 
@@ -96,12 +96,11 @@ def xtermTitle(mystr):
 	if havecolor and dotitles and os.environ.has_key("TERM") and sys.stderr.isatty():
 		myt=os.environ["TERM"]
 		legal_terms = ["xterm","Eterm","aterm","rxvt","screen","kterm","rxvt-unicode"]
-		if (myt in legal_terms) or myt.startswith("xterm") or myt.startswith("screen"):
-			sys.stderr.write("\x1b]2;"+str(mystr)+"\x07")
-			sys.stderr.flush()
-		if (myt.startswith("screen")):
-			sys.stderr.write("\x1bk"+str(mystr)+"\x1b\\")
-			sys.stderr.flush()
+		for term in legal_terms:
+			if myt.startswith(term):
+				sys.stderr.write("\x1b]2;"+str(mystr)+"\x07")
+				sys.stderr.flush()
+				break
 
 def xtermTitleReset():
 	if havecolor and dotitles and os.environ.has_key("TERM"):
@@ -165,3 +164,4 @@ def red(text):
 	return codes["red"]+text+codes["reset"]
 def darkred(text):
 	return codes["darkred"]+text+codes["reset"]
+

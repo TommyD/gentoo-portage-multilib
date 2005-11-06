@@ -1,105 +1,88 @@
+# Copyright: 2005 Gentoo Foundation
+# Author(s): Brian Harring (ferringb@gentoo.org)
+# License: GPL2
+# $Id: metadata.py 1964 2005-09-03 00:16:16Z ferringb $
+
 import os, stat
-import fs_template
+import flat_hash
 import cache_errors
+import eclass_cache 
+from template import reconstruct_eclasses, serialize_eclasses
+from mappings import ProtectedDict, LazyLoad
+
+# this is the old cache format, flat_list.  count maintained here.
+magic_line_count = 22
 
 # store the current key order *here*.
-class database(fs_template.FsBased):
+class database(flat_hash.database):
 	complete_eclass_entries = False
 	auxdbkey_order=('DEPEND', 'RDEPEND', 'SLOT', 'SRC_URI',
 		'RESTRICT',  'HOMEPAGE',  'LICENSE', 'DESCRIPTION',
 		'KEYWORDS',  'INHERITED', 'IUSE', 'CDEPEND',
-		'PDEPEND',   'PROVIDE')
+		'PDEPEND',   'PROVIDE', 'EAPI')
 
-	def __init__(self, label, auxdbkeys, **config):
-		super(database,self).__init__(label, auxdbkeys, **config)
-		self._base = os.path.join(self._base, 
-			self.label.lstrip(os.path.sep).rstrip(os.path.sep))
+	autocommits = True
 
-		if len(self._known_keys) > len(self.auxdbkey_order):
-			raise Exception("less ordered keys then auxdbkeys")
-		if not os.path.exists(self._base):
-			self._ensure_dirs()
-
+	def __init__(self, location, *args, **config):
+		loc = location
+		super(database, self).__init__(location, *args, **config)
+		self.location = os.path.join(loc, "metadata","cache")
+		self.ec = eclass_cache.cache(loc)
 
 	def __getitem__(self, cpv):
-		d = {}
-		try:
-			myf = open(os.path.join(self._base, cpv),"r")
-			for k,v in zip(self.auxdbkey_order, myf):
-				d[k] = v.rstrip("\n")
-		except (OSError, IOError),e:
-			if isinstance(e,IOError) and e.errno == 2:
-				raise KeyError(cpv)
-			raise cache_errors.CacheCorruption(cpv, e)
+		return flat_hash.database.__getitem__(self, cpv)
 
-		try:		d["_mtime_"] = os.lstat(os.path.join(self._base, cpv)).st_mtime
-		except OSError, e:raise cache_errors.CacheCorruption(cpv, e)
+
+	def _parse_data(self, data, mtime):
+		# easy attempt first.
+		data = list(data)
+		if len(data) != magic_line_count:
+			d = flat_hash.database._parse_data(self, data, mtime)
+		else:
+			# this one's interesting.
+			d = {}
+
+			for line in data:
+				# yes, meant to iterate over a string.
+				hashed = False
+				# poor mans enumerate.  replace when python 2.3 is required
+				for idx, c in zip(range(len(line)), line):
+					if not c.isalpha():
+						if c == "=" and idx > 0:
+							hashed = True
+							d[line[:idx]] = line[idx + 1:]
+						elif c == "_" or c.isdigit():
+							continue
+						break
+					elif not c.isupper():
+						break
+			
+				if not hashed:
+					# non hashed.
+					d.clear()
+					# poor mans enumerate.  replace when python 2.3 is required
+					for idx, key in zip(range(len(self.auxdbkey_order)), self.auxdbkey_order):
+						d[key] = data[idx].strip()
+					break
+
+		if "_eclasses_" not in d:
+			if "INHERITED" in d:
+				d["_eclasses_"] = self.ec.get_eclass_data(d["INHERITED"].split(), from_master_only=True)
+				del d["INHERITED"]
+		else:
+			d["_eclasses_"] = reconstruct_eclasses(cpv, d["_eclasses_"])
+
 		return d
 
 
-	def _setitem(self, cpv, values):
-		s = cpv.rfind("/")
-		fp=os.path.join(self._base,cpv[:s],".update.%i.%s" % (os.getpid(), cpv[s+1:]))
-		try:	myf=open(fp, "w")
-		except (OSError, IOError), e:
-			if e.errno == 2:
-				try:
-					self._ensure_dirs(cpv)
-					myf=open(fp,"w")
-				except (OSError, IOError),e:
-					raise cache_errors.CacheCorruption(cpv, e)
-			else:
-				raise cache_errors.CacheCorruption(cpv, e)
-
 		
-#			try:	
-#				s = os.path.split(cpv)
-#				if len(s[0]) == 0:
-#					s = s[1]
-#				else:
-#					s = s[0]
-#				os._ensure_dirs(s)
-#
-#			except (OSError, IOError), e:
+	def _setitem(self, cpv, values):
+		values = ProtectedDict(values)
+		
+		# hack.  proper solution is to make this a __setitem__ override, since template.__setitem__ 
+		# serializes _eclasses_, then we reconstruct it.
+		if "_eclasses_" in values:
+			values["INHERITED"] = ' '.join(reconstruct_eclasses(cpv, values["_eclasses_"]).keys())
+			del values["_eclasses_"]
 
-		myf.writelines( [ values.get(x,"")+"\n" for x in self.auxdbkey_order] )
-		myf.close()
-		self._ensure_access(fp, mtime=values["_mtime_"])
-		#update written.  now we move it.
-		new_fp = os.path.join(self._base,cpv)
-		try:	os.rename(fp, new_fp)
-		except (OSError, IOError), e:
-			os.remove(fp)
-			raise cache_errors.CacheCorruption(cpv, e)
-
-
-	def _delitem(self, cpv):
-		try:
-			os.remove(os.path.join(self._base,cpv))
-		except OSError, e:
-			if e.errno == 2:
-				raise KeyError(cpv)
-			else:
-				raise cache_errors.CacheCorruption(cpv, e)
-
-
-	def has_key(self, cpv):
-		return os.path.exists(os.path.join(self._base, cpv))
-
-
-	def iterkeys(self):
-		"""generator for walking the dir struct"""
-		dirs = [self._base]
-		len_base = len(self._base)
-		while len(dirs):
-			for l in os.listdir(dirs[0]):
-				if l.endswith(".cpickle"):
-					continue
-				p = os.path.join(dirs[0],l)
-				st = os.lstat(p)
-				if stat.S_ISDIR(st.st_mode):
-					dirs.append(p)
-					continue
-				yield p[len_base+1:]
-			dirs.pop(0)
-
+		flat_hash.database._setitem(self, cpv, values)

@@ -1,7 +1,7 @@
 #!/usr/bin/python -O
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header$
+# $Id: /var/cvsroot/gentoo-src/portage/bin/dispatch-conf,v 1.7.2.10 2005/05/12 15:20:22 jstubbs Exp $
 
 #
 # dispatch-conf -- Integrate modified configs, post-emerge
@@ -64,9 +64,12 @@ class dispatch:
         self.options = dispatch_conf.read_config(MANDATORY_OPTS)
 
         if self.options.has_key("log-file"):
-            if os.path.exists(self.options["log-file"]):
-                shutil.copyfile(self.options["log-file"], self.options["log-file"] + '.old')
-                os.remove(self.options["log-file"])
+            if os.path.isfile(self.options["log-file"]):
+                shutil.copy(self.options["log-file"], self.options["log-file"] + '.old')
+            if os.path.isfile(self.options["log-file"]) \
+               or not os.path.exists(self.options["log-file"]):
+                open(self.options["log-file"], 'w').close() # Truncate it
+                os.chmod(self.options["log-file"], 0600)
         else:
             self.options["log-file"] = "/dev/null"
 
@@ -186,7 +189,10 @@ class dispatch:
                 elif c == 'm':
                     merged = SCRATCH_DIR+"/"+os.path.basename(conf['current'])
                     print
-                    os.system (self.options['merge'] % (merged, conf ['current'], newconf))
+                    ret = os.system (self.options['merge'] % (merged, conf ['current'], newconf))
+                    if ret:
+                        print "Failure running 'merge' command"
+                        continue
                     shutil.copyfile(merged, mrgconf)
                     os.remove(merged)
                     mystat = os.lstat(conf['new'])

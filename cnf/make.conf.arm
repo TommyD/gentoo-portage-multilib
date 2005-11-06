@@ -1,6 +1,6 @@
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header$
+# $Id: /var/cvsroot/gentoo-src/portage/cnf/make.conf.arm,v 1.31.2.5 2005/04/13 15:28:38 jstubbs Exp $
 # Contains local system settings for Portage system
 
 # Please review 'man make.conf' for more information.
@@ -103,9 +103,8 @@ CHOST="armv4l-unknown-linux-gnu"
 #PORTAGE_TMPDIR=/var/tmp
 #
 # PORTDIR is the location of the portage tree. This is the repository
-#     for all profile information as well as all ebuilds. This directory
-#     itself can reach 200M. If you change this, you must update your
-#     /etc/make.profile symlink accordingly.
+#     for all profile information as well as all ebuilds. If you change
+#     this, you must update your /etc/make.profile symlink accordingly.
 #PORTDIR=/usr/portage
 #
 # DISTDIR is where all of the source code tarballs will be placed for
@@ -156,14 +155,13 @@ CHOST="armv4l-unknown-linux-gnu"
 #FETCHCOMMAND="/usr/bin/lukemftp -s -a -o \${DISTDIR}/\${FILE} \${URI}"
 #RESUMECOMMAND="/usr/bin/lukemftp -s -a -R -o \${DISTDIR}/\${FILE} \${URI}"
 #
-#
 # Portage uses GENTOO_MIRRORS to specify mirrors to use for source retrieval.
 # The list is a space separated list which is read left to right. If you use
 # another mirror we highly recommend leaving the default mirror at the end of
 # the list so that portage will fall back to it if the files cannot be found
 # on your specified mirror. We _HIGHLY_ recommend that you change this setting
 # to a nearby mirror by merging and using the 'mirrorselect' tool.
-#GENTOO_MIRRORS="<your_mirror_here> http://gentoo.osuosl.org http://www.ibiblio.org/pub/Linux/distributions/gentoo"
+#GENTOO_MIRRORS="<your_mirror_here> http://distfiles.gentoo.org http://www.ibiblio.org/pub/Linux/distributions/gentoo"
 #
 # Portage uses PORTAGE_BINHOST to specify mirrors for prebuilt-binary packages.
 # The list is a single entry specifying the full address of the directory
@@ -228,6 +226,12 @@ CHOST="armv4l-unknown-linux-gnu"
 #     Note: This is an increment. Running emerge in a niced environment will
 #     reduce it further. Default is unset.
 #PORTAGE_NICENESS=3
+#
+# AUTOCLEAN enables portage to automatically clean out older or overlapping
+#     packages from the system after every successful merge. This is the
+#     same as running 'emerge -c' after every merge. Set with: "yes" or "no".
+#     This does not affect the unpacked source. See 'noclean' below.
+#AUTOCLEAN="yes"
 #
 # PORTAGE_TMPFS is a location where portage may create temporary files.
 #     If specified, portage will use this directory whenever possible
@@ -307,41 +311,3 @@ CHOST="armv4l-unknown-linux-gnu"
 #     The file format is one pattern per line, blanks and ';' or '#' lines are
 #     comments. See 'man rsync' for more details on the exclude-from format.
 #RSYNC_EXCLUDEFROM=/etc/portage/rsync_excludes
-
-# logging related variables:
-# PORTAGE_LOG_CLASSES: selects messages to be logged, possible values are:
-#                          info, warn, error, log
-PORTAGE_LOG_CLASSES="warn error log"
-
-# PORTAGE_LOG_SYSTEM: selects the module(s) to process the log messages. Modules
-#                     included in portage are (empty means logging is disabled):
-#                          save (saves one log per package in $PORTAGE_TMPDIR/elogs)
-#                          custom (passes all messages to $PORTAGE_LOG_COMMAND)
-#                          syslog (sends all messages to syslog)
-#                          mail (send all messages to the mailserver defined 
-#                                in $PORTAGE_LOG_MAILURI)
-#PORTAGE_LOG_SYSTEM="save mail"
-
-# PORTAGE_LOG_COMMAND: only used with the "custom" logging module. Specifies a command
-#                      to process log messages. Two variables are expanded:
-#                          ${PACKAGE} - expands to the cpv entry of the processed 
-#                                       package (see $PVR in ebuild(5))
-#                          ${LOGFILE} - absolute path to the logfile
-#PORTAGE_LOG_COMMAND="/path/to/logprocessor -p ${PACKAGE} -f ${LOGFILE}"
-
-# PORTAGE_LOG_MAILURI: this variable holds all important settings for the mail
-#                      module. In most cases listing the recipient adress and
-#                      the receiving mailserver should be sufficient, but you can
-#                      also use advanced settings like authentication or TLS. The
-#                      full syntax is:
-#                          adress [[user:passwd@]mailserver[:port]]
-#                      where
-#                          adress:     recipient adress
-#                          user:       username for smtp auth (defaults to none)
-#                          passwd:     password for smtp auth (defaults to none)
-#                          mailserver: smtp server that should be used to deliver the mail (defaults to localhost)
-#                          port:       port to use on the given smtp server (defaults to 25, values > 100000 indicate that starttls should be used on (port-100000))
-#                      Examples:
-#PORTAGE_LOG_MAILURI="root@localhost localhost" (this is also the default setting)
-#PORTAGE_LOG_MAILURI="user@some.domain mail.some.domain" (sends mails to user@some.domain using the mailserver mail.some.domain)
-#PORTAGE_LOG_MAILURI="user@some.domain user:secret@mail.some.domain:100465" (this is left uncommented as a reader excercise ;)

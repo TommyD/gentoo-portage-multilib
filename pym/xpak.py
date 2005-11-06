@@ -1,7 +1,7 @@
 # Copyright 2001-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header$
-cvs_id_string="$Id$"[5:-2]
+# $Id: /var/cvsroot/gentoo-src/portage/pym/xpak.py,v 1.13.2.3 2005/02/26 11:22:38 carpaski Exp $
+
 
 # The format for a tbz2/xpak:
 #
@@ -370,6 +370,15 @@ class tbz2:
 		os.chdir(origdir)
 		return 1
 
+	def getboth(self):
+		"""Returns an array [indexSegment,dataSegment]"""
+		if not self.scan():
+			return None
 
+		a = open(self.file,"r")
+		a.seek(self.datapos)
+		mydata =a.read(self.datasize)
+		a.close()
 
+		return [self.index[:],mydata]
 

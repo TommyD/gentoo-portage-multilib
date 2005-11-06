@@ -1,3 +1,8 @@
+# Copyright: 2005 Gentoo Foundation
+# Author(s): Brian Harring (ferringb@gentoo.org)
+# License: GPL2
+# $Id: sqlite.py 1911 2005-08-25 03:44:21Z ferringb $
+
 sqlite_module =__import__("sqlite")
 import os
 import sql_template, fs_template
@@ -17,7 +22,7 @@ class database(fs_template.FsBased, sql_template.SQLDatabase):
 	_supports_replace = True
 
 	def _dbconnect(self, config):
-		self._dbpath = os.path.join(self._base, fs_template.gen_label(self._base, self.label)+".sqldb")
+		self._dbpath = os.path.join(self.location, fs_template.gen_label(self.location, self.label)+".sqldb")
 		try:
 			self.db = sqlite_module.connect(self._dbpath, mode=self._perms, autocommit=False)
 			if not self._ensure_access(self._dbpath):

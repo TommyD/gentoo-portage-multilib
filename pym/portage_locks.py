@@ -1,8 +1,8 @@
 # portage: Lock management code
 # Copyright 2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header$
-cvs_id_string="$Id$"[5:-2]
+# $Id: /var/cvsroot/gentoo-src/portage/pym/portage_locks.py,v 1.18.2.2 2005/01/16 02:35:33 carpaski Exp $
+
 
 import atexit
 import errno
@@ -37,7 +37,7 @@ def lockdir(mydir):
 def unlockdir(mylock):
 	return unlockfile(mylock)
 
-def lockfile(mypath,wantnewlockfile=0,unlinkfile=0,verbosity=0):
+def lockfile(mypath,wantnewlockfile=0,unlinkfile=0):
 	"""Creates all dirs upto, the given dir. Creates a lockfile
 	for the given directory as the file: directoryname+'.portage_lockfile'."""
 	import fcntl
@@ -72,10 +72,10 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0,verbosity=0):
 			except SystemExit, e:
 				raise
 			except OSError, e:
-				if e[0] == 2: #XXX: No such file or directory
+				if e[0] == 2: # No such file or directory
 					return lockfile(mypath,wantnewlockfile,unlinkfile)
 				else:
-					portage_util.writemsg("Cannot chown a lockfile. This could cause inconvenience later.\n",verbosity)
+					portage_util.writemsg("Cannot chown a lockfile. This could cause inconvenience later.\n");
 			os.umask(old_mask)
 		else:
 			myfd = os.open(lockfilename, os.O_CREAT|os.O_RDWR,0660)
@@ -88,57 +88,48 @@ def lockfile(mypath,wantnewlockfile=0,unlinkfile=0,verbosity=0):
 
 	# try for a non-blocking lock, if it's held, throw a message
 	# we're waiting on lockfile and use a blocking attempt.
-	locking_method = None
-	link_success=False
-	for locking_method in (fcntl.flock, fcntl.lockf):
-		try:
-			locking_method(myfd,fcntl.LOCK_EX|fcntl.LOCK_NB)
-			link_success=True
-			break
-		except IOError, e:
-			if "errno" not in dir(e):
-				raise
-			if e.errno == errno.EAGAIN:
-				# resource temp unavailable; eg, someone beat us to the lock.
-				if type(mypath) == types.IntType:
-					portage_util.writemsg("waiting for lock on fd %i\n" % myfd,verbosity)
-				else:
-					portage_util.writemsg("waiting for lock on %s\n" % lockfilename,verbosity)
-				# try for the exclusive lock now.
-				locking_method(myfd,fcntl.LOCK_EX)
-			elif e.errno == errno.ENOLCK:
-				pass
-			else:
-				raise
-
-
-	if not link_success:
-		# We're not allowed to lock on this FS.
-		os.close(myfd)
-		link_success = False
-		if lockfilename == str(lockfilename):
-			if wantnewlockfile:
-				try:
-					if os.stat(lockfilename)[stat.ST_NLINK] == 1:
-						os.unlink(lockfilename)
-				except Exception, e:
-					pass
-				link_success = hardlink_lockfile(lockfilename)
-		if not link_success:
+	locking_method = fcntl.lockf
+	try:
+		fcntl.lockf(myfd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+	except IOError, e:
+		if "errno" not in dir(e):
 			raise
-		locking_method = None
-		myfd = HARDLINK_FD
-
+		if e.errno == errno.EAGAIN:
+			# resource temp unavailable; eg, someone beat us to the lock.
+			if type(mypath) == types.IntType:
+				print "waiting for lock on fd %i" % myfd
+			else:
+				print "waiting for lock on %s" % lockfilename
+			# try for the exclusive lock now.
+			fcntl.lockf(myfd,fcntl.LOCK_EX)
+		elif e.errno == errno.ENOLCK:
+			# We're not allowed to lock on this FS.
+			os.close(myfd)
+			link_success = False
+			if lockfilename == str(lockfilename):
+				if wantnewlockfile:
+					try:
+						if os.stat(lockfilename)[stat.ST_NLINK] == 1:
+							os.unlink(lockfilename)
+					except Exception, e:
+						pass
+					link_success = hardlink_lockfile(lockfilename)
+			if not link_success:
+				raise
+			locking_method = None
+			myfd = HARDLINK_FD
+		else:
+			raise
 
 		
 	if type(lockfilename) == types.StringType and not os.path.exists(lockfilename):
 		# The file was deleted on us... Keep trying to make one...
 		os.close(myfd)
-		portage_util.writemsg("lockfile recurse\n",verbosity+1)
-		lockfilename,myfd,unlinkfile,locking_method,verbosity = lockfile(mypath,wantnewlockfile,unlinkfile,verbosity)
+		portage_util.writemsg("lockfile recurse\n",1)
+		lockfilename,myfd,unlinkfile,locking_method = lockfile(mypath,wantnewlockfile,unlinkfile)
 
-	portage_util.writemsg(str((lockfilename,myfd,unlinkfile))+"\n",verbosity+1)
-	return (lockfilename,myfd,unlinkfile,locking_method,verbosity)
+	portage_util.writemsg(str((lockfilename,myfd,unlinkfile))+"\n",1)
+	return (lockfilename,myfd,unlinkfile,locking_method)
 
 def unlockfile(mytuple):
 	import fcntl
@@ -147,12 +138,8 @@ def unlockfile(mytuple):
 	if len(mytuple) == 3:
 		lockfilename,myfd,unlinkfile = mytuple
 		locking_method = fcntl.flock
-		verbosity=0
 	elif len(mytuple) == 4:
 		lockfilename,myfd,unlinkfile,locking_method = mytuple
-		verbosity=0
-	elif len(mytuple) == 5:
-		lockfilename,myfd,unlinkfile,locking_method,verbosity = mytuple
 	else:
 		raise
 
@@ -286,7 +273,7 @@ def hardlink_lockfile(lockfilename, max_wait=14400):
 			print "This is a feature to prevent distfiles corruption."
 			print "/usr/lib/portage/bin/clean_locks can fix stuck locks."
 			print "Lockfile: " + lockfilename
-		time.sleep(0.1)
+		time.sleep(3)
 	
 	os.unlink(myhardlock)
 	return False

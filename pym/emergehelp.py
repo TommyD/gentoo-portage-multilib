@@ -1,7 +1,7 @@
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header$
-cvs_id_string="$Id$"[5:-2]
+# $Id: /var/cvsroot/gentoo-src/portage/pym/emergehelp.py,v 1.8.2.2 2005/01/16 02:35:33 carpaski Exp $
+
 
 import os,sys
 from output import bold, turquoise, green
@@ -15,9 +15,9 @@ def shorthelp():
 	print "   "+turquoise("emerge")+" < "+turquoise("--sync")+" | "+turquoise("--metadata")+" | "+turquoise("--info")+" >"
 	print "   "+turquoise("emerge")+" "+turquoise("--resume")+" [ "+green("--pretend")+" | "+green("--ask")+" | "+green("--skipfirst")+" ]"
 	print "   "+turquoise("emerge")+" "+turquoise("--help")+" [ "+green("system")+" | "+green("config")+" | "+green("sync")+" ] "
-	print bold("Options:")+" "+green("-")+"["+green("abcCdDefhikKlnoOpPsSuUvV")+"] ["+green("--oneshot")+"] ["+green("--newuse")+"] ["+green("--noconfmem")+"]"
+	print bold("Options:")+" "+green("-")+"["+green("abcCdDefhikKlnNoOpPsSuUvV")+"] ["+green("--oneshot")+"] ["+green("--newuse")+"] ["+green("--noconfmem")+"]"
 	print      "                                    ["+green("--columns")+"] ["+green("--nospinner")+"]"
-	print bold("Actions:")+" [ "+green("--clean")+" | "+green("--depclean")+" | "+green("--inject")+" | "+green("--prune")+" | "+green("--regen")+" | "+green("--search")+" | "+green("--unmerge")+" ]"
+	print bold("Actions:")+" [ "+green("--clean")+" | "+green("--depclean")+" | "+green("--prune")+" | "+green("--regen")+" | "+green("--search")+" | "+green("--unmerge")+" ]"
 	print
 
 def help(myaction,myopts,havecolor=1):
@@ -169,7 +169,7 @@ def help(myaction,myopts,havecolor=1):
 		print "              used in combination with --pretend all the SRC_URIs will be"
 		print "              displayed multiple mirrors per line, one line per file."
 		print
-		print "       "+green("--fetch-all-uri")+" ("+green("-F")+" short option)"
+		print "       "+green("--fetch-all-uri")
 		print "              Same as --fetchonly except that all package files, including those"
 		print "              not required to build the package, will be processed."
 		print
@@ -185,7 +185,7 @@ def help(myaction,myopts,havecolor=1):
 		print "              downloaded from the remote server without consulting packages"
 		print "              existing in the packages directory."
 		print
-		print "       "+green("--newuse")
+		print "       "+green("--newuse")+" ("+green("-N")+" short option)"
 		print "              Tells emerge to include installed packages where USE flags have "
 		print "              changed since installation."
 		print
@@ -334,7 +334,7 @@ and the KDE configuration dirs; more may be added in the future.
 
 When Portage installs a file into a protected directory tree like /etc, any
 existing files will not be overwritten.  If a file of the same name already
-exists, Portage will change the name of the to-be- installed file from 'foo' to
+exists, Portage will change the name of the to-be-installed file from 'foo' to
 '._cfg0000_foo'.  If '._cfg0000_foo' already exists, this name becomes
 '._cfg0001_foo', etc.  In this way, existing files are not overwritten,
 allowing the administrator to manually merge the new config files and avoid any
