@@ -1,7 +1,7 @@
 # Copyright: 2005 Gentoo Foundation
 # Author(s): Brian Harring (ferringb@gentoo.org)
 # License: GPL2
-# $Id$
+# $Id: util.py 13291 2009-04-06 22:25:15Z zmedico $
 
 __all__ = ["mirror_cache", "non_quiet_mirroring", "quiet_mirroring"]
 

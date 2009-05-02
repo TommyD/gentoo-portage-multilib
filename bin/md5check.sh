@@ -1,7 +1,7 @@
 #!/bin/bash
 # Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: md5check.sh 3483 2006-06-10 21:40:40Z genone $
 
 # pipe in the data.
 

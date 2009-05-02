@@ -1,7 +1,7 @@
 # localization.py -- Code to manage/help portage localization.
 # Copyright 2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: localization.py 5782 2007-01-25 17:07:32Z genone $
 
 
 # We define this to make the transition easier for us.

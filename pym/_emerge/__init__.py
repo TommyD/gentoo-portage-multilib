@@ -1,7 +1,7 @@
 #!/usr/bin/python -O
 # Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: __init__.py 13575 2009-04-30 21:59:26Z zmedico $
 
 import array
 import codecs
@@ -1741,9 +1741,6 @@ class EbuildFetchonly(SlotObject):
 		ebuild_path = portdb.findname(pkg.cpv)
 		settings.setcpv(pkg)
 		debug = settings.get("PORTAGE_DEBUG") == "1"
-		use_cache = 1 # always true
-		portage.doebuild_environment(ebuild_path, "fetch",
-			settings["ROOT"], settings, debug, use_cache, portdb)
 		restrict_fetch = 'fetch' in settings['PORTAGE_RESTRICT'].split()
 
 		if restrict_fetch:
@@ -7039,6 +7036,13 @@ class depgraph(object):
 			writemsg("\n", noiselevel=-1)
 
 		scheduler_graph = self.digraph.copy()
+
+		if '--nodeps' in self.myopts:
+			# Preserve the package order given on the command line.
+			return ([node for node in scheduler_graph \
+				if isinstance(node, Package) \
+				and node.operation == 'merge'], scheduler_graph)
+
 		mygraph=self.digraph.copy()
 		# Prune "nomerge" root nodes if nothing depends on them, since
 		# otherwise they slow down merge order calculation. Don't remove
@@ -9847,9 +9851,10 @@ class JobStatusDisplay(object):
 		'newline'         : 'nel',
 	}
 
-	def __init__(self, out=sys.stdout, quiet=False):
+	def __init__(self, out=sys.stdout, quiet=False, xterm_titles=True):
 		object.__setattr__(self, "out", out)
 		object.__setattr__(self, "quiet", quiet)
+		object.__setattr__(self, "xterm_titles", xterm_titles)
 		object.__setattr__(self, "maxval", 0)
 		object.__setattr__(self, "merges", 0)
 		object.__setattr__(self, "_changed", False)
@@ -10069,7 +10074,8 @@ class JobStatusDisplay(object):
 		else:
 			self._update(color_output.getvalue())
 
-		xtermTitle(" ".join(plain_output.split()))
+		if self.xterm_titles:
+			xtermTitle(" ".join(plain_output.split()))
 
 class ProgressHandler(object):
 	def __init__(self):
@@ -10213,7 +10219,8 @@ class Scheduler(PollScheduler):
 		# being in a fragile state. For example, see bug #259954.
 		self._unsatisfied_system_deps = set()
 
-		self._status_display = JobStatusDisplay()
+		self._status_display = JobStatusDisplay(
+			xterm_titles=('notitles' not in settings.features))
 		self._max_load = myopts.get("--load-average")
 		max_jobs = myopts.get("--jobs")
 		if max_jobs is None:
@@ -13835,9 +13842,6 @@ def action_info(settings, trees, myopts, myfiles):
 		global_vals = {}
 		pkgsettings = portage.config(clone=settings)
 
-		for myvar in mydesiredvars:
-			global_vals[myvar] = set(settings.get(myvar, "").split())
-
 		# Loop through each package
 		# Only print settings if they differ from global settings
 		header_title = "Package Settings"
@@ -13853,17 +13857,6 @@ def action_info(settings, trees, myopts, myfiles):
 				installed=True, metadata=izip(Package.metadata_keys,
 				(metadata.get(x, '') for x in Package.metadata_keys)),
 				root_config=root_config, type_name='installed')
-			valuesmap = {}
-			for k in auxkeys:
-				valuesmap[k] = set(metadata[k].split())
-
-			diff_values = {}
-			for myvar in mydesiredvars:
-				# If the package variable doesn't match the
-				# current global variable, something has changed
-				# so set diff_found so we know to print
-				if valuesmap[myvar] != global_vals[myvar]:
-					diff_values[myvar] = valuesmap[myvar]
 
 			print "\n%s was built with the following:" % \
 				colorize("INFORM", str(pkg.cpv))
@@ -13919,15 +13912,9 @@ def action_info(settings, trees, myopts, myfiles):
 				print '%s="%s"' % (varname, ' '.join(str(f) for f in flags)),
 			print
 
-			# If a difference was found, print the info for
-			# this package.
-			if diff_values:
-				# Print package info
-				for myvar in mydesiredvars:
-					if myvar in diff_values:
-						mylist = list(diff_values[myvar])
-						mylist.sort()
-						print "%s=\"%s\"" % (myvar, " ".join(mylist))
+			for myvar in mydesiredvars:
+				if metadata[myvar].split() != settings.get(myvar, '').split():
+					print "%s=\"%s\"" % (myvar, metadata[myvar])
 			print
 
 			if metadata['DEFINED_PHASES']:

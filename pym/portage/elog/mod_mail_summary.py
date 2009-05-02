@@ -1,7 +1,7 @@
 # elog/mod_mail_summary.py - elog dispatch module
 # Copyright 2006-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: mod_mail_summary.py 10873 2008-07-01 12:50:41Z zmedico $
 
 import portage.mail, socket, os, time
 from portage.exception import PortageException

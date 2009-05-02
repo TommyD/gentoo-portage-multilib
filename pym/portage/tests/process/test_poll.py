@@ -1,6 +1,6 @@
 # Copyright 1998-2008 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: test_poll.py 12720 2009-02-27 02:43:45Z zmedico $
 
 import errno, os, sys
 import fcntl

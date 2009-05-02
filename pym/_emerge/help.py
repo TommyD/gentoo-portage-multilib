@@ -1,6 +1,6 @@
 # Copyright 1999-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: help.py 13363 2009-04-19 05:44:22Z zmedico $
 
 
 import os,sys

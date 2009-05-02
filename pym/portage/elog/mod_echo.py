@@ -1,7 +1,7 @@
 # elog/mod_echo.py - elog dispatch module
 # Copyright 2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: mod_echo.py 10694 2008-06-17 17:35:18Z genone $
 
 from portage.output import EOutput, colorize
 from portage.const import EBUILD_PHASES

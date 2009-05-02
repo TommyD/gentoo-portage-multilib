@@ -1,7 +1,7 @@
 # test_dep_getusedeps.py -- Portage Unit Testing Functionality
 # Copyright 2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: test_dep_getusedeps.py 12626 2009-02-18 22:50:14Z zmedico $
 
 from portage.tests import TestCase
 from portage.dep import dep_getusedeps

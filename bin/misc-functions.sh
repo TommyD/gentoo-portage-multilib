@@ -1,7 +1,7 @@
 #!/bin/bash
 # Copyright 1999-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: misc-functions.sh 13584 2009-05-01 21:59:43Z zmedico $
 #
 # Miscellaneous shell functions that make use of the ebuild env but don't need
 # to be included directly in ebuild.sh.
@@ -418,14 +418,16 @@ install_qa_check() {
 		fi
 		if [[ ${abort} == "yes" ]] ; then
 			if [[ ${gentoo_bug} == "yes" ]] ; then
-				die "poor code kills airplanes"
+				die "install aborted due to" \
+					"poor programming practices shown above"
 			else
 				echo "Please do not file a Gentoo bug and instead" \
 				"report the above QA issues directly to the upstream" \
 				"developers of this software." | fmt -w 70 | \
 				while read line ; do eqawarn "${line}" ; done
 				eqawarn "Homepage: ${HOMEPAGE}"
-				hasq stricter ${FEATURES} && die "poor code kills airplanes"
+				hasq stricter ${FEATURES} && die "install aborted due to" \
+					"poor programming practices shown above"
 			fi
 		fi
 	fi

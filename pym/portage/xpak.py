@@ -1,6 +1,6 @@
 # Copyright 2001-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: xpak.py 7355 2007-07-22 10:08:15Z antarus $
 
 
 # The format for a tbz2/xpak:

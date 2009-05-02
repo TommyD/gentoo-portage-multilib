@@ -1,7 +1,7 @@
 # Copyright: 2005-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 # Author(s): Brian Harring (ferringb@gentoo.org)
-# $Id$
+# $Id: mappings.py 12816 2009-03-10 04:28:21Z zmedico $
 
 __all__ = ["Mapping", "MutableMapping", "UserDict", "ProtectedDict",
 	"LazyLoad", "slot_dict_class"]

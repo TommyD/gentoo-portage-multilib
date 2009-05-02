@@ -1,7 +1,7 @@
 # test_NewsItem.py -- Portage Unit Testing Functionality
 # Copyright 2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: test_NewsItem.py 12726 2009-02-27 04:11:03Z zmedico $
 
 import os
 from portage.tests import TestCase

@@ -1,7 +1,7 @@
 # test_dodir.py -- Portage Unit Testing Functionality
 # Copyright 2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: test_dodir.py 13062 2009-03-12 00:25:50Z zmedico $
 
 from portage.tests.bin.setup_env import *
 

@@ -1,7 +1,7 @@
 # testConfigFileSet.py -- Portage Unit Testing Functionality
 # Copyright 2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: testConfigFileSet.py 12725 2009-02-27 04:03:00Z zmedico $
 
 import tempfile, os
 

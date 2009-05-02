@@ -1,7 +1,7 @@
 # test_PackageUseFile.py -- Portage Unit Testing Functionality
 # Copyright 2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: test_PackageUseFile.py 12727 2009-02-27 04:14:22Z zmedico $
 
 import os
 from portage.tests import TestCase

@@ -1,7 +1,7 @@
 # Copyright: 2005 Gentoo Foundation
 # Author(s): Nicholas Carpaski (carpaski@gentoo.org), Brian Harring (ferringb@gentoo.org)
 # License: GPL2
-# $Id$
+# $Id: eclass_cache.py 13309 2009-04-09 23:59:13Z zmedico $
 
 __all__ = ["cache"]
 

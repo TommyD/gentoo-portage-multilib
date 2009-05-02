@@ -1,7 +1,7 @@
 # versions.py -- core Portage functionality
 # Copyright 1998-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: versions.py 13354 2009-04-18 04:45:43Z zmedico $
 
 import re
 

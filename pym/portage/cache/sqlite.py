@@ -1,6 +1,6 @@
 # Copyright 1999-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: sqlite.py 13168 2009-03-23 05:26:45Z zmedico $
 
 from portage.cache import fs_template
 from portage.cache import cache_errors

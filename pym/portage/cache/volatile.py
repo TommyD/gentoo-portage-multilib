@@ -1,6 +1,6 @@
 # Copyright 1999-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: volatile.py 12701 2009-02-23 21:05:22Z zmedico $
 
 import copy
 from portage.cache import template

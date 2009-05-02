@@ -1,7 +1,7 @@
 # config.py -- Portage Config
 # Copyright 2007-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: config.py 12631 2009-02-19 03:35:07Z zmedico $
 
 __all__ = ["ConfigLoaderKlass", "GenericFile", "PackageKeywordsFile",
 	"PackageUseFile", "PackageMaskFile", "PortageModulesFile"]

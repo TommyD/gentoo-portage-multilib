@@ -1,10 +1,10 @@
 # portage.py -- core Portage functionality
 # Copyright 1998-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: __init__.py 13580 2009-05-01 19:11:26Z zmedico $
 
 
-VERSION="$Rev$"[6:-2] + "-svn"
+VERSION="$Rev: 13580 $"[6:-2] + "-svn"
 
 # ===========================================================================
 # START OF IMPORTS -- START OF IMPORTS -- START OF IMPORTS -- START OF IMPORT
@@ -15,6 +15,9 @@ try:
 	import codecs
 	import copy
 	import errno
+	if not hasattr(errno, 'ESTALE'):
+		# ESTALE may not be defined on some systems, such as interix.
+		errno.ESTALE = -1
 	import logging
 	import os
 	import re
@@ -1058,7 +1061,7 @@ class config(object):
 	# environment in order to prevent sandbox from sourcing /etc/profile
 	# in it's bashrc (causing major leakage).
 	_environ_whitelist += [
-		"BASH_ENV", "BUILD_PREFIX", "D",
+		"ACCEPT_LICENSE", "BASH_ENV", "BUILD_PREFIX", "D",
 		"DISTDIR", "DOC_SYMLINKS_DIR", "EBUILD",
 		"EBUILD_EXIT_STATUS_FILE", "EBUILD_FORCE_TEST",
 		"EBUILD_PHASE", "ECLASSDIR", "ECLASS_DEPTH", "EMERGE_FROM",
@@ -1124,7 +1127,7 @@ class config(object):
 
 	# variables that break bash
 	_environ_filter += [
-		"POSIXLY_CORRECT",
+		"HISTFILE", "POSIXLY_CORRECT",
 	]
 
 	# portage config variables and variables set directly by portage
@@ -1254,19 +1257,19 @@ class config(object):
 			self.mycpv    = copy.deepcopy(clone.mycpv)
 			self._setcpv_args_hash = copy.deepcopy(clone._setcpv_args_hash)
 
-			self.configlist = copy.deepcopy(clone.configlist)
+			self.configdict = copy.deepcopy(clone.configdict)
+			self.configlist = [
+				self.configdict['env.d'],
+				self.configdict['pkginternal'],
+				self.configdict['globals'],
+				self.configdict['defaults'],
+				self.configdict['conf'],
+				self.configdict['pkg'],
+				self.configdict['auto'],
+				self.configdict['env'],
+			]
 			self.lookuplist = self.configlist[:]
 			self.lookuplist.reverse()
-			self.configdict = {
-				"env.d":     self.configlist[0],
-				"pkginternal": self.configlist[1],
-				"globals":     self.configlist[2],
-				"defaults":    self.configlist[3],
-				"conf":        self.configlist[4],
-				"pkg":         self.configlist[5],
-				"auto":        self.configlist[6],
-				"backupenv":   self.configlist[7],
-				"env":         self.configlist[8] }
 			self._use_expand_dict = copy.deepcopy(clone._use_expand_dict)
 			self.profiles = copy.deepcopy(clone.profiles)
 			self.backupenv  = self.configdict["backupenv"]
@@ -1576,8 +1579,7 @@ class config(object):
 			self.configlist.append({})
 			self.configdict["auto"]=self.configlist[-1]
 
-			self.configlist.append(self.backupenv) # XXX Why though?
-			self.configdict["backupenv"]=self.configlist[-1]
+			self.configdict["backupenv"] = self.backupenv
 
 			# Don't allow the user to override certain variables in the env
 			for k in profile_only_variables:
@@ -2071,6 +2073,59 @@ class config(object):
 			DeprecationWarning)
 		return 1
 
+	class _lazy_vars(object):
+
+		__slots__ = ('built_use', 'settings', 'values')
+
+		def __init__(self, built_use, settings):
+			self.built_use = built_use
+			self.settings = settings
+			self.values = None
+
+		def __getitem__(self, k):
+			if self.values is None:
+				self.values = self._init_values()
+			return self.values[k]
+
+		def _init_values(self):
+			values = {}
+			settings = self.settings
+			use = self.built_use
+			if use is None:
+				use = frozenset(settings['PORTAGE_USE'].split())
+			values['ACCEPT_LICENSE'] = self._accept_license(use, settings)
+			values['PORTAGE_RESTRICT'] = self._restrict(use, settings)
+			return values
+
+		def _accept_license(self, use, settings):
+			"""
+			Generate a pruned version of ACCEPT_LICENSE, by intersection with
+			LICENSE. This is required since otherwise ACCEPT_LICENSE might be
+			too big (bigger than ARG_MAX), causing execve() calls to fail with
+			E2BIG errors as in bug #262647.
+			"""
+			try:
+				licenses = set(flatten(
+					dep.use_reduce(dep.paren_reduce(
+					settings['LICENSE']),
+					uselist=use)))
+			except exception.InvalidDependString:
+				licenses = set()
+			licenses.discard('||')
+			if '*' not in settings._accept_license:
+				licenses.intersection_update(settings._accept_license)
+			return ' '.join(sorted(licenses))
+
+		def _restrict(self, use, settings):
+			try:
+				restrict = set(flatten(
+					dep.use_reduce(dep.paren_reduce(
+					settings['RESTRICT']),
+					uselist=use)))
+			except exception.InvalidDependString:
+				restrict = set()
+			return ' '.join(sorted(restrict))
+
 	class _lazy_use_expand(object):
 		"""
 		Lazily evaluate USE_EXPAND variables since they are only needed when
@@ -2169,11 +2224,14 @@ class config(object):
 		self.modifying()
 
 		pkg = None
+		built_use = None
 		if not isinstance(mycpv, basestring):
 			pkg = mycpv
 			mycpv = pkg.cpv
 			mydb = pkg.metadata
 			args_hash = (mycpv, id(pkg))
+			if pkg.built:
+				built_use = pkg.use.enabled
 		else:
 			args_hash = (mycpv, id(mydb))
 
@@ -2188,7 +2246,6 @@ class config(object):
 		cpv_slot = self.mycpv
 		pkginternaluse = ""
 		iuse = ""
-		env_configdict = self.configdict["env"]
 		pkg_configdict = self.configdict["pkg"]
 		previous_iuse = pkg_configdict.get("IUSE")
 
@@ -2214,9 +2271,6 @@ class config(object):
 			repository = pkg_configdict.pop("repository", None)
 			if repository is not None:
 				pkg_configdict["PORTAGE_REPO_NAME"] = repository
-			for k in pkg_configdict:
-				if k != "USE":
-					env_configdict.pop(k, None)
 			slot = pkg_configdict["SLOT"]
 			iuse = pkg_configdict["IUSE"]
 			if pkg is None:
@@ -2285,6 +2339,20 @@ class config(object):
 
 		if has_changed:
 			self.reset(keeping_pkg=1,use_cache=use_cache)
+
+		# Ensure that "pkg" values are always preferred over "env" values.
+		# This must occur _after_ the above reset() call, since reset()
+		# copies values from self.backupenv.
+		env_configdict = self.configdict['env']
+		for k in pkg_configdict:
+			if k != 'USE':
+				env_configdict.pop(k, None)
+
+		lazy_vars = self._lazy_vars(built_use, self)
+		env_configdict.addLazySingleton('ACCEPT_LICENSE',
+			lazy_vars.__getitem__, 'ACCEPT_LICENSE')
+		env_configdict.addLazySingleton('PORTAGE_RESTRICT',
+			lazy_vars.__getitem__, 'PORTAGE_RESTRICT')
 
 		# If reset() has not been called, it's safe to return
 		# early if IUSE has not changed.
@@ -2786,6 +2854,7 @@ class config(object):
 		for mykey in myincrementals:
 
 			mydbs=self.configlist[:-1]
+			mydbs.append(self.backupenv)
 
 			myflags=[]
 			for curdb in mydbs:
@@ -3927,6 +3996,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 		myfile_path = os.path.join(mysettings["DISTDIR"], myfile)
 		has_space = True
+		has_space_superuser = False
 		file_lock = None
 		if listonly:
 			writemsg_stdout("\n", noiselevel=-1)
@@ -3944,8 +4014,29 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 					mysize = 0
 				if (size - mysize + vfs_stat.f_bsize) >= \
 					(vfs_stat.f_bsize * vfs_stat.f_bavail):
-					writemsg("!!! Insufficient space to store %s in %s\n" % (myfile, mysettings["DISTDIR"]), noiselevel=-1)
-					has_space = False
+
+					if (size - mysize + vfs_stat.f_bsize) >= \
+						(vfs_stat.f_bsize * vfs_stat.f_bfree):
+						has_space_superuser = True
+
+					if not has_space_superuser:
+						has_space = False
+					elif secpass < 2:
+						has_space = False
+					elif userfetch:
+						has_space = False
+
+			if not has_space:
+				writemsg("!!! Insufficient space to store %s in %s\n" % \
+					(myfile, mysettings["DISTDIR"]), noiselevel=-1)
+
+				if has_space_superuser:
+					writemsg("!!! Insufficient privileges to use " + \
+						"remaining space.\n", noiselevel=-1)
+					if userfetch:
+						writemsg("!!! You may set FEATURES=\"-userfetch\"" + \
+							" in /etc/make.conf in order to fetch with\n" + \
+							"!!! superuser privileges.\n", noiselevel=-1)
 
 			if distdir_writable and use_locks:
 
@@ -5276,14 +5367,6 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		if not eapi_is_supported(eapi):
 			# can't do anything with this.
 			raise portage.exception.UnsupportedAPIException(mycpv, eapi)
-		try:
-			mysettings["PORTAGE_RESTRICT"] = " ".join(flatten(
-				portage.dep.use_reduce(portage.dep.paren_reduce(
-				mysettings["RESTRICT"]),
-				uselist=mysettings["PORTAGE_USE"].split())))
-		except portage.exception.InvalidDependString:
-			# RESTRICT is validated again inside doebuild, so let this go
-			mysettings["PORTAGE_RESTRICT"] = ""
 
 	if mysplit[2] == "r0":
 		mysettings["PVR"]=mysplit[1]
@@ -5328,7 +5411,10 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		mysettings["PORTAGE_BUILDDIR"], ".exit_status")
 
 	#set up KV variable -- DEP SPEEDUP :: Don't waste time. Keep var persistent.
-	if mydo != "depend" and "KV" not in mysettings:
+	if mydo != 'depend' and 'KV' not in mysettings and \
+		mydo in ('compile', 'config', 'configure', 'info',
+		'install', 'nofetch', 'postinst', 'postrm', 'preinst',
+		'prepare', 'prerm', 'setup', 'test', 'unpack'):
 		mykv,err1=ExtractKernelVersion(os.path.join(myroot, "usr/src/linux"))
 		if mykv:
 			# Regular source tree

@@ -1,4 +1,4 @@
 # tests/portage.versions/__init__.py -- Portage Unit Test functionality
 # Copyright 2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: __init__.py 6291 2007-03-26 07:23:51Z antarus $

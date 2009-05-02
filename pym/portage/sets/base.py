@@ -1,6 +1,6 @@
 # Copyright 2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: base.py 11598 2008-09-28 23:38:28Z genone $
 
 from portage import cpv_getkey, flatten
 from portage.dep import Atom, isvalidatom, match_from_list, \

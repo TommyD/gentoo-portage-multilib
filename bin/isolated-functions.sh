@@ -1,6 +1,6 @@
 # Copyright 1999-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: isolated-functions.sh 13582 2009-05-01 21:43:32Z zmedico $
 
 # We need this next line for "die" and "assert". It expands
 # It _must_ preceed all the calls to die and assert.
@@ -182,7 +182,7 @@ elog_base() {
 			return 1
 			;;
 	esac
-	echo -e "$@" | while read ; do
+	echo -e "$@" | while read -r ; do
 		echo "$messagetype $REPLY" >> \
 			"${T}/logging/${EBUILD_PHASE:-other}"
 	done
@@ -192,8 +192,8 @@ elog_base() {
 eqawarn() {
 	elog_base QA "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
-	echo -e "$@" | while read ; do
-		vecho -e " $WARN*$NORMAL $REPLY" >&2
+	echo -e "$@" | while read -r ; do
+		vecho " $WARN*$NORMAL $REPLY" >&2
 	done
 	LAST_E_CMD="eqawarn"
 	return 0
@@ -202,8 +202,8 @@ eqawarn() {
 elog() {
 	elog_base LOG "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
-	echo -e "$@" | while read ; do
-		echo -e " $GOOD*$NORMAL $REPLY"
+	echo -e "$@" | while read -r ; do
+		echo " $GOOD*$NORMAL $REPLY"
 	done
 	LAST_E_CMD="elog"
 	return 0
@@ -230,8 +230,8 @@ esyslog() {
 einfo() {
 	elog_base INFO "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
-	echo -e "$@" | while read ; do
-		echo -e " $GOOD*$NORMAL $REPLY"
+	echo -e "$@" | while read -r ; do
+		echo " $GOOD*$NORMAL $REPLY"
 	done
 	LAST_E_CMD="einfo"
 	return 0
@@ -248,8 +248,8 @@ einfon() {
 ewarn() {
 	elog_base WARN "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
-	echo -e "$@" | while read ; do
-		echo -e " $WARN*$NORMAL $RC_INDENTATION$REPLY" >&2
+	echo -e "$@" | while read -r ; do
+		echo " $WARN*$NORMAL $RC_INDENTATION$REPLY" >&2
 	done
 	LAST_E_CMD="ewarn"
 	return 0
@@ -258,8 +258,8 @@ ewarn() {
 eerror() {
 	elog_base ERROR "$*"
 	[[ ${RC_ENDCOL} != "yes" && ${LAST_E_CMD} == "ebegin" ]] && echo
-	echo -e "$@" | while read ; do
-		echo -e " $BAD*$NORMAL $RC_INDENTATION$REPLY" >&2
+	echo -e "$@" | while read -r ; do
+		echo " $BAD*$NORMAL $RC_INDENTATION$REPLY" >&2
 	done
 	LAST_E_CMD="eerror"
 	return 0
@@ -522,7 +522,7 @@ save_ebuild_env() {
 			${QA_INTERCEPTORS}
 
 		# portage config variables and variables set directly by portage
-		unset BAD BRACKET BUILD_PREFIX COLS \
+		unset ACCEPT_LICENSE BAD BRACKET BUILD_PREFIX COLS \
 			DISTCC_DIR DISTDIR DOC_SYMLINKS_DIR \
 			EBUILD_EXIT_STATUS_FILE EBUILD_FORCE_TEST EBUILD_MASTER_PID \
 			ECLASSDIR ECLASS_DEPTH ENDCOL FAKEROOTKEY \

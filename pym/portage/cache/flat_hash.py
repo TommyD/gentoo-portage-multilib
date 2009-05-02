@@ -1,7 +1,7 @@
 # Copyright: 2005 Gentoo Foundation
 # Author(s): Brian Harring (ferringb@gentoo.org)
 # License: GPL2
-# $Id$
+# $Id: flat_hash.py 12781 2009-03-08 05:25:18Z zmedico $
 
 from portage.cache import fs_template
 from portage.cache import cache_errors

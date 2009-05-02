@@ -1,6 +1,6 @@
 # Copyright 1998-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: __init__.py 12815 2009-03-10 03:59:37Z zmedico $
 
 __all__ = ["dbapi"]
 

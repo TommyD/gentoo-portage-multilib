@@ -1,7 +1,7 @@
 # test_vercmp.py -- Portage Unit Testing Functionality
 # Copyright 2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: test_vercmp.py 9178 2008-01-11 08:19:55Z zmedico $
 
 from portage.tests import TestCase
 from portage.versions import vercmp

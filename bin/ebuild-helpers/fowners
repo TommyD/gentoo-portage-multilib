@@ -1,7 +1,7 @@
 #!/bin/bash
 # Copyright 1999-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: fowners 13063 2009-03-12 00:28:45Z zmedico $
 
 # we can't prefix all arguments because
 # chown takes random options

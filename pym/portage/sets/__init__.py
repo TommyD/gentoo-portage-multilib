@@ -1,6 +1,6 @@
 # Copyright 2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: __init__.py 11791 2008-11-01 23:12:59Z zmedico $
 
 __all__ = ["SETPREFIX", "get_boolean", "SetConfigError",
 	"SetConfig", "load_default_config"]

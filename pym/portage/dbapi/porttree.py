@@ -1,6 +1,6 @@
 # Copyright 1998-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: porttree.py 13578 2009-05-01 18:34:59Z zmedico $
 
 __all__ = ["portdbapi", "close_portdbapi_caches", "portagetree"]
 
@@ -227,7 +227,7 @@ class portdbapi(dbapi):
 			if local_repo_configs is not None:
 				if repo_name is not None:
 					loc_repo_conf = local_repo_configs.get(repo_name)
-				else:
+				if loc_repo_conf is None:
 					loc_repo_conf = default_loc_repo_config
 
 			layout_filename = os.path.join(path, "metadata/layout.conf")

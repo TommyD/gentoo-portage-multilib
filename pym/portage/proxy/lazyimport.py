@@ -1,6 +1,6 @@
 # Copyright 2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: lazyimport.py 12683 2009-02-22 06:00:34Z zmedico $
 
 __all__ = ['lazyimport']
 

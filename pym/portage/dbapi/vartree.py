@@ -1,6 +1,6 @@
 # Copyright 1998-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: vartree.py 13334 2009-04-12 07:39:01Z zmedico $
 
 __all__ = ["PreservedLibsRegistry", "LinkageMap",
 	"vardbapi", "vartree", "dblink"] + \

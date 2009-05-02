@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # Copyright 2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: egencache 13323 2009-04-11 21:06:57Z zmedico $
 
 import sys
 # This block ensures that ^C interrupts are handled quietly.

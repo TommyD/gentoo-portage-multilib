@@ -1,6 +1,6 @@
 # Copyright 2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: dbapi.py 12043 2008-11-22 21:58:37Z zmedico $
 
 from portage.versions import catpkgsplit, catsplit, pkgcmp, best
 from portage.dep import Atom

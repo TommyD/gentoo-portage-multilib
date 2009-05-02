@@ -1,6 +1,6 @@
 # Copyright 1998-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: bintree.py 12749 2009-03-04 23:02:04Z zmedico $
 
 __all__ = ["bindbapi", "binarytree"]
 

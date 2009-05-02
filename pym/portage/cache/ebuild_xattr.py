@@ -2,7 +2,7 @@
 # Copyright: 2009 Gentoo Foundation
 # Author(s): Petteri Räty (betelgeuse@gentoo.org)
 # License: GPL2
-# $Id$
+# $Id: ebuild_xattr.py 12737 2009-03-01 20:39:41Z zmedico $
 
 __all__ = ['database']
 

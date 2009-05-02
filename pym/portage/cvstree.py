@@ -1,7 +1,7 @@
 # cvstree.py -- cvs tree utilities
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: cvstree.py 10870 2008-07-01 12:38:49Z zmedico $
 
 
 import os,time,sys,re

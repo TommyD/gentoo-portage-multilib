@@ -1,7 +1,7 @@
 #!/bin/bash
 # Copyright 1999-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: ebuild.sh 13570 2009-04-30 21:14:27Z zmedico $
 
 PORTAGE_BIN_PATH="${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"
 PORTAGE_PYM_PATH="${PORTAGE_PYM_PATH:-/usr/lib/portage/pym}"
@@ -56,8 +56,8 @@ qa_call() {
 	return $retval
 }
 
-# subshell die support
-EBUILD_MASTER_PID=$$
+# Subshell/helper die support (must export for the die helper).
+export EBUILD_MASTER_PID=$$
 trap 'exit 1' SIGTERM
 
 EBUILD_SH_ARGS="$*"
@@ -71,8 +71,12 @@ unalias -a
 # Unset some variables that break things.
 unset GZIP BZIP BZIP2 CDPATH GREP_OPTIONS GREP_COLOR GLOBIGNORE
 
-export PATH="/usr/local/sbin:/sbin:/usr/sbin:$PORTAGE_BIN_PATH/ebuild-helpers:/usr/local/bin:/bin:/usr/bin:${ROOTPATH}"
-[ ! -z "$PREROOTPATH" ] && export PATH="${PREROOTPATH%%:}:$PATH"
+ROOTPATH=${ROOTPATH##:}
+ROOTPATH=${ROOTPATH%%:}
+PREROOTPATH=${PREROOTPATH##:}
+PREROOTPATH=${PREROOTPATH%%:}
+PATH=$PORTAGE_BIN_PATH/ebuild-helpers:$PREROOTPATH${PREROOTPATH:+:}/usr/local/sbin:/sbin:/usr/sbin:/usr/local/bin:/bin:/usr/bin${ROOTPATH:+:}$ROOTPATH
+export PATH
 
 source "${PORTAGE_BIN_PATH}/isolated-functions.sh"  &>/dev/null
 
@@ -138,12 +142,7 @@ useq() {
 	fi
 
 	# Make sure we have this USE flag in IUSE
-	if [[ -n ${PORTAGE_IUSE} ]] && \
-		[[ -n ${EBUILD_PHASE} ]] && \
-		! hasq ${EBUILD_PHASE} config depend info prerm postrm postinst && \
-		[[ ${EMERGE_FROM} != binary ]] ; then
-		# TODO: Implement PORTAGE_IUSE for binary packages. Currently,
-		# it is only valid for build time phases.
+	if [[ -n $PORTAGE_IUSE && -n $EBUILD_PHASE ]] ; then
 		[[ $u =~ $PORTAGE_IUSE ]] || \
 			eqawarn "QA Notice: USE Flag '${u}' not" \
 				"in IUSE for ${CATEGORY}/${PF}"
@@ -629,7 +628,7 @@ _eapi2_src_compile() {
 }
 
 ebuild_phase() {
-	[ "$(type -t ${1})" == "function" ] && qa_call ${1}
+	declare -F "$1" >/dev/null && qa_call $1
 }
 
 ebuild_phase_with_hooks() {
@@ -1261,7 +1260,7 @@ inherit() {
 		if [[ -n ${!__export_funcs_var} ]] ; then
 			for x in ${!__export_funcs_var} ; do
 				debug-print "EXPORT_FUNCTIONS: $x -> ${ECLASS}_$x"
-				[[ $(type -t ${ECLASS}_$x) = function ]] || \
+				declare -F "${ECLASS}_$x" >/dev/null || \
 					die "EXPORT_FUNCTIONS: ${ECLASS}_$x is not defined"
 				eval "$x() { ${ECLASS}_$x \"\$@\" ; }" > /dev/null
 			done
@@ -1440,7 +1439,7 @@ _ebuild_phase_funcs() {
 	local x y default_func=""
 
 	for x in pkg_nofetch src_unpack src_test ; do
-		[[ $(type -t $x) = function ]] || \
+		declare -F $x >/dev/null || \
 			eval "$x() { _eapi0_$x \"\$@\" ; }"
 	done
 
@@ -1448,7 +1447,7 @@ _ebuild_phase_funcs() {
 
 		0|1)
 
-			if [[ $(type -t src_compile) != function ]] ; then
+			if ! declare -F src_compile >/dev/null ; then
 				case $eapi in
 					0)
 						src_compile() { _eapi0_src_compile "$@" ; }
@@ -1473,10 +1472,10 @@ _ebuild_phase_funcs() {
 
 		*)
 
-			[[ $(type -t src_configure) = function ]] || \
+			declare -F src_configure >/dev/null || \
 				src_configure() { _eapi2_src_configure "$@" ; }
 
-			[[ $(type -t src_compile) = function ]] || \
+			declare -F src_compile >/dev/null || \
 				src_compile() { _eapi2_src_compile "$@" ; }
 
 			if hasq $phase_func $default_phases ; then
@@ -1620,7 +1619,7 @@ filter_readonly_variables() {
 		SANDBOX_DEBUG_LOG SANDBOX_DISABLED SANDBOX_LIB
 		SANDBOX_LOG SANDBOX_ON"
 	filtered_vars="${readonly_bash_vars} ${READONLY_PORTAGE_VARS}
-		BASH_.* PATH POSIXLY_CORRECT"
+		BASH_.* HISTFILE PATH POSIXLY_CORRECT"
 	if hasq --filter-sandbox $* ; then
 		filtered_vars="${filtered_vars} SANDBOX_.*"
 	else
@@ -1838,7 +1837,7 @@ _source_ebuild() {
 	[[ -n $EAPI ]] || EAPI=0
 
 	# alphabetically ordered by $EBUILD_PHASE value
-	local valid_phases
+	local f valid_phases
 	case "$EAPI" in
 		0|1)
 			valid_phases="src_compile pkg_config pkg_info src_install
@@ -1854,7 +1853,7 @@ _source_ebuild() {
 
 	DEFINED_PHASES=
 	for f in $valid_phases ; do
-		if [[ $(type -t $f) = function ]] ; then
+		if declare -F $f >/dev/null ; then
 			f=${f#pkg_}
 			DEFINED_PHASES+=" ${f#src_}"
 		fi
@@ -1902,17 +1901,28 @@ fi
 ebuild_main() {
 	local f x
 
+	# we may want to make this configurable somewhere else
+	local ebuild_helpers_path
+	case ${EAPI} in
+		3|3_pre1)
+			ebuild_helpers_path="${PORTAGE_BIN_PATH}/ebuild-helpers/3:${PORTAGE_BIN_PATH}/ebuild-helpers"
+			;;
+		*)
+			ebuild_helpers_path="${PORTAGE_BIN_PATH}/ebuild-helpers"
+			;;
+	esac
+
+	PATH=$ebuild_helpers_path:$PREROOTPATH${PREROOTPATH:+:}/usr/local/sbin:/sbin:/usr/sbin:/usr/local/bin:/bin:/usr/bin${ROOTPATH:+:}$ROOTPATH
+	unset ebuild_helpers_path
+
 	if ! hasq $EBUILD_SH_ARGS clean depend help info nofetch ; then
 
 		if hasq distcc $FEATURES ; then
-			[[ -z ${PATH/*distcc*/} ]] && remove_path_entry distcc
 			export PATH="/usr/lib/distcc/bin:$PATH"
 			[[ -n $DISTCC_LOG ]] && addwrite "${DISTCC_LOG%/*}"
 		fi
 
 		if hasq ccache $FEATURES ; then
-			[[ -z ${PATH/*ccache*/} ]] && remove_path_entry ccache
-
 			export PATH="/usr/lib/ccache/bin:$PATH"
 
 			addread "$CCACHE_DIR"
@@ -1940,8 +1950,8 @@ ebuild_main() {
 		exit 1
 		;;
 	prerm|postrm|postinst|config|info)
-		if hasq ${EBUILD_SH_ARGS} config info && \
-			[ "$(type -t pkg_${EBUILD_SH_ARGS})" != "function" ]; then
+		if hasq "$EBUILD_SH_ARGS" config info && \
+			! declare -F "pkg_$EBUILD_SH_ARGS" >/dev/null ; then
 			ewarn  "pkg_${EBUILD_SH_ARGS}() is not defined: '${EBUILD##*/}'"
 		fi
 		export SANDBOX_ON="0"

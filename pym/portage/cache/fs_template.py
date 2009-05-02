@@ -1,7 +1,7 @@
 # Copyright: 2005 Gentoo Foundation
 # Author(s): Brian Harring (ferringb@gentoo.org)
 # License: GPL2
-# $Id$
+# $Id: fs_template.py 11984 2008-11-17 23:09:24Z zmedico $
 
 import os
 from portage.cache import template

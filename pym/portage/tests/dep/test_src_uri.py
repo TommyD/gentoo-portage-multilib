@@ -1,6 +1,6 @@
 # Copyright 2008 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: test_src_uri.py 12820 2009-03-10 05:24:08Z zmedico $
 
 from portage.tests import TestCase
 from portage.dep import paren_reduce

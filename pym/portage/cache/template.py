@@ -1,7 +1,7 @@
 # Copyright: 2005 Gentoo Foundation
 # Author(s): Brian Harring (ferringb@gentoo.org)
 # License: GPL2
-# $Id$
+# $Id: template.py 12775 2009-03-07 19:40:18Z zmedico $
 
 from portage.cache import cache_errors
 from portage.cache.cache_errors import InvalidRestriction

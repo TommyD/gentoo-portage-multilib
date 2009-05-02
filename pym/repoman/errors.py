@@ -1,7 +1,7 @@
 # repoman: Error Messages
 # Copyright 2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: errors.py 13401 2009-04-26 21:14:23Z zmedico $
 
 COPYRIGHT_ERROR = 'Invalid Gentoo Copyright on line: %d'
 LICENSE_ERROR = 'Invalid Gentoo/GPL License on line: %d'
@@ -16,3 +16,4 @@ REDUNDANT_CD_S_ERROR = 'Ebuild has redundant cd ${S} statement on line: %d'
 EMAKE_PARALLEL_DISABLED = 'Upstream parallel compilation bug (ebuild calls emake -j1 on line: %d)'
 EMAKE_PARALLEL_DISABLED_VIA_MAKEOPTS = 'Upstream parallel compilation bug (MAKEOPTS=-j1 on line: %d)'
 DEPRECATED_BINDNOW_FLAGS = 'Deprecated bindnow-flags call on line: %d'
+EAPI_DEFINED_AFTER_INHERIT = 'EAPI defined after inherit on line: %d'

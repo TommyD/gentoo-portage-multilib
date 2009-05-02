@@ -1,6 +1,6 @@
 # validators.py Portage File Loader Code
 # Copyright 2007 Gentoo Foundation
-# $Id$
+# $Id: validators.py 7368 2007-07-23 07:28:58Z antarus $
 
 from portage.dep import isvalidatom
 

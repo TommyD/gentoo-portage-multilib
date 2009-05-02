@@ -1,7 +1,7 @@
 # archive_conf.py -- functionality common to archive-conf and dispatch-conf
 # Copyright 2003-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: dispatch_conf.py 10870 2008-07-01 12:38:49Z zmedico $
 
 
 # Library by Wayne Davison <gentoo@blorf.net>, derived from code

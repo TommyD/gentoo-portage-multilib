@@ -1,7 +1,7 @@
 # portage: news management code
 # Copyright 2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: news.py 12766 2009-03-06 03:56:37Z zmedico $
 
 __all__ = ["NewsManager", "NewsItem", "DisplayRestriction",
 	"DisplayProfileRestriction", "DisplayKeywordRestriction",

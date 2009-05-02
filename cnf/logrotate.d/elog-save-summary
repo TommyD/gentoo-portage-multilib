@@ -1,6 +1,6 @@
 # Copyright 1999-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: elog-save-summary 7609 2007-08-15 04:37:36Z zmedico $
 # Rotate the log created by the save_summary elog module.
 
 /var/log/portage/elog/summary.log {

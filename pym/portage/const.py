@@ -1,7 +1,7 @@
 # portage: Constants
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: const.py 11550 2008-09-26 00:09:06Z zmedico $
 
 
 # ===========================================================================

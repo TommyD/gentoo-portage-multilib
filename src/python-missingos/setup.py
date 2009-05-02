@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# $Id$
+# $Id: setup.py 3483 2006-06-10 21:40:40Z genone $
 
 from os import chdir, stat
 from distutils.core import setup, Extension

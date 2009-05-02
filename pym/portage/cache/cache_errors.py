@@ -1,7 +1,7 @@
 # Copyright: 2005 Gentoo Foundation
 # Author(s): Brian Harring (ferringb@gentoo.org)
 # License: GPL2
-# $Id$
+# $Id: cache_errors.py 13262 2009-03-31 20:14:03Z zmedico $
 
 class CacheError(Exception):	pass
 

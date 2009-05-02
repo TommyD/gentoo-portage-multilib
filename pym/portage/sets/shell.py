@@ -1,6 +1,6 @@
 # Copyright 2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
+# $Id: shell.py 12729 2009-02-27 05:23:37Z zmedico $
 
 import subprocess
 import os
