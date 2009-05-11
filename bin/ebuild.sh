@@ -1,7 +1,7 @@
 #!/bin/bash
 # Copyright 1999-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: ebuild.sh 13570 2009-04-30 21:14:27Z zmedico $
+# $Id: ebuild.sh 13598 2009-05-02 22:34:09Z zmedico $
 
 PORTAGE_BIN_PATH="${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}"
 PORTAGE_PYM_PATH="${PORTAGE_PYM_PATH:-/usr/lib/portage/pym}"
@@ -141,8 +141,16 @@ useq() {
 		found=1
 	fi
 
+	if [[ $EBUILD_PHASE = depend ]] ; then
+		# Skip this for older EAPIs since lots of ebuilds/eclasses
+		# have stuff in global scope that really belongs somewhere
+		# like pkg_setup or src_configure.
+		if [[ -n $EAPI ]] && ! hasq "$EAPI" 0 1 2 ; then
+			die "use() called during invalid phase: $EBUILD_PHASE"
+		fi
+
 	# Make sure we have this USE flag in IUSE
-	if [[ -n $PORTAGE_IUSE && -n $EBUILD_PHASE ]] ; then
+	elif [[ -n $PORTAGE_IUSE && -n $EBUILD_PHASE ]] ; then
 		[[ $u =~ $PORTAGE_IUSE ]] || \
 			eqawarn "QA Notice: USE Flag '${u}' not" \
 				"in IUSE for ${CATEGORY}/${PF}"

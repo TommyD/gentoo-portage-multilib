@@ -1,7 +1,7 @@
 #!/usr/bin/python -O
 # Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: __init__.py 13575 2009-04-30 21:59:26Z zmedico $
+# $Id: __init__.py 13599 2009-05-03 07:25:19Z zmedico $
 
 import array
 import codecs
@@ -936,7 +936,32 @@ class DepPriority(AbstractDepPriority):
 	__slots__ = ("satisfied", "optional", "rebuild")
 
 	def __int__(self):
-		return 0
+		"""
+		Note: These priorities are only used for measuring hardness
+		in the circular dependency display via digraph.debug_print(),
+		and nothing more. For actual merge order calculations, the
+		measures defined by the DepPriorityNormalRange and
+		DepPrioritySatisfiedRange classes are used.
+
+		Attributes                            Hardness
+
+		buildtime                               0
+		runtime                                -1
+		runtime_post                           -2
+		optional                               -3
+		(none of the above)                    -4
+
+		"""
+
+		if self.buildtime:
+			return 0
+		if self.runtime:
+			return -1
+		if self.runtime_post:
+			return -2
+		if self.optional:
+			return -3
+		return -4
 
 	def __str__(self):
 		if self.optional:

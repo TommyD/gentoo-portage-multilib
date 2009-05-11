@@ -1,10 +1,10 @@
 # portage.py -- core Portage functionality
 # Copyright 1998-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: __init__.py 13580 2009-05-01 19:11:26Z zmedico $
+# $Id: __init__.py 13596 2009-05-02 20:49:27Z zmedico $
 
 
-VERSION="$Rev: 13580 $"[6:-2] + "-svn"
+VERSION="$Rev: 13596 $"[6:-2] + "-svn"
 
 # ===========================================================================
 # START OF IMPORTS -- START OF IMPORTS -- START OF IMPORTS -- START OF IMPORT
@@ -3996,7 +3996,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 		myfile_path = os.path.join(mysettings["DISTDIR"], myfile)
 		has_space = True
-		has_space_superuser = False
+		has_space_superuser = True
 		file_lock = None
 		if listonly:
 			writemsg_stdout("\n", noiselevel=-1)
@@ -4017,7 +4017,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 
 					if (size - mysize + vfs_stat.f_bsize) >= \
 						(vfs_stat.f_bsize * vfs_stat.f_bfree):
-						has_space_superuser = True
+						has_space_superuser = False
 
 					if not has_space_superuser:
 						has_space = False
