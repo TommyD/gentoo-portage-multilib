@@ -1133,6 +1133,7 @@ dyn_install() {
 		x=$(echo -n ${!f})
 		[[ -n $x ]] && echo "$x" > $f
 	done
+	has_multilib_profile && echo "${IUSE} lib32"	> IUSE
 	echo "${USE}"       > USE
 	echo "${EAPI:-0}"   > EAPI
 	if is_auto-multilib; then

@@ -125,8 +125,12 @@ tc-getPROG() {
         echo "${!var}"
 }
 
+has_multilib_profile() {
+	[ -n "${MULTILIB_ABIS}" -a "${MULTILIB_ABIS}" != "${MULTILIB_ABIS/ /}" ]
+}
+
 is_auto-multilib() {
-	if ( [[ "${ARCH}" == "amd64" ]] || [[ "${ARCH}" == "ppc64" ]] ) && use lib32 && ! hasq multilib-native ${INHERITED}; then
+	if ( [[ "${ARCH}" == "amd64" ]] || [[ "${ARCH}" == "ppc64" ]] ) && has_multilib_profile && use lib32 && ! hasq multilib-native ${INHERITED}; then
 		return 0
 	fi
 	return 1
