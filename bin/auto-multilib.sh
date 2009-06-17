@@ -107,6 +107,20 @@ get_abi_var() {
 	echo ${!var}
 }
 
+# @FUNCTION prep_ml_binaries
+# @USAGE:
+# @DESCRIPTION: Use wrapper to support non-default binaries
+prep_ml_binaries() {
+	for binary in "$@"; do
+		mv ${binary} ${binary}-${ABI} || die
+		_debug ${binary} ${binary}-${ABI}
+		if [[ ${ABI} == ${DEFAULT_ABI} ]]; then
+			ln -s /usr/bin/abi-wrapper ${binary} || die
+			_debug /usr/bin/abi-wrapper ${binary}
+		fi
+	done
+}
+
 tc-getPROG() {
         local var=$1
         local prog=$2
@@ -137,7 +151,7 @@ is_auto-multilib() {
 }
 
 get_abi_order() {
-	local order="" dodefault=
+	local order= dodefault=
 
 	if is_auto-multilib; then
 		for x in ${MULTILIB_ABIS}; do
@@ -334,47 +348,13 @@ _finalize_abi_install() {
 		fi
 	fi
 
-	# Create config file redirects based on # ${ABI_REDIRECT_PROGS}
-	if [ -n "${ABI_REDIRECT_PROGS}" ]; then
-	   create_config_redirect
-	fi
-}
-
-# Redirect *-config routines to honor ABI
-# This can be called from src_install() with the path to the already
-# installed *-config program. Or the ABI_REDIRECT_PROGS variable can
-# be used to specify the file(s) to redirect.
-create_config_redirect() {
-	local cfile
-
-	for cfile in ${1} ${ABI_REDIRECT_PROGS}; do
-		local mypath=
-		# Allow the caller to use prog-name, install or final path
-		if [ -f ${D}/usr/bin/${cfile} ]; then
-			mypath=${D}/usr/bin/${cfile}
-		elif [ -f ${D}/${cfile} ]; then
-			mypath=${D}/${cfile}
-		elif [ -f ${cfile} ]; then
-			mypath=${cfile}
-		fi
-		[ -f "${mypath}" ] || continue
-		grep -qs "Redirect based on ABI" "${mypath}" && continue
-
-		mkdir -p "${D}"/usr/$(get_libdir)/config-progs
-		mv ${mypath} "${D}"/usr/$(get_libdir)/config-progs/
-
-		cat > ${mypath} <<EOF
-#!/bin/bash
-
-# Redirect based on ABI
-myvar="LIBDIR_\${ABI}"
-mylib="\${!myvar}"
-exec \${ROOT}/usr/\${mylib:-$(get_libdir)}/config-progs/\$(basename \$0) \$*
-EOF
-		chmod 0755 ${mypath}
+	# Create wrapper symlink for *-config files
+	local i= files=( $(find "${D}" -name *-config) )
+	_debug files ${files}
+	for i in ${files}; do
+		prep_ml_binaries "${i}"
 	done
 }
-
 
 #
 # These _create_abi_includes* routines were ripped pretty wholesale from multilib.eclass
