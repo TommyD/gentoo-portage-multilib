@@ -1,7 +1,7 @@
 # test_varExpand.py -- Portage Unit Testing Functionality
 # Copyright 2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: test_varExpand.py 6913 2007-06-21 12:01:43Z zmedico $
+# $Id$
 
 from portage.tests import TestCase
 from portage.util import varexpand

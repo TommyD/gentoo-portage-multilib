@@ -1,7 +1,7 @@
 # setup_env.py -- Make sure bin subdir has sane env for testing
 # Copyright 2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: setup_env.py 13063 2009-03-12 00:28:45Z zmedico $
+# $Id$
 
 import os, shutil, sys
 from os.path import dirname, abspath, join

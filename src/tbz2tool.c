@@ -1,4 +1,4 @@
-/* $Id: tbz2tool.c 3483 2006-06-10 21:40:40Z genone $ */
+/* $Id$ */
 
 #include <stdio.h>
 #include <stdlib.h>

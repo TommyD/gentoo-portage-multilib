@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # Copyright 2008-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: glsa-check 12748 2009-03-04 21:16:33Z zmedico $
+# $Id$
 
 import os
 import sys

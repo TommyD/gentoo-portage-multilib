@@ -1,6 +1,6 @@
 # Copyright 2008-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: objectproxy.py 12676 2009-02-22 02:46:26Z zmedico $
+# $Id$
 
 __all__ = ['ObjectProxy']
 

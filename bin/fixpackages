@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: fixpackages 6687 2007-05-31 05:43:41Z zmedico $
+# $Id$
 
 import os,sys
 os.environ["PORTAGE_CALLER"]="fixpackages"

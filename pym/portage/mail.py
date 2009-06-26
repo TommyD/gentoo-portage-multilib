@@ -1,7 +1,7 @@
 # portage.py -- core Portage functionality
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: mail.py 13261 2009-03-31 16:46:32Z zmedico $
+# $Id$
 
 import portage.exception, socket, smtplib, os, sys, time
 from email.MIMEText import MIMEText as TextMessage

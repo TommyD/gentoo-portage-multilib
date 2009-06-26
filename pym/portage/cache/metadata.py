@@ -1,7 +1,7 @@
 # Copyright: 2005 Gentoo Foundation
 # Author(s): Brian Harring (ferringb@gentoo.org)
 # License: GPL2
-# $Id: metadata.py 13328 2009-04-12 03:30:53Z zmedico $
+# $Id$
 
 import errno, os, re, sys
 from portage.cache import cache_errors, flat_hash

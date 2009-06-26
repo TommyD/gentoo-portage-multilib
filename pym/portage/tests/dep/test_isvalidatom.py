@@ -1,7 +1,7 @@
 # test_isvalidatom.py -- Portage Unit Testing Functionality
 # Copyright 2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: test_isvalidatom.py 13187 2009-03-26 01:40:22Z zmedico $
+# $Id$
 
 from portage.tests import TestCase
 from portage.dep import isvalidatom

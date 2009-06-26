@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # Copyright 1999-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: filter-bash-environment.py 11485 2008-09-01 19:32:26Z zmedico $
+# $Id$
 
 import os, re, sys
 

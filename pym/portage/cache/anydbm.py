@@ -1,7 +1,7 @@
 # Copyright: 2005 Gentoo Foundation
 # Author(s): Brian Harring (ferringb@gentoo.org)
 # License: GPL2
-# $Id: anydbm.py 12584 2009-02-04 23:30:42Z zmedico $
+# $Id$
 
 anydbm_module = __import__("anydbm")
 try:

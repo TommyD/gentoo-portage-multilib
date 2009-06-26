@@ -1,7 +1,7 @@
 # elog/mod_save_summary.py - elog dispatch module
 # Copyright 2006-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: mod_save_summary.py 9273 2008-02-05 08:21:06Z genone $
+# $Id$
 
 import os, time
 from portage.data import portage_uid, portage_gid

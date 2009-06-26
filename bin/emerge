@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # Copyright 2006-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: emerge 13131 2009-03-18 01:43:41Z zmedico $
+# $Id$
 
 import sys
 # This block ensures that ^C interrupts are handled quietly.

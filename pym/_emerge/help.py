@@ -1,9 +1,7 @@
-# Copyright 1999-2007 Gentoo Foundation
+# Copyright 1999-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: help.py 13363 2009-04-19 05:44:22Z zmedico $
+# $Id$
 
-
-import os,sys
 from portage.output import bold, turquoise, green
 
 def shorthelp():

@@ -1,7 +1,7 @@
 # portage_compat_namespace.py -- provide compability layer with new namespace
 # Copyright 2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: portage_compat_namespace.py 12364 2008-12-29 03:05:07Z zmedico $
+# $Id$
 
 """ 
 This module checks the name under which it is imported and attempts to load

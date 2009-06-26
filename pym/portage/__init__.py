@@ -1,10 +1,10 @@
 # portage.py -- core Portage functionality
 # Copyright 1998-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: __init__.py 13596 2009-05-02 20:49:27Z zmedico $
+# $Id$
 
 
-VERSION="$Rev: 13596 $"[6:-2] + "-svn"
+VERSION="$Rev$"[6:-2] + "-svn"
 
 # ===========================================================================
 # START OF IMPORTS -- START OF IMPORTS -- START OF IMPORTS -- START OF IMPORT
@@ -1065,7 +1065,7 @@ class config(object):
 		"DISTDIR", "DOC_SYMLINKS_DIR", "EBUILD",
 		"EBUILD_EXIT_STATUS_FILE", "EBUILD_FORCE_TEST",
 		"EBUILD_PHASE", "ECLASSDIR", "ECLASS_DEPTH", "EMERGE_FROM",
-		"FEATURES", "FILESDIR", "HOME", "PATH",
+		"FEATURES", "FILESDIR", "HOME", "NOCOLOR", "PATH",
 		"PKGDIR",
 		"PKGUSE", "PKG_LOGDIR", "PKG_TMPDIR",
 		"PORTAGE_ACTUAL_DISTDIR", "PORTAGE_ARCHLIST",
@@ -1135,6 +1135,7 @@ class config(object):
 		"ACCEPT_KEYWORDS", "AUTOCLEAN",
 		"CLEAN_DELAY", "COLLISION_IGNORE", "CONFIG_PROTECT",
 		"CONFIG_PROTECT_MASK", "EGENCACHE_DEFAULT_OPTS", "EMERGE_DEFAULT_OPTS",
+		"EMERGE_LOG_DIR",
 		"EMERGE_WARNING_DELAY", "FETCHCOMMAND", "FETCHCOMMAND_FTP",
 		"FETCHCOMMAND_HTTP", "FETCHCOMMAND_SFTP",
 		"GENTOO_MIRRORS", "NOCONFMEM", "O",
@@ -1200,6 +1201,8 @@ class config(object):
 		self.modifiedkeys = []
 		self.uvlist = []
 		self._accept_chost_re = None
+		self._accept_license = None
+		self._accept_license_str = None
 
 		self.virtuals = {}
 		self.virts_p = {}
@@ -1817,18 +1820,6 @@ class config(object):
 			self["PORTAGE_PYM_PATH"] = PORTAGE_PYM_PATH
 			self.backup_changes("PORTAGE_PYM_PATH")
 
-			# Expand license groups
-			# This has to do be done for each config layer before regenerate()
-			# in order for incremental negation to work properly.
-			if local_config:
-				for c in self.configdict.itervalues():
-					v = c.get("ACCEPT_LICENSE")
-					if not v:
-						continue
-					v = " ".join(self.expandLicenseTokens(v.split()))
-					c["ACCEPT_LICENSE"] = v
-					del c, v
-
 			for var in ("PORTAGE_INST_UID", "PORTAGE_INST_GID"):
 				try:
 					self[var] = str(int(self.get(var, "0")))
@@ -1841,20 +1832,6 @@ class config(object):
 
 			# initialize self.features
 			self.regenerate()
-
-			if local_config:
-				self._accept_license = \
-					set(self.get("ACCEPT_LICENSE", "").split())
-				# In order to enforce explicit acceptance for restrictive
-				# licenses that require it, "*" will not be allowed in the
-				# user config.  Don't enforce this until license groups are
-				# fully implemented in the tree.
-				#self._accept_license.discard("*")
-				if not self._accept_license:
-					self._accept_license = set(["*"])
-			else:
-				# repoman will accept any license
-				self._accept_license = set(["*"])
 
 			if not portage.process.sandbox_capable and \
 				("sandbox" in self.features or "usersandbox" in self.features):
@@ -2112,8 +2089,19 @@ class config(object):
 			except exception.InvalidDependString:
 				licenses = set()
 			licenses.discard('||')
-			if '*' not in settings._accept_license:
-				licenses.intersection_update(settings._accept_license)
+			if settings._accept_license:
+				acceptable_licenses = set()
+				for x in settings._accept_license:
+					if x == '*':
+						acceptable_licenses.update(licenses)
+					elif x == '-*':
+						acceptable_licenses.clear()
+					elif x[:1] == '-':
+						acceptable_licenses.discard(x[1:])
+					elif x in licenses:
+						acceptable_licenses.add(x)
+
+				licenses = acceptable_licenses
 			return ' '.join(sorted(licenses))
 
 		def _restrict(self, use, settings):
@@ -2676,15 +2664,30 @@ class config(object):
 		@rtype: List
 		@return: A list of licenses that have not been accepted.
 		"""
-		if "*" in self._accept_license:
+		if not self._accept_license:
 			return []
-		acceptable_licenses = self._accept_license
+		accept_license = self._accept_license
 		cpdict = self._plicensedict.get(dep_getkey(cpv), None)
 		if cpdict:
-			acceptable_licenses = self._accept_license.copy()
+			accept_license = list(self._accept_license)
 			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
 			for atom in match_to_list(cpv_slot, cpdict.keys()):
-				acceptable_licenses.update(cpdict[atom])
+				accept_license.extend(cpdict[atom])
+
+		licenses = set(flatten(dep.use_reduce(dep.paren_reduce(
+			metadata["LICENSE"]), matchall=1)))
+		licenses.discard('||')
+
+		acceptable_licenses = set()
+		for x in accept_license:
+			if x == '*':
+				acceptable_licenses.update(licenses)
+			elif x == '-*':
+				acceptable_licenses.clear()
+			elif x[:1] == '-':
+				acceptable_licenses.discard(x[1:])
+			else:
+				acceptable_licenses.add(x)
 
 		license_str = metadata["LICENSE"]
 		if "?" in license_str:
@@ -2854,10 +2857,28 @@ class config(object):
 			# an incremental!
 			myincrementals.remove("USE")
 
-		for mykey in myincrementals:
 
-			mydbs=self.configlist[:-1]
-			mydbs.append(self.backupenv)
+		mydbs = self.configlist[:-1]
+		mydbs.append(self.backupenv)
+
+		# ACCEPT_LICENSE is a lazily evaluated incremental, so that * can be
+		# used to match all licenses without every having to explicitly expand
+		# it to all licenses.
+		if self.local_config:
+			mysplit = []
+			for curdb in mydbs:
+				mysplit.extend(curdb.get('ACCEPT_LICENSE', '').split())
+			accept_license_str = ' '.join(mysplit)
+			if accept_license_str:
+				self.configlist[-1]['ACCEPT_LICENSE'] = accept_license_str
+			if accept_license_str != self._accept_license_str:
+				self._accept_license_str = accept_license_str
+				self._accept_license = tuple(self.expandLicenseTokens(mysplit))
+		else:
+			# repoman will accept any license
+			self._accept_license = ()
+
+		for mykey in myincrementals:
 
 			myflags=[]
 			for curdb in mydbs:
@@ -4823,7 +4844,10 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 			eout.eend(0)
 		for f in myfiles:
 			eout.ebegin("checking %s ;-)" % f)
-			mf.checkFileHashes(mf.findFile(f), f)
+			ftype = mf.findFile(f)
+			if ftype is None:
+				raise KeyError(f)
+			mf.checkFileHashes(ftype, f)
 			eout.eend(0)
 	except KeyError, e:
 		eout.eend(1)
@@ -5414,7 +5438,11 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		mysettings["PORTAGE_BUILDDIR"], ".exit_status")
 
 	#set up KV variable -- DEP SPEEDUP :: Don't waste time. Keep var persistent.
-	if mydo != 'depend' and 'KV' not in mysettings and \
+	if eapi not in ('0', '1', '2'):
+		# Discard KV for EAPIs that don't support it. Cache KV is restored
+		# from the backupenv whenever config.reset() is called.
+		mysettings.pop('KV', None)
+	elif mydo != 'depend' and 'KV' not in mysettings and \
 		mydo in ('compile', 'config', 'configure', 'info',
 		'install', 'nofetch', 'postinst', 'postrm', 'preinst',
 		'prepare', 'prerm', 'setup', 'test', 'unpack'):
@@ -5429,7 +5457,8 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	# Allow color.map to control colors associated with einfo, ewarn, etc...
 	mycolors = []
 	for c in ("GOOD", "WARN", "BAD", "HILITE", "BRACKET"):
-		mycolors.append("%s=$'%s'" % (c, portage.output.codes[c]))
+		mycolors.append("%s=$'%s'" % \
+			(c, portage.output.style_to_ansi_code(c)))
 	mysettings["PORTAGE_COLORMAP"] = "\n".join(mycolors)
 
 def prepare_build_dirs(myroot, mysettings, cleanup):

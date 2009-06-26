@@ -1,6 +1,6 @@
 # Copyright 1999-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: manifest.py 13175 2009-03-24 02:48:27Z zmedico $
+# $Id$
 
 import errno, os
 

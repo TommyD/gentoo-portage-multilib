@@ -1,6 +1,6 @@
 # Copyright 2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: files.py 13193 2009-03-26 20:42:56Z zmedico $
+# $Id$
 
 import errno
 import os

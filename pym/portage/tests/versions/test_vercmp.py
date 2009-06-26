@@ -1,7 +1,7 @@
 # test_vercmp.py -- Portage Unit Testing Functionality
 # Copyright 2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: test_vercmp.py 9178 2008-01-11 08:19:55Z zmedico $
+# $Id$
 
 from portage.tests import TestCase
 from portage.versions import vercmp
@@ -14,7 +14,8 @@ class VerCmpTestCase(TestCase):
 		
 		tests = [ ( "6.0", "5.0"), ("5.0","5"),
 			("1.0-r1", "1.0-r0"),
-			("1.0-r1", "1.0")]
+			("1.0-r1", "1.0"),
+			("999999999999999999999999999999", "999999999999999999999999999998"),]
 		for test in tests:
 			self.failIf( vercmp( test[0], test[1] ) <= 0, msg="%s < %s? Wrong!" % (test[0],test[1]) )
 
@@ -26,6 +27,7 @@ class VerCmpTestCase(TestCase):
 			("1.0_alpha2", "1.0_p2"),("1.0_alpha1", "1.0_beta1"),("1.0_beta3","1.0_rc3"),
 			("1.001000000000000000001", "1.001000000000000000002"),
 			("1.00100000000", "1.0010000000000000001"),
+			("999999999999999999999999999998", "999999999999999999999999999999"),
 			("1.01", "1.1"),
 			("1.0-r0", "1.0-r1"),
 			("1.0", "1.0-r1")]

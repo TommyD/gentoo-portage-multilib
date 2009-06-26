@@ -1,6 +1,6 @@
 # Copyright 2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: libs.py 13333 2009-04-12 07:16:18Z zmedico $
+# $Id$
 
 from portage.sets.base import PackageSet
 from portage.sets import get_boolean

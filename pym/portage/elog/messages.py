@@ -1,7 +1,7 @@
 # elog/messages.py - elog core functions
 # Copyright 2006-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: messages.py 12681 2009-02-22 05:23:34Z zmedico $
+# $Id$
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),

@@ -1,6 +1,6 @@
 # Copyright 2003-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: glsa.py 11659 2008-10-08 22:35:31Z zmedico $
+# $Id$
 
 import os
 import sys
