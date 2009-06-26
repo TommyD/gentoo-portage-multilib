@@ -1,6 +1,6 @@
 # Copyright 2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: test_use_reduce.py 12759 2009-03-05 05:21:36Z zmedico $
+# $Id$
 
 from portage.tests import TestCase
 from portage.exception import InvalidDependString

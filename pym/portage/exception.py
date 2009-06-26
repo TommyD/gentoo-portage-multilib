@@ -1,6 +1,6 @@
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: exception.py 11670 2008-10-10 20:15:43Z zmedico $
+# $Id$
 
 
 class PortageException(Exception):

@@ -1,7 +1,7 @@
 #!/usr/bin/python -O
 # Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: repoman 13401 2009-04-26 21:14:23Z zmedico $
+# $Id$
 
 # Next to do: dep syntax checking in mask files
 # Then, check to make sure deps are satisfiable (to avoid "can't find match for" problems)
@@ -50,7 +50,8 @@ except ImportError:
 	from repoman.checks import run_checks
 	from repoman import utilities
 
-from _emerge import Package, RootConfig
+from _emerge.Package import Package
+from _emerge.RootConfig import RootConfig
 from portage.sets import load_default_config
 
 import portage.checksum
@@ -1113,8 +1114,11 @@ for x in scanlist:
 							relative_path + ': %s' % error_match.group(1))
 
 	del mydigests
-
-	if "ChangeLog" not in checkdirlist:
+	# Note: We don't use ChangeLogs in distributed SCMs.
+	# It will be generated on server side from scm log,
+	# before package moves to the rsync server.
+	# This is needed because we try to avoid merge collisions.
+	if vcs not in ( "git", ) and "ChangeLog" not in checkdirlist:
 		stats["changelog.missing"]+=1
 		fails["changelog.missing"].append(x+"/ChangeLog")
 	

@@ -1,6 +1,6 @@
 # Copyright 1998-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: virtual.py 10872 2008-07-01 12:48:57Z zmedico $
+# $Id$
 
 
 from portage.dbapi import dbapi

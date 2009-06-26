@@ -1,6 +1,6 @@
 # Copyright 1999-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: isolated-functions.sh 13582 2009-05-01 21:43:32Z zmedico $
+# $Id$
 
 # We need this next line for "die" and "assert". It expands
 # It _must_ preceed all the calls to die and assert.

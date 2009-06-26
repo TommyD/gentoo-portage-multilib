@@ -1,7 +1,7 @@
 # deps.py -- Portage dependency resolution functions
 # Copyright 2003-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: dep.py 13375 2009-04-19 21:40:33Z zmedico $
+# $Id$
 
 
 # DEPEND SYNTAX:

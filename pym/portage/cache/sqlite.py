@@ -1,6 +1,6 @@
 # Copyright 1999-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: sqlite.py 13168 2009-03-23 05:26:45Z zmedico $
+# $Id$
 
 from portage.cache import fs_template
 from portage.cache import cache_errors
@@ -8,6 +8,7 @@ import os
 from portage.cache.template import reconstruct_eclasses
 from portage.util import writemsg, apply_secpass_permissions
 from portage.data import portage_gid
+from portage.localization import _
 try:
 	import sqlite3 as db_module # sqlite3 is optional with >=python-2.5
 except ImportError:
@@ -61,7 +62,7 @@ class database(fs_template.FsBased):
 				database=self._dbpath, **connection_kwargs)
 			self._db_cursor = self._db_connection.cursor()
 			self._db_cursor.execute("PRAGMA encoding = %s" % self._db_escape_string("UTF-8"))
-			if not apply_secpass_permissions(self._dbpath, gid=portage_gid, mode=070, mask=02):
+			if not self._ensure_access(self._dbpath):
 				raise cache_errors.InitializationError(self.__class__, "can't ensure perms on %s" % self._dbpath)
 			self._db_init_cache_size(config["cache_bytes"])
 			self._db_init_synchronous(config["synchronous"])
@@ -101,7 +102,7 @@ class database(fs_template.FsBased):
 			if self._db_table_exists(v["table_name"]):
 				create_statement = self._db_table_get_create(v["table_name"])
 				if create_statement != v["create"]:
-					writemsg("sqlite: dropping old table: %s\n" % v["table_name"])
+					writemsg(_("sqlite: dropping old table: %s\n") % v["table_name"])
 					cursor.execute("DROP TABLE %s" % v["table_name"])
 					cursor.execute(v["create"])
 			else:

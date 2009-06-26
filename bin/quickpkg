@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # Copyright 1999-2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: quickpkg 13116 2009-03-17 05:35:50Z zmedico $
+# $Id$
 
 import errno, signal, sys, os
 from itertools import izip

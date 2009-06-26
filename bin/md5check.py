@@ -1,7 +1,7 @@
 #!/usr/bin/python -O
 # Copyright 1999-2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: md5check.py 9632 2008-03-30 19:20:46Z zmedico $
+# $Id$
 
 import os,sys
 os.environ["FEATURES"]="mirror cvs"

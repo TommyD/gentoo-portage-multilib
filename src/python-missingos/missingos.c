@@ -1,4 +1,4 @@
-/* $Id: missingos.c 3483 2006-06-10 21:40:40Z genone $ */
+/* $Id$ */
 
 #include "Python.h"
 

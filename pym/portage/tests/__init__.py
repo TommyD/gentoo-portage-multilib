@@ -1,7 +1,7 @@
 # tests/__init__.py -- Portage Unit Test functionality
 # Copyright 2006 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: __init__.py 11274 2008-07-30 02:27:53Z zmedico $
+# $Id$
 
 import os
 import sys

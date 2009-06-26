@@ -1,7 +1,7 @@
 # portage: Constants
 # Copyright 1998-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: const.py 11550 2008-09-26 00:09:06Z zmedico $
+# $Id$
 
 
 # ===========================================================================
@@ -52,7 +52,7 @@ REPO_NAME_FILE         = "repo_name"
 REPO_NAME_LOC          = "profiles" + "/" + REPO_NAME_FILE
 
 INCREMENTALS = ["USE", "USE_EXPAND", "USE_EXPAND_HIDDEN", "FEATURES",
-	"ACCEPT_KEYWORDS", "ACCEPT_LICENSE",
+	"ACCEPT_KEYWORDS",
 	"CONFIG_PROTECT_MASK", "CONFIG_PROTECT",
 	"PRELINK_PATH", "PRELINK_PATH_MASK", "PROFILE_ONLY_VARIABLES"]
 EBUILD_PHASES           = ["setup", "unpack", "prepare", "configure",

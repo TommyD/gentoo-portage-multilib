@@ -1,7 +1,7 @@
 # portage.py -- core Portage functionality
 # Copyright 1998-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: process.py 13144 2009-03-22 22:05:47Z zmedico $
+# $Id$
 
 
 import os

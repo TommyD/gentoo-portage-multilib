@@ -1,7 +1,7 @@
 # portage: Lock management code
 # Copyright 2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: locks.py 13355 2009-04-18 04:53:26Z zmedico $
+# $Id$
 
 __all__ = ["lockdir", "unlockdir", "lockfile", "unlockfile", \
 	"hardlock_name", "hardlink_is_mine", "hardlink_lockfile", \

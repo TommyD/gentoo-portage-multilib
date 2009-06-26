@@ -1,6 +1,6 @@
 # Copyright 1999-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: metadata_overlay.py 12736 2009-03-01 06:29:07Z zmedico $
+# $Id$
 
 import time
 from portage.cache import template

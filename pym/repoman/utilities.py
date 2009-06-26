@@ -1,7 +1,7 @@
 # repoman: Utilities
 # Copyright 2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: utilities.py 12626 2009-02-18 22:50:14Z zmedico $
+# $Id$
 
 """This module contains utility functions to help repoman find ebuilds to
 scan"""

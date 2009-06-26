@@ -1,6 +1,6 @@
 # Copyright 1998-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: __init__.py 12815 2009-03-10 03:59:37Z zmedico $
+# $Id$
 
 __all__ = ["dbapi"]
 
@@ -17,6 +17,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 
 from portage import auxdbkeys, dep_expand
+from portage.localization import _
 
 class dbapi(object):
 	_category_re = re.compile(r'^\w[-.+\w]*$')
@@ -49,7 +50,7 @@ class dbapi(object):
 		pass
 
 	def cp_list(self, cp, use_cache=1):
-		return
+		raise NotImplementedError(self)
 
 	def _cpv_sort_ascending(self, cpv_list):
 		"""
@@ -190,14 +191,14 @@ class dbapi(object):
 	def invalidentry(self, mypath):
 		if mypath.endswith('portage_lockfile'):
 			if "PORTAGE_MASTER_PID" not in os.environ:
-				writemsg("Lockfile removed: %s\n" % mypath, 1)
+				writemsg(_("Lockfile removed: %s\n") % mypath, 1)
 				unlockfile((mypath, None, None))
 			else:
 				# Nothing we can do about it. We're probably sandboxed.
 				pass
 		elif '/-MERGING-' in mypath:
 			if os.path.exists(mypath):
-				writemsg(colorize("BAD","INCOMPLETE MERGE:")+" %s\n" % mypath,
+				writemsg(colorize("BAD", _("INCOMPLETE MERGE:"))+" %s\n" % mypath,
 					noiselevel=-1)
 		else:
 			writemsg("!!! Invalid db entry: %s\n" % mypath, noiselevel=-1)

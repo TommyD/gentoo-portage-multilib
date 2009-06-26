@@ -1,6 +1,6 @@
 # Copyright 1998-2008 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: test_poll.py 12720 2009-02-27 02:43:45Z zmedico $
+# $Id$
 
 import errno, os, sys
 import fcntl
@@ -8,7 +8,9 @@ import termios
 import portage
 from portage.output import get_term_size, set_term_size
 from portage.tests import TestCase
-from _emerge import PipeReader, SpawnProcess, TaskScheduler
+from _emerge.TaskScheduler import TaskScheduler
+from _emerge.PipeReader import PipeReader
+from _emerge.SpawnProcess import SpawnProcess
 
 class PipeReaderTestCase(TestCase):
 

@@ -1,7 +1,7 @@
 # Copyright: 2005 Gentoo Foundation
 # Author(s): Brian Harring (ferringb@gentoo.org)
 # License: GPL2
-# $Id: sql_template.py 13139 2009-03-20 08:28:19Z zmedico $
+# $Id$
 
 import sys
 from portage.cache import template, cache_errors

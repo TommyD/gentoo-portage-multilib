@@ -1,7 +1,7 @@
 # repoman: Checks
 # Copyright 2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: checks.py 13413 2009-04-29 19:57:46Z zmedico $
+# $Id$
 
 """This module contains functions used in Repoman to ascertain the quality
 and correctness of an ebuild."""
@@ -92,7 +92,7 @@ class EbuildQuote(LineCheck):
 	var_names = ["D", "DISTDIR", "FILESDIR", "S", "T", "ROOT", "WORKDIR"]
 
 	# variables for games.eclass
-	var_names += ["Ddir", "dir", "GAMES_PREFIX_OPT", "GAMES_DATADIR",
+	var_names += ["Ddir", "GAMES_PREFIX_OPT", "GAMES_DATADIR",
 		"GAMES_DATADIR_BASE", "GAMES_SYSCONFDIR", "GAMES_STATEDIR",
 		"GAMES_LOGDIR", "GAMES_BINDIR"]
 
@@ -232,6 +232,7 @@ class EapiDefinition(LineCheck):
 class SrcUnpackPatches(LineCheck):
 	repoman_check_name = 'ebuild.minorsyn'
 
+	ignore_line = re.compile(r'(^\s*#)')
 	src_unpack_re = re.compile(r'^src_unpack\(\)')
 	func_end_re = re.compile(r'^\}$')
 	src_prepare_tools_re = re.compile(r'\s(e?patch|sed)\s')

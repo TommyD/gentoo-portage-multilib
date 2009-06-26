@@ -1,7 +1,7 @@
 # config.py -- Portage Config
 # Copyright 2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: loaders.py 13298 2009-04-08 03:11:01Z zmedico $
+# $Id$
 
 import os
 import stat

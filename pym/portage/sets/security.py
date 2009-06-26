@@ -1,6 +1,6 @@
 # Copyright 2007 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: security.py 11861 2008-11-12 02:24:42Z zmedico $
+# $Id$
 
 import os
 import portage.glsa as glsa

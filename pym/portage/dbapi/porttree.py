@@ -1,6 +1,6 @@
 # Copyright 1998-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id: porttree.py 13578 2009-05-01 18:34:59Z zmedico $
+# $Id$
 
 __all__ = ["portdbapi", "close_portdbapi_caches", "portagetree"]
 
@@ -20,6 +20,7 @@ from portage.data import portage_gid, secpass
 from portage.dbapi import dbapi
 from portage.exception import PortageException, \
 	FileNotFound, InvalidDependString, InvalidPackageName
+from portage.localization import _
 from portage.manifest import Manifest
 
 from portage import eclass_cache, auxdbkeys, doebuild, flatten, \
@@ -208,9 +209,9 @@ class portdbapi(dbapi):
 					for alias in loc_repo_conf.aliases:
 						overridden_alias = repo_aliases.get(alias)
 						if overridden_alias is not None:
-							writemsg_level(("!!! Alias '%s' " + \
-								"created for '%s' overrides " + \
-								"'%s' alias in " + \
+							writemsg_level(_("!!! Alias '%s' " \
+								"created for '%s' overrides " \
+								"'%s' alias in " \
 								"'%s'\n") % (alias, repo_name,
 								overridden_alias,
 								self.mysettings._local_repo_conf_path),
@@ -246,7 +247,7 @@ class portdbapi(dbapi):
 				master_name = repo_aliases.get(master_name, master_name)
 				master_path = self.treemap.get(master_name)
 				if master_path is None:
-					writemsg_level(("Unavailable repository '%s' " + \
+					writemsg_level(_("Unavailable repository '%s' " \
 						"referenced by masters entry in '%s'\n") % \
 						(master_name, layout_filename),
 						level=logging.ERROR, noiselevel=-1)
@@ -269,8 +270,8 @@ class portdbapi(dbapi):
 					for other_name in loc_repo_conf.eclass_overrides:
 						other_path = self.treemap.get(other_name)
 						if other_path is None:
-							writemsg_level(("Unavailable repository '%s' " + \
-								"referenced by eclass-overrides entry in " + \
+							writemsg_level(_("Unavailable repository '%s' " \
+								"referenced by eclass-overrides entry in " \
 								"'%s'\n") % (other_name,
 								self.mysettings._local_repo_conf_path),
 								level=logging.ERROR, noiselevel=-1)
@@ -294,12 +295,23 @@ class portdbapi(dbapi):
 		self.auxdb = {}
 		self._pregen_auxdb = {}
 		self._init_cache_dirs()
+		depcachedir_w_ok = os.access(self.depcachedir, os.W_OK)
+		cache_kwargs = {
+			'gid'     : portage_gid,
+			'perms'   : 0664
+		}
+
+		if secpass < 1:
+			# portage_gid is irrelevant, so just obey umask
+			cache_kwargs['gid']   = -1
+			cache_kwargs['perms'] = -1
+
 		# XXX: REMOVE THIS ONCE UNUSED_0 IS YANKED FROM auxdbkeys
 		# ~harring
 		filtered_auxdbkeys = filter(lambda x: not x.startswith("UNUSED_0"), auxdbkeys)
 		filtered_auxdbkeys.sort()
 		from portage.cache import metadata_overlay, volatile
-		if secpass < 1:
+		if not depcachedir_w_ok:
 			for x in self.porttrees:
 				db_ro = self.auxdbmodule(self.depcachedir, x,
 					filtered_auxdbkeys, gid=portage_gid, readonly=True)
@@ -313,7 +325,7 @@ class portdbapi(dbapi):
 					continue
 				# location, label, auxdbkeys
 				self.auxdb[x] = self.auxdbmodule(
-					self.depcachedir, x, filtered_auxdbkeys, gid=portage_gid)
+					self.depcachedir, x, filtered_auxdbkeys, **cache_kwargs)
 				if self.auxdbmodule is metadata_overlay.database:
 					self.auxdb[x].db_ro.ec = self._repo_info[x].eclass_db
 		if "metadata-transfer" not in self.mysettings.features:
@@ -493,8 +505,8 @@ class portdbapi(dbapi):
 			st = os.stat(ebuild_path)
 			emtime = st[stat.ST_MTIME]
 		except OSError:
-			writemsg("!!! aux_get(): ebuild for " + \
-				"'%s' does not exist at:\n" % (cpv,), noiselevel=-1)
+			writemsg(_("!!! aux_get(): ebuild for " \
+				"'%s' does not exist at:\n") % (cpv,), noiselevel=-1)
 			writemsg("!!!            %s\n" % ebuild_path, noiselevel=-1)
 			raise KeyError(cpv)
 
@@ -558,7 +570,7 @@ class portdbapi(dbapi):
 		myebuild, mylocation = self.findname2(mycpv, mytree)
 
 		if not myebuild:
-			writemsg("!!! aux_get(): ebuild path for '%(cpv)s' not specified:\n" % {"cpv":mycpv},
+			writemsg(_("!!! aux_get(): ebuild path for '%s' not specified:\n") % mycpv,
 				noiselevel=1)
 			writemsg("!!!            %s\n" % myebuild, noiselevel=1)
 			raise KeyError(mycpv)
@@ -566,7 +578,7 @@ class portdbapi(dbapi):
 		mydata, st, emtime = self._pull_valid_cache(mycpv, myebuild, mylocation)
 		doregen = mydata is None
 
-		writemsg("auxdb is valid: "+str(not doregen)+" "+str(pkg)+"\n", 2)
+		writemsg(_("auxdb is valid: ")+str(not doregen)+" "+str(pkg)+"\n", 2)
 
 		if doregen:
 			if myebuild in self._broken_ebuilds:
@@ -574,7 +586,7 @@ class portdbapi(dbapi):
 			if not self._have_root_eclass_dir:
 				raise KeyError(mycpv)
 			writemsg("doregen: %s %s\n" % (doregen, mycpv), 2)
-			writemsg("Generating cache entry(0) for: "+str(myebuild)+"\n", 1)
+			writemsg(_("Generating cache entry(0) for: ")+str(myebuild)+"\n", 1)
 
 			self.doebuild_settings.setcpv(mycpv)
 			mydata = {}
@@ -719,10 +731,15 @@ class portdbapi(dbapi):
 			mysettings.setcpv(mypkg, mydb=self)
 			useflags = mysettings["PORTAGE_USE"].split()
 		uri_map = self.getFetchMap(mypkg, useflags=useflags, mytree=mytree)
-		uris = set()
-		for uri_set in uri_map.itervalues():
-			uris.update(uri_set)
-		return [list(uris), uri_map.keys()]
+
+		all_uris = []
+		all_files = []
+		for filename, uris in uri_map.iteritems():
+			for uri in uris:
+				all_uris.append(uri)
+				all_files.append(filename)
+
+		return [all_uris, all_files]
 
 	def getfetchsizes(self, mypkg, useflags=None, debug=0):
 		# returns a filename:size dictionnary of remaining downloads
@@ -741,7 +758,7 @@ class portdbapi(dbapi):
 		for myfile in myfiles:
 			if myfile not in checksums:
 				if debug:
-					writemsg("[bad digest]: missing %s for %s\n" % (myfile, mypkg))
+					writemsg(_("[bad digest]: missing %(file)s for %(pkg)s\n") % {"file":myfile, "pkg":mypkg})
 				continue
 			file_path = os.path.join(self.mysettings["DISTDIR"], myfile)
 			mystat = None
@@ -778,14 +795,14 @@ class portdbapi(dbapi):
 		for x in myfiles:
 			if not mysums or x not in mysums:
 				ok     = False
-				reason = "digest missing"
+				reason = _("digest missing")
 			else:
 				try:
 					ok, reason = portage.checksum.verify_all(
 						os.path.join(self.mysettings["DISTDIR"], x), mysums[x])
 				except FileNotFound, e:
 					ok = False
-					reason = "File Not Found: '%s'" % str(e)
+					reason = _("File Not Found: '%s'") % str(e)
 			if not ok:
 				failures[x] = reason
 		if failures:
@@ -853,21 +870,21 @@ class portdbapi(dbapi):
 				if pf is not None:
 					ps = pkgsplit(pf)
 					if not ps:
-						writemsg("\nInvalid ebuild name: %s\n" % \
+						writemsg(_("\nInvalid ebuild name: %s\n") % \
 							os.path.join(oroot, mycp, x), noiselevel=-1)
 						continue
 					if ps[0] != mysplit[1]:
-						writemsg("\nInvalid ebuild name: %s\n" % \
+						writemsg(_("\nInvalid ebuild name: %s\n") % \
 							os.path.join(oroot, mycp, x), noiselevel=-1)
 						continue
 					ver_match = ver_regexp.match("-".join(ps[1:]))
 					if ver_match is None or not ver_match.groups():
-						writemsg("\nInvalid ebuild version: %s\n" % \
+						writemsg(_("\nInvalid ebuild version: %s\n") % \
 							os.path.join(oroot, mycp, x), noiselevel=-1)
 						continue
 					d[mysplit[0]+"/"+pf] = None
 		if invalid_category and d:
-			writemsg(("\n!!! '%s' has a category that is not listed in " + \
+			writemsg(_("\n!!! '%s' has a category that is not listed in " \
 				"%setc/portage/categories\n") % \
 				(mycp, self.mysettings["PORTAGE_CONFIGROOT"]), noiselevel=-1)
 			mylist = []
