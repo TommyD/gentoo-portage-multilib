@@ -201,27 +201,20 @@ set_abi() {
 	# Export variables we need for toolchain
 	export ABI="${abi}"
 	echo ">>> ABI=${ABI}"
-
-	case "${EMULTILIB_INITIALISED}" in
-		2)
-			_save_abi_env "${ABI_SAVE}"
-			_restore_abi_env "${ABI}"
-			;;
-		1)
-			_save_abi_env "${ABI_SAVE}"
+	if [[ "${EMULTILIB_INITIALISED}" == "1" ]]; then
+		_save_abi_env "${ABI_SAVE}"
+		_restore_abi_env "${ABI}"
+	else
+		_save_abi_env "INIT"
+		for i in ${MULTILIB_ABIS}; do
+			export ABI="${i}"
 			_restore_abi_env "INIT"
-			_setup_abi_env "${ABI}"
-			;;
-		0)
-			_save_abi_env "INIT"
-			_restore_abi_env "INIT"
-			_setup_abi_env "${ABI}"
-			;;
-		*)
-			die "Unknown state"
-			;;
-	esac
-
+			_setup_abi_env "${i}"
+			_save_abi_env "${i}"
+		done
+		export ABI="${abi}"
+		EMULTILIB_INITIALISED="1"
+	fi
 }
 
 _unset_abi_dir() {
@@ -268,8 +261,7 @@ _setup_abi_env() {
 	export FFLAGS="${FFLAGS} ${CFLAGS}"
 	export ASFLAGS="${ASFLAGS} $(get_abi_var ASFLAGS)"
 	export LIBDIR=$(get_abi_var LIBDIR $1)
-	export LDFLAGS="${LDFLAGS} -L/${LIBDIR} -L/usr/${LIBDIR} $(get_abi_var CFLAGS)"
-	let EMULTILIB_INITIALISED++
+	export LDFLAGS="${LDFLAGS} -L/${LIBDIR} -L/usr/${LIBDIR} $(get_abi_var LDFLAGS)"
 }
 
 # Remove symlinks for alternate ABIs so that packages that use
