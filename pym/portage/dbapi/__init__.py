@@ -149,6 +149,10 @@ class dbapi(object):
 		1) Check for required IUSE intersection (need implicit IUSE here).
 		2) Check enabled/disabled flag states.
 		"""
+		if hasattr(self, 'mysettings'):
+			settings = self.mysettings
+		else:
+			settings = self.settings
 		if self._iuse_implicit is None:
 			self._iuse_implicit = self.settings._get_implicit_iuse()
 		for cpv in cpv_iter:
@@ -157,6 +161,10 @@ class dbapi(object):
 			except KeyError:
 				continue
 			use = use.split()
+			if settings['MULTILIB_ABIS'].count(' ') is not 0:
+				if settings['ARCH'] == "amd64" or settings['ARCH'] == "ppc64":
+					if 'lib32' not in iuse:
+						iuse += ' lib32'
 			iuse = self._iuse_implicit.union(
 				re.escape(x.lstrip("+-")) for x in iuse.split())
 			iuse_re = re.compile("^(%s)$" % "|".join(iuse))
