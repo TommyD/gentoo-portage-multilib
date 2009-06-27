@@ -213,6 +213,7 @@ set_abi() {
 			_save_abi_env "${i}"
 		done
 		export ABI="${abi}"
+		_restore_abi_env "${ABI}"
 		EMULTILIB_INITIALISED="1"
 	fi
 }
@@ -261,7 +262,7 @@ _setup_abi_env() {
 	export FFLAGS="${FFLAGS} ${CFLAGS}"
 	export ASFLAGS="${ASFLAGS} $(get_abi_var ASFLAGS)"
 	export LIBDIR=$(get_abi_var LIBDIR $1)
-	export LDFLAGS="${LDFLAGS} -L/${LIBDIR} -L/usr/${LIBDIR} $(get_abi_var LDFLAGS)"
+	export LDFLAGS="${LDFLAGS} -L/${LIBDIR} -L/usr/${LIBDIR} $(get_abi_var CFLAGS)"
 }
 
 # Remove symlinks for alternate ABIs so that packages that use
