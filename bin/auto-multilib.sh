@@ -263,6 +263,13 @@ _setup_abi_env() {
 	export ASFLAGS="${ASFLAGS} $(get_abi_var ASFLAGS)"
 	export LIBDIR=$(get_abi_var LIBDIR $1)
 	export LDFLAGS="${LDFLAGS} -L/${LIBDIR} -L/usr/${LIBDIR} $(get_abi_var CFLAGS)"
+	if ! [[ "${ABI}" == "${DEFAULT_ABI}" ]]; then
+		pyver=$(python --version 2>&1)
+		pyver=${pyver/Python /python}
+		pyver=${pyver%.*}
+		export PYTHON="/usr/bin/${pyver}-${ABI}"
+		export PERLBIN="/usr/bin/perl-${ABI}"
+	fi
 }
 
 # Remove symlinks for alternate ABIs so that packages that use

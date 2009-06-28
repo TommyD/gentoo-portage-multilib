@@ -673,7 +673,8 @@ dyn_unpack() {
 		fi
 		if [ "${newstuff}" == "yes" ]; then
 			# We don't necessarily have privileges to do a full dyn_clean here.
-			rm -rf "${PORTAGE_BUILDDIR}"/{.unpacked,.prepared,.configured,.compiled,.tested,.installed,.packaged,build-info}
+			rm -rf "${PORTAGE_BUILDDIR}"/{.unpacked,.unpacked.*,.prepared,.prepared.*,.configured,.configured.*,\
+				.compiled,.compiled.*,.tested,.tested.*,.installed,.installed.*,.packaged,.packaged.*,build-info}
 			rm -rf "${WORKDIR}"
 			if [ -d "${T}" ] && \
 				! hasq keeptemp $FEATURES && ! hasq keepwork $FEATURES ; then
@@ -697,7 +698,7 @@ dyn_unpack() {
 		vecho ">>> Unpacking source$(_get_abi_string)..."
 		ebuild_phase src_unpack
 		if is_auto-multilib; then
-			touch "$PORTAGE_BUILDDIR"/unpacked."${LOOP_ABI}" || die "IO Failure -- Failed to 'touch .unpacked.${LOOP_ABI}'"
+			touch "$PORTAGE_BUILDDIR"/.unpacked."${LOOP_ABI}" || die "IO Failure -- Failed to 'touch .unpacked.${LOOP_ABI}'"
 		fi
 	done
 	unset_abi
@@ -719,7 +720,7 @@ dyn_clean() {
 	fi
 
 	rm -rf "${PORTAGE_BUILDDIR}/image" "${PORTAGE_BUILDDIR}/homedir"
-	rm -f "${PORTAGE_BUILDDIR}/.installed"
+	rm -f "${PORTAGE_BUILDDIR}"/.{installed,installed.*}
 
 	if [[ $EMERGE_FROM = binary ]] || \
 		! hasq keeptemp $FEATURES && ! hasq keepwork $FEATURES ; then
@@ -727,8 +728,8 @@ dyn_clean() {
 	fi
 
 	if [[ $EMERGE_FROM = binary ]] || ! hasq keepwork $FEATURES; then
-		rm -f "$PORTAGE_BUILDDIR"/.{ebuild_changed,exit_status,logid,abi,unpacked,prepared} \
-			"$PORTAGE_BUILDDIR"/.{configured,compiled.*,compiled,tested,packaged}
+		rm -f "$PORTAGE_BUILDDIR"/.{ebuild_changed,exit_status,logid,abi,unpacked,unpacked.*,prepared,prepared.*} \
+			"$PORTAGE_BUILDDIR"/.{configured,configured.*,compiled,compiled.*,tested,tested.*,packaged}
 
 		rm -rf "${PORTAGE_BUILDDIR}/build-info"
 		rm -rf "${WORKDIR}."*
@@ -1070,7 +1071,7 @@ dyn_test() {
 dyn_install() {
 	[ -z "$PORTAGE_BUILDDIR" ] && die "${FUNCNAME}: PORTAGE_BUILDDIR is unset"
 	if hasq noauto $FEATURES ; then
-		rm -f "${PORTAGE_BUILDDIR}/.installed"
+		rm -f "${PORTAGE_BUILDDIR}"/.{installed,installed.*}
 	fi
 	if ! is_auto-multilib && [[ -e $PORTAGE_BUILDDIR/.installed ]] ; then
 		vecho ">>> It appears that '${PF}' is already installed; skipping."
