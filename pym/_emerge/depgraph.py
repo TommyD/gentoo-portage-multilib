@@ -2449,11 +2449,13 @@ class depgraph(object):
 				unresolved_blocks = False
 				depends_on_order = set()
 				for pkg in blocked_initial:
-					if pkg.slot_atom == parent.slot_atom:
-						# TODO: Support blocks within slots in cases where it
-						# might make sense.  For example, a new version might
-						# require that the old version be uninstalled at build
-						# time.
+					if pkg.slot_atom == parent.slot_atom and \
+						not blocker.atom.blocker.overlap.forbid:
+						# New !!atom blockers do not allow temporary
+						# simulaneous installation, so unlike !atom
+						# blockers, !!atom blockers aren't ignored
+						# when they match other packages occupying
+						# the same slot.
 						continue
 					if parent.installed:
 						# Two currently installed packages conflict with
@@ -2473,8 +2475,13 @@ class depgraph(object):
 					# so apparently this one is unresolvable.
 					unresolved_blocks = True
 				for pkg in blocked_final:
-					if pkg.slot_atom == parent.slot_atom:
-						# TODO: Support blocks within slots.
+					if pkg.slot_atom == parent.slot_atom and \
+						not blocker.atom.blocker.overlap.forbid:
+						# New !!atom blockers do not allow temporary
+						# simulaneous installation, so unlike !atom
+						# blockers, !!atom blockers aren't ignored
+						# when they match other packages occupying
+						# the same slot.
 						continue
 					if parent.operation == "nomerge" and \
 						pkg.operation == "nomerge":
@@ -4902,8 +4909,9 @@ def get_masking_status(pkg, pkgsettings, root_config):
 			mreasons.append("CHOST: %s" % \
 				pkg.metadata["CHOST"])
 		if pkg.invalid:
-			for msg in pkg.invalid:
-				mreasons.append("invalid: %s" % (msg,))
+			for msg_type, msgs in pkg.invalid.iteritems():
+				for msg in msgs:
+					mreasons.append("invalid: %s" % (msg,))
 
 	if not pkg.metadata["SLOT"]:
 		mreasons.append("invalid: SLOT is undefined")
