@@ -354,6 +354,15 @@ _finalize_abi_install() {
 	for i in ${files}; do
 		prep_ml_binaries "${i}"
 	done
+	if [[ "${ABI}" != "${DEFAULT_ABI}" ]]; then
+		if [[ ${PN} == python ]]; then
+			prep_ml_binaries "${D}"usr/bin/${PN}${PYVER}
+		fi
+		if [[ ${PN} == perl ]]; then
+			cp "${D}"usr/bin/perl${MY_PV}{,-${ABI}} || die
+			ln -s perl${MY_PV}-${ABI} "${D}"/usr/bin/perl-${ABI} || die
+		fi
+	fi
 }
 
 #
