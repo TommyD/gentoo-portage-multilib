@@ -54,7 +54,7 @@ options=[
 "--emptytree",
 "--fetchonly",    "--fetch-all-uri",
 "--getbinpkg",    "--getbinpkgonly",
-"--help",         "--ignore-default-opts",
+"--ignore-default-opts",
 "--keep-going",
 "--noconfmem",
 "--newuse",
@@ -202,7 +202,6 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 				if icount > 0:
 					out.einfo("Processed %d info files." % (icount,))
 
-
 def display_preserved_libs(vardbapi):
 	MAX_DISPLAY = 3
 
@@ -273,11 +272,10 @@ def display_preserved_libs(vardbapi):
 					print colorize("WARN", " * ") + "     used by %d other files" % (len(consumers) - MAX_DISPLAY)
 		print "Use " + colorize("GOOD", "emerge @preserved-rebuild") + " to rebuild packages using these libraries"
 
-
 def post_emerge(root_config, myopts, mtimedb, retval):
 	"""
 	Misc. things to run at the end of a merge session.
-	
+
 	Update Info Files
 	Update Config Files
 	Update News Items
@@ -346,13 +344,12 @@ def post_emerge(root_config, myopts, mtimedb, retval):
 				portage.locks.unlockdir(vdb_lock)
 
 	chk_updated_cfg_files(target_root, config_protect)
-	
+
 	display_news_notification(root_config, myopts)
 	if retval in (None, os.EX_OK) or (not "--pretend" in myopts):
 		display_preserved_libs(vardbapi)	
 
 	sys.exit(retval)
-
 
 def multiple_actions(action1, action2):
 	sys.stderr.write("\n!!! Multiple actions requested... Please choose one only.\n")
@@ -438,7 +435,7 @@ def parse_opts(tmpcmdline, silent=False):
 	global options, shortmapping
 
 	actions = frozenset([
-		"clean", "config", "depclean",
+		"clean", "config", "depclean", "help",
 		"info", "list-sets", "metadata",
 		"prune", "regen",  "search",
 		"sync",  "unmerge", "version",
@@ -661,11 +658,6 @@ def expand_set_arguments(myfiles, myaction, root_config):
 	ARG_START = "{"
 	ARG_END = "}"
 
-	# WARNING: all operators must be of equal length
-	IS_OPERATOR = "/@"
-	DIFF_OPERATOR = "-@"
-	UNION_OPERATOR = "+@"
-	
 	for i in range(0, len(myfiles)):
 		if myfiles[i].startswith(SETPREFIX):
 			start = 0
@@ -678,7 +670,7 @@ def expand_set_arguments(myfiles, myaction, root_config):
 				if start > 0 and start < end:
 					namepart = x[:start]
 					argpart = x[start+1:end]
-				
+
 					# TODO: implement proper quoting
 					args = argpart.split(",")
 					options = {}
@@ -695,13 +687,13 @@ def expand_set_arguments(myfiles, myaction, root_config):
 					newset += x
 					x = ""
 			myfiles[i] = SETPREFIX+newset
-				
+
 	sets = setconfig.getSets()
 
 	# display errors that occured while loading the SetConfig instance
 	for e in setconfig.errors:
 		print colorize("BAD", "Error during set creation: %s" % e)
-	
+
 	# emerge relies on the existance of sets with names "world" and "system"
 	required_sets = ("world", "system")
 	missing_sets = []
@@ -730,44 +722,7 @@ def expand_set_arguments(myfiles, myaction, root_config):
 	unmerge_actions = ("unmerge", "prune", "clean", "depclean")
 
 	for a in myfiles:
-		if a.startswith(SETPREFIX):
-			# support simple set operations (intersection, difference and union)
-			# on the commandline. Expressions are evaluated strictly left-to-right
-			if IS_OPERATOR in a or DIFF_OPERATOR in a or UNION_OPERATOR in a:
-				expression = a[len(SETPREFIX):]
-				expr_sets = []
-				expr_ops = []
-				while IS_OPERATOR in expression or DIFF_OPERATOR in expression or UNION_OPERATOR in expression:
-					is_pos = expression.rfind(IS_OPERATOR)
-					diff_pos = expression.rfind(DIFF_OPERATOR)
-					union_pos = expression.rfind(UNION_OPERATOR)
-					op_pos = max(is_pos, diff_pos, union_pos)
-					s1 = expression[:op_pos]
-					s2 = expression[op_pos+len(IS_OPERATOR):]
-					op = expression[op_pos:op_pos+len(IS_OPERATOR)]
-					if not s2 in sets:
-						display_missing_pkg_set(root_config, s2)
-						return (None, 1)
-					expr_sets.insert(0, s2)
-					expr_ops.insert(0, op)
-					expression = s1
-				if not expression in sets:
-					display_missing_pkg_set(root_config, expression)
-					return (None, 1)
-				expr_sets.insert(0, expression)
-				result = set(setconfig.getSetAtoms(expression))
-				for i in range(0, len(expr_ops)):
-					s2 = setconfig.getSetAtoms(expr_sets[i+1])
-					if expr_ops[i] == IS_OPERATOR:
-						result.intersection_update(s2)
-					elif expr_ops[i] == DIFF_OPERATOR:
-						result.difference_update(s2)
-					elif expr_ops[i] == UNION_OPERATOR:
-						result.update(s2)
-					else:
-						raise NotImplementedError("unknown set operator %s" % expr_ops[i])
-				newargs.extend(result)
-			else:			
+		if a.startswith(SETPREFIX):		
 				s = a[len(SETPREFIX):]
 				if s not in sets:
 					display_missing_pkg_set(root_config, s)
@@ -868,10 +823,8 @@ def config_protect_check(trees):
 				msg += " for '%s'" % root
 			writemsg_level(msg, level=logging.WARN, noiselevel=-1)
 
-def profile_check(trees, myaction, myopts):
-	if myaction in ("info", "sync"):
-		return os.EX_OK
-	elif "--version" in myopts or "--help" in myopts:
+def profile_check(trees, myaction):
+	if myaction in ("help", "info", "sync", "version"):
 		return os.EX_OK
 	for root, root_trees in trees.iteritems():
 		if root_trees["root_config"].settings.profiles:
@@ -909,7 +862,7 @@ def emerge_main():
 	os.umask(022)
 	settings, trees, mtimedb = load_emerge_config()
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
-	rval = profile_check(trees, myaction, myopts)
+	rval = profile_check(trees, myaction)
 	if rval != os.EX_OK:
 		return rval
 
@@ -1076,8 +1029,8 @@ def emerge_main():
 			settings.profile_path, settings["CHOST"],
 			trees[settings["ROOT"]]["vartree"].dbapi)
 		return 0
-	elif "--help" in myopts:
-		_emerge.help.help(myaction, myopts, portage.output.havecolor)
+	elif myaction == "help":
+		_emerge.help.help(myopts, portage.output.havecolor)
 		return 0
 
 	if "--debug" in myopts:
@@ -1085,7 +1038,7 @@ def emerge_main():
 		print "myopts", myopts
 
 	if not myaction and not myfiles and "--resume" not in myopts:
-		_emerge.help.help(myaction, myopts, portage.output.havecolor)
+		_emerge.help.help(myopts, portage.output.havecolor)
 		return 1
 
 	pretend = "--pretend" in myopts
