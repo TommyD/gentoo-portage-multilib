@@ -7311,6 +7311,16 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	writemsg("mysplit:  %s\n" % (mysplit), 1)
 	writemsg("mysplit2: %s\n" % (mysplit2), 1)
 
+	# Recursively expand new-style virtuals so as to
+	# collapse one or more levels of indirection.
+	try:
+		mysplit = _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings,
+			use=use, mode=mode, myuse=myuse,
+			use_force=useforce, use_mask=mymasks, use_cache=use_cache,
+			use_binaries=use_binaries, myroot=myroot, trees=trees)
+	except portage.exception.ParseError, e:
+		return [0, str(e)]
+
 	try:
 		myzaps = dep_zapdeps(mysplit, mysplit2, myroot,
 			use_binaries=use_binaries, trees=trees)
