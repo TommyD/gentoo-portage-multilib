@@ -4,7 +4,7 @@
 # $Id$
 
 
-VERSION="2.2_rc33"
+VERSION="2.2_rc33-r2"
 
 # ===========================================================================
 # START OF IMPORTS -- START OF IMPORTS -- START OF IMPORTS -- START OF IMPORT
@@ -6914,9 +6914,12 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 					raise portage.exception.ParseError(
 						"invalid atom: '%s'" % (x,))
 				if x.use and eapi in ("0", "1") and \
-					portage.dep._dep_check_strict:
-					raise portage.exception.ParseError(
-						"invalid atom: '%s'" % (x,))
+					portage.dep._dep_check_strict and \
+					not (str(x.use) == '[lib32?]' and ( mysettings.get("ARCH") == "amd64" or mysettings.get("ARCH") == "ppc64" ) and
+					mysettings.get("MULTILIB_ABIS").count(' ') is not 0):
+							print x.use
+							raise portage.exception.ParseError(
+								"invalid atom: '%s'" % (x,))
 
 		if repoman and x.use and x.use.conditional:
 			evaluated_atom = portage.dep.remove_slot(x)
