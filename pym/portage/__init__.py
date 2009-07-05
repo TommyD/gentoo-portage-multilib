@@ -6915,8 +6915,9 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 						"invalid atom: '%s'" % (x,))
 				if x.use and eapi in ("0", "1") and \
 					portage.dep._dep_check_strict and \
-					not (str(x.use) == '[lib32?]' and ( mysettings.get("ARCH") == "amd64" or mysettings.get("ARCH") == "ppc64" ) and
-					mysettings.get("MULTILIB_ABIS").count(' ') is not 0):
+					not (str(x.use).startswith("[lib32") and \
+						(mysettings.get("ARCH") == "amd64" or mysettings.get("ARCH") == "ppc64") and \
+						mysettings.get("MULTILIB_ABIS").count(' ') is not 0):
 							print x.use
 							raise portage.exception.ParseError(
 								"invalid atom: '%s'" % (x,))
