@@ -5724,13 +5724,12 @@ def _prepare_workdir(mysettings):
 			(mysettings["CATEGORY"], mysettings["PF"], logid_time))
 		del logid_path, logid_time
 	else:
-		# When sesandbox is enabled, only log if PORT_LOGDIR is explicitly
-		# enabled since it is possible that local SELinux security policies
-		# do not allow ouput to be piped out of the sesandbox domain.
-		if not (mysettings.selinux_enabled() and \
-			"sesandbox" in mysettings.features):
-			mysettings["PORTAGE_LOG_FILE"] = os.path.join(
-				mysettings["T"], "build.log")
+		# NOTE: When sesandbox is enabled, the local SELinux security policies
+		# may not allow output to be piped out of the sesandbox domain. The
+		# current policy will allow it to work when a pty is available, but
+		# not through a normal pipe. See bug #162404.
+		mysettings["PORTAGE_LOG_FILE"] = os.path.join(
+			mysettings["T"], "build.log")
 
 def _doebuild_exit_status_check(mydo, settings):
 	"""
@@ -6071,7 +6070,8 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					if not mybytes[-1]:
 						break
 				os.close(pr)
-				mybytes = "".join(mybytes)
+				mybytes = u''.join(unicode(chunk,
+					encoding='utf_8', errors='replace') for chunk in mybytes)
 				global auxdbkeys
 				for k, v in izip(auxdbkeys, mybytes.splitlines()):
 					dbkey[k] = v
@@ -6848,7 +6848,7 @@ def dep_virtual(mysplit, mysettings):
 			mychoices = myvirtuals.get(mykey, None)
 			if mychoices:
 				if len(mychoices) == 1:
-					a = x.replace(mykey, mychoices[0])
+					a = x.replace(mykey, dep_getkey(mychoices[0]), 1)
 				else:
 					if x[0]=="!":
 						# blocker needs "and" not "or(||)".
@@ -6856,7 +6856,7 @@ def dep_virtual(mysplit, mysettings):
 					else:
 						a=['||']
 					for y in mychoices:
-						a.append(x.replace(mykey, y))
+						a.append(x.replace(mykey, dep_getkey(y), 1))
 				newsplit.append(a)
 			else:
 				newsplit.append(x)
@@ -6876,11 +6876,17 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	# According to GLEP 37, RDEPEND is the only dependency type that is valid
 	# for new-style virtuals.  Repoman should enforce this.
 	dep_keys = ["RDEPEND", "DEPEND", "PDEPEND"]
-	portdb = trees[myroot]["porttree"].dbapi
+	mytrees = trees[myroot]
+	portdb = mytrees["porttree"].dbapi
+	parent = mytrees.get("parent")
+	eapi = mytrees.get("eapi")
+	if eapi is None and parent is not None:
+		eapi = parent.metadata["EAPI"]
 	repoman = not mysettings.local_config
 	if kwargs["use_binaries"]:
 		portdb = trees[myroot]["bintree"].dbapi
 	myvirtuals = mysettings.getvirtuals()
+	pprovideddict = mysettings.pprovideddict
 	myuse = kwargs["myuse"]
 	for x in mysplit:
 		if x == "||":
@@ -6899,6 +6905,15 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 				if portage.dep._dep_check_strict:
 					raise portage.exception.ParseError(
 						"invalid atom: '%s'" % x)
+			else:
+				if x.blocker and x.blocker.overlap.forbid and \
+					eapi in ("0", "1") and portage.dep._dep_check_strict:
+					raise portage.exception.ParseError(
+						"invalid atom: '%s'" % (x,))
+				if x.use and eapi in ("0", "1") and \
+					portage.dep._dep_check_strict:
+					raise portage.exception.ParseError(
+						"invalid atom: '%s'" % (x,))
 
 		if repoman and x.use and x.use.conditional:
 			evaluated_atom = portage.dep.remove_slot(x)
@@ -6930,8 +6945,6 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			newsplit.append(x)
 			continue
 		match_atom = x
-		if isblocker:
-			match_atom = x[1:]
 		pkgs = []
 		matches = portdb.match(match_atom)
 		# Use descending order to prefer higher versions.
@@ -6948,13 +6961,8 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			# dependency that needs to be satisfied.
 			newsplit.append(x)
 			continue
-		if not pkgs and len(mychoices) == 1:
-			newsplit.append(portage.dep.Atom(x.replace(mykey, mychoices[0])))
-			continue
-		if isblocker:
-			a = []
-		else:
-			a = ['||']
+
+		a = []
 		for y in pkgs:
 			cpv, pv_split, db = y
 			depstring = " ".join(db.aux_get(cpv, dep_keys))
@@ -6968,30 +6976,61 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 			if edebug:
 				print "Virtual Parent:   ", y[0]
 				print "Virtual Depstring:", depstring
-			mycheck = dep_check(depstring, mydbapi, mysettings, myroot=myroot,
-				trees=trees, **pkg_kwargs)
+
+			# Set EAPI used for validation in dep_check() recursion.
+			virtual_eapi, = db.aux_get(cpv, ["EAPI"])
+			prev_eapi = mytrees.get("eapi")
+			mytrees["eapi"] = virtual_eapi
+
+			try:
+				mycheck = dep_check(depstring, mydbapi, mysettings,
+					myroot=myroot, trees=trees, **pkg_kwargs)
+			finally:
+				# Restore previous EAPI after recursion.
+				if prev_eapi is not None:
+					mytrees["eapi"] = prev_eapi
+				else:
+					del mytrees["eapi"]
+
 			if not mycheck[0]:
 				raise portage.exception.ParseError(
 					"%s: %s '%s'" % (y[0], mycheck[1], depstring))
-			if isblocker:
-				virtual_atoms = [atom for atom in mycheck[1] \
-					if not atom.startswith("!")]
-				if len(virtual_atoms) == 1:
-					# It wouldn't make sense to block all the components of a
-					# compound virtual, so only a single atom block is allowed.
-					a.append(portage.dep.Atom("!" + virtual_atoms[0]))
-			else:
-				# pull in the new-style virtual
-				mycheck[1].append(portage.dep.Atom("="+y[0]))
-				a.append(mycheck[1])
+
+			# pull in the new-style virtual
+			mycheck[1].append(portage.dep.Atom("="+y[0]))
+			a.append(mycheck[1])
 		# Plain old-style virtuals.  New-style virtuals are preferred.
-		for y in mychoices:
-			a.append(portage.dep.Atom(x.replace(mykey, y, 1)))
-		if isblocker and not a:
-			# Probably a compound virtual.  Pass the atom through unprocessed.
+		if not pkgs:
+			if repoman:
+				# TODO: Add PROVIDE check for repoman.
+				for y in mychoices:
+					a.append(portage.dep.Atom(x.replace(mykey, y, 1)))
+			else:
+				for y in mychoices:
+					new_atom = portage.dep.Atom(
+						x.replace(mykey, dep_getkey(y), 1))
+					matches = portdb.match(new_atom)
+					# portdb is an instance of depgraph._dep_check_composite_db, so
+					# USE conditionals are already evaluated.
+					if matches and mykey in \
+						portdb.aux_get(matches[-1], ['PROVIDE'])[0].split():
+						a.append(new_atom)
+
+		if not a and mychoices:
+			# Check for a virtual package.provided match.
+			for y in mychoices:
+				new_atom = portage.dep.Atom(x.replace(mykey, dep_getkey(y), 1))
+				if match_from_list(new_atom,
+					pprovideddict.get(new_atom.cp, [])):
+					a.append(new_atom)
+
+		if not a:
 			newsplit.append(x)
-			continue
-		newsplit.append(a)
+		elif len(a) == 1:
+			newsplit.append(a[0])
+		else:
+			newsplit.append(['||'] + a)
+
 	return newsplit
 
 def dep_eval(deplist):
@@ -7050,14 +7089,15 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	# c) contains masked installed packages
 	# d) is the first item
 
-	preferred = []
-	preferred_not_installed = []
+	preferred_installed = []
+	preferred_in_graph = []
 	preferred_any_slot = []
-	possible_upgrades = []
+	preferred_non_installed = []
 	other = []
 
 	# Alias the trees we'll be checking availability against
 	parent   = trees[myroot].get("parent")
+	priority = trees[myroot].get("priority")
 	graph_db = trees[myroot].get("graph_db")
 	vardb = None
 	if "vartree" in trees[myroot]:
@@ -7067,15 +7107,15 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	else:
 		mydbapi = trees[myroot]["porttree"].dbapi
 
-	# Sort the deps into preferred (installed) and other
-	# with values of [[required_atom], availablility]
+	# Sort the deps into installed, not installed but already 
+	# in the graph and other, not installed and not in the graph
+	# and other, with values of [[required_atom], availablility]
 	for dep, satisfied in izip(deps, satisfieds):
 		if isinstance(dep, list):
 			atoms = dep_zapdeps(dep, satisfied, myroot,
 				use_binaries=use_binaries, trees=trees)
 		else:
 			atoms = [dep]
-
 		if not vardb:
 			# called by repoman
 			other.append((atoms, None, False))
@@ -7100,8 +7140,8 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 		this_choice = (atoms, versions, all_available)
 		if all_available:
 			# The "all installed" criterion is not version or slot specific.
-			# If any version of a package is installed then we assume that it
-			# is preferred over other possible packages choices.
+			# If any version of a package is already in the graph then we
+			# assume that it is preferred over other possible packages choices.
 			all_installed = True
 			for atom in set([dep_getkey(atom) for atom in atoms \
 				if atom[:1] != "!"]):
@@ -7120,7 +7160,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						break
 			if all_installed:
 				if all_installed_slots:
-					preferred.append(this_choice)
+					preferred_installed.append(this_choice)
 				else:
 					preferred_any_slot.append(this_choice)
 			elif graph_db is None:
@@ -7134,12 +7174,14 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						all_in_graph = False
 						break
 				if all_in_graph:
-					if parent is None:
-						preferred_not_installed.append(this_choice)
-					else:
+					if parent is None or priority is None:
+						preferred_in_graph.append(this_choice)
+					elif priority.buildtime:
 						# Check if the atom would result in a direct circular
 						# dependency and try to avoid that if it seems likely
-						# to be unresolvable.
+						# to be unresolvable. This is only relevant for
+						# buildtime deps that aren't already satisfied by an
+						# installed package.
 						cpv_slot_list = [parent]
 						circular_atom = None
 						for atom in atoms:
@@ -7155,59 +7197,16 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 								circular_atom = atom
 								break
 						if circular_atom is None:
-							preferred_not_installed.append(this_choice)
+							preferred_in_graph.append(this_choice)
 						else:
 							other.append(this_choice)
 				else:
-					possible_upgrades.append(this_choice)
+					preferred_non_installed.append(this_choice)
 		else:
 			other.append(this_choice)
 
-	# Compare the "all_installed" choices against the "all_available" choices
-	# for possible missed upgrades.  The main purpose of this code is to find
-	# upgrades of new-style virtuals since _expand_new_virtuals() expands them
-	# into || ( highest version ... lowest version ).  We want to prefer the
-	# highest all_available version of the new-style virtual when there is a
-	# lower all_installed version.
-	preferred.extend(preferred_not_installed)
-	preferred.extend(preferred_any_slot)
-	preferred.extend(possible_upgrades)
-	possible_upgrades = preferred[1:]
-	for possible_upgrade in possible_upgrades:
-		atoms, versions, all_available = possible_upgrade
-		myslots = set(versions)
-		for other_choice in preferred:
-			if possible_upgrade is other_choice:
-				# possible_upgrade will not be promoted, so move on
-				break
-			o_atoms, o_versions, o_all_available = other_choice
-			intersecting_slots = myslots.intersection(o_versions)
-			if not intersecting_slots:
-				continue
-			has_upgrade = False
-			has_downgrade = False
-			for myslot in intersecting_slots:
-				myversion = versions[myslot]
-				o_version = o_versions[myslot]
-				difference = pkgcmp(catpkgsplit(myversion)[1:],
-					catpkgsplit(o_version)[1:])
-				if difference:
-					if difference > 0:
-						has_upgrade = True
-					else:
-						has_downgrade = True
-						break
-			if has_upgrade and not has_downgrade:
-				preferred.remove(possible_upgrade)
-				o_index = preferred.index(other_choice)
-				preferred.insert(o_index, possible_upgrade)
-				break
-
-	# preferred now contains a) and c) from the order above with
-	# the masked flag differentiating the two. other contains b)
-	# and d) so adding other to preferred will give us a suitable
-	# list to iterate over.
-	preferred.extend(other)
+	preferred = preferred_in_graph + preferred_installed + \
+		preferred_any_slot + preferred_non_installed + other
 
 	for allow_masked in (False, True):
 		for atoms, versions, all_available in preferred:
