@@ -6916,9 +6916,8 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 				if x.use and eapi in ("0", "1") and \
 					portage.dep._dep_check_strict and \
 					not (str(x.use).startswith("[lib32") and \
-						(mysettings.get("ARCH") == "amd64" or mysettings.get("ARCH") == "ppc64") and \
+						( mysettings.get("ARCH") == "amd64" or mysettings.get("ARCH") == "ppc64" ) and
 						mysettings.get("MULTILIB_ABIS").count(' ') is not 0):
-							print x.use
 							raise portage.exception.ParseError(
 								"invalid atom: '%s'" % (x,))
 
@@ -7303,14 +7302,26 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 		#dependencies were reduced to nothing
 		return [1,[]]
 
-	mysplit2=mysplit[:]
-	mysplit2=dep_wordreduce(mysplit2,mysettings,mydbapi,mode,use_cache=use_cache)
-	if mysplit2 is None:
-		return [0,"Invalid token"]
-
-	writemsg("\n\n\n", 1)
-	writemsg("mysplit:  %s\n" % (mysplit), 1)
-	writemsg("mysplit2: %s\n" % (mysplit2), 1)
+	mylist1 = []
+	for i in mysplit:
+		if str(i).endswith("']"):
+			for j in i:
+				j=str(j)
+				if 'lib32' not in j and portage.dep_getkey(j) not in mysettings.get("NO-AUTO-FLAG", None):
+					if ']' in j:
+						j = j.replace(']',',lib32?]')
+					else:
+						j = j + '[lib32?]'
+				mylist1 += [j]
+		else:
+			i=str(i)
+			if 'lib32' not in i and portage.dep_getkey(i) not in mysettings.get("NO-AUTO-FLAG", None):
+				if ']' in i:
+					i = i.replace(']',',lib32?]')
+				else:
+					i = i + '[lib32?]'
+			mylist1 += [i]
+	mysplit = mylist1
 
 	# Recursively expand new-style virtuals so as to
 	# collapse one or more levels of indirection.
@@ -7321,6 +7332,15 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 			use_binaries=use_binaries, myroot=myroot, trees=trees)
 	except portage.exception.ParseError, e:
 		return [0, str(e)]
+
+	mysplit2=mysplit[:]
+	mysplit2=dep_wordreduce(mysplit2,mysettings,mydbapi,mode,use_cache=use_cache)
+	if mysplit2 is None:
+		return [0,"Invalid token"]
+
+	writemsg("\n\n\n", 1)
+	writemsg("mysplit:  %s\n" % (mysplit), 1)
+	writemsg("mysplit2: %s\n" % (mysplit2), 1)
 
 	try:
 		myzaps = dep_zapdeps(mysplit, mysplit2, myroot,
@@ -7333,42 +7353,6 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 		return [0, "Invalid atom: '%s'" % (e,)]
 
 	mylist = flatten(myzaps)
-	mylist1 = []
-	for i in mylist:
-		i=str(i)
-		if 'lib32' not in i and portage.dep_getkey(i) not in mysettings.get("NO-AUTO-FLAG", None):
-			if ']' in i:
-				i = i.replace(']',',lib32?]')
-			else:
-				i = i + '[lib32?]'
-		mylist1 += [i]
-	mylist = mylist1
-
-	# Recursively expand new-style virtuals so as to
-	# collapse one or more levels of indirection.
-	try:
-		mylist = _expand_new_virtuals(mylist, edebug, mydbapi, mysettings,
-			use=use, mode=mode, myuse=myuse,
-			use_force=useforce, use_mask=mymasks, use_cache=use_cache,
-			use_binaries=use_binaries, myroot=myroot, trees=trees)
-	except portage.exception.ParseError, e:
-		return [0, str(e)]
-
-	mysplit2=mylist[:]
-	mysplit2=dep_wordreduce(mysplit2,mysettings,mydbapi,mode,use_cache=use_cache)
-	if mysplit2 is None:
-		return [0,"Invalid token"]
-
-	try:
-		mylist = dep_zapdeps(mylist, mysplit2, myroot,
-			use_binaries=use_binaries, trees=trees)
-	except portage.exception.InvalidAtom, e:
-		if portage.dep._dep_check_strict:
-			raise # This shouldn't happen.
-		# dbapi.match() failed due to an invalid atom in
-		# the dependencies of an installed package.
-		return [0, "Invalid atom: '%s'" % (e,)]
-
 	writemsg("myzaps:   %s\n" % (myzaps), 1)
 	writemsg("mylist:   %s\n" % (mylist), 1)
 	#remove duplicates
