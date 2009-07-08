@@ -572,7 +572,8 @@ class depgraph(object):
 		orig_use, orig_iuse, cur_use, cur_iuse):
 		"""Return a set of flags that trigger reinstallation, or None if there
 		are no such flags."""
-		if "--newuse" in self._frozen_config.myopts:
+		if "--newuse" in self._frozen_config.myopts or \
+			"--binpkg-respect-use" in self._frozen_config.myopts:
 			flags = set(orig_iuse.symmetric_difference(
 				cur_iuse).difference(forced_flags))
 			flags.update(orig_iuse.intersection(orig_use).symmetric_difference(
@@ -2000,6 +2001,7 @@ class depgraph(object):
 		if not isinstance(atom, portage.dep.Atom):
 			atom = portage.dep.Atom(atom)
 		atom_cp = atom.cp
+		atom_set = InternalPackageSet(initial_atoms=(atom,))
 		existing_node = None
 		myeb = None
 		usepkgonly = "--usepkgonly" in self._frozen_config.myopts
@@ -2135,7 +2137,9 @@ class depgraph(object):
 						e_pkg = self._dynamic_config._slot_pkg_map[root].get(pkg.slot_atom)
 						if not e_pkg:
 							break
-						if portage.dep.match_from_list(atom, [e_pkg]):
+						# Use PackageSet.findAtomForPackage()
+						# for PROVIDE support.
+						if atom_set.findAtomForPackage(e_pkg):
 							if highest_version and \
 								e_pkg.cp == atom_cp and \
 								e_pkg < highest_version and \
@@ -2152,7 +2156,8 @@ class depgraph(object):
 					# reject the built package if necessary.
 					if built and not installed and \
 						("--newuse" in self._frozen_config.myopts or \
-						"--reinstall" in self._frozen_config.myopts):
+						"--reinstall" in self._frozen_config.myopts or \
+						"--binpkg-respect-use" in self._frozen_config.myopts):
 						iuses = pkg.iuse.all
 						old_use = pkg.use.enabled
 						if myeb:
@@ -2223,6 +2228,8 @@ class depgraph(object):
 
 		if len(matched_packages) > 1:
 			if avoid_update:
+				if existing_node is not None:
+					return existing_node, existing_node
 				for pkg in matched_packages:
 					if pkg.installed:
 						return pkg, existing_node
