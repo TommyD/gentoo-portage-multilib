@@ -159,8 +159,8 @@ class dbapi(object):
 			except KeyError:
 				continue
 			use = use.split()
-			if settings['MULTILIB_ABIS'].count(' ') is not 0:
-				if settings['ARCH'] == "amd64" or settings['ARCH'] == "ppc64":
+			if self.settings['MULTILIB_ABIS'].count(' ') is not 0:
+				if self.settings['ARCH'] == "amd64" or self.settings['ARCH'] == "ppc64":
 					if 'lib32' not in iuse:
 						iuse += ' lib32'
 			iuse = frozenset(x.lstrip('+-') for x in iuse.split())
