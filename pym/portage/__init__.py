@@ -4923,6 +4923,9 @@ def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 	if mydo == "prepare" and eapi in ("0", "1"):
 		return os.EX_OK
 
+	if mydo == "pretend" and eapi in ("0", "1", "2"):
+		return os.EX_OK
+
 	kwargs = actionmap[mydo]["args"]
 	mysettings["EBUILD_PHASE"] = mydo
 	_doebuild_exit_status_unlink(
@@ -5885,7 +5888,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 	clean_phases = ("clean", "cleanrm")
 	validcommands = ["help","clean","prerm","postrm","cleanrm","preinst","postinst",
-	                "config", "info", "setup", "depend",
+	                "config", "info", "setup", "depend", "pretend",
 	                "fetch", "fetchall", "digest",
 	                "unpack", "prepare", "configure", "compile", "test",
 	                "install", "rpm", "qmerge", "merge",
@@ -6454,6 +6457,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 
 		# args are for the to spawn function
 		actionmap = {
+"pretend":  {"cmd":ebuild_sh, "args":{"droppriv":0,        "free":1,         "sesandbox":0,         "fakeroot":0}},
 "setup":    {"cmd":ebuild_sh, "args":{"droppriv":0,        "free":1,         "sesandbox":0,         "fakeroot":0}},
 "unpack":   {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":0,         "sesandbox":sesandbox, "fakeroot":0}},
 "prepare":  {"cmd":ebuild_sh, "args":{"droppriv":droppriv, "free":0,         "sesandbox":sesandbox, "fakeroot":0}},
@@ -7170,7 +7174,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 				else:
 					preferred_any_slot.append(this_choice)
 			elif graph_db is None:
-				possible_upgrades.append(this_choice)
+				preferred_non_installed.append(this_choice)
 			else:
 				all_in_graph = True
 				for slot_atom in versions:
@@ -7206,6 +7210,8 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 							preferred_in_graph.append(this_choice)
 						else:
 							other.append(this_choice)
+					else:
+						preferred_in_graph.append(this_choice)
 				else:
 					preferred_non_installed.append(this_choice)
 		else:

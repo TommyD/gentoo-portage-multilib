@@ -494,6 +494,11 @@ econf() {
 			done
 		fi
 
+		# EAPI=3 adds --disable-dependency-tracking to econf
+		if ! hasq "$EAPI" 0 1 2 ; then
+			set -- --disable-dependency-tracking "$@"
+		fi
+
 		# if the profile defines a location to install libs to aside from default, pass it on.
 		# if the ebuild passes in --libdir, they're responsible for the conf_libdir fun.
 		local CONF_LIBDIR LIBDIR_VAR="LIBDIR_${ABI}"
@@ -635,6 +640,24 @@ _eapi2_src_compile() {
 	fi
 }
 
+_eapi3_src_install() {
+	if [[ -f Makefile || -f GNUmakefile || -f makefile ]] ; then
+		emake DESTDIR="${D}" install
+	fi
+
+	if [[ -z $DOCS ]] ; then
+		local d
+		for d in README* ChangeLog AUTHORS NEWS TODO CHANGES \
+				THANKS BUGS FAQ CREDITS CHANGELOG ; do
+			[[ -s "${d}" ]] && dodoc "${d}"
+		done
+	elif [[ $(declare -p DOCS) == "declare -a "* ]] ; then
+		dodoc "${DOCS[@]}"
+	else
+		dodoc ${DOCS}
+	fi
+}
+
 ebuild_phase() {
 	declare -F "$1" >/dev/null && qa_call $1
 }
@@ -645,6 +668,10 @@ ebuild_phase_with_hooks() {
 	for x in {pre_,,post_}${phase_name} ; do
 		ebuild_phase ${x}
 	done
+}
+
+dyn_pretend() {
+	ebuild_phase_with_hooks pkg_pretend
 }
 
 dyn_setup() {
@@ -1177,6 +1204,7 @@ dyn_help() {
 	echo "than one option is specified, each will be executed in order."
 	echo
 	echo "  help        : show this help screen"
+	echo "  pretend     : execute package specific pretend actions"
 	echo "  setup       : execute package specific setup actions"
 	echo "  fetch       : download source archive(s) and patches"
 	echo "  digest      : create a manifest file for the package"
@@ -1444,6 +1472,10 @@ _ebuild_arg_to_phase() {
 	local phase_func=""
 
 	case "$arg" in
+		pretend)
+			! hasq $eapi 0 1 2 && \
+				phase_func=pkg_pretend
+			;;
 		setup)
 			phase_func=pkg_setup
 			;;
@@ -1536,6 +1568,9 @@ _ebuild_phase_funcs() {
 
 			declare -F src_compile >/dev/null || \
 				src_compile() { _eapi2_src_compile "$@" ; }
+
+			[[ $eapi == 2 ]] || declare -F src_install >/dev/null || \
+				src_install() { _eapi3_src_install "$@" ; }
 
 			if hasq $phase_func $default_phases ; then
 
@@ -1897,10 +1932,15 @@ _source_ebuild() {
 				pkg_nofetch pkg_postinst pkg_postrm pkg_preinst pkg_prerm
 				pkg_setup src_test src_unpack"
 			;;
-		*)
+		2)
 			valid_phases="src_compile pkg_config src_configure pkg_info
 				src_install pkg_nofetch pkg_postinst pkg_postrm pkg_preinst
 				src_prepare pkg_prerm pkg_setup src_test src_unpack"
+			;;
+		*)
+			valid_phases="src_compile pkg_config src_configure pkg_info
+				src_install pkg_nofetch pkg_postinst pkg_postrm pkg_preinst
+				src_prepare pkg_prerm pkg_pretend pkg_setup src_test src_unpack"
 			;;
 	esac
 
@@ -2091,7 +2131,7 @@ ebuild_main() {
 		fi
 		export SANDBOX_ON="0"
 		;;
-	help|setup|preinst)
+	help|pretend|setup|preinst)
 		#pkg_setup needs to be out of the sandbox for tmp file creation;
 		#for example, awking and piping a file in /tmp requires a temp file to be created
 		#in /etc.  If pkg_setup is in the sandbox, both our lilo and apache ebuilds break.
