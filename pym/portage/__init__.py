@@ -7302,26 +7302,21 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 		#dependencies were reduced to nothing
 		return [1,[]]
 
-	mylist1 = []
-	for i in mysplit:
-		if str(i).endswith("']"):
-			for j in i:
-				j=str(j)
-				if 'lib32' not in j and portage.dep_getkey(j) not in mysettings.get("NO-AUTO-FLAG", None):
-					if ']' in j:
-						j = j.replace(']',',lib32?]')
+	def add_use_dep(atom_list, my_list = [], mylist = []):
+		for atom in atom_list:
+			if isinstance(atom, list):
+				add_use_dep(atom) #, my_list = my_list)
+				continue
+			if not atom == "||":
+				if 'lib32' not in atom and portage.dep_getkey(atom) not in mysettings.get("NO-AUTO-FLAG", None):
+					if ']' in atom:
+						atom = str(atom).replace(']',',lib32?]')
 					else:
-						j = j + '[lib32?]'
-				mylist1 += [j]
-		else:
-			i=str(i)
-			if 'lib32' not in i and portage.dep_getkey(i) not in mysettings.get("NO-AUTO-FLAG", None):
-				if ']' in i:
-					i = i.replace(']',',lib32?]')
-				else:
-					i = i + '[lib32?]'
-			mylist1 += [i]
-	mysplit = mylist1
+						atom = str(atom) + '[lib32?]'
+			mylist += [atom]
+		if mylist != []:
+			my_list += mylist
+		return my_list
 
 	# Recursively expand new-style virtuals so as to
 	# collapse one or more levels of indirection.
@@ -7344,6 +7339,33 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 
 	try:
 		myzaps = dep_zapdeps(mysplit, mysplit2, myroot,
+			use_binaries=use_binaries, trees=trees)
+	except portage.exception.InvalidAtom, e:
+		if portage.dep._dep_check_strict:
+			raise # This shouldn't happen.
+		# dbapi.match() failed due to an invalid atom in
+		# the dependencies of an installed package.
+		return [0, "Invalid atom: '%s'" % (e,)]
+
+	mylist = flatten(myzaps)
+	mylist1=add_use_dep(mylist)
+	# Recursively expand new-style virtuals so as to
+	# collapse one or more levels of indirection.
+	try:
+		mylist1 = _expand_new_virtuals(mylist1, edebug, mydbapi, mysettings,
+			use=use, mode=mode, myuse=myuse,
+			use_force=useforce, use_mask=mymasks, use_cache=use_cache,
+			use_binaries=use_binaries, myroot=myroot, trees=trees)
+	except portage.exception.ParseError, e:
+		return [0, str(e)]
+
+	mylist2=mylist[:]
+	mylist2=dep_wordreduce(mylist2,mysettings,mydbapi,mode,use_cache=use_cache)
+	if mylist2 is None:
+		return [0,"Invalid token"]
+
+	try:
+		myzaps = dep_zapdeps(mylist1, mylist2, myroot,
 			use_binaries=use_binaries, trees=trees)
 	except portage.exception.InvalidAtom, e:
 		if portage.dep._dep_check_strict:
