@@ -3936,8 +3936,8 @@ class depgraph(object):
 						if flag in pkg.iuse.all]
 					cur_iuse = sorted(pkg.iuse.all)
 
-					if self.settings['MULTILIB_ABIS'].count(' ') is not 0:
-						if self.settings['ARCH'] == "amd64" or self.settings['ARCH'] == "ppc64":
+					if pkgsettings['MULTILIB_ABIS'].count(' ') is not 0:
+						if pkgsettings['ARCH'] == "amd64" or pkgsettings['ARCH'] == "ppc64":
 							cur_use = [flag for flag in pkg.use.enabled \
 								if flag in pkg.iuse.all or flag in 'lib32']
 							cur_iuse.append("lib32")
