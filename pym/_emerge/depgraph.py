@@ -2190,8 +2190,8 @@ class depgraph(object):
 							vardb.aux_get(cpv, ["IUSE"])[0].split()))
 						cur_use = pkg.use.enabled
 						cur_iuse = set(pkg.iuse.all)
-						if self.settings['MULTILIB_ABIS'].count(' ') is not 0:
-							if self.settings['ARCH'] == "amd64" or self.settings['ARCH'] == "ppc64":
+						if pkgsettings['MULTILIB_ABIS'].count(' ') is not 0:
+							if pkgsettings['ARCH'] == "amd64" or pkgsettings['ARCH'] == "ppc64":
 								cur_iuse.add("lib32")
 						reinstall_for_flags = \
 							self._reinstall_for_flags(
