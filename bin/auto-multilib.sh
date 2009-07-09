@@ -354,7 +354,6 @@ _finalize_abi_install() {
 	for i in ${files}; do
 		prep_ml_binaries "${i}"
 	done
-	find "${D}" -name *.la -exec rm {} \;
 	if [[ "${ABI}" != "${DEFAULT_ABI}" ]]; then
 		if [[ ${PN} == python ]]; then
 			prep_ml_binaries "${D}"usr/bin/${PN}${PYVER}
