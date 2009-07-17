@@ -262,7 +262,7 @@ _setup_abi_env() {
 	export FFLAGS="${FFLAGS} ${CFLAGS}"
 	export ASFLAGS="${ASFLAGS} $(get_abi_var ASFLAGS)"
 	export LIBDIR=$(get_abi_var LIBDIR $1)
-	export LDFLAGS="${LDFLAGS} -L/${LIBDIR} -L/usr/${LIBDIR} $(get_abi_var CFLAGS)"
+	export LDFLAGS="${LDFLAGS} -L/${LIBDIR} -L/usr/${LIBDIR}"
 	if ! [[ "${ABI}" == "${DEFAULT_ABI}" ]]; then
 		pyver=$(python --version 2>&1)
 		pyver=${pyver/Python /python}
