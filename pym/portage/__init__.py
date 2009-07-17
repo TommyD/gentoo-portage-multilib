@@ -7359,15 +7359,8 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 	mylist1=add_use_dep(mylist)
 	# Recursively expand new-style virtuals so as to
 	# collapse one or more levels of indirection.
-	try:
-		mylist1 = _expand_new_virtuals(mylist1, edebug, mydbapi, mysettings,
-			use=use, mode=mode, myuse=myuse,
-			use_force=useforce, use_mask=mymasks, use_cache=use_cache,
-			use_binaries=use_binaries, myroot=myroot, trees=trees)
-	except portage.exception.ParseError, e:
-		return [0, str(e)]
 
-	mylist2=mylist[:]
+	mylist2=mylist1[:]
 	mylist2=dep_wordreduce(mylist2,mysettings,mydbapi,mode,use_cache=use_cache)
 	if mylist2 is None:
 		return [0,"Invalid token"]
