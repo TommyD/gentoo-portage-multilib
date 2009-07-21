@@ -246,8 +246,6 @@ def cacheddir(my_original_path, ignorecvs, ignorelist, EmptyOnError, followSymli
 			raise portage.exception.PermissionDenied(mypath)
 		ftype = []
 		for x in list:
-			if not isinstance(x, unicode):
-				x = unicode(x, errors='replace')
 			try:
 				if followSymlinks:
 					pathstat = os.stat(mypath+"/"+x)
@@ -1311,7 +1309,7 @@ class config(object):
 
 			if not config_profile_path:
 				config_profile_path = \
-					os.path.join(config_root, PROFILE_PATH)
+					os.path.join(config_root, PROFILE_PATH.lstrip(os.path.sep))
 				if os.path.isdir(config_profile_path):
 					self.profile_path = config_profile_path
 				else:
@@ -1327,7 +1325,7 @@ class config(object):
 			self.module_priority    = ["user","default"]
 			self.modules            = {}
 			self.modules["user"] = getconfig(
-				os.path.join(config_root, MODULES_FILE_PATH))
+				os.path.join(config_root, MODULES_FILE_PATH.lstrip(os.path.sep)))
 			if self.modules["user"] is None:
 				self.modules["user"] = {}
 			self.modules["default"] = {
@@ -1391,7 +1389,7 @@ class config(object):
 					self.profiles = []
 			if local_config and self.profiles:
 				custom_prof = os.path.join(
-					config_root, CUSTOM_PROFILE_PATH)
+					config_root, CUSTOM_PROFILE_PATH.lstrip(os.path.sep))
 				if os.path.exists(custom_prof):
 					self.user_profile_dir = custom_prof
 					self.profiles.append(custom_prof)
@@ -1467,7 +1465,7 @@ class config(object):
 			del rawpuseforce
 
 			make_conf = getconfig(
-				os.path.join(config_root, MAKE_CONF_FILE),
+				os.path.join(config_root, MAKE_CONF_FILE.lstrip(os.path.sep)),
 				tolerant=tolerant, allow_sourcing=True)
 			if make_conf is None:
 				make_conf = {}
@@ -1563,7 +1561,7 @@ class config(object):
 			self.configdict["defaults"]=self.configlist[-1]
 
 			self.mygcfg = getconfig(
-				os.path.join(config_root, MAKE_CONF_FILE),
+				os.path.join(config_root, MAKE_CONF_FILE.lstrip(os.path.sep)),
 				tolerant=tolerant, allow_sourcing=True, expand=expand_map)
 			if self.mygcfg is None:
 				self.mygcfg = {}
@@ -1612,7 +1610,8 @@ class config(object):
 			self.pkeywordsdict = {}
 			self._plicensedict = {}
 			self.punmaskdict = {}
-			abs_user_config = os.path.join(config_root, USER_CONFIG_PATH)
+			abs_user_config = os.path.join(config_root,
+				USER_CONFIG_PATH.lstrip(os.path.sep))
 
 			# locations for "categories" and "arch.list" files
 			locations = [os.path.join(self["PORTDIR"], "profiles")]
@@ -1682,8 +1681,8 @@ class config(object):
 				repo_conf_parser = SafeConfigParser()
 				try:
 					repo_conf_parser.readfp(
-						codecs.open(self._local_repo_conf_path, mode='r',
-						encoding='utf_8', errors='replace'))
+						codecs.open(self._local_repo_conf_path,
+						mode='r', errors='replace'))
 				except EnvironmentError, e:
 					if e.errno != errno.ENOENT:
 						raise
@@ -1839,7 +1838,7 @@ class config(object):
 				("sandbox" in self.features or "usersandbox" in self.features):
 				if self.profile_path is not None and \
 					os.path.realpath(self.profile_path) == \
-					os.path.realpath(os.path.join(config_root, PROFILE_PATH)):
+					os.path.realpath(PROFILE_PATH):
 					""" Don't show this warning when running repoman and the
 					sandbox feature came from a profile that doesn't belong to
 					the user."""
@@ -1961,7 +1960,7 @@ class config(object):
 						noiselevel=-1)
 
 		abs_profile_path = os.path.join(self["PORTAGE_CONFIGROOT"],
-			PROFILE_PATH)
+			PROFILE_PATH.lstrip(os.path.sep))
 		if not self.profile_path or (not os.path.islink(abs_profile_path) and \
 			not os.path.exists(os.path.join(abs_profile_path, "parent")) and \
 			os.path.exists(os.path.join(self["PORTDIR"], "profiles"))):
@@ -1971,7 +1970,7 @@ class config(object):
 			writemsg("!!! (You can safely ignore this message when syncing. It's harmless.)\n\n\n")
 
 		abs_user_virtuals = os.path.join(self["PORTAGE_CONFIGROOT"],
-			USER_VIRTUALS_FILE)
+			USER_VIRTUALS_FILE.lstrip(os.path.sep))
 		if os.path.exists(abs_user_virtuals):
 			writemsg("\n!!! /etc/portage/virtuals is deprecated in favor of\n")
 			writemsg("!!! /etc/portage/profile/virtuals. Please move it to\n")
@@ -2388,37 +2387,27 @@ class config(object):
 		# Use the calculated USE flags to regenerate the USE_EXPAND flags so
 		# that they are consistent. For optimal performance, use slice
 		# comparison instead of startswith().
-		use_expand_split = set(x.lower() for \
-			x in self.get('USE_EXPAND', '').split())
+		use_expand_split = set(self.get("USE_EXPAND", "").split())
 		lazy_use_expand = self._lazy_use_expand(use, self.usemask,
 			iuse_implicit, use_expand_split, self._use_expand_dict)
-
-		use_expand_iuses = {}
-		for x in iuse_implicit:
-			x_split = x.split('_')
-			if len(x_split) == 1:
-				continue
-			for i in xrange(len(x_split) - 1):
-				k = '_'.join(x_split[:i+1])
-				if k in use_expand_split:
-					v = use_expand_iuses.get(k)
-					if v is None:
-						v = set()
-						use_expand_iuses[k] = v
-					v.add(x)
-					break
-
-		# If it's not in IUSE, variable content is allowed
-		# to pass through if it is defined somewhere.  This
-		# allows packages that support LINGUAS but don't
-		# declare it in IUSE to use the variable outside of the
-		# USE_EXPAND context.
-		for k, use_expand_iuse in use_expand_iuses.iteritems():
-			if k + '_*' in use:
-				use.update( x for x in use_expand_iuse if x not in usemask )
-			k = k.upper()
-			self.configdict['env'].addLazySingleton(k,
-				lazy_use_expand.__getitem__, k)
+		for key in use_expand_split:
+			prefix = key.lower() + '_'
+			prefix_len = len(prefix)
+			use_expand_iuse = set( x for x in iuse_implicit \
+				if x[:prefix_len] == prefix )
+			# * means to enable everything in IUSE that's not masked
+			if use_expand_iuse:
+				if prefix + '*' in use:
+					use.update( use_expand_iuse.difference(usemask) )
+				self.configdict['env'].addLazySingleton(
+					key, lazy_use_expand.__getitem__, key)
+			else:
+				# It's not in IUSE, so just allow the variable content
+				# to pass through if it is defined somewhere.  This
+				# allows packages that support LINGUAS but don't
+				# declare it in IUSE to use the variable outside of the
+				# USE_EXPAND context.
+				pass
 
 		# Filtered for the ebuild environment. Store this in a separate
 		# attribute since we still want to be able to see global USE
@@ -3792,7 +3781,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 	check_config_instance(mysettings)
 
 	custommirrors = grabdict(os.path.join(mysettings["PORTAGE_CONFIGROOT"],
-		CUSTOM_MIRRORS_FILE), recursive=1)
+		CUSTOM_MIRRORS_FILE.lstrip(os.path.sep)), recursive=1)
 
 	mymirrors=[]
 
@@ -5441,7 +5430,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 	mysettings["T"] = os.path.join(mysettings["PORTAGE_BUILDDIR"], "temp")
 
 	mysettings["PORTAGE_BASHRC"] = os.path.join(
-		mysettings["PORTAGE_CONFIGROOT"], EBUILD_SH_ENV_FILE)
+		mysettings["PORTAGE_CONFIGROOT"], EBUILD_SH_ENV_FILE.lstrip(os.path.sep))
 	mysettings["EBUILD_EXIT_STATUS_FILE"] = os.path.join(
 		mysettings["PORTAGE_BUILDDIR"], ".exit_status")
 
@@ -7538,7 +7527,7 @@ def getmaskingreason(mycpv, metadata=None, settings=None, portdb=None, return_lo
 		if os.path.isdir(profdir):
 			locations.append(profdir)
 	locations.append(os.path.join(settings["PORTAGE_CONFIGROOT"],
-		USER_CONFIG_PATH))
+		USER_CONFIG_PATH.lstrip(os.path.sep)))
 	locations.reverse()
 	pmasklists = [(x, grablines(os.path.join(x, "package.mask"), recursive=1)) for x in locations]
 
@@ -8415,9 +8404,9 @@ def init_legacy_globals():
 	selinux_enabled   = settings.selinux_enabled()
 	thirdpartymirrors = settings.thirdpartymirrors()
 	usedefaults       = settings.use_defs
-	profiledir  = os.path.join(settings["PORTAGE_CONFIGROOT"], PROFILE_PATH)
-	if not os.path.isdir(profiledir):
-		profiledir = None
+	profiledir  = None
+	if os.path.isdir(PROFILE_PATH):
+		profiledir = PROFILE_PATH
 	def flushmtimedb(record):
 		writemsg("portage.flushmtimedb() is DEPRECATED\n")
 	# ========================================================================

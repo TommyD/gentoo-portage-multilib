@@ -452,6 +452,14 @@ def action_build(settings, trees, mtimedb,
 				mtimedb["resume_backup"] = mtimedb["resume"]
 				del mtimedb["resume"]
 				mtimedb.commit()
+			mtimedb["resume"]={}
+			# Stored as a dict starting with portage-2.1.6_rc1, and supported
+			# by >=portage-2.1.3_rc8. Versions <portage-2.1.3_rc8 only support
+			# a list type for options.
+			mtimedb["resume"]["myopts"] = myopts.copy()
+
+			# Convert Atom instances to plain str.
+			mtimedb["resume"]["favorites"] = [str(x) for x in favorites]
 
 			pkglist = mydepgraph.altlist()
 			mydepgraph.saveNomergeFavorites()
@@ -2195,13 +2203,12 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 	chk_updated_cfg_files("/", settings.get("CONFIG_PROTECT","").split())
 
 	if myaction != "metadata":
-		postsync = os.path.join(settings["PORTAGE_CONFIGROOT"],
-			portage.USER_CONFIG_PATH, "bin", "post_sync")
-		if os.access(postsync, os.X_OK):
+		if os.access(portage.USER_CONFIG_PATH + "/bin/post_sync", os.X_OK):
 			retval = portage.process.spawn(
-				[postsync, dosyncuri], env=settings.environ())
+				[os.path.join(portage.USER_CONFIG_PATH, "bin", "post_sync"),
+				dosyncuri], env=settings.environ())
 			if retval != os.EX_OK:
-				print red(" * ") + bold("spawn failed of " + postsync)
+				print red(" * ")+bold("spawn failed of "+ portage.USER_CONFIG_PATH + "/bin/post_sync")
 
 	if(mybestpv != mypvs) and not "--quiet" in myopts:
 		print

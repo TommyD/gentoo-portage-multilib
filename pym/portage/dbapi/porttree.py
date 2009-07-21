@@ -873,8 +873,6 @@ class portdbapi(dbapi):
 			except OSError:
 				continue
 			for x in file_list:
-				if not isinstance(x, unicode):
-					x = unicode(x, errors='replace')
 
 				pf = None
 				if glep55:
