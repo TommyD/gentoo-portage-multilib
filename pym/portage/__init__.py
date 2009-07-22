@@ -4,7 +4,7 @@
 # $Id$
 
 
-VERSION="2.2_rc33-r3"
+VERSION="2.2_rc33-r4"
 
 # ===========================================================================
 # START OF IMPORTS -- START OF IMPORTS -- START OF IMPORTS -- START OF IMPORT
@@ -6920,24 +6920,9 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 					raise portage.exception.ParseError(
 						"invalid atom: '%s'" % (x,))
 				if x.use and eapi in ("0", "1") and \
-					portage.dep._dep_check_strict and \
-					not (str(x.use).startswith("[lib32") and \
-						( mysettings.get("ARCH") == "amd64" or mysettings.get("ARCH") == "ppc64" ) and
-						mysettings.get("MULTILIB_ABIS").count(' ') is not 0):
-							raise portage.exception.ParseError(
-								"invalid atom: '%s'" % (x,))
-
-		if 'lib32' not in x and portage.dep_getkey(x) not in mysettings.get("NO-AUTO-FLAG", None):
-			if ']' in x:
-				x = str(x).replace(']',',lib32?]')
-			else:
-				x = str(x) + '[lib32?]'
-			try:
-				x = portage.dep.Atom(x)
-			except portage.exception.InvalidAtom:
-				if portage.dep._dep_check_strict:
+					portage.dep._dep_check_strict:
 					raise portage.exception.ParseError(
-						"invalid atom: '%s'" % x)
+						"invalid atom: '%s'" % (x,))
 
 		if repoman and x.use and x.use.conditional:
 			evaluated_atom = portage.dep.remove_slot(x)
@@ -6947,14 +6932,26 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 				use_mask, use_force))
 			x = portage.dep.Atom(evaluated_atom)
 
-		if not repoman and \
-			myuse is not None and isinstance(x, portage.dep.Atom) and x.use:
-			if x.use.conditional:
-				evaluated_atom = portage.dep.remove_slot(x)
-				if x.slot:
-					evaluated_atom += ":%s" % x.slot
-				evaluated_atom += str(x.use.evaluate_conditionals(myuse))
-				x = portage.dep.Atom(evaluated_atom)
+		if not repoman:
+			if 'lib32' not in x and portage.dep_getkey(x) not in mysettings.get("NO-AUTO-FLAG", None):
+				if ']' in x:
+					x = str(x).replace(']',',lib32?]')
+				else:
+					x = str(x) + '[lib32?]'
+				try:
+					x = portage.dep.Atom(x)
+				except portage.exception.InvalidAtom:
+					if portage.dep._dep_check_strict:
+						raise portage.exception.ParseError(
+							"invalid atom: '%s'" % x)
+
+			if myuse is not None and isinstance(x, portage.dep.Atom) and x.use:
+				if x.use.conditional:
+					evaluated_atom = portage.dep.remove_slot(x)
+					if x.slot:
+						evaluated_atom += ":%s" % x.slot
+					evaluated_atom += str(x.use.evaluate_conditionals(myuse))
+					x = portage.dep.Atom(evaluated_atom)
 
 		mykey = dep_getkey(x)
 		if not mykey.startswith("virtual/"):
@@ -7352,6 +7349,8 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 		return [0, "Invalid atom: '%s'" % (e,)]
 
 	mylist = flatten(myzaps)
+	writemsg("myzaps:   %s\n" % (myzaps), 1)
+	writemsg("mylist:   %s\n" % (mylist), 1)
 	#remove duplicates
 	mydict={}
 	for x in mylist:
