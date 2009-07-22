@@ -513,6 +513,14 @@ logging.info('Setting paths:')
 logging.info('PORTDIR = "' + portdir + '"')
 logging.info('PORTDIR_OVERLAY = "%s"' % env['PORTDIR_OVERLAY'])
 
+categories = []
+for path in set([portdir, portdir_overlay]):
+	categories.extend(portage.util.grabfile(
+		os.path.join(path, 'profiles', 'categories')))
+repoman_settings.categories = tuple(sorted(
+	portage.util.stack_lists([categories], incremental=1)))
+del categories
+
 portdb.mysettings = repoman_settings
 root_config = RootConfig(repoman_settings, trees[root], None)
 # We really only need to cache the metadata that's necessary for visibility
@@ -590,7 +598,8 @@ for path in portdb.porttrees:
 
 	desc_path = os.path.join(path, 'profiles', 'profiles.desc')
 	try:
-		desc_file = codecs.open(desc_path, mode='r', errors='replace')
+		desc_file = codecs.open(desc_path, mode='r',
+			encoding='utf_8', errors='replace')
 	except EnvironmentError:
 		pass
 	else:
@@ -960,7 +969,8 @@ for x in scanlist:
 			continue
 		try:
 			line = 1
-			for l in codecs.open(checkdir+"/"+y, "r", "utf8"):
+			for l in codecs.open(os.path.join(checkdir, y), mode='r',
+				encoding='utf_8'):
 				line +=1
 		except UnicodeDecodeError, ue:
 			stats["file.UTF8"] += 1
