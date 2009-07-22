@@ -4,7 +4,7 @@
 # $Id$
 
 
-VERSION="2.2_rc33-r2"
+VERSION="2.2_rc33-r3"
 
 # ===========================================================================
 # START OF IMPORTS -- START OF IMPORTS -- START OF IMPORTS -- START OF IMPORT
@@ -6927,6 +6927,18 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 							raise portage.exception.ParseError(
 								"invalid atom: '%s'" % (x,))
 
+		if 'lib32' not in x and portage.dep_getkey(x) not in mysettings.get("NO-AUTO-FLAG", None):
+			if ']' in x:
+				x = str(x).replace(']',',lib32?]')
+			else:
+				x = str(x) + '[lib32?]'
+			try:
+				x = portage.dep.Atom(x)
+			except portage.exception.InvalidAtom:
+				if portage.dep._dep_check_strict:
+					raise portage.exception.ParseError(
+						"invalid atom: '%s'" % x)
+
 		if repoman and x.use and x.use.conditional:
 			evaluated_atom = portage.dep.remove_slot(x)
 			if x.slot:
@@ -7310,22 +7322,6 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 		#dependencies were reduced to nothing
 		return [1,[]]
 
-	def add_use_dep(atom_list, my_list = [], mylist = []):
-		for atom in atom_list:
-			if isinstance(atom, list):
-				add_use_dep(atom) #, my_list = my_list)
-				continue
-			if not atom == "||":
-				if 'lib32' not in atom and portage.dep_getkey(atom) not in mysettings.get("NO-AUTO-FLAG", None):
-					if ']' in atom:
-						atom = str(atom).replace(']',',lib32?]')
-					else:
-						atom = str(atom) + '[lib32?]'
-			mylist += [atom]
-		if mylist != []:
-			my_list += mylist
-		return my_list
-
 	# Recursively expand new-style virtuals so as to
 	# collapse one or more levels of indirection.
 	try:
@@ -7356,28 +7352,6 @@ def dep_check(depstring, mydbapi, mysettings, use="yes", mode=None, myuse=None,
 		return [0, "Invalid atom: '%s'" % (e,)]
 
 	mylist = flatten(myzaps)
-	mylist1=add_use_dep(mylist)
-	# Recursively expand new-style virtuals so as to
-	# collapse one or more levels of indirection.
-
-	mylist2=mylist1[:]
-	mylist2=dep_wordreduce(mylist2,mysettings,mydbapi,mode,use_cache=use_cache)
-	if mylist2 is None:
-		return [0,"Invalid token"]
-
-	try:
-		myzaps = dep_zapdeps(mylist1, mylist2, myroot,
-			use_binaries=use_binaries, trees=trees)
-	except portage.exception.InvalidAtom, e:
-		if portage.dep._dep_check_strict:
-			raise # This shouldn't happen.
-		# dbapi.match() failed due to an invalid atom in
-		# the dependencies of an installed package.
-		return [0, "Invalid atom: '%s'" % (e,)]
-
-	mylist = flatten(myzaps)
-	writemsg("myzaps:   %s\n" % (myzaps), 1)
-	writemsg("mylist:   %s\n" % (mylist), 1)
 	#remove duplicates
 	mydict={}
 	for x in mylist:
