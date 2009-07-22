@@ -177,7 +177,7 @@ class _dynamic_depgraph_config(object):
 			fakedb = PackageVirtualDbapi(vardb.settings)
 			if preload_installed_pkgs:
 				for pkg in vardb:
-					depgraph._frozen_config.spinner.update()
+					depgraph._spinner_update()
 					# This triggers metadata updates via FakeVartree.
 					vardb.aux_get(pkg.cpv, [])
 					fakedb.cpv_inject(pkg)
@@ -266,6 +266,10 @@ class depgraph(object):
 		self._select_atoms = self._select_atoms_highest_available
 		self._select_package = self._select_pkg_highest_available
 
+	def _spinner_update(self):
+		if self._frozen_config.spinner:
+			self._frozen_config.spinner.update()
+
 	def _show_missed_update(self):
 
 		if '--quiet' in self._frozen_config.myopts and \
@@ -275,6 +279,10 @@ class depgraph(object):
 		missed_updates = {}
 		for pkg, mask_reasons in \
 			self._dynamic_config._runtime_pkg_mask.iteritems():
+			if pkg.installed:
+				# Exclude installed here since we only
+				# want to show available updates.
+				continue
 			if pkg.slot_atom in missed_updates:
 				other_pkg, parent_atoms = missed_updates[pkg.slot_atom]
 				if other_pkg > pkg:
@@ -594,7 +602,7 @@ class depgraph(object):
 		dep_stack = self._dynamic_config._dep_stack
 		dep_disjunctive_stack = self._dynamic_config._dep_disjunctive_stack
 		while dep_stack or dep_disjunctive_stack:
-			self._frozen_config.spinner.update()
+			self._spinner_update()
 			while dep_stack:
 				dep = dep_stack.pop()
 				if isinstance(dep, Package):
@@ -656,10 +664,22 @@ class depgraph(object):
 							self._dynamic_config._runtime_pkg_mask[
 							dep.parent]), noiselevel=-1)
 				else:
-					self._dynamic_config._runtime_pkg_mask.setdefault(
-						dep.parent, {})["missing dependency"] = \
-							set([(dep.parent, dep.atom)])
-					self._dynamic_config._need_restart = True
+					# Do not backtrack if only USE have to be changed in
+					# order to satisfy the dependency.
+					atom_without_use = dep.atom
+					if dep.atom.use:
+						atom_without_use = portage.dep.remove_slot(dep.atom)
+						if dep.atom.slot:
+							atom_without_use += ":" + dep.atom.slot
+						atom_without_use = portage.dep.Atom(atom_without_use)
+					dep_pkg, existing_node = \
+						self._select_package(dep.root, atom_without_use,
+							onlydeps=dep.onlydeps)
+					if dep_pkg is None:
+						self._dynamic_config._runtime_pkg_mask.setdefault(
+							dep.parent, {})["missing dependency"] = \
+								set([(dep.parent, dep.atom)])
+						self._dynamic_config._need_restart = True
 
 			return 0
 		# In some cases, dep_check will return deps that shouldn't
@@ -890,7 +910,7 @@ class depgraph(object):
 		elif pkg.installed and not recurse:
 			dep_stack = self._dynamic_config._ignored_deps
 
-		self._frozen_config.spinner.update()
+		self._spinner_update()
 
 		if not previously_added:
 			dep_stack.append(pkg)
@@ -1488,7 +1508,7 @@ class depgraph(object):
 		virtuals = pkgsettings.getvirtuals()
 		for arg in self._dynamic_config._initial_arg_list:
 			for atom in arg.set:
-				self._frozen_config.spinner.update()
+				self._spinner_update()
 				dep = Dependency(atom=atom, onlydeps=onlydeps,
 					root=myroot, parent=arg)
 				atom_cp = portage.dep_getkey(atom)
@@ -2472,7 +2492,7 @@ class depgraph(object):
 
 					# If this node has any blockers, create a "nomerge"
 					# node for it so that they can be enforced.
-					self._frozen_config.spinner.update()
+					self._spinner_update()
 					blocker_data = blocker_cache.get(cpv)
 					if blocker_data is not None and \
 						blocker_data.counter != long(pkg.metadata["COUNTER"]):
@@ -2568,7 +2588,7 @@ class depgraph(object):
 			self._dynamic_config.digraph.difference_update(previous_uninstall_tasks)
 
 		for blocker in self._dynamic_config._blocker_parents.leaf_nodes():
-			self._frozen_config.spinner.update()
+			self._spinner_update()
 			root_config = self._frozen_config.roots[blocker.root]
 			virtuals = root_config.settings.getvirtuals()
 			myroot = blocker.root
@@ -2842,7 +2862,7 @@ class depgraph(object):
 					node.installed or node.onlydeps:
 					removed_nodes.add(node)
 			if removed_nodes:
-				self._frozen_config.spinner.update()
+				self._spinner_update()
 				mygraph.difference_update(removed_nodes)
 			if not removed_nodes:
 				break
@@ -2990,7 +3010,7 @@ class depgraph(object):
 		# unresolved blockers or circular dependencies.
 
 		while not mygraph.empty():
-			self._frozen_config.spinner.update()
+			self._spinner_update()
 			selected_nodes = None
 			ignore_priority = None
 			if drop_satisfied or (prefer_asap and asap_nodes):
@@ -4536,7 +4556,7 @@ class depgraph(object):
 
 			fakedb[myroot].cpv_inject(pkg)
 			serialized_tasks.append(pkg)
-			self._frozen_config.spinner.update()
+			self._spinner_update()
 
 		if self._dynamic_config._unsatisfied_deps_for_display:
 			return False

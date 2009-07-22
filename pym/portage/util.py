@@ -103,7 +103,7 @@ def grabfile(myfilename, compat_level=0, recursive=0):
 	for x in mylines:
 		#the split/join thing removes leading and trailing whitespace, and converts any whitespace in the line
 		#into single spaces.
-		myline=" ".join(x.split())
+		myline = u' '.join(x.split())
 		if not len(myline):
 			continue
 		if myline[0]=="#":
@@ -317,7 +317,8 @@ def grablines(myfilename,recursive=0):
 					os.path.join(myfilename, f), recursive))
 	else:
 		try:
-			myfile = codecs.open(myfilename, mode='r', errors='replace')
+			myfile = codecs.open(myfilename, mode='r',
+				encoding='utf_8', errors='replace')
 			mylines = myfile.readlines()
 			myfile.close()
 		except IOError, e:
@@ -367,10 +368,11 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 		# Workaround for avoiding a silent error in shlex that
 		# is triggered by a source statement at the end of the file without a
 		# trailing newline after the source statement
-		content = codecs.open(mycfg, mode='r', errors='replace').read()
-		if content and content[-1] != u'\n':
-			content += u'\n'
-		f = StringIO(content)
+		# NOTE: shex doesn't seem to supported unicode objects
+		# (produces spurious \0 characters with python-2.6.2)
+		content = open(mycfg).read()
+		if content and content[-1] != '\n':
+			content += '\n'
 	except IOError, e:
 		if e.errno == PermissionDenied.errno:
 			raise PermissionDenied(mycfg)
@@ -386,7 +388,7 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 		# The default shlex.sourcehook() implementation
 		# only joins relative paths when the infile
 		# attribute is properly set.
-		lex = shlex_class(f, infile=mycfg, posix=True)
+		lex = shlex_class(content, infile=mycfg, posix=True)
 		lex.wordchars = string.digits + string.ascii_letters + \
 			"~!@#$%*_\:;?,./-+{}"
 		lex.quotes="\"'"
@@ -873,6 +875,7 @@ class atomic_ofstream(ObjectProxy):
 			open_func = open
 		else:
 			open_func = codecs.open
+			kargs.setdefault('encoding', 'utf_8')
 			kargs.setdefault('errors', 'replace')
 
 		if follow_links:
