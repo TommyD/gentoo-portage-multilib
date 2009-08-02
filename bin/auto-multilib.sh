@@ -314,7 +314,7 @@ _finalize_abi_install() {
 			base=${T}/gentoo-multilib/${dir}/gentoo-multilib
 			[ -d "${base}" ] || continue
 			for diffabi in ${ALTERNATE_ABIS}; do
-				diff -rNq ${base}/${ABI} ${base}/${diffabi} || abis_differ=1
+				diff -rNq ${base}/${ABI} ${base}/${diffabi} >/dev/null || abis_differ=1
 			done
 		done
 
@@ -329,6 +329,21 @@ _finalize_abi_install() {
 		else # ABIS differ
 			vecho ">>> Creating multilib headers"
 			base=${T}/gentoo-multilib
+			local files_differ=
+			for dir in ${dirs}; do
+				cd "${base}${dir}/gentoo-multilib/${ABI}"
+				for i in $(find . -type f); do
+					for diffabi in ${ALTERNATE_ABIS}; do
+						diff -q "${i}" ../${diffabi}/"${i}" >/dev/null || files_differ=1
+					done
+					if [ -z "${files_differ}" ]; then
+						[ -d "${D}${dir}/${i%/*}" ] || mkdir -p "${D}${dir}/${i%/*}"
+						mv ${base}${dir}/gentoo-multilib/${ABI}/"${i}" "${D}${dir}/${i}"
+						rm -rf ${base}${dir}/gentoo-multilib/*/"${i}"
+					fi
+					files_differ=
+				done
+			done
 			pushd "${base}"
 			find . | tar -c -T - -f - | tar -x --no-same-owner -f - -C ${D}
 			popd
@@ -348,16 +363,24 @@ _finalize_abi_install() {
 	fi
 
 	# Create wrapper symlink for *-config files
-	local i= files=( $(find "${D}" -name '*-config') )
+	local i= files=( $(find "${D}" -type f -name '*-config') $(find "${D}" -type f -name '*-config-2') )
 	_debug files ${files}
 	for i in ${files}; do
 		prep_ml_binaries "${i}"
 	done
+	local noabi=()
+	for i in ${MULTILIB_ABIS}; do
+		noabi+=( ! -name '*-'${i} )
+	done
+	if [[ ${PN} != python ]] && [[ ${PN} != perl ]]; then
+		for i in $(find "${D}"usr/bin/ -type f ${noabi[@]}); do
+			prep_ml_binaries "${i}"
+		done
+	fi
 	if [[ "${ABI}" != "${DEFAULT_ABI}" ]]; then
 		if [[ ${PN} == python ]]; then
 			prep_ml_binaries "${D}"usr/bin/${PN}${PYVER}
-		fi
-		if [[ ${PN} == perl ]]; then
+		elif [[ ${PN} == perl ]]; then
 			cp "${D}"usr/bin/perl${MY_PV}{,-${ABI}} || die
 			ln -s perl${MY_PV}-${ABI} "${D}"/usr/bin/perl-${ABI} || die
 		fi
