@@ -18,6 +18,26 @@ if [ -n "${PORTAGE_ROOTPATH}" ] ; then
 	unset PORTAGE_ROOTPATH
 fi
 
+ROOTPATH=${ROOTPATH##:}
+ROOTPATH=${ROOTPATH%%:}
+PREROOTPATH=${PREROOTPATH##:}
+PREROOTPATH=${PREROOTPATH%%:}
+PATH=$PORTAGE_BIN_PATH/ebuild-helpers:$PREROOTPATH${PREROOTPATH:+:}/usr/local/sbin:/sbin:/usr/sbin:/usr/local/bin:/bin:/usr/bin${ROOTPATH:+:}$ROOTPATH
+export PATH
+
+if [[ -z $PORTAGE_SETSID && -n $1 && $1 != depend ]] ; then
+	# If available, use setsid to create a new login session so that we can use
+	# SIGHUP to ensure that no orphaned subprocesses are left running.
+	if type -P setsid >/dev/null ; then
+		export PORTAGE_SETSID=1
+		exec setsid "$PORTAGE_BIN_PATH/ebuild.sh" "$@"
+	elif [[ -x $PORTAGE_BIN_PATH/setsid ]] ; then
+		export PORTAGE_SETSID=1
+		exec "$PORTAGE_BIN_PATH/setsid" "$PORTAGE_BIN_PATH/ebuild.sh" "$@"
+	fi
+fi
+[[ $PORTAGE_SETSID = 1 ]] && trap 'trap : SIGHUP ; kill -s SIGHUP 0 ;' EXIT
+
 # These two functions wrap sourcing and calling respectively.  At present they
 # perform a qa check to make sure eclasses and ebuilds and profiles don't mess
 # with shell opts (shopts).  Ebuilds/eclasses changing shopts should reset them 
@@ -63,13 +83,6 @@ unalias -a
 
 # Unset some variables that break things.
 unset GZIP BZIP BZIP2 CDPATH GREP_OPTIONS GREP_COLOR GLOBIGNORE
-
-ROOTPATH=${ROOTPATH##:}
-ROOTPATH=${ROOTPATH%%:}
-PREROOTPATH=${PREROOTPATH##:}
-PREROOTPATH=${PREROOTPATH%%:}
-PATH=$PORTAGE_BIN_PATH/ebuild-helpers:$PREROOTPATH${PREROOTPATH:+:}/usr/local/sbin:/sbin:/usr/sbin:/usr/local/bin:/bin:/usr/bin${ROOTPATH:+:}$ROOTPATH
-export PATH
 
 source "${PORTAGE_BIN_PATH}/isolated-functions.sh"  &>/dev/null
 
