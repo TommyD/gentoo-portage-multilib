@@ -494,6 +494,8 @@ class _AtomCache(type):
 	identical instances when available.
 	"""
 	def __call__(cls, s):
+		if isinstance(s, Atom):
+			return s
 		instance = cls._atoms.get(s)
 		if instance is None:
 			instance = super(_AtomCache, cls).__call__(s)
@@ -511,7 +513,7 @@ class Atom(object):
 	_atoms = weakref.WeakValueDictionary()
 
 	__slots__ = ("__weakref__", "blocker", "cp", "cpv", "operator",
-		"slot", "use", "_str")
+		"slot", "use", "without_use", "_str",)
 
 	class _blocker(object):
 		__slots__ = ("overlap",)
@@ -550,9 +552,16 @@ class Atom(object):
 		use = dep_getusedeps(s)
 		if use:
 			use = _use_dep(use)
+			without_use = remove_slot(self)
+			if self.slot is not None:
+				without_use += ":" + self.slot
+			without_use = Atom(without_use)
 		else:
 			use = None
+			without_use = self
+
 		obj_setattr(self, "use", use)
+		obj_setattr(self, "without_use", without_use)
 
 	def __setattr__(self, name, value):
 		raise AttributeError("Atom instances are immutable",
@@ -613,7 +622,7 @@ class Atom(object):
 		return repr(self._str)
 
 	def __str__(self):
-		return str(self._str)
+		return self._str
 
 	def endswith(self, *pargs, **kargs):
 		return self._str.endswith(*pargs, **kargs)

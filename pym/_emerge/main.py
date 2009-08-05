@@ -19,7 +19,7 @@ except ImportError:
 
 import _emerge.help
 import portage.xpak, commands, errno, re, time
-from portage.output import colorize, xtermTitleReset
+from portage.output import colorize, xtermTitle, xtermTitleReset
 from portage.output import create_color_func
 good = create_color_func("GOOD")
 bad = create_color_func("BAD")
@@ -474,7 +474,9 @@ def insert_optional_args(args):
 			new_args.append(opt_arg)
 
 		if saved_opts is not None:
-			new_args.append("-" + saved_opts)
+			# Recycle these on arg_stack since they
+			# might contain another match.
+			arg_stack.append("-" + saved_opts)
 
 	return new_args
 
@@ -746,6 +748,10 @@ def parse_opts(tmpcmdline, silent=False):
 
 	if myaction is None and myoptions.deselect is True:
 		myaction = 'deselect'
+
+	if myargs and not isinstance(myargs[0], unicode):
+		for i in xrange(len(myargs)):
+			myargs[i] = unicode(myargs[i], encoding='utf_8', errors='replace')
 
 	myfiles += myargs
 
@@ -1033,6 +1039,8 @@ def emerge_main():
 		portdb = trees[settings["ROOT"]]["porttree"].dbapi
 
 	xterm_titles = "notitles" not in settings.features
+	if xterm_titles:
+		xtermTitle("emerge")
 
 	tmpcmdline = []
 	if "--ignore-default-opts" not in myopts:
@@ -1293,7 +1301,7 @@ def emerge_main():
 		"""This gets out final log message in before we quit."""
 		if "--pretend" not in myopts:
 			emergelog(xterm_titles, " *** terminating.")
-		if "notitles" not in settings.features:
+		if xterm_titles:
 			xtermTitleReset()
 	portage.atexit_register(emergeexit)
 

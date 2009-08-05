@@ -685,6 +685,18 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 			# broken symlink or file removed by a concurrent process
 			writemsg("!!! File Not Found: '%s'\n" % file_path, noiselevel=-1)
 			continue
+
+		# TODO: Make getconfig() return unicode.
+		unicode_config = {}
+		for k, v in myconfig.iteritems():
+			if not isinstance(k, unicode):
+				k = unicode(k, encoding='utf8', errors='replace')
+			if not isinstance(v, unicode):
+				v = unicode(v, encoding='utf8', errors='replace')
+			unicode_config[k] = v
+		myconfig = unicode_config
+		del unicode_config
+
 		config_list.append(myconfig)
 		if "SPACE_SEPARATED" in myconfig:
 			space_separated.update(myconfig["SPACE_SEPARATED"].split())
@@ -726,7 +738,8 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 
 	ldsoconf_path = os.path.join(target_root, "etc", "ld.so.conf")
 	try:
-		myld = open(ldsoconf_path)
+		myld = codecs.open(ldsoconf_path, mode='r',
+			encoding='utf_8', errors='replace')
 		myldlines=myld.readlines()
 		myld.close()
 		oldld=[]
@@ -1048,7 +1061,6 @@ class config(object):
 		"EBUILD_PHASE", "EMERGE_FROM", "HOMEPAGE", "INHERITED", "IUSE",
 		"KEYWORDS", "LICENSE", "PDEPEND", "PF", "PKGUSE",
 		"PORTAGE_CONFIGROOT", "PORTAGE_IUSE", "PORTAGE_REPO_NAME",
-		"PORTAGE_SETSID",
 		"PORTAGE_USE", "PROPERTIES", "PROVIDE", "RDEPEND", "RESTRICT",
 		"ROOT", "SLOT", "SRC_URI"
 	]
@@ -1206,6 +1218,7 @@ class config(object):
 		self._accept_chost_re = None
 		self._accept_license = None
 		self._accept_license_str = None
+		self._license_groups = {}
 
 		self.virtuals = {}
 		self.virts_p = {}
@@ -1291,6 +1304,7 @@ class config(object):
 
 			self._accept_license = copy.deepcopy(clone._accept_license)
 			self._plicensedict = copy.deepcopy(clone._plicensedict)
+			self._license_groups = copy.deepcopy(clone._license_groups)
 		else:
 
 			def check_var_directory(varname, var):
@@ -1783,7 +1797,6 @@ class config(object):
 					self.pprovideddict[mycatpkg]=[x]
 
 			# parse licensegroups
-			self._license_groups = {}
 			for x in locations:
 				self._license_groups.update(
 					grabdict(os.path.join(x, "license_groups")))
@@ -5012,7 +5025,8 @@ def _check_build_log(mysettings, out=None):
 	if logfile is None:
 		return
 	try:
-		f = open(logfile)
+		f = codecs.open(logfile, mode='r',
+			encoding='utf_8', errors='replace')
 	except EnvironmentError:
 		return
 
@@ -5273,7 +5287,7 @@ def eapi_is_supported(eapi):
 # the ebuild.
 _validate_cache_for_unsupported_eapis = True
 
-_parse_eapi_ebuild_head_re = re.compile(r'^EAPI=[\'"]?([^\'"]*)')
+_parse_eapi_ebuild_head_re = re.compile(r'^EAPI=[\'"]?([^\'"#]*)')
 _parse_eapi_ebuild_head_max_lines = 30
 
 def _parse_eapi_ebuild_head(f):
