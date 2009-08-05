@@ -372,7 +372,7 @@ _finalize_abi_install() {
 	for i in ${MULTILIB_ABIS}; do
 		noabi+=( ! -name '*-'${i} )
 	done
-	if [[ ${PN} != python ]] && [[ ${PN} != perl ]]; then
+	if [[ ${PN} != python ]] && [[ ${PN} != perl ]] && [[ ${PN} != util-linux ]]; then
 		for i in $(find "${D}"usr/bin/ -type f ${noabi[@]}); do
 			prep_ml_binaries "${i}"
 		done
