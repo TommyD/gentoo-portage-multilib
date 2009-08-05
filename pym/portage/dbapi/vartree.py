@@ -37,6 +37,7 @@ from portage import listdir, dep_expand, digraph, flatten, key_expand, \
 
 from portage.cache.mappings import slot_dict_class
 
+import codecs
 import os, re, shutil, stat, errno, copy, subprocess
 import logging
 import shlex
@@ -1172,6 +1173,12 @@ class vardbapi(dbapi):
 			cache_mtime, metadata = pkg_data
 			cache_valid = cache_mtime == mydir_mtime
 		if cache_valid:
+			for k, v in metadata.iteritems():
+				if not isinstance(v, unicode):
+					# Migrate old metadata to unicode.
+					metadata[k] = unicode(v,
+						encoding='utf_8', errors='replace')
+
 			mydata.update(metadata)
 			pull_me.difference_update(mydata)
 
@@ -1192,7 +1199,7 @@ class vardbapi(dbapi):
 		if not mydata['SLOT']:
 			# Empty slot triggers InvalidAtom exceptions when generating slot
 			# atoms for packages, so translate it to '0' here.
-			mydata['SLOT'] = '0'
+			mydata['SLOT'] = u'0'
 		return [mydata[x] for x in wants]
 
 	def _aux_get(self, mycpv, wants, st=None):
@@ -1215,7 +1222,8 @@ class vardbapi(dbapi):
 				results.append(long(st.st_mtime))
 				continue
 			try:
-				myf = open(os.path.join(mydir, x), "r")
+				myf = codecs.open(os.path.join(mydir, x),
+					mode='r', encoding='utf_8', errors='replace')
 				try:
 					myd = myf.read()
 				finally:
@@ -1225,9 +1233,9 @@ class vardbapi(dbapi):
 				if self._aux_multi_line_re.match(x) is None:
 					myd = " ".join(myd.split())
 			except IOError:
-				myd = ""
+				myd = u''
 			if x == "EAPI" and not myd:
-				results.append("0")
+				results.append(u'0')
 			else:
 				results.append(myd)
 		return results
@@ -1417,7 +1425,7 @@ class vardbapi(dbapi):
 			h = self._new_hash()
 			# Always use a constant utf_8 encoding here, since
 			# the "default" encoding can change.
-			h.update(s)
+			h.update(s.encode('utf_8', 'replace'))
 			h = h.hexdigest()
 			h = h[-self._hex_chars:]
 			h = int(h, 16)
@@ -1864,7 +1872,8 @@ class dblink(object):
 			return self.contentscache
 		pkgfiles = {}
 		try:
-			myc = open(contents_file,"r")
+			myc = codecs.open(contents_file, mode='r',
+				encoding='utf_8', errors='replace')
 		except EnvironmentError, e:
 			if e.errno != errno.ENOENT:
 				raise
@@ -3432,7 +3441,8 @@ class dblink(object):
 		lcfile.close()
 
 		# open CONTENTS file (possibly overwriting old one) for recording
-		outfile = open(os.path.join(self.dbtmpdir, "CONTENTS"),"w")
+		outfile = codecs.open(os.path.join(self.dbtmpdir, 'CONTENTS'),
+			mode='w', encoding='utf_8', errors='replace')
 
 		self.updateprotect()
 
@@ -4137,7 +4147,7 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None):
 				tarinfo.size = 0
 				tar.addfile(tarinfo)
 			else:
-				f = open(path)
+				f = open(path, 'rb')
 				try:
 					tar.addfile(tarinfo, f)
 				finally:

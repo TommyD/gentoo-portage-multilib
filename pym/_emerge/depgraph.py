@@ -712,14 +712,8 @@ class depgraph(object):
 				else:
 					# Do not backtrack if only USE have to be changed in
 					# order to satisfy the dependency.
-					atom_without_use = dep.atom
-					if dep.atom.use:
-						atom_without_use = portage.dep.remove_slot(dep.atom)
-						if dep.atom.slot:
-							atom_without_use += ":" + dep.atom.slot
-						atom_without_use = portage.dep.Atom(atom_without_use)
 					dep_pkg, existing_node = \
-						self._select_package(dep.root, atom_without_use,
+						self._select_package(dep.root, dep.atom.without_use,
 							onlydeps=dep.onlydeps)
 					if dep_pkg is None:
 						self._dynamic_config._runtime_pkg_mask.setdefault(
@@ -1845,12 +1839,6 @@ class depgraph(object):
 	def _show_unsatisfied_dep(self, root, atom, myparent=None, arg=None):
 		atom = portage.dep.Atom(atom)
 		atom_set = InternalPackageSet(initial_atoms=(atom,))
-		atom_without_use = atom
-		if atom.use:
-			atom_without_use = portage.dep.remove_slot(atom)
-			if atom.slot:
-				atom_without_use += ":" + atom.slot
-			atom_without_use = portage.dep.Atom(atom_without_use)
 		xinfo = '"%s"' % atom
 		if arg:
 			xinfo='"%s"' % arg
@@ -1871,9 +1859,9 @@ class depgraph(object):
 				continue
 			match = db.match
 			if hasattr(db, "xmatch"):
-				cpv_list = db.xmatch("match-all", atom_without_use)
+				cpv_list = db.xmatch("match-all", atom.without_use)
 			else:
-				cpv_list = db.match(atom_without_use)
+				cpv_list = db.match(atom.without_use)
 			# descending order
 			cpv_list.reverse()
 			for cpv in cpv_list:
@@ -4374,6 +4362,14 @@ class depgraph(object):
 		if "--changelog" in self._frozen_config.myopts:
 			print
 			for revision,text in changelogs:
+
+				if sys.hexversion < 0x3000000:
+					# avoid potential UnicodeEncodeError
+					if isinstance(revision, unicode):
+						revision = revision.encode('utf_8', 'replace')
+					if isinstance(text, unicode):
+						text = text.encode('utf_8', 'replace')
+
 				print bold('*'+revision)
 				sys.stdout.write(text)
 
@@ -5134,6 +5130,11 @@ def show_masked_packages(masked_packages):
 				pass
 
 		print "- "+cpv+" (masked by: "+", ".join(mreasons)+")"
+
+		if sys.hexversion < 0x3000000 and isinstance(comment, unicode):
+			# avoid potential UnicodeEncodeError
+			comment = comment.encode('utf_8', 'replace')
+
 		if comment and comment not in shown_comments:
 			print filename+":"
 			print comment
