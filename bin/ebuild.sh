@@ -149,7 +149,7 @@ useq() {
 
 	# Make sure we have this USE flag in IUSE
 	elif [[ -n $PORTAGE_IUSE && -n $EBUILD_PHASE ]] ; then
-		if [[ $u != lib32 ]]; then
+		if [[ $u != lib32 ]] && [[ $u != multilib ]]; then
 			[[ $u =~ $PORTAGE_IUSE ]] || \
 				eqawarn "QA Notice: USE Flag '${u}' not" \
 					"in IUSE for ${CATEGORY}/${PF}"
