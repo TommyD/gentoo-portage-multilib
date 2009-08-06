@@ -142,7 +142,7 @@ has_multilib_profile() {
 }
 
 is_auto-multilib() {
-	if ( [[ "${ARCH}" == "amd64" ]] || [[ "${ARCH}" == "ppc64" ]] ) && has_multilib_profile && use lib32 && ! hasq multilib-native ${INHERITED}; then
+	if ( [[ "${ARCH}" == "amd64" ]] || [[ "${ARCH}" == "ppc64" ]] ) && has_multilib_profile && use lib32 && ! hasq multilib-native ${INHERITED} && ! use multilib; then
 		return 0
 	fi
 	return 1
