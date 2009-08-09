@@ -686,17 +686,6 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 			writemsg("!!! File Not Found: '%s'\n" % file_path, noiselevel=-1)
 			continue
 
-		# TODO: Make getconfig() return unicode.
-		unicode_config = {}
-		for k, v in myconfig.iteritems():
-			if not isinstance(k, unicode):
-				k = unicode(k, encoding='utf8', errors='replace')
-			if not isinstance(v, unicode):
-				v = unicode(v, encoding='utf8', errors='replace')
-			unicode_config[k] = v
-		myconfig = unicode_config
-		del unicode_config
-
 		config_list.append(myconfig)
 		if "SPACE_SEPARATED" in myconfig:
 			space_separated.update(myconfig["SPACE_SEPARATED"].split())
@@ -1060,7 +1049,8 @@ class config(object):
 		"A", "AA", "CATEGORY", "DEPEND", "DESCRIPTION", "EAPI",
 		"EBUILD_PHASE", "EMERGE_FROM", "HOMEPAGE", "INHERITED", "IUSE",
 		"KEYWORDS", "LICENSE", "PDEPEND", "PF", "PKGUSE",
-		"PORTAGE_CONFIGROOT", "PORTAGE_IUSE", "PORTAGE_REPO_NAME",
+		"PORTAGE_CONFIGROOT", "PORTAGE_IUSE",
+		"PORTAGE_NONFATAL", "PORTAGE_REPO_NAME",
 		"PORTAGE_USE", "PROPERTIES", "PROVIDE", "RDEPEND", "RESTRICT",
 		"ROOT", "SLOT", "SRC_URI"
 	]
@@ -1529,7 +1519,17 @@ class config(object):
 			# backupenv is used for calculating incremental variables.
 			if env is None:
 				env = os.environ
-			self.backupenv = env.copy()
+
+			# Avoid potential UnicodeDecodeError exceptions later.
+			env_unicode = {}
+			for k, v in env.iteritems():
+				if not isinstance(k, unicode):
+					k = unicode(k, encoding='utf_8', errors='replace')
+				if not isinstance(v, unicode):
+					v = unicode(v, encoding='utf_8', errors='replace')
+				env_unicode[k] = v
+
+			self.backupenv = env_unicode
 
 			if env_d:
 				# Remove duplicate values so they don't override updated
@@ -3197,8 +3197,15 @@ class config(object):
 		"set a value; will be thrown away at reset() time"
 		if not isinstance(myvalue, basestring):
 			raise ValueError("Invalid type being used as a value: '%s': '%s'" % (str(mykey),str(myvalue)))
+
+		# Avoid potential UnicodeDecodeError exceptions later.
+		if not isinstance(mykey, unicode):
+			mykey = unicode(mykey, encoding='utf_8', errors='replace')
+		if not isinstance(myvalue, unicode):
+			myvalue = unicode(myvalue, encoding='utf_8', errors='replace')
+
 		self.modifying()
-		self.modifiedkeys += [mykey]
+		self.modifiedkeys.append(mykey)
 		self.configdict["env"][mykey]=myvalue
 
 	def environ(self):
@@ -3847,9 +3854,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		# no digests because fetch was not called for a specific package
 		mydigests = {}
 
-	import shlex
 	ro_distdirs = [x for x in \
-		shlex.split(mysettings.get("PORTAGE_RO_DISTDIRS", "")) \
+		util.shlex_split(mysettings.get("PORTAGE_RO_DISTDIRS", "")) \
 		if os.path.isdir(x)]
 
 	fsmirrors = []
@@ -4407,8 +4413,8 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 						"URI":     loc,
 						"FILE":    myfile
 					}
-					import shlex
-					myfetch = shlex.split(locfetch)
+
+					myfetch = util.shlex_split(locfetch)
 					myfetch = [varexpand(x, mydict=variables) for x in myfetch]
 					myret = -1
 					try:
@@ -4901,6 +4907,11 @@ def digestcheck(myfiles, mysettings, strict=0, justmanifest=0):
 	""" epatch will just grab all the patches out of a directory, so we have to
 	make sure there aren't any foreign files that it might grab."""
 	filesdir = os.path.join(pkgdir, "files")
+	if isinstance(filesdir, unicode):
+		# Avoid UnicodeDecodeError raised from
+		# os.path.join when called by os.walk.
+		filesdir = filesdir.encode('utf_8', 'replace')
+
 	for parent, dirs, files in os.walk(filesdir):
 		for d in dirs:
 			if d.startswith(".") or d == "CVS":
@@ -5158,10 +5169,23 @@ def _post_src_install_uid_fix(mysettings):
 		os.system("chflags -R nosunlnk,nouunlnk %s 2>/dev/null" % \
 			(_shell_quote(mysettings["D"]),))
 
-	for parent, dirs, files in os.walk(mysettings["D"]):
+	destdir = mysettings["D"]
+	if isinstance(destdir, unicode):
+		# Avoid UnicodeDecodeError raised from
+		# os.path.join when called by os.walk.
+		destdir = destdir.encode('utf_8', 'replace')
+
+	size = 0
+	counted_inodes = set()
+
+	for parent, dirs, files in os.walk(destdir):
 		for fname in chain(dirs, files):
 			fpath = os.path.join(parent, fname)
 			mystat = os.lstat(fpath)
+			if stat.S_ISREG(mystat.st_mode) and \
+				mystat.st_ino not in counted_inodes:
+				counted_inodes.add(mystat.st_ino)
+				size += mystat.st_size
 			if mystat.st_uid != portage_uid and \
 				mystat.st_gid != portage_gid:
 				continue
@@ -5174,6 +5198,9 @@ def _post_src_install_uid_fix(mysettings):
 			apply_secpass_permissions(fpath, uid=myuid, gid=mygid,
 				mode=mystat.st_mode, stat_cached=mystat,
 				follow_links=False)
+
+	open(os.path.join(mysettings['PORTAGE_BUILDDIR'],
+		'build-info', 'SIZE'), 'w').write(str(size) + '\n')
 
 	if bsd_chflags:
 		# Restore all of the flags saved above.
@@ -6688,8 +6715,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 			if destexists and not stat.S_ISDIR(dstat[stat.ST_MODE]):
 				os.unlink(dest)
 			if selinux_enabled:
-				sid = selinux.get_lsid(src)
-				selinux.secure_symlink(target,dest,sid)
+				selinux.symlink(target, dest, src)
 			else:
 				os.symlink(target,dest)
 			lchown(dest,sstat[stat.ST_UID],sstat[stat.ST_GID])
@@ -6744,7 +6770,7 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 	if not hardlinked and (selinux_enabled or sstat.st_dev == dstat.st_dev):
 		try:
 			if selinux_enabled:
-				ret=selinux.secure_rename(src,dest)
+				ret = selinux.rename(src, dest)
 			else:
 				ret=os.rename(src,dest)
 			renamefailed=0
@@ -6762,8 +6788,8 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 		if stat.S_ISREG(sstat[stat.ST_MODE]):
 			try: # For safety copy then move it over.
 				if selinux_enabled:
-					selinux.secure_copy(src,dest+"#new")
-					selinux.secure_rename(dest+"#new",dest)
+					selinux.copyfile(src, dest + "#new")
+					selinux.rename(dest + "#new", dest)
 				else:
 					shutil.copyfile(src,dest+"#new")
 					os.rename(dest+"#new",dest)
@@ -6776,15 +6802,13 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 				return None
 		else:
 			#we don't yet handle special, so we need to fall back to /bin/mv
-			if selinux_enabled:
-				a=commands.getstatusoutput(MOVE_BINARY+" -c -f "+"'"+src+"' '"+dest+"'")
-			else:
-				a=commands.getstatusoutput(MOVE_BINARY+" -f "+"'"+src+"' '"+dest+"'")
-				if a[0]!=0:
-					print "!!! Failed to move special file:"
-					print "!!! '"+src+"' to '"+dest+"'"
-					print "!!!",a
-					return None # failure
+			a = commands.getstatusoutput("%s -f %s %s" % \
+				(MOVE_BINARY, _shell_quote(src), _shell_quote(dest)))
+			if a[0] != os.EX_OK:
+				writemsg("!!! Failed to move special file:\n", noiselevel=-1)
+				writemsg("!!! '%s' to '%s'\n" % (src, dest), noiselevel=-1)
+				writemsg("!!! %s\n" % a, noiselevel=-1)
+				return None # failure
 		try:
 			if didcopy:
 				if stat.S_ISLNK(sstat[stat.ST_MODE]):
@@ -8007,8 +8031,8 @@ def _gen_missing_encodings(missing_encodings):
 			decode=utf8decode,
 			incrementalencoder=Utf8IncrementalEncoder,
 			incrementaldecoder=Utf8IncrementalDecoder,
-			streamreader=Utf8StreamWriter,
-			streamwriter=Utf8StreamReader,
+			streamreader=Utf8StreamReader,
+			streamwriter=Utf8StreamWriter,
 		)
 
 		for alias in ('utf_8', 'u8', 'utf', 'utf8', 'utf8_ucs2', 'utf8_ucs4'):

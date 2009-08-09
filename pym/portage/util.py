@@ -350,6 +350,19 @@ def writedict(mydict,myfilename,writekey=True):
 		return 0
 	return 1
 
+def shlex_split(s):
+	"""
+	This is equivalent to shlex.split but it temporarily encodes unicode
+	strings to bytes since shlex.split() doesn't handle unicode strings.
+	"""
+	is_unicode = sys.hexversion < 0x3000000 and isinstance(s, unicode)
+	if is_unicode:
+		s = s.encode('utf_8', 'replace')
+	rval = shlex.split(s)
+	if is_unicode:
+		rval = [unicode(x, encoding='utf_8', errors='replace') for x in rval]
+	return rval
+
 class _tolerant_shlex(shlex.shlex):
 	def sourcehook(self, newfile):
 		try:
@@ -374,7 +387,11 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 		# trailing newline after the source statement
 		# NOTE: shex doesn't seem to supported unicode objects
 		# (produces spurious \0 characters with python-2.6.2)
-		content = open(mycfg).read()
+		if sys.hexversion < 0x3000000:
+			content = open(mycfg, 'rb').read()
+		else:
+			content = open(mycfg, mode='r',
+				encoding='utf_8', errors='replace').read()
 		if content and content[-1] != '\n':
 			content += '\n'
 	except IOError, e:
@@ -434,6 +451,10 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 					raise portage.exception.CorruptionError("ParseError: Unexpected EOF: "+str(mycfg)+": line "+str(lex.lineno))
 				else:
 					return mykeys
+			if not isinstance(key, unicode):
+				key = unicode(key, encoding='utf_8', errors='replace')
+			if not isinstance(val, unicode):
+				val = unicode(val, encoding='utf_8', errors='replace')
 			if expand:
 				mykeys[key] = varexpand(val, expand_map)
 				expand_map[key] = mykeys[key]
@@ -779,6 +800,11 @@ def apply_recursive_permissions(top, uid=-1, gid=-1,
 	function; it will be called with one argument, a PortageException instance.
 	Returns True if all permissions are applied and False if some are left
 	unapplied."""
+
+	if isinstance(top, unicode):
+		# Avoid UnicodeDecodeError raised from
+		# os.path.join when called by os.walk.
+		top = top.encode('utf_8', 'replace')
 
 	if onerror is None:
 		# Default behavior is to dump errors to stderr so they won't
