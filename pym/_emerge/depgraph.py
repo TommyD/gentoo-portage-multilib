@@ -22,7 +22,7 @@ from portage.output import bold, blue, colorize, create_color_func, darkblue, \
 bad = create_color_func("BAD")
 from portage.sets import SETPREFIX
 from portage.sets.base import InternalPackageSet
-from portage.util import cmp_sort_key, writemsg
+from portage.util import cmp_sort_key, writemsg, writemsg_stdout
 
 from _emerge.AtomArg import AtomArg
 from _emerge.Blocker import Blocker
@@ -4357,21 +4357,13 @@ class depgraph(object):
 			print
 			print counters
 			if show_repos:
-				sys.stdout.write(str(repo_display))
+				writemsg_stdout(str(repo_display), noiselevel=-1)
 
 		if "--changelog" in self._frozen_config.myopts:
-			print
+			writemsg_stdout('\n', noiselevel=-1)
 			for revision,text in changelogs:
-
-				if sys.hexversion < 0x3000000:
-					# avoid potential UnicodeEncodeError
-					if isinstance(revision, unicode):
-						revision = revision.encode('utf_8', 'replace')
-					if isinstance(text, unicode):
-						text = text.encode('utf_8', 'replace')
-
-				print bold('*'+revision)
-				sys.stdout.write(text)
+				writemsg_stdout(bold('*'+revision) + '\n' + text,
+					noiselevel=-1)
 
 		sys.stdout.flush()
 		return os.EX_OK
@@ -5131,13 +5123,9 @@ def show_masked_packages(masked_packages):
 
 		print "- "+cpv+" (masked by: "+", ".join(mreasons)+")"
 
-		if sys.hexversion < 0x3000000 and isinstance(comment, unicode):
-			# avoid potential UnicodeEncodeError
-			comment = comment.encode('utf_8', 'replace')
-
 		if comment and comment not in shown_comments:
-			print filename+":"
-			print comment
+			writemsg_stdout(filename + ":\n" + comment + "\n",
+				noiselevel=-1)
 			shown_comments.add(comment)
 		portdb = root_config.trees["porttree"].dbapi
 		for l in missing_licenses:
