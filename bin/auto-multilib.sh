@@ -259,7 +259,7 @@ _setup_abi_env() {
 	export FCFLAGS="${FCFLAGS} ${CFLAGS}"
 	export FFLAGS="${FFLAGS} ${CFLAGS}"
 	export ASFLAGS="${ASFLAGS} $(get_abi_var ASFLAGS)"
-	export LIBDIR=$(get_abi_var LIBDIR $1)
+	local LIBDIR=$(get_abi_var LIBDIR $1)
 	export LDFLAGS="${LDFLAGS} -L/${LIBDIR} -L/usr/${LIBDIR}"
 	export PKG_CONFIG_PATH="/usr/${LIBDIR}/pkgconfig"
 	if ! [[ "${ABI}" == "${DEFAULT_ABI}" ]]; then
