@@ -4037,7 +4037,8 @@ class depgraph(object):
 						if pkgsettings['ARCH'] == "amd64" or pkgsettings['ARCH'] == "ppc64":
 							cur_use = [flag for flag in pkg.use.enabled \
 								if flag in pkg.iuse.all or flag in 'lib32']
-							cur_iuse.append("lib32")
+							if 'lib32' not in cur_iuse:
+								cur_iuse.append("lib32")
 					if myoldbest and myinslotlist:
 						previous_cpv = myoldbest[0]
 					else:
