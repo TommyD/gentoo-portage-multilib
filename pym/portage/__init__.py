@@ -104,8 +104,6 @@ try:
 		INVALID_ENV_FILE, CUSTOM_MIRRORS_FILE, CONFIG_MEMORY_FILE,\
 		INCREMENTALS, EAPI, MISC_SH_BINARY, REPO_NAME_LOC, REPO_NAME_FILE
 
-	from portage.manifest import Manifest
-	import portage.exception
 	from portage.localization import _
 
 except ImportError, e:
@@ -180,6 +178,8 @@ class _unicode_module_wrapper(object):
 		return result
 
 if sys.hexversion >= 0x3000000:
+	def _unicode_func_wrapper(func):
+		return func
 	def _unicode_module_wrapper(mod):
 		return mod
 
@@ -188,17 +188,153 @@ os = _unicode_module_wrapper(os)
 import shutil
 shutil = _unicode_module_wrapper(shutil)
 
+# Imports below this point rely on the above unicode wrapper definitions.
+
 try:
 	import portage._selinux as selinux
 except OSError, e:
-	writemsg("!!! SELinux not loaded: %s\n" % str(e), noiselevel=-1)
+	sys.stderr.write("!!! SELinux not loaded: %s\n" % str(e))
 	del e
 except ImportError:
 	pass
 
+from portage.manifest import Manifest
+
 # ===========================================================================
 # END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END OF IMPORTS -- END
 # ===========================================================================
+
+def _gen_missing_encodings(missing_encodings):
+
+	encodings = {}
+
+	if 'ascii' in missing_encodings:
+
+		class AsciiIncrementalEncoder(codecs.IncrementalEncoder):
+			def encode(self, input, final=False):
+				return codecs.ascii_encode(input, self.errors)[0]
+
+		class AsciiIncrementalDecoder(codecs.IncrementalDecoder):
+			def decode(self, input, final=False):
+				return codecs.ascii_decode(input, self.errors)[0]
+
+		class AsciiStreamWriter(codecs.StreamWriter):
+			encode = codecs.ascii_encode
+
+		class AsciiStreamReader(codecs.StreamReader):
+			decode = codecs.ascii_decode
+
+		codec_info =  codecs.CodecInfo(
+			name='ascii',
+			encode=codecs.ascii_encode,
+			decode=codecs.ascii_decode,
+			incrementalencoder=AsciiIncrementalEncoder,
+			incrementaldecoder=AsciiIncrementalDecoder,
+			streamwriter=AsciiStreamWriter,
+			streamreader=AsciiStreamReader,
+		)
+
+		for alias in ('ascii', '646', 'ansi_x3.4_1968', 'ansi_x3_4_1968',
+			'ansi_x3.4_1986', 'cp367', 'csascii', 'ibm367', 'iso646_us',
+			'iso_646.irv_1991', 'iso_ir_6', 'us', 'us_ascii'):
+			encodings[alias] = codec_info
+
+	if 'utf_8' in missing_encodings:
+
+		def utf8decode(input, errors='strict'):
+			return codecs.utf_8_decode(input, errors, True)
+
+		class Utf8IncrementalEncoder(codecs.IncrementalEncoder):
+			def encode(self, input, final=False):
+				return codecs.utf_8_encode(input, self.errors)[0]
+
+		class Utf8IncrementalDecoder(codecs.BufferedIncrementalDecoder):
+			_buffer_decode = codecs.utf_8_decode
+
+		class Utf8StreamWriter(codecs.StreamWriter):
+			encode = codecs.utf_8_encode
+
+		class Utf8StreamReader(codecs.StreamReader):
+			decode = codecs.utf_8_decode
+
+		codec_info = codecs.CodecInfo(
+			name='utf-8',
+			encode=codecs.utf_8_encode,
+			decode=utf8decode,
+			incrementalencoder=Utf8IncrementalEncoder,
+			incrementaldecoder=Utf8IncrementalDecoder,
+			streamreader=Utf8StreamReader,
+			streamwriter=Utf8StreamWriter,
+		)
+
+		for alias in ('utf_8', 'u8', 'utf', 'utf8', 'utf8_ucs2', 'utf8_ucs4'):
+			encodings[alias] = codec_info
+
+	return encodings
+
+def _ensure_default_encoding():
+	"""
+	The python that's inside stage 1 or 2 is built with a minimal
+	configuration which does not include the /usr/lib/pythonX.Y/encodings
+	directory. This results in error like the following:
+
+	  LookupError: no codec search functions registered: can't find encoding
+
+	In order to solve this problem, detect it early and manually register
+	a search function for the ascii and utf_8 codecs. Starting with python-3.0
+	this problem is more noticeable because of stricter handling of encoding
+	and decoding between strings of characters and bytes.
+	"""
+
+	default_fallback = 'utf_8'
+	default_encoding = sys.getdefaultencoding().lower().replace('-', '_')
+	required_encodings = set(['ascii', 'utf_8'])
+	required_encodings.add(default_encoding)
+	missing_encodings = set()
+	for codec_name in required_encodings:
+		try:
+			codecs.lookup(codec_name)
+		except LookupError:
+			missing_encodings.add(codec_name)
+
+	if not missing_encodings:
+		return
+
+	encodings = _gen_missing_encodings(missing_encodings)
+
+	if default_encoding in missing_encodings and \
+		default_encoding not in encodings:
+		# Make the fallback codec correspond to whatever name happens
+		# to be returned by sys.getdefaultencoding().
+
+		try:
+			encodings[default_encoding] = codecs.lookup(default_fallback)
+		except LookupError:
+			encodings[default_encoding] = encodings[default_fallback]
+
+	def search_function(name):
+		name = name.lower()
+		name = name.replace('-', '_')
+		codec_info = encodings.get(name)
+		if codec_info is not None:
+			return codecs.CodecInfo(
+				name=codec_info.name,
+				encode=codec_info.encode,
+				decode=codec_info.decode,
+				incrementalencoder=codec_info.incrementalencoder,
+				incrementaldecoder=codec_info.incrementaldecoder,
+				streamreader=codec_info.streamreader,
+				streamwriter=codec_info.streamwriter,
+			)
+		return None
+
+	codecs.register(search_function)
+
+	del codec_name, default_encoding, default_fallback, missing_encodings, \
+		required_encodings, search_function
+
+# Do this ASAP since writemsg() might not work without it.
+_ensure_default_encoding()
 
 def _shell_quote(s):
 	"""
@@ -802,7 +938,7 @@ def env_update(makelinks=1, target_root=None, prev_mtimes=None, contents=None,
 
 	ldsoconf_path = os.path.join(target_root, "etc", "ld.so.conf")
 	try:
-		myld = codecs.open(ldsoconf_path, mode='r',
+		myld = codecs.open(_unicode_encode(ldsoconf_path), mode='r',
 			encoding='utf_8', errors='replace')
 		myldlines=myld.readlines()
 		myld.close()
@@ -984,7 +1120,8 @@ def ExtractKernelVersion(base_dir):
 	lines = []
 	pathname = os.path.join(base_dir, 'Makefile')
 	try:
-		f = open(pathname, 'r')
+		f = codecs.open(_unicode_encode(pathname), mode='r',
+			encoding='utf_8', errors='replace')
 	except OSError, details:
 		return (None, str(details))
 	except IOError, details:
@@ -1440,7 +1577,9 @@ class config(object):
 					parentsFile = os.path.join(currentPath, "parent")
 					eapi_file = os.path.join(currentPath, "eapi")
 					try:
-						eapi = open(eapi_file).readline().strip()
+						eapi = codecs.open(_unicode_encode(eapi_file),
+							mode='r', encoding='utf_8', errors='replace'
+							).readline().strip()
 					except IOError:
 						pass
 					else:
@@ -1782,7 +1921,8 @@ class config(object):
 				repo_conf_parser = SafeConfigParser()
 				try:
 					repo_conf_parser.readfp(
-						codecs.open(self._local_repo_conf_path, mode='r',
+						codecs.open(
+						_unicode_encode(self._local_repo_conf_path), mode='r',
 						encoding='utf_8', errors='replace'))
 				except EnvironmentError, e:
 					if e.errno != errno.ENOENT:
@@ -3709,7 +3849,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		return mypids
 
 	if logfile:
-		log_file = open(logfile, mode='ab')
+		log_file = open(_unicode_encode(logfile), mode='ab')
 		stdout_file = os.fdopen(os.dup(fd_pipes_orig[1]), 'wb')
 		master_file = os.fdopen(master_fd, 'rb')
 		iwtd = [master_file]
@@ -4691,7 +4831,10 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 								# Fetch failed... Try the next one... Kill 404 files though.
 								if (mystat[stat.ST_SIZE]<100000) and (len(myfile)>4) and not ((myfile[-5:]==".html") or (myfile[-4:]==".htm")):
 									html404=re.compile("<title>.*(not found|404).*</title>",re.I|re.M)
-									if html404.search(open(mysettings["DISTDIR"]+"/"+myfile).read()):
+									if html404.search(codecs.open(
+										_unicode_encode(myfile_path), mode='r',
+										encoding='utf_8', errors='replace'
+										).read()):
 										try:
 											os.unlink(mysettings["DISTDIR"]+"/"+myfile)
 											writemsg(">>> Deleting invalid distfile. (Improper 404 redirect from server.)\n")
@@ -5240,7 +5383,7 @@ def _check_build_log(mysettings, out=None):
 	if logfile is None:
 		return
 	try:
-		f = codecs.open(logfile, mode='r',
+		f = codecs.open(_unicode_encode(logfile), mode='r',
 			encoding='utf_8', errors='replace')
 	except EnvironmentError:
 		return
@@ -5401,8 +5544,8 @@ def _post_src_install_uid_fix(mysettings):
 				mode=mystat.st_mode, stat_cached=mystat,
 				follow_links=False)
 
-	open(os.path.join(mysettings['PORTAGE_BUILDDIR'],
-		'build-info', 'SIZE'), 'w').write(str(size) + '\n')
+	open(_unicode_encode(os.path.join(mysettings['PORTAGE_BUILDDIR'],
+		'build-info', 'SIZE')), 'w').write(str(size) + '\n')
 
 	if bsd_chflags:
 		# Restore all of the flags saved above.
@@ -5636,7 +5779,8 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 			# From parse-eapi-glep-55 above.
 			pass
 		elif 'parse-eapi-ebuild-head' in mysettings.features:
-			eapi = _parse_eapi_ebuild_head(codecs.open(ebuild_path,
+			eapi = _parse_eapi_ebuild_head(
+				codecs.open(_unicode_encode(ebuild_path),
 				mode='r', encoding='utf_8', errors='replace'))
 
 		if eapi is not None:
@@ -5802,13 +5946,14 @@ def _adjust_perms_msg(settings, msg):
 
 	if background and log_path is not None:
 		try:
-			log_file = open(log_path, 'a')
+			log_file = codecs.open(_unicode_encode(log_path), mode='a',
+				encoding='utf_8', errors='replace')
 		except IOError:
 			def write(msg):
 				pass
 		else:
 			def write(msg):
-				log_file.write(msg)
+				log_file.write(_unicode_decode(msg))
 				log_file.flush()
 
 	try:
@@ -5970,9 +6115,7 @@ def _prepare_workdir(mysettings):
 		os.access(mysettings["PORT_LOGDIR"], os.W_OK):
 		logid_path = os.path.join(mysettings["PORTAGE_BUILDDIR"], ".logid")
 		if not os.path.exists(logid_path):
-			f = open(logid_path, "w")
-			f.close()
-			del f
+			open(_unicode_encode(logid_path), 'w')
 		logid_time = time.strftime("%Y%m%d-%H%M%S",
 			time.gmtime(os.stat(logid_path).st_mtime))
 		mysettings["PORTAGE_LOG_FILE"] = os.path.join(
@@ -6450,7 +6593,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 					# This is a signal to ebuild.sh, so that it knows to filter
 					# out things like SANDBOX_{DENY,PREDICT,READ,WRITE} that
 					# would be preserved between normal phases.
-					open(env_file + ".raw", "w")
+					open(_unicode_encode(env_file + '.raw'), 'w')
 				else:
 					writemsg(("!!! Error extracting saved " + \
 						"environment: '%s'\n") % \
@@ -8065,7 +8208,7 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None,
 		xptbz2.unpackinfo(infloc)
 		mysettings.setcpv(mycat + "/" + mypkg, mydb=mydbapi)
 		# Store the md5sum in the vdb.
-		fp = open(os.path.join(infloc, "BINPKGMD5"), "w")
+		fp = open(_unicode_encode(os.path.join(infloc, 'BINPKGMD5')), 'w')
 		fp.write(str(portage.checksum.perform_md5(mytbz2))+"\n")
 		fp.close()
 
@@ -8126,9 +8269,8 @@ def deprecated_profile_check(settings=None):
 		DEPRECATED_PROFILE_FILE.lstrip(os.sep))
 	if not os.access(deprecated_profile_file, os.R_OK):
 		return False
-	deprecatedfile = open(deprecated_profile_file, "r")
-	dcontent = deprecatedfile.readlines()
-	deprecatedfile.close()
+	dcontent = codecs.open(_unicode_encode(deprecated_profile_file), 
+		mode='r', encoding='utf_8', errors='replace').readlines()
 	writemsg(colorize("BAD", "\n!!! Your current profile is " + \
 		"deprecated and not supported anymore.") + "\n", noiselevel=-1)
 	if not dcontent:
@@ -8181,135 +8323,6 @@ def portageexit():
 		commit_mtimedb()
 
 atexit_register(portageexit)
-
-def _gen_missing_encodings(missing_encodings):
-
-	encodings = {}
-
-	if 'ascii' in missing_encodings:
-
-		class AsciiIncrementalEncoder(codecs.IncrementalEncoder):
-			def encode(self, input, final=False):
-				return codecs.ascii_encode(input, self.errors)[0]
-
-		class AsciiIncrementalDecoder(codecs.IncrementalDecoder):
-			def decode(self, input, final=False):
-				return codecs.ascii_decode(input, self.errors)[0]
-
-		class AsciiStreamWriter(codecs.StreamWriter):
-			encode = codecs.ascii_encode
-
-		class AsciiStreamReader(codecs.StreamReader):
-			decode = codecs.ascii_decode
-
-		codec_info =  codecs.CodecInfo(
-			name='ascii',
-			encode=codecs.ascii_encode,
-			decode=codecs.ascii_decode,
-			incrementalencoder=AsciiIncrementalEncoder,
-			incrementaldecoder=AsciiIncrementalDecoder,
-			streamwriter=AsciiStreamWriter,
-			streamreader=AsciiStreamReader,
-		)
-
-		for alias in ('ascii', '646', 'ansi_x3.4_1968', 'ansi_x3_4_1968',
-			'ansi_x3.4_1986', 'cp367', 'csascii', 'ibm367', 'iso646_us',
-			'iso_646.irv_1991', 'iso_ir_6', 'us', 'us_ascii'):
-			encodings[alias] = codec_info
-
-	if 'utf_8' in missing_encodings:
-
-		def utf8decode(input, errors='strict'):
-			return codecs.utf_8_decode(input, errors, True)
-
-		class Utf8IncrementalEncoder(codecs.IncrementalEncoder):
-			def encode(self, input, final=False):
-				return codecs.utf_8_encode(input, self.errors)[0]
-
-		class Utf8IncrementalDecoder(codecs.BufferedIncrementalDecoder):
-			_buffer_decode = codecs.utf_8_decode
-
-		class Utf8StreamWriter(codecs.StreamWriter):
-			encode = codecs.utf_8_encode
-
-		class Utf8StreamReader(codecs.StreamReader):
-			decode = codecs.utf_8_decode
-
-		codec_info = codecs.CodecInfo(
-			name='utf-8',
-			encode=codecs.utf_8_encode,
-			decode=utf8decode,
-			incrementalencoder=Utf8IncrementalEncoder,
-			incrementaldecoder=Utf8IncrementalDecoder,
-			streamreader=Utf8StreamReader,
-			streamwriter=Utf8StreamWriter,
-		)
-
-		for alias in ('utf_8', 'u8', 'utf', 'utf8', 'utf8_ucs2', 'utf8_ucs4'):
-			encodings[alias] = codec_info
-
-	return encodings
-
-def _ensure_default_encoding():
-	"""
-	The python that's inside stage 1 or 2 is built with a minimal
-	configuration which does not include the /usr/lib/pythonX.Y/encodings
-	directory. This results in error like the following:
-
-	  LookupError: no codec search functions registered: can't find encoding
-
-	In order to solve this problem, detect it early and manually register
-	a search function for the ascii and utf_8 codecs. Starting with python-3.0
-	this problem is more noticeable because of stricter handling of encoding
-	and decoding between strings of characters and bytes.
-	"""
-
-	default_fallback = 'utf_8'
-	default_encoding = sys.getdefaultencoding().lower().replace('-', '_')
-	required_encodings = set(['ascii', 'utf_8'])
-	required_encodings.add(default_encoding)
-	missing_encodings = set()
-	for codec_name in required_encodings:
-		try:
-			codecs.lookup(codec_name)
-		except LookupError:
-			missing_encodings.add(codec_name)
-
-	if not missing_encodings:
-		return
-
-	encodings = _gen_missing_encodings(missing_encodings)
-
-	if default_encoding in missing_encodings and \
-		default_encoding not in encodings:
-		# Make the fallback codec correspond to whatever name happens
-		# to be returned by sys.getdefaultencoding().
-
-		try:
-			encodings[default_encoding] = codecs.lookup(default_fallback)
-		except LookupError:
-			encodings[default_encoding] = encodings[default_fallback]
-
-	def search_function(name):
-		name = name.lower()
-		name = name.replace('-', '_')
-		codec_info = encodings.get(name)
-		if codec_info is not None:
-			return codecs.CodecInfo(
-				name=codec_info.name,
-				encode=codec_info.encode,
-				decode=codec_info.decode,
-				incrementalencoder=codec_info.incrementalencoder,
-				incrementaldecoder=codec_info.incrementaldecoder,
-				streamreader=codec_info.streamreader,
-				streamwriter=codec_info.streamwriter,
-			)
-		return None
-
-	codecs.register(search_function)
-
-	del codec_name, default_encoding, default_fallback, missing_encodings, \
-		required_encodings, search_function
 
 def _global_updates(trees, prev_mtimes):
 	"""
@@ -8461,7 +8474,7 @@ class MtimeDB(dict):
 
 	def _load(self, filename):
 		try:
-			f = open(filename, 'rb')
+			f = open(_unicode_encode(filename), 'rb')
 			mypickle = pickle.Unpickler(f)
 			try:
 				mypickle.find_global = None
@@ -8696,8 +8709,6 @@ if True:
 		"pkglines", "thirdpartymirrors", "usedefaults", "profiledir",
 		"flushmtimedb"):
 		globals()[k] = _LegacyGlobalProxy(k)
-
-	_ensure_default_encoding()
 
 # Clear the cache
 dircache={}
