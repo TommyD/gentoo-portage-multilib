@@ -117,14 +117,19 @@ except ImportError, e:
 	sys.stderr.write("    "+str(e)+"\n\n")
 	raise
 
-def _unicode_encode(s):
+def _unicode_encode(s, encoding='utf_8', errors='replace'):
 	if isinstance(s, unicode):
-		s = s.encode('utf_8', 'replace')
+		s = s.encode(encoding, errors)
 	return s
 
-def _unicode_decode(s):
-	if not isinstance(s, unicode) and isinstance(s, basestring):
-		s = unicode(s, encoding='utf_8', errors='replace')
+def _unicode_decode(s, encoding='utf_8', errors='replace'):
+	if not isinstance(s, unicode):
+		if sys.hexversion < 0x3000000:
+			if isinstance(s, basestring):
+				s = unicode(s, encoding=encoding, errors=errors)
+		else:
+			if isinstance(s, bytes):
+				s = unicode(s, encoding=encoding, errors=errors)
 	return s
 
 class _unicode_func_wrapper(object):
@@ -132,16 +137,19 @@ class _unicode_func_wrapper(object):
 	Wraps a function, converts arguments from unicode to bytes,
 	and return values to unicode from bytes.
 	"""
-	__slots__ = ('_func',)
+	__slots__ = ('_func', '_encoding')
 
-	def __init__(self, func):
+	def __init__(self, func, encoding='utf_8'):
 		self._func = func
+		self._encoding = encoding
 
 	def __call__(self, *args, **kwargs):
 
+		encoding = self._encoding
 		wrapped_args = [_unicode_encode(x) for x in args]
 		if kwargs:
-			wrapped_kwargs = dict((_unicode_encode(k), _unicode_encode(v)) \
+			wrapped_kwargs = dict((_unicode_encode(k, encoding=encoding),
+				_unicode_encode(v, encoding=encoding)) \
 				for k, v in kwargs.iteritems())
 		else:
 			wrapped_kwargs = {}
@@ -150,11 +158,12 @@ class _unicode_func_wrapper(object):
 
 		if isinstance(rval, (basestring, list, tuple)):
 			if isinstance(rval, basestring):
-				rval = _unicode_decode(rval)
+				rval = _unicode_decode(rval, encoding=encoding)
 			elif isinstance(rval, list):
-				rval = [_unicode_decode(x) for x in rval]
+				rval = [_unicode_decode(x, encoding=encoding) for x in rval]
 			elif isinstance(rval, tuple):
-				rval = tuple(_unicode_decode(x) for x in rval)
+				rval = tuple(_unicode_decode(x, encoding=encoding) \
+					for x in rval)
 
 		return rval
 
@@ -162,36 +171,54 @@ class _unicode_module_wrapper(object):
 	"""
 	Wraps a module and wraps all functions with _unicode_func_wrapper.
 	"""
-	__slots__ = ('_mod',)
+	__slots__ = ('_mod', '_encoding', '_overrides')
 
-	def __init__(self, mod):
+	def __init__(self, mod, encoding='utf_8', overrides=None):
 		object.__setattr__(self, '_mod', mod)
+		object.__setattr__(self, '_encoding', encoding)
+		object.__setattr__(self, '_overrides', overrides)
 
 	def __getattribute__(self, attr):
 		result = getattr(object.__getattribute__(self, '_mod'), attr)
-		if isinstance(result, type):
+		encoding = object.__getattribute__(self, '_encoding')
+		overrides = object.__getattribute__(self, '_overrides')
+		override = None
+		if overrides is not None:
+			override = overrides.get(id(result))
+		if override is not None:
+			result = override
+		elif isinstance(result, type):
 			pass
 		elif type(result) is types.ModuleType:
-			result = _unicode_module_wrapper(result)
+			result = _unicode_module_wrapper(result,
+				encoding=encoding, overrides=overrides)
 		elif hasattr(result, '__call__'):
-			result = _unicode_func_wrapper(result)
+			result = _unicode_func_wrapper(result, encoding=encoding)
 		return result
 
-if sys.hexversion >= 0x3000000:
-	def _unicode_func_wrapper(func):
-		return func
-	def _unicode_module_wrapper(mod):
-		return mod
+_merge_encoding = sys.getfilesystemencoding()
 
-import os
-os = _unicode_module_wrapper(os)
-import shutil
-shutil = _unicode_module_wrapper(shutil)
+import os as _os
+_os_overrides = {
+	id(_os.fdopen)        : _os.fdopen,
+	id(_os.read)          : _os.read,
+	id(_os.system)        : _os.system,
+}
+
+os = _unicode_module_wrapper(_os, overrides=_os_overrides)
+_os_merge = _unicode_module_wrapper(_os,
+	encoding=_merge_encoding, overrides=_os_overrides)
+
+import shutil as _shutil
+shutil = _unicode_module_wrapper(_shutil)
 
 # Imports below this point rely on the above unicode wrapper definitions.
-
+_selinux = None
+selinux = None
+_selinux_merge = _unicode_module_wrapper(_selinux, encoding=_merge_encoding)
 try:
-	import portage._selinux as selinux
+	import portage._selinux
+	selinux = _unicode_module_wrapper(_selinux)
 except OSError, e:
 	sys.stderr.write("!!! SELinux not loaded: %s\n" % str(e))
 	del e
@@ -288,8 +315,10 @@ def _ensure_default_encoding():
 
 	default_fallback = 'utf_8'
 	default_encoding = sys.getdefaultencoding().lower().replace('-', '_')
+	filesystem_encoding = sys.getfilesystemencoding().lower().replace('-', '_')
 	required_encodings = set(['ascii', 'utf_8'])
 	required_encodings.add(default_encoding)
+	required_encodings.add(filesystem_encoding)
 	missing_encodings = set()
 	for codec_name in required_encodings:
 		try:
@@ -305,12 +334,22 @@ def _ensure_default_encoding():
 	if default_encoding in missing_encodings and \
 		default_encoding not in encodings:
 		# Make the fallback codec correspond to whatever name happens
-		# to be returned by sys.getdefaultencoding().
+		# to be returned by sys.getfilesystemencoding().
 
 		try:
 			encodings[default_encoding] = codecs.lookup(default_fallback)
 		except LookupError:
 			encodings[default_encoding] = encodings[default_fallback]
+
+	if filesystem_encoding in missing_encodings and \
+		filesystem_encoding not in encodings:
+		# Make the fallback codec correspond to whatever name happens
+		# to be returned by sys.getdefaultencoding().
+
+		try:
+			encodings[filesystem_encoding] = codecs.lookup(default_fallback)
+		except LookupError:
+			encodings[filesystem_encoding] = encodings[default_fallback]
 
 	def search_function(name):
 		name = name.lower()
@@ -330,7 +369,8 @@ def _ensure_default_encoding():
 
 	codecs.register(search_function)
 
-	del codec_name, default_encoding, default_fallback, missing_encodings, \
+	del codec_name, default_encoding, default_fallback, \
+		filesystem_encoding, missing_encodings, \
 		required_encodings, search_function
 
 # Do this ASAP since writemsg() might not work without it.
@@ -361,9 +401,9 @@ if platform.system() in ('FreeBSD',):
 				return
 			# Try to generate an ENOENT error if appropriate.
 			if 'h' in opts:
-				os.lstat(path)
+				_os_merge.lstat(path)
 			else:
-				os.stat(path)
+				_os_merge.stat(path)
 			# Make sure the binary exists.
 			if not portage.process.find_binary('chflags'):
 				raise portage.exception.CommandNotFound('chflags')
@@ -3631,7 +3671,7 @@ class config(object):
 		if getattr(self, "_selinux_enabled", None) is None:
 			self._selinux_enabled = 0
 			if "selinux" in self["USE"].split():
-				if "selinux" in globals():
+				if selinux:
 					if selinux.is_selinux_enabled() == 1:
 						self._selinux_enabled = 1
 					else:
@@ -3640,11 +3680,7 @@ class config(object):
 					writemsg("!!! SELinux module not found. Please verify that it was installed.\n",
 						noiselevel=-1)
 					self._selinux_enabled = 0
-			if self._selinux_enabled == 0:
-				try:	
-					del sys.modules["selinux"]
-				except KeyError:
-					pass
+
 		return self._selinux_enabled
 
 	if sys.hexversion >= 0x3000000:
@@ -3832,8 +3868,8 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 		spawn_func = portage.process.spawn_sandbox
 
 	if sesandbox:
-		con = selinux.settype(mysettings["PORTAGE_SANDBOX_T"])
-		selinux.setexec(con)
+		spawn_func = selinux.spawn_wrapper(spawn_func,
+			mysettings["PORTAGE_SANDBOX_T"])
 
 	returnpid = keywords.get("returnpid")
 	keywords["returnpid"] = True
@@ -3842,8 +3878,6 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	finally:
 		if logfile:
 			os.close(slave_fd)
-		if sesandbox:
-			selinux.setexec()
 
 	if returnpid:
 		return mypids
@@ -3918,21 +3952,17 @@ def _spawn_fetch(settings, args, **kwargs):
 		os.getuid() == 0 and portage_gid and portage_uid:
 		kwargs.update(_userpriv_spawn_kwargs)
 
-	try:
+	spawn_func = portage.process.spawn
 
-		if settings.selinux_enabled():
-			con = selinux.settype(settings["PORTAGE_FETCH_T"])
-			selinux.setexec(con)
-			# bash is an allowed entrypoint, while most binaries are not
-			if args[0] != BASH_BINARY:
-				args = [BASH_BINARY, "-c", "exec \"$@\"", args[0]] + args
+	if settings.selinux_enabled():
+		spawn_func = selinux.spawn_wrapper(spawn_func,
+			settings["PORTAGE_FETCH_T"])
 
-		rval = portage.process.spawn(args,
-			env=dict(settings.iteritems()), **kwargs)
+		# bash is an allowed entrypoint, while most binaries are not
+		if args[0] != BASH_BINARY:
+			args = [BASH_BINARY, "-c", "exec \"$@\"", args[0]] + args
 
-	finally:
-		if settings.selinux_enabled():
-			selinux.setexec()
+	rval = spawn_func(args, env=dict(settings.iteritems()), **kwargs)
 
 	return rval
 
@@ -5495,7 +5525,7 @@ def _post_src_install_chost_fix(settings):
 		write_atomic(os.path.join(settings['PORTAGE_BUILDDIR'],
 			'build-info', 'CHOST'), chost + '\n')
 
-def _post_src_install_uid_fix(mysettings):
+def _post_src_install_uid_fix(mysettings, out=None):
 	"""
 	Files in $D with user and group bits that match the "portage"
 	user or group are automatically mapped to PORTAGE_INST_UID and
@@ -5503,6 +5533,9 @@ def _post_src_install_uid_fix(mysettings):
 	S_ISUID and S_ISGID bits, so those bits are restored if
 	necessary.
 	"""
+
+	os = _os_merge
+
 	inst_uid = int(mysettings["PORTAGE_INST_UID"])
 	inst_gid = int(mysettings["PORTAGE_INST_GID"])
 
@@ -5517,32 +5550,106 @@ def _post_src_install_uid_fix(mysettings):
 			(_shell_quote(mysettings["D"]),))
 
 	destdir = mysettings["D"]
+	unicode_errors = []
 
-	size = 0
-	counted_inodes = set()
+	while True:
 
-	for parent, dirs, files in os.walk(destdir):
-		parent = _unicode_decode(parent)
-		for fname in chain(dirs, files):
-			fname = _unicode_decode(fname)
-			fpath = os.path.join(parent, fname)
-			mystat = os.lstat(fpath)
-			if stat.S_ISREG(mystat.st_mode) and \
-				mystat.st_ino not in counted_inodes:
-				counted_inodes.add(mystat.st_ino)
-				size += mystat.st_size
-			if mystat.st_uid != portage_uid and \
-				mystat.st_gid != portage_gid:
-				continue
-			myuid = -1
-			mygid = -1
-			if mystat.st_uid == portage_uid:
-				myuid = inst_uid
-			if mystat.st_gid == portage_gid:
-				mygid = inst_gid
-			apply_secpass_permissions(fpath, uid=myuid, gid=mygid,
-				mode=mystat.st_mode, stat_cached=mystat,
-				follow_links=False)
+		unicode_error = False
+		size = 0
+		counted_inodes = set()
+
+		for parent, dirs, files in os.walk(destdir):
+			try:
+				parent = _unicode_decode(parent,
+					encoding=_merge_encoding, errors='strict')
+			except UnicodeDecodeError:
+				new_parent = _unicode_decode(parent,
+					encoding=_merge_encoding, errors='replace')
+				new_parent = _unicode_encode(new_parent,
+					encoding=_merge_encoding, errors='backslashreplace')
+				new_parent = _unicode_decode(new_parent,
+					encoding=_merge_encoding, errors='replace')
+				os.rename(parent, new_parent)
+				unicode_error = True
+				unicode_errors.append(new_parent[len(destdir):])
+				break
+
+			for fname in chain(dirs, files):
+				try:
+					fname = _unicode_decode(fname,
+						encoding=_merge_encoding, errors='strict')
+				except UnicodeDecodeError:
+					fpath = _os.path.join(
+						parent.encode(_merge_encoding), fname)
+					new_fname = _unicode_decode(fname,
+						encoding=_merge_encoding, errors='replace')
+					new_fname = _unicode_encode(new_fname,
+						encoding=_merge_encoding, errors='backslashreplace')
+					new_fname = _unicode_decode(new_fname,
+						encoding=_merge_encoding, errors='replace')
+					new_fpath = os.path.join(parent, new_fname)
+					os.rename(fpath, new_fpath)
+					unicode_error = True
+					unicode_errors.append(new_fpath[len(destdir):])
+					fname = new_fname
+					fpath = new_fpath
+				else:
+					fpath = os.path.join(parent, fname)
+
+				mystat = os.lstat(fpath)
+				if stat.S_ISREG(mystat.st_mode) and \
+					mystat.st_ino not in counted_inodes:
+					counted_inodes.add(mystat.st_ino)
+					size += mystat.st_size
+				if mystat.st_uid != portage_uid and \
+					mystat.st_gid != portage_gid:
+					continue
+				myuid = -1
+				mygid = -1
+				if mystat.st_uid == portage_uid:
+					myuid = inst_uid
+				if mystat.st_gid == portage_gid:
+					mygid = inst_gid
+				apply_secpass_permissions(
+					_unicode_encode(fpath, encoding=_merge_encoding),
+					uid=myuid, gid=mygid,
+					mode=mystat.st_mode, stat_cached=mystat,
+					follow_links=False)
+
+			if unicode_error:
+				break
+
+		if not unicode_error:
+			break
+
+	if unicode_errors:
+		from textwrap import wrap
+		from portage.elog.messages import eerror
+		def _eerror(l):
+			eerror(l, phase='install', key=mysettings.mycpv, out=out)
+
+		msg = "This package installs one or more file names containing " + \
+			"characters that do not match your current locale " + \
+			"settings. The current setting for filesystem encoding is '%s'." \
+			% _merge_encoding
+		for l in wrap(msg, 72):
+			_eerror(l)
+
+		_eerror("")
+		for x in unicode_errors:
+			_eerror("\t" + x)
+		_eerror("")
+
+		if _merge_encoding.lower().replace('_', '').replace('-', '') != 'utf8':
+			msg = "For best results, UTF-8 encoding is recommended. See " + \
+				"the Gentoo Linux Localization Guide for instructions " + \
+				"about how to configure your locale for UTF-8 encoding:"
+			for l in wrap(msg, 72):
+				_eerror(l)
+			_eerror("")
+			_eerror("\t" + \
+				"http://www.gentoo.org/doc/en/guide-localization.xml")
+			_eerror("")
 
 	open(_unicode_encode(os.path.join(mysettings['PORTAGE_BUILDDIR'],
 		'build-info', 'SIZE')), 'w').write(str(size) + '\n')
@@ -6997,16 +7104,25 @@ def _movefile(src, dest, **kwargs):
 			"mv '%s' '%s'" % (src, dest))
 
 def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
-		hardlink_candidates=None):
+		hardlink_candidates=None, encoding='utf_8'):
 	"""moves a file from src to dest, preserving all permissions and attributes; mtime will
 	be preserved even when moving across filesystems.  Returns true on success and false on
 	failure.  Move is atomic."""
 	#print "movefile("+str(src)+","+str(dest)+","+str(newmtime)+","+str(sstat)+")"
-	global lchown
+
 	if mysettings is None:
 		global settings
 		mysettings = settings
+
 	selinux_enabled = mysettings.selinux_enabled()
+	if selinux_enabled:
+		selinux = _unicode_module_wrapper(_selinux, encoding=encoding)
+
+	lchown = _unicode_func_wrapper(data.lchown, encoding=encoding)
+	os = _unicode_module_wrapper(_os,
+		encoding=encoding, overrides=_os_overrides)
+	shutil = _unicode_module_wrapper(_shutil, encoding=encoding)
+
 	try:
 		if not sstat:
 			sstat=os.lstat(src)
