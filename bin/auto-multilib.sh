@@ -318,7 +318,8 @@ _finalize_abi_install() {
 			done
 		done
 
-		if [ -z "${abis_differ}" ]; then
+		#FIXME: workaround:no multiabi-headers for linux-headers
+		if [ -z "${abis_differ}" ] || [[ ${PN} == linux-headers ]]; then
 			# No differences, restore original header files for default ABI
 			for dir in ${dirs}; do
 				base=${T}/gentoo-multilib/${dir}/gentoo-multilib
