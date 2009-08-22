@@ -5,10 +5,14 @@
 
 from portage.output import colorize
 from portage.cache.mappings import slot_dict_class
+from portage.localization import _
 import portage
+from portage import os
+from portage import _encodings
+from portage import _unicode_encode
+
 import HTMLParser
 import sys
-import os
 import socket
 import time
 import tempfile
@@ -83,8 +87,8 @@ def create_conn(baseurl,conn=None):
 
 	parts = baseurl.split("://",1)
 	if len(parts) != 2:
-		raise ValueError("Provided URL does not " + \
-			"contain protocol identifier. '%s'" % baseurl)
+		raise ValueError(_("Provided URL does not "
+			"contain protocol identifier. '%s'") % baseurl)
 	protocol,url_parts = parts
 	del parts
 
@@ -106,7 +110,7 @@ def create_conn(baseurl,conn=None):
 	del userpass_host
 
 	if len(userpass) > 2:
-		raise ValueError("Unable to interpret username/password provided.")
+		raise ValueError(_("Unable to interpret username/password provided."))
 	elif len(userpass) == 2:
 		username = userpass[0]
 		password = userpass[1]
@@ -141,7 +145,7 @@ def create_conn(baseurl,conn=None):
 				conn.login(username,password)
 			else:
 				sys.stderr.write(colorize("WARN",
-					" * No password provided for username")+" '%s'" % \
+					_(" * No password provided for username"))+" '%s'" % \
 					(username,) + "\n\n")
 				conn.login(username)
 			conn.set_pasv(passive)
@@ -151,12 +155,12 @@ def create_conn(baseurl,conn=None):
 				import paramiko
 			except ImportError:
 				raise NotImplementedError(
-					"paramiko must be installed for sftp support")
+					_("paramiko must be installed for sftp support"))
 			t = paramiko.Transport(host)
 			t.connect(username=username, password=password)
 			conn = paramiko.SFTPClient.from_transport(t)
 		else:
-			raise NotImplementedError, "%s is not a supported protocol." % protocol
+			raise NotImplementedError, _("%s is not a supported protocol.") % protocol
 
 	return (conn,protocol,address, http_params, http_headers)
 
@@ -235,10 +239,10 @@ def make_http_request(conn, address, params={}, headers={}, dest=None):
 				if parts[0] == "Location":
 					if (rc == 301):
 						sys.stderr.write(colorize("BAD",
-							"Location has moved: ") + str(parts[1]) + "\n")
+							_("Location has moved: ")) + str(parts[1]) + "\n")
 					if (rc == 302):
 						sys.stderr.write(colorize("BAD",
-							"Location has temporarily moved: ") + \
+							_("Location has temporarily moved: ")) + \
 							str(parts[1]) + "\n")
 					address = parts[1]
 					break
@@ -317,7 +321,7 @@ def dir_get_list(baseurl,conn=None):
 		else:
 			import portage.exception
 			raise portage.exception.PortageException(
-				"Unable to get listing: %s %s" % (rc,msg))
+				_("Unable to get listing: %s %s") % (rc,msg))
 	elif protocol in ["ftp"]:
 		if address[-1] == '/':
 			olddir = conn.pwd()
@@ -330,7 +334,7 @@ def dir_get_list(baseurl,conn=None):
 	elif protocol == "sftp":
 		listing = conn.listdir(address)
 	else:
-		raise TypeError("Unknown protocol. '%s'" % protocol)
+		raise TypeError(_("Unknown protocol. '%s'") % protocol)
 
 	if not keepconnection:
 		conn.close()
@@ -362,7 +366,7 @@ def file_get_metadata(baseurl,conn=None, chunk_size=3000):
 		finally:
 			f.close()
 	else:
-		raise TypeError("Unknown protocol. '%s'" % protocol)
+		raise TypeError(_("Unknown protocol. '%s'") % protocol)
 	
 	if data:
 		xpaksize = portage.xpak.decodeint(data[-8:-4])
@@ -412,7 +416,7 @@ def file_get(baseurl,dest,conn=None,fcmd=None):
 	}
 	retval = spawn(myfetch, env=os.environ.copy(), fd_pipes=fd_pipes)
 	if retval != os.EX_OK:
-		sys.stderr.write("Fetcher exited with a failure condition.\n")
+		sys.stderr.write(_("Fetcher exited with a failure condition.\n"))
 		return 0
 	return 1
 
@@ -453,7 +457,7 @@ def file_get_lib(baseurl,dest,conn=None):
 			finally:
 				f.close()
 	else:
-		raise TypeError("Unknown protocol. '%s'" % protocol)
+		raise TypeError(_("Unknown protocol. '%s'") % protocol)
 	
 	if not keepconnection:
 		conn.close()
@@ -485,7 +489,8 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 
 	out = sys.stdout
 	try:
-		metadatafile = open(metadatafilename, 'rb')
+		metadatafile = open(_unicode_encode(metadatafilename,
+			encoding=_encodings['fs'], errors='strict'), 'rb')
 		mypickle = pickle.Unpickler(metadatafile)
 		try:
 			mypickle.find_global = None
@@ -493,7 +498,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 			# TODO: If py3k, override Unpickler.find_class().
 			pass
 		metadata = mypickle.load()
-		out.write("Loaded metadata pickle.\n")
+		out.write(_("Loaded metadata pickle.\n"))
 		out.flush()
 		metadatafile.close()
 	except (IOError, OSError, EOFError, ValueError, pickle.UnpicklingError):
@@ -510,15 +515,15 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 		metadata[baseurl]["data"]={}
 
 	if not os.access(cache_path, os.W_OK):
-		sys.stderr.write("!!! Unable to write binary metadata to disk!\n")
-		sys.stderr.write("!!! Permission denied: '%s'\n" % cache_path)
+		sys.stderr.write(_("!!! Unable to write binary metadata to disk!\n"))
+		sys.stderr.write(_("!!! Permission denied: '%s'\n") % cache_path)
 		return metadata[baseurl]["data"]
 
 	import portage.exception
 	try:
 		filelist = dir_get_list(baseurl, conn)
 	except portage.exception.PortageException, e:
-		sys.stderr.write("!!! Error connecting to '%s'.\n" % baseurl)
+		sys.stderr.write(_("!!! Error connecting to '%s'.\n") % baseurl)
 		sys.stderr.write("!!! %s\n" % str(e))
 		del e
 		return metadata[baseurl]["data"]
@@ -545,7 +550,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 				except ValueError, e:
 					sys.stderr.write("--- "+str(e)+"\n")
 					if trynum < 3:
-						sys.stderr.write("Retrying...\n")
+						sys.stderr.write(_("Retrying...\n"))
 					sys.stderr.flush()
 					mytempfile.close()
 					continue
@@ -561,7 +566,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 						raise
 					except Exception, e:
 						mytempfile.close()
-						sys.stderr.write("!!! Failed to use gzip: "+str(e)+"\n")
+						sys.stderr.write(_("!!! Failed to use gzip: ")+str(e)+"\n")
 						sys.stderr.flush()
 					mytempfile.close()
 				try:
@@ -570,23 +575,24 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 					metadata[baseurl]["indexname"] = mfile
 					metadata[baseurl]["timestamp"] = int(time.time())
 					metadata[baseurl]["modified"]  = 0 # It's not, right after download.
-					out.write("Pickle loaded.\n")
+					out.write(_("Pickle loaded.\n"))
 					out.flush()
 					break
 				except SystemExit, e:
 					raise
 				except Exception, e:
-					sys.stderr.write("!!! Failed to read data from index: "+str(mfile)+"\n")
+					sys.stderr.write(_("!!! Failed to read data from index: ")+str(mfile)+"\n")
 					sys.stderr.write("!!! "+str(e)+"\n")
 					sys.stderr.flush()
 			try:
-				metadatafile = open(metadatafilename, 'wb')
+				metadatafile = open(_unicode_encode(metadatafilename,
+					encoding=_encodings['fs'], errors='strict'), 'wb')
 				pickle.dump(metadata, metadatafile, protocol=2)
 				metadatafile.close()
 			except SystemExit, e:
 				raise
 			except Exception, e:
-				sys.stderr.write("!!! Failed to write binary metadata to disk!\n")
+				sys.stderr.write(_("!!! Failed to write binary metadata to disk!\n"))
 				sys.stderr.write("!!! "+str(e)+"\n")
 				sys.stderr.flush()
 			break
@@ -607,8 +613,8 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 				self.display()
 		def display(self):
 			self.out.write("\r"+colorize("WARN",
-				"cache miss: '"+str(self.misses)+"'") + \
-				" --- "+colorize("GOOD","cache hit: '"+str(self.hits)+"'"))
+				_("cache miss: '")+str(self.misses)+"'") + \
+				" --- "+colorize("GOOD", _("cache hit: '")+str(self.hits)+"'"))
 			self.out.flush()
 
 	cache_stats = CacheStats(out)
@@ -651,7 +657,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 				metadata[baseurl]["data"][x] = make_metadata_dict(myid)
 			elif verbose:
 				sys.stderr.write(colorize("BAD",
-					"!!! Failed to retrieve metadata on: ")+str(x)+"\n")
+					_("!!! Failed to retrieve metadata on: "))+str(x)+"\n")
 				sys.stderr.flush()
 		else:
 			cache_stats.hits += 1
@@ -672,17 +678,19 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 	try:
 		if "modified" in metadata[baseurl] and metadata[baseurl]["modified"]:
 			metadata[baseurl]["timestamp"] = int(time.time())
-			metadatafile = open(metadatafilename, 'wb')
+			metadatafile = open(_unicode_encode(metadatafilename,
+				encoding=_encodings['fs'], errors='strict'), 'wb')
 			pickle.dump(metadata, metadatafile, protocol=2)
 			metadatafile.close()
 		if makepickle:
-			metadatafile = open(makepickle, 'wb')
+			metadatafile = open(_unicode_encode(makepickle,
+				encoding=_encodings['fs'], errors='strict'), 'wb')
 			pickle.dump(metadata[baseurl]["data"], metadatafile, protocol=2)
 			metadatafile.close()
 	except SystemExit, e:
 		raise
 	except Exception, e:
-		sys.stderr.write("!!! Failed to write binary metadata to disk!\n")
+		sys.stderr.write(_("!!! Failed to write binary metadata to disk!\n"))
 		sys.stderr.write("!!! "+str(e)+"\n")
 		sys.stderr.flush()
 

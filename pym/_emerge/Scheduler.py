@@ -11,10 +11,14 @@ import weakref
 from itertools import izip
 import portage
 from portage import os
+from portage import _encodings
+from portage import _unicode_decode
+from portage import _unicode_encode
 from portage.cache.mappings import slot_dict_class
 from portage.elog.messages import eerror
 from portage.output import colorize, create_color_func, darkgreen, red
 bad = create_color_func("BAD")
+from portage.sets import SETPREFIX
 from portage.sets.base import InternalPackageSet
 from portage.util import writemsg, writemsg_level
 
@@ -471,10 +475,13 @@ class Scheduler(PollScheduler):
 
 	def _append_to_log_path(self, log_path, msg):
 
-		f = codecs.open(portage._unicode_encode(log_path), mode='a',
-			encoding='utf_8', errors='replace')
+		f = codecs.open(_unicode_encode(log_path,
+			encoding=_encodings['fs'], errors='strict'),
+			mode='a', encoding=_encodings['content'],
+			errors='backslashreplace')
 		try:
-			f.write(portage._unicode_decode(msg))
+			f.write(_unicode_decode(msg,
+				encoding=_encodings['content'], errors='replace'))
 		finally:
 			f.close()
 
@@ -486,8 +493,10 @@ class Scheduler(PollScheduler):
 		background = self._background
 
 		if background and log_path is not None:
-			log_file = codecs.open(portage._unicode_encode(log_path), mode='a',
-				encoding='utf_8', errors='replace')
+			log_file = codecs.open(_unicode_encode(log_path,
+				encoding=_encodings['fs'], errors='strict'),
+				mode='a', encoding=_encodings['content'],
+				errors='backslashreplace')
 			out = log_file
 
 		try:
@@ -862,8 +871,9 @@ class Scheduler(PollScheduler):
 			log_path = self._locate_failure_log(failed_pkg)
 			if log_path is not None:
 				try:
-					log_file = codecs.open(portage._unicode_encode(log_path),
-						mode='r', encoding='utf_8', errors='replace')
+					log_file = codecs.open(_unicode_encode(log_path,
+					encoding=_encodings['fs'], errors='strict'),
+					mode='r', encoding=_encodings['content'], errors='replace')
 				except IOError:
 					pass
 
@@ -1108,7 +1118,7 @@ class Scheduler(PollScheduler):
 		pkg_queue = self._pkg_queue
 		failed_pkgs = self._failed_pkgs
 		portage.locks._quiet = self._background
-		portage.elog._emerge_elog_listener = self._elog_listener
+		portage.elog.add_listener(self._elog_listener)
 		rval = os.EX_OK
 
 		try:
@@ -1116,7 +1126,7 @@ class Scheduler(PollScheduler):
 		finally:
 			self._main_loop_cleanup()
 			portage.locks._quiet = False
-			portage.elog._emerge_elog_listener = None
+			portage.elog.remove_listener(self._elog_listener)
 			if failed_pkgs:
 				rval = failed_pkgs[-1].returncode
 
@@ -1566,8 +1576,8 @@ class Scheduler(PollScheduler):
 
 	def _world_atom(self, pkg):
 		"""
-		Add the package to the world file, but only if
-		it's supposed to be added. Otherwise, do nothing.
+		Add or remove the package to the world file, but only if
+		it's supposed to be added or removed. Otherwise, do nothing.
 		"""
 
 		if set(("--buildpkgonly", "--fetchonly",
@@ -1596,17 +1606,25 @@ class Scheduler(PollScheduler):
 			if hasattr(world_set, "load"):
 				world_set.load() # maybe it's changed on disk
 
-			atom = create_world_atom(pkg, args_set, root_config)
-			if atom:
-				if hasattr(world_set, "add"):
-					self._status_msg(('Recording %s in "world" ' + \
-						'favorites file...') % atom)
-					logger.log(" === (%s of %s) Updating world file (%s)" % \
-						(pkg_count.curval, pkg_count.maxval, pkg.cpv))
-					world_set.add(atom)
-				else:
-					writemsg_level('\n!!! Unable to record %s in "world"\n' % \
-						(atom,), level=logging.WARN, noiselevel=-1)
+			if pkg.operation == "uninstall":
+				if hasattr(world_set, "cleanPackage"):
+					world_set.cleanPackage(pkg.root_config.trees["vartree"].dbapi,
+							pkg.cpv)
+				if hasattr(world_set, "remove"):
+					for s in pkg.root_config.setconfig.active:
+						world_set.remove(SETPREFIX+s)
+			else:
+				atom = create_world_atom(pkg, args_set, root_config)
+				if atom:
+					if hasattr(world_set, "add"):
+						self._status_msg(('Recording %s in "world" ' + \
+							'favorites file...') % atom)
+						logger.log(" === (%s of %s) Updating world file (%s)" % \
+							(pkg_count.curval, pkg_count.maxval, pkg.cpv))
+						world_set.add(atom)
+					else:
+						writemsg_level('\n!!! Unable to record %s in "world"\n' % \
+							(atom,), level=logging.WARN, noiselevel=-1)
 		finally:
 			if world_locked:
 				world_set.unlock()

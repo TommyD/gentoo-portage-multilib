@@ -8,9 +8,7 @@ import codecs
 import commands
 import errno
 import formatter
-import os
 import re
-import shlex
 import sys
 
 import portage
@@ -18,9 +16,13 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.util:writemsg',
 )
 
+from portage import os
+from portage import _encodings
+from portage import _unicode_encode
 from portage.const import COLOR_MAP_FILE
 from portage.exception import CommandNotFound, FileNotFound, \
 	ParseError, PermissionDenied, PortageException
+from portage.localization import _
 
 havecolor=1
 dotitles=1
@@ -140,7 +142,7 @@ _styles["PKG_NOMERGE_WORLD"]       = ( "blue", )
 _styles["PROMPT_CHOICE_DEFAULT"]   = ( "green", )
 _styles["PROMPT_CHOICE_OTHER"]     = ( "red", )
 
-def _parse_color_map(onerror=None):
+def _parse_color_map(config_root='/', onerror=None):
 	"""
 	Parse /etc/portage/color.map and return a dict of error codes.
 
@@ -156,7 +158,7 @@ def _parse_color_map(onerror=None):
 	# that can be called in order adjust the location that color.map
 	# is read from.
 	global codes, _styles
-	myfile = os.path.join('/', COLOR_MAP_FILE)
+	myfile = os.path.join(config_root, COLOR_MAP_FILE)
 	ansi_code_pattern = re.compile("^[0-9;]*m$") 
 	quotes = '\'"'
 	def strip_quotes(token):
@@ -165,8 +167,9 @@ def _parse_color_map(onerror=None):
 		return token
 	try:
 		lineno=0
-		for line in codecs.open( myfile, mode='r',
-			encoding='utf_8', errors='replace' ):
+		for line in codecs.open(_unicode_encode(myfile,
+			encoding=_encodings['fs'], errors='strict'),
+			mode='r', encoding=_encodings['content'], errors='replace'):
 			lineno += 1
 
 			commenter_pos = line.find("#")
@@ -177,9 +180,8 @@ def _parse_color_map(onerror=None):
 			
 			split_line = line.split("=")
 			if len(split_line) != 2:
-				e = ParseError("'%s', line %s: %s" % (
-					myfile, lineno,
-					"expected exactly one occurence of '=' operator"))
+				e = ParseError(_("'%s', line %s: expected exactly one occurence of '=' operator") % \
+					(myfile, lineno))
 				raise e
 				if onerror:
 					onerror(e)
@@ -190,9 +192,8 @@ def _parse_color_map(onerror=None):
 			k = strip_quotes(split_line[0].strip())
 			v = strip_quotes(split_line[1].strip())
 			if not k in _styles and not k in codes:
-				e = ParseError("'%s', line %s: %s'%s'" % (
-					myfile, lineno,
-					"Unknown variable: ", k))
+				e = ParseError(_("'%s', line %s: Unknown variable: '%s'") % \
+					(myfile, lineno, k))
 				if onerror:
 					onerror(e)
 				else:
@@ -212,9 +213,8 @@ def _parse_color_map(onerror=None):
 						elif k in codes:
 							code_list.append(codes[x])
 					else:
-						e = ParseError("'%s', line %s: %s'%s'" % (
-							myfile, lineno,
-							"Undefined: ", x))
+						e = ParseError(_("'%s', line %s: Undefined: '%s'") % \
+							(myfile, lineno, x))
 						if onerror:
 							onerror(e)
 						else:
@@ -427,7 +427,7 @@ def set_term_size(lines, columns, fd):
 	try:
 		spawn(cmd, env=os.environ, fd_pipes={0:fd})
 	except CommandNotFound:
-		writemsg("portage: stty: command not found\n", noiselevel=-1)
+		writemsg(_("portage: stty: command not found\n"), noiselevel=-1)
 
 class EOutput(object):
 	"""
@@ -469,7 +469,7 @@ class EOutput(object):
 	def _write(self, f, s):
 		if sys.hexversion < 0x3000000 and isinstance(s, unicode):
 			# avoid potential UnicodeEncodeError
-			s = s.encode('utf_8', 'replace')
+			s = s.encode(_encodings['stdio'], 'backslashreplace')
 		f.write(s)
 		f.flush()
 
@@ -725,13 +725,46 @@ class TermProgressBar(ProgressBar):
 				">" + ((max_bar_width - bar_width) * " ") + "]"
 			return image
 
-try:
-	_parse_color_map(onerror=lambda e: writemsg("%s\n" % str(e), noiselevel=-1))
-except FileNotFound:
-	pass
-except PermissionDenied, e:
-	writemsg("Permission denied: '%s'\n" % str(e), noiselevel=-1)
-	del e
-except PortageException, e:
-	writemsg("%s\n" % str(e), noiselevel=-1)
-	del e
+_color_map_loaded = False
+
+def _init(config_root='/'):
+	"""
+	Load color.map from the given config_root. This is called automatically
+	on first access of the codes or _styles attributes (unless it has already
+	been called for some other reason).
+	"""
+
+	global _color_map_loaded, codes, _styles
+	if _color_map_loaded:
+		return
+
+	_color_map_loaded = True
+	codes = object.__getattribute__(codes, '_attr')
+	_styles = object.__getattribute__(_styles, '_attr')
+
+	try:
+		_parse_color_map(config_root=config_root,
+			onerror=lambda e: writemsg("%s\n" % str(e), noiselevel=-1))
+	except FileNotFound:
+		pass
+	except PermissionDenied, e:
+		writemsg(_("Permission denied: '%s'\n") % str(e), noiselevel=-1)
+		del e
+	except PortageException, e:
+		writemsg("%s\n" % str(e), noiselevel=-1)
+		del e
+
+class _LazyInitColorMap(portage.proxy.objectproxy.ObjectProxy):
+
+	__slots__ = ('_attr',)
+
+	def __init__(self, attr):
+		portage.proxy.objectproxy.ObjectProxy.__init__(self)
+		object.__setattr__(self, '_attr', attr)
+
+	def _get_target(self):
+		_init()
+		return object.__getattribute__(self, '_attr')
+
+codes = _LazyInitColorMap(codes)
+_styles = _LazyInitColorMap(_styles)

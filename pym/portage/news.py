@@ -9,12 +9,17 @@ __all__ = ["NewsManager", "NewsItem", "DisplayRestriction",
 
 import codecs
 import logging
-import os
+import os as _os
 import re
+from portage import os
+from portage import _encodings
+from portage import _unicode_decode
+from portage import _unicode_encode
 from portage.util import apply_secpass_permissions, ensure_dirs, \
 	grabfile, normalize_path, write_atomic, writemsg_level
 from portage.data import portage_gid
 from portage.dep import isvalidatom
+from portage.localization import _
 from portage.locks import lockfile, unlockfile
 from portage.exception import InvalidLocation, OperationNotPermitted, \
 	PermissionDenied
@@ -70,7 +75,7 @@ class NewsManager(object):
 	def _news_dir(self, repoid):
 		repo_path = self.portdb.getRepositoryPath(repoid)
 		if repo_path is None:
-			raise AssertionError("Invalid repoID: %s" % repoid)
+			raise AssertionError(_("Invalid repoID: %s") % repoid)
 		return os.path.join(repo_path, self.news_path)
 
 	def updateItems(self, repoid):
@@ -93,7 +98,8 @@ class NewsManager(object):
 
 		news_dir = self._news_dir(repoid)
 		try:
-			news = os.listdir(news_dir)
+			news = _os.listdir(_unicode_encode(news_dir,
+				encoding=_encodings['fs'], errors='strict'))
 		except OSError:
 			return
 
@@ -111,14 +117,23 @@ class NewsManager(object):
 
 			updates = []
 			for itemid in news:
+				try:
+					itemid = _unicode_decode(itemid,
+						encoding=_encodings['fs'], errors='strict')
+				except UnicodeDecodeError:
+					itemid = _unicode_decode(itemid,
+						encoding=_encodings['fs'], errors='replace')
+					writemsg_level(
+						"!!! Invalid encoding in news item name: '%s'\n" % \
+						itemid, level=logging.ERROR, noiselevel=-1)
+					continue
+
 				if itemid in skip:
 					continue
 				filename = os.path.join(news_dir, itemid,
 					itemid + "." + self.language_id + ".txt")
 				if not os.path.isfile(filename):
 					continue
-				if not isinstance(itemid, unicode):
-					itemid = unicode(itemid, encoding='utf_8', errors='replace')
 				item = NewsItem(filename, itemid)
 				if not item.isValid():
 					continue
@@ -170,6 +185,7 @@ class NewsManager(object):
 			if unread_lock:
 				unlockfile(unread_lock)
 
+_formatRE = re.compile("News-Item-Format:\s*([^\s]*)\s*$")
 _installedRE = re.compile("Display-If-Installed:(.*)\n")
 _profileRE = re.compile("Display-If-Profile:(.*)\n")
 _keywordRE = re.compile("Display-If-Keyword:(.*)\n")
@@ -183,7 +199,6 @@ class NewsItem(object):
 	"display if arch: x86" and so forth.
 
 	Creation of a news item involves passing in the path to the particular news item.
-
 	"""
 
 	def __init__(self, path, name):
@@ -202,24 +217,33 @@ class NewsItem(object):
 		and a vardb so we can look at installed packages).
 		Each restriction will pluck out the items that are required for it to match
 		or raise a ValueError exception if the required object is not present.
+
+		Restrictions of the form Display-X are OR'd with like-restrictions;
+		otherwise restrictions are AND'd.  any_match is the ORing and
+		all_match is the ANDing.
 		"""
 
 		if not self._parsed:
 			self.parse()
 
 		if not len(self.restrictions):
-			return True # no restrictions to match means everyone should see it
+			return True
 
 		kwargs = \
 			{ 'vardb' : vardb,
 				'config' : config,
 				'profile' : profile }
 
-		for restriction in self.restrictions:
-			if restriction.checkRestriction(**kwargs):
-				return True
+		all_match = True
+		for values in self.restrictions.itervalues():
+			any_match = False
+			for restriction in values:
+				if restriction.checkRestriction(**kwargs):
+					any_match = True
+			if not any_match:
+				all_match = False
 
-		return False # No restrictions were met; thus we aren't relevant :(
+		return all_match
 
 	def isValid(self):
 		if not self._parsed:
@@ -227,13 +251,19 @@ class NewsItem(object):
 		return self._valid
 
 	def parse(self):
-		lines = codecs.open(self.path, mode='r',
-			encoding='utf_8', errors='replace').readlines()
-		self.restrictions = []
+		lines = codecs.open(_unicode_encode(self.path,
+			encoding=_encodings['fs'], errors='strict'),
+			mode='r', encoding=_encodings['content'], errors='replace'
+			).readlines()
+		self.restrictions = {}
 		invalids = []
 		for i, line in enumerate(lines):
-			#Optimization to ignore regex matchines on lines that
-			#will never match
+			# Optimization to ignore regex matchines on lines that
+			# will never match
+			format_match = _formatRE.match(line)
+			if format_match is not None and format_match.group(1) != '1.0':
+				invalids.append((i + 1, line.rstrip('\n')))
+				break
 			if not line.startswith('D'):
 				continue
 			restricts = {  _installedRE : DisplayInstalledRestriction,
@@ -242,16 +272,19 @@ class NewsItem(object):
 			for regex, restriction in restricts.iteritems():
 				match = regex.match(line)
 				if match:
-					self.restrictions.append(restriction(match.groups()[0].strip()))
-					if not self.restrictions[-1].isValid():
+					restrict = restriction(match.groups()[0].strip())
+					if not restrict.isValid():
 						invalids.append((i + 1, line.rstrip("\n")))
+					else:
+						self.restrictions.setdefault(
+							id(restriction), []).append(restrict)
 					continue
 		if invalids:
 			self._valid = False
 			msg = []
-			msg.append("Invalid news item: %s" % (self.path,))
+			msg.append(_("Invalid news item: %s") % (self.path,))
 			for lineno, line in invalids:
-				msg.append("  line %d: %s" % (lineno, line))
+				msg.append(_("  line %d: %s") % (lineno, line))
 			writemsg_level("".join("!!! %s\n" % x for x in msg),
 				level=logging.ERROR, noiselevel=-1)
 
@@ -270,7 +303,7 @@ class DisplayRestriction(object):
 		return True
 
 	def checkRestriction(self, **kwargs):
-		raise NotImplementedError('Derived class should over-ride this method')
+		raise NotImplementedError('Derived class should override this method')
 
 class DisplayProfileRestriction(DisplayRestriction):
 	"""

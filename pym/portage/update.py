@@ -2,8 +2,15 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import errno, os, re, sys
+import codecs
+import errno
+import re
+import sys
 
+from portage import os
+from portage import _encodings
+from portage import _unicode_decode
+from portage import _unicode_encode
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.dep:dep_getkey,get_operator,isvalidatom,isjustname,remove_slot',
@@ -12,8 +19,9 @@ portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.versions:ververify'
 )
 
+from portage.const import USER_CONFIG_PATH
 from portage.exception import DirectoryNotFound, PortageException
-from portage.const import USER_CONFIG_PATH, WORLD_FILE
+from portage.localization import _
 
 ignored_dbentries = ("CONTENTS", "environment.bz2")
 
@@ -62,9 +70,10 @@ def fixdbentries(update_iter, dbdir):
 	mydata = {}
 	for myfile in [f for f in os.listdir(dbdir) if f not in ignored_dbentries]:
 		file_path = os.path.join(dbdir, myfile)
-		f = open(file_path, "r")
-		mydata[myfile] = f.read()
-		f.close()
+		mydata[myfile] = codecs.open(_unicode_encode(file_path,
+			encoding=_encodings['fs'], errors='strict'),
+			mode='r', encoding=_encodings['repo.content'],
+			errors='replace').read()
 	updated_items = update_dbentries(update_iter, mydata)
 	for myfile, mycontent in updated_items.iteritems():
 		file_path = os.path.join(dbdir, myfile)
@@ -99,9 +108,10 @@ def grab_updates(updpath, prev_mtimes=None):
 		mystat = os.stat(file_path)
 		if file_path not in prev_mtimes or \
 		long(prev_mtimes[file_path]) != long(mystat.st_mtime):
-			f = open(file_path)
-			content = f.read()
-			f.close()
+			content = codecs.open(_unicode_encode(file_path,
+				encoding=_encodings['fs'], errors='strict'),
+				mode='r', encoding=_encodings['repo.content'], errors='replace'
+				).read()
 			update_data.append((file_path, mystat, content))
 	return update_data
 
@@ -115,25 +125,25 @@ def parse_updates(mycontent):
 		if len(mysplit) == 0:
 			continue
 		if mysplit[0] not in ("move", "slotmove"):
-			errors.append("ERROR: Update type not recognized '%s'" % myline)
+			errors.append(_("ERROR: Update type not recognized '%s'") % myline)
 			continue
 		if mysplit[0] == "move":
 			if len(mysplit) != 3:
-				errors.append("ERROR: Update command invalid '%s'" % myline)
+				errors.append(_("ERROR: Update command invalid '%s'") % myline)
 				continue
 			orig_value, new_value = mysplit[1], mysplit[2]
 			for cp in (orig_value, new_value):
 				if not (isvalidatom(cp) and isjustname(cp)):
 					errors.append(
-						"ERROR: Malformed update entry '%s'" % myline)
+						_("ERROR: Malformed update entry '%s'") % myline)
 					continue
 		if mysplit[0] == "slotmove":
 			if len(mysplit)!=4:
-				errors.append("ERROR: Update command invalid '%s'" % myline)
+				errors.append(_("ERROR: Update command invalid '%s'") % myline)
 				continue
 			pkg, origslot, newslot = mysplit[1], mysplit[2], mysplit[3]
 			if not isvalidatom(pkg):
-				errors.append("ERROR: Malformed update entry '%s'" % myline)
+				errors.append(_("ERROR: Malformed update entry '%s'") % myline)
 				continue
 		
 		# The list of valid updates is filtered by continue statements above.
@@ -141,16 +151,11 @@ def parse_updates(mycontent):
 	return myupd, errors
 
 def update_config_files(config_root, protect, protect_mask, update_iter):
-	"""Perform global updates on /etc/portage/package.* and the world file.
+	"""Perform global updates on /etc/portage/package.*.
 	config_root - location of files to update
 	protect - list of paths from CONFIG_PROTECT
 	protect_mask - list of paths from CONFIG_PROTECT_MASK
 	update_iter - list of update commands as returned from parse_updates()"""
-
-	if isinstance(config_root, unicode):
-		# Avoid UnicodeDecodeError raised from
-		# os.path.join when called by os.walk.
-		config_root = config_root.encode('utf_8', 'replace')
 
 	config_root = normalize_path(config_root)
 	update_files = {}
@@ -165,9 +170,20 @@ def update_config_files(config_root, protect, protect_mask, update_iter):
 		if os.path.isdir(config_file):
 			for parent, dirs, files in os.walk(config_file):
 				for y in dirs:
+					try:
+						y = _unicode_decode(y,
+							encoding=_encodings['fs'], errors='strict')
+					except UnicodeDecodeError:
+						dirs.remove(y)
+						continue
 					if y.startswith("."):
 						dirs.remove(y)
 				for y in files:
+					try:
+						y = _unicode_decode(y,
+							encoding=_encodings['fs'], errors='strict')
+					except UnicodeDecodeError:
+						continue
 					if y.startswith("."):
 						continue
 					recursivefiles.append(
@@ -177,9 +193,11 @@ def update_config_files(config_root, protect, protect_mask, update_iter):
 	myxfiles = recursivefiles
 	for x in myxfiles:
 		try:
-			myfile = open(os.path.join(abs_user_config, x),"r")
-			file_contents[x] = myfile.readlines()
-			myfile.close()
+			file_contents[x] = codecs.open(
+				_unicode_encode(os.path.join(abs_user_config, x),
+				encoding=_encodings['fs'], errors='strict'),
+				mode='r', encoding=_encodings['content'],
+				errors='replace').readlines()
 		except IOError:
 			if file_contents.has_key(x):
 				del file_contents[x]
@@ -215,7 +233,7 @@ def update_config_files(config_root, protect, protect_mask, update_iter):
 			write_atomic(updating_file, "".join(file_contents[x]))
 		except PortageException, e:
 			writemsg("\n!!! %s\n" % str(e), noiselevel=-1)
-			writemsg("!!! An error occured while updating a config file:" + \
+			writemsg(_("!!! An error occured while updating a config file:") + \
 				" '%s'\n" % updating_file, noiselevel=-1)
 			continue
 

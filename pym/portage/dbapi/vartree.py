@@ -37,9 +37,10 @@ from portage import listdir, dep_expand, digraph, flatten, key_expand, \
 
 # This is a special version of the os module, wrapped for unicode support.
 from portage import os
-from portage import _merge_encoding
+from portage import _encodings
 from portage import _os_merge
 from portage import _selinux_merge
+from portage import _unicode_decode
 from portage import _unicode_encode
 
 from portage.cache.mappings import slot_dict_class
@@ -77,7 +78,8 @@ class PreservedLibsRegistry(object):
 		self._data = None
 		try:
 			self._data = pickle.load(
-				open(_unicode_encode(self._filename), 'rb'))
+				open(_unicode_encode(self._filename,
+					encoding=_encodings['fs'], errors='strict'), 'rb'))
 		except (ValueError, pickle.UnpicklingError), e:
 			writemsg_level(_("!!! Error loading '%s': %s\n") % \
 				(self._filename, e), level=logging.ERROR, noiselevel=-1)
@@ -324,7 +326,15 @@ class LinkageMap(object):
 				raise CommandNotFound(args[0])
 			else:
 				for l in proc.stdout:
-					l = portage._unicode_decode(l)
+					try:
+						l = _unicode_decode(l,
+							encoding=_encodings['content'], errors='strict')
+					except UnicodeDecodeError:
+						l = _unicode_decode(l,
+							encoding=_encodings['content'], errors='replace')
+						writemsg_level(_("\nError decoding characters " \
+							"returned from scanelf: %s\n\n") % (l,),
+							level=logging.ERROR, noiselevel=-1)
 					l = l[3:].rstrip("\n")
 					if not l:
 						continue
@@ -762,7 +772,8 @@ class vardbapi(dbapi):
 		now has a categories property that is generated from the
 		available packages.
 		"""
-		self.root = portage._unicode_decode(root)
+		self.root = _unicode_decode(root,
+			encoding=_encodings['content'], errors='strict')
 
 		#cache for category directory mtimes
 		self.mtdircache = {}
@@ -837,7 +848,9 @@ class vardbapi(dbapi):
 				counter, = self.aux_get(cpv, aux_keys)
 			except KeyError:
 				continue
-			h.update(counter)
+			h.update(_unicode_encode(counter,
+				encoding=_encodings['repo.content'],
+				errors='backslashreplace'))
 		return h.hexdigest()
 
 	def cpv_inject(self, mycpv):
@@ -1102,7 +1115,8 @@ class vardbapi(dbapi):
 			# python-2.x, but buffering makes it much worse.
 			open_kwargs["buffering"] = 0
 		try:
-			f = open(_unicode_encode(self._aux_cache_filename),
+			f = open(_unicode_encode(self._aux_cache_filename,
+				encoding=_encodings['fs'], errors='strict'),
 				mode='rb', **open_kwargs)
 			mypickle = pickle.Unpickler(f)
 			try:
@@ -1204,7 +1218,8 @@ class vardbapi(dbapi):
 		if cache_valid:
 			# Migrate old metadata to unicode.
 			for k, v in metadata.iteritems():
-				metadata[k] = portage._unicode_decode(v)
+				metadata[k] = _unicode_decode(v,
+					encoding=_encodings['repo.content'], errors='replace')
 
 			mydata.update(metadata)
 			pull_me.difference_update(mydata)
@@ -1249,8 +1264,11 @@ class vardbapi(dbapi):
 				results.append(long(st.st_mtime))
 				continue
 			try:
-				myf = codecs.open(_unicode_encode(os.path.join(mydir, x)),
-					mode='r', encoding='utf_8', errors='replace')
+				myf = codecs.open(
+					_unicode_encode(os.path.join(mydir, x),
+					encoding=_encodings['fs'], errors='strict'),
+					mode='r', encoding=_encodings['repo.content'],
+					errors='replace')
 				try:
 					myd = myf.read()
 				finally:
@@ -1318,8 +1336,11 @@ class vardbapi(dbapi):
 		new_vdb = False
 		counter = -1
 		try:
-			cfile = codecs.open(_unicode_encode(self._counter_path), mode='r',
-				encoding='utf_8', errors='replace')
+			cfile = codecs.open(
+				_unicode_encode(self._counter_path,
+				encoding=_encodings['fs'], errors='strict'),
+				mode='r', encoding=_encodings['repo.content'],
+				errors='replace')
 		except EnvironmentError, e:
 			new_vdb = not bool(self.cpv_all())
 			if not new_vdb:
@@ -1386,7 +1407,8 @@ class vardbapi(dbapi):
 		removed = 0
 
 		for filename in paths:
-			filename = portage._unicode_decode(filename)
+			filename = _unicode_decode(filename,
+				encoding=_encodings['content'], errors='strict')
 			filename = normalize_path(filename)
 			if relative_paths:
 				relative_filename = filename
@@ -1454,7 +1476,9 @@ class vardbapi(dbapi):
 			h = self._new_hash()
 			# Always use a constant utf_8 encoding here, since
 			# the "default" encoding can change.
-			h.update(portage._unicode_encode(s))
+			h.update(_unicode_encode(s,
+				encoding=_encodings['repo.content'],
+				errors='backslashreplace'))
 			h = h.hexdigest()
 			h = h[-self._hex_chars:]
 			h = int(h, 16)
@@ -1902,8 +1926,10 @@ class dblink(object):
 			return self.contentscache
 		pkgfiles = {}
 		try:
-			myc = codecs.open(_unicode_encode(contents_file), mode='r',
-				encoding='utf_8', errors='replace')
+			myc = codecs.open(_unicode_encode(contents_file,
+				encoding=_encodings['fs'], errors='strict'),
+				mode='r', encoding=_encodings['repo.content'],
+				errors='replace')
 		except EnvironmentError, e:
 			if e.errno != errno.ENOENT:
 				raise
@@ -2286,6 +2312,7 @@ class dblink(object):
 		"""
 
 		os = _os_merge
+		perf_md5 = perform_md5
 		showMessage = self._display_merge
 		scheduler = self._scheduler
 
@@ -2376,6 +2403,23 @@ class dblink(object):
 					scheduler.scheduleYield()
 
 				obj = normalize_path(objkey)
+				if os is _os_merge:
+					try:
+						_unicode_encode(obj,
+							encoding=_encodings['merge'], errors='strict')
+					except UnicodeEncodeError:
+						# The package appears to have been merged with a 
+						# different value of sys.getfilesystemencoding(),
+						# so fall back to utf_8 if appropriate.
+						try:
+							_unicode_encode(obj,
+								encoding=_encodings['fs'], errors='strict')
+						except UnicodeEncodeError:
+							pass
+						else:
+							os = portage.os
+							perf_md5 = portage.checksum.perform_md5
+
 				file_data = pkgfiles[objkey]
 				file_type = file_data[0]
 				statobj = None
@@ -2465,7 +2509,7 @@ class dblink(object):
 						continue
 					mymd5 = None
 					try:
-						mymd5 = perform_md5(obj, calc_prelink=1)
+						mymd5 = perf_md5(obj, calc_prelink=1)
 					except FileNotFound, e:
 						# the file has disappeared between now and our stat call
 						show_unmerge("---", unmerge_desc["!obj"], file_type, obj)
@@ -2563,9 +2607,11 @@ class dblink(object):
 
 		os = _os_merge
 
-		filename = portage._unicode_decode(filename)
+		filename = _unicode_decode(filename,
+			encoding=_encodings['content'], errors='strict')
 
-		destroot = portage._unicode_decode(destroot)
+		destroot = _unicode_decode(destroot,
+			encoding=_encodings['content'], errors='strict')
 
 		destfile = normalize_path(
 			os.path.join(destroot, filename.lstrip(os.path.sep)))
@@ -2751,7 +2797,8 @@ class dblink(object):
 		new_contents = self.getcontents().copy()
 		old_contents = self._installed_instance.getcontents()
 		for f in sorted(preserve_paths):
-			f = portage._unicode_decode(f, encoding=_merge_encoding)
+			f = _unicode_decode(f,
+				encoding=_encodings['content'], errors='strict')
 			f_abs = os.path.join(root, f.lstrip(os.sep))
 			contents_entry = old_contents.get(f_abs)
 			if contents_entry is None:
@@ -3187,10 +3234,14 @@ class dblink(object):
 
 		os = _os_merge
 
-		srcroot = portage._unicode_decode(srcroot)
-		destroot = portage._unicode_decode(destroot)
-		inforoot = portage._unicode_decode(inforoot)
-		myebuild = portage._unicode_decode(myebuild)
+		srcroot = _unicode_decode(srcroot,
+			encoding=_encodings['content'], errors='strict')
+		destroot = _unicode_decode(destroot,
+			encoding=_encodings['content'], errors='strict')
+		inforoot = _unicode_decode(inforoot,
+			encoding=_encodings['content'], errors='strict')
+		myebuild = _unicode_decode(myebuild,
+			encoding=_encodings['content'], errors='strict')
 
 		showMessage = self._display_merge
 		scheduler = self._scheduler
@@ -3207,8 +3258,10 @@ class dblink(object):
 		for var_name in ('CHOST', 'SLOT'):
 			try:
 				val = codecs.open(_unicode_encode(
-					os.path.join(inforoot, var_name)), mode='r',
-					encoding='utf_8', errors='replace').readline().strip()
+					os.path.join(inforoot, var_name),
+					encoding=_encodings['fs'], errors='strict'),
+					mode='r', encoding=_encodings['repo.content'],
+					errors='replace').readline().strip()
 			except EnvironmentError, e:
 				if e.errno != errno.ENOENT:
 					raise
@@ -3278,30 +3331,81 @@ class dblink(object):
 					max_dblnk = dblnk
 			self._installed_instance = max_dblnk
 
-		myfilelist = []
-		mylinklist = []
-		paths_with_newlines = []
-		srcroot_len = len(srcroot)
-		def onerror(e):
-			raise
-		for parent, dirs, files in os.walk(srcroot, onerror=onerror):
-			parent = portage._unicode_decode(parent, encoding=_merge_encoding)
-			for f in files:
-				f = portage._unicode_decode(f, encoding=_merge_encoding)
-				file_path = os.path.join(parent, f)
-				relative_path = file_path[srcroot_len:]
+		# We check for unicode encoding issues after src_install. However,
+		# the check must be repeated here for binary packages (it's
+		# inexpensive since we call os.walk() here anyway).
+		unicode_errors = []
 
-				if "\n" in relative_path:
-					paths_with_newlines.append(relative_path)
+		while True:
 
-				file_mode = os.lstat(file_path).st_mode
-				if stat.S_ISREG(file_mode):
-					myfilelist.append(relative_path)
-				elif stat.S_ISLNK(file_mode):
-					# Note: os.walk puts symlinks to directories in the "dirs"
-					# list and it does not traverse them since that could lead
-					# to an infinite recursion loop.
-					mylinklist.append(relative_path)
+			unicode_error = False
+
+			myfilelist = []
+			mylinklist = []
+			paths_with_newlines = []
+			srcroot_len = len(srcroot)
+			def onerror(e):
+				raise
+			for parent, dirs, files in os.walk(srcroot, onerror=onerror):
+				try:
+					parent = _unicode_decode(parent,
+						encoding=_encodings['merge'], errors='strict')
+				except UnicodeDecodeError:
+					new_parent = _unicode_decode(parent,
+						encoding=_encodings['merge'], errors='replace')
+					new_parent = _unicode_encode(new_parent,
+						encoding=_encodings['merge'], errors='backslashreplace')
+					new_parent = _unicode_decode(new_parent,
+						encoding=_encodings['merge'], errors='replace')
+					os.rename(parent, new_parent)
+					unicode_error = True
+					unicode_errors.append(new_parent[srcroot_len:])
+					break
+
+				for fname in files:
+					try:
+						fname = _unicode_decode(fname,
+							encoding=_encodings['merge'], errors='strict')
+					except UnicodeDecodeError:
+						fpath = portage._os.path.join(
+							parent.encode(_encodings['merge']), fname)
+						new_fname = _unicode_decode(fname,
+							encoding=_encodings['merge'], errors='replace')
+						new_fname = _unicode_encode(new_fname,
+							encoding=_encodings['merge'], errors='backslashreplace')
+						new_fname = _unicode_decode(new_fname,
+							encoding=_encodings['merge'], errors='replace')
+						new_fpath = os.path.join(parent, new_fname)
+						os.rename(fpath, new_fpath)
+						unicode_error = True
+						unicode_errors.append(new_fpath[srcroot_len:])
+						fname = new_fname
+						fpath = new_fpath
+					else:
+						fpath = os.path.join(parent, fname)
+
+					relative_path = fpath[srcroot_len:]
+
+					if "\n" in relative_path:
+						paths_with_newlines.append(relative_path)
+
+					file_mode = os.lstat(fpath).st_mode
+					if stat.S_ISREG(file_mode):
+						myfilelist.append(relative_path)
+					elif stat.S_ISLNK(file_mode):
+						# Note: os.walk puts symlinks to directories in the "dirs"
+						# list and it does not traverse them since that could lead
+						# to an infinite recursion loop.
+						mylinklist.append(relative_path)
+
+				if unicode_error:
+					break
+
+			if not unicode_error:
+				break
+
+		if unicode_errors:
+			eerror(portage._merge_unicode_error(unicode_errors))
 
 		if paths_with_newlines:
 			msg = []
@@ -3498,13 +3602,17 @@ class dblink(object):
 
 		# write local package counter for recording
 		counter = self.vartree.dbapi.counter_tick(self.myroot, mycpv=self.mycpv)
-		open(_unicode_encode(os.path.join(self.dbtmpdir, 'COUNTER')),
-			'w').write(str(counter))
+		codecs.open(_unicode_encode(os.path.join(self.dbtmpdir, 'COUNTER'),
+			encoding=_encodings['fs'], errors='strict'),
+			'w', encoding=_encodings['repo.content'], errors='backslashreplace'
+			).write(str(counter))
 
 		# open CONTENTS file (possibly overwriting old one) for recording
 		outfile = codecs.open(_unicode_encode(
-			os.path.join(self.dbtmpdir, 'CONTENTS')),
-			mode='w', encoding='utf_8', errors='replace')
+			os.path.join(self.dbtmpdir, 'CONTENTS'),
+			encoding=_encodings['fs'], errors='strict'),
+			mode='w', encoding=_encodings['repo.content'],
+			errors='backslashreplace')
 
 		self.updateprotect()
 
@@ -3854,7 +3962,7 @@ class dblink(object):
 				# unlinking no longer necessary; "movefile" will overwrite symlinks atomically and correctly
 				mymtime = movefile(mysrc, mydest, newmtime=thismtime,
 					sstat=mystat, mysettings=self.settings,
-					encoding=_merge_encoding)
+					encoding=_encodings['merge'])
 				if mymtime != None:
 					showMessage(">>> %s -> %s\n" % (mydest, myto))
 					outfile.write("sym "+myrealdest+" -> "+myto+" "+str(mymtime)+"\n")
@@ -3894,7 +4002,7 @@ class dblink(object):
 						# a non-directory and non-symlink-to-directory.  Won't work for us.  Move out of the way.
 						if movefile(mydest, mydest+".backup",
 							mysettings=self.settings,
-							encoding=_merge_encoding) is None:
+							encoding=_encodings['merge']) is None:
 							return 1
 						showMessage(_("bak %s %s.backup\n") % (mydest, mydest),
 							level=logging.ERROR, noiselevel=-1)
@@ -3999,7 +4107,7 @@ class dblink(object):
 					mymtime = movefile(mysrc, mydest, newmtime=thismtime,
 						sstat=mystat, mysettings=self.settings,
 						hardlink_candidates=hardlink_candidates,
-						encoding=_merge_encoding)
+						encoding=_encodings['merge'])
 					if mymtime is None:
 						return 1
 					if hardlink_candidates is not None:
@@ -4016,7 +4124,7 @@ class dblink(object):
 					# destination doesn't exist
 					if movefile(mysrc, mydest, newmtime=thismtime,
 						sstat=mystat, mysettings=self.settings,
-						encoding=_merge_encoding) is not None:
+						encoding=_encodings['merge']) is not None:
 						zing = ">>>"
 					else:
 						return 1
@@ -4102,8 +4210,11 @@ class dblink(object):
 		"returns contents of a file with whitespace converted to spaces"
 		if not os.path.exists(self.dbdir+"/"+name):
 			return ""
-		mydata = codecs.open(_unicode_encode(os.path.join(self.dbdir, name)),
-			mode='r', encoding='utf_8', errors='replace').read().split()
+		mydata = codecs.open(
+			_unicode_encode(os.path.join(self.dbdir, name),
+			encoding=_encodings['fs'], errors='strict'),
+			mode='r', encoding=_encodings['repo.content'], errors='replace'
+			).read().split()
 		return " ".join(mydata)
 
 	def copyfile(self,fname):
@@ -4112,21 +4223,28 @@ class dblink(object):
 	def getfile(self,fname):
 		if not os.path.exists(self.dbdir+"/"+fname):
 			return ""
-		return codecs.open(_unicode_encode(os.path.join(self.dbdir, fname)), 
-			mode='r', encoding='utf_8', errors='replace').read()
+		return codecs.open(_unicode_encode(os.path.join(self.dbdir, fname),
+			encoding=_encodings['fs'], errors='strict'), 
+			mode='r', encoding=_encodings['repo.content'], errors='replace'
+			).read()
 
 	def setfile(self,fname,data):
-		mode = 'w'
+		kwargs = {}
 		if fname == 'environment.bz2' or not isinstance(data, basestring):
-			mode = 'wb'
-		write_atomic(os.path.join(self.dbdir, fname), data, mode=mode)
+			kwargs['mode'] = 'wb'
+		else:
+			kwargs['mode'] = 'w'
+			kwargs['encoding'] = _encodings['repo.content']
+		write_atomic(os.path.join(self.dbdir, fname), data, **kwargs)
 
 	def getelements(self,ename):
 		if not os.path.exists(self.dbdir+"/"+ename):
 			return []
 		mylines = codecs.open(_unicode_encode(
-			os.path.join(self.dbdir, ename)), mode='r',
-			encoding='utf_8', errors='replace').readlines()
+			os.path.join(self.dbdir, ename),
+			encoding=_encodings['fs'], errors='strict'),
+			mode='r', encoding=_encodings['repo.content'], errors='replace'
+			).readlines()
 		myreturn = []
 		for x in mylines:
 			for y in x[:-1].split():
@@ -4135,8 +4253,10 @@ class dblink(object):
 
 	def setelements(self,mylist,ename):
 		myelement = codecs.open(_unicode_encode(
-			os.path.join(self.dbdir, ename)), mode='w',
-			encoding='utf_8', errors='replace')
+			os.path.join(self.dbdir, ename),
+			encoding=_encodings['fs'], errors='strict'),
+			mode='w', encoding=_encodings['repo.content'],
+			errors='backslashreplace')
 		for x in mylist:
 			myelement.write(x+"\n")
 		myelement.close()
@@ -4214,7 +4334,8 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None):
 				tarinfo.size = 0
 				tar.addfile(tarinfo)
 			else:
-				f = open(_unicode_encode(path, encoding=_merge_encoding), 'rb')
+				f = open(_unicode_encode(path,
+					encoding=_encodings['merge'], errors='strict'), 'rb')
 				try:
 					tar.addfile(tarinfo, f)
 				finally:

@@ -12,11 +12,13 @@ portage.proxy.lazyimport.lazyimport(globals(),
 )
 
 from portage import os
+from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
 from portage.exception import DigestException, FileNotFound, \
 	InvalidDataType, MissingParameter, PermissionDenied, \
 	PortageException, PortagePackageException
+from portage.localization import _
 
 class FileNotInManifestException(PortageException):
 	pass
@@ -141,8 +143,9 @@ class Manifest(object):
 		"""Parse a manifest.  If myhashdict is given then data will be added too it.
 		   Otherwise, a new dict will be created and returned."""
 		try:
-			fd = codecs.open(_unicode_encode(file_path), mode='r',
-				encoding='utf_8', errors='replace')
+			fd = codecs.open(_unicode_encode(file_path,
+				encoding=_encodings['fs'], errors='strict'), mode='r',
+				encoding=_encodings['repo.content'], errors='replace')
 			if myhashdict is None:
 				myhashdict = {}
 			self._parseDigests(fd, myhashdict=myhashdict, **kwargs)
@@ -218,7 +221,7 @@ class Manifest(object):
 		for t in self.fhashdict:
 			for f in self.fhashdict[t]:
 				if portage.const.MANIFEST2_REQUIRED_HASH not in self.fhashdict[t][f]:
-					raise MissingParameter("Missing %s checksum: %s %s" % (portage.const.MANIFEST2_REQUIRED_HASH, t, f))
+					raise MissingParameter(_("Missing %s checksum: %s %s") % (portage.const.MANIFEST2_REQUIRED_HASH, t, f))
 
 	def write(self, sign=False, force=False):
 		""" Write Manifest instance to disk, optionally signing it """
@@ -228,8 +231,10 @@ class Manifest(object):
 			update_manifest = True
 			if not force:
 				try:
-					f = codecs.open(_unicode_encode(self.getFullname()),
-						mode='r', encoding='utf_8', errors='replace')
+					f = codecs.open(_unicode_encode(self.getFullname(),
+						encoding=_encodings['fs'], errors='strict'),
+						mode='r', encoding=_encodings['repo.content'],
+						errors='replace')
 					oldentries = list(self._parseManifestLines(f))
 					f.close()
 					if len(oldentries) == len(myentries):
@@ -320,7 +325,11 @@ class Manifest(object):
 		for pkgdir, pkgdir_dirs, pkgdir_files in os.walk(pkgdir):
 			break
 		for f in pkgdir_files:
-			f = _unicode_decode(f)
+			try:
+				f = _unicode_decode(f,
+					encoding=_encodings['fs'], errors='strict')
+			except UnicodeDecodeError:
+				continue
 			if f[:1] == ".":
 				continue
 			pf = None
@@ -334,11 +343,11 @@ class Manifest(object):
 				cpv = "%s/%s" % (cat, pf)
 				if not ps:
 					raise PortagePackageException(
-						"Invalid package name: '%s'" % cpv)
+						_("Invalid package name: '%s'") % cpv)
 				if ps[0] != pn:
 					raise PortagePackageException(
-						"Package name does not " + \
-						"match directory name: '%s'" % cpv)
+						_("Package name does not "
+						"match directory name: '%s'") % cpv)
 				cpvlist.append(cpv)
 			elif manifest2MiscfileFilter(f):
 				mytype = "MISC"
@@ -351,6 +360,11 @@ class Manifest(object):
 		cut_len = len(os.path.join(pkgdir, "files") + os.sep)
 		for parentdir, dirs, files in os.walk(os.path.join(pkgdir, "files")):
 			for f in files:
+				try:
+					f = _unicode_decode(f,
+						encoding=_encodings['fs'], errors='strict')
+				except UnicodeDecodeError:
+					continue
 				full_path = os.path.join(parentdir, f)
 				recursive_files.append(full_path[cut_len:])
 		for f in recursive_files:
@@ -424,7 +438,7 @@ class Manifest(object):
 		except FileNotFound, e:
 			if not ignoreMissing:
 				raise
-			return False, "File Not Found: '%s'" % str(e)
+			return False, _("File Not Found: '%s'") % str(e)
 
 	def checkCpvHashes(self, cpv, checkDistfiles=True, onlyDistfiles=False, checkMiscfiles=False):
 		""" check the hashes for all files associated to the given cpv, include all
@@ -508,8 +522,9 @@ class Manifest(object):
 		mfname = self.getFullname()
 		if not os.path.exists(mfname):
 			return rVal
-		myfile = codecs.open(_unicode_encode(mfname),
-			mode='r', encoding='utf_8', errors='replace')
+		myfile = codecs.open(_unicode_encode(mfname,
+			encoding=_encodings['fs'], errors='strict'),
+			mode='r', encoding=_encodings['repo.content'], errors='replace')
 		lines = myfile.readlines()
 		myfile.close()
 		for l in lines:

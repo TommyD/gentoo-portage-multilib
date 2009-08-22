@@ -4,8 +4,12 @@
 # $Id$
 
 import codecs
-import os
+import errno
 import stat
+from portage import os
+from portage import _encodings
+from portage import _unicode_decode
+from portage import _unicode_encode
 from portage.localization import _
 
 class LoaderError(Exception):
@@ -40,11 +44,6 @@ def RecursiveFileLoader(filename):
 	@returns: List of files to process
 	"""
 
-	if isinstance(filename, unicode):
-		# Avoid UnicodeDecodeError raised from
-		# os.path.join when called by os.walk.
-		filename = filename.encode('utf_8', 'replace')
-
 	try:
 		st = os.stat(filename)
 	except OSError:
@@ -55,6 +54,11 @@ def RecursiveFileLoader(filename):
 				if d[:1] == '.' or d == 'CVS':
 					dirs.remove(d)
 			for f in files:
+				try:
+					f = _unicode_decode(f,
+						encoding=_encodings['fs'], errors='strict')
+				except UnicodeDecodeError:
+					continue
 				if f[:1] == '.' or f[-1:] == '~':
 					continue
 				yield os.path.join(root, f)
@@ -145,9 +149,18 @@ class FileLoader(DataLoader):
 		# once, which may be expensive due to digging in child classes.
 		func = self.lineParser
 		for fn in RecursiveFileLoader(self.fname):
-			f = codecs.open(fn, mode='r', encoding='utf_8', errors='replace')
+			try:
+				f = codecs.open(_unicode_encode(fn,
+					encoding=_encodings['fs'], errors='strict'), mode='r',
+					encoding=_encodings['content'], errors='replace')
+			except EnvironmentError, e:
+				if e.errno not in (errno.ENOENT, errno.ESTALE):
+					raise
+				del e
+				continue
 			for line_num, line in enumerate(f):
 				func(line, line_num, data, errors)
+			f.close()
 		return (data, errors)
 
 	def lineParser(self, line, line_num, data, errors):

@@ -26,8 +26,9 @@ from portage.manifest import Manifest
 from portage import eclass_cache, auxdbkeys, doebuild, flatten, \
 	listdir, dep_expand, eapi_is_supported, key_expand, dep_check, \
 	_eapi_is_deprecated
-from portage import _unicode_encode
 from portage import os
+from portage import _encodings
+from portage import _unicode_encode
 
 import codecs
 import logging
@@ -172,8 +173,10 @@ class portdbapi(dbapi):
 			repo_name_path = os.path.join(path, REPO_NAME_LOC)
 			try:
 				repo_name = codecs.open(
-					_unicode_encode(repo_name_path), mode='r',
-					encoding='utf_8', errors='replace').readline().strip()
+					_unicode_encode(repo_name_path,
+					encoding=_encodings['fs'], errors='strict'),
+					mode='r', encoding=_encodings['repo.content'],
+					errors='replace').readline().strip()
 			except EnvironmentError:
 				# warn about missing repo_name at some other time, since we
 				# don't want to see a warning every time the portage module is
@@ -601,15 +604,11 @@ class portdbapi(dbapi):
 		mydata, st, emtime = self._pull_valid_cache(mycpv, myebuild, mylocation)
 		doregen = mydata is None
 
-		writemsg(_("auxdb is valid: ")+str(not doregen)+" "+str(pkg)+"\n", 2)
-
 		if doregen:
 			if myebuild in self._broken_ebuilds:
 				raise KeyError(mycpv)
 			if not self._have_root_eclass_dir:
 				raise KeyError(mycpv)
-			writemsg("doregen: %s %s\n" % (doregen, mycpv), 2)
-			writemsg(_("Generating cache entry(0) for: ")+str(myebuild)+"\n", 1)
 
 			self.doebuild_settings.setcpv(mycpv)
 			mydata = {}
@@ -621,8 +620,10 @@ class portdbapi(dbapi):
 			if eapi is None and \
 				'parse-eapi-ebuild-head' in self.doebuild_settings.features:
 				eapi = portage._parse_eapi_ebuild_head(codecs.open(
-					_unicode_encode(myebuild), mode='r',
-					encoding='utf_8', errors='replace'))
+					_unicode_encode(myebuild,
+					encoding=_encodings['fs'], errors='strict'),
+					mode='r', encoding=_encodings['repo.content'],
+					errors='replace'))
 
 			if eapi is not None:
 				self.doebuild_settings.configdict['pkg']['EAPI'] = eapi
@@ -826,7 +827,7 @@ class portdbapi(dbapi):
 						os.path.join(self.mysettings["DISTDIR"], x), mysums[x])
 				except FileNotFound, e:
 					ok = False
-					reason = _("File Not Found: '%s'") % str(e)
+					reason = _("File Not Found: '%s'") % (e,)
 			if not ok:
 				failures[x] = reason
 		if failures:
@@ -1100,7 +1101,7 @@ class portdbapi(dbapi):
 			except PortageException, e:
 				writemsg("!!! Error: aux_get('%s', %s)\n" % (mycpv, aux_keys),
 					noiselevel=-1)
-				writemsg("!!! %s\n" % str(e), noiselevel=-1)
+				writemsg("!!! %s\n" % (e,), noiselevel=-1)
 				del e
 				continue
 			eapi = metadata["EAPI"]
