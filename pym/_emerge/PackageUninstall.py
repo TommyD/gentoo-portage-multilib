@@ -6,17 +6,20 @@ import codecs
 import logging
 import portage
 from portage import os
+from portage import _encodings
+from portage import _unicode_encode
 from _emerge.AsynchronousTask import AsynchronousTask
 from _emerge.unmerge import unmerge
 from _emerge.UninstallFailure import UninstallFailure
 
 class PackageUninstall(AsynchronousTask):
 
-	__slots__ = ("ldpath_mtimes", "opts", "pkg", "scheduler", "settings")
+	__slots__ = ("world_atom", "ldpath_mtimes", "opts",
+			"pkg", "scheduler", "settings")
 
 	def _start(self):
 		try:
-			unmerge(self.pkg.root_config, self.opts, "unmerge",
+			retval = unmerge(self.pkg.root_config, self.opts, "unmerge",
 				[self.pkg.cpv], self.ldpath_mtimes, clean_world=0,
 				clean_delay=0, raise_on_error=1, scheduler=self.scheduler,
 				writemsg_level=self._writemsg_level)
@@ -24,6 +27,10 @@ class PackageUninstall(AsynchronousTask):
 			self.returncode = e.status
 		else:
 			self.returncode = os.EX_OK
+
+		if retval == 1:
+			self.world_atom(self.pkg)
+
 		self.wait()
 
 	def _writemsg_level(self, msg, level=0, noiselevel=0):
@@ -40,8 +47,9 @@ class PackageUninstall(AsynchronousTask):
 				portage.util.writemsg_level(msg,
 					level=level, noiselevel=noiselevel)
 
-			f = codecs.open(log_path, mode='a',
-				encoding='utf_8', errors='replace')
+			f = codecs.open(_unicode_encode(log_path,
+				encoding=_encodings['fs'], errors='strict'),
+				mode='a', encoding=_encodings['content'], errors='replace')
 			try:
 				f.write(msg)
 			finally:

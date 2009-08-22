@@ -7,7 +7,10 @@ __all__ = ["lockdir", "unlockdir", "lockfile", "unlockfile", \
 	"hardlock_name", "hardlink_is_mine", "hardlink_lockfile", \
 	"unhardlink_lockfile", "hardlock_cleanup"]
 
-import errno, os, stat, time
+import errno
+import stat
+import time
+from portage import os
 from portage.exception import DirectoryNotFound, FileNotFound, \
 	InvalidData, TryAgain, OperationNotPermitted, PermissionDenied
 from portage.data import portage_gid
@@ -35,7 +38,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 	import fcntl
 
 	if not mypath:
-		raise InvalidData("Empty path given")
+		raise InvalidData(_("Empty path given"))
 
 	if isinstance(mypath, basestring) and mypath[-1] == '/':
 		mypath = mypath[:-1]
@@ -82,8 +85,8 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 							unlinkfile=unlinkfile, waiting_msg=waiting_msg,
 							flags=flags)
 					else:
-						writemsg("Cannot chown a lockfile. This could " + \
-							"cause inconvenience later.\n")
+						writemsg(_("Cannot chown a lockfile. This could "
+							"cause inconvenience later.\n"))
 
 		finally:
 			os.umask(old_mask)
@@ -92,7 +95,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 		myfd = mypath
 
 	else:
-		raise ValueError("Unknown type passed in '%s': '%s'" % \
+		raise ValueError(_("Unknown type passed in '%s': '%s'") % \
 			(type(mypath), mypath))
 
 	# try for a non-blocking lock, if it's held, throw a message
@@ -113,9 +116,9 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 			out.quiet = _quiet
 			if waiting_msg is None:
 				if isinstance(mypath, int):
-					waiting_msg = "waiting for lock on fd %i" % myfd
+					waiting_msg = _("waiting for lock on fd %i") % myfd
 				else:
-					waiting_msg = "waiting for lock on %s\n" % lockfilename
+					waiting_msg = _("waiting for lock on %s\n") % lockfilename
 			out.ebegin(waiting_msg)
 			# try for the exclusive lock now.
 			try:
@@ -148,7 +151,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 		myfd != HARDLINK_FD and _fstat_nlink(myfd) == 0:
 		# The file was deleted on us... Keep trying to make one...
 		os.close(myfd)
-		writemsg("lockfile recurse\n",1)
+		writemsg(_("lockfile recurse\n"), 1)
 		lockfilename, myfd, unlinkfile, locking_method = lockfile(
 			mypath, wantnewlockfile=wantnewlockfile, unlinkfile=unlinkfile,
 			waiting_msg=waiting_msg, flags=flags)
@@ -191,7 +194,7 @@ def unlockfile(mytuple):
 	# myfd may be None here due to myfd = mypath in lockfile()
 	if isinstance(lockfilename, basestring) and \
 		not os.path.exists(lockfilename):
-		writemsg("lockfile does not exist '%s'\n" % lockfilename,1)
+		writemsg(_("lockfile does not exist '%s'\n") % lockfilename,1)
 		if myfd is not None:
 			os.close(myfd)
 		return False
@@ -204,7 +207,7 @@ def unlockfile(mytuple):
 	except OSError:
 		if isinstance(lockfilename, basestring):
 			os.close(myfd)
-		raise IOError("Failed to unlock file '%s'\n" % lockfilename)
+		raise IOError(_("Failed to unlock file '%s'\n") % lockfilename)
 
 	try:
 		# This sleep call was added to allow other processes that are
@@ -217,17 +220,17 @@ def unlockfile(mytuple):
 			locking_method(myfd,fcntl.LOCK_EX|fcntl.LOCK_NB)
 			# We won the lock, so there isn't competition for it.
 			# We can safely delete the file.
-			writemsg("Got the lockfile...\n",1)
+			writemsg(_("Got the lockfile...\n"), 1)
 			if _fstat_nlink(myfd) == 1:
 				os.unlink(lockfilename)
-				writemsg("Unlinked lockfile...\n",1)
+				writemsg(_("Unlinked lockfile...\n"), 1)
 				locking_method(myfd,fcntl.LOCK_UN)
 			else:
-				writemsg("lockfile does not exist '%s'\n" % lockfilename,1)
+				writemsg(_("lockfile does not exist '%s'\n") % lockfilename, 1)
 				os.close(myfd)
 				return False
 	except Exception, e:
-		writemsg("Failed to get lock... someone took it.\n",1)
+		writemsg(_("Failed to get lock... someone took it.\n"), 1)
 		writemsg(str(e)+"\n",1)
 
 	# why test lockfilename?  because we may have been handed an
@@ -289,10 +292,10 @@ def hardlink_lockfile(lockfilename, max_wait=14400):
 		else:
 			reported_waiting = True
 			from portage.const import PORTAGE_BIN_PATH
-			msg = "\nWaiting on (hardlink) lockfile:" + \
-				" (one '.' per 3 seconds)\n" + \
-				"%s/clean_locks can fix stuck locks.\n" % PORTAGE_BIN_PATH + \
-				"Lockfile: %s\n" % lockfilename
+			msg = _("\nWaiting on (hardlink) lockfile: (one '.' per 3 seconds)\n"
+				"%(bin_path)s/clean_locks can fix stuck locks.\n"
+				"Lockfile: %(lockfilename)s\n") % \
+				{"bin_path": PORTAGE_BIN_PATH, "lockfilename": lockfilename}
 			writemsg(msg, noiselevel=-1)
 		time.sleep(3)
 	
@@ -339,7 +342,7 @@ def hardlock_cleanup(path, remove_all_locks=False):
 				mycount += 1
 
 
-	results.append("Found %(count)s locks" % {"count":mycount})
+	results.append(_("Found %(count)s locks") % {"count":mycount})
 	
 	for x in mylist:
 		if myhost in mylist[x] or remove_all_locks:

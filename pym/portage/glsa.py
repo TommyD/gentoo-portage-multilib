@@ -2,15 +2,20 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import os
+import codecs
 import sys
 import urllib
 import re
 import xml.dom.minidom
 
+from portage import os
+from portage import _encodings
+from portage import _unicode_decode
+from portage import _unicode_encode
 from portage.versions import pkgsplit, catpkgsplit, pkgcmp, best
 from portage.util import grabfile
 from portage.const import CACHE_PATH
+from portage.localization import _
 
 # Note: the space for rgt and rlt is important !!
 # FIXME: use slot deps instead, requires GLSA format versioning
@@ -185,7 +190,7 @@ def getText(node, format):
 			elif subnode.nodeName == "#text":
 				rValue += subnode.data
 			else:
-				raise GlsaFormatException("Invalid Tag found: ", subnode.nodeName)
+				raise GlsaFormatException(_("Invalid Tag found: "), subnode.nodeName)
 	if format == "strip":
 		rValue = rValue.strip(" \n\t")
 		rValue = re.sub("[\s]{2,}", " ", rValue)
@@ -434,12 +439,14 @@ class Glsa:
 		@type	portdbapi: portage.dbapi.porttree.portdbapi
 		@param	portdbapi: ebuild repository
 		"""
+		myid = _unicode_decode(myid,
+			encoding=_encodings['content'], errors='strict')
 		if re.match(r'\d{6}-\d{2}', myid):
 			self.type = "id"
 		elif os.path.exists(myid):
 			self.type = "file"
 		else:
-			raise GlsaArgumentException("Given ID "+myid+" isn't a valid GLSA ID or filename.")
+			raise GlsaArgumentException(_("Given ID %s isn't a valid GLSA ID or filename.") % myid)
 		self.nr = myid
 		self.config = myconfig
 		self.vardbapi = vardbapi
@@ -487,7 +494,7 @@ class Glsa:
 			raise GlsaTypeException(self.DOM.doctype.systemId)
 		myroot = self.DOM.getElementsByTagName("glsa")[0]
 		if self.type == "id" and myroot.getAttribute("id") != self.nr:
-			raise GlsaFormatException("filename and internal id don't match:" + myroot.getAttribute("id") + " != " + self.nr)
+			raise GlsaFormatException(_("filename and internal id don't match:") + myroot.getAttribute("id") + " != " + self.nr)
 
 		# the simple (single, required, top-level, #PCDATA) tags first
 		self.title = getText(myroot.getElementsByTagName("title")[0], format="strip")
@@ -510,7 +517,7 @@ class Glsa:
 		try:
 			self.count = int(count)
 		except ValueError:
-			# TODO should this rais a GlsaFormatException?
+			# TODO should this raise a GlsaFormatException?
 			self.count = 1
 		
 		# now the optional and 0-n toplevel, #PCDATA tags and references
@@ -566,27 +573,27 @@ class Glsa:
 		width = 76
 		outstream.write(("GLSA %s: \n%s" % (self.nr, self.title)).center(width)+"\n")
 		outstream.write((width*"=")+"\n")
-		outstream.write(wrap(self.synopsis, width, caption="Synopsis:         ")+"\n")
-		outstream.write("Announced on:      %s\n" % self.announced)
-		outstream.write("Last revised on:   %s : %02d\n\n" % (self.revised, self.count))
+		outstream.write(wrap(self.synopsis, width, caption=_("Synopsis:         "))+"\n")
+		outstream.write(_("Announced on:      %s\n") % self.announced)
+		outstream.write(_("Last revised on:   %s : %02d\n\n") % (self.revised, self.count))
 		if self.glsatype == "ebuild":
 			for k in self.packages.keys():
 				pkg = self.packages[k]
 				for path in pkg:
 					vul_vers = "".join(path["vul_vers"])
 					unaff_vers = "".join(path["unaff_vers"])
-					outstream.write("Affected package:  %s\n" % k)
-					outstream.write("Affected archs:    ")
+					outstream.write(_("Affected package:  %s\n") % k)
+					outstream.write(_("Affected archs:    "))
 					if path["arch"] == "*":
-						outstream.write("All\n")
+						outstream.write(_("All\n"))
 					else:
 						outstream.write("%s\n" % path["arch"])
-					outstream.write("Vulnerable:        %s\n" % vul_vers)
-					outstream.write("Unaffected:        %s\n\n" % unaff_vers)
+					outstream.write(_("Vulnerable:        %s\n") % vul_vers)
+					outstream.write(_("Unaffected:        %s\n\n") % unaff_vers)
 		elif self.glsatype == "infrastructure":
 			pass
 		if len(self.bugs) > 0:
-			outstream.write("\nRelated bugs:      ")
+			outstream.write(_("\nRelated bugs:      "))
 			for i in range(0, len(self.bugs)):
 				outstream.write(self.bugs[i])
 				if i < len(self.bugs)-1:
@@ -594,15 +601,15 @@ class Glsa:
 				else:
 					outstream.write("\n")				
 		if self.background:
-			outstream.write("\n"+wrap(self.background, width, caption="Background:       "))
-		outstream.write("\n"+wrap(self.description, width, caption="Description:      "))
-		outstream.write("\n"+wrap(self.impact_text, width, caption="Impact:           "))
-		outstream.write("\n"+wrap(self.workaround, width, caption="Workaround:       "))
-		outstream.write("\n"+wrap(self.resolution, width, caption="Resolution:       "))
+			outstream.write("\n"+wrap(self.background, width, caption=_("Background:       ")))
+		outstream.write("\n"+wrap(self.description, width, caption=_("Description:      ")))
+		outstream.write("\n"+wrap(self.impact_text, width, caption=_("Impact:           ")))
+		outstream.write("\n"+wrap(self.workaround, width, caption=_("Workaround:       ")))
+		outstream.write("\n"+wrap(self.resolution, width, caption=_("Resolution:       ")))
 		myreferences = ""
 		for r in self.references:
 			myreferences += (r.replace(" ", SPACE_ESCAPE)+NEWLINE_ESCAPE+" ")
-		outstream.write("\n"+wrap(myreferences, width, caption="References:       "))
+		outstream.write("\n"+wrap(myreferences, width, caption=_("References:       ")))
 		outstream.write("\n")
 	
 	def isVulnerable(self):
@@ -646,7 +653,11 @@ class Glsa:
 		@returns:	None
 		"""
 		if not self.isApplied():
-			checkfile = open(os.path.join(os.sep, self.config["ROOT"], CACHE_PATH.lstrip(os.sep), "glsa"), "a+")
+			checkfile = codecs.open(
+				_unicode_encode(os.path.join(os.sep, self.config["ROOT"],
+				CACHE_PATH.lstrip(os.sep), "glsa"),
+				encoding=_encodings['fs'], errors='strict'), 
+				mode='a+', encoding=_encodings['content'], errors='strict')
 			checkfile.write(self.nr+"\n")
 			checkfile.close()
 		return None

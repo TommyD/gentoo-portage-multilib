@@ -45,14 +45,13 @@ options=[
 "--emptytree",
 "--fetchonly",    "--fetch-all-uri",
 "--ignore-default-opts",
-"--keep-going",
 "--noconfmem",
 "--newuse",
 "--nodeps",       "--noreplace",
 "--nospinner",    "--oneshot",
 "--onlydeps",     "--pretend",
 "--quiet",        "--resume",
-"--searchdesc",   "--selective",
+"--searchdesc",
 "--skipfirst",
 "--tree",
 "--update",
@@ -376,7 +375,9 @@ def insert_optional_args(args):
 		'--getbinpkg'            : ('n',),
 		'--getbinpkgonly'        : ('n',),
 		'--jobs'       : valid_integers,
+		'--keep-going'           : ('n',),
 		'--root-deps'  : ('rdeps',),
+		'--selective'            : ('n',),
 		'--usepkg'               : ('n',),
 		'--usepkgonly'           : ('n',),
 	}
@@ -532,6 +533,12 @@ def parse_opts(tmpcmdline, silent=False):
 			"action" : "store"
 		},
 
+		"--keep-going": {
+			"help"    : "continue as much as possible after an error",
+			"type"    : "choice",
+			"choices" : ("True", "n")
+		},
+
 		"--load-average": {
 
 			"help"   :"Specifies that no new builds should be started " + \
@@ -582,6 +589,13 @@ def parse_opts(tmpcmdline, silent=False):
 			"help"    : "modify interpretation of depedencies",
 			"type"    : "choice",
 			"choices" :("True", "rdeps")
+		},
+
+		"--selective": {
+			"help"    : "similar to the --noreplace but does not take " + \
+			            "precedence over options such as --newuse",
+			"type"    : "choice",
+			"choices" : ("True", "n")
 		},
 
 		"--usepkg": {
@@ -653,8 +667,16 @@ def parse_opts(tmpcmdline, silent=False):
 	else:
 		myoptions.getbinpkgonly = None
 
+	if myoptions.keep_going in ("True",):
+		myoptions.keep_going = True
+	else:
+		myoptions.keep_going = None
+
 	if myoptions.root_deps == "True":
 		myoptions.root_deps = True
+
+	if myoptions.selective == "True":
+		myoptions.selective = True
 
 	if myoptions.deep is not None:
 		deep = None

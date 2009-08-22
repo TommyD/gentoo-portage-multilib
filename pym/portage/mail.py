@@ -3,23 +3,32 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import portage.exception, socket, smtplib, os, sys, time
 from email.MIMEText import MIMEText as TextMessage
 from email.MIMEMultipart import MIMEMultipart as MultipartMessage
 from email.MIMEBase import MIMEBase as BaseMessage
 from email.header import Header
+import smtplib
+import socket
+import sys
+import time
+
+from portage import os
+from portage import _encodings
+from portage import _unicode_encode
+from portage.localization import _
+import portage
 
 def create_message(sender, recipient, subject, body, attachments=None):
 
 	if sys.hexversion < 0x3000000:
-		if isinstance(sender, unicode):
-			sender = sender.encode('utf_8', 'replace')
-		if isinstance(recipient, unicode):
-			recipient = recipient.encode('utf_8', 'replace')
-		if isinstance(subject, unicode):
-			subject = subject.encode('utf_8', 'replace')
-		if isinstance(body, unicode):
-			body = body.encode('utf_8', 'replace')
+		sender = _unicode_encode(sender,
+			encoding=_encodings['content'], errors='strict')
+		recipient = _unicode_encode(recipient,
+			encoding=_encodings['content'], errors='strict')
+		subject = _unicode_encode(subject,
+			encoding=_encodings['content'], errors='backslashreplace')
+		body = _unicode_encode(body,
+			encoding=_encodings['content'], errors='backslashreplace')
 
 	if attachments == None:
 		mymessage = TextMessage(body)
@@ -30,11 +39,13 @@ def create_message(sender, recipient, subject, body, attachments=None):
 			if isinstance(x, BaseMessage):
 				mymessage.attach(x)
 			elif isinstance(x, basestring):
-				if sys.hexversion < 0x3000000 and isinstance(x, unicode):
-					x = x.encode('utf_8', 'replace')
+				if sys.hexversion < 0x3000000:
+					x = _unicode_encode(x,
+						encoding=_encodings['content'],
+						errors='backslashreplace')
 				mymessage.attach(TextMessage(x))
 			else:
-				raise portage.exception.PortageException("Can't handle type of attachment: %s" % type(x))
+				raise portage.exception.PortageException(_("Can't handle type of attachment: %s") % type(x))
 
 	mymessage.set_unixfrom(sender)
 	mymessage["To"] = recipient
@@ -68,7 +79,7 @@ def send_mail(mysettings, message):
 			try:
 				mymailuser,mymailpasswd = myauthdata.split(":")
 			except ValueError:
-				print "!!! invalid SMTP AUTH configuration, trying unauthenticated ..."
+				print _("!!! invalid SMTP AUTH configuration, trying unauthenticated ...")
 		else:
 			myconndata = mymailuri
 		if ":" in myconndata:
@@ -81,32 +92,32 @@ def send_mail(mysettings, message):
 	myfrom = message.get("From")
 
 	if sys.hexversion < 0x3000000:
-		if isinstance(myrecipient, unicode):
-			myrecipient = myrecipient.encode('utf_8', 'replace')
-		if isinstance(mymailhost, unicode):
-			mymailhost = mymailhost.encode('utf_8', 'replace')
-		if isinstance(mymailport, unicode):
-			mymailport = mymailport.encode('utf_8', 'replace')
-		if isinstance(myfrom, unicode):
-			myfrom = myfrom.encode('utf_8', 'replace')
-		if isinstance(mymailuser, unicode):
-			mymailuser = mymailuser.encode('utf_8', 'replace')
-		if isinstance(mymailpasswd, unicode):
-			mymailpasswd = mymailpasswd.encode('utf_8', 'replace')
+		myrecipient = _unicode_encode(myrecipient,
+			encoding=_encodings['content'], errors='strict')
+		mymailhost = _unicode_encode(mymailhost,
+			encoding=_encodings['content'], errors='strict')
+		mymailport = _unicode_encode(mymailport,
+			encoding=_encodings['content'], errors='strict')
+		myfrom = _unicode_encode(myfrom,
+			encoding=_encodings['content'], errors='strict')
+		mymailuser = _unicode_encode(mymailuser,
+			encoding=_encodings['content'], errors='strict')
+		mymailpasswd = _unicode_encode(mymailpasswd,
+			encoding=_encodings['content'], errors='strict')
 
 	# user wants to use a sendmail binary instead of smtp
 	if mymailhost[0] == os.sep and os.path.exists(mymailhost):
 		fd = os.popen(mymailhost+" -f "+myfrom+" "+myrecipient, "w")
 		fd.write(message.as_string())
 		if fd.close() != None:
-			sys.stderr.write("!!! %s returned with a non-zero exit code. This generally indicates an error.\n" % mymailhost)
+			sys.stderr.write(_("!!! %s returned with a non-zero exit code. This generally indicates an error.\n") % mymailhost)
 	else:
 		try:
 			if int(mymailport) > 100000:
 				myconn = smtplib.SMTP(mymailhost, int(mymailport) - 100000)
 				myconn.ehlo()
 				if not myconn.has_extn("STARTTLS"):
-					raise portage.exception.PortageException("!!! TLS support requested for logmail but not suported by server")
+					raise portage.exception.PortageException(_("!!! TLS support requested for logmail but not suported by server"))
 				myconn.starttls()
 				myconn.ehlo()
 			else:
@@ -116,8 +127,8 @@ def send_mail(mysettings, message):
 			myconn.sendmail(myfrom, myrecipient, message.as_string())
 			myconn.quit()
 		except smtplib.SMTPException, e:
-			raise portage.exception.PortageException("!!! An error occured while trying to send logmail:\n"+str(e))
+			raise portage.exception.PortageException(_("!!! An error occured while trying to send logmail:\n")+str(e))
 		except socket.error, e:
-			raise portage.exception.PortageException("!!! A network error occured while trying to send logmail:\n"+str(e)+"\nSure you configured PORTAGE_ELOG_MAILURI correctly?")
+			raise portage.exception.PortageException(_("!!! A network error occured while trying to send logmail:\n%s\nSure you configured PORTAGE_ELOG_MAILURI correctly?") % str(e))
 	return
 	

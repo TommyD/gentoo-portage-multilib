@@ -3,10 +3,13 @@
 # $Id$
 
 import errno
-import os
 import re
 from itertools import chain
 
+from portage import os
+from portage import _encodings
+from portage import _unicode_decode
+from portage import _unicode_encode
 from portage.util import grabfile, write_atomic, ensure_dirs, normalize_path
 from portage.const import PRIVATE_PATH, USER_CONFIG_PATH
 from portage.localization import _
@@ -126,35 +129,43 @@ class StaticFileSet(EditablePackageSet):
 			except KeyError:
 				raise SetConfigError(_("Could not find repository '%s'") % match.groupdict()["reponame"])
 
+		try:
+			directory = _unicode_decode(directory,
+				encoding=_encodings['fs'], errors='strict')
+			# Now verify that we can also encode it.
+			_unicode_encode(directory,
+				encoding=_encodings['fs'], errors='strict')
+		except UnicodeError:
+			directory = _unicode_decode(directory,
+				encoding=_encodings['fs'], errors='replace')
+			raise SetConfigError(
+				_("Directory path contains invalid character(s) for encoding '%s': '%s'") \
+				% (_encodings['fs'], directory))
+
 		if os.path.isdir(directory):
 			directory = normalize_path(directory)
 
-			if isinstance(directory, unicode):
-				# Avoid UnicodeDecodeError raised from
-				# os.path.join when called by os.walk.
-				directory_unicode = directory
-				directory = directory.encode('utf_8', 'replace')
-			else:
-				directory_unicode = unicode(directory,
-					encoding='utf_8', errors='replace')
-
 			for parent, dirs, files in os.walk(directory):
-				if not isinstance(parent, unicode):
-					parent = unicode(parent,
-						encoding='utf_8', errors='replace')
+				try:
+					parent = _unicode_decode(parent,
+						encoding=_encodings['fs'], errors='strict')
+				except UnicodeDecodeError:
+					continue
 				for d in dirs[:]:
 					if d[:1] == '.':
 						dirs.remove(d)
 				for filename in files:
-					if not isinstance(filename, unicode):
-						filename = unicode(filename,
-							encoding='utf_8', errors='replace')
+					try:
+						filename = _unicode_decode(filename,
+							encoding=_encodings['fs'], errors='strict')
+					except UnicodeDecodeError:
+						continue
 					if filename[:1] == '.':
 						continue
 					if filename.endswith(".metadata"):
 						continue
 					filename = os.path.join(parent,
-						filename)[1 + len(directory_unicode):]
+						filename)[1 + len(directory):]
 					myname = name_pattern.replace("$name", filename)
 					myname = myname.replace("${name}", filename)
 					rValue[myname] = StaticFileSet(
@@ -283,8 +294,13 @@ class WorldSet(EditablePackageSet):
 		self._lock = None
 
 	def cleanPackage(self, vardb, cpv):
-		self.lock()
-		self._load() # loads latest from disk
+		'''
+		Before calling this function you should call lock and load.
+		After calling this function you should call unlock.
+		'''
+		if not self._lock:
+			raise AssertionError('cleanPackage needs the set to be locked')
+
 		worldlist = list(self._atoms)
 		mykey = cpv_getkey(cpv)
 		newworldlist = []
@@ -306,7 +322,6 @@ class WorldSet(EditablePackageSet):
 
 		newworldlist.extend(self._nonatoms)
 		self.replace(newworldlist)
-		self.unlock()
 
 	def singleBuilder(self, options, settings, trees):
 		return WorldSet(settings["ROOT"])

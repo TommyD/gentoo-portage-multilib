@@ -2,7 +2,12 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import errno, os, sys
+import codecs
+import errno
+import sys
+from portage import os
+from portage import _encodings
+from portage import _unicode_encode
 from portage.tests import TestCase
 
 class SpawnTestCase(TestCase):
@@ -27,7 +32,9 @@ class SpawnTestCase(TestCase):
 			spawn("echo -n '%s'" % test_string, settings, logfile=logfile,
 				free=1, fd_pipes={0:sys.stdin.fileno(), 1:null_fd, 2:null_fd})
 			os.close(null_fd)
-			f = open(logfile, 'r')
+			f = codecs.open(_unicode_encode(logfile,
+				encoding=_encodings['fs'], errors='strict'),
+				mode='r', encoding=_encodings['content'], errors='strict')
 			log_content = f.read()
 			f.close()
 			# When logging passes through a pty, this comparison will fail

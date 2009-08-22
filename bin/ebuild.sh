@@ -589,10 +589,10 @@ einstall() {
 _eapi0_pkg_nofetch() {
 	[ -z "${SRC_URI}" ] && return
 
-	echo "!!! The following are listed in SRC_URI for ${PN}:"
+	elog "The following are listed in SRC_URI for ${PN}:"
 	local x
 	for x in $(echo ${SRC_URI}); do
-		echo "!!!   ${x}"
+		elog "   ${x}"
 	done
 }
 
@@ -1958,6 +1958,7 @@ _source_ebuild() {
 
 	# This needs to be exported since prepstrip is a separate shell script.
 	[[ -n $QA_PRESTRIPPED ]] && export QA_PRESTRIPPED
+	eval "[[ -n \$QA_PRESTRIPPED_$ARCH ]] && export QA_PRESTRIPPED_$ARCH"
 }
 
 if ! hasq "$EBUILD_PHASE" clean cleanrm ; then
