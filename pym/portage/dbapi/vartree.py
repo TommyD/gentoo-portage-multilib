@@ -9,7 +9,7 @@ __all__ = ["PreservedLibsRegistry", "LinkageMap",
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.checksum:_perform_md5_merge@perform_md5',
-	'portage.dep:dep_getkey,isjustname,isvalidatom,match_from_list,' + \
+	'portage.dep:dep_getkey,isjustname,match_from_list,' + \
 	 	'use_reduce,paren_reduce',
 	'portage.elog:elog_process',
 	'portage.elog.filtering:filter_mergephases,filter_unmergephases',
@@ -790,6 +790,10 @@ class vardbapi(dbapi):
 		self.root = _unicode_decode(root,
 			encoding=_encodings['content'], errors='strict')
 
+		# Used by emerge to check whether any packages
+		# have been added or removed.
+		self._pkgs_changed = False
+
 		#cache for category directory mtimes
 		self.mtdircache = {}
 
@@ -814,9 +818,9 @@ class vardbapi(dbapi):
 			"repository", "RESTRICT" , "SLOT", "USE"])
 		self._aux_cache_obj = None
 		self._aux_cache_filename = os.path.join(self.root,
-			CACHE_PATH.lstrip(os.path.sep), "vdb_metadata.pickle")
+			CACHE_PATH, "vdb_metadata.pickle")
 		self._counter_path = os.path.join(root,
-			CACHE_PATH.lstrip(os.path.sep), "counter")
+			CACHE_PATH, "counter")
 
 		try:
 			self.plib_registry = PreservedLibsRegistry(self.root,
@@ -849,25 +853,6 @@ class vardbapi(dbapi):
 			level=logging.ERROR, noiselevel=-1)
 		return 0
 
-	def _counter_hash(self):
-		try:
-			from hashlib import md5 as new_hash
-		except ImportError:
-			from md5 import new as new_hash
-		h = new_hash()
-		aux_keys = ["COUNTER"]
-		cpv_list = self.cpv_all()
-		cpv_list.sort()
-		for cpv in cpv_list:
-			try:
-				counter, = self.aux_get(cpv, aux_keys)
-			except KeyError:
-				continue
-			h.update(_unicode_encode(counter,
-				encoding=_encodings['repo.content'],
-				errors='backslashreplace'))
-		return h.hexdigest()
-
 	def cpv_inject(self, mycpv):
 		"injects a real package into our on-disk database; assumes mycpv is valid and doesn't already exist"
 		os.makedirs(self.getpath(mycpv))
@@ -888,9 +873,9 @@ class vardbapi(dbapi):
 		newcp = mylist[2]
 
 		# sanity check
-		for cp in [origcp, newcp]:
-			if not (isvalidatom(cp) and isjustname(cp)):
-				raise InvalidPackageName(cp)
+		for atom in (origcp, newcp):
+			if not isjustname(atom):
+				raise InvalidPackageName(str(atom))
 		origmatches = self.match(origcp, use_cache=0)
 		moves = 0
 		if not origmatches:
@@ -1041,9 +1026,11 @@ class vardbapi(dbapi):
 		self._aux_cache_obj = None
 
 	def _add(self, pkg_dblink):
+		self._pkgs_changed = True
 		self._clear_pkg_cache(pkg_dblink)
 
 	def _remove(self, pkg_dblink):
+		self._pkgs_changed = True
 		self._clear_pkg_cache(pkg_dblink)
 
 	def _clear_pkg_cache(self, pkg_dblink):
@@ -1069,7 +1056,7 @@ class vardbapi(dbapi):
 			return list(self._iter_match(mydep,
 				self.cp_list(mydep.cp, use_cache=use_cache)))
 		try:
-			curmtime = os.stat(self.root+VDB_PATH+"/"+mycat).st_mtime
+			curmtime = os.stat(os.path.join(self.root, VDB_PATH, mycat)).st_mtime
 		except (IOError, OSError):
 			curmtime=0
 
@@ -1779,7 +1766,6 @@ class vartree(object):
 				appendme = [mysplit[0]+"/"+x, [mysplit[0], mypsplit[0], mypsplit[1], mypsplit[2]]]
 				returnme.append(appendme)
 		return returnme
-
 
 	def getslot(self, mycatpkg):
 		"Get a slot for a catpkg; assume it exists."
@@ -2495,7 +2481,7 @@ class dblink(object):
 					continue
 
 				if pkgfiles[objkey][0] == "dir":
-					if statobj is None or not stat.S_ISDIR(statobj.st_mode):
+					if lstatobj is None or not stat.S_ISDIR(lstatobj.st_mode):
 						show_unmerge("---", unmerge_desc["!dir"], file_type, obj)
 						continue
 					mydirs.append(obj)
@@ -4400,6 +4386,26 @@ def write_contents(contents, root, f):
 
 def tar_contents(contents, root, tar, protect=None, onProgress=None):
 	os = _os_merge
+
+	try:
+		for x in contents:
+			_unicode_encode(x,
+				encoding=_encodings['merge'],
+				errors='strict')
+	except UnicodeEncodeError:
+		# The package appears to have been merged with a
+		# different value of sys.getfilesystemencoding(),
+		# so fall back to utf_8 if appropriate.
+		try:
+			for x in contents:
+				_unicode_encode(x,
+					encoding=_encodings['fs'],
+					errors='strict')
+		except UnicodeEncodeError:
+			pass
+		else:
+			os = portage.os
+
 	from portage.util import normalize_path
 	import tarfile
 	root = normalize_path(root).rstrip(os.path.sep) + os.path.sep
@@ -4447,7 +4453,8 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None):
 				tar.addfile(tarinfo)
 			else:
 				f = open(_unicode_encode(path,
-					encoding=_encodings['merge'], errors='strict'), 'rb')
+					encoding=object.__getattribute__(os, '_encoding'),
+					errors='strict'), 'rb')
 				try:
 					tar.addfile(tarinfo, f)
 				finally:

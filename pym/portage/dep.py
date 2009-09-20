@@ -3,7 +3,6 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-
 # DEPEND SYNTAX:
 #
 # 'use?' only affects the immediately following word!
@@ -24,7 +23,8 @@ from itertools import chain
 import portage.exception
 from portage.exception import InvalidData, InvalidAtom
 from portage.localization import _
-from portage.versions import catpkgsplit, catsplit, pkgcmp, pkgsplit, ververify
+from portage.versions import catpkgsplit, catsplit, \
+	pkgcmp, pkgsplit, ververify, _version
 import portage.cache.mappings
 
 def cpvequal(cpv1, cpv2):
@@ -309,7 +309,6 @@ def use_reduce(deparray, uselist=[], masklist=[], matchall=0, excludeall=[]):
 
 	return rlist
 
-
 def dep_opconvert(deplist):
 	"""
 	Iterate recursively through a list of deps, if the
@@ -489,29 +488,12 @@ class _use_dep(object):
 
 		return _use_dep(tokens)
 
-class _AtomCache(type):
-	"""
-	Cache Atom instances from constructor calls and reuse
-	identical instances when available.
-	"""
-	def __call__(cls, s):
-		if isinstance(s, Atom):
-			return s
-		instance = cls._atoms.get(s)
-		if instance is None:
-			instance = super(_AtomCache, cls).__call__(s)
-			cls._atoms[s] = instance
-		return instance
-
 class Atom(object):
 
 	"""
 	For compatibility with existing atom string manipulation code, this
 	class emulates most of the str methods that are useful with atoms.
 	"""
-
-	__metaclass__ = _AtomCache
-	_atoms = weakref.WeakValueDictionary()
 
 	__slots__ = ("__weakref__", "blocker", "cp", "cpv", "operator",
 		"slot", "use", "without_use", "_str",)
@@ -528,14 +510,12 @@ class Atom(object):
 		def __init__(self, forbid_overlap=False):
 			self.overlap = self._overlap(forbid=forbid_overlap)
 
-	def __init__(self, s):
-		if not isvalidatom(s, allow_blockers=True):
-			raise InvalidAtom(s)
+	def __init__(self, mypkg):
+		s = mypkg = str(mypkg)
 		obj_setattr = object.__setattr__
 		obj_setattr(self, '_str', s)
 
-		blocker = "!" == s[:1]
-		if blocker:
+		if "!" == s[:1]:
 			blocker = self._blocker(forbid_overlap=("!" == s[1:2]))
 			if blocker.overlap.forbid:
 				s = s[2:]
@@ -544,19 +524,40 @@ class Atom(object):
 		else:
 			blocker = False
 		obj_setattr(self, "blocker", blocker)
+		m = _atom_re.match(s)
+		if m is None:
+			raise InvalidAtom(mypkg)
 
-		obj_setattr(self, "cp", dep_getkey(s))
-		obj_setattr(self, "cpv", dep_getcpv(s))
-		obj_setattr(self, "slot", dep_getslot(s))
-		obj_setattr(self, "operator", get_operator(s))
+		if m.group('op') is not None:
+			base = _atom_re.groupindex['op']
+			op = m.group(base + 1)
+			cpv = m.group(base + 2)
+			cp = m.group(base + 3)
+			if m.group(base + 4) is not None:
+				raise InvalidAtom(mypkg)
+		elif m.group('star') is not None:
+			base = _atom_re.groupindex['star']
+			op = '=*'
+			cpv = m.group(base + 1)
+			cp = m.group(base + 2)
+			if m.group(base + 3) is not None:
+				raise InvalidAtom(mypkg)
+		elif m.group('simple') is not None:
+			op = None
+			cpv = cp = m.group(_atom_re.groupindex['simple'] + 1)
+			if m.group(_atom_re.groupindex['simple'] + 2) is not None:
+				raise InvalidAtom(mypkg)
+		else:
+			raise AssertionError(_("required group not found in atom: '%s'") % s)
+		obj_setattr(self, "cp", cp)
+		obj_setattr(self, "cpv", cpv)
+		obj_setattr(self, "slot", m.group(_atom_re.groups - 1))
+		obj_setattr(self, "operator", op)
 
-		use = dep_getusedeps(s)
-		if use:
-			use = _use_dep(use)
-			without_use = remove_slot(self)
-			if self.slot is not None:
-				without_use += ":" + self.slot
-			without_use = Atom(without_use)
+		use_str = m.group(_atom_re.groups)
+		if use_str is not None:
+			use = _use_dep(dep_getusedeps(s))
+			without_use = Atom(m.group('without_use'))
 		else:
 			use = None
 			without_use = self
@@ -658,6 +659,15 @@ class Atom(object):
 	def rstrip(self, *pargs, **kargs):
 		return self._str.rstrip(*pargs, **kargs)
 
+	def __copy__(self):
+		"""Immutable, so returns self."""
+		return self
+
+	def __deepcopy__(self, memo=None):
+		"""Immutable, so returns self."""
+		memo[id(self)] = self
+		return self
+
 def get_operator(mydep):
 	"""
 	Return the operator used in a depstring.
@@ -673,9 +683,15 @@ def get_operator(mydep):
 	@return: The operator. One of:
 		'~', '=', '>', '<', '=*', '>=', or '<='
 	"""
-	operator = getattr(mydep, "operator", False)
-	if operator is not False:
-		return operator
+	if isinstance(mydep, Atom):
+		return mydep.operator
+	try:
+		return Atom(mydep).operator
+	except InvalidAtom:
+		pass
+
+	# Fall back to legacy code for backward compatibility.
+	operator = None
 	if mydep:
 		mydep = remove_slot(mydep)
 	if not mydep:
@@ -697,8 +713,6 @@ def get_operator(mydep):
 
 	return operator
 
-_dep_getcpv_cache = {}
-
 def dep_getcpv(mydep):
 	"""
 	Return the category-package-version with any operators/slot specifications stripped off
@@ -712,13 +726,14 @@ def dep_getcpv(mydep):
 	@rtype: String
 	@return: The depstring with the operator removed
 	"""
-	cpv = getattr(mydep, "cpv", None)
-	if cpv is not None:
-		return cpv
-	global _dep_getcpv_cache
-	retval = _dep_getcpv_cache.get(mydep, None)
-	if retval is not None:
-		return retval
+	if isinstance(mydep, Atom):
+		return mydep.cpv
+	try:
+		return Atom(mydep).cpv
+	except InvalidAtom:
+		pass
+
+	# Fall back to legacy code for backward compatibility.
 	mydep_orig = mydep
 	if mydep:
 		mydep = remove_slot(mydep)
@@ -735,7 +750,6 @@ def dep_getcpv(mydep):
 		mydep = mydep[2:]
 	elif mydep[:1] in "=<>~":
 		mydep = mydep[1:]
-	_dep_getcpv_cache[mydep_orig] = mydep
 	return mydep
 
 def dep_getslot(mydep):
@@ -792,9 +806,6 @@ def dep_getusedeps( depend ):
 	@rtype: List
 	@return: List of use flags ( or [] if no flags exist )
 	"""
-	use = getattr(depend, "use", None)
-	if use is not None and hasattr(use, "tokens"):
-		return use.tokens
 	use_list = []
 	open_bracket = depend.find('[')
 	# -1 = failure (think c++ string::npos)
@@ -834,8 +845,30 @@ def dep_getusedeps( depend ):
 		open_bracket = depend.find( '[', open_bracket+1 )
 	return tuple(use_list)
 
-_valid_category = re.compile("^\w[\w-]*")
-_invalid_atom_chars_regexp = re.compile("[()|@]")
+# \w is [a-zA-Z0-9_]
+
+# 2.1.1 A category name may contain any of the characters [A-Za-z0-9+_.-].
+# It must not begin with a hyphen or a dot.
+_cat = r'[\w+][\w+.-]*'
+
+# 2.1.2 A package name may contain any of the characters [A-Za-z0-9+_-].
+# It must not begin with a hyphen,
+# and must not end in a hyphen followed by one or more digits.
+_pkg = r'[\w+][\w+-]*?'
+
+# 2.1.3 A slot name may contain any of the characters [A-Za-z0-9+_.-].
+# It must not begin with a hyphen or a dot.
+_slot = r':([\w+][\w+.-]*)'
+
+_use = r'\[.*\]'
+_op = r'([=~]|[><]=?)'
+_cp = '(' + _cat + '/' + _pkg + '(-' + _version + ')?)'
+_cpv = '(' + _cp + '-' + _version + ')'
+
+_atom_re = re.compile('^(?P<without_use>(?:' +
+	'(?P<op>' + _op + _cpv + ')|' +
+	'(?P<star>=' + _cpv + r'\*)|' +
+	'(?P<simple>' + _cp + '))(?:' + _slot + ')?)(' + _use + ')?$', re.VERBOSE)
 
 def isvalidatom(atom, allow_blockers=False):
 	"""
@@ -843,141 +876,82 @@ def isvalidatom(atom, allow_blockers=False):
 
 	Example usage:
 		>>> isvalidatom('media-libs/test-3.0')
-		0
+		False
 		>>> isvalidatom('>=media-libs/test-3.0')
-		1
+		True
 
 	@param atom: The depend atom to check against
-	@type atom: String
-	@rtype: Integer
+	@type atom: String or Atom
+	@rtype: Boolean
 	@return: One of the following:
-		1) 0 if the atom is invalid
-		2) 1 if the atom is valid
+		1) False if the atom is invalid
+		2) True if the atom is valid
 	"""
-	existing_atom = Atom._atoms.get(atom)
-	if existing_atom is not None:
-		atom = existing_atom
-	if isinstance(atom, Atom):
-		if atom.blocker and not allow_blockers:
-			return 0
-		return 1
-	global _invalid_atom_chars_regexp
-	if _invalid_atom_chars_regexp.search(atom):
-		return 0
-	if allow_blockers and atom[:1] == "!":
-		if atom[1:2] == "!":
-			atom = atom[2:]
-		else:
-			atom = atom[1:]
-
-	if dep_getslot(atom) == "":
-		# empty slot is invalid (None is valid)
-		return 0
-
 	try:
-		use = dep_getusedeps(atom)
-		if use:
-			use = _use_dep(use)
+		if not isinstance(atom, Atom):
+			atom = Atom(atom)
+		if not allow_blockers and atom.blocker:
+			return False
+		return True
 	except InvalidAtom:
-		return 0
-
-	cpv = dep_getcpv(atom)
-	cpv_catsplit = catsplit(cpv)
-	without_slot = remove_slot(atom)
-	mycpv_cps = None
-	if cpv:
-		if len(cpv_catsplit) == 2:
-			if _valid_category.match(cpv_catsplit[0]) is None:
-				return 0
-			if cpv_catsplit[0] == "null":
-				# "null" category is valid, missing category is not.
-				mycpv_cps = catpkgsplit(cpv.replace("null/", "cat/", 1))
-				if mycpv_cps:
-					mycpv_cps = list(mycpv_cps)
-					mycpv_cps[0] = "null"
-		if not mycpv_cps:
-			mycpv_cps = catpkgsplit(cpv)
-		if mycpv_cps is None and cpv != without_slot:
-			return 0
-
-	operator = get_operator(atom)
-	if operator:
-		if operator[0] in "<>" and without_slot[-1:] == "*":
-			return 0
-		if mycpv_cps:
-			if len(cpv_catsplit) == 2:
-				# >=cat/pkg-1.0
-				return 1
-			else:
-				return 0
-		else:
-			# >=cat/pkg or >=pkg-1.0 (no category)
-			return 0
-	if mycpv_cps:
-		# cat/pkg-1.0
-		return 0
-
-	if len(cpv_catsplit) == 2:
-		# cat/pkg
-		return 1
-	else:
-		return 0
+		return False
 
 def isjustname(mypkg):
 	"""
-	Checks to see if the depstring is only the package name (no version parts)
+	Checks to see if the atom is only the package name (no version parts).
 
 	Example usage:
-		>>> isjustname('media-libs/test-3.0')
-		0
-		>>> isjustname('test')
-		1
+		>>> isjustname('=media-libs/test-3.0')
+		False
 		>>> isjustname('media-libs/test')
-		1
+		True
 
 	@param mypkg: The package atom to check
-	@param mypkg: String
+	@param mypkg: String or Atom
 	@rtype: Integer
 	@return: One of the following:
-		1) 0 if the package string is not just the package name
-		2) 1 if it is
+		1) False if the package string is not just the package name
+		2) True if it is
 	"""
-	myparts = mypkg.split('-')
-	for x in myparts:
-		if ververify(x):
-			return 0
-	return 1
+	try:
+		if not isinstance(mypkg, Atom):
+			mypkg = Atom(mypkg)
+		return mypkg == mypkg.cp
+	except InvalidAtom:
+		pass
 
-iscache = {}
+	for x in mypkg.split('-')[-2:]:
+		if ververify(x):
+			return False
+	return True
 
 def isspecific(mypkg):
 	"""
-	Checks to see if a package is in category/package-version or package-version format,
-	possibly returning a cached result.
+	Checks to see if a package is in =category/package-version or
+	package-version format.
 
 	Example usage:
 		>>> isspecific('media-libs/test')
-		0
-		>>> isspecific('media-libs/test-3.0')
-		1
+		False
+		>>> isspecific('=media-libs/test-3.0')
+		True
 
 	@param mypkg: The package depstring to check against
 	@type mypkg: String
-	@rtype: Integer
+	@rtype: Boolean
 	@return: One of the following:
-		1) 0 if the package string is not specific
-		2) 1 if it is
+		1) False if the package string is not specific
+		2) True if it is
 	"""
 	try:
-		return iscache[mypkg]
-	except KeyError:
+		if not isinstance(mypkg, Atom):
+			mypkg = Atom(mypkg)
+		return mypkg != mypkg.cp
+	except InvalidAtom:
 		pass
-	mysplit = mypkg.split("/")
-	if not isjustname(mysplit[-1]):
-			iscache[mypkg] = 1
-			return 1
-	iscache[mypkg] = 0
-	return 0
+
+	# Fall back to legacy code for backward compatibility.
+	return not isjustname(mypkg)
 
 def dep_getkey(mydep):
 	"""
@@ -990,11 +964,19 @@ def dep_getkey(mydep):
 	@param mydep: The depstring to retrieve the category/package-name of
 	@type mydep: String
 	@rtype: String
-	@return: The package category/package-version
+	@return: The package category/package-name
 	"""
-	cp = getattr(mydep, "cp", None)
-	if cp is not None:
-		return cp
+	if isinstance(mydep, Atom):
+		return mydep.cp
+	try:
+		return Atom(mydep).cp
+	except InvalidAtom:
+		try:
+			return Atom('=' + mydep).cp
+		except InvalidAtom:
+			pass
+
+	# Fall back to legacy code for backward compatibility.
 	mydep = dep_getcpv(mydep)
 	if mydep and isspecific(mydep):
 		mysplit = catpkgsplit(mydep)
@@ -1017,6 +999,8 @@ def match_to_list(mypkg, mylist):
 	"""
 	matches = []
 	for x in mylist:
+		if not isinstance(x, Atom):
+			x = Atom(x)
 		if match_from_list(x, [mypkg]):
 			if x not in matches:
 				matches.append(x)
@@ -1051,7 +1035,7 @@ def best_match_to_list(mypkg, mylist):
 			if maxvalue < 3:
 				maxvalue = 3
 				bestm = x
-		op_val = operator_values[get_operator(x)]
+		op_val = operator_values[x.operator]
 		if op_val > maxvalue:
 			maxvalue = op_val
 			bestm  = x
@@ -1078,9 +1062,9 @@ def match_from_list(mydep, candidate_list):
 	if not isinstance(mydep, Atom):
 		mydep = Atom(mydep)
 
-	mycpv     = dep_getcpv(mydep)
+	mycpv     = mydep.cpv
 	mycpv_cps = catpkgsplit(mycpv) # Can be None if not specific
-	slot      = dep_getslot(mydep)
+	slot      = mydep.slot
 
 	if not mycpv_cps:
 		cat, pkg = catsplit(mycpv)
@@ -1093,7 +1077,7 @@ def match_from_list(mydep, candidate_list):
 				" (%s) (try adding an '=')") % (mydep))
 
 	if ver and rev:
-		operator = get_operator(mydep)
+		operator = mydep.operator
 		if not operator:
 			writemsg(_("!!! Invalid atom: %s\n") % mydep, noiselevel=-1)
 			return []
@@ -1115,7 +1099,7 @@ def match_from_list(mydep, candidate_list):
 		for x in candidate_list:
 			xcpv = getattr(x, "cpv", None)
 			if xcpv is None:
-				xcpv = dep_getcpv(x)
+				xcpv = remove_slot(x)
 			if not cpvequal(xcpv, mycpv):
 				continue
 			mylist.append(x)

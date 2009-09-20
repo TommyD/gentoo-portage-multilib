@@ -12,6 +12,7 @@ from itertools import chain, izip
 import portage
 from portage import os
 from portage import digraph
+from portage.dep import Atom
 from portage.output import bold, blue, colorize, create_color_func, darkblue, \
 	darkgreen, green, nc_len, red, teal, turquoise, yellow
 bad = create_color_func("BAD")
@@ -1146,26 +1147,47 @@ class depgraph(object):
 
 		vardb = self._frozen_config.roots[dep_root].trees["vartree"].dbapi
 
-		for atom in selected_atoms:
-			try:
+		for atom in selected_atoms[pkg]:
 
-				atom = portage.dep.Atom(atom)
+			mypriority = dep_priority.copy()
+			if not atom.blocker and vardb.match(atom):
+				mypriority.satisfied = True
 
-				mypriority = dep_priority.copy()
+			if not self._add_dep(Dependency(atom=atom,
+				blocker=atom.blocker, depth=depth, parent=pkg,
+				priority=mypriority, root=dep_root),
+				allow_unsatisfied=allow_unsatisfied):
+				return 0
+
+		selected_atoms.pop(pkg)
+
+		# Add selected indirect virtual deps to the graph. This
+		# takes advantage of circular dependency avoidance that's done
+		# by dep_zapdeps. We preserve actual parent/child relationships
+		# here in order to avoid distorting the dependency graph like
+		# <=portage-2.1.6.x did.
+		for virt_pkg, atoms in selected_atoms.iteritems():
+
+			# Just assume depth + 1 here for now, though it's not entirely
+			# accurate since multilple levels of indirect virtual deps may
+			# have been traversed. The _add_pkg call will reset the depth to
+			# 0 if this package happens to match an argument.
+			if not self._add_pkg(virt_pkg,
+				Dependency(atom=Atom('=' + virt_pkg.cpv),
+				depth=(depth + 1), parent=pkg, priority=dep_priority.copy(),
+				root=dep_root)):
+				return 0
+
+			for atom in atoms:
+				# This is a GLEP 37 virtual, so its deps are all runtime.
+				mypriority = self._priority(runtime=True)
 				if not atom.blocker and vardb.match(atom):
 					mypriority.satisfied = True
 
 				if not self._add_dep(Dependency(atom=atom,
-					blocker=atom.blocker, depth=depth, parent=pkg,
-					priority=mypriority, root=dep_root),
+					blocker=atom.blocker, depth=virt_pkg.depth,
+					parent=virt_pkg, priority=mypriority, root=dep_root),
 					allow_unsatisfied=allow_unsatisfied):
-					return 0
-
-			except portage.exception.InvalidAtom, e:
-				show_invalid_depstring_notice(
-					pkg, dep_string, str(e))
-				del e
-				if not pkg.installed:
 					return 0
 
 		if debug:
@@ -1274,16 +1296,15 @@ class depgraph(object):
 		atom_arg_map = self._dynamic_config._atom_arg_map
 		root_config = self._frozen_config.roots[pkg.root]
 		for atom in self._dynamic_config._set_atoms.iterAtomsForPackage(pkg):
-			atom_cp = portage.dep_getkey(atom)
-			if atom_cp != pkg.cp and \
-				self._have_new_virt(pkg.root, atom_cp):
+			if atom.cp != pkg.cp and \
+				self._have_new_virt(pkg.root, atom.cp):
 				continue
 			visible_pkgs = \
 				self._dynamic_config._visible_pkgs[pkg.root].match_pkgs(atom)
 			visible_pkgs.reverse() # descending order
 			higher_slot = None
 			for visible_pkg in visible_pkgs:
-				if visible_pkg.cp != atom_cp:
+				if visible_pkg.cp != atom.cp:
 					continue
 				if pkg >= visible_pkg:
 					# This is descending order, and we're not
@@ -1574,9 +1595,8 @@ class depgraph(object):
 				self._spinner_update()
 				dep = Dependency(atom=atom, onlydeps=onlydeps,
 					root=myroot, parent=arg)
-				atom_cp = portage.dep_getkey(atom)
 				try:
-					pprovided = pprovideddict.get(portage.dep_getkey(atom))
+					pprovided = pprovideddict.get(atom.cp)
 					if pprovided and portage.match_from_list(atom, pprovided):
 						# A provided package has been specified on the command line.
 						self._dynamic_config._pprovided_args.append((arg, atom))
@@ -1619,10 +1639,10 @@ class depgraph(object):
 							return 0, myfavorites
 						self._dynamic_config._missing_args.append((arg, atom))
 						continue
-					if atom_cp != pkg.cp:
+					if atom.cp != pkg.cp:
 						# For old-style virtuals, we need to repeat the
 						# package.provided check against the selected package.
-						expanded_atom = atom.replace(atom_cp, pkg.cp)
+						expanded_atom = atom.replace(atom.cp, pkg.cp)
 						pprovided = pprovideddict.get(pkg.cp)
 						if pprovided and \
 							portage.match_from_list(expanded_atom, pprovided):
@@ -1780,12 +1800,14 @@ class depgraph(object):
 		for pkg in greedy_pkgs + [highest_pkg]:
 			dep_str = " ".join(pkg.metadata[k] for k in blocker_dep_keys)
 			try:
-				atoms = self._select_atoms(
+				selected_atoms = self._select_atoms(
 					pkg.root, dep_str, pkg.use.enabled,
 					parent=pkg, strict=True)
 			except portage.exception.InvalidDependString:
 				continue
-			blocker_atoms = (x for x in atoms if x.blocker)
+			blocker_atoms = []
+			for atoms in selected_atoms.itervalues():
+				blocker_atoms.extend(x for x in atoms if x.blocker)
 			blockers[pkg] = InternalPackageSet(initial_atoms=blocker_atoms)
 
 		if highest_pkg not in blockers:
@@ -1837,10 +1859,12 @@ class depgraph(object):
 		pkgsettings = self._frozen_config.pkgsettings[root]
 		if trees is None:
 			trees = self._dynamic_config._filtered_trees
+		atom_graph = digraph()
 		if True:
 			try:
 				if parent is not None:
 					trees[root]["parent"] = parent
+					trees[root]["atom_graph"] = atom_graph
 				if priority is not None:
 					trees[root]["priority"] = priority
 				if not strict:
@@ -1851,12 +1875,37 @@ class depgraph(object):
 			finally:
 				if parent is not None:
 					trees[root].pop("parent")
+					trees[root].pop("atom_graph")
 				if priority is not None:
 					trees[root].pop("priority")
 				portage.dep._dep_check_strict = True
 			if not mycheck[0]:
 				raise portage.exception.InvalidDependString(mycheck[1])
+		if parent is None:
 			selected_atoms = mycheck[1]
+		else:
+			chosen_atoms = frozenset(mycheck[1])
+			selected_atoms = {parent : []}
+			for node in atom_graph:
+				if isinstance(node, Atom):
+					continue
+				if node is parent:
+					pkg = parent
+				else:
+					pkg, virt_atom = node
+					if virt_atom not in chosen_atoms:
+						continue
+					if not portage.match_from_list(virt_atom, [pkg]):
+						# Typically this means that the atom
+						# specifies USE deps that are unsatisfied
+						# by the selected package. The caller will
+						# record this as an unsatisfied dependency
+						# when necessary.
+						continue
+
+				selected_atoms[pkg] = [atom for atom in \
+					atom_graph.child_nodes(node) if atom in chosen_atoms]
+
 		return selected_atoms
 
 	def _show_unsatisfied_dep(self, root, atom, myparent=None, arg=None):
@@ -1891,9 +1940,8 @@ class depgraph(object):
 				metadata, mreasons  = get_mask_info(root_config, cpv,
 					pkgsettings, db, pkg_type, built, installed, db_keys)
 				if metadata is not None:
-					pkg = Package(built=built, cpv=cpv,
-						installed=installed, metadata=metadata,
-						root_config=root_config)
+					pkg = self._pkg(cpv, pkg_type, root_config,
+						installed=installed)
 					if pkg.cp != atom.cp:
 						# A cpv can be returned from dbapi.match() as an
 						# old-style virtual match even in cases when the
@@ -1901,6 +1949,11 @@ class depgraph(object):
 						# Filter out any such false matches here.
 						if not atom_set.findAtomForPackage(pkg):
 							continue
+					if pkg in self._dynamic_config._runtime_pkg_mask:
+						backtrack_reasons = \
+							self._dynamic_config._runtime_pkg_mask[pkg]
+						mreasons.append('backtracking: %s' % \
+							', '.join(sorted(backtrack_reasons)))
 					if mreasons:
 						masked_pkg_instances.add(pkg)
 					if atom.use:
@@ -2334,7 +2387,7 @@ class depgraph(object):
 
 		# Filter out any old-style virtual matches if they are
 		# mixed with new-style virtual matches.
-		cp = portage.dep_getkey(atom)
+		cp = atom.cp
 		if len(matched_packages) > 1 and \
 			"virtual" == portage.catsplit(cp)[0]:
 			for pkg in matched_packages:
@@ -2675,8 +2728,8 @@ class depgraph(object):
 				for provider_entry in virtuals[blocker.cp]:
 					provider_cp = \
 						portage.dep_getkey(provider_entry)
-					atoms.append(blocker.atom.replace(
-						blocker.cp, provider_cp))
+					atoms.append(Atom(blocker.atom.replace(
+						blocker.cp, provider_cp)))
 			else:
 				atoms = [blocker.atom]
 
@@ -3010,9 +3063,10 @@ class depgraph(object):
 					"'%svar/db/pkg/%s/RDEPEND': %s\n" % \
 					(running_root, running_portage.cpv, e), noiselevel=-1)
 				del e
-				portage_rdepend = []
-			runtime_deps.update(atom for atom in portage_rdepend \
-				if not atom.startswith("!"))
+				portage_rdepend = {running_portage : []}
+			for atoms in portage_rdepend.itervalues():
+				runtime_deps.update(atom for atom in atoms \
+					if not atom.blocker)
 
 		def gather_deps(ignore_priority, mergeable_nodes,
 			selected_nodes, node):
@@ -4839,7 +4893,6 @@ class _dep_check_composite_db(portage.dbapi):
 			# any matching slots in the graph db.
 			slots = set()
 			slots.add(pkg.metadata["SLOT"])
-			atom_cp = portage.dep_getkey(atom)
 			if pkg.cp.startswith("virtual/"):
 				# For new-style virtual lookahead that occurs inside
 				# dep_check(), examine all slots. This is needed
@@ -4860,7 +4913,7 @@ class _dep_check_composite_db(portage.dbapi):
 				ret.append(pkg.cpv)
 			slots.remove(pkg.metadata["SLOT"])
 			while slots:
-				slot_atom = "%s:%s" % (atom_cp, slots.pop())
+				slot_atom = Atom("%s:%s" % (atom.cp, slots.pop()))
 				pkg, existing = self._depgraph._select_package(
 					self._root, slot_atom)
 				if not pkg:
@@ -4947,6 +5000,8 @@ class _dep_check_composite_db(portage.dbapi):
 		metadata = self._cpv_pkg_map[cpv].metadata
 		return [metadata.get(x, "") for x in wants]
 
+	def match_pkgs(self, atom):
+		return [self._cpv_pkg_map[cpv] for cpv in self.match(atom)]
 
 def ambiguous_package_name(arg, atoms, root_config, spinner, myopts):
 

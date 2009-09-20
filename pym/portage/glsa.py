@@ -33,7 +33,7 @@ def get_applied_glsas(settings):
 	@rtype:		list
 	@return:	list of glsa IDs
 	"""
-	return grabfile(os.path.join(os.sep, settings["ROOT"], CACHE_PATH.lstrip(os.sep), "glsa"))
+	return grabfile(os.path.join(os.sep, settings["ROOT"], CACHE_PATH, "glsa"))
 
 
 # TODO: use the textwrap module instead
@@ -404,7 +404,8 @@ def format_date(datestr):
 		return datestr
 	
 	# TODO We could format to local date format '%x' here?
-	return d.strftime("%B %d, %Y")
+	return _unicode_decode(d.strftime("%B %d, %Y"),
+		encoding=_encodings['content'], errors='replace')
 
 # simple Exception classes to catch specific errors
 class GlsaTypeException(Exception):
@@ -655,7 +656,7 @@ class Glsa:
 		if not self.isApplied():
 			checkfile = codecs.open(
 				_unicode_encode(os.path.join(os.sep, self.config["ROOT"],
-				CACHE_PATH.lstrip(os.sep), "glsa"),
+				CACHE_PATH, "glsa"),
 				encoding=_encodings['fs'], errors='strict'), 
 				mode='a+', encoding=_encodings['content'], errors='strict')
 			checkfile.write(self.nr+"\n")
