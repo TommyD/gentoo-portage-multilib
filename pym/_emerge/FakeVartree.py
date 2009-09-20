@@ -52,7 +52,7 @@ class FakeVartree(portage.vartree):
 				else:
 					metadata = dict(izip(mykeys, real_dbapi.aux_get(cpv, mykeys)))
 				myslot = metadata["SLOT"]
-				mycp = portage.dep_getkey(cpv)
+				mycp = portage.cpv_getkey(cpv)
 				myslot_atom = "%s:%s" % (mycp, myslot)
 				try:
 					mycounter = long(metadata["COUNTER"])
@@ -76,8 +76,7 @@ class FakeVartree(portage.vartree):
 				portage.locks.unlockdir(vdb_lock)
 		# Populate the old-style virtuals using the cached values.
 		if not self.settings.treeVirtuals:
-			self.settings.treeVirtuals = portage.util.map_dictlist_vals(
-				portage.getCPFromCPV, self.get_all_provides())
+			self.settings._populate_treeVirtuals(self)
 
 		# Intialize variables needed for lazy cache pulls of the live ebuild
 		# metadata.  This ensures that the vardb lock is released ASAP, without

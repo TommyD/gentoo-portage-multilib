@@ -6,7 +6,7 @@ __all__ = ["bindbapi", "binarytree"]
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
-	'portage.dep:dep_getkey,isjustname,isvalidatom,match_from_list',
+	'portage.dep:dep_getkey,isjustname,match_from_list',
 	'portage.output:EOutput,colorize',
 	'portage.update:update_dbentries',
 	'portage.util:ensure_dirs,normalize_path,writemsg,writemsg_stdout',
@@ -185,7 +185,9 @@ class binarytree(object):
 			self._pkgindex_use_evaluated_keys = \
 				("LICENSE", "RDEPEND", "DEPEND",
 				"PDEPEND", "PROPERTIES", "PROVIDE")
-			self._pkgindex_header_keys = set(["ACCEPT_KEYWORDS", "CBUILD",
+			self._pkgindex_header_keys = set([
+				"ACCEPT_KEYWORDS", "ACCEPT_LICENSE",
+				"ACCEPT_PROPERTIES", "CBUILD",
 				"CHOST", "CONFIG_PROTECT", "CONFIG_PROTECT_MASK", "FEATURES",
 				"GENTOO_MIRRORS", "INSTALL_MASK", "SYNC", "USE"])
 			self._pkgindex_default_pkg_data = {
@@ -228,9 +230,9 @@ class binarytree(object):
 		origcp = mylist[1]
 		newcp = mylist[2]
 		# sanity check
-		for cp in [origcp, newcp]:
-			if not (isvalidatom(cp) and isjustname(cp)):
-				raise InvalidPackageName(cp)
+		for atom in (origcp, newcp):
+			if not isjustname(atom):
+				raise InvalidPackageName(str(atom))
 		origcat = origcp.split("/")[0]
 		mynewcat = newcp.split("/")[0]
 		origmatches=self.dbapi.cp_list(origcp)
@@ -660,7 +662,7 @@ class binarytree(object):
 			from portage.const import CACHE_PATH
 			from urlparse import urlparse
 			urldata = urlparse(base_url)
-			pkgindex_file = os.path.join(CACHE_PATH, "binhost",
+			pkgindex_file = os.path.join(self.settings["ROOT"], CACHE_PATH, "binhost",
 				urldata[1] + urldata[2], "Packages")
 			pkgindex = self._new_pkgindex()
 			try:

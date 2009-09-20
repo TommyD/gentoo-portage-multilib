@@ -2594,7 +2594,7 @@ def load_emerge_config(trees=None):
 			settings = trees[myroot]["vartree"].settings
 			break
 
-	mtimedbfile = os.path.join("/", portage.CACHE_PATH.lstrip(os.path.sep), "mtimedb")
+	mtimedbfile = os.path.join(os.path.sep, settings['ROOT'], portage.CACHE_PATH, "mtimedb")
 	mtimedb = portage.MtimeDB(mtimedbfile)
 	portage.output._init(config_root=settings['PORTAGE_CONFIGROOT'])
 	return settings, trees, mtimedb
@@ -2625,6 +2625,11 @@ def display_news_notification(root_config, myopts):
 	UNREAD_PATH = os.path.join(target_root, NEWS_LIB_PATH, "news")
 	newsReaderDisplay = False
 	update = "--pretend" not in myopts
+
+	if not settings.treeVirtuals:
+		# Populate these using our existing vartree, to avoid
+		# having a temporary one instantiated.
+		settings._populate_treeVirtuals(trees["vartree"])
 
 	for repo in portdb.getRepositories():
 		unreadItems = checkUpdatedNewsItems(

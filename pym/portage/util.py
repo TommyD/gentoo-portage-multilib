@@ -16,6 +16,7 @@ import commands
 import codecs
 import errno
 import logging
+import re
 import shlex
 import stat
 import string
@@ -27,9 +28,9 @@ from portage import _encodings
 from portage import _os_merge
 from portage import _unicode_encode
 from portage import _unicode_decode
-from portage.exception import PortageException, FileNotFound, \
+from portage.exception import InvalidAtom, PortageException, FileNotFound, \
        OperationNotPermitted, PermissionDenied, ReadOnlyFileSystem
-from portage.dep import isvalidatom
+from portage.dep import Atom, isvalidatom
 from portage.localization import _
 from portage.proxy.objectproxy import ObjectProxy
 from portage.cache.mappings import UserDict
@@ -292,27 +293,41 @@ def grabdict_package(myfilename, juststrings=0, recursive=0):
 	# We need to call keys() here in order to avoid the possibility of
 	# "RuntimeError: dictionary changed size during iteration"
 	# when an invalid atom is deleted.
-	for x in pkgs.keys():
-		if not isvalidatom(x):
-			del(pkgs[x])
-			writemsg(_("--- Invalid atom in %s: %s\n") % (myfilename, x),
+	atoms = {}
+	for k, v in pkgs.iteritems():
+		try:
+			k = Atom(k)
+		except InvalidAtom:
+			writemsg(_("--- Invalid atom in %s: %s\n") % (myfilename, k),
 				noiselevel=-1)
-	return pkgs
+		else:
+			atoms[k] = v
+	return atoms
 
 def grabfile_package(myfilename, compatlevel=0, recursive=0):
 	pkgs=grabfile(myfilename, compatlevel, recursive=recursive)
-	for x in range(len(pkgs)-1, -1, -1):
-		pkg = pkgs[x]
+	mybasename = os.path.basename(myfilename)
+	atoms = []
+	for pkg in pkgs:
+		pkg_orig = pkg
 		# for packages and package.mask files
 		if pkg[:1] == "-":
 			pkg = pkg[1:]
-		if pkg[:1] == "*":
+		if pkg[:1] == '*' and mybasename == 'packages':
 			pkg = pkg[1:]
-		if not isvalidatom(pkg):
-			writemsg(_("--- Invalid atom in %s: %s\n") % (myfilename, pkgs[x]),
+		try:
+			pkg = Atom(pkg)
+		except InvalidAtom:
+			writemsg(_("--- Invalid atom in %s: %s\n") % (myfilename, pkg),
 				noiselevel=-1)
-			del(pkgs[x])
-	return pkgs
+		else:
+			if pkg_orig == str(pkg):
+				# normal atom, so return as Atom instance
+				atoms.append(pkg)
+			else:
+				# atom has special prefix, so return as string
+				atoms.append(pkg_orig)
+	return atoms
 
 def grablines(myfilename,recursive=0):
 	mylines=[]
@@ -378,6 +393,8 @@ class _tolerant_shlex(shlex.shlex):
 			writemsg(_("!!! Parse error in '%s': source command failed: %s\n") % \
 				(self.infile, str(e)), noiselevel=-1)
 			return (newfile, StringIO())
+
+_invalid_var_name_re = re.compile(r'^\d|\W')
 
 def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 	if isinstance(expand, dict):
@@ -462,6 +479,16 @@ def getconfig(mycfg, tolerant=0, allow_sourcing=False, expand=True):
 					return mykeys
 			key = _unicode_decode(key)
 			val = _unicode_decode(val)
+
+			if _invalid_var_name_re.search(key) is not None:
+				if not tolerant:
+					raise Exception(_(
+						"ParseError: Invalid variable name '%s': line %s") % \
+						(key, lex.lineno - 1))
+				writemsg(_("!!! Invalid variable name '%s': line %s in %s\n") \
+					% (key, lex.lineno - 1, mycfg), noiselevel=-1)
+				continue
+
 			if expand:
 				mykeys[key] = varexpand(val, expand_map)
 				expand_map[key] = mykeys[key]
