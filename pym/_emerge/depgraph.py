@@ -1967,7 +1967,11 @@ class depgraph(object):
 		missing_iuse_reasons = []
 		for pkg in missing_use:
 			use = pkg.use.enabled
-			iuse = implicit_iuse.union(re.escape(x) for x in pkg.iuse.all)
+			cur_iuse = set(pkg.iuse.all)
+			if pkgsettings['MULTILIB_ABIS'].count(' ') is not 0 and 'lib32' not in cur_iuse:
+				if pkgsettings['ARCH'] == "amd64" or pkgsettings['ARCH'] == "ppc64":
+					cur_iuse.add("lib32")
+			iuse = implicit_iuse.union(re.escape(x) for x in cur_iuse)
 			iuse_re = re.compile("^(%s)$" % "|".join(iuse))
 			missing_iuse = []
 			for x in atom.use.required:
