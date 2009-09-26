@@ -2,10 +2,11 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+import sys
 from portage.cache import fs_template
 from portage.cache import cache_errors
 from portage import os
-from portage import _unicode_encode
+from portage import _unicode_decode
 from portage.cache.template import reconstruct_eclasses
 from portage.util import writemsg
 from portage.localization import _
@@ -14,6 +15,9 @@ try:
 except ImportError:
 	from pysqlite2 import dbapi2 as db_module
 DBError = db_module.Error
+
+if sys.hexversion >= 0x3000000:
+	basestring = str
 
 class database(fs_template.FsBased):
 
@@ -29,7 +33,9 @@ class database(fs_template.FsBased):
 
 	def __init__(self, *args, **config):
 		super(database, self).__init__(*args, **config)
-		self._allowed_keys = ["_mtime_", "_eclasses_"] + self._known_keys
+		self._allowed_keys = ["_mtime_", "_eclasses_"]
+		self._allowed_keys.extend(self._known_keys)
+		self._allowed_keys.sort()
 		self.location = os.path.join(self.location, 
 			self.label.lstrip(os.path.sep).rstrip(os.path.sep))
 
@@ -63,14 +69,14 @@ class database(fs_template.FsBased):
 		try:
 			self._ensure_dirs()
 			self._db_connection = self._db_module.connect(
-				database=_unicode_encode(self._dbpath), **connection_kwargs)
+				database=_unicode_decode(self._dbpath), **connection_kwargs)
 			self._db_cursor = self._db_connection.cursor()
 			self._db_cursor.execute("PRAGMA encoding = %s" % self._db_escape_string("UTF-8"))
 			if not self._ensure_access(self._dbpath):
 				raise cache_errors.InitializationError(self.__class__, "can't ensure perms on %s" % self._dbpath)
 			self._db_init_cache_size(config["cache_bytes"])
 			self._db_init_synchronous(config["synchronous"])
-		except self._db_error, e:
+		except self._db_error as e:
 			raise cache_errors.InitializationError(self.__class__, e)
 
 	def _db_init_structures(self):
@@ -102,7 +108,7 @@ class database(fs_template.FsBased):
 			self._allowed_keys
 
 		cursor = self._db_cursor
-		for k, v in self._db_table.iteritems():
+		for k, v in self._db_table.items():
 			if self._db_table_exists(v["table_name"]):
 				create_statement = self._db_table_get_create(v["table_name"])
 				if create_statement != v["create"]:
@@ -189,7 +195,7 @@ class database(fs_template.FsBased):
 		try:
 			s = " ".join(update_statement)
 			cursor.execute(s)
-		except self._db_error, e:
+		except self._db_error as e:
 			writemsg("%s: %s\n" % (cpv, str(e)))
 			raise
 

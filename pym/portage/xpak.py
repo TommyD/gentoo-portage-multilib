@@ -19,6 +19,7 @@
 import array
 import errno
 import shutil
+import sys
 
 from portage import os
 from portage import normalize_path
@@ -65,11 +66,13 @@ def encodeint(myint):
 def decodeint(mystring):
 	"""Takes a 4 byte string and converts it into a 4 byte integer.
 	Returns an integer."""
-	myint=0
-	myint=myint+ord(mystring[3])
-	myint=myint+(ord(mystring[2]) << 8)
-	myint=myint+(ord(mystring[1]) << 16)
-	myint=myint+(ord(mystring[0]) << 24)
+	if sys.hexversion < 0x3000000:
+		mystring = [ord(x) for x in mystring]
+	myint = 0
+	myint += mystring[3]
+	myint += mystring[2] << 8
+	myint += mystring[1] << 16
+	myint += mystring[0] << 24
 	return myint
 
 def xpak(rootdir,outfile=None):
@@ -99,7 +102,7 @@ def xpak_mem(mydata):
 	"""Create an xpack segement from a map object."""
 
 	mydata_encoded = {}
-	for k, v in mydata.iteritems():
+	for k, v in mydata.items():
 		k = _unicode_encode(k,
 			encoding=_encodings['repo.content'], errors='backslashreplace')
 		v = _unicode_encode(v,
@@ -112,7 +115,7 @@ def xpak_mem(mydata):
 	indexpos=0
 	dataglob = _unicode_encode('')
 	datapos=0
-	for x, newglob in mydata.iteritems():
+	for x, newglob in mydata.items():
 		mydatasize=len(newglob)
 		indexglob=indexglob+encodeint(len(x))+x+encodeint(datapos)+encodeint(mydatasize)
 		indexpos=indexpos+4+len(x)+4+4
@@ -190,7 +193,7 @@ def getboth(infile):
 def listindex(myindex):
 	"""Print to the terminal the filenames listed in the indexglob passed in."""
 	for x in getindex_mem(myindex):
-		print x
+		print(x)
 
 def getindex_mem(myindex):
 	"""Returns the filenames listed in the indexglob passed in."""
@@ -206,6 +209,8 @@ def getindex_mem(myindex):
 def searchindex(myindex,myitem):
 	"""(index,item) -- Finds the offset and length of the file 'item' in the
 	datasegment via the index 'index' provided."""
+	myitem = _unicode_encode(myitem,
+		encoding=_encodings['repo.content'], errors='backslashreplace')
 	mylen=len(myitem)
 	myindexlen=len(myindex)
 	startpos=0
@@ -232,7 +237,7 @@ def xpand(myid,mydest):
 	mydata=myid[1]
 	try:
 		origdir=os.getcwd()
-	except SystemExit, e:
+	except SystemExit as e:
 		raise
 	except:
 		os.chdir("/")
@@ -313,7 +318,7 @@ class tbz2(object):
 			# thus the above sanity check.
 			try:
 				shutil.rmtree(datadir)
-			except OSError, oe:
+			except OSError as oe:
 				if oe.errno == errno.ENOENT:
 					pass
 				else:
@@ -359,7 +364,7 @@ class tbz2(object):
 			self.datapos=a.tell()
 			a.close()
 			return 2
-		except SystemExit, e:
+		except SystemExit as e:
 			raise
 		except:
 			return 0
@@ -397,7 +402,7 @@ class tbz2(object):
 			return 0
 		try:
 			origdir=os.getcwd()
-		except SystemExit, e:
+		except SystemExit as e:
 			raise
 		except:
 			os.chdir("/")
@@ -413,6 +418,8 @@ class tbz2(object):
 			datapos=decodeint(self.index[startpos+4+namelen:startpos+8+namelen]);
 			datalen=decodeint(self.index[startpos+8+namelen:startpos+12+namelen]);
 			myname=self.index[startpos+4:startpos+4+namelen]
+			myname = _unicode_decode(myname,
+				encoding=_encodings['repo.content'], errors='replace')
 			dirname=os.path.dirname(myname)
 			if dirname:
 				if not os.path.exists(dirname):

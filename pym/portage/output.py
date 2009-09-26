@@ -5,7 +5,10 @@
 __docformat__ = "epytext"
 
 import codecs
-import commands
+try:
+	from subprocess import getstatusoutput as subprocess_getstatusoutput
+except ImportError:
+	from commands import getstatusoutput as subprocess_getstatusoutput
 import errno
 import formatter
 import re
@@ -19,6 +22,7 @@ portage.proxy.lazyimport.lazyimport(globals(),
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
+from portage import _unicode_decode
 from portage.const import COLOR_MAP_FILE
 from portage.exception import CommandNotFound, FileNotFound, \
 	ParseError, PermissionDenied, PortageException
@@ -73,7 +77,7 @@ def color(fg, bg="default", attr=["normal"]):
 
 
 ansi_codes = []
-for x in xrange(30, 38):
+for x in range(30, 38):
 	ansi_codes.append("%im" % x)
 	ansi_codes.append("%i;01m" % x)
 
@@ -81,7 +85,7 @@ rgb_ansi_colors = ['0x000000', '0x555555', '0xAA0000', '0xFF5555', '0x00AA00',
 	'0x55FF55', '0xAA5500', '0xFFFF55', '0x0000AA', '0x5555FF', '0xAA00AA',
 	'0xFF55FF', '0x00AAAA', '0x55FFFF', '0xAAAAAA', '0xFFFFFF']
 
-for x in xrange(len(rgb_ansi_colors)):
+for x in range(len(rgb_ansi_colors)):
 	codes[rgb_ansi_colors[x]] = esc_seq + ansi_codes[x]
 
 del x
@@ -218,7 +222,7 @@ def _parse_color_map(config_root='/', onerror=None):
 					_styles[k] = tuple(code_list)
 				elif k in codes:
 					codes[k] = "".join(code_list)
-	except (IOError, OSError), e:
+	except (IOError, OSError) as e:
 		if e.errno == errno.ENOENT:
 			raise FileNotFound(myfile)
 		elif e.errno == errno.EACCES:
@@ -351,16 +355,31 @@ class ConsoleStyleFile(object):
 		self._styles = styles
 
 	def write(self, s):
+		# In python-2.6, DumbWriter.send_line_break() can write
+		# non-unicode '\n' which fails with TypeError if self._file
+		# is a text stream such as io.StringIO. Therefore, make sure
+		# input is converted to unicode when necessary.
+		s = _unicode_decode(s)
 		global havecolor
 		if havecolor and self._styles:
+			styled_s = []
 			for style in self._styles:
-				self._file.write(style_to_ansi_code(style))
-			self._file.write(s)
-			self._file.write(codes["reset"])
+				styled_s.append(style_to_ansi_code(style))
+			styled_s.append(s)
+			styled_s.append(codes["reset"])
+			self._write(self._file, "".join(styled_s))
 		else:
-			self._file.write(s)
+			self._write(self._file, s)
 		if self.write_listener:
-			self.write_listener.write(s)
+			self._write(self.write_listener, s)
+
+	def _write(self, f, s):
+		if sys.hexversion < 0x3000000 and \
+			isinstance(s, unicode) and \
+			f in (sys.stdout, sys.stderr):
+			# avoid potential UnicodeEncodeError
+			s = s.encode(_encodings['stdio'], 'backslashreplace')
+		f.write(s)
 
 	def writelines(self, lines):
 		for s in lines:
@@ -405,7 +424,7 @@ def get_term_size():
 			pass
 	except ImportError:
 		pass
-	st, out = commands.getstatusoutput('stty size')
+	st, out = subprocess_getstatusoutput('stty size')
 	if st == os.EX_OK:
 		out = out.split()
 		if len(out) == 2:
@@ -740,15 +759,21 @@ def _init(config_root='/'):
 	codes = object.__getattribute__(codes, '_attr')
 	_styles = object.__getattribute__(_styles, '_attr')
 
+	for k, v in codes.items():
+		codes[k] = _unicode_decode(v)
+
+	for k, v in _styles.items():
+		_styles[k] = _unicode_decode(v)
+
 	try:
 		_parse_color_map(config_root=config_root,
 			onerror=lambda e: writemsg("%s\n" % str(e), noiselevel=-1))
 	except FileNotFound:
 		pass
-	except PermissionDenied, e:
+	except PermissionDenied as e:
 		writemsg(_("Permission denied: '%s'\n") % str(e), noiselevel=-1)
 		del e
-	except PortageException, e:
+	except PortageException as e:
 		writemsg("%s\n" % str(e), noiselevel=-1)
 		del e
 

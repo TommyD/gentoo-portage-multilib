@@ -24,6 +24,9 @@ from portage.const import USER_CONFIG_PATH
 from portage.exception import DirectoryNotFound, InvalidAtom, PortageException
 from portage.localization import _
 
+if sys.hexversion >= 0x3000000:
+	long = int
+
 ignored_dbentries = ("CONTENTS", "environment.bz2")
 
 def update_dbentry(update_cmd, mycontent):
@@ -56,7 +59,7 @@ def update_dbentries(update_iter, mydata):
 	"""Performs update commands and returns a
 	dict containing only the updated items."""
 	updated_items = {}
-	for k, mycontent in mydata.iteritems():
+	for k, mycontent in mydata.items():
 		k_unicode = _unicode_decode(k,
 			encoding=_encodings['repo.content'], errors='replace')
 		if k_unicode not in ignored_dbentries:
@@ -83,7 +86,7 @@ def fixdbentries(update_iter, dbdir):
 			mode='r', encoding=_encodings['repo.content'],
 			errors='replace').read()
 	updated_items = update_dbentries(update_iter, mydata)
-	for myfile, mycontent in updated_items.iteritems():
+	for myfile, mycontent in updated_items.items():
 		file_path = os.path.join(dbdir, myfile)
 		write_atomic(file_path, mycontent, encoding=_encodings['repo.content'])
 	return len(updated_items) > 0
@@ -94,7 +97,7 @@ def grab_updates(updpath, prev_mtimes=None):
 	given then only updates with differing mtimes are considered."""
 	try:
 		mylist = os.listdir(updpath)
-	except OSError, oe:
+	except OSError as oe:
 		if oe.errno == errno.ENOENT:
 			raise DirectoryNotFound(updpath)
 		raise
@@ -224,14 +227,12 @@ def update_config_files(config_root, protect, protect_mask, update_iter):
 				mode='r', encoding=_encodings['content'],
 				errors='replace').readlines()
 		except IOError:
-			if file_contents.has_key(x):
-				del file_contents[x]
 			continue
 
 	# update /etc/portage/packages.*
 	ignore_line_re = re.compile(r'^#|^\s*$')
 	for update_cmd in update_iter:
-		for x, contents in file_contents.iteritems():
+		for x, contents in file_contents.items():
 			for pos, line in enumerate(contents):
 				if ignore_line_re.match(line):
 					continue
@@ -256,7 +257,7 @@ def update_config_files(config_root, protect, protect_mask, update_iter):
 			updating_file = new_protect_filename(updating_file)
 		try:
 			write_atomic(updating_file, "".join(file_contents[x]))
-		except PortageException, e:
+		except PortageException as e:
 			writemsg("\n!!! %s\n" % str(e), noiselevel=-1)
 			writemsg(_("!!! An error occured while updating a config file:") + \
 				" '%s'\n" % updating_file, noiselevel=-1)

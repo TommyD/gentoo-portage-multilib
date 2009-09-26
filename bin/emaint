@@ -1,5 +1,8 @@
 #!/usr/bin/python -O
 # vim: noet :
+
+from __future__ import print_function
+
 import re
 import signal
 import sys
@@ -77,9 +80,9 @@ class WorldHandler(object):
 		self._check_world(onProgress)
 		errors = []
 		if self.found:
-			errors += map(lambda x: "'%s' is not a valid atom" % x, self.invalid)
-			errors += map(lambda x: "'%s' is not installed" % x, self.not_installed)
-			errors += map(lambda x: "'%s' has a category that is not listed in /etc/portage/categories" % x, self.invalid_category)
+			errors += ["'%s' is not a valid atom" % x for x in self.invalid]
+			errors += ["'%s' is not installed" % x for x in self.not_installed]
+			errors += ["'%s' has a category that is not listed in /etc/portage/categories" % x for x in self.invalid_category]
 		else:
 			errors.append(self.world_file + " could not be opened for reading")
 		return errors
@@ -206,7 +209,7 @@ class BinhostHandler(object):
 				bintree.populated = False
 
 				del pkgindex.packages[:]
-				pkgindex.packages.extend(metadata.itervalues())
+				pkgindex.packages.extend(metadata.values())
 				from portage.util import atomic_ofstream
 				f = atomic_ofstream(self._pkgindex_file)
 				try:
@@ -274,12 +277,11 @@ class MoveHandler(object):
 		maxval = len(cpv_all)
 		aux_update = self._tree.dbapi.aux_update
 		update_keys = self._update_keys
-		from itertools import izip
 		from portage.update import update_dbentries
 		if onProgress:
 			onProgress(maxval, 0)
 		for i, cpv in enumerate(cpv_all):
-			metadata = dict(izip(update_keys, aux_get(cpv, update_keys)))
+			metadata = dict(zip(update_keys, aux_get(cpv, update_keys)))
 			metadata_updates = update_dbentries(updates, metadata)
 			if metadata_updates:
 				errors.append("'%s' has outdated metadata" % cpv)
@@ -383,7 +385,7 @@ class VdbKeyHandler(object):
 								keyfile = open(mydir+os.sep+k, "w")
 								keyfile.write(s+"\n")
 								keyfile.close()
-							except (IOError, OSError), e:
+							except (IOError, OSError) as e:
 								errors.append("Could not write %s, reason was: %s" % (mydir+k, e))
 		
 		return errors
@@ -461,7 +463,7 @@ def emaint_main(myargv):
 
 	# Similar to emerge, emaint needs a default umask so that created
 	# files (such as the world file) have sane permissions.
-	os.umask(022)
+	os.umask(0o22)
 
 	# TODO: Create a system that allows external modules to be added without
 	#       the need for hard coding.
@@ -473,7 +475,7 @@ def emaint_main(myargv):
 		"cleanresume":CleanResume
 	}
 
-	module_names = modules.keys()
+	module_names = list(modules)
 	module_names.sort()
 	module_names.insert(0, "all")
 
@@ -518,7 +520,7 @@ def emaint_main(myargv):
 	if parser.action:
 		action = parser.action
 	else:
-		print "Defaulting to --check"
+		print("Defaulting to --check")
 		action = "-c/--check"
 
 	if args[0] == "all":
@@ -536,7 +538,7 @@ def emaint_main(myargv):
 
 	isatty = sys.stdout.isatty()
 	for task in tasks:
-		print status % task.name()
+		print(status % task.name())
 		inst = task()
 		onProgress = None
 		if isatty:
@@ -554,14 +556,14 @@ def emaint_main(myargv):
 		if isatty:
 			# make sure the final progress is displayed
 			progressHandler.display()
-			print
+			print()
 			signal.signal(signal.SIGWINCH, signal.SIG_DFL)
 		if result:
-			print
-			print "\n".join(result)
-			print "\n"
+			print()
+			print("\n".join(result))
+			print("\n")
 
-	print "Finished"
+	print("Finished")
 
 if __name__ == "__main__":
 	emaint_main(sys.argv[1:])

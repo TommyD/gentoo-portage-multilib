@@ -2,6 +2,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+from __future__ import print_function
+
 import sys
 
 from portage.output import bold, create_color_func
@@ -33,16 +35,19 @@ def userquery(prompt, responses=None, colours=None):
 	elif colours is None:
 		colours=[bold]
 	colours=(colours*len(responses))[:len(responses)]
-	print bold(prompt),
+	print(bold(prompt), end=' ')
 	try:
 		while True:
-			response=raw_input("["+"/".join([colours[i](responses[i]) for i in range(len(responses))])+"] ")
+			if sys.hexversion >= 0x3000000:
+				response=input("["+"/".join([colours[i](responses[i]) for i in range(len(responses))])+"] ")
+			else:
+				response=raw_input("["+"/".join([colours[i](responses[i]) for i in range(len(responses))])+"] ")
 			for key in responses:
 				# An empty response will match the first value in responses.
 				if response.upper()==key[:len(response)].upper():
 					return key
-			print "Sorry, response '%s' not understood." % response,
+			print("Sorry, response '%s' not understood." % response, end=' ')
 	except (EOFError, KeyboardInterrupt):
-		print "Interrupted."
+		print("Interrupted.")
 		sys.exit(1)
 

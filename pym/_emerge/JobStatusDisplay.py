@@ -5,18 +5,24 @@
 import formatter
 import sys
 import time
-
 try:
-	from cStringIO import StringIO
+	from io import StringIO
 except ImportError:
+	# Needed for python-2.6 with USE=build since
+	# io imports threading which imports thread
+	# which is unavailable.
 	from StringIO import StringIO
 
 import portage
 from portage import os
 from portage import _encodings
+from portage import _unicode_decode
 from portage.output import xtermTitle
 
 from _emerge.getloadavg import getloadavg
+
+if sys.hexversion >= 0x3000000:
+	basestring = str
 
 class JobStatusDisplay(object):
 
@@ -54,7 +60,7 @@ class JobStatusDisplay(object):
 		object.__setattr__(self, "_isatty", isatty)
 		if not isatty or not self._init_term():
 			term_codes = {}
-			for k, capname in self._termcap_name_map.iteritems():
+			for k, capname in self._termcap_name_map.items():
 				term_codes[k] = self._default_term_codes[capname]
 			object.__setattr__(self, "_term_codes", term_codes)
 		encoding = sys.getdefaultencoding()
@@ -100,7 +106,7 @@ class JobStatusDisplay(object):
 			return False
 
 		term_codes = {}
-		for k, capname in self._termcap_name_map.iteritems():
+		for k, capname in self._termcap_name_map.items():
 			code = tigetstr(capname)
 			if code is None:
 				code = self._default_term_codes[capname]
@@ -226,36 +232,36 @@ class JobStatusDisplay(object):
 		f = formatter.AbstractFormatter(style_writer)
 
 		number_style = "INFORM"
-		f.add_literal_data("Jobs: ")
+		f.add_literal_data(_unicode_decode("Jobs: "))
 		f.push_style(number_style)
-		f.add_literal_data(curval_str)
+		f.add_literal_data(_unicode_decode(curval_str))
 		f.pop_style()
-		f.add_literal_data(" of ")
+		f.add_literal_data(_unicode_decode(" of "))
 		f.push_style(number_style)
-		f.add_literal_data(maxval_str)
+		f.add_literal_data(_unicode_decode(maxval_str))
 		f.pop_style()
-		f.add_literal_data(" complete")
+		f.add_literal_data(_unicode_decode(" complete"))
 
 		if self.running:
-			f.add_literal_data(", ")
+			f.add_literal_data(_unicode_decode(", "))
 			f.push_style(number_style)
-			f.add_literal_data(running_str)
+			f.add_literal_data(_unicode_decode(running_str))
 			f.pop_style()
-			f.add_literal_data(" running")
+			f.add_literal_data(_unicode_decode(" running"))
 
 		if self.failed:
-			f.add_literal_data(", ")
+			f.add_literal_data(_unicode_decode(", "))
 			f.push_style(number_style)
-			f.add_literal_data(failed_str)
+			f.add_literal_data(_unicode_decode(failed_str))
 			f.pop_style()
-			f.add_literal_data(" failed")
+			f.add_literal_data(_unicode_decode(" failed"))
 
 		padding = self._jobs_column_width - len(plain_output.getvalue())
 		if padding > 0:
-			f.add_literal_data(padding * " ")
+			f.add_literal_data(padding * _unicode_decode(" "))
 
-		f.add_literal_data("Load avg: ")
-		f.add_literal_data(load_avg_str)
+		f.add_literal_data(_unicode_decode("Load avg: "))
+		f.add_literal_data(_unicode_decode(load_avg_str))
 
 		# Truncate to fit width, to avoid making the terminal scroll if the
 		# line overflows (happens when the load average is large).

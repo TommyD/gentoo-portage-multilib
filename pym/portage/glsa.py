@@ -4,7 +4,10 @@
 
 import codecs
 import sys
-import urllib
+try:
+	from urllib.request import urlopen as urllib_request_urlopen
+except ImportError:
+	from urllib import urlopen as urllib_request_urlopen
 import re
 import xml.dom.minidom
 
@@ -470,7 +473,7 @@ class Glsa:
 			myurl = "file://"+self.nr
 		else:
 			myurl = repository + "glsa-%s.xml" % str(self.nr)
-		self.parse(urllib.urlopen(myurl))
+		self.parse(urllib_request_urlopen(myurl))
 		return None
 
 	def parse(self, myfile):
@@ -508,7 +511,8 @@ class Glsa:
 		# <revised count="2">2007-12-30</revised>
 		revisedEl = myroot.getElementsByTagName("revised")[0]
 		self.revised = getText(revisedEl, format="strip")
-		if (revisedEl.attributes.has_key("count")):
+		if ((sys.hexversion >= 0x3000000 and "count" in revisedEl.attributes) or
+			(sys.hexversion < 0x3000000 and revisedEl.attributes.has_key("count"))):
 			count = revisedEl.getAttribute("count")
 		elif (self.revised.find(":") >= 0):
 			(self.revised, count) = self.revised.split(":")
@@ -578,7 +582,7 @@ class Glsa:
 		outstream.write(_("Announced on:      %s\n") % self.announced)
 		outstream.write(_("Last revised on:   %s : %02d\n\n") % (self.revised, self.count))
 		if self.glsatype == "ebuild":
-			for k in self.packages.keys():
+			for k in self.packages:
 				pkg = self.packages[k]
 				for path in pkg:
 					vul_vers = "".join(path["vul_vers"])
@@ -623,7 +627,7 @@ class Glsa:
 		@returns:	True if the system is affected, False if not
 		"""
 		rValue = False
-		for k in self.packages.keys():
+		for k in self.packages:
 			pkg = self.packages[k]
 			for path in pkg:
 				if path["arch"] == "*" or self.config["ARCH"] in path["arch"].split():
@@ -676,7 +680,7 @@ class Glsa:
 		@return:	list of package-versions that have to be merged
 		"""
 		rValue = []
-		for pkg in self.packages.keys():
+		for pkg in self.packages:
 			for path in self.packages[pkg]:
 				update = getMinUpgrade(path["vul_atoms"], path["unaff_atoms"], \
 					self.portdbapi, self.vardbapi, minimize=least_change)

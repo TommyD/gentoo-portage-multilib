@@ -2,13 +2,14 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+from __future__ import print_function
+
 import codecs
 import logging
 import sys
 import textwrap
 import time
 import weakref
-from itertools import izip
 import portage
 from portage import os
 from portage import _encodings
@@ -43,6 +44,9 @@ from _emerge.PollScheduler import PollScheduler
 from _emerge.RootConfig import RootConfig
 from _emerge.SlotObject import SlotObject
 from _emerge.SequentialTaskQueue import SequentialTaskQueue
+
+if sys.hexversion >= 0x3000000:
+	basestring = str
 
 class Scheduler(PollScheduler):
 
@@ -557,7 +561,7 @@ class Scheduler(PollScheduler):
 
 		digest = '--digest' in self.myopts
 		if not digest:
-			for pkgsettings in self.pkgsettings.itervalues():
+			for pkgsettings in self.pkgsettings.values():
 				if 'digest' in pkgsettings.features:
 					digest = True
 					break
@@ -600,7 +604,7 @@ class Scheduler(PollScheduler):
 
 		shown_verifying_msg = False
 		quiet_settings = {}
-		for myroot, pkgsettings in self.pkgsettings.iteritems():
+		for myroot, pkgsettings in self.pkgsettings.items():
 			quiet_config = portage.config(clone=pkgsettings)
 			quiet_config["PORTAGE_QUIET"] = "1"
 			quiet_config.backup_changes("PORTAGE_QUIET")
@@ -755,7 +759,7 @@ class Scheduler(PollScheduler):
 		# any of bad_resume_opts from leaking in
 		# via EMERGE_DEFAULT_OPTS.
 		resume_opts["--ignore-default-opts"] = True
-		for myopt, myarg in resume_opts.iteritems():
+		for myopt, myarg in resume_opts.items():
 			if myopt not in bad_resume_opts:
 				if myarg is True:
 					mynewargv.append(myopt)
@@ -904,10 +908,10 @@ class Scheduler(PollScheduler):
 				root_msg = ""
 				if mysettings["ROOT"] != "/":
 					root_msg = " merged to %s" % mysettings["ROOT"]
-				print
+				print()
 				printer.einfo("Error messages for package %s%s:" % \
 					(colorize("INFORM", key), root_msg))
-				print
+				print()
 				for phase in portage.const.EBUILD_PHASES:
 					if phase not in logentries:
 						continue
@@ -1472,7 +1476,7 @@ class Scheduler(PollScheduler):
 		@rtype: bool
 		@returns: True if successful, False otherwise.
 		"""
-		print colorize("GOOD", "*** Resuming merge...")
+		print(colorize("GOOD", "*** Resuming merge..."))
 
 		if self._show_list():
 			if "--tree" in self.myopts:
@@ -1489,7 +1493,7 @@ class Scheduler(PollScheduler):
 			"--nodeps" not in self.myopts
 
 		if show_spinner:
-			print "Calculating dependencies  ",
+			print("Calculating dependencies  ", end=' ')
 
 		myparams = create_depgraph_params(self.myopts, None)
 		success = False
@@ -1498,7 +1502,7 @@ class Scheduler(PollScheduler):
 			success, mydepgraph, dropped_tasks = resume_depgraph(
 				self.settings, self.trees, self._mtimedb, self.myopts,
 				myparams, self._spinner)
-		except depgraph.UnsatisfiedResumeDep, exc:
+		except depgraph.UnsatisfiedResumeDep as exc:
 			# rename variable to avoid python-3.0 error:
 			# SyntaxError: can not delete variable 'e' referenced in nested
 			#              scope
@@ -1507,7 +1511,7 @@ class Scheduler(PollScheduler):
 			dropped_tasks = set()
 
 		if show_spinner:
-			print "\b\b... done!"
+			print("\b\b... done!")
 
 		if e is not None:
 			def unsatisfied_resume_dep_msg():
@@ -1668,7 +1672,7 @@ class Scheduler(PollScheduler):
 		db = root_config.trees[tree_type].dbapi
 		db_keys = list(self.trees[root_config.root][
 			tree_type].dbapi._aux_cache_keys)
-		metadata = izip(db_keys, db.aux_get(cpv, db_keys))
+		metadata = zip(db_keys, db.aux_get(cpv, db_keys))
 		return Package(built=(type_name != 'ebuild'),
 			cpv=cpv, metadata=metadata,
 			root_config=root_config, installed=installed)

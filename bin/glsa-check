@@ -3,6 +3,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+from __future__ import print_function
+
 import sys
 
 try:
@@ -124,7 +126,7 @@ if "affected" in params:
 	for x in todolist:
 		try:
 			myglsa = Glsa(x, portage.settings, vardb, portdb)
-		except (GlsaTypeException, GlsaFormatException), e:
+		except (GlsaTypeException, GlsaFormatException) as e:
 			if verbose:
 				sys.stderr.write(("invalid GLSA: %s (error message was: %s)\n" % (x, e)))
 			continue
@@ -149,7 +151,7 @@ def summarylist(myglsalist, fd1=sys.stdout, fd2=sys.stderr):
 	for myid in myglsalist:
 		try:
 			myglsa = Glsa(myid, portage.settings, vardb, portdb)
-		except (GlsaTypeException, GlsaFormatException), e:
+		except (GlsaTypeException, GlsaFormatException) as e:
 			if verbose:
 				fd2.write(("invalid GLSA: %s (error message was: %s)\n" % (myid, e)))
 			continue
@@ -170,12 +172,12 @@ def summarylist(myglsalist, fd1=sys.stdout, fd2=sys.stderr):
 
 		fd1.write(color(myglsa.nr) + " " + color(status) + " " + color(access) + myglsa.title + " (")
 		if not verbose:
-			for pkg in myglsa.packages.keys()[:3]:
+			for pkg in list(myglsa.packages)[:3]:
 				fd1.write(" " + pkg + " ")
 			if len(myglsa.packages) > 3:
 				fd1.write("... ")
 		else:
-			for pkg in myglsa.packages.keys():
+			for pkg in myglsa.packages:
 				mylist = vardb.match(portage.dep_getkey(str(pkg)))
 				if len(mylist) > 0:
 					pkg = color(" ".join(mylist))
@@ -195,7 +197,7 @@ if mode in ["dump", "fix", "inject", "pretend"]:
 	for myid in glsalist:
 		try:
 			myglsa = Glsa(myid, portage.settings, vardb, portdb)
-		except (GlsaTypeException, GlsaFormatException), e:
+		except (GlsaTypeException, GlsaFormatException) as e:
 			if verbose:
 				sys.stderr.write(("invalid GLSA: %s (error message was: %s)\n" % (myid, e)))
 			continue
@@ -247,7 +249,7 @@ if mode == "test":
 	for myid in glsalist:
 		try:
 			myglsa = Glsa(myid, portage.settings, vardb, portdb)
-		except (GlsaTypeException, GlsaFormatException), e:
+		except (GlsaTypeException, GlsaFormatException) as e:
 			if verbose:
 				sys.stderr.write(("invalid GLSA: %s (error message was: %s)\n" % (myid, e)))
 			continue
@@ -266,7 +268,7 @@ if mode == "test":
 # mail mode as requested by solar
 if mode == "mail":
 	import portage.mail, socket
-	from StringIO import StringIO
+	from io import StringIO
 	from email.mime.text import MIMEText
 	
 	# color doesn't make any sense for mail
@@ -296,7 +298,7 @@ if mode == "mail":
 	for myid in glsalist:
 		try:
 			myglsa = Glsa(myid, portage.settings, vardb, portdb)
-		except (GlsaTypeException, GlsaFormatException), e:
+		except (GlsaTypeException, GlsaFormatException) as e:
 			if verbose:
 				sys.stderr.write(("invalid GLSA: %s (error message was: %s)\n" % (myid, e)))
 			continue

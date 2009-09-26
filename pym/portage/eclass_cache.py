@@ -5,11 +5,15 @@
 
 __all__ = ["cache"]
 
+import sys
 import warnings
 from portage.util import normalize_path
 import errno
 from portage.exception import PermissionDenied
 from portage import os
+
+if sys.hexversion >= 0x3000000:
+	long = int
 
 class cache(object):
 	"""
@@ -61,13 +65,13 @@ class cache(object):
 	def close_caches(self):
 		import traceback
 		traceback.print_stack()
-		print "%s close_cache is deprecated" % self.__class__
+		print("%s close_cache is deprecated" % self.__class__)
 		self.eclasses.clear()
 
 	def flush_cache(self):
 		import traceback
 		traceback.print_stack()
-		print "%s flush_cache is deprecated" % self.__class__
+		print("%s flush_cache is deprecated" % self.__class__)
 
 		self.update_eclasses()
 
@@ -80,7 +84,7 @@ class cache(object):
 		for x in [normalize_path(os.path.join(y,"eclass")) for y in self.porttrees]:
 			try:
 				eclass_filenames = os.listdir(x)
-			except OSError, e:
+			except OSError as e:
 				if e.errno in ignored_listdir_errnos:
 					del e
 					continue
@@ -114,7 +118,7 @@ class cache(object):
 	def is_eclass_data_valid(self, ec_dict):
 		if not isinstance(ec_dict, dict):
 			return False
-		for eclass, tup in ec_dict.iteritems():
+		for eclass, tup in ec_dict.items():
 			cached_data = self.eclasses.get(eclass, None)
 			""" Only use the mtime for validation since the probability of a
 			collision is small and, depending on the cache implementation, the

@@ -2,6 +2,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+from __future__ import print_function
+
 import codecs
 import sys
 import time
@@ -33,7 +35,7 @@ def emergelog(xterm_titles, mystr, short_msg=None):
 			errors='backslashreplace')
 		portage.util.apply_secpass_permissions(file_path,
 			uid=portage.portage_uid, gid=portage.portage_gid,
-			mode=0660)
+			mode=0o660)
 		mylock = None
 		try:
 			mylock = portage.locks.lockfile(mylogfile)
@@ -46,6 +48,6 @@ def emergelog(xterm_titles, mystr, short_msg=None):
 			if mylock:
 				portage.locks.unlockfile(mylock)
 			mylogfile.close()
-	except (IOError,OSError,portage.exception.PortageException), e:
+	except (IOError,OSError,portage.exception.PortageException) as e:
 		if secpass >= 1:
-			print >> sys.stderr, "emergelog():",e
+			print("emergelog():",e, file=sys.stderr)

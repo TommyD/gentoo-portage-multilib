@@ -23,7 +23,7 @@ class Mapping(object):
 	"""
 
 	def __iter__(self):
-		return self.iterkeys()
+		return iter(self.keys())
 
 	def keys(self):
 		return list(self.__iter__())
@@ -48,7 +48,7 @@ class Mapping(object):
 		return self.__iter__()
 
 	def itervalues(self):
-		for _, v in self.iteritems():
+		for _, v in self.items():
 			yield v
 
 	def values(self):
@@ -64,10 +64,10 @@ class Mapping(object):
 			return default
 
 	def __repr__(self):
-		return repr(dict(self.iteritems()))
+		return repr(dict(self.items()))
 
 	def __len__(self):
-		return len(self.keys())
+		return len(list(self))
 
 	if sys.hexversion >= 0x3000000:
 		items = iteritems
@@ -80,7 +80,7 @@ class MutableMapping(Mapping):
 	"""
 
 	def clear(self):
-		for key in self.keys():
+		for key in list(self):
 			del self[key]
 
 	def setdefault(self, key, default=None):
@@ -105,7 +105,7 @@ class MutableMapping(Mapping):
 
 	def popitem(self):
 		try:
-			k, v = self.iteritems().next()
+			k, v = next(iter(self.items()))
 		except StopIteration:
 			raise KeyError('container is empty')
 		del self[k]
@@ -226,9 +226,9 @@ class ProtectedDict(MutableMapping):
 			
 
 	def __iter__(self):
-		for k in self.new.iterkeys():
+		for k in self.new:
 			yield k
-		for k in self.orig.iterkeys():
+		for k in self.orig:
 			if k not in self.blacklist and k not in self.new:
 				yield k
 
@@ -346,9 +346,10 @@ def slot_dict_class(keys, prefix="_val_"):
 				return list(self)
 
 			def iteritems(self):
+				prefix = self._prefix
 				for k in self.allowed_keys:
 					try:
-						yield (k, getattr(self, self._prefix + k))
+						yield (k, getattr(self, prefix + k))
 					except AttributeError:
 						pass
 

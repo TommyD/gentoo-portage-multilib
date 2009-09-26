@@ -9,6 +9,10 @@ from portage.cache.mappings import ProtectedDict
 import sys
 import warnings
 
+if sys.hexversion >= 0x3000000:
+	basestring = str
+	long = int
+
 class database(object):
 	# this is for metadata/cache transfer.
 	# basically flags the cache needs be updated when transfered cache to cache.
@@ -64,8 +68,8 @@ class database(object):
 			raise cache_errors.ReadOnlyRestriction()
 		if self.cleanse_keys:
 			d=ProtectedDict(values)
-			for k in d.keys():
-				if d[k] == '':
+			for k, v in list(d.items()):
+				if not v:
 					del d[k]
 			if self.serialize_eclasses and "_eclasses_" in values:
 				d["_eclasses_"] = serialize_eclasses(d["_eclasses_"])
@@ -106,13 +110,13 @@ class database(object):
 		return cpv in self
 
 	def keys(self):
-		return tuple(self.iterkeys())
+		return list(self)
 
 	def iterkeys(self):
 		return iter(self)
 
 	def iteritems(self):
-		for x in self.iterkeys():
+		for x in self:
 			yield (x, self[x])
 
 	def items(self):
@@ -148,7 +152,7 @@ class database(object):
 		if self.iterkeys is database.iterkeys:
 			# prevent a possible recursive loop
 			raise NotImplementedError(self)
-		return self.iterkeys()
+		return iter(self.keys())
 
 	def get(self, k, x=None):
 		try:
@@ -166,22 +170,22 @@ class database(object):
 
 		import re
 		restricts = {}
-		for key,match in match_dict.iteritems():
+		for key,match in match_dict.items():
 			# XXX this sucks.
 			try:
 				if isinstance(match, basestring):
 					restricts[key] = re.compile(match).match
 				else:
 					restricts[key] = re.compile(match[0],match[1]).match
-			except re.error, e:
+			except re.error as e:
 				raise InvalidRestriction(key, match, e)
 			if key not in self.__known_keys:
 				raise InvalidRestriction(key, match, "Key isn't valid")
 
-		for cpv in self.iterkeys():
+		for cpv in self:
 			cont = True
 			vals = self[cpv]
-			for key, match in restricts.iteritems():
+			for key, match in restricts.items():
 				if not match(vals[key]):
 					cont = False
 					break
@@ -218,11 +222,11 @@ def reconstruct_eclasses(cpv, eclass_string):
 	d={}
 	try:
 		if eclasses[1].isdigit():
-			for x in xrange(0, len(eclasses), 2):
+			for x in range(0, len(eclasses), 2):
 				d[eclasses[x]] = ("", long(eclasses[x + 1]))
 		else:
 			# The old format contains paths that will be discarded.
-			for x in xrange(0, len(eclasses), 3):
+			for x in range(0, len(eclasses), 3):
 				d[eclasses[x]] = (eclasses[x + 1], long(eclasses[x + 2]))
 	except IndexError:
 		raise cache_errors.CacheCorruption(cpv,

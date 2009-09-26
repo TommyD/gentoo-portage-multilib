@@ -5,6 +5,7 @@
 
 import errno
 import re
+import sys
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
@@ -12,6 +13,10 @@ from portage.cache import cache_errors, flat_hash
 import portage.eclass_cache
 from portage.cache.template import reconstruct_eclasses
 from portage.cache.mappings import ProtectedDict
+
+if sys.hexversion >= 0x3000000:
+	basestring = str
+	long = int
 
 # this is the old cache format, flat_list.  count maintained here.
 magic_line_count = 22
@@ -21,7 +26,7 @@ class database(flat_hash.database):
 	complete_eclass_entries = False
 	auxdbkey_order=('DEPEND', 'RDEPEND', 'SLOT', 'SRC_URI',
 		'RESTRICT',  'HOMEPAGE',  'LICENSE', 'DESCRIPTION',
-		'KEYWORDS',  'INHERITED', 'IUSE', 'CDEPEND',
+		'KEYWORDS',  'INHERITED', 'IUSE', 'UNUSED_00',
 		'PDEPEND',   'PROVIDE', 'EAPI', 'PROPERTIES', 'DEFINED_PHASES')
 
 	autocommits = True
@@ -47,7 +52,7 @@ class database(flat_hash.database):
 				d.clear()
 				try:
 					for i, key in enumerate(self.auxdbkey_order):
-						d[key] = data[i].rstrip("\n")
+						d[key] = data[i]
 				except IndexError:
 					pass
 				break
@@ -61,7 +66,7 @@ class database(flat_hash.database):
 				try:
 					d["_eclasses_"] = self.ec.get_eclass_data(
 						d["INHERITED"].split())
-				except KeyError, e:
+				except KeyError as e:
 					# INHERITED contains a non-existent eclass.
 					raise cache_errors.CacheCorruption(cpv, e)
 				del d["INHERITED"]
@@ -83,7 +88,7 @@ class database(flat_hash.database):
 		for k in self.auxdbkey_order:
 			new_content.append(values.get(k, ''))
 			new_content.append('\n')
-		for i in xrange(magic_line_count - len(self.auxdbkey_order)):
+		for i in range(magic_line_count - len(self.auxdbkey_order)):
 			new_content.append('\n')
 		new_content = ''.join(new_content)
 		new_content = _unicode_encode(new_content,
@@ -122,13 +127,13 @@ class database(flat_hash.database):
 		try:
 			myf = open(_unicode_encode(fp,
 				encoding=_encodings['fs'], errors='strict'), 'wb')
-		except EnvironmentError, e:
+		except EnvironmentError as e:
 			if errno.ENOENT == e.errno:
 				try:
 					self._ensure_dirs(cpv)
 					myf = open(_unicode_encode(fp,
 						encoding=_encodings['fs'], errors='strict'), 'wb')
-				except EnvironmentError, e:
+				except EnvironmentError as e:
 					raise cache_errors.CacheCorruption(cpv, e)
 			else:
 				raise cache_errors.CacheCorruption(cpv, e)
@@ -141,7 +146,7 @@ class database(flat_hash.database):
 
 		try:
 			os.rename(fp, new_fp)
-		except EnvironmentError, e:
+		except EnvironmentError as e:
 			try:
 				os.unlink(fp)
 			except EnvironmentError:

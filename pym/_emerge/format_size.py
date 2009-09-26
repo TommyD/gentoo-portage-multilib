@@ -2,6 +2,11 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+import sys
+
+if sys.hexversion >= 0x3000000:
+	basestring = str
+
 # formats a size given in bytes nicely
 def format_size(mysize):
 	if isinstance(mysize, basestring):
@@ -10,7 +15,7 @@ def format_size(mysize):
 		# Always round up to the next kB so that it doesn't show 0 kB when
 		# some small file still needs to be fetched.
 		mysize += 1024 - mysize % 1024
-	mystr=str(mysize/1024)
+	mystr=str(mysize//1024)
 	mycount=len(mystr)
 	while (mycount > 3):
 		mycount-=3

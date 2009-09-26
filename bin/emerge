@@ -3,6 +3,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+from __future__ import print_function
+
 import sys
 # This block ensures that ^C interrupts are handled quietly.
 try:
@@ -38,10 +40,10 @@ if __name__ == "__main__":
 	from portage.exception import ParseError, PermissionDenied
 	try:
 		retval = emerge_main()
-	except PermissionDenied, e:
+	except PermissionDenied as e:
 		sys.stderr.write("Permission denied: '%s'\n" % str(e))
 		sys.exit(e.errno)
-	except ParseError, e:
+	except ParseError as e:
 		sys.stderr.write("%s\n" % str(e))
 		sys.exit(1)
 	except SystemExit:

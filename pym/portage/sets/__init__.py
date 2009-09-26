@@ -2,11 +2,16 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+from __future__ import print_function
+
 __all__ = ["SETPREFIX", "get_boolean", "SetConfigError",
 	"SetConfig", "load_default_config"]
 
+try:
+	from configparser import SafeConfigParser, NoOptionError
+except ImportError:
+	from ConfigParser import SafeConfigParser, NoOptionError
 from portage import os
-from ConfigParser import SafeConfigParser, NoOptionError
 from portage import load_mod
 from portage.const import USER_CONFIG_PATH, GLOBAL_CONFIG_PATH
 from portage.exception import PackageSetNotFound
@@ -97,7 +102,7 @@ class SetConfig(object):
 					newsets = {}
 					try:
 						newsets = setclass.multiBuilder(optdict, self.settings, self.trees)
-					except SetConfigError, e:
+					except SetConfigError as e:
 						self.errors.append(_("Configuration error in section '%s': %s") % (sname, str(e)))
 						continue
 					for x in newsets:
@@ -126,7 +131,7 @@ class SetConfig(object):
 						if parser.has_option(sname, "world-candidate") and \
 							not parser.getboolean(sname, "world-candidate"):
 							self.psets[setname].world_candidate = False
-					except SetConfigError, e:
+					except SetConfigError as e:
 						self.errors.append(_("Configuration error in section '%s': %s") % (sname, str(e)))
 						continue
 				else:
@@ -201,8 +206,8 @@ if __name__ == "__main__":
 	sc = load_default_config(portage.settings, portage.db["/"])
 	l, e = sc.getSets()
 	for x in l:
-		print x+":"
-		print "DESCRIPTION = %s" % l[x].getMetadata("Description")
+		print(x+":")
+		print("DESCRIPTION = %s" % l[x].getMetadata("Description"))
 		for n in sorted(l[x].getAtoms()):
-			print "- "+n
-		print
+			print("- "+n)
+		print()

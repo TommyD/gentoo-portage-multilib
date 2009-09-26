@@ -2,6 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+import sys
 from portage.util import writemsg
 from portage.data import secpass
 import portage
@@ -12,13 +13,16 @@ try:
 except ImportError:
 	import pickle
 
+if sys.hexversion >= 0x3000000:
+	basestring = str
+	long = int
+
 class BlockerCache(portage.cache.mappings.MutableMapping):
 	"""This caches blockers of installed packages so that dep_check does not
 	have to be done for every single installed package on every invocation of
 	emerge.  The cache is invalidated whenever it is detected that something
 	has changed that might alter the results of dep_check() calls:
 		1) the set of installed packages (including COUNTER) has changed
-		2) the old-style virtuals have changed
 	"""
 
 	# Number of uncached packages to trigger cache update, since
@@ -35,7 +39,6 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 
 	def __init__(self, myroot, vardb):
 		self._vardb = vardb
-		self._virtuals = vardb.settings.getvirtuals()
 		self._cache_filename = os.path.join(myroot,
 			portage.CACHE_PATH, "vdb_blockers.pickle")
 		self._cache_version = "1"
@@ -55,7 +58,7 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 			self._cache_data = mypickle.load()
 			f.close()
 			del f
-		except (IOError, OSError, EOFError, ValueError, pickle.UnpicklingError), e:
+		except (IOError, OSError, EOFError, ValueError, pickle.UnpicklingError) as e:
 			if isinstance(e, pickle.UnpicklingError):
 				writemsg("!!! Error loading '%s': %s\n" % \
 					(self._cache_filename, str(e)), noiselevel=-1)
@@ -69,7 +72,7 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 			# Validate all the atoms and counters so that
 			# corruption is detected as soon as possible.
 			invalid_items = set()
-			for k, v in self._cache_data["blockers"].iteritems():
+			for k, v in self._cache_data["blockers"].items():
 				if not isinstance(k, basestring):
 					invalid_items.add(k)
 					continue
@@ -113,7 +116,6 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 		if not cache_valid:
 			self._cache_data = {"version":self._cache_version}
 			self._cache_data["blockers"] = {}
-			self._cache_data["virtuals"] = self._virtuals
 		self._modified.clear()
 
 	def flush(self):
@@ -129,7 +131,6 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 		{
 			version : "1",
 			"blockers" : {cpv1:(counter,(atom1, atom2...)), cpv2...},
-			"virtuals" : vardb.settings.getvirtuals()
 		}
 		"""
 		if len(self._modified) >= self._cache_threshold and \
@@ -139,8 +140,8 @@ class BlockerCache(portage.cache.mappings.MutableMapping):
 				pickle.dump(self._cache_data, f, protocol=2)
 				f.close()
 				portage.util.apply_secpass_permissions(
-					self._cache_filename, gid=portage.portage_gid, mode=0644)
-			except (IOError, OSError), e:
+					self._cache_filename, gid=portage.portage_gid, mode=0o644)
+			except (IOError, OSError) as e:
 				pass
 			self._modified.clear()
 

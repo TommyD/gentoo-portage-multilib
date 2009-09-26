@@ -2,6 +2,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+from __future__ import print_function
+
 __all__ = ["portdbapi", "close_portdbapi_caches", "portagetree"]
 
 import portage
@@ -28,12 +30,18 @@ from portage import eclass_cache, auxdbkeys, doebuild, flatten, \
 	_eapi_is_deprecated
 from portage import os
 from portage import _encodings
+from portage import _unicode_decode
 from portage import _unicode_encode
 
+import os as _os
 import codecs
 import logging
 import stat
-from itertools import izip
+import sys
+import warnings
+
+if sys.hexversion >= 0x3000000:
+	long = int
 
 def _src_uri_validate(cpv, eapi, src_uri):
 	"""
@@ -199,10 +207,10 @@ class portdbapi(dbapi):
 		# earlier ones that correspond to the same name.
 		porttrees = [x for x in porttrees if x not in identically_named_paths]
 		ignored_map = {}
-		for path, repo_name in identically_named_paths.iteritems():
+		for path, repo_name in identically_named_paths.items():
 			ignored_map.setdefault(repo_name, []).append(path)
 		self._ignored_repos = tuple((repo_name, tuple(paths)) \
-			for repo_name, paths in ignored_map.iteritems())
+			for repo_name, paths in ignored_map.items())
 
 		self.porttrees = porttrees
 		porttree_root = porttrees[0]
@@ -230,7 +238,7 @@ class portdbapi(dbapi):
 		repo_aliases = {}
 		if local_repo_configs is not None:
 			default_loc_repo_config = local_repo_configs.get('DEFAULT')
-			for repo_name, loc_repo_conf in local_repo_configs.iteritems():
+			for repo_name, loc_repo_conf in local_repo_configs.items():
 				if loc_repo_conf.aliases is not None:
 					for alias in loc_repo_conf.aliases:
 						overridden_alias = repo_aliases.get(alias)
@@ -324,7 +332,7 @@ class portdbapi(dbapi):
 		depcachedir_w_ok = os.access(self.depcachedir, os.W_OK)
 		cache_kwargs = {
 			'gid'     : portage_gid,
-			'perms'   : 0664
+			'perms'   : 0o664
 		}
 
 		if secpass < 1:
@@ -334,7 +342,7 @@ class portdbapi(dbapi):
 
 		# XXX: REMOVE THIS ONCE UNUSED_0 IS YANKED FROM auxdbkeys
 		# ~harring
-		filtered_auxdbkeys = filter(lambda x: not x.startswith("UNUSED_0"), auxdbkeys)
+		filtered_auxdbkeys = [x for x in auxdbkeys if not x.startswith("UNUSED_0")]
 		filtered_auxdbkeys.sort()
 		from portage.cache import metadata_overlay, volatile
 		if not depcachedir_w_ok:
@@ -371,9 +379,6 @@ class portdbapi(dbapi):
 			"PDEPEND", "PROPERTIES", "PROVIDE", "RDEPEND", "repository",
 			"RESTRICT", "SLOT"])
 
-		# Repoman modifies _aux_cache_keys, so delay _aux_cache_slot_dict
-		# initialization until the first aux_get call.
-		self._aux_cache_slot_dict = None
 		self._aux_cache = {}
 		self._broken_ebuilds = set()
 
@@ -381,14 +386,14 @@ class portdbapi(dbapi):
 		"""Create /var/cache/edb/dep and adjust permissions for the portage
 		group."""
 
-		dirmode = 02070
-		filemode =   060
-		modemask =    02
+		dirmode  = 0o2070
+		filemode =   0o60
+		modemask =    0o2
 
 		try:
 			ensure_dirs(self.depcachedir, gid=portage_gid,
 				mode=dirmode, mask=modemask)
-		except PortageException, e:
+		except PortageException as e:
 			pass
 
 	def close_caches(self):
@@ -442,11 +447,16 @@ class portdbapi(dbapi):
 		the file we wanted.
 		"""
 		if not mycpv:
-			return "",0
+			return ("", 0)
 		mysplit = mycpv.split("/")
 		psplit = pkgsplit(mysplit[1])
 		if psplit is None or len(mysplit) != 2:
 			raise InvalidPackageName(mycpv)
+
+		# For optimal performace in this hot spot, we do manual unicode
+		# handling here instead of using the wrapped os module.
+		encoding = _encodings['fs']
+		errors = 'strict'
 
 		if mytree:
 			mytrees = [mytree]
@@ -454,30 +464,37 @@ class portdbapi(dbapi):
 			mytrees = self.porttrees[:]
 			mytrees.reverse()
 
-		relative_path = os.path.join(mysplit[0], psplit[0],
-			mysplit[1] + ".ebuild")
+		relative_path = mysplit[0] + _os.sep + psplit[0] + _os.sep + \
+			mysplit[1] + ".ebuild"
 
 		if 'parse-eapi-glep-55' in self.doebuild_settings.features:
 			glep55_startswith = '%s.ebuild-' % mysplit[1]
 			for x in mytrees:
-				filename = x + os.sep + relative_path
-				if os.access(filename, os.R_OK):
+				filename = x + _os.sep + relative_path
+				if _os.access(_unicode_encode(filename,
+					encoding=encoding, errors=errors), _os.R_OK):
 					return (filename, x)
 
-				pkgdir = os.path.join(x, mysplit[0], psplit[0])
+				pkgdir = _os.path.join(x, mysplit[0], psplit[0])
 				try:
-					files = os.listdir(pkgdir)
+					files = _os.listdir(_unicode_encode(pkgdir,
+						encoding=encoding, errors=errors))
 				except OSError:
 					continue
 				for y in files:
+					try:
+						y = _unicode_decode(y, encoding=encoding, errors=errors)
+					except UnicodeDecodeError:
+						continue
 					if y.startswith(glep55_startswith):
-						return (os.path.join(pkgdir, y), x)
+						return (_os.path.join(pkgdir, y), x)
 		else:
 			for x in mytrees:
-				file = x + os.sep + relative_path
-				if os.access(file, os.R_OK):
-					return[file, x]
-		return None, 0
+				filename = x + _os.sep + relative_path
+				if _os.access(_unicode_encode(filename,
+					encoding=encoding, errors=errors), _os.R_OK):
+					return (filename, x)
+		return (None, 0)
 
 	def _metadata_process(self, cpv, ebuild_path, repo_path):
 		"""
@@ -500,8 +517,8 @@ class portdbapi(dbapi):
 	def _metadata_callback(self, cpv, ebuild_path, repo_path, metadata, mtime):
 
 		i = metadata
-		if hasattr(metadata, "iteritems"):
-			i = metadata.iteritems()
+		if hasattr(metadata, "items"):
+			i = iter(metadata.items())
 		metadata = dict(i)
 
 		if metadata.get("INHERITED", False):
@@ -526,9 +543,10 @@ class portdbapi(dbapi):
 		return metadata
 
 	def _pull_valid_cache(self, cpv, ebuild_path, repo_path):
-
 		try:
-			st = os.stat(ebuild_path)
+			# Don't use unicode-wrapped os module, for better performance.
+			st = _os.stat(_unicode_encode(ebuild_path,
+				encoding=_encodings['fs'], errors='strict'))
 			emtime = st[stat.ST_MTIME]
 		except OSError:
 			writemsg(_("!!! aux_get(): ebuild for " \
@@ -648,8 +666,7 @@ class portdbapi(dbapi):
 				mydata["_eclasses_"] = {}
 
 		# do we have a origin repository name for the current package
-		mydata["repository"] = self._repository_map.get(
-			os.path.sep.join(myebuild.split(os.path.sep)[:-3]), "")
+		mydata["repository"] = self._repository_map.get(mylocation, "")
 
 		mydata["INHERITED"] = ' '.join(mydata.get("_eclasses_", []))
 		mydata["_mtime_"] = long(st.st_mtime)
@@ -667,10 +684,7 @@ class portdbapi(dbapi):
 		returnme = [mydata.get(x, "") for x in mylist]
 
 		if cache_me:
-			if self._aux_cache_slot_dict is None:
-				self._aux_cache_slot_dict = \
-					slot_dict_class(self._aux_cache_keys)
-			aux_cache = self._aux_cache_slot_dict()
+			aux_cache = {}
 			for x in self._aux_cache_keys:
 				aux_cache[x] = mydata.get(x, "")
 			self._aux_cache[mycpv] = aux_cache
@@ -759,7 +773,7 @@ class portdbapi(dbapi):
 
 		all_uris = []
 		all_files = []
-		for filename, uris in uri_map.iteritems():
+		for filename, uris in uri_map.items():
 			for uri in uris:
 				all_uris.append(uri)
 				all_files.append(filename)
@@ -774,7 +788,7 @@ class portdbapi(dbapi):
 		checksums = mf.getDigests()
 		if not checksums:
 			if debug: 
-				print "[empty/missing/bad digest]: "+mypkg
+				print("[empty/missing/bad digest]: "+mypkg)
 			return None
 		filesdict={}
 		myfiles = self.getFetchMap(mypkg, useflags=useflags)
@@ -789,7 +803,7 @@ class portdbapi(dbapi):
 			mystat = None
 			try:
 				mystat = os.stat(file_path)
-			except OSError, e:
+			except OSError as e:
 				pass
 			if mystat is None:
 				existing_size = 0
@@ -825,7 +839,7 @@ class portdbapi(dbapi):
 				try:
 					ok, reason = portage.checksum.verify_all(
 						os.path.join(self.mysettings["DISTDIR"], x), mysums[x])
-				except FileNotFound, e:
+				except FileNotFound as e:
 					ok = False
 					reason = _("File Not Found: '%s'") % (e,)
 			if not ok:
@@ -856,7 +870,7 @@ class portdbapi(dbapi):
 						y == "CVS":
 						continue
 					d[x+"/"+y] = None
-		l = d.keys()
+		l = list(d)
 		l.sort()
 		return l
 
@@ -913,7 +927,7 @@ class portdbapi(dbapi):
 				(mycp, self.mysettings["PORTAGE_CONFIGROOT"]), noiselevel=-1)
 			mylist = []
 		else:
-			mylist = d.keys()
+			mylist = list(d)
 		# Always sort in ascending order here since it's handy
 		# and the result can be easily cached and reused.
 		self._cpv_sort_ascending(mylist)
@@ -964,7 +978,7 @@ class portdbapi(dbapi):
 			if mydep != mykey:
 				cpv_iter = self._iter_match(mydep, cpv_iter)
 			try:
-				myval = cpv_iter.next()
+				myval = next(cpv_iter)
 			except StopIteration:
 				myval = ""
 
@@ -986,7 +1000,7 @@ class portdbapi(dbapi):
 				iterfunc = reversed
 			for cpv in iterfunc(mylist):
 				try:
-					metadata = dict(izip(aux_keys,
+					metadata = dict(zip(aux_keys,
 						self.aux_get(cpv, aux_keys)))
 				except KeyError:
 					# ebuild masked by corruption
@@ -1043,7 +1057,7 @@ class portdbapi(dbapi):
 			else:
 				myval = list(self._iter_match(mydep, self.cp_list(mykey)))
 		else:
-			print "ERROR: xmatch doesn't handle", level, "query!"
+			print("ERROR: xmatch doesn't handle", level, "query!")
 			raise KeyError
 
 		if self.frozen and (level not in ["match-list", "bestmatch-list"]):
@@ -1068,7 +1082,7 @@ class portdbapi(dbapi):
 		getProfileMaskAtom = self.mysettings._getProfileMaskAtom
 		for cpv in mylist:
 			try:
-				metadata = dict(izip(db_keys, self.aux_get(cpv, db_keys)))
+				metadata = dict(zip(db_keys, self.aux_get(cpv, db_keys)))
 			except KeyError:
 				# masked by corruption
 				continue
@@ -1095,10 +1109,10 @@ class portdbapi(dbapi):
 		for mycpv in mylist:
 			metadata.clear()
 			try:
-				metadata.update(izip(aux_keys, self.aux_get(mycpv, aux_keys)))
+				metadata.update(zip(aux_keys, self.aux_get(mycpv, aux_keys)))
 			except KeyError:
 				continue
-			except PortageException, e:
+			except PortageException as e:
 				writemsg("!!! Error: aux_get('%s', %s)\n" % (mycpv, aux_keys),
 					noiselevel=-1)
 				writemsg("!!! %s\n" % (e,), noiselevel=-1)
@@ -1195,6 +1209,9 @@ class portagetree(object):
 		return "/".join([self.portroot, mysplit[0], psplit[0], mysplit[1]])+".ebuild"
 
 	def resolve_specific(self, myspec):
+		warnings.warn(
+			"portage.dbapi.porttree.portagetree.resolve_specific() is deprecated",
+			DeprecationWarning)
 		cps = catpkgsplit(myspec)
 		if not cps:
 			return None
@@ -1213,8 +1230,8 @@ class portagetree(object):
 		myslot = ""
 		try:
 			myslot = self.dbapi.aux_get(mycatpkg, ["SLOT"])[0]
-		except SystemExit, e:
+		except SystemExit as e:
 			raise
-		except Exception, e:
+		except Exception as e:
 			pass
 		return myslot

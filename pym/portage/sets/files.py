@@ -77,14 +77,14 @@ class StaticFileSet(EditablePackageSet):
 				for fname in errors:
 					for e in errors[fname]:
 						self.errors.append(fname+": "+e)
-			except EnvironmentError, e:
+			except EnvironmentError as e:
 				if e.errno != errno.ENOENT:
 					raise
 				del e
 				data = {}
 			if self.greedy:
 				atoms = []
-				for a in data.keys():
+				for a in data:
 					matches = self.dbapi.match(a)
 					for cpv in matches:
 						atoms.append("%s:%s" % (cpv_getkey(cpv),
@@ -93,7 +93,7 @@ class StaticFileSet(EditablePackageSet):
 					# in the latest new slot that may be available.
 					atoms.append(a)
 			else:
-				atoms = data.keys()
+				atoms = iter(data)
 			self._setAtoms(atoms)
 			self._mtime = mtime
 		
@@ -183,7 +183,7 @@ class ConfigFileSet(PackageSet):
 
 	def load(self):
 		data, errors = self.loader.load()
-		self._setAtoms(data.keys())
+		self._setAtoms(iter(data))
 	
 	def singleBuilder(self, options, settings, trees):
 		if not "filename" in options:
@@ -249,12 +249,12 @@ class WorldSet(EditablePackageSet):
 				for fname in errors:
 					for e in errors[fname]:
 						self.errors.append(fname+": "+e)
-			except EnvironmentError, e:
+			except EnvironmentError as e:
 				if e.errno != errno.ENOENT:
 					raise
 				del e
 				data = {}
-			atoms = data.keys()
+			atoms = list(data)
 			self._mtime = mtime
 			atoms_changed = True
 		else:
@@ -269,12 +269,12 @@ class WorldSet(EditablePackageSet):
 				for fname in errors:
 					for e in errors[fname]:
 						self.errors.append(fname+": "+e)
-			except EnvironmentError, e:
+			except EnvironmentError as e:
 				if e.errno != errno.ENOENT:
 					raise
 				del e
 				data = {}
-			nonatoms = data.keys()
+			nonatoms = list(data)
 			self._mtime2 = mtime
 			atoms_changed = True
 		else:
@@ -283,7 +283,7 @@ class WorldSet(EditablePackageSet):
 			self._setAtoms(atoms+nonatoms)
 		
 	def _ensure_dirs(self):
-		ensure_dirs(os.path.dirname(self._filename), gid=portage_gid, mode=02750, mask=02)
+		ensure_dirs(os.path.dirname(self._filename), gid=portage_gid, mode=0o2750, mask=0o2)
 
 	def lock(self):
 		self._ensure_dirs()

@@ -68,13 +68,13 @@ def parseManifest2(mysplit):
 class ManifestEntry(object):
 	__slots__ = ("type", "name", "hashes")
 	def __init__(self, **kwargs):
-		for k, v in kwargs.iteritems():
+		for k, v in kwargs.items():
 			setattr(self, k, v)
 
 class Manifest2Entry(ManifestEntry):
 	def __str__(self):
 		myline = " ".join([self.type, self.name, str(self.hashes["size"])])
-		myhashkeys = self.hashes.keys()
+		myhashkeys = list(self.hashes)
 		myhashkeys.remove("size")
 		myhashkeys.sort()
 		for h in myhashkeys:
@@ -151,7 +151,7 @@ class Manifest(object):
 			self._parseDigests(fd, myhashdict=myhashdict, **kwargs)
 			fd.close()
 			return myhashdict
-		except (OSError, IOError), e:
+		except (OSError, IOError) as e:
 			if e.errno == errno.ENOENT:
 				raise FileNotFound(file_path)
 			else:
@@ -202,15 +202,15 @@ class Manifest(object):
 		return myhashdict
 
 	def _createManifestEntries(self):
-		mytypes = self.fhashdict.keys()
+		mytypes = list(self.fhashdict)
 		mytypes.sort()
 		for t in mytypes:
-			myfiles = self.fhashdict[t].keys()
+			myfiles = list(self.fhashdict[t])
 			myfiles.sort()
 			for f in myfiles:
 				myentry = Manifest2Entry(
 					type=t, name=f, hashes=self.fhashdict[t][f].copy())
-				myhashkeys = myentry.hashes.keys()
+				myhashkeys = list(myentry.hashes)
 				myhashkeys.sort()
 				for h in myhashkeys:
 					if h not in ["size"] + portage.const.MANIFEST2_HASH_FUNCTIONS:
@@ -239,11 +239,11 @@ class Manifest(object):
 					f.close()
 					if len(oldentries) == len(myentries):
 						update_manifest = False
-						for i in xrange(len(oldentries)):
+						for i in range(len(oldentries)):
 							if oldentries[i] != myentries[i]:
 								update_manifest = True
 								break
-				except (IOError, OSError), e:
+				except (IOError, OSError) as e:
 					if e.errno == errno.ENOENT:
 						pass
 					else:
@@ -253,7 +253,7 @@ class Manifest(object):
 					"".join("%s\n" % str(myentry) for myentry in myentries))
 			if sign:
 				self.sign()
-		except (IOError, OSError), e:
+		except (IOError, OSError) as e:
 			if e.errno == errno.EACCES:
 				raise PermissionDenied(str(e))
 			raise
@@ -435,7 +435,7 @@ class Manifest(object):
 			if not ok:
 				raise DigestException(tuple([self._getAbsname(ftype, fname)]+list(reason)))
 			return ok, reason
-		except FileNotFound, e:
+		except FileNotFound as e:
 			if not ignoreMissing:
 				raise
 			return False, _("File Not Found: '%s'") % str(e)

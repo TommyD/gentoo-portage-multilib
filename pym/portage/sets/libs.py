@@ -2,6 +2,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+from __future__ import print_function
+
 from portage.localization import _
 from portage.sets.base import PackageSet
 from portage.sets import get_boolean
@@ -62,17 +64,17 @@ class PreservedLibraryConsumerSet(LibraryConsumerSet):
 		consumers = set()
 		if reg:
 			plib_dict = reg.getPreservedLibs()
-			for libs in plib_dict.itervalues():
+			for libs in plib_dict.values():
 				for lib in libs:
 					if self.debug:
-						print lib
+						print(lib)
 						for x in sorted(self.dbapi.linkmap.findConsumers(lib)):
-							print "    ", x
-						print "-"*40
+							print("    ", x)
+						print("-"*40)
 					consumers.update(self.dbapi.linkmap.findConsumers(lib))
 			# Don't rebuild packages just because they contain preserved
 			# libs that happen to be consumers of other preserved libs.
-			for libs in plib_dict.itervalues():
+			for libs in plib_dict.values():
 				consumers.difference_update(libs)
 		else:
 			return

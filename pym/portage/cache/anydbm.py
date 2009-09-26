@@ -3,7 +3,11 @@
 # License: GPL2
 # $Id$
 
-anydbm_module = __import__("anydbm")
+try:
+	anydbm_module = __import__("anydbm")
+except ImportError:
+	# python 3.x
+	import dbm as anydbm_module
 try:
 	import cPickle as pickle
 except ImportError:
@@ -31,27 +35,31 @@ class database(fs_template.FsBased):
 		self._db_path = os.path.join(self.location, fs_template.gen_label(self.location, self.label)+default_db)
 		self.__db = None
 		try:
-			self.__db = anydbm_module.open(
-				_unicode_encode(self._db_path), 'w', self._perms)
+			# dbm.open() will not work with bytes in python-3.1:
+			#   TypeError: can't concat bytes to str
+			self.__db = anydbm_module.open(self._db_path,
+				'w', self._perms)
 		except anydbm_module.error:
 			# XXX handle this at some point
 			try:
 				self._ensure_dirs()
 				self._ensure_dirs(self._db_path)
-			except (OSError, IOError), e:
+			except (OSError, IOError) as e:
 				raise cache_errors.InitializationError(self.__class__, e)
 
 			# try again if failed
 			try:
 				if self.__db == None:
-					self.__db = anydbm_module.open(
-						_unicode_encode(self._db_path), 'c', self._perms)
-			except anydbm_module.error, e:
+					# dbm.open() will not work with bytes in python-3.1:
+					#   TypeError: can't concat bytes to str
+					self.__db = anydbm_module.open(self._db_path,
+						'c', self._perms)
+			except anydbm_module.error as e:
 				raise cache_errors.InitializationError(self.__class__, e)
 		self._ensure_access(self._db_path)
 
 	def iteritems(self):
-		return self.__db.iteritems()
+		return iter(self.__db.items())
 
 	def _getitem(self, cpv):
 		# we override getitem because it's just a cpickling of the data handed in.
@@ -64,7 +72,7 @@ class database(fs_template.FsBased):
 		del self.__db[cpv]
 
 	def __iter__(self):
-		return iter(self.__db.keys())
+		return iter(list(self.__db.keys()))
 
 	def __contains__(self, cpv):
 		return cpv in self.__db

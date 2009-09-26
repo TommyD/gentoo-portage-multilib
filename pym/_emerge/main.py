@@ -2,17 +2,23 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+from __future__ import print_function
+
 import logging
 import signal
 import sys
 import textwrap
 import platform
+try:
+	from subprocess import getstatusoutput as subprocess_getstatusoutput
+except ImportError:
+	from commands import getstatusoutput as subprocess_getstatusoutput
 import portage
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
 import _emerge.help
-import portage.xpak, commands, errno, re, time
+import portage.xpak, errno, re, time
 from portage.output import colorize, xtermTitle, xtermTitleReset
 from portage.output import create_color_func
 good = create_color_func("GOOD")
@@ -37,6 +43,9 @@ from _emerge.emergelog import emergelog
 from _emerge._flush_elog_mod_echo import _flush_elog_mod_echo
 from _emerge.is_valid_package_atom import is_valid_package_atom
 from _emerge.stdout_spinner import stdout_spinner
+
+if sys.hexversion >= 0x3000000:
+	long = int
 
 options=[
 "--ask",          "--alphabetical",
@@ -137,12 +146,12 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 							try:
 								os.rename(dir_file + ext, dir_file + ext + ".old")
 								moved_old_dir = True
-							except EnvironmentError, e:
+							except EnvironmentError as e:
 								if e.errno != errno.ENOENT:
 									raise
 								del e
 					processed_count += 1
-					myso=commands.getstatusoutput("LANG=C LANGUAGE=C /usr/bin/install-info --dir-file="+inforoot+"/dir "+inforoot+"/"+x)[1]
+					myso=subprocess_getstatusoutput("LANG=C LANGUAGE=C /usr/bin/install-info --dir-file="+inforoot+"/dir "+inforoot+"/"+x)[1]
 					existsstr="already exists, for file `"
 					if myso!="":
 						if re.search(existsstr,myso):
@@ -164,7 +173,7 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 					for ext in dir_extensions:
 						try:
 							os.rename(dir_file + ext + ".old", dir_file + ext)
-						except EnvironmentError, e:
+						except EnvironmentError as e:
 							if e.errno != errno.ENOENT:
 								raise
 							del e
@@ -174,7 +183,7 @@ def chk_updated_info_files(root, infodirs, prev_mtimes, retval):
 				for ext in dir_extensions:
 					try:
 						os.unlink(dir_file + ext + ".old")
-					except EnvironmentError, e:
+					except EnvironmentError as e:
 						if e.errno != errno.ENOENT:
 							raise
 						del e
@@ -198,12 +207,12 @@ def display_preserved_libs(vardbapi, myopts):
 
 	if vardbapi.plib_registry.hasEntries():
 		if "--quiet" in myopts:
-			print
-			print colorize("WARN", "!!!") + " existing preserved libs found"
+			print()
+			print(colorize("WARN", "!!!") + " existing preserved libs found")
 			return
 		else:
-			print
-			print colorize("WARN", "!!!") + " existing preserved libs:"
+			print()
+			print(colorize("WARN", "!!!") + " existing preserved libs:")
 
 		plibdata = vardbapi.plib_registry.getPreservedLibs()
 		linkmap = vardbapi.linkmap
@@ -213,7 +222,7 @@ def display_preserved_libs(vardbapi, myopts):
 
 		try:
 			linkmap.rebuild()
-		except portage.exception.CommandNotFound, e:
+		except portage.exception.CommandNotFound as e:
 			writemsg_level("!!! Command Not Found: %s\n" % (e,),
 				level=logging.ERROR, noiselevel=-1)
 			del e
@@ -239,7 +248,7 @@ def display_preserved_libs(vardbapi, myopts):
 			owners = vardbapi._owners.getFileOwnerMap(search_for_owners)
 
 		for cpv in plibdata:
-			print colorize("WARN", ">>>") + " package: %s" % cpv
+			print(colorize("WARN", ">>>") + " package: %s" % cpv)
 			samefile_map = {}
 			for f in plibdata[cpv]:
 				obj_key = linkmap._obj_key(f)
@@ -249,22 +258,22 @@ def display_preserved_libs(vardbapi, myopts):
 					samefile_map[obj_key] = alt_paths
 				alt_paths.add(f)
 
-			for alt_paths in samefile_map.itervalues():
+			for alt_paths in samefile_map.values():
 				alt_paths = sorted(alt_paths)
 				for p in alt_paths:
-					print colorize("WARN", " * ") + " - %s" % (p,)
+					print(colorize("WARN", " * ") + " - %s" % (p,))
 				f = alt_paths[0]
 				consumers = consumer_map.get(f, [])
 				for c in consumers[:MAX_DISPLAY]:
-					print colorize("WARN", " * ") + "     used by %s (%s)" % \
-						(c, ", ".join(x.mycpv for x in owners.get(c, [])))
+					print(colorize("WARN", " * ") + "     used by %s (%s)" % \
+						(c, ", ".join(x.mycpv for x in owners.get(c, []))))
 				if len(consumers) == MAX_DISPLAY + 1:
-					print colorize("WARN", " * ") + "     used by %s (%s)" % \
+					print(colorize("WARN", " * ") + "     used by %s (%s)" % \
 						(consumers[MAX_DISPLAY], ", ".join(x.mycpv \
-						for x in owners.get(consumers[MAX_DISPLAY], [])))
+						for x in owners.get(consumers[MAX_DISPLAY], []))))
 				elif len(consumers) > MAX_DISPLAY:
-					print colorize("WARN", " * ") + "     used by %d other files" % (len(consumers) - MAX_DISPLAY)
-		print "Use " + colorize("GOOD", "emerge @preserved-rebuild") + " to rebuild packages using these libraries"
+					print(colorize("WARN", " * ") + "     used by %d other files" % (len(consumers) - MAX_DISPLAY))
+		print("Use " + colorize("GOOD", "emerge @preserved-rebuild") + " to rebuild packages using these libraries")
 
 def post_emerge(root_config, myopts, mtimedb, retval):
 	"""
@@ -416,13 +425,13 @@ def insert_optional_args(args):
 			continue
 
 		match = None
-		for k, arg_choices in short_arg_opts.iteritems():
+		for k, arg_choices in short_arg_opts.items():
 			if k in arg:
 				match = k
 				break
 
 		if match is None:
-			for k, arg_choices in short_arg_opts_n.iteritems():
+			for k, arg_choices in short_arg_opts_n.items():
 				if k in arg:
 					match = k
 					break
@@ -625,14 +634,14 @@ def parse_opts(tmpcmdline, silent=False):
 	for myopt in options:
 		parser.add_option(myopt, action="store_true",
 			dest=myopt.lstrip("--").replace("-", "_"), default=False)
-	for shortopt, longopt in shortmapping.iteritems():
+	for shortopt, longopt in shortmapping.items():
 		parser.add_option("-" + shortopt, action="store_true",
 			dest=longopt.lstrip("--").replace("-", "_"), default=False)
-	for myalias, myopt in longopt_aliases.iteritems():
+	for myalias, myopt in longopt_aliases.items():
 		parser.add_option(myalias, action="store_true",
 			dest=myopt.lstrip("--").replace("-", "_"), default=False)
 
-	for myopt, kwargs in argument_options.iteritems():
+	for myopt, kwargs in argument_options.items():
 		shortopt = kwargs.pop("shortopt", None)
 		args = [myopt]
 		if shortopt is not None:
@@ -763,8 +772,9 @@ def parse_opts(tmpcmdline, silent=False):
 	if myaction is None and myoptions.deselect is True:
 		myaction = 'deselect'
 
-	if myargs and not isinstance(myargs[0], unicode):
-		for i in xrange(len(myargs)):
+	if myargs and sys.hexversion < 0x3000000 and \
+		not isinstance(myargs[0], unicode):
+		for i in range(len(myargs)):
 			myargs[i] = portage._unicode_decode(myargs[i])
 
 	myfiles += myargs
@@ -783,7 +793,7 @@ def apply_priorities(settings):
 def nice(settings):
 	try:
 		os.nice(int(settings.get("PORTAGE_NICENESS", "0")))
-	except (OSError, ValueError), e:
+	except (OSError, ValueError) as e:
 		out = portage.output.EOutput()
 		out.eerror("Failed to change nice value to '%s'" % \
 			settings["PORTAGE_NICENESS"])
@@ -872,7 +882,7 @@ def expand_set_arguments(myfiles, myaction, root_config):
 
 	# display errors that occured while loading the SetConfig instance
 	for e in setconfig.errors:
-		print colorize("BAD", "Error during set creation: %s" % e)
+		print(colorize("BAD", "Error during set creation: %s" % e))
 
 	# emerge relies on the existance of sets with names "world" and "system"
 	required_sets = ("world", "system")
@@ -910,7 +920,7 @@ def expand_set_arguments(myfiles, myaction, root_config):
 				setconfig.active.append(s)
 				try:
 					set_atoms = setconfig.getSetAtoms(s)
-				except portage.exception.PackageSetNotFound, e:
+				except portage.exception.PackageSetNotFound as e:
 					writemsg_level(("emerge: the given set '%s' " + \
 						"contains a non-existent set named '%s'.\n") % \
 						(s, e), level=logging.ERROR, noiselevel=-1)
@@ -921,20 +931,20 @@ def expand_set_arguments(myfiles, myaction, root_config):
 						"not support unmerge operations\n")
 					retval = 1
 				elif not set_atoms:
-					print "emerge: '%s' is an empty set" % s
+					print("emerge: '%s' is an empty set" % s)
 				elif myaction not in do_not_expand:
 					newargs.extend(set_atoms)
 				else:
 					newargs.append(SETPREFIX+s)
 				for e in sets[s].errors:
-					print e
+					print(e)
 		else:
 			newargs.append(a)
 	return (newargs, retval)
 
 def repo_name_check(trees):
 	missing_repo_names = set()
-	for root, root_trees in trees.iteritems():
+	for root, root_trees in trees.items():
 		if "porttree" in root_trees:
 			portdb = root_trees["porttree"].dbapi
 			missing_repo_names.update(portdb.porttrees)
@@ -966,7 +976,7 @@ def repo_name_check(trees):
 
 def repo_name_duplicate_check(trees):
 	ignored_repos = {}
-	for root, root_trees in trees.iteritems():
+	for root, root_trees in trees.items():
 		if 'porttree' in root_trees:
 			portdb = root_trees['porttree'].dbapi
 			if portdb.mysettings.get('PORTAGE_REPO_DUPLICATE_WARN') != '0':
@@ -996,7 +1006,7 @@ def repo_name_duplicate_check(trees):
 	return bool(ignored_repos)
 
 def config_protect_check(trees):
-	for root, root_trees in trees.iteritems():
+	for root, root_trees in trees.items():
 		if not root_trees["root_config"].settings.get("CONFIG_PROTECT"):
 			msg = "!!! CONFIG_PROTECT is empty"
 			if root != "/":
@@ -1006,7 +1016,7 @@ def config_protect_check(trees):
 def profile_check(trees, myaction):
 	if myaction in ("help", "info", "sync", "version"):
 		return os.EX_OK
-	for root, root_trees in trees.iteritems():
+	for root, root_trees in trees.items():
 		if root_trees["root_config"].settings.profiles:
 			continue
 		# generate some profile related warning messages
@@ -1039,7 +1049,7 @@ def emerge_main():
 		os.environ["ROOT"] = myopts["--root"]
 
 	# Portage needs to ensure a sane umask for the files it creates.
-	os.umask(022)
+	os.umask(0o22)
 	settings, trees, mtimedb = load_emerge_config()
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
 	rval = profile_check(trees, myaction)
@@ -1088,14 +1098,14 @@ def emerge_main():
 		repo_name_duplicate_check(trees)
 		config_protect_check(trees)
 
-	for mytrees in trees.itervalues():
+	for mytrees in trees.values():
 		mydb = mytrees["porttree"].dbapi
 		# Freeze the portdbapi for performance (memoize all xmatch results).
 		mydb.freeze()
 	del mytrees, mydb
 
 	if "moo" in myfiles:
-		print """
+		print("""
 
   Larry loves Gentoo (""" + platform.system() + """)
 
@@ -1108,12 +1118,12 @@ def emerge_main():
                 ||----w |
                 ||     ||
 
-"""
+""")
 
 	for x in myfiles:
 		ext = os.path.splitext(x)[1]
 		if (ext == ".ebuild" or ext == ".tbz2") and os.path.exists(os.path.abspath(x)):
-			print colorize("BAD", "\n*** emerging by path is broken and may not always work!!!\n")
+			print(colorize("BAD", "\n*** emerging by path is broken and may not always work!!!\n"))
 			break
 
 	root_config = trees[settings["ROOT"]]["root_config"]
@@ -1131,11 +1141,11 @@ def emerge_main():
 		# Need to handle empty sets specially, otherwise emerge will react 
 		# with the help message for empty argument lists
 		if oldargs and not myfiles:
-			print "emerge: no targets left after set expansion"
+			print("emerge: no targets left after set expansion")
 			return 0
 
 	if ("--tree" in myopts) and ("--columns" in myopts):
-		print "emerge: can't specify both of \"--tree\" and \"--columns\"."
+		print("emerge: can't specify both of \"--tree\" and \"--columns\".")
 		return 1
 
 	if '--emptytree' in myopts and '--noreplace' in myopts:
@@ -1207,17 +1217,17 @@ def emerge_main():
 			spinner.update = spinner.update_basic
 
 	if myaction == 'version':
-		print getportageversion(settings["PORTDIR"], settings["ROOT"],
+		print(getportageversion(settings["PORTDIR"], settings["ROOT"],
 			settings.profile_path, settings["CHOST"],
-			trees[settings["ROOT"]]["vartree"].dbapi)
+			trees[settings["ROOT"]]["vartree"].dbapi))
 		return 0
 	elif myaction == "help":
 		_emerge.help.help(myopts, portage.output.havecolor)
 		return 0
 
 	if "--debug" in myopts:
-		print "myaction", myaction
-		print "myopts", myopts
+		print("myaction", myaction)
+		print("myopts", myopts)
 
 	if not myaction and not myfiles and "--resume" not in myopts:
 		_emerge.help.help(myopts, portage.output.havecolor)
@@ -1249,8 +1259,8 @@ def emerge_main():
 				if "--ask" in myopts:
 					myopts["--pretend"] = True
 					del myopts["--ask"]
-					print ("%s access is required... " + \
-						"adding --pretend to options\n") % access_desc
+					print(("%s access is required... " + \
+						"adding --pretend to options\n") % access_desc)
 					if portage.secpass < 1 and not need_superuser:
 						portage_group_warning()
 				else:
@@ -1281,7 +1291,7 @@ def emerge_main():
 			try:
 				# At least the parent needs to exist for the lock file.
 				portage.util.ensure_dirs(settings['EMERGE_LOG_DIR'])
-			except portage.exception.PortageException, e:
+			except portage.exception.PortageException as e:
 				writemsg_level("!!! Error creating directory for " + \
 					"EMERGE_LOG_DIR='%s':\n!!! %s\n" % \
 					(settings['EMERGE_LOG_DIR'], e),
@@ -1364,7 +1374,7 @@ def emerge_main():
 				try:
 					valid_atoms.append(
 						portage.dep_expand(x, mydb=vardb, settings=settings))
-				except portage.exception.AmbiguousPackageName, e:
+				except portage.exception.AmbiguousPackageName as e:
 					msg = "The short ebuild name \"" + x + \
 						"\" is ambiguous.  Please specify " + \
 						"one of the following " + \

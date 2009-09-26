@@ -3,12 +3,15 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import sys, errno
+from __future__ import print_function
+
+import errno
+import sys
 
 def usage(status):
-	print "Usage: env-update [--no-ldconfig]"
-	print ""
-	print "See the env-update(1) man page for more info"
+	print("Usage: env-update [--no-ldconfig]")
+	print("")
+	print("See the env-update(1) man page for more info")
 	sys.exit(status)
 
 if "-h" in sys.argv or "--help" in sys.argv:
@@ -20,7 +23,7 @@ if "--no-ldconfig" in sys.argv:
 	sys.argv.pop(sys.argv.index("--no-ldconfig"))
 
 if len(sys.argv) > 1:
-	print "!!! Invalid command line options!\n"
+	print("!!! Invalid command line options!\n")
 	usage(1)
 
 try:
@@ -31,9 +34,9 @@ except ImportError:
 	import portage
 try:
 	portage.env_update(makelinks)
-except IOError, e:
+except IOError as e:
 	if e.errno == errno.EACCES:
-		print "env-update: Need superuser access"
+		print("env-update: Need superuser access")
 		sys.exit(1)
 	else:
 		raise

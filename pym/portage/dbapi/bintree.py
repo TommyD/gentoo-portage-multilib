@@ -2,6 +2,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+from __future__ import print_function
+
 __all__ = ["bindbapi", "binarytree"]
 
 import portage
@@ -29,7 +31,12 @@ import codecs
 import errno
 import re
 import stat
-from itertools import chain, izip
+import sys
+from itertools import chain
+
+if sys.hexversion >= 0x3000000:
+	basestring = str
+	long = int
 
 class bindbapi(fakedbapi):
 	_known_keys = frozenset(list(fakedbapi._known_keys) + \
@@ -91,15 +98,15 @@ class bindbapi(fakedbapi):
 			if myval:
 				mydata[x] = " ".join(myval.split())
 
-		if not mydata.setdefault('EAPI', u'0'):
-			mydata['EAPI'] = u'0'
+		if not mydata.setdefault('EAPI', _unicode_decode('0')):
+			mydata['EAPI'] = _unicode_decode('0')
 
 		if cache_me:
 			aux_cache = self._aux_cache_slot_dict()
 			for x in self._aux_cache_keys:
-				aux_cache[x] = mydata.get(x, u'')
+				aux_cache[x] = mydata.get(x, _unicode_decode(''))
 			self._aux_cache[mycpv] = aux_cache
-		return [mydata.get(x, u'') for x in wants]
+		return [mydata.get(x, _unicode_decode('')) for x in wants]
 
 	def aux_update(self, cpv, values):
 		if not self.bintree.populated:
@@ -110,14 +117,14 @@ class bindbapi(fakedbapi):
 		mytbz2 = portage.xpak.tbz2(tbz2path)
 		mydata = mytbz2.get_data()
 
-		for k, v in values.iteritems():
+		for k, v in values.items():
 			k = _unicode_encode(k,
 				encoding=_encodings['repo.content'], errors='backslashreplace')
 			v = _unicode_encode(v,
 				encoding=_encodings['repo.content'], errors='backslashreplace')
 			mydata[k] = v
 
-		for k, v in mydata.items():
+		for k, v in list(mydata.items()):
 			if not v:
 				del mydata[k]
 		mytbz2.recompose_mem(portage.xpak.xpak_mem(mydata))
@@ -233,20 +240,19 @@ class binarytree(object):
 		for atom in (origcp, newcp):
 			if not isjustname(atom):
 				raise InvalidPackageName(str(atom))
-		origcat = origcp.split("/")[0]
-		mynewcat = newcp.split("/")[0]
+		mynewcat = catsplit(newcp)[0]
 		origmatches=self.dbapi.cp_list(origcp)
 		moves = 0
 		if not origmatches:
 			return moves
 		for mycpv in origmatches:
-
-			mycpsplit = catpkgsplit(mycpv)
-			mynewcpv = newcp + "-" + mycpsplit[2]
-			if mycpsplit[3] != "r0":
-				mynewcpv += "-" + mycpsplit[3]
-			myoldpkg = mycpv.split("/")[1]
-			mynewpkg = mynewcpv.split("/")[1]
+			mycpv_cp = portage.cpv_getkey(mycpv)
+			if mycpv_cp != origcp:
+				# Ignore PROVIDE virtual match.
+				continue
+			mynewcpv = mycpv.replace(mycpv_cp, str(newcp), 1)
+			myoldpkg = catsplit(mycpv)[1]
+			mynewpkg = catsplit(mynewcpv)[1]
 
 			if (mynewpkg != myoldpkg) and os.path.exists(self.getname(mynewcpv)):
 				writemsg(_("!!! Cannot update binary: Destination exists.\n"),
@@ -309,7 +315,7 @@ class binarytree(object):
 			os.unlink(mylink)
 		try:
 			os.rmdir(os.path.join(self.pkgdir, mycat))
-		except OSError, e:
+		except OSError as e:
 			if e.errno not in (errno.ENOENT,
 				errno.ENOTEMPTY, errno.EEXIST):
 				raise
@@ -324,7 +330,7 @@ class binarytree(object):
 		self._ensure_dir(os.path.dirname(full_path))
 		try:
 			os.unlink(full_path)
-		except OSError, e:
+		except OSError as e:
 			if e.errno != errno.ENOENT:
 				raise
 			del e
@@ -392,7 +398,7 @@ class binarytree(object):
 			ensure_dirs(path)
 			return
 		pkgdir_gid = pkgdir_st.st_gid
-		pkgdir_grp_mode = 02070 & pkgdir_st.st_mode
+		pkgdir_grp_mode = 0o2070 & pkgdir_st.st_mode
 		try:
 			ensure_dirs(path, gid=pkgdir_gid, mode=pkgdir_grp_mode, mask=0)
 		except PortageException:
@@ -408,7 +414,7 @@ class binarytree(object):
 		src_path = os.path.join(self.pkgdir, mycat, myfile)
 		try:
 			mystat = os.lstat(src_path)
-		except OSError, e:
+		except OSError as e:
 			mystat = None
 		if mystat and stat.S_ISREG(mystat.st_mode):
 			self._ensure_dir(os.path.join(self.pkgdir, "All"))
@@ -610,7 +616,7 @@ class binarytree(object):
 					d["MTIME"] = str(long(s.st_mtime))
 					d["SIZE"] = str(s.st_size)
 
-					d.update(izip(self._pkgindex_aux_keys,
+					d.update(zip(self._pkgindex_aux_keys,
 						self.dbapi.aux_get(mycpv, self._pkgindex_aux_keys)))
 					try:
 						self._eval_use_flags(mycpv, d)
@@ -641,7 +647,7 @@ class binarytree(object):
 			# from xpak.
 			if update_pkgindex and os.access(self.pkgdir, os.W_OK):
 				del pkgindex.packages[:]
-				pkgindex.packages.extend(metadata.itervalues())
+				pkgindex.packages.extend(iter(metadata.values()))
 				self._update_pkgindex_header(pkgindex.header)
 				from portage.util import atomic_ofstream
 				f = atomic_ofstream(self._pkgindex_file)
@@ -660,7 +666,10 @@ class binarytree(object):
 
 			base_url = self.settings["PORTAGE_BINHOST"]
 			from portage.const import CACHE_PATH
-			from urlparse import urlparse
+			try:
+				from urllib.parse import urlparse
+			except ImportError:
+				from urlparse import urlparse
 			urldata = urlparse(base_url)
 			pkgindex_file = os.path.join(self.settings["ROOT"], CACHE_PATH, "binhost",
 				urldata[1] + urldata[2], "Packages")
@@ -674,17 +683,20 @@ class binarytree(object):
 					pkgindex.read(f)
 				finally:
 					f.close()
-			except EnvironmentError, e:
+			except EnvironmentError as e:
 				if e.errno != errno.ENOENT:
 					raise
 			local_timestamp = pkgindex.header.get("TIMESTAMP", None)
-			import urllib, urlparse
+			try:
+				from urllib.request import urlopen as urllib_request_urlopen
+			except ImportError:
+				from urllib import urlopen as urllib_request_urlopen
 			rmt_idx = self._new_pkgindex()
 			try:
 				# urlparse.urljoin() only works correctly with recognized
 				# protocols and requires the base url to have a trailing
 				# slash, so join manually...
-				f = urllib.urlopen(base_url.rstrip("/") + "/Packages")
+				f = urllib_request_urlopen(base_url.rstrip("/") + "/Packages")
 				try:
 					rmt_idx.readHeader(f)
 					remote_timestamp = rmt_idx.header.get("TIMESTAMP", None)
@@ -702,7 +714,7 @@ class binarytree(object):
 							pkgindex = rmt_idx
 				finally:
 					f.close()
-			except EnvironmentError, e:
+			except EnvironmentError as e:
 				writemsg(_("\n\n!!! Error fetching binhost package" \
 					" info from '%s'\n") % base_url)
 				writemsg("!!! %s\n\n" % str(e))
@@ -731,7 +743,7 @@ class binarytree(object):
 					# Remote package instances override local package
 					# if they are not identical.
 					hash_names = ["SIZE"] + self._pkgindex_hashes
-					for cpv, local_metadata in metadata.iteritems():
+					for cpv, local_metadata in metadata.items():
 						remote_metadata = self._remotepkgs.get(cpv)
 						if remote_metadata is None:
 							continue
@@ -772,7 +784,7 @@ class binarytree(object):
 				self.settings["PORTAGE_BINHOST"], chunk_size=chunk_size)
 			#writemsg(green("  -- DONE!\n\n"))
 
-			for mypkg in self.remotepkgs.keys():
+			for mypkg in list(self.remotepkgs):
 				if "CATEGORY" not in self.remotepkgs[mypkg]:
 					#old-style or corrupt package
 					writemsg(_("!!! Invalid remote binary package: %s\n") % mypkg,
@@ -807,7 +819,7 @@ class binarytree(object):
 						remote_metadata[k] = v.strip()
 					self._remotepkgs[fullpkg] = remote_metadata
 					#print "  -- Injected"
-				except SystemExit, e:
+				except SystemExit as e:
 					raise
 				except:
 					writemsg(_("!!! Failed to inject remote binary package: %s\n") % fullpkg,
@@ -835,7 +847,7 @@ class binarytree(object):
 			full_path = filename
 		try:
 			s = os.stat(full_path)
-		except OSError, e:
+		except OSError as e:
 			if e.errno != errno.ENOENT:
 				raise
 			del e
@@ -884,7 +896,7 @@ class binarytree(object):
 
 			# If found, remove package(s) with duplicate path.
 			path = d.get("PATH", "")
-			for i in xrange(len(pkgindex.packages) - 1, -1, -1):
+			for i in range(len(pkgindex.packages) - 1, -1, -1):
 				d2 = pkgindex.packages[i]
 				if path and path == d2.get("PATH"):
 					# Handle path collisions in $PKGDIR/All
@@ -927,7 +939,7 @@ class binarytree(object):
 		pkg_path = self.getname(cpv)
 		from portage.checksum import perform_multiple_checksums
 
-		d = dict(izip(self._pkgindex_aux_keys,
+		d = dict(zip(self._pkgindex_aux_keys,
 			self.dbapi.aux_get(cpv, self._pkgindex_aux_keys)))
 
 		d.update(perform_multiple_checksums(
@@ -1001,7 +1013,7 @@ class binarytree(object):
 				deps = use_reduce(deps, uselist=raw_use)
 				deps = paren_normalize(deps)
 				deps = paren_enclose(deps)
-			except portage.exception.InvalidDependString, e:
+			except portage.exception.InvalidDependString as e:
 				writemsg("%s: %s\n" % (k, str(e)),
 					noiselevel=-1)
 				raise
@@ -1068,7 +1080,7 @@ class binarytree(object):
 	def gettbz2(self, pkgname):
 		"""Fetches the package from a remote site, if necessary.  Attempts to
 		resume if the file appears to be partially downloaded."""
-		print "Fetching '"+str(pkgname)+"'"
+		print("Fetching '"+str(pkgname)+"'")
 		tbz2_path = self.getname(pkgname)
 		tbz2name = os.path.basename(tbz2_path)
 		resume = False
@@ -1082,7 +1094,10 @@ class binarytree(object):
 		
 		mydest = os.path.dirname(self.getname(pkgname))
 		self._ensure_dir(mydest)
-		from urlparse import urlparse
+		try:
+			from urllib.parse import urlparse
+		except ImportError:
+			from urlparse import urlparse
 		# urljoin doesn't work correctly with unrecognized protocols like sftp
 		if self._remote_has_index:
 			rel_url = self._remotepkgs[pkgname].get("PATH")
@@ -1181,8 +1196,8 @@ class binarytree(object):
 		myslot = ""
 		try:
 			myslot = self.dbapi.aux_get(mycatpkg,["SLOT"])[0]
-		except SystemExit, e:
+		except SystemExit as e:
 			raise
-		except Exception, e:
+		except Exception as e:
 			pass
 		return myslot

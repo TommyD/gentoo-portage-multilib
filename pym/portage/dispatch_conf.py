@@ -7,7 +7,13 @@
 # Library by Wayne Davison <gentoo@blorf.net>, derived from code
 # written by Jeremy Wohl (http://igmus.org)
 
-import os, sys, commands, shutil
+from __future__ import print_function
+
+import os, sys, shutil
+try:
+	from subprocess import getoutput as subprocess_getoutput
+except ImportError:
+	from commands import getoutput as subprocess_getoutput
 
 import portage
 from portage.localization import _
@@ -25,12 +31,12 @@ def read_config(mandatory_opts):
         '/etc/dispatch-conf.conf', None)
     opts, errors = loader.load()
     if not opts:
-        print >> sys.stderr, _('dispatch-conf: Error reading /etc/dispatch-conf.conf; fatal')
+        print(_('dispatch-conf: Error reading /etc/dispatch-conf.conf; fatal'), file=sys.stderr)
         sys.exit(1)
 
 	# Handle quote removal here, since KeyValuePairFileLoader doesn't do that.
     quotes = "\"'"
-    for k, v in opts.iteritems():
+    for k, v in opts.items():
         if v[:1] in quotes and v[:1] == v[-1:]:
             opts[k] = v[1:-1]
 
@@ -39,12 +45,12 @@ def read_config(mandatory_opts):
             if key == "merge":
                 opts["merge"] = "sdiff --suppress-common-lines --output='%s' '%s' '%s'"
             else:
-                print >> sys.stderr, _('dispatch-conf: Missing option "%s" in /etc/dispatch-conf.conf; fatal') % (key,)
+                print(_('dispatch-conf: Missing option "%s" in /etc/dispatch-conf.conf; fatal') % (key,), file=sys.stderr)
 
     if not os.path.exists(opts['archive-dir']):
         os.mkdir(opts['archive-dir'])
     elif not os.path.isdir(opts['archive-dir']):
-        print >> sys.stderr, _('dispatch-conf: Config archive dir [%s] must exist; fatal') % (opts['archive-dir'],)
+        print(_('dispatch-conf: Config archive dir [%s] must exist; fatal') % (opts['archive-dir'],), file=sys.stderr)
         sys.exit(1)
 
     return opts
@@ -64,9 +70,9 @@ def rcs_archive(archive, curconf, newconf, mrgconf):
 
     try:
         shutil.copy2(curconf, archive)
-    except(IOError, os.error), why:
-        print >> sys.stderr, _('dispatch-conf: Error copying %(curconf)s to %(archive)s: %(reason)s; fatal') % \
-              {"curconf": curconf, "archive": archive, "reason": str(why)}
+    except(IOError, os.error) as why:
+        print(_('dispatch-conf: Error copying %(curconf)s to %(archive)s: %(reason)s; fatal') % \
+              {"curconf": curconf, "archive": archive, "reason": str(why)}, file=sys.stderr)
     if os.path.exists(archive + ',v'):
         os.system(RCS_LOCK + ' ' + archive)
     os.system(RCS_PUT + ' ' + archive)
@@ -80,9 +86,9 @@ def rcs_archive(archive, curconf, newconf, mrgconf):
 
         try:
             shutil.copy2(newconf, archive)
-        except(IOError, os.error), why:
-            print >> sys.stderr, _('dispatch-conf: Error copying %(newconf)s to %(archive)s: %(reason)s; fatal') % \
-                  {"newconf": newconf, "archive": archive, "reason": str(why)}
+        except(IOError, os.error) as why:
+            print(_('dispatch-conf: Error copying %(newconf)s to %(archive)s: %(reason)s; fatal') % \
+                  {"newconf": newconf, "archive": archive, "reason": str(why)}, file=sys.stderr)
 
         if has_branch:
             if mrgconf != '':
@@ -110,7 +116,7 @@ def file_archive(archive, curconf, newconf, mrgconf):
 
     # Archive the current config file if it isn't already saved
     if os.path.exists(archive) \
-     and len(commands.getoutput("diff -aq '%s' '%s'" % (curconf,archive))) != 0:
+     and len(subprocess_getoutput("diff -aq '%s' '%s'" % (curconf,archive))) != 0:
         suf = 1
         while suf < 9 and os.path.exists(archive + '.' + str(suf)):
             suf += 1
@@ -123,17 +129,17 @@ def file_archive(archive, curconf, newconf, mrgconf):
 
     try:
         shutil.copy2(curconf, archive)
-    except(IOError, os.error), why:
-        print >> sys.stderr, _('dispatch-conf: Error copying %(curconf)s to %(archive)s: %(reason)s; fatal') % \
-              {"curconf": curconf, "archive": archive, "reason": str(why)}
+    except(IOError, os.error) as why:
+        print(_('dispatch-conf: Error copying %(curconf)s to %(archive)s: %(reason)s; fatal') % \
+              {"curconf": curconf, "archive": archive, "reason": str(why)}, file=sys.stderr)
 
     if newconf != '':
         # Save off new config file in the archive dir with .dist.new suffix
         try:
             shutil.copy2(newconf, archive + '.dist.new')
-        except(IOError, os.error), why:
-            print >> sys.stderr, _('dispatch-conf: Error copying %(newconf)s to %(archive)s: %(reason)s; fatal') % \
-                  {"newconf": newconf, "archive": archive + '.dist.new', "reason": str(why)}
+        except(IOError, os.error) as why:
+            print(_('dispatch-conf: Error copying %(newconf)s to %(archive)s: %(reason)s; fatal') % \
+                  {"newconf": newconf, "archive": archive + '.dist.new', "reason": str(why)}, file=sys.stderr)
 
         ret = 0
         if mrgconf != '' and os.path.exists(archive + '.dist'):

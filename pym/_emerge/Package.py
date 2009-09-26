@@ -3,11 +3,16 @@
 # $Id$
 
 import re
+import sys
 from itertools import chain
 import portage
 from portage.dep import paren_reduce, use_reduce, \
 	paren_normalize, paren_enclose
 from _emerge.Task import Task
+
+if sys.hexversion >= 0x3000000:
+	basestring = str
+	long = int
 
 class Package(Task):
 
@@ -148,7 +153,6 @@ class Package(Task):
 
 _all_metadata_keys = set(x for x in portage.auxdbkeys \
 	if not x.startswith("UNUSED_"))
-_all_metadata_keys.discard("CDEPEND")
 _all_metadata_keys.update(Package.metadata_keys)
 _all_metadata_keys = frozenset(_all_metadata_keys)
 
@@ -167,7 +171,7 @@ class _PackageMetadataWrapper(dict):
 			# USE is lazy, but we want it to show up in self.keys().
 			self['USE'] = ''
 		self.update(metadata)
-		for k, v in self.iteritems():
+		for k, v in self.items():
 			if k == 'INHERITED':
 				if isinstance(v, basestring):
 					v = frozenset(v.split())
@@ -195,7 +199,7 @@ class _PackageMetadataWrapper(dict):
 			elif k in self._use_conditional_keys:
 				try:
 					use_reduce(paren_reduce(v), matchall=1)
-				except portage.exception.InvalidDependString, e:
+				except portage.exception.InvalidDependString as e:
 					self._pkg._invalid_metadata(k + ".syntax", "%s: %s" % (k, e))
 
 	def __getitem__(self, k):
