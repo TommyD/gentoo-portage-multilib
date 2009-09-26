@@ -3,13 +3,19 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+from __future__ import print_function
+
 import codecs
 import re
+import sys
 import time
 
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
+
+if sys.hexversion >= 0x3000000:
+	long = int
 
 # [D]/Name/Version/Date/Flags/Tags
 
@@ -87,12 +93,12 @@ def findoption(entries, pattern, recursive=0, basedir=""):
 	basedir."""
 	if not basedir.endswith("/"):
 		basedir += "/"
-	for myfile, mydata in entries["files"].iteritems():
+	for myfile, mydata in entries["files"].items():
 		if "cvs" in mydata["status"]:
 			if pattern.search(mydata["flags"]):
 				yield basedir+myfile
 	if recursive:
-		for mydir, mydata in entries["dirs"].iteritems():
+		for mydir, mydata in entries["dirs"].items():
 			for x in findoption(mydata, pattern,
 				recursive, basedir+mydir):
 				yield x
@@ -206,7 +212,7 @@ def getentries(mydir,recursive=0):
 			mode='r', encoding=_encodings['content'], errors='strict')
 		mylines=myfile.readlines()
 		myfile.close()
-	except SystemExit, e:
+	except SystemExit as e:
 		raise
 	except:
 		mylines=[]
@@ -219,7 +225,7 @@ def getentries(mydir,recursive=0):
 			break
 		mysplit=line.split("/")
 		if len(mysplit)!=6:
-			print "Confused:",mysplit
+			print("Confused:",mysplit)
 			continue
 		if mysplit[0]=="D":
 			entries["dirs"][mysplit[1]]={"dirs":{},"files":{},"status":[]}
@@ -229,9 +235,6 @@ def getentries(mydir,recursive=0):
 				entries["dirs"][mysplit[1]]["flags"]=mysplit[2:]
 				if recursive:
 					rentries=getentries(mydir+"/"+mysplit[1],recursive)
-					#print rentries.keys()
-					#print entries["files"].keys()
-					#print entries["files"][mysplit[1]]
 					entries["dirs"][mysplit[1]]["dirs"]=rentries["dirs"]
 					entries["dirs"][mysplit[1]]["files"]=rentries["files"]
 		else:
@@ -249,9 +252,10 @@ def getentries(mydir,recursive=0):
 		if file=="CVS":
 			continue
 		if file=="digest-framerd-2.4.3":
-			print mydir,file
+			print(mydir,file)
 		if os.path.isdir(mydir+"/"+file):
 			if file not in entries["dirs"]:
+				entries["dirs"][file]={"dirs":{},"files":{}}
 				# It's normal for a directory to be unlisted in Entries
 				# when checked out without -P (see bug #257660).
 				rentries=getentries(mydir+"/"+file,recursive)
@@ -264,62 +268,47 @@ def getentries(mydir,recursive=0):
 				entries["dirs"][file]["status"]=["exists"]
 		elif os.path.isfile(mydir+"/"+file):
 			if file=="digest-framerd-2.4.3":
-				print "isfile"
+				print("isfile")
 			if file not in entries["files"]:
 				entries["files"][file]={"revision":"","date":"","flags":"","tags":""}
 			if "status" in entries["files"][file]:
 				if file=="digest-framerd-2.4.3":
-					print "has status"
+					print("has status")
 				if "exists" not in entries["files"][file]["status"]:
 					if file=="digest-framerd-2.4.3":
-						print "no exists in status"
+						print("no exists in status")
 					entries["files"][file]["status"]+=["exists"]
 			else:
 				if file=="digest-framerd-2.4.3":
-					print "no status"
+					print("no status")
 				entries["files"][file]["status"]=["exists"]
 			try:
 				if file=="digest-framerd-2.4.3":
-					print "stat'ing"
+					print("stat'ing")
 				mystat=os.stat(mydir+"/"+file)
 				mytime = time.asctime(time.gmtime(long(mystat.st_mtime)))
 				if "status" not in entries["files"][file]:
 					if file=="digest-framerd-2.4.3":
-						print "status not set"
+						print("status not set")
 					entries["files"][file]["status"]=[]
 				if file=="digest-framerd-2.4.3":
-					print "date:",entries["files"][file]["date"]
-					print "sdate:",mytime
+					print("date:",entries["files"][file]["date"])
+					print("sdate:",mytime)
 				if mytime==entries["files"][file]["date"]:
 					entries["files"][file]["status"]+=["current"]
 				if file=="digest-framerd-2.4.3":
-					print "stat done"
+					print("stat done")
 				
 				del mystat
-			except SystemExit, e:
+			except SystemExit as e:
 				raise
-			except Exception, e:
-				print "failed to stat",file
-				print e
+			except Exception as e:
+				print("failed to stat",file)
+				print(e)
 				return
 				
 		else:
-			print
-			print "File of unknown type:",mydir+"/"+file
-			print
+			print()
+			print("File of unknown type:",mydir+"/"+file)
+			print()
 	return entries
-
-#class cvstree:
-#	def __init__(self,basedir):
-#		self.refdir=os.cwd()
-#		self.basedir=basedir
-#		self.entries={}
-#		self.entries["dirs"]={}
-#		self.entries["files"]={}
-#		self.entries["dirs"][self.basedir]=getentries(self.basedir)
-#		self.getrealdirs(self.dirs, self.files)
-#	def getrealdirs(self,dirs,files):
-#		for mydir in dirs.keys():
-#			list = os.listdir(
-			
-		

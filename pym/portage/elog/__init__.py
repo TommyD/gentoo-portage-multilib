@@ -100,7 +100,7 @@ def elog_process(cpv, mysettings, phasefilter=None):
 	else:
 		all_logentries[cpv] = ebuild_logentries
 
-	for key in _preserve_logentries.keys():
+	for key in list(_preserve_logentries):
 		if key in all_logentries:
 			all_logentries[key] = _merge_logentries(_preserve_logentries[key], all_logentries[key])
 		else:
@@ -140,7 +140,7 @@ def elog_process(cpv, mysettings, phasefilter=None):
 			listener(mysettings, str(key), default_logentries, default_fulllog)
 
 		# pass the processing to the individual modules
-		for s, levels in logsystems.iteritems():
+		for s, levels in logsystems.items():
 			# allow per module overrides of PORTAGE_ELOG_CLASSES
 			if levels:
 				mod_logentries = filter_loglevels(all_logentries[key], levels)
@@ -168,10 +168,10 @@ def elog_process(cpv, mysettings, phasefilter=None):
 				if hasattr(m, "finalize") and not m.finalize in _elog_atexit_handlers:
 					_elog_atexit_handlers.append(m.finalize)
 					atexit_register(m.finalize)
-			except (ImportError, AttributeError), e:
+			except (ImportError, AttributeError) as e:
 				writemsg(_("!!! Error while importing logging modules "
 					"while loading \"mod_%s\":\n") % str(s))
 				writemsg("%s\n" % str(e), noiselevel=-1)
-			except PortageException, e:
+			except PortageException as e:
 				writemsg("%s\n" % str(e), noiselevel=-1)
 

@@ -2,10 +2,14 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+import sys
 from portage import cpv_getkey, flatten
 from portage.dep import Atom, isvalidatom, match_from_list, \
      best_match_to_list, dep_getkey, use_reduce, paren_reduce
 from portage.exception import InvalidAtom
+
+if sys.hexversion >= 0x3000000:
+	basestring = str
 
 OPERATIONS = ["merge", "unmerge"]
 
@@ -37,9 +41,12 @@ class PackageSet(object):
 		for x in self._nonatoms:
 			yield x
 
-	def __nonzero__(self):
+	def __bool__(self):
 		self._load()
 		return bool(self._atoms or self._nonatoms)
+
+	if sys.hexversion < 0x3000000:
+		__nonzero__ = __bool__
 
 	def supportsOperation(self, op):
 		if not op in OPERATIONS:
@@ -122,7 +129,7 @@ class PackageSet(object):
 				rev_transform[atom] = atom
 			else:
 				rev_transform[Atom(atom.replace(atom.cp, pkg.cp, 1))] = atom
-		best_match = best_match_to_list(pkg, rev_transform.iterkeys())
+		best_match = best_match_to_list(pkg, iter(rev_transform))
 		if best_match:
 			return rev_transform[best_match]
 		return None

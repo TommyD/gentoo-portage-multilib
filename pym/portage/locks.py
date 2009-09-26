@@ -9,6 +9,7 @@ __all__ = ["lockdir", "unlockdir", "lockfile", "unlockfile", \
 
 import errno
 import stat
+import sys
 import time
 from portage import os
 from portage.exception import DirectoryNotFound, FileNotFound, \
@@ -17,6 +18,9 @@ from portage.data import portage_gid
 from portage.output import EOutput
 from portage.util import writemsg
 from portage.localization import _
+
+if sys.hexversion >= 0x3000000:
+	basestring = str
 
 HARDLINK_FD = -2
 
@@ -64,8 +68,8 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 		old_mask = os.umask(000)
 		try:
 			try:
-				myfd = os.open(lockfilename, os.O_CREAT|os.O_RDWR, 0660)
-			except OSError, e:
+				myfd = os.open(lockfilename, os.O_CREAT|os.O_RDWR, 0o660)
+			except OSError as e:
 				func_call = "open('%s')" % lockfilename
 				if e.errno == OperationNotPermitted.errno:
 					raise OperationNotPermitted(func_call)
@@ -78,7 +82,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 				try:
 					if os.stat(lockfilename).st_gid != portage_gid:
 						os.chown(lockfilename, -1, portage_gid)
-				except OSError, e:
+				except OSError as e:
 					if e.errno in (errno.ENOENT, errno.ESTALE):
 						return lockfile(mypath,
 							wantnewlockfile=wantnewlockfile,
@@ -103,7 +107,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 	locking_method = fcntl.lockf
 	try:
 		fcntl.lockf(myfd,fcntl.LOCK_EX|fcntl.LOCK_NB)
-	except IOError, e:
+	except IOError as e:
 		if "errno" not in dir(e):
 			raise
 		if e.errno in (errno.EACCES, errno.EAGAIN):
@@ -123,7 +127,7 @@ def lockfile(mypath, wantnewlockfile=0, unlinkfile=0,
 			# try for the exclusive lock now.
 			try:
 				fcntl.lockf(myfd, fcntl.LOCK_EX)
-			except EnvironmentError, e:
+			except EnvironmentError as e:
 				out.eend(1, str(e))
 				raise
 			out.eend(os.EX_OK)
@@ -168,7 +172,7 @@ def _fstat_nlink(fd):
 	"""
 	try:
 		return os.fstat(fd).st_nlink
-	except EnvironmentError, e:
+	except EnvironmentError as e:
 		if e.errno in (errno.ENOENT, errno.ESTALE):
 			# Some filesystems such as CIFS return
 			# ENOENT which means st_nlink == 0.
@@ -201,7 +205,7 @@ def unlockfile(mytuple):
 
 	try:
 		if myfd is None:
-			myfd = os.open(lockfilename, os.O_WRONLY,0660)
+			myfd = os.open(lockfilename, os.O_WRONLY,0o660)
 			unlinkfile = 1
 		locking_method(myfd,fcntl.LOCK_UN)
 	except OSError:
@@ -229,7 +233,7 @@ def unlockfile(mytuple):
 				writemsg(_("lockfile does not exist '%s'\n") % lockfilename, 1)
 				os.close(myfd)
 				return False
-	except Exception, e:
+	except Exception as e:
 		writemsg(_("Failed to get lock... someone took it.\n"), 1)
 		writemsg(str(e)+"\n",1)
 
@@ -268,7 +272,7 @@ def hardlink_lockfile(lockfilename, max_wait=14400):
 	
 	while(time.time() < (start_time + max_wait)):
 		# We only need it to exist.
-		myfd = os.open(myhardlock, os.O_CREAT|os.O_RDWR,0660)
+		myfd = os.open(myhardlock, os.O_CREAT|os.O_RDWR,0o660)
 		os.close(myfd)
 	
 		if not os.path.exists(myhardlock):

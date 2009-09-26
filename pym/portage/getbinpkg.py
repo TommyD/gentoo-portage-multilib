@@ -11,13 +11,21 @@ from portage import os
 from portage import _encodings
 from portage import _unicode_encode
 
-import HTMLParser
 import sys
 import socket
 import time
 import tempfile
 import base64
-import urllib2
+
+try:
+	from html.parser import HTMLParser as html_parser_HTMLParser
+except ImportError:
+	from HTMLParser import HTMLParser as html_parser_HTMLParser
+
+try:
+	from urllib.parse import unquote as urllib_parse_unquote
+except:
+	from urllib2 import unquote as urllib_parse_unquote
 
 try:
 	import cPickle as pickle
@@ -26,13 +34,25 @@ except ImportError:
 
 try:
 	import ftplib
-except ImportError, e:
+except ImportError as e:
 	sys.stderr.write(colorize("BAD","!!! CANNOT IMPORT FTPLIB: ")+str(e)+"\n")
 
 try:
-	import httplib
-except ImportError, e:
-	sys.stderr.write(colorize("BAD","!!! CANNOT IMPORT HTTPLIB: ")+str(e)+"\n")
+	try:
+		from http.client import HTTPConnection as http_client_HTTPConnection
+		from http.client import HTTPSConnection as http_client_HTTPSConnection
+		from http.client import BadStatusLine as http_client_BadStatusLine
+		from http.client import ResponseNotReady as http_client_ResponseNotReady
+	except ImportError:
+		from httplib import HTTPConnection as http_client_HTTPConnection
+		from httplib import HTTPSConnection as http_client_HTTPSConnection
+		from httplib import BadStatusLine as http_client_BadStatusLine
+		from httplib import ResponseNotReady as http_client_ResponseNotReady
+except ImportError as e:
+	sys.stderr.write(colorize("BAD","!!! CANNOT IMPORT HTTP.CLIENT: ")+str(e)+"\n")
+
+if sys.hexversion >= 0x3000000:
+	long = int
 
 def make_metadata_dict(data):
 	myid,myglob = data
@@ -43,12 +63,12 @@ def make_metadata_dict(data):
 
 	return mydict
 
-class ParseLinks(HTMLParser.HTMLParser):
+class ParseLinks(html_parser_HTMLParser):
 	"""Parser class that overrides HTMLParser to grab all anchors from an html
 	page and provide suffix and prefix limitors"""
 	def __init__(self):
 		self.PL_anchors = []
-		HTMLParser.HTMLParser.__init__(self)
+		html_parser_HTMLParser.__init__(self)
 
 	def get_anchors(self):
 		return self.PL_anchors
@@ -77,7 +97,7 @@ class ParseLinks(HTMLParser.HTMLParser):
 			for x in attrs:
 				if x[0] == 'href':
 					if x[1] not in self.PL_anchors:
-						self.PL_anchors.append(urllib2.unquote(x[1]))
+						self.PL_anchors.append(urllib_parse_unquote(x[1]))
 
 
 def create_conn(baseurl,conn=None):
@@ -132,9 +152,9 @@ def create_conn(baseurl,conn=None):
 
 	if not conn:
 		if protocol == "https":
-			conn = httplib.HTTPSConnection(host)
+			conn = http_client_HTTPSConnection(host)
 		elif protocol == "http":
-			conn = httplib.HTTPConnection(host)
+			conn = http_client_HTTPConnection(host)
 		elif protocol == "ftp":
 			passive = 1
 			if(host[-1] == "*"):
@@ -160,7 +180,7 @@ def create_conn(baseurl,conn=None):
 			t.connect(username=username, password=password)
 			conn = paramiko.SFTPClient.from_transport(t)
 		else:
-			raise NotImplementedError, _("%s is not a supported protocol.") % protocol
+			raise NotImplementedError(_("%s is not a supported protocol.") % protocol)
 
 	return (conn,protocol,address, http_params, http_headers)
 
@@ -207,7 +227,7 @@ def make_ftp_request(conn, address, rest=None, dest=None):
 
 		return mydata,not (fsize==data_size),""
 
-	except ValueError, e:
+	except ValueError as e:
 		return None,int(str(e)[:4]),str(e)
 	
 
@@ -223,9 +243,9 @@ def make_http_request(conn, address, params={}, headers={}, dest=None):
 			if (rc != 0):
 				conn,ignore,ignore,ignore,ignore = create_conn(address)
 			conn.request("GET", address, params, headers)
-		except SystemExit, e:
+		except SystemExit as e:
 			raise
-		except Exception, e:
+		except Exception as e:
 			return None,None,"Server request failed: "+str(e)
 		response = conn.getresponse()
 		rc = response.status
@@ -481,7 +501,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 
 	try:
 		conn, protocol, address, params, headers = create_conn(baseurl, conn)
-	except socket.error, e:
+	except socket.error as e:
 		# ftplib.FTP(host) can raise errors like this:
 		#   socket.error: (111, 'Connection refused')
 		sys.stderr.write("!!! %s\n" % (e,))
@@ -522,7 +542,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 	import portage.exception
 	try:
 		filelist = dir_get_list(baseurl, conn)
-	except portage.exception.PortageException, e:
+	except portage.exception.PortageException as e:
 		sys.stderr.write(_("!!! Error connecting to '%s'.\n") % baseurl)
 		sys.stderr.write("!!! %s\n" % str(e))
 		del e
@@ -547,7 +567,7 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 					if mytempfile.tell() > len(data):
 						mytempfile.seek(0)
 						data = mytempfile.read()
-				except ValueError, e:
+				except ValueError as e:
 					sys.stderr.write("--- "+str(e)+"\n")
 					if trynum < 3:
 						sys.stderr.write(_("Retrying...\n"))
@@ -562,9 +582,9 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 						mytempfile.seek(0)
 						gzindex = gzip.GzipFile(mfile[:-3],'rb',9,mytempfile)
 						data = gzindex.read()
-					except SystemExit, e:
+					except SystemExit as e:
 						raise
-					except Exception, e:
+					except Exception as e:
 						mytempfile.close()
 						sys.stderr.write(_("!!! Failed to use gzip: ")+str(e)+"\n")
 						sys.stderr.flush()
@@ -578,9 +598,9 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 					out.write(_("Pickle loaded.\n"))
 					out.flush()
 					break
-				except SystemExit, e:
+				except SystemExit as e:
 					raise
-				except Exception, e:
+				except Exception as e:
 					sys.stderr.write(_("!!! Failed to read data from index: ")+str(mfile)+"\n")
 					sys.stderr.write("!!! "+str(e)+"\n")
 					sys.stderr.flush()
@@ -589,9 +609,9 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 					encoding=_encodings['fs'], errors='strict'), 'wb')
 				pickle.dump(metadata, metadatafile, protocol=2)
 				metadatafile.close()
-			except SystemExit, e:
+			except SystemExit as e:
 				raise
-			except Exception, e:
+			except Exception as e:
 				sys.stderr.write(_("!!! Failed to write binary metadata to disk!\n"))
 				sys.stderr.write("!!! "+str(e)+"\n")
 				sys.stderr.flush()
@@ -631,20 +651,20 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 				cache_stats.update()
 			metadata[baseurl]["modified"] = 1
 			myid = None
-			for retry in xrange(3):
+			for retry in range(3):
 				try:
 					myid = file_get_metadata(
 						"/".join((baseurl.rstrip("/"), x.lstrip("/"))),
 						conn, chunk_size)
 					break
-				except httplib.BadStatusLine:
+				except http_client_BadStatusLine:
 					# Sometimes this error is thrown from conn.getresponse() in
 					# make_http_request().  The docstring for this error in
 					# httplib.py says "Presumably, the server closed the
 					# connection before sending a valid response".
 					conn, protocol, address, params, headers = create_conn(
 						baseurl)
-				except httplib.ResponseNotReady:
+				except http_client_ResponseNotReady:
 					# With some http servers this error is known to be thrown
 					# from conn.getresponse() in make_http_request() when the
 					# remote file does not have appropriate read permissions.
@@ -687,9 +707,9 @@ def dir_get_metadata(baseurl, conn=None, chunk_size=3000, verbose=1, usingcache=
 				encoding=_encodings['fs'], errors='strict'), 'wb')
 			pickle.dump(metadata[baseurl]["data"], metadatafile, protocol=2)
 			metadatafile.close()
-	except SystemExit, e:
+	except SystemExit as e:
 		raise
-	except Exception, e:
+	except Exception as e:
 		sys.stderr.write(_("!!! Failed to write binary metadata to disk!\n"))
 		sys.stderr.write("!!! "+str(e)+"\n")
 		sys.stderr.flush()
@@ -784,7 +804,7 @@ class PackageIndex(object):
 			if not mycpv:
 				continue
 			if self._default_pkg_data:
-				for k, v in self._default_pkg_data.iteritems():
+				for k, v in self._default_pkg_data.items():
 					d.setdefault(k, v)
 			if self._inherited_keys:
 				for k in self._inherited_keys:
@@ -797,11 +817,12 @@ class PackageIndex(object):
 		if self.modified:
 			self.header["TIMESTAMP"] = str(long(time.time()))
 			self.header["PACKAGES"] = str(len(self.packages))
-		keys = self.header.keys()
+		keys = list(self.header)
 		keys.sort()
 		self._writepkgindex(pkgfile, [(k, self.header[k]) \
 			for k in keys if self.header[k]])
-		for metadata in sorted(self.packages, _cmp_cpv):
+		for metadata in sorted(self.packages,
+			key=portage.util.cmp_sort_key(_cmp_cpv)):
 			metadata = metadata.copy()
 			cpv = metadata["CPV"]
 			if self._inherited_keys:
@@ -810,10 +831,10 @@ class PackageIndex(object):
 					if v is not None and v == metadata.get(k):
 						del metadata[k]
 			if self._default_pkg_data:
-				for k, v in self._default_pkg_data.iteritems():
+				for k, v in self._default_pkg_data.items():
 					if metadata.get(k) == v:
 						metadata.pop(k, None)
-			keys = metadata.keys()
+			keys = list(metadata)
 			keys.sort()
 			self._writepkgindex(pkgfile,
 				[(k, metadata[k]) for k in keys if metadata[k]])

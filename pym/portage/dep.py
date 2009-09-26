@@ -18,7 +18,7 @@
 #
 
 import re, sys
-import weakref
+import warnings
 from itertools import chain
 import portage.exception
 from portage.exception import InvalidData, InvalidAtom
@@ -26,6 +26,9 @@ from portage.localization import _
 from portage.versions import catpkgsplit, catsplit, \
 	pkgcmp, pkgsplit, ververify, _version
 import portage.cache.mappings
+
+if sys.hexversion >= 0x3000000:
+	basestring = str
 
 def cpvequal(cpv1, cpv2):
 	"""
@@ -150,7 +153,7 @@ class paren_normalize(list):
 		for x in i:
 			if isinstance(x, basestring):
 				if x == '||':
-					x = self._zap_parens(i.next(), [], disjunction=True)
+					x = self._zap_parens(next(i), [], disjunction=True)
 					if len(x) == 1:
 						dest.append(x[0])
 					else:
@@ -158,7 +161,7 @@ class paren_normalize(list):
 						dest.append(x)
 				elif x.endswith("?"):
 					dest.append(x)
-					dest.append(self._zap_parens(i.next(), []))
+					dest.append(self._zap_parens(next(i), []))
 				else:
 					dest.append(x)
 			else:
@@ -397,9 +400,9 @@ class _use_dep(object):
 		self.disabled = frozenset(disabled_flags)
 		self.conditional = None
 
-		for v in conditional.itervalues():
+		for v in conditional.values():
 			if v:
-				for k, v in conditional.iteritems():
+				for k, v in conditional.items():
 					conditional[k] = frozenset(v)
 				self.conditional = conditional
 				break
@@ -409,8 +412,11 @@ class _use_dep(object):
 			raise InvalidAtom(_("Invalid use dep: '%s'") % (token,))
 		return flag
 
-	def __nonzero__(self):
+	def __bool__(self):
 		return bool(self.tokens)
+
+	if sys.hexversion < 0x3000000:
+		__nonzero__ = __bool__
 
 	def __str__(self):
 		if not self.tokens:
@@ -488,15 +494,17 @@ class _use_dep(object):
 
 		return _use_dep(tokens)
 
-class Atom(object):
+if sys.hexversion < 0x3000000:
+	_atom_base = unicode
+else:
+	_atom_base = str
+
+class Atom(_atom_base):
 
 	"""
 	For compatibility with existing atom string manipulation code, this
 	class emulates most of the str methods that are useful with atoms.
 	"""
-
-	__slots__ = ("__weakref__", "blocker", "cp", "cpv", "operator",
-		"slot", "use", "without_use", "_str",)
 
 	class _blocker(object):
 		__slots__ = ("overlap",)
@@ -510,10 +518,14 @@ class Atom(object):
 		def __init__(self, forbid_overlap=False):
 			self.overlap = self._overlap(forbid=forbid_overlap)
 
-	def __init__(self, mypkg):
-		s = mypkg = str(mypkg)
-		obj_setattr = object.__setattr__
-		obj_setattr(self, '_str', s)
+	def __init__(self, s):
+		if isinstance(s, Atom):
+			# This is an efficiency assertion, to ensure that the Atom
+			# constructor is not called redundantly.
+			raise TypeError(_("Expected %s, got %s") % \
+				(_atom_base, type(s)))
+
+		_atom_base.__init__(s)
 
 		if "!" == s[:1]:
 			blocker = self._blocker(forbid_overlap=("!" == s[1:2]))
@@ -523,10 +535,10 @@ class Atom(object):
 				s = s[1:]
 		else:
 			blocker = False
-		obj_setattr(self, "blocker", blocker)
+		self.__dict__['blocker'] = blocker
 		m = _atom_re.match(s)
 		if m is None:
-			raise InvalidAtom(mypkg)
+			raise InvalidAtom(self)
 
 		if m.group('op') is not None:
 			base = _atom_re.groupindex['op']
@@ -534,25 +546,25 @@ class Atom(object):
 			cpv = m.group(base + 2)
 			cp = m.group(base + 3)
 			if m.group(base + 4) is not None:
-				raise InvalidAtom(mypkg)
+				raise InvalidAtom(self)
 		elif m.group('star') is not None:
 			base = _atom_re.groupindex['star']
 			op = '=*'
 			cpv = m.group(base + 1)
 			cp = m.group(base + 2)
 			if m.group(base + 3) is not None:
-				raise InvalidAtom(mypkg)
+				raise InvalidAtom(self)
 		elif m.group('simple') is not None:
 			op = None
 			cpv = cp = m.group(_atom_re.groupindex['simple'] + 1)
 			if m.group(_atom_re.groupindex['simple'] + 2) is not None:
-				raise InvalidAtom(mypkg)
+				raise InvalidAtom(self)
 		else:
-			raise AssertionError(_("required group not found in atom: '%s'") % s)
-		obj_setattr(self, "cp", cp)
-		obj_setattr(self, "cpv", cpv)
-		obj_setattr(self, "slot", m.group(_atom_re.groups - 1))
-		obj_setattr(self, "operator", op)
+			raise AssertionError(_("required group not found in atom: '%s'") % self)
+		self.__dict__['cp'] = cp
+		self.__dict__['cpv'] = cpv
+		self.__dict__['slot'] = m.group(_atom_re.groups - 1)
+		self.__dict__['operator'] = op
 
 		use_str = m.group(_atom_re.groups)
 		if use_str is not None:
@@ -562,8 +574,8 @@ class Atom(object):
 			use = None
 			without_use = self
 
-		obj_setattr(self, "use", use)
-		obj_setattr(self, "without_use", without_use)
+		self.__dict__['use'] = use
+		self.__dict__['without_use'] = without_use
 
 	def __setattr__(self, name, value):
 		raise AttributeError("Atom instances are immutable",
@@ -600,65 +612,6 @@ class Atom(object):
 
 		return False
 
-	# Implement some common str methods.
-
-	def __eq__(self, other):
-		return self._str == other
-
-	def __getitem__(self, key):
-		return self._str[key]
-
-	def __hash__(self):
-		return hash(self._str)
-
-	def __len__(self):
-		return len(self._str)
-
-	def __lt__(self, other):
-		return self._str < other
-
-	def __ne__(self, other):
-		return self._str != other
-
-	def __repr__(self):
-		return repr(self._str)
-
-	def __str__(self):
-		return self._str
-
-	def endswith(self, *pargs, **kargs):
-		return self._str.endswith(*pargs, **kargs)
-
-	def find(self, *pargs, **kargs):
-		return self._str.find(*pargs, **kargs)
-
-	def index(self, *pargs, **kargs):
-		return self._str.index(*pargs, **kargs)
-
-	def lstrip(self, *pargs, **kargs):
-		return self._str.lstrip(*pargs, **kargs)
-
-	def replace(self, *pargs, **kargs):
-		return self._str.replace(*pargs, **kargs)
-
-	def startswith(self, *pargs, **kargs):
-		return self._str.startswith(*pargs, **kargs)
-
-	def split(self, *pargs, **kargs):
-		return self._str.split(*pargs, **kargs)
-
-	def strip(self, *pargs, **kargs):
-		return self._str.strip(*pargs, **kargs)
-
-	def rindex(self, *pargs, **kargs):
-		return self._str.rindex(*pargs, **kargs)
-
-	def rfind(self, *pargs, **kargs):
-		return self._str.rfind(*pargs, **kargs)
-
-	def rstrip(self, *pargs, **kargs):
-		return self._str.rstrip(*pargs, **kargs)
-
 	def __copy__(self):
 		"""Immutable, so returns self."""
 		return self
@@ -691,6 +644,9 @@ def get_operator(mydep):
 		pass
 
 	# Fall back to legacy code for backward compatibility.
+	warnings.warn(_("%s is deprecated, use %s instead") % \
+		('portage.dep.get_operator()', 'portage.dep.Atom.operator'),
+		DeprecationWarning)
 	operator = None
 	if mydep:
 		mydep = remove_slot(mydep)
@@ -734,6 +690,9 @@ def dep_getcpv(mydep):
 		pass
 
 	# Fall back to legacy code for backward compatibility.
+	warnings.warn(_("%s is deprecated, use %s instead") % \
+		('portage.dep.dep_getcpv()', 'portage.dep.Atom.cpv'),
+		DeprecationWarning)
 	mydep_orig = mydep
 	if mydep:
 		mydep = remove_slot(mydep)
@@ -977,6 +936,9 @@ def dep_getkey(mydep):
 			pass
 
 	# Fall back to legacy code for backward compatibility.
+	warnings.warn(_("%s is deprecated, use %s instead") % \
+		('portage.dep.dep_getkey()', 'portage.dep.Atom.cp'),
+		DeprecationWarning)
 	mydep = dep_getcpv(mydep)
 	if mydep and isspecific(mydep):
 		mysplit = catpkgsplit(mydep)
@@ -997,14 +959,7 @@ def match_to_list(mypkg, mylist):
 	@rtype: List
 	@return: A unique list of package atoms that match the given package atom
 	"""
-	matches = []
-	for x in mylist:
-		if not isinstance(x, Atom):
-			x = Atom(x)
-		if match_from_list(x, [mypkg]):
-			if x not in matches:
-				matches.append(x)
-	return matches
+	return [ x for x in set(mylist) if match_from_list(x, [mypkg]) ]
 
 def best_match_to_list(mypkg, mylist):
 	"""

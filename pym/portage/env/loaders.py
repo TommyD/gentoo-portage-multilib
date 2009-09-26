@@ -153,7 +153,7 @@ class FileLoader(DataLoader):
 				f = codecs.open(_unicode_encode(fn,
 					encoding=_encodings['fs'], errors='strict'), mode='r',
 					encoding=_encodings['content'], errors='replace')
-			except EnvironmentError, e:
+			except EnvironmentError as e:
 				if e.errno not in (errno.ENOENT, errno.ESTALE):
 					raise
 				del e
@@ -317,7 +317,4 @@ class KeyValuePairFileLoader(FileLoader):
 				_("Value validation failed at line: %s, data %s")
 				% (line_num + 1, value))
 			return
-		if key in data:
-			data[key].append(value)
-		else:
-			data[key] = value
+		data[key] = value

@@ -3,10 +3,16 @@
 # $Id$
 
 from _emerge.SpawnProcess import SpawnProcess
-import urlparse
+try:
+	from urllib.parse import urlparse as urllib_parse_urlparse
+except ImportError:
+	from urlparse import urlparse as urllib_parse_urlparse
 import sys
 import portage
 from portage import os
+
+if sys.hexversion >= 0x3000000:
+	long = int
 
 class BinpkgFetcher(SpawnProcess):
 
@@ -61,7 +67,7 @@ class BinpkgFetcher(SpawnProcess):
 			self.wait()
 			return
 
-		protocol = urlparse.urlparse(uri)[0]
+		protocol = urllib_parse_urlparse(uri)[0]
 		fcmd_prefix = "FETCHCOMMAND"
 		if resume:
 			fcmd_prefix = "RESUMECOMMAND"
@@ -75,7 +81,7 @@ class BinpkgFetcher(SpawnProcess):
 			"FILE"    : os.path.basename(pkg_path)
 		}
 
-		fetch_env = dict(settings.iteritems())
+		fetch_env = dict(settings.items())
 		fetch_args = [portage.util.varexpand(x, mydict=fcmd_vars) \
 			for x in portage.util.shlex_split(fcmd)]
 

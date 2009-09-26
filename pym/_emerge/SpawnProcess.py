@@ -43,7 +43,7 @@ class SpawnProcess(SubProcess):
 		fd_pipes.setdefault(2, sys.stderr.fileno())
 
 		# flush any pending output
-		for fd in fd_pipes.itervalues():
+		for fd in fd_pipes.values():
 			if fd == sys.stdout.fileno():
 				sys.stdout.flush()
 			if fd == sys.stderr.fileno():
@@ -78,7 +78,7 @@ class SpawnProcess(SubProcess):
 			files.log = open(logfile, mode='ab')
 			portage.util.apply_secpass_permissions(logfile,
 				uid=portage.portage_uid, gid=portage.portage_gid,
-				mode=0660)
+				mode=0o660)
 
 			if not self.background:
 				files.stdout = os.fdopen(os.dup(fd_pipes_orig[1]), 'wb')
@@ -157,7 +157,7 @@ class SpawnProcess(SubProcess):
 								write_successful = True
 							files.stdout.flush()
 							break
-						except IOError, e:
+						except IOError as e:
 							if e.errno != errno.EAGAIN:
 								raise
 							del e

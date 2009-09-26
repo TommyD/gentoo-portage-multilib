@@ -11,6 +11,7 @@ import traceback
 
 from portage import os
 from portage import _encodings
+from portage import _unicode_decode
 from portage import _unicode_encode
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
@@ -26,13 +27,16 @@ try:
 except ImportError:
 	max_fd_limit = 256
 
+if sys.hexversion >= 0x3000000:
+	basestring = str
+
 if os.path.isdir("/proc/%i/fd" % os.getpid()):
 	def get_open_fds():
 		return (int(fd) for fd in os.listdir("/proc/%i/fd" % os.getpid()) \
 			if fd.isdigit())
 else:
 	def get_open_fds():
-		return xrange(max_fd_limit)
+		return range(max_fd_limit)
 
 sandbox_capable = (os.path.isfile(SANDBOX_BINARY) and
                    os.access(SANDBOX_BINARY, os.X_OK))
@@ -118,7 +122,10 @@ def run_exitfuncs():
 			exc_info = sys.exc_info()
 
 	if exc_info is not None:
-		raise exc_info[0], exc_info[1], exc_info[2]
+		if sys.hexversion >= 0x3000000:
+			raise exc_info[0](exc_info[1]).with_traceback(exc_info[2])
+		else:
+			exec("raise exc_info[0], exc_info[1], exc_info[2]")
 
 atexit.register(run_exitfuncs)
 
@@ -181,13 +188,14 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 	if isinstance(mycommand, basestring):
 		mycommand = mycommand.split()
 
-	# Avoid a potential UnicodeEncodeError from os.execve().
-	env_bytes = {}
-	for k, v in env.iteritems():
-		env_bytes[_unicode_encode(k, encoding=_encodings['content'])] = \
-			_unicode_encode(v, encoding=_encodings['content'])
-	env = env_bytes
-	del env_bytes
+	if sys.hexversion < 0x3000000:
+		# Avoid a potential UnicodeEncodeError from os.execve().
+		env_bytes = {}
+		for k, v in env.items():
+			env_bytes[_unicode_encode(k, encoding=_encodings['content'])] = \
+				_unicode_encode(v, encoding=_encodings['content'])
+		env = env_bytes
+		del env_bytes
 
 	# If an absolute path to an executable file isn't given
 	# search for it unless we've been told not to.
@@ -239,7 +247,7 @@ def spawn(mycommand, env={}, opt_name=None, fd_pipes=None, returnpid=False,
 		try:
 			_exec(binary, mycommand, opt_name, fd_pipes,
 			      env, gid, groups, uid, umask, pre_exec)
-		except Exception, e:
+		except Exception as e:
 			# We need to catch _any_ exception so that it doesn't
 			# propogate out of this function and cause exiting
 			# with anything other than os._exit()
@@ -378,8 +386,7 @@ def find_binary(binary):
 	@rtype: None or string
 	@returns: full path to binary or None if the binary could not be located.
 	"""
-	
-	for path in os.getenv("PATH", "").split(":"):
+	for path in os.environ.get("PATH", "").split(":"):
 		filename = "%s/%s" % (path, binary)
 		if os.access(filename, os.X_OK) and os.path.isfile(filename):
 			return filename

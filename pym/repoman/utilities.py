@@ -19,17 +19,20 @@ __all__ = [
 ]
 
 import codecs
-import commands
 import errno
-import itertools
 import logging
 import sys
+try:
+	from subprocess import getstatusoutput as subprocess_getstatusoutput
+except ImportError:
+	from commands import getstatusoutput as subprocess_getstatusoutput
 
 from xml.dom import minidom
 from xml.dom import NotFoundErr
 from xml.parsers.expat import ExpatError
 from portage import os
 from portage import _encodings
+from portage import _unicode_decode
 from portage import _unicode_encode
 from portage import output
 from portage.output import red, green
@@ -59,13 +62,13 @@ def detect_vcs_conflicts(options, vcs):
 	if vcs == 'cvs':
 		logging.info("Performing a " + output.green("cvs -n up") + \
 			" with a little magic grep to check for updates.")
-		retval = commands.getstatusoutput("cvs -n up 2>&1 | " + \
+		retval = subprocess_getstatusoutput("cvs -n up 2>&1 | " + \
 			"egrep '^[^\?] .*' | " + \
 			"egrep -v '^. .*/digest-[^/]+|^cvs server: .* -- ignored$'")
 	if vcs == 'svn':
 		logging.info("Performing a " + output.green("svn status -u") + \
 			" with a little magic grep to check for updates.")
-		retval = commands.getstatusoutput("svn status -u 2>&1 | " + \
+		retval = subprocess_getstatusoutput("svn status -u 2>&1 | " + \
 			"egrep -v '^.  +.*/digest-[^/]+' | " + \
 			"head -n-1")
 
@@ -117,7 +120,7 @@ def parse_metadata_use(mylines, uselist=None):
 		uselist = []
 	try:
 		metadatadom = minidom.parse(mylines)
-	except ExpatError, e:
+	except ExpatError as e:
 		raise exception.ParseError("metadata.xml: %s" % (e,))
 
 	try:
@@ -217,13 +220,13 @@ def format_qa_output(formatter, stats, fails, dofull, dofail, options, qawarning
 	full = options.mode == 'full'
 	# we only want key value pairs where value > 0 
 	for category, number in \
-		itertools.ifilter(lambda myitem: myitem[1] > 0, stats.iteritems()):
-		formatter.add_literal_data("  " + category.ljust(30))
+		filter(lambda myitem: myitem[1] > 0, iter(stats.items())):
+		formatter.add_literal_data(_unicode_decode("  " + category.ljust(30)))
 		if category in qawarnings:
 			formatter.push_style("WARN")
 		else:
 			formatter.push_style("BAD")
-		formatter.add_literal_data(str(number))
+		formatter.add_literal_data(_unicode_decode(str(number)))
 		formatter.pop_style()
 		formatter.add_line_break()
 		if not dofull:
@@ -234,7 +237,7 @@ def format_qa_output(formatter, stats, fails, dofull, dofail, options, qawarning
 			if not full and len(fails_list) > 12:
 				fails_list = fails_list[:12]
 			for failure in fails_list:
-				formatter.add_literal_data("   " + failure)
+				formatter.add_literal_data(_unicode_decode("   " + failure))
 				formatter.add_line_break()
 
 
@@ -273,13 +276,17 @@ def get_commit_message_with_editor(editor, message=None):
 	from tempfile import mkstemp
 	fd, filename = mkstemp()
 	try:
-		os.write(fd, "\n# Please enter the commit message " + \
+		os.write(fd, _unicode_encode(
+			"\n# Please enter the commit message " + \
 			"for your changes.\n# (Comment lines starting " + \
-			"with '#' will not be included)\n")
+			"with '#' will not be included)\n",
+			encoding=_encodings['content'], errors='backslashreplace'))
 		if message:
-			os.write(fd, "#\n")
+			os.write(fd, _unicode_encode("#\n",
+				encoding=_encodings['content'], errors='backslashreplace'))
 			for line in message:
-				os.write(fd, "#" + line)
+				os.write(fd, _unicode_encode("#" + line,
+					encoding=_encodings['content'], errors='backslashreplace'))
 		os.close(fd)
 		retval = os.system(editor + " '%s'" % filename)
 		if not (os.WIFEXITED(retval) and os.WEXITSTATUS(retval) == os.EX_OK):
@@ -289,7 +296,7 @@ def get_commit_message_with_editor(editor, message=None):
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['content'], errors='replace'
 				).readlines()
-		except OSError, e:
+		except OSError as e:
 			if e.errno != errno.ENOENT:
 				raise
 			del e
@@ -309,7 +316,7 @@ def get_commit_message_with_stdin():
 	@rtype: string or None
 	@returns: A string on success or None if an error occurs.
 	"""
-	print "Please enter a commit message. Use Ctrl-d to finish or Ctrl-c to abort."
+	print("Please enter a commit message. Use Ctrl-d to finish or Ctrl-c to abort.")
 	commitmessage = []
 	while True:
 		commitmessage.append(sys.stdin.readline())
@@ -339,7 +346,7 @@ def FindPortdir(settings):
 	Args:
 		settings - portage.config instance, preferably repoman_settings
 	Returns:
-		tuple(portdir, portdir_overlay, location)
+		list(portdir, portdir_overlay, location)
 	"""
 
 	portdir = None
@@ -423,4 +430,4 @@ def FindPortdir(settings):
 	if not portdir.endswith('/'):
 		portdir += '/'
 
-	return map(normalize_path, (portdir, portdir_overlay, location))
+	return [normalize_path(x) for x in (portdir, portdir_overlay, location)]

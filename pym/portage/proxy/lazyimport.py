@@ -14,6 +14,9 @@ except ImportError:
 
 from portage.proxy.objectproxy import ObjectProxy
 
+if sys.hexversion >= 0x3000000:
+	basestring = str
+
 _module_proxies = {}
 _module_proxies_lock = threading.RLock()
 
@@ -47,7 +50,7 @@ def _unregister_module_proxy(name):
 				object.__getattribute__(proxy, '_get_target')()
 
 			modules = sys.modules
-			for name, proxy_list in list(_module_proxies.iteritems()):
+			for name, proxy_list in list(_module_proxies.items()):
 				if name not in modules:
 					continue
 				# First delete this name from the dict so that
@@ -134,7 +137,7 @@ def lazyimport(scope, *args):
 
 			components = name.split('.')
 			parent_scope = scope
-			for i in xrange(len(components)):
+			for i in range(len(components)):
 				alias = components[i]
 				if i < len(components) - 1:
 					parent_name = ".".join(components[:i+1])

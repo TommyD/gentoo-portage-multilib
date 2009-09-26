@@ -2,7 +2,12 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import commands
+from __future__ import print_function
+
+try:
+	from subprocess import getstatusoutput as subprocess_getstatusoutput
+except ImportError:
+	from commands import getstatusoutput as subprocess_getstatusoutput
 import errno
 import logging
 import platform
@@ -14,7 +19,7 @@ import stat
 import sys
 import textwrap
 import time
-from itertools import chain, izip
+from itertools import chain
 
 import portage
 from portage import os
@@ -49,6 +54,9 @@ from _emerge.unmerge import unmerge
 from _emerge.UnmergeDepPriority import UnmergeDepPriority
 from _emerge.UseFlagDisplay import UseFlagDisplay
 from _emerge.userquery import userquery
+
+if sys.hexversion >= 0x3000000:
+	long = int
 
 def action_build(settings, trees, mtimedb,
 	myopts, myaction, myfiles, spinner):
@@ -168,13 +176,13 @@ def action_build(settings, trees, mtimedb,
 		else:
 			action = "merged"
 		if "--tree" in myopts and action != "fetched": # Tree doesn't work with fetching
-			print
-			print darkgreen("These are the packages that would be %s, in reverse order:") % action
-			print
+			print()
+			print(darkgreen("These are the packages that would be %s, in reverse order:") % action)
+			print()
 		else:
-			print
-			print darkgreen("These are the packages that would be %s, in order:") % action
-			print
+			print()
+			print(darkgreen("These are the packages that would be %s, in order:") % action)
+			print()
 
 	show_spinner = "--quiet" not in myopts and "--nodeps" not in myopts
 	if not show_spinner:
@@ -186,7 +194,7 @@ def action_build(settings, trees, mtimedb,
 			favorites = []
 
 		if show_spinner:
-			print "Calculating dependencies  ",
+			print("Calculating dependencies  ", end=' ')
 		myparams = create_depgraph_params(myopts, myaction)
 
 		resume_data = mtimedb["resume"]
@@ -204,11 +212,11 @@ def action_build(settings, trees, mtimedb,
 			success, mydepgraph, dropped_tasks = resume_depgraph(
 				settings, trees, mtimedb, myopts, myparams, spinner)
 		except (portage.exception.PackageNotFound,
-			depgraph.UnsatisfiedResumeDep), e:
+			depgraph.UnsatisfiedResumeDep) as e:
 			if isinstance(e, depgraph.UnsatisfiedResumeDep):
 				mydepgraph = e.depgraph
 			if show_spinner:
-				print
+				print()
 			from textwrap import wrap
 			from portage.output import EOutput
 			out = EOutput()
@@ -262,7 +270,7 @@ def action_build(settings, trees, mtimedb,
 					out.eerror(line)
 		else:
 			if show_spinner:
-				print "\b\b... done!"
+				print("\b\b... done!")
 
 		if success:
 			if dropped_tasks:
@@ -287,26 +295,26 @@ def action_build(settings, trees, mtimedb,
 			return 1
 	else:
 		if ("--resume" in myopts):
-			print darkgreen("emerge: It seems we have nothing to resume...")
+			print(darkgreen("emerge: It seems we have nothing to resume..."))
 			return os.EX_OK
 
 		if "--quiet" not in myopts and "--nodeps" not in myopts:
-			print "Calculating dependencies  ",
+			print("Calculating dependencies  ", end=' ')
 			sys.stdout.flush()
 
 		myparams = create_depgraph_params(myopts, myaction)
 		try:
 			success, mydepgraph, favorites = backtrack_depgraph(
 				settings, trees, myopts, myparams, myaction, myfiles, spinner)
-		except portage.exception.PackageSetNotFound, e:
+		except portage.exception.PackageSetNotFound as e:
 			if show_spinner:
-				print "\b\b... done!"
+				print("\b\b... done!")
 			root_config = trees[settings["ROOT"]]["root_config"]
 			display_missing_pkg_set(root_config, e.value)
 			return 1
 
 		if show_spinner:
-			print "\b\b... done!"
+			print("\b\b... done!")
 
 		if not success:
 			mydepgraph.display_problems()
@@ -319,7 +327,7 @@ def action_build(settings, trees, mtimedb,
 		if "--resume" in myopts:
 			mymergelist = mydepgraph.altlist()
 			if len(mymergelist) == 0:
-				print colorize("INFORM", "emerge: It seems we have nothing to resume...")
+				print(colorize("INFORM", "emerge: It seems we have nothing to resume..."))
 				return os.EX_OK
 			favorites = mtimedb["resume"]["favorites"]
 			retval = mydepgraph.display(
@@ -355,26 +363,26 @@ def action_build(settings, trees, mtimedb,
 						not sets[x[1:]].world_candidate)]
 				if "--noreplace" in myopts and \
 					not oneshot and world_candidates:
-					print
+					print()
 					for x in world_candidates:
-						print " %s %s" % (good("*"), x)
+						print(" %s %s" % (good("*"), x))
 					prompt="Would you like to add these packages to your world favorites?"
 				elif settings["AUTOCLEAN"] and "yes"==settings["AUTOCLEAN"]:
 					prompt="Nothing to merge; would you like to auto-clean packages?"
 				else:
-					print
-					print "Nothing to merge; quitting."
-					print
+					print()
+					print("Nothing to merge; quitting.")
+					print()
 					return os.EX_OK
 			elif "--fetchonly" in myopts or "--fetch-all-uri" in myopts:
 				prompt="Would you like to fetch the source files for these packages?"
 			else:
 				prompt="Would you like to merge these packages?"
-		print
+		print()
 		if "--ask" in myopts and userquery(prompt) == "No":
-			print
-			print "Quitting."
-			print
+			print()
+			print("Quitting.")
+			print()
 			return os.EX_OK
 		# Don't ask again (e.g. when auto-cleaning packages after merge)
 		myopts.pop("--ask", None)
@@ -383,7 +391,7 @@ def action_build(settings, trees, mtimedb,
 		if ("--resume" in myopts):
 			mymergelist = mydepgraph.altlist()
 			if len(mymergelist) == 0:
-				print colorize("INFORM", "emerge: It seems we have nothing to resume...")
+				print(colorize("INFORM", "emerge: It seems we have nothing to resume..."))
 				return os.EX_OK
 			favorites = mtimedb["resume"]["favorites"]
 			retval = mydepgraph.display(
@@ -409,8 +417,8 @@ def action_build(settings, trees, mtimedb,
 				graph_copy.difference_update(removed_nodes)
 				if not graph_copy.hasallzeros(ignore_priority = \
 					DepPrioritySatisfiedRange.ignore_medium):
-					print "\n!!! --buildpkgonly requires all dependencies to be merged."
-					print "!!! You have to merge the dependencies before you can build this package.\n"
+					print("\n!!! --buildpkgonly requires all dependencies to be merged.")
+					print("!!! You have to merge the dependencies before you can build this package.\n")
 					return 1
 	else:
 		if "--buildpkgonly" in myopts:
@@ -423,8 +431,8 @@ def action_build(settings, trees, mtimedb,
 			graph_copy.difference_update(removed_nodes)
 			if not graph_copy.hasallzeros(ignore_priority = \
 				DepPrioritySatisfiedRange.ignore_medium):
-				print "\n!!! --buildpkgonly requires all dependencies to be merged."
-				print "!!! Cannot merge requested packages. Merge deps and try again.\n"
+				print("\n!!! --buildpkgonly requires all dependencies to be merged.")
+				print("!!! Cannot merge requested packages. Merge deps and try again.\n")
 				return 1
 
 		if ("--resume" in myopts):
@@ -473,7 +481,7 @@ def action_build(settings, trees, mtimedb,
 
 def action_config(settings, trees, myopts, myfiles):
 	if len(myfiles) != 1:
-		print red("!!! config can only take a single package atom at this time\n")
+		print(red("!!! config can only take a single package atom at this time\n"))
 		sys.exit(1)
 	if not is_valid_package_atom(myfiles[0]):
 		portage.writemsg("!!! '%s' is not a valid package atom.\n" % myfiles[0],
@@ -481,46 +489,46 @@ def action_config(settings, trees, myopts, myfiles):
 		portage.writemsg("!!! Please check ebuild(5) for full details.\n")
 		portage.writemsg("!!! (Did you specify a version but forget to prefix with '='?)\n")
 		sys.exit(1)
-	print
+	print()
 	try:
 		pkgs = trees[settings["ROOT"]]["vartree"].dbapi.match(myfiles[0])
-	except portage.exception.AmbiguousPackageName, e:
+	except portage.exception.AmbiguousPackageName as e:
 		# Multiple matches thrown from cpv_expand
 		pkgs = e.args[0]
 	if len(pkgs) == 0:
-		print "No packages found.\n"
+		print("No packages found.\n")
 		sys.exit(0)
 	elif len(pkgs) > 1:
 		if "--ask" in myopts:
 			options = []
-			print "Please select a package to configure:"
+			print("Please select a package to configure:")
 			idx = 0
 			for pkg in pkgs:
 				idx += 1
 				options.append(str(idx))
-				print options[-1]+") "+pkg
-			print "X) Cancel"
+				print(options[-1]+") "+pkg)
+			print("X) Cancel")
 			options.append("X")
 			idx = userquery("Selection?", options)
 			if idx == "X":
 				sys.exit(0)
 			pkg = pkgs[int(idx)-1]
 		else:
-			print "The following packages available:"
+			print("The following packages available:")
 			for pkg in pkgs:
-				print "* "+pkg
-			print "\nPlease use a specific atom or the --ask option."
+				print("* "+pkg)
+			print("\nPlease use a specific atom or the --ask option.")
 			sys.exit(1)
 	else:
 		pkg = pkgs[0]
 
-	print
+	print()
 	if "--ask" in myopts:
 		if userquery("Ready to configure "+pkg+"?") == "No":
 			sys.exit(0)
 	else:
-		print "Configuring pkg..."
-	print
+		print("Configuring pkg...")
+	print()
 	ebuildpath = trees[settings["ROOT"]]["vartree"].dbapi.findname(pkg)
 	mysettings = portage.config(clone=settings)
 	vardb = trees[mysettings["ROOT"]]["vartree"].dbapi
@@ -532,7 +540,7 @@ def action_config(settings, trees, myopts, myfiles):
 	if retval == os.EX_OK:
 		portage.doebuild(ebuildpath, "clean", mysettings["ROOT"],
 			mysettings, debug=debug, mydbapi=vardb, tree="vartree")
-	print
+	print()
 
 def action_depclean(settings, trees, ldpath_mtimes,
 	myopts, action, myfiles, spinner):
@@ -604,16 +612,16 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	if not cleanlist and "--quiet" in myopts:
 		return
 
-	print "Packages installed:   " + str(len(vardb.cpv_all()))
-	print "Packages in world:    " + \
-		str(len(root_config.sets["world"].getAtoms()))
-	print "Packages in system:   " + \
-		str(len(root_config.sets["system"].getAtoms()))
-	print "Required packages:    "+str(req_pkg_count)
+	print("Packages installed:   " + str(len(vardb.cpv_all())))
+	print("Packages in world:    " + \
+		str(len(root_config.sets["world"].getAtoms())))
+	print("Packages in system:   " + \
+		str(len(root_config.sets["system"].getAtoms())))
+	print("Required packages:    "+str(req_pkg_count))
 	if "--pretend" in myopts:
-		print "Number to remove:     "+str(len(cleanlist))
+		print("Number to remove:     "+str(len(cleanlist)))
 	else:
-		print "Number removed:       "+str(len(cleanlist))
+		print("Number removed:       "+str(len(cleanlist)))
 
 def calc_depclean(settings, trees, ldpath_mtimes,
 	myopts, action, args_set, spinner):
@@ -682,7 +690,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 					if args_set.findAtomForPackage(pkg) is None:
 						world_temp_set.add("=" + pkg.cpv)
 						continue
-				except portage.exception.InvalidDependString, e:
+				except portage.exception.InvalidDependString as e:
 					show_invalid_depstring_notice(pkg,
 						pkg.metadata["PROVIDE"], str(e))
 					del e
@@ -731,7 +739,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 				if args_set.findAtomForPackage(pkg) is None:
 					world_temp_set.add("=" + pkg.cpv)
 					continue
-			except portage.exception.InvalidDependString, e:
+			except portage.exception.InvalidDependString as e:
 				show_invalid_depstring_notice(pkg,
 					pkg.metadata["PROVIDE"], str(e))
 				del e
@@ -739,7 +747,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 				continue
 
 	set_args = {}
-	for s, package_set in required_sets.iteritems():
+	for s, package_set in required_sets.items():
 		set_atom = SETPREFIX + s
 		set_arg = SetArg(arg=set_atom, set=package_set,
 			root_config=resolver._frozen_config.roots[myroot])
@@ -922,7 +930,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			if not consumers:
 				continue
 
-			for lib, lib_consumers in consumers.items():
+			for lib, lib_consumers in list(consumers.items()):
 				for consumer_file in list(lib_consumers):
 					if pkg_dblink.isowner(consumer_file, myroot):
 						lib_consumers.remove(consumer_file)
@@ -932,7 +940,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			if not consumers:
 				continue
 
-			for lib, lib_consumers in consumers.iteritems():
+			for lib, lib_consumers in consumers.items():
 
 				soname = soname_cache.get(lib)
 				if soname is None:
@@ -958,8 +966,8 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 		if consumer_map:
 
 			search_files = set()
-			for consumers in consumer_map.itervalues():
-				for lib, consumer_providers in consumers.iteritems():
+			for consumers in consumer_map.values():
+				for lib, consumer_providers in consumers.items():
 					for lib_consumer, providers in consumer_providers:
 						search_files.add(lib_consumer)
 						search_files.update(providers)
@@ -967,8 +975,8 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			writemsg_level(">>> Assigning files to packages...\n")
 			file_owners = real_vardb._owners.getFileOwnerMap(search_files)
 
-			for pkg, consumers in consumer_map.items():
-				for lib, consumer_providers in consumers.items():
+			for pkg, consumers in list(consumer_map.items()):
+				for lib, consumer_providers in list(consumers.items()):
 					lib_consumers = set()
 
 					for lib_consumer, providers in consumer_providers:
@@ -1039,7 +1047,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			# and also add any dependencies pulled in by the provider.
 			writemsg_level(">>> Adding lib providers to graph...\n")
 
-			for pkg, consumers in consumer_map.iteritems():
+			for pkg, consumers in consumer_map.items():
 				for consumer_dblink in set(chain(*consumers.values())):
 					consumer_pkg = vardb.get(("installed", myroot,
 						consumer_dblink.mycpv, "nomerge"))
@@ -1143,7 +1151,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	
 			ignore_priority_range = [None]
 			ignore_priority_range.extend(
-				xrange(UnmergeDepPriority.MIN, UnmergeDepPriority.MAX + 1))
+				range(UnmergeDepPriority.MIN, UnmergeDepPriority.MAX + 1))
 			while not graph.empty():
 				for ignore_priority in ignore_priority_range:
 					nodes = graph.root_nodes(ignore_priority=ignore_priority)
@@ -1200,8 +1208,8 @@ def action_deselect(settings, trees, opts, atoms):
 					break
 		if discard_atoms:
 			for atom in sorted(discard_atoms):
-				print ">>> Removing %s from \"world\" favorites file..." % \
-					colorize("INFORM", str(atom))
+				print(">>> Removing %s from \"world\" favorites file..." % \
+					colorize("INFORM", str(atom)))
 
 			if '--ask' in opts:
 				prompt = "Would you like to remove these " + \
@@ -1214,47 +1222,47 @@ def action_deselect(settings, trees, opts, atoms):
 			if not pretend:
 				world_set.replace(remaining)
 		else:
-			print ">>> No matching atoms found in \"world\" favorites file..."
+			print(">>> No matching atoms found in \"world\" favorites file...")
 	finally:
 		if locked:
 			world_set.unlock()
 	return os.EX_OK
 
 def action_info(settings, trees, myopts, myfiles):
-	print getportageversion(settings["PORTDIR"], settings["ROOT"],
+	print(getportageversion(settings["PORTDIR"], settings["ROOT"],
 		settings.profile_path, settings["CHOST"],
-		trees[settings["ROOT"]]["vartree"].dbapi)
+		trees[settings["ROOT"]]["vartree"].dbapi))
 	header_width = 65
 	header_title = "System Settings"
 	if myfiles:
-		print header_width * "="
-		print header_title.rjust(int(header_width/2 + len(header_title)/2))
-	print header_width * "="
-	print "System uname: "+platform.platform(aliased=1)
+		print(header_width * "=")
+		print(header_title.rjust(int(header_width/2 + len(header_title)/2)))
+	print(header_width * "=")
+	print("System uname: "+platform.platform(aliased=1))
 
 	lastSync = portage.grabfile(os.path.join(
 		settings["PORTDIR"], "metadata", "timestamp.chk"))
-	print "Timestamp of tree:",
+	print("Timestamp of tree:", end=' ')
 	if lastSync:
-		print lastSync[0]
+		print(lastSync[0])
 	else:
-		print "Unknown"
+		print("Unknown")
 
-	output=commands.getstatusoutput("distcc --version")
+	output=subprocess_getstatusoutput("distcc --version")
 	if not output[0]:
-		print str(output[1].split("\n",1)[0]),
+		print(str(output[1].split("\n",1)[0]), end=' ')
 		if "distcc" in settings.features:
-			print "[enabled]"
+			print("[enabled]")
 		else:
-			print "[disabled]"
+			print("[disabled]")
 
-	output=commands.getstatusoutput("ccache -V")
+	output=subprocess_getstatusoutput("ccache -V")
 	if not output[0]:
-		print str(output[1].split("\n",1)[0]),
+		print(str(output[1].split("\n",1)[0]), end=' ')
 		if "ccache" in settings.features:
-			print "[enabled]"
+			print("[enabled]")
 		else:
-			print "[disabled]"
+			print("[disabled]")
 
 	myvars  = ["sys-devel/autoconf", "sys-devel/automake", "virtual/os-headers",
 	           "sys-devel/binutils", "sys-devel/libtool",  "dev-lang/python"]
@@ -1275,14 +1283,14 @@ def action_info(settings, trees, myopts, myfiles):
 					pkgs.append(ver)
 			if pkgs:
 				pkgs = ", ".join(pkgs)
-				print "%-20s %s" % (x+":", pkgs)
+				print("%-20s %s" % (x+":", pkgs))
 		else:
-			print "%-20s %s" % (x+":", "[NOT VALID]")
+			print("%-20s %s" % (x+":", "[NOT VALID]"))
 
 	libtool_vers = ",".join(trees["/"]["vartree"].dbapi.match("sys-devel/libtool"))
 
 	if "--verbose" in myopts:
-		myvars=settings.keys()
+		myvars = list(settings)
 	else:
 		myvars = ['GENTOO_MIRRORS', 'CONFIG_PROTECT', 'CONFIG_PROTECT_MASK',
 		          'PORTDIR', 'DISTDIR', 'PKGDIR', 'PORTAGE_TMPDIR',
@@ -1303,7 +1311,7 @@ def action_info(settings, trees, myopts, myfiles):
 	for x in myvars:
 		if x in settings:
 			if x != "USE":
-				print '%s="%s"' % (x, settings[x])
+				print('%s="%s"' % (x, settings[x]))
 			else:
 				use = set(settings["USE"].split())
 				for varname in use_expand:
@@ -1313,23 +1321,23 @@ def action_info(settings, trees, myopts, myfiles):
 							use.remove(f)
 				use = list(use)
 				use.sort()
-				print 'USE="%s"' % " ".join(use),
+				print('USE="%s"' % " ".join(use), end=' ')
 				for varname in use_expand:
 					myval = settings.get(varname)
 					if myval:
-						print '%s="%s"' % (varname, myval),
-				print
+						print('%s="%s"' % (varname, myval), end=' ')
+				print()
 		else:
 			unset_vars.append(x)
 	if unset_vars:
-		print "Unset:  "+", ".join(unset_vars)
-	print
+		print("Unset:  "+", ".join(unset_vars))
+	print()
 
 	if "--debug" in myopts:
 		for x in dir(portage):
 			module = getattr(portage, x)
 			if "cvs_id_string" in dir(module):
-				print "%s: %s" % (str(x), str(module.cvs_id_string))
+				print("%s: %s" % (str(x), str(module.cvs_id_string)))
 
 	# See if we can find any packages installed matching the strings
 	# passed on the command line
@@ -1352,21 +1360,21 @@ def action_info(settings, trees, myopts, myfiles):
 		# Loop through each package
 		# Only print settings if they differ from global settings
 		header_title = "Package Settings"
-		print header_width * "="
-		print header_title.rjust(int(header_width/2 + len(header_title)/2))
-		print header_width * "="
+		print(header_width * "=")
+		print(header_title.rjust(int(header_width/2 + len(header_title)/2)))
+		print(header_width * "=")
 		from portage.output import EOutput
 		out = EOutput()
 		for cpv in mypkgs:
 			# Get all package specific variables
-			metadata = dict(izip(auxkeys, vardb.aux_get(cpv, auxkeys)))
+			metadata = dict(zip(auxkeys, vardb.aux_get(cpv, auxkeys)))
 			pkg = Package(built=True, cpv=cpv,
-				installed=True, metadata=izip(Package.metadata_keys,
+				installed=True, metadata=zip(Package.metadata_keys,
 				(metadata.get(x, '') for x in Package.metadata_keys)),
 				root_config=root_config, type_name='installed')
 
-			print "\n%s was built with the following:" % \
-				colorize("INFORM", str(pkg.cpv))
+			print("\n%s was built with the following:" % \
+				colorize("INFORM", str(pkg.cpv)))
 
 			pkgsettings.setcpv(pkg)
 			forced_flags = set(chain(pkgsettings.useforce,
@@ -1416,19 +1424,19 @@ def action_info(settings, trees, myopts, myfiles):
 					flags.sort(key=UseFlagDisplay.sort_combined)
 				else:
 					flags.sort(key=UseFlagDisplay.sort_separated)
-				print '%s="%s"' % (varname, ' '.join(str(f) for f in flags)),
-			print
+				print('%s="%s"' % (varname, ' '.join(str(f) for f in flags)), end=' ')
+			print()
 
 			for myvar in mydesiredvars:
 				if metadata[myvar].split() != settings.get(myvar, '').split():
-					print "%s=\"%s\"" % (myvar, metadata[myvar])
-			print
+					print("%s=\"%s\"" % (myvar, metadata[myvar]))
+			print()
 
 			if metadata['DEFINED_PHASES']:
 				if 'info' not in metadata['DEFINED_PHASES'].split():
 					continue
 
-			print ">>> Attempting to run pkg_info() for '%s'" % pkg.cpv
+			print(">>> Attempting to run pkg_info() for '%s'" % pkg.cpv)
 			ebuildpath = vardb.findname(pkg.cpv)
 			if not ebuildpath or not os.path.exists(ebuildpath):
 				out.ewarn("No ebuild found for '%s'" % pkg.cpv)
@@ -1442,15 +1450,14 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 	if porttrees is None:
 		porttrees = portdb.porttrees
 	portage.writemsg_stdout("\n>>> Updating Portage cache\n")
-	old_umask = os.umask(0002)
+	old_umask = os.umask(0o002)
 	cachedir = os.path.normpath(settings.depcachedir)
 	if cachedir in ["/",    "/bin", "/dev",  "/etc",  "/home",
 					"/lib", "/opt", "/proc", "/root", "/sbin",
 					"/sys", "/tmp", "/usr",  "/var"]:
-		print >> sys.stderr, "!!! PORTAGE_DEPCACHEDIR IS SET TO A PRIMARY " + \
-			"ROOT DIRECTORY ON YOUR SYSTEM."
-		print >> sys.stderr, \
-			"!!! This is ALMOST CERTAINLY NOT what you want: '%s'" % cachedir
+		print("!!! PORTAGE_DEPCACHEDIR IS SET TO A PRIMARY " + \
+			"ROOT DIRECTORY ON YOUR SYSTEM.", file=sys.stderr)
+		print("!!! This is ALMOST CERTAINLY NOT what you want: '%s'" % cachedir, file=sys.stderr)
 		sys.exit(73)
 	if not os.path.exists(cachedir):
 		os.makedirs(cachedir)
@@ -1531,11 +1538,11 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 				tree_data.valid_nodes.add(cpv)
 				try:
 					src = tree_data.src_db[cpv]
-				except KeyError, e:
+				except KeyError as e:
 					noise.missing_entry(cpv)
 					del e
 					continue
-				except CacheError, ce:
+				except CacheError as ce:
 					noise.exception(cpv, ce)
 					del ce
 					continue
@@ -1585,7 +1592,7 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 				try:
 					inherited = src.get('INHERITED', '')
 					eclasses = src.get('_eclasses_')
-				except CacheError, ce:
+				except CacheError as ce:
 					noise.exception(cpv, ce)
 					del ce
 					continue
@@ -1630,7 +1637,7 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 
 				try:
 					tree_data.dest_db[cpv] = src
-				except CacheError, ce:
+				except CacheError as ce:
 					noise.exception(cpv, ce)
 					del ce
 
@@ -1643,8 +1650,8 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 
 	for tree_data in porttrees_data:
 		try:
-			dead_nodes = set(tree_data.dest_db.iterkeys())
-		except CacheError, e:
+			dead_nodes = set(tree_data.dest_db)
+		except CacheError as e:
 			writemsg_level("Error listing cache entries for " + \
 				"'%s': %s, continuing...\n" % (tree_data.path, e),
 				level=logging.ERROR, noiselevel=-1)
@@ -1660,7 +1667,7 @@ def action_metadata(settings, portdb, myopts, porttrees=None):
 	if not quiet:
 		# make sure the final progress is displayed
 		progressHandler.display()
-		print
+		print()
 		signal.signal(signal.SIGWINCH, signal.SIG_DFL)
 
 	sys.stdout.flush()
@@ -1673,7 +1680,7 @@ def action_regen(settings, portdb, max_jobs, max_load):
 	portage.writemsg_stdout("Regenerating cache entries...\n")
 	try:
 		os.close(sys.stdin.fileno())
-	except SystemExit, e:
+	except SystemExit as e:
 		raise # Needed else can't exit
 	except:
 		pass
@@ -1687,7 +1694,7 @@ def action_regen(settings, portdb, max_jobs, max_load):
 
 def action_search(root_config, myopts, myfiles, spinner):
 	if not myfiles:
-		print "emerge: no search terms provided."
+		print("emerge: no search terms provided.")
 	else:
 		searchinstance = search(root_config,
 			spinner, "--searchdesc" in myopts,
@@ -1696,8 +1703,8 @@ def action_search(root_config, myopts, myfiles, spinner):
 		for mysearch in myfiles:
 			try:
 				searchinstance.execute(mysearch)
-			except re.error, comment:
-				print "\n!!! Regular expression error in \"%s\": %s" % ( mysearch, comment )
+			except re.error as comment:
+				print("\n!!! Regular expression error in \"%s\": %s" % ( mysearch, comment ))
 				sys.exit(1)
 			searchinstance.output()
 
@@ -1717,16 +1724,16 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 	except OSError:
 		st = None
 	if st is None:
-		print ">>>",myportdir,"not found, creating it."
-		os.makedirs(myportdir,0755)
+		print(">>>",myportdir,"not found, creating it.")
+		os.makedirs(myportdir,0o755)
 		st = os.stat(myportdir)
 
 	spawn_kwargs = {}
 	spawn_kwargs["env"] = settings.environ()
 	if 'usersync' in settings.features and \
 		portage.data.secpass >= 2 and \
-		(st.st_uid != os.getuid() and st.st_mode & 0700 or \
-		st.st_gid != os.getgid() and st.st_mode & 0070):
+		(st.st_uid != os.getuid() and st.st_mode & 0o700 or \
+		st.st_gid != os.getgid() and st.st_mode & 0o070):
 		try:
 			homedir = pwd.getpwuid(st.st_uid).pw_dir
 		except KeyError:
@@ -1738,9 +1745,9 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			spawn_kwargs["gid"]    = st.st_gid
 			spawn_kwargs["groups"] = [st.st_gid]
 			spawn_kwargs["env"]["HOME"] = homedir
-			umask = 0002
-			if not st.st_mode & 0020:
-				umask = umask | 0020
+			umask = 0o002
+			if not st.st_mode & 0o020:
+				umask = umask | 0o020
 			spawn_kwargs["umask"] = umask
 
 	syncuri = settings.get("SYNC", "").strip()
@@ -1752,11 +1759,11 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 	vcs_dirs = frozenset([".git", ".svn", "CVS", ".hg"])
 	vcs_dirs = vcs_dirs.intersection(os.listdir(myportdir))
 
-	os.umask(0022)
+	os.umask(0o022)
 	dosyncuri = syncuri
 	updatecache_flg = False
 	if myaction == "metadata":
-		print "skipping sync"
+		print("skipping sync")
 		updatecache_flg = True
 	elif ".git" in vcs_dirs:
 		# Update existing git repository, and ignore the syncuri. We are
@@ -1793,8 +1800,8 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				(myportdir, vcs_dir), level=logging.ERROR, noiselevel=-1)
 			return 1
 		if not os.path.exists("/usr/bin/rsync"):
-			print "!!! /usr/bin/rsync does not exist, so rsync support is disabled."
-			print "!!! Type \"emerge net-misc/rsync\" to enable rsync support."
+			print("!!! /usr/bin/rsync does not exist, so rsync support is disabled.")
+			print("!!! Type \"emerge net-misc/rsync\" to enable rsync support.")
 			sys.exit(1)
 		mytimeout=180
 
@@ -1888,7 +1895,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 		try:
 			maxretries=int(settings["PORTAGE_RSYNC_RETRIES"])
-		except SystemExit, e:
+		except SystemExit as e:
 			raise # Needed else can't exit
 		except:
 			maxretries=3 #default number of retries
@@ -1928,10 +1935,10 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 							ips.append(addrinfo[4][0])
 					from random import shuffle
 					shuffle(ips)
-				except SystemExit, e:
+				except SystemExit as e:
 					raise # Needed else can't exit
-				except Exception, e:
-					print "Notice:",str(e)
+				except Exception as e:
+					print("Notice:",str(e))
 					dosyncuri=syncuri
 
 			if ips:
@@ -1939,35 +1946,35 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 					dosyncuri = syncuri.replace(
 						"//" + user_name + hostname + port + "/",
 						"//" + user_name + ips[0] + port + "/", 1)
-				except SystemExit, e:
+				except SystemExit as e:
 					raise # Needed else can't exit
-				except Exception, e:
-					print "Notice:",str(e)
+				except Exception as e:
+					print("Notice:",str(e))
 					dosyncuri=syncuri
 
 			if (retries==0):
 				if "--ask" in myopts:
 					if userquery("Do you want to sync your Portage tree with the mirror at\n" + blue(dosyncuri) + bold("?"))=="No":
-						print
-						print "Quitting."
-						print
+						print()
+						print("Quitting.")
+						print()
 						sys.exit(0)
 				emergelog(xterm_titles, ">>> Starting rsync with " + dosyncuri)
 				if "--quiet" not in myopts:
-					print ">>> Starting rsync with "+dosyncuri+"..."
+					print(">>> Starting rsync with "+dosyncuri+"...")
 			else:
 				emergelog(xterm_titles,
 					">>> Starting retry %d of %d with %s" % \
 						(retries,maxretries,dosyncuri))
-				print "\n\n>>> Starting retry %d of %d with %s" % (retries,maxretries,dosyncuri)
+				print("\n\n>>> Starting retry %d of %d with %s" % (retries,maxretries,dosyncuri))
 
 			if mytimestamp != 0 and "--quiet" not in myopts:
-				print ">>> Checking server timestamp ..."
+				print(">>> Checking server timestamp ...")
 
 			rsynccommand = ["/usr/bin/rsync"] + rsync_opts + extra_rsync_opts
 
 			if "--debug" in myopts:
-				print rsynccommand
+				print(rsynccommand)
 
 			exitcode = os.EX_OK
 			servertimestamp = 0
@@ -2008,9 +2015,9 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 							os.unlink(tmpservertimestampfile)
 						except OSError:
 							pass
-				except portage.exception.PortageException, e:
+				except portage.exception.PortageException as e:
 					# timed out
-					print e
+					print(e)
 					del e
 					if mypids and os.waitpid(mypids[0], os.WNOHANG) == (0,0):
 						os.kill(mypids[0], signal.SIGTERM)
@@ -2036,25 +2043,25 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 				if (servertimestamp != 0) and (servertimestamp == mytimestamp):
 					emergelog(xterm_titles,
 						">>> Cancelling sync -- Already current.")
-					print
-					print ">>>"
-					print ">>> Timestamps on the server and in the local repository are the same."
-					print ">>> Cancelling all further sync action. You are already up to date."
-					print ">>>"
-					print ">>> In order to force sync, remove '%s'." % servertimestampfile
-					print ">>>"
-					print
+					print()
+					print(">>>")
+					print(">>> Timestamps on the server and in the local repository are the same.")
+					print(">>> Cancelling all further sync action. You are already up to date.")
+					print(">>>")
+					print(">>> In order to force sync, remove '%s'." % servertimestampfile)
+					print(">>>")
+					print()
 					sys.exit(0)
 				elif (servertimestamp != 0) and (servertimestamp < mytimestamp):
 					emergelog(xterm_titles,
 						">>> Server out of date: %s" % dosyncuri)
-					print
-					print ">>>"
-					print ">>> SERVER OUT OF DATE: %s" % dosyncuri
-					print ">>>"
-					print ">>> In order to force sync, remove '%s'." % servertimestampfile
-					print ">>>"
-					print
+					print()
+					print(">>>")
+					print(">>> SERVER OUT OF DATE: %s" % dosyncuri)
+					print(">>>")
+					print(">>> In order to force sync, remove '%s'." % servertimestampfile)
+					print(">>>")
+					print()
 					exitcode = SERVER_OUT_OF_DATE
 				elif (servertimestamp == 0) or (servertimestamp > mytimestamp):
 					# actual sync
@@ -2074,7 +2081,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			retries=retries+1
 
 			if retries<=maxretries:
-				print ">>> Retrying..."
+				print(">>> Retrying...")
 				time.sleep(11)
 			else:
 				# over retries
@@ -2116,32 +2123,32 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			sys.exit(exitcode)
 	elif syncuri[:6]=="cvs://":
 		if not os.path.exists("/usr/bin/cvs"):
-			print "!!! /usr/bin/cvs does not exist, so CVS support is disabled."
-			print "!!! Type \"emerge dev-util/cvs\" to enable CVS support."
+			print("!!! /usr/bin/cvs does not exist, so CVS support is disabled.")
+			print("!!! Type \"emerge dev-util/cvs\" to enable CVS support.")
 			sys.exit(1)
 		cvsroot=syncuri[6:]
 		cvsdir=os.path.dirname(myportdir)
 		if not os.path.exists(myportdir+"/CVS"):
 			#initial checkout
-			print ">>> Starting initial cvs checkout with "+syncuri+"..."
+			print(">>> Starting initial cvs checkout with "+syncuri+"...")
 			if os.path.exists(cvsdir+"/gentoo-x86"):
-				print "!!! existing",cvsdir+"/gentoo-x86 directory; exiting."
+				print("!!! existing",cvsdir+"/gentoo-x86 directory; exiting.")
 				sys.exit(1)
 			try:
 				os.rmdir(myportdir)
-			except OSError, e:
+			except OSError as e:
 				if e.errno != errno.ENOENT:
 					sys.stderr.write(
 						"!!! existing '%s' directory; exiting.\n" % myportdir)
 					sys.exit(1)
 				del e
 			if portage.spawn("cd "+cvsdir+"; cvs -z0 -d "+cvsroot+" co -P gentoo-x86",settings,free=1):
-				print "!!! cvs checkout error; exiting."
+				print("!!! cvs checkout error; exiting.")
 				sys.exit(1)
 			os.rename(os.path.join(cvsdir, "gentoo-x86"), myportdir)
 		else:
 			#cvs update
-			print ">>> Starting cvs update with "+syncuri+"..."
+			print(">>> Starting cvs update with "+syncuri+"...")
 			retval = portage.process.spawn_bash(
 				"cd %s; cvs -z0 -q update -dP" % \
 				(portage._shell_quote(myportdir),), **spawn_kwargs)
@@ -2192,15 +2199,15 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 			retval = portage.process.spawn(
 				[postsync, dosyncuri], env=settings.environ())
 			if retval != os.EX_OK:
-				print red(" * ") + bold("spawn failed of " + postsync)
+				print(red(" * ") + bold("spawn failed of " + postsync))
 
 	if(mybestpv != mypvs) and not "--quiet" in myopts:
-		print
-		print red(" * ")+bold("An update to portage is available.")+" It is _highly_ recommended"
-		print red(" * ")+"that you update portage now, before any other packages are updated."
-		print
-		print red(" * ")+"To update portage, run 'emerge portage' now."
-		print
+		print()
+		print(red(" * ")+bold("An update to portage is available.")+" It is _highly_ recommended")
+		print(red(" * ")+"that you update portage now, before any other packages are updated.")
+		print()
+		print(red(" * ")+"To update portage, run 'emerge portage' now.")
+		print()
 	
 	display_news_notification(root_config, myopts)
 	return os.EX_OK
@@ -2224,7 +2231,7 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 			try:
 				valid_atoms.append(
 					portage.dep_expand(x, mydb=vardb, settings=settings))
-			except portage.exception.AmbiguousPackageName, e:
+			except portage.exception.AmbiguousPackageName as e:
 				msg = "The short ebuild name \"" + x + \
 					"\" is ambiguous.  Please specify " + \
 					"one of the following " + \
@@ -2326,7 +2333,7 @@ def adjust_config(myopts, settings):
 	CLEAN_DELAY = 5
 	try:
 		CLEAN_DELAY = int(settings.get("CLEAN_DELAY", str(CLEAN_DELAY)))
-	except ValueError, e:
+	except ValueError as e:
 		portage.writemsg("!!! %s\n" % str(e), noiselevel=-1)
 		portage.writemsg("!!! Unable to parse integer: CLEAN_DELAY='%s'\n" % \
 			settings["CLEAN_DELAY"], noiselevel=-1)
@@ -2337,7 +2344,7 @@ def adjust_config(myopts, settings):
 	try:
 		EMERGE_WARNING_DELAY = int(settings.get(
 			"EMERGE_WARNING_DELAY", str(EMERGE_WARNING_DELAY)))
-	except ValueError, e:
+	except ValueError as e:
 		portage.writemsg("!!! %s\n" % str(e), noiselevel=-1)
 		portage.writemsg("!!! Unable to parse integer: EMERGE_WARNING_DELAY='%s'\n" % \
 			settings["EMERGE_WARNING_DELAY"], noiselevel=-1)
@@ -2367,7 +2374,7 @@ def adjust_config(myopts, settings):
 			portage.writemsg("!!! PORTAGE_DEBUG must be either 0 or 1\n",
 				noiselevel=-1)
 			PORTAGE_DEBUG = 0
-	except ValueError, e:
+	except ValueError as e:
 		portage.writemsg("!!! %s\n" % str(e), noiselevel=-1)
 		portage.writemsg("!!! Unable to parse integer: PORTAGE_DEBUG='%s'\n" %\
 			settings["PORTAGE_DEBUG"], noiselevel=-1)
@@ -2458,7 +2465,7 @@ def git_sync_timestamps(settings, portdir):
 	try:
 		cache_db = settings.load_best_module("portdbapi.metadbmodule")(
 			portdir, "metadata/cache", portage.auxdbkeys[:], readonly=True)
-	except CacheError, e:
+	except CacheError as e:
 		writemsg_level("!!! Unable to instantiate cache: %s\n" % (e,),
 			level=logging.ERROR, noiselevel=-1)
 		return 1
@@ -2467,7 +2474,7 @@ def git_sync_timestamps(settings, portdir):
 	try:
 		ec_names = set(f[:-7] for f in os.listdir(ec_dir) \
 			if f.endswith(".eclass"))
-	except OSError, e:
+	except OSError as e:
 		writemsg_level("!!! Unable to list eclasses: %s\n" % (e,),
 			level=logging.ERROR, noiselevel=-1)
 		return 1
@@ -2508,7 +2515,7 @@ def git_sync_timestamps(settings, portdir):
 			writemsg_level("!!! Missing cache entry: %s\n" % (cpv,),
 				level=logging.ERROR, noiselevel=-1)
 			continue
-		except CacheError, e:
+		except CacheError as e:
 			writemsg_level("!!! Unable to access cache entry: %s %s\n" % \
 				(cpv, e), level=logging.ERROR, noiselevel=-1)
 			continue
@@ -2549,7 +2556,7 @@ def git_sync_timestamps(settings, portdir):
 			continue
 
 		inconsistent = False
-		for ec, (ec_path, ec_mtime) in ec_mtimes.iteritems():
+		for ec, (ec_path, ec_mtime) in ec_mtimes.items():
 			updated_mtime = updated_ec_mtimes.get(ec)
 			if updated_mtime is not None and updated_mtime != ec_mtime:
 				writemsg_level("!!! Inconsistent eclass mtime: %s %s\n" % \
@@ -2563,7 +2570,7 @@ def git_sync_timestamps(settings, portdir):
 		if current_eb_mtime != eb_mtime:
 			os.utime(eb_path, (eb_mtime, eb_mtime))
 
-		for ec, (ec_path, ec_mtime) in ec_mtimes.iteritems():
+		for ec, (ec_path, ec_mtime) in ec_mtimes.items():
 			if ec in updated_ec_mtimes:
 				continue
 			ec_path = os.path.join(ec_dir, ec + ".eclass")
@@ -2582,7 +2589,7 @@ def load_emerge_config(trees=None):
 			kwargs[k] = v
 	trees = portage.create_trees(trees=trees, **kwargs)
 
-	for root, root_trees in trees.iteritems():
+	for root, root_trees in trees.items():
 		settings = root_trees["vartree"].settings
 		setconfig = load_default_config(settings, root_trees)
 		root_trees["root_config"] = RootConfig(settings, root_trees, setconfig)
@@ -2604,16 +2611,16 @@ def chk_updated_cfg_files(target_root, config_protect):
 		portage.util.find_updated_config_files(target_root, config_protect))
 
 	for x in result:
-		print "\n"+colorize("WARN", " * IMPORTANT:"),
+		print("\n"+colorize("WARN", " * IMPORTANT:"), end=' ')
 		if not x[1]: # it's a protected file
-			print "config file '%s' needs updating." % x[0]
+			print("config file '%s' needs updating." % x[0])
 		else: # it's a protected dir
-			print "%d config files in '%s' need updating." % (len(x[1]), x[0])
+			print("%d config files in '%s' need updating." % (len(x[1]), x[0]))
 
 	if result:
-		print " "+yellow("*")+" See the "+colorize("INFORM","CONFIGURATION FILES")\
-				+ " section of the " + bold("emerge")
-		print " "+yellow("*")+" man page to learn how to update config files."
+		print(" "+yellow("*")+" See the "+colorize("INFORM","CONFIGURATION FILES")\
+				+ " section of the " + bold("emerge"))
+		print(" "+yellow("*")+" man page to learn how to update config files.")
 
 def display_news_notification(root_config, myopts):
 	target_root = root_config.root
@@ -2637,15 +2644,15 @@ def display_news_notification(root_config, myopts):
 		if unreadItems:
 			if not newsReaderDisplay:
 				newsReaderDisplay = True
-				print
-			print colorize("WARN", " * IMPORTANT:"),
-			print "%s news items need reading for repository '%s'." % (unreadItems, repo)
+				print()
+			print(colorize("WARN", " * IMPORTANT:"), end=' ')
+			print("%s news items need reading for repository '%s'." % (unreadItems, repo))
 			
 	
 	if newsReaderDisplay:
-		print colorize("WARN", " *"),
-		print "Use " + colorize("GOOD", "eselect news") + " to read news items."
-		print
+		print(colorize("WARN", " *"), end=' ')
+		print("Use " + colorize("GOOD", "eselect news") + " to read news items.")
+		print()
 
 def getgccversion(chost):
 	"""
@@ -2662,16 +2669,16 @@ def getgccversion(chost):
 	"!!! other terminals also.\n"
 	)
 
-	mystatus, myoutput = commands.getstatusoutput("gcc-config -c")
+	mystatus, myoutput = subprocess_getstatusoutput("gcc-config -c")
 	if mystatus == os.EX_OK and myoutput.startswith(chost + "-"):
 		return myoutput.replace(chost + "-", gcc_ver_prefix, 1)
 
-	mystatus, myoutput = commands.getstatusoutput(
+	mystatus, myoutput = subprocess_getstatusoutput(
 		chost + "-" + gcc_ver_command)
 	if mystatus == os.EX_OK:
 		return gcc_ver_prefix + myoutput
 
-	mystatus, myoutput = commands.getstatusoutput(gcc_ver_command)
+	mystatus, myoutput = subprocess_getstatusoutput(gcc_ver_command)
 	if mystatus == os.EX_OK:
 		return gcc_ver_prefix + myoutput
 

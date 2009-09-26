@@ -22,14 +22,14 @@ def process(mysettings, key, logentries, fulltext):
 
 	# look at the phases listed in our logentries to figure out what action was performed
 	action = _("merged")
-	for phase in logentries.keys():
+	for phase in logentries:
 		# if we found a *rm phase assume that the package was unmerged
 		if phase in ["postrm", "prerm"]:
 			action = _("unmerged")
 	# if we think that the package was unmerged, make sure there was no unexpected
 	# phase recorded to avoid misinformation
 	if action == _("unmerged"):
-		for phase in logentries.keys():
+		for phase in logentries:
 			if phase not in ["postrm", "prerm", "other"]:
 				action = _("unknown")
 
@@ -38,7 +38,7 @@ def process(mysettings, key, logentries, fulltext):
 	mymessage = portage.mail.create_message(myfrom, myrecipient, mysubject, fulltext)
 	try:
 		portage.mail.send_mail(mysettings, mymessage)
-	except PortageException, e:
+	except PortageException as e:
 		writemsg("%s\n" % str(e), noiselevel=-1)
 
 	return

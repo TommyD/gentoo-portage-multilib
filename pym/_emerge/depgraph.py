@@ -2,12 +2,14 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+from __future__ import print_function
+
 import gc
 import logging
 import re
 import sys
 import textwrap
-from itertools import chain, izip
+from itertools import chain
 
 import portage
 from portage import os
@@ -48,6 +50,10 @@ from _emerge.SetArg import SetArg
 from _emerge.show_invalid_depstring_notice import show_invalid_depstring_notice
 from _emerge.UnmergeDepPriority import UnmergeDepPriority
 from _emerge.visible import visible
+
+if sys.hexversion >= 0x3000000:
+	basestring = str
+	long = int
 
 class _frozen_depgraph_config(object):
 
@@ -158,7 +164,7 @@ class _dynamic_depgraph_config(object):
 			runtime_pkg_mask = {}
 		else:
 			runtime_pkg_mask = dict((k, v.copy()) for (k, v) in \
-				runtime_pkg_mask.iteritems())
+				runtime_pkg_mask.items())
 		self._runtime_pkg_mask = runtime_pkg_mask
 		self._need_restart = False
 
@@ -276,7 +282,7 @@ class depgraph(object):
 		# missed update from each SLOT.
 		missed_updates = {}
 		for pkg, mask_reasons in \
-			self._dynamic_config._runtime_pkg_mask.iteritems():
+			self._dynamic_config._runtime_pkg_mask.items():
 			if pkg.installed:
 				# Exclude installed here since we only
 				# want to show available updates.
@@ -286,7 +292,7 @@ class depgraph(object):
 				other_pkg, mask_type, parent_atoms = missed_updates[k]
 				if other_pkg > pkg:
 					continue
-			for mask_type, parent_atoms in mask_reasons.iteritems():
+			for mask_type, parent_atoms in mask_reasons.items():
 				if not parent_atoms:
 					continue
 				missed_updates[k] = (pkg, mask_type, parent_atoms)
@@ -296,7 +302,7 @@ class depgraph(object):
 			return
 
 		missed_update_types = {}
-		for pkg, mask_type, parent_atoms in missed_updates.itervalues():
+		for pkg, mask_type, parent_atoms in missed_updates.values():
 			missed_update_types.setdefault(mask_type,
 				[]).append((pkg, parent_atoms))
 
@@ -390,7 +396,7 @@ class depgraph(object):
 		explanation_columns = 70
 		explanations = 0
 		for (slot_atom, root), slot_nodes \
-			in self._dynamic_config._slot_collision_info.iteritems():
+			in self._dynamic_config._slot_collision_info.items():
 			msg.append(str(slot_atom))
 			if root != '/':
 				msg.append(" for %s" % (root,))
@@ -594,7 +600,7 @@ class depgraph(object):
 		packages that have been pulled into a given slot.
 		"""
 		for (slot_atom, root), slot_nodes \
-			in self._dynamic_config._slot_collision_info.iteritems():
+			in self._dynamic_config._slot_collision_info.items():
 
 			all_parent_atoms = set()
 			for pkg in slot_nodes:
@@ -681,8 +687,19 @@ class depgraph(object):
 					root=dep.parent.root)
 				self._dynamic_config._blocker_parents.add(blocker, dep.parent)
 			return 1
-		dep_pkg, existing_node = self._select_package(dep.root, dep.atom,
-			onlydeps=dep.onlydeps)
+
+		if dep.child is None:
+			dep_pkg, existing_node = self._select_package(dep.root, dep.atom,
+				onlydeps=dep.onlydeps)
+		else:
+			# The caller has selected a specific package
+			# via self._minimize_packages().
+			dep_pkg = dep.child
+			existing_node = self._dynamic_config._slot_pkg_map[
+				dep.root].get(dep_pkg.slot_atom)
+			if existing_node is not dep_pkg:
+				existing_node = None 
+
 		if not dep_pkg:
 			if dep.priority.optional:
 				# This could be an unecessary build-time dep
@@ -741,7 +758,7 @@ class depgraph(object):
 			myarg = None
 			if dep.root == self._frozen_config.target_root:
 				try:
-					myarg = self._iter_atoms_for_pkg(dep_pkg).next()
+					myarg = next(self._iter_atoms_for_pkg(dep_pkg))
 				except StopIteration:
 					pass
 				except portage.exception.InvalidDependString:
@@ -792,7 +809,7 @@ class depgraph(object):
 		if True:
 			try:
 				arg_atoms = list(self._iter_atoms_for_pkg(pkg))
-			except portage.exception.InvalidDependString, e:
+			except portage.exception.InvalidDependString as e:
 				if not pkg.installed:
 					show_invalid_depstring_notice(
 						pkg, pkg.metadata["PROVIDE"], str(e))
@@ -931,7 +948,7 @@ class depgraph(object):
 					settings.unlock()
 					settings.setinst(pkg.cpv, pkg.metadata)
 					settings.lock()
-				except portage.exception.InvalidDependString, e:
+				except portage.exception.InvalidDependString as e:
 					show_invalid_depstring_notice(
 						pkg, pkg.metadata["PROVIDE"], str(e))
 					del e
@@ -1064,10 +1081,10 @@ class depgraph(object):
 				if not dep_string:
 					continue
 				if debug:
-					print
-					print "Parent:   ", jbigkey
-					print "Depstring:", dep_string
-					print "Priority:", dep_priority
+					print()
+					print("Parent:   ", jbigkey)
+					print("Depstring:", dep_string)
+					print("Priority:", dep_priority)
 
 				try:
 
@@ -1079,7 +1096,7 @@ class depgraph(object):
 					dep_string = list(self._queue_disjunctive_deps(
 						pkg, dep_root, dep_priority, dep_string))
 
-				except portage.exception.InvalidDependString, e:
+				except portage.exception.InvalidDependString as e:
 					if pkg.installed:
 						del e
 						continue
@@ -1096,7 +1113,7 @@ class depgraph(object):
 					allow_unsatisfied):
 					return 0
 
-		except portage.exception.AmbiguousPackageName, e:
+		except portage.exception.AmbiguousPackageName as e:
 			pkgs = e.args[0]
 			portage.writemsg("\n\n!!! An atom in the dependencies " + \
 				"is not fully-qualified. Multiple matches:\n\n", noiselevel=-1)
@@ -1126,16 +1143,16 @@ class depgraph(object):
 		strict = pkg.type_name != "installed"
 
 		if debug:
-			print
-			print "Parent:   ", pkg
-			print "Depstring:", dep_string
-			print "Priority:", dep_priority
+			print()
+			print("Parent:   ", pkg)
+			print("Depstring:", dep_string)
+			print("Priority:", dep_priority)
 
 		try:
 			selected_atoms = self._select_atoms(dep_root,
 				dep_string, myuse=pkg.use.enabled, parent=pkg,
 				strict=strict, priority=dep_priority)
-		except portage.exception.InvalidDependString, e:
+		except portage.exception.InvalidDependString as e:
 			show_invalid_depstring_notice(pkg, dep_string, str(e))
 			del e
 			if pkg.installed:
@@ -1143,18 +1160,20 @@ class depgraph(object):
 			return 0
 
 		if debug:
-			print "Candidates:", selected_atoms
+			print("Candidates:", selected_atoms)
 
-		vardb = self._frozen_config.roots[dep_root].trees["vartree"].dbapi
+		root_config = self._frozen_config.roots[dep_root]
+		vardb = root_config.trees["vartree"].dbapi
 
-		for atom in selected_atoms[pkg]:
+		for atom, child in self._minimize_children(
+			pkg, dep_priority, root_config, selected_atoms[pkg]):
 
 			mypriority = dep_priority.copy()
 			if not atom.blocker and vardb.match(atom):
 				mypriority.satisfied = True
 
 			if not self._add_dep(Dependency(atom=atom,
-				blocker=atom.blocker, depth=depth, parent=pkg,
+				blocker=atom.blocker, child=child, depth=depth, parent=pkg,
 				priority=mypriority, root=dep_root),
 				allow_unsatisfied=allow_unsatisfied):
 				return 0
@@ -1166,7 +1185,7 @@ class depgraph(object):
 		# by dep_zapdeps. We preserve actual parent/child relationships
 		# here in order to avoid distorting the dependency graph like
 		# <=portage-2.1.6.x did.
-		for virt_pkg, atoms in selected_atoms.iteritems():
+		for virt_pkg, atoms in selected_atoms.items():
 
 			# Just assume depth + 1 here for now, though it's not entirely
 			# accurate since multilple levels of indirect virtual deps may
@@ -1178,22 +1197,90 @@ class depgraph(object):
 				root=dep_root)):
 				return 0
 
-			for atom in atoms:
+			for atom, child in self._minimize_children(
+				pkg, self._priority(runtime=True), root_config, atoms):
 				# This is a GLEP 37 virtual, so its deps are all runtime.
 				mypriority = self._priority(runtime=True)
 				if not atom.blocker and vardb.match(atom):
 					mypriority.satisfied = True
 
 				if not self._add_dep(Dependency(atom=atom,
-					blocker=atom.blocker, depth=virt_pkg.depth,
+					blocker=atom.blocker, child=child, depth=virt_pkg.depth,
 					parent=virt_pkg, priority=mypriority, root=dep_root),
 					allow_unsatisfied=allow_unsatisfied):
 					return 0
 
 		if debug:
-			print "Exiting...", pkg
+			print("Exiting...", pkg)
 
 		return 1
+
+	def _minimize_children(self, parent, priority, root_config, atoms):
+		"""
+		Selects packages to satisfy the given atoms, and minimizes the
+		number of selected packages. This serves to identify and eliminate
+		redundant package selections when multiple atoms happen to specify
+		a version range.
+		"""
+
+		atom_pkg_map = {}
+
+		for atom in atoms:
+			if atom.blocker:
+				yield (atom, None)
+				continue
+			dep_pkg, existing_node = self._select_package(
+				root_config.root, atom)
+			if dep_pkg is None:
+				yield (atom, None)
+				continue
+			atom_pkg_map[atom] = dep_pkg
+
+		if len(atom_pkg_map) < 2:
+			for item in atom_pkg_map.items():
+				yield item
+			return
+
+		cp_pkg_map = {}
+		pkg_atom_map = {}
+		for atom, pkg in atom_pkg_map.items():
+			pkg_atom_map.setdefault(pkg, set()).add(atom)
+			cp_pkg_map.setdefault(pkg.cp, set()).add(pkg)
+
+		for cp, pkgs in cp_pkg_map.items():
+			if len(pkgs) < 2:
+				for pkg in pkgs:
+					for atom in pkg_atom_map[pkg]:
+						yield (atom, pkg)
+				continue
+
+			# Use a digraph to identify and eliminate any
+			# redundant package selections.
+			atom_pkg_graph = digraph()
+			cp_atoms = set()
+			for pkg1 in pkgs:
+				for atom in pkg_atom_map[pkg1]:
+					cp_atoms.add(atom)
+					atom_pkg_graph.add(pkg1, atom)
+					atom_set = InternalPackageSet(initial_atoms=(atom,))
+					for pkg2 in pkgs:
+						if pkg2 is pkg1:
+							continue
+						if atom_set.findAtomForPackage(pkg2):
+							atom_pkg_graph.add(pkg2, atom)
+
+			for pkg in pkgs:
+				eliminate_pkg = True
+				for atom in atom_pkg_graph.parent_nodes(pkg):
+					if len(atom_pkg_graph.child_nodes(atom)) < 2:
+						eliminate_pkg = False
+						break
+				if eliminate_pkg:
+					atom_pkg_graph.remove(pkg)
+
+			for atom in cp_atoms:
+				child_pkgs = atom_pkg_graph.child_nodes(atom)
+				yield (atom, child_pkgs[0])
 
 	def _queue_disjunctive_deps(self, pkg, dep_root, dep_priority, dep_struct):
 		"""
@@ -1276,8 +1363,8 @@ class depgraph(object):
 
 		deps = []
 		for cat in categories:
-			deps.append(insert_category_into_atom(
-				atom_without_category, cat))
+			deps.append(Atom(insert_category_into_atom(
+				atom_without_category, cat)))
 		return deps
 
 	def _have_new_virt(self, root, atom_cp):
@@ -1351,14 +1438,14 @@ class depgraph(object):
 						os.path.join(pkgsettings["PKGDIR"], x)):
 						x = os.path.join(pkgsettings["PKGDIR"], x)
 					else:
-						print "\n\n!!! Binary package '"+str(x)+"' does not exist."
-						print "!!! Please ensure the tbz2 exists as specified.\n"
+						print("\n\n!!! Binary package '"+str(x)+"' does not exist.")
+						print("!!! Please ensure the tbz2 exists as specified.\n")
 						return 0, myfavorites
 				mytbz2=portage.xpak.tbz2(x)
 				mykey=mytbz2.getelements("CATEGORY")[0]+"/"+os.path.splitext(os.path.basename(x))[0]
 				if os.path.realpath(x) != \
 					os.path.realpath(self._frozen_config.trees[myroot]["bintree"].getname(mykey)):
-					print colorize("BAD", "\n*** You need to adjust PKGDIR to emerge this package.\n")
+					print(colorize("BAD", "\n*** You need to adjust PKGDIR to emerge this package.\n"))
 					return 0, myfavorites
 
 				pkg = self._pkg(mykey, "binary", root_config,
@@ -1383,13 +1470,13 @@ class depgraph(object):
 				if ebuild_path:
 					if ebuild_path != os.path.join(os.path.realpath(tree_root),
 						cp, os.path.basename(ebuild_path)):
-						print colorize("BAD", "\n*** You need to adjust PORTDIR or PORTDIR_OVERLAY to emerge this package.\n")
+						print(colorize("BAD", "\n*** You need to adjust PORTDIR or PORTDIR_OVERLAY to emerge this package.\n"))
 						return 0, myfavorites
 					if mykey not in portdb.xmatch(
 						"match-visible", portage.dep_getkey(mykey)):
-						print colorize("BAD", "\n*** You are emerging a masked package. It is MUCH better to use")
-						print colorize("BAD", "*** /etc/portage/package.* to accomplish this. See portage(5) man")
-						print colorize("BAD", "*** page for details.")
+						print(colorize("BAD", "\n*** You are emerging a masked package. It is MUCH better to use"))
+						print(colorize("BAD", "*** /etc/portage/package.* to accomplish this. See portage(5) man"))
+						print(colorize("BAD", "*** page for details."))
 						countdown(int(self._frozen_config.settings["EMERGE_WARNING_DELAY"]),
 							"Continuing...")
 				else:
@@ -1439,15 +1526,14 @@ class depgraph(object):
 				#   2) It takes away freedom from the resolver to choose other
 				#      possible expansions when necessary.
 				if "/" in x:
-					args.append(AtomArg(arg=x, atom=x,
+					args.append(AtomArg(arg=x, atom=Atom(x),
 						root_config=root_config))
 					continue
 				expanded_atoms = self._dep_expand(root_config, x)
 				installed_cp_set = set()
 				for atom in expanded_atoms:
-					atom_cp = portage.dep_getkey(atom)
-					if vardb.cp_list(atom_cp):
-						installed_cp_set.add(atom_cp)
+					if vardb.cp_list(atom.cp):
+						installed_cp_set.add(atom.cp)
 
 				if len(installed_cp_set) > 1:
 					non_virtual_cps = set()
@@ -1458,28 +1544,27 @@ class depgraph(object):
 						installed_cp_set = non_virtual_cps
 
 				if len(expanded_atoms) > 1 and len(installed_cp_set) == 1:
-					installed_cp = iter(installed_cp_set).next()
+					installed_cp = next(iter(installed_cp_set))
 					expanded_atoms = [atom for atom in expanded_atoms \
-						if portage.dep_getkey(atom) == installed_cp]
+						if atom.cp == installed_cp]
 
 				if len(expanded_atoms) > 1:
-					print
-					print
+					print()
+					print()
 					ambiguous_package_name(x, expanded_atoms, root_config,
 						self._frozen_config.spinner, self._frozen_config.myopts)
 					return False, myfavorites
 				if expanded_atoms:
 					atom = expanded_atoms[0]
 				else:
-					null_atom = insert_category_into_atom(x, "null")
-					null_cp = portage.dep_getkey(null_atom)
-					cat, atom_pn = portage.catsplit(null_cp)
+					null_atom = Atom(insert_category_into_atom(x, "null"))
+					cat, atom_pn = portage.catsplit(null_atom.cp)
 					virts_p = root_config.settings.get_virts_p().get(atom_pn)
 					if virts_p:
 						# Allow the depgraph to choose which virtual.
-						atom = insert_category_into_atom(x, "virtual")
+						atom = Atom(null_atom.replace('null/', 'virtual/', 1))
 					else:
-						atom = insert_category_into_atom(x, "null")
+						atom = null_atom
 
 				args.append(AtomArg(arg=x, atom=atom,
 					root_config=root_config))
@@ -1512,9 +1597,9 @@ class depgraph(object):
 				if not slot:
 					# portage now masks packages with missing slot, but it's
 					# possible that one was installed by an older version
-					atom = portage.cpv_getkey(cpv)
+					atom = Atom(portage.cpv_getkey(cpv))
 				else:
-					atom = "%s:%s" % (portage.cpv_getkey(cpv), slot)
+					atom = Atom("%s:%s" % (portage.cpv_getkey(cpv), slot))
 				args.append(AtomArg(arg=atom, atom=atom,
 					root_config=root_config))
 
@@ -1678,25 +1763,25 @@ class depgraph(object):
 								"dependencies for %s\n") % atom)
 						return 0, myfavorites
 
-				except portage.exception.MissingSignature, e:
+				except portage.exception.MissingSignature as e:
 					portage.writemsg("\n\n!!! A missing gpg signature is preventing portage from calculating the\n")
 					portage.writemsg("!!! required dependencies. This is a security feature enabled by the admin\n")
 					portage.writemsg("!!! to aid in the detection of malicious intent.\n\n")
 					portage.writemsg("!!! THIS IS A POSSIBLE INDICATION OF TAMPERED FILES -- CHECK CAREFULLY.\n")
 					portage.writemsg("!!! Affected file: %s\n" % (e), noiselevel=-1)
 					return 0, myfavorites
-				except portage.exception.InvalidSignature, e:
+				except portage.exception.InvalidSignature as e:
 					portage.writemsg("\n\n!!! An invalid gpg signature is preventing portage from calculating the\n")
 					portage.writemsg("!!! required dependencies. This is a security feature enabled by the admin\n")
 					portage.writemsg("!!! to aid in the detection of malicious intent.\n\n")
 					portage.writemsg("!!! THIS IS A POSSIBLE INDICATION OF TAMPERED FILES -- CHECK CAREFULLY.\n")
 					portage.writemsg("!!! Affected file: %s\n" % (e), noiselevel=-1)
 					return 0, myfavorites
-				except SystemExit, e:
+				except SystemExit as e:
 					raise # Needed else can't exit
-				except Exception, e:
-					print >> sys.stderr, "\n\n!!! Problem in '%s' dependencies." % atom
-					print >> sys.stderr, "!!!", str(e), getattr(e, "__module__", None)
+				except Exception as e:
+					print("\n\n!!! Problem in '%s' dependencies." % atom, file=sys.stderr)
+					print("!!!", str(e), getattr(e, "__module__", None), file=sys.stderr)
 					raise
 
 		# Now that the root packages have been added to the graph,
@@ -1711,9 +1796,9 @@ class depgraph(object):
 					continue
 				if len(xs) >= 4 and xs[0] != "binary" and xs[3] == "merge":
 					if missing == 0:
-						print
+						print()
 					missing += 1
-					print "Missing binary for:",xs[2]
+					print("Missing binary for:",xs[2])
 
 		try:
 			self.altlist()
@@ -1741,7 +1826,7 @@ class depgraph(object):
 			args_set.add(atom)
 
 		self._dynamic_config._set_atoms.clear()
-		self._dynamic_config._set_atoms.update(chain(*self._dynamic_config._sets.itervalues()))
+		self._dynamic_config._set_atoms.update(chain(*self._dynamic_config._sets.values()))
 		atom_arg_map = self._dynamic_config._atom_arg_map
 		atom_arg_map.clear()
 		for arg in args:
@@ -1757,7 +1842,7 @@ class depgraph(object):
 		# Invalidate the package selection cache, since
 		# arguments influence package selections.
 		self._dynamic_config._highest_pkg_cache.clear()
-		for trees in self._dynamic_config._filtered_trees.itervalues():
+		for trees in self._dynamic_config._filtered_trees.values():
 			trees["porttree"].dbapi._clear_cache()
 
 	def _greedy_slots(self, root_config, atom, blocker_lookahead=False):
@@ -1806,7 +1891,7 @@ class depgraph(object):
 			except portage.exception.InvalidDependString:
 				continue
 			blocker_atoms = []
-			for atoms in selected_atoms.itervalues():
+			for atoms in selected_atoms.values():
 				blocker_atoms.extend(x for x in atoms if x.blocker)
 			blockers[pkg] = InternalPackageSet(initial_atoms=blocker_atoms)
 
@@ -1827,11 +1912,11 @@ class depgraph(object):
 		# If two packages conflict, discard the lower version.
 		discard_pkgs = set()
 		greedy_pkgs.sort(reverse=True)
-		for i in xrange(len(greedy_pkgs) - 1):
+		for i in range(len(greedy_pkgs) - 1):
 			pkg1 = greedy_pkgs[i]
 			if pkg1 in discard_pkgs:
 				continue
-			for j in xrange(i + 1, len(greedy_pkgs)):
+			for j in range(i + 1, len(greedy_pkgs)):
 				pkg2 = greedy_pkgs[j]
 				if pkg2 in discard_pkgs:
 					continue
@@ -1909,7 +1994,6 @@ class depgraph(object):
 		return selected_atoms
 
 	def _show_unsatisfied_dep(self, root, atom, myparent=None, arg=None):
-		atom = portage.dep.Atom(atom)
 		atom_set = InternalPackageSet(initial_atoms=(atom,))
 		xinfo = '"%s"' % atom
 		if arg:
@@ -2008,31 +2092,31 @@ class depgraph(object):
 				show_missing_use = unmasked_iuse_reasons
 
 		if show_missing_use:
-			print "\nemerge: there are no ebuilds built with USE flags to satisfy "+green(xinfo)+"."
-			print "!!! One of the following packages is required to complete your request:"
+			print("\nemerge: there are no ebuilds built with USE flags to satisfy "+green(xinfo)+".")
+			print("!!! One of the following packages is required to complete your request:")
 			for pkg, mreasons in show_missing_use:
-				print "- "+pkg.cpv+" ("+", ".join(mreasons)+")"
+				print("- "+pkg.cpv+" ("+", ".join(mreasons)+")")
 
 		elif masked_packages:
-			print "\n!!! " + \
+			print("\n!!! " + \
 				colorize("BAD", "All ebuilds that could satisfy ") + \
 				colorize("INFORM", xinfo) + \
-				colorize("BAD", " have been masked.")
-			print "!!! One of the following masked packages is required to complete your request:"
+				colorize("BAD", " have been masked."))
+			print("!!! One of the following masked packages is required to complete your request:")
 			have_eapi_mask = show_masked_packages(masked_packages)
 			if have_eapi_mask:
-				print
+				print()
 				msg = ("The current version of portage supports " + \
 					"EAPI '%s'. You must upgrade to a newer version" + \
 					" of portage before EAPI masked packages can" + \
 					" be installed.") % portage.const.EAPI
 				from textwrap import wrap
 				for line in wrap(msg, 75):
-					print line
-			print
+					print(line)
+			print()
 			show_mask_docs()
 		else:
-			print "\nemerge: there are no ebuilds to satisfy "+green(xinfo)+"."
+			print("\nemerge: there are no ebuilds to satisfy "+green(xinfo)+".")
 
 		# Show parent nodes and the argument that pulled them in.
 		traversed_nodes = set()
@@ -2061,9 +2145,9 @@ class depgraph(object):
 					selected_parent = parent
 			node = selected_parent
 		for line in msg:
-			print line
+			print(line)
 
-		print
+		print()
 
 	def _iter_match_pkgs(self, root_config, pkg_type, atom, onlydeps=False):
 		"""
@@ -2277,7 +2361,7 @@ class depgraph(object):
 					myarg = None
 					if root == self._frozen_config.target_root:
 						try:
-							myarg = self._iter_atoms_for_pkg(pkg).next()
+							myarg = next(self._iter_atoms_for_pkg(pkg))
 						except StopIteration:
 							pass
 						except portage.exception.InvalidDependString:
@@ -2539,7 +2623,7 @@ class depgraph(object):
 			db_keys = list(self._frozen_config._trees_orig[root_config.root][
 				tree_type].dbapi._aux_cache_keys)
 			try:
-				metadata = izip(db_keys, db.aux_get(cpv, db_keys))
+				metadata = zip(db_keys, db.aux_get(cpv, db_keys))
 			except KeyError:
 				raise portage.exception.PackageNotFound(cpv)
 			pkg = Package(built=(type_name != "ebuild"), cpv=cpv,
@@ -2602,8 +2686,7 @@ class depgraph(object):
 						except KeyError:
 							pass
 					if blockers is not None:
-						blockers = set(str(blocker.atom) \
-							for blocker in blockers)
+						blockers = set(blocker.atom for blocker in blockers)
 
 					# If this node has any blockers, create a "nomerge"
 					# node for it so that they can be enforced.
@@ -2634,7 +2717,7 @@ class depgraph(object):
 						continue
 
 					if blocker_data:
-						blocker_atoms = blocker_data.atoms
+						blocker_atoms = [Atom(atom) for atom in blocker_data.atoms]
 					else:
 						# Use aux_get() to trigger FakeVartree global
 						# updates on *DEPEND when appropriate.
@@ -2648,7 +2731,7 @@ class depgraph(object):
 								success, atoms = portage.dep_check(depstr,
 									final_db, pkgsettings, myuse=pkg.use.enabled,
 									trees=self._dynamic_config._graph_trees, myroot=myroot)
-							except Exception, e:
+							except Exception as e:
 								if isinstance(e, SystemExit):
 									raise
 								# This is helpful, for example, if a ValueError
@@ -2673,7 +2756,7 @@ class depgraph(object):
 							show_invalid_depstring_notice(pkg, depstr, atoms)
 							return False
 						blocker_atoms = [myatom for myatom in atoms \
-							if myatom.startswith("!")]
+							if myatom.blocker]
 						blocker_atoms.sort()
 						counter = long(pkg.metadata["COUNTER"])
 						blocker_cache[cpv] = \
@@ -2681,10 +2764,10 @@ class depgraph(object):
 					if blocker_atoms:
 						try:
 							for atom in blocker_atoms:
-								blocker = Blocker(atom=portage.dep.Atom(atom),
+								blocker = Blocker(atom=atom,
 									eapi=pkg.metadata["EAPI"], root=myroot)
 								self._dynamic_config._blocker_parents.add(blocker, pkg)
-						except portage.exception.InvalidAtom, e:
+						except portage.exception.InvalidAtom as e:
 							depstr = " ".join(vardb.aux_get(pkg.cpv, dep_keys))
 							show_invalid_depstring_notice(
 								pkg, depstr, "Invalid Atom: %s" % (e,))
@@ -3055,13 +3138,13 @@ class depgraph(object):
 					running_root, running_portage.metadata["RDEPEND"],
 					myuse=running_portage.use.enabled,
 					parent=running_portage, strict=False)
-			except portage.exception.InvalidDependString, e:
+			except portage.exception.InvalidDependString as e:
 				portage.writemsg("!!! Invalid RDEPEND in " + \
 					"'%svar/db/pkg/%s/RDEPEND': %s\n" % \
 					(running_root, running_portage.cpv, e), noiselevel=-1)
 				del e
 				portage_rdepend = {running_portage : []}
-			for atoms in portage_rdepend.itervalues():
+			for atoms in portage_rdepend.values():
 				runtime_deps.update(atom for atom in atoms \
 					if not atom.blocker)
 
@@ -3147,7 +3230,7 @@ class depgraph(object):
 						break
 			if not selected_nodes and \
 				not (prefer_asap and asap_nodes):
-				for i in xrange(priority_range.NONE,
+				for i in range(priority_range.NONE,
 					priority_range.MEDIUM_SOFT + 1):
 					ignore_priority = priority_range.ignore_priority[i]
 					nodes = get_nodes(ignore_priority=ignore_priority)
@@ -3193,7 +3276,7 @@ class depgraph(object):
 					mergeable_nodes = set(nodes)
 					if prefer_asap and asap_nodes:
 						nodes = asap_nodes
-					for i in xrange(priority_range.SOFT,
+					for i in range(priority_range.SOFT,
 						priority_range.MEDIUM_SOFT + 1):
 						ignore_priority = priority_range.ignore_priority[i]
 						for node in nodes:
@@ -3291,7 +3374,7 @@ class depgraph(object):
 						try:
 							runtime_dep_atoms = \
 								list(runtime_deps.iterAtomsForPackage(task))
-						except portage.exception.InvalidDependString, e:
+						except portage.exception.InvalidDependString as e:
 							portage.writemsg("!!! Invalid PROVIDE in " + \
 								"'%svar/db/pkg/%s/PROVIDE': %s\n" % \
 								(task.root, task.cpv, e), noiselevel=-1)
@@ -3326,7 +3409,7 @@ class depgraph(object):
 								"system"].iterAtomsForPackage(task):
 								skip = True
 								break
-						except portage.exception.InvalidDependString, e:
+						except portage.exception.InvalidDependString as e:
 							portage.writemsg("!!! Invalid PROVIDE in " + \
 								"'%svar/db/pkg/%s/PROVIDE': %s\n" % \
 								(task.root, task.cpv, e), noiselevel=-1)
@@ -3361,7 +3444,7 @@ class depgraph(object):
 									skip = True
 									self._dynamic_config._blocked_world_pkgs[inst_pkg] = atom
 									break
-						except portage.exception.InvalidDependString, e:
+						except portage.exception.InvalidDependString as e:
 							portage.writemsg("!!! Invalid PROVIDE in " + \
 								"'%svar/db/pkg/%s/PROVIDE': %s\n" % \
 								(task.root, task.cpv, e), noiselevel=-1)
@@ -3647,7 +3730,7 @@ class depgraph(object):
 			# Reduce noise by pruning packages that are only
 			# pulled in by other conflict packages.
 			pruned_pkgs = set()
-			for pkg, parent_atoms in conflict_pkgs.iteritems():
+			for pkg, parent_atoms in conflict_pkgs.items():
 				relevant_parent = False
 				for parent, atom in parent_atoms:
 					if parent not in conflict_pkgs:
@@ -3664,7 +3747,7 @@ class depgraph(object):
 			indent = "  "
 			# Max number of parents shown, to avoid flooding the display.
 			max_parents = 3
-			for pkg, parent_atoms in conflict_pkgs.iteritems():
+			for pkg, parent_atoms in conflict_pkgs.items():
 
 				pruned_list = set()
 
@@ -3929,7 +4012,7 @@ class depgraph(object):
 			mylist.append((x, 0, True))
 
 		last_merge_depth = 0
-		for i in xrange(len(mylist)-1,-1,-1):
+		for i in range(len(mylist)-1,-1,-1):
 			graph_key, depth, ordered = mylist[i]
 			if not ordered and depth == 0 and i > 0 \
 				and graph_key == mylist[i-1][0] and \
@@ -3954,7 +4037,7 @@ class depgraph(object):
 		# and disable the entire repo display in this case.
 		repoadd_set = set()
 
-		for mylist_index in xrange(len(mylist)):
+		for mylist_index in range(len(mylist)):
 			x, depth, ordered = mylist[mylist_index]
 			pkg_type = x[0]
 			myroot = x[1]
@@ -3979,14 +4062,14 @@ class depgraph(object):
 					counters.blocks += 1
 					if x.satisfied:
 						counters.blocks_satisfied += 1
-				resolved = portage.key_expand(
+				resolved = portage.dep_expand(
 					str(x.atom).lstrip("!"), mydb=vardb, settings=pkgsettings)
 				if "--columns" in self._frozen_config.myopts and "--quiet" in self._frozen_config.myopts:
-					addl += " " + colorize(blocker_style, resolved)
+					addl += " " + colorize(blocker_style, str(resolved))
 				else:
 					addl = "[%s %s] %s%s" % \
 						(colorize(blocker_style, "blocks"),
-						addl, indent, colorize(blocker_style, resolved))
+						addl, indent, colorize(blocker_style, str(resolved)))
 				block_parents = self._dynamic_config._blocker_parents.parent_nodes(x)
 				block_parents = set([pnode[2] for pnode in block_parents])
 				block_parents = ", ".join(block_parents)
@@ -4196,7 +4279,7 @@ class depgraph(object):
 						try:
 							myfilesdict = portdb.getfetchsizes(pkg_key,
 								useflags=pkg_use, debug=self._frozen_config.edebug)
-						except portage.exception.InvalidDependString, e:
+						except portage.exception.InvalidDependString as e:
 							src_uri = portdb.aux_get(pkg_key, ["SRC_URI"])[0]
 							show_invalid_depstring_notice(x, src_uri, str(e))
 							del e
@@ -4252,7 +4335,7 @@ class depgraph(object):
 				if "COLUMNWIDTH" in self._frozen_config.settings:
 					try:
 						mywidth = int(self._frozen_config.settings["COLUMNWIDTH"])
-					except ValueError, e:
+					except ValueError as e:
 						portage.writemsg("!!! %s\n" % str(e), noiselevel=-1)
 						portage.writemsg(
 							"!!! Unable to parse COLUMNWIDTH='%s'\n" % \
@@ -4418,11 +4501,11 @@ class depgraph(object):
 			out.write("%s\n" % (myprint,))
 
 		for x in blockers:
-			print x
+			print(x)
 
 		if verbosity == 3:
-			print
-			print counters
+			print()
+			print(counters)
 			if show_repos:
 				# In python-2.x, str() can trigger a UnicodeEncodeError here,
 				# so call __str__() directly.
@@ -4537,7 +4620,7 @@ class depgraph(object):
 					"merged because it is listed in\n")
 			msg.append("package.provided:\n\n")
 			problems_sets = set()
-			for (arg, atom), refs in arg_refs.iteritems():
+			for (arg, atom), refs in arg_refs.items():
 				ref_string = ""
 				if refs:
 					problems_sets.update(refs)
@@ -4567,7 +4650,7 @@ class depgraph(object):
 				" The following installed packages are masked:\n")
 			show_masked_packages(masked_packages)
 			show_mask_docs()
-			print
+			print()
 
 	def saveNomergeFavorites(self):
 		"""Find atoms in favorites that are not in the mergelist and add them
@@ -4601,7 +4684,7 @@ class depgraph(object):
 					if myfavkey in added_favorites:
 						continue
 					added_favorites.add(myfavkey)
-			except portage.exception.InvalidDependString, e:
+			except portage.exception.InvalidDependString as e:
 				writemsg("\n\n!!! '%s' has invalid PROVIDE: %s\n" % \
 					(pkg_key, str(e)), noiselevel=-1)
 				writemsg("!!! see '%s'\n\n" % os.path.join(
@@ -4618,8 +4701,8 @@ class depgraph(object):
 		all_added.extend(added_favorites)
 		all_added.sort()
 		for a in all_added:
-			print ">>> Recording %s in \"world\" favorites file..." % \
-				colorize("INFORM", str(a))
+			print(">>> Recording %s in \"world\" favorites file..." % \
+				colorize("INFORM", str(a)))
 		if all_added:
 			world_set.update(all_added)
 
@@ -4806,7 +4889,9 @@ class depgraph(object):
 				args.append(SetArg(arg=x, set=expanded_set,
 					root_config=root_config))
 			else:
-				if not portage.isvalidatom(x):
+				try:
+					x = Atom(x)
+				except portage.exception.InvalidAtom:
 					continue
 				args.append(AtomArg(arg=x, atom=x,
 					root_config=root_config))
@@ -4921,7 +5006,7 @@ class _dep_check_composite_db(portage.dbapi):
 	def _visible(self, pkg):
 		if pkg.installed and "selective" not in self._depgraph._dynamic_config.myparams:
 			try:
-				arg = self._depgraph._iter_atoms_for_pkg(pkg).next()
+				arg = next(self._depgraph._iter_atoms_for_pkg(pkg))
 			except (StopIteration, portage.exception.InvalidDependString):
 				arg = None
 			if arg:
@@ -4976,15 +5061,14 @@ class _dep_check_composite_db(portage.dbapi):
 		if expanded_atoms:
 			atom = expanded_atoms[0]
 		else:
-			null_atom = insert_category_into_atom(atom, "null")
-			null_cp = portage.dep_getkey(null_atom)
-			cat, atom_pn = portage.catsplit(null_cp)
+			null_atom = Atom(insert_category_into_atom(atom, "null"))
+			cat, atom_pn = portage.catsplit(null_atom.cp)
 			virts_p = root_config.settings.get_virts_p().get(atom_pn)
 			if virts_p:
 				# Allow the resolver to choose which virtual.
-				atom = insert_category_into_atom(atom, "virtual")
+				atom = Atom(null_atom.replace('null/', 'virtual/', 1))
 			else:
-				atom = insert_category_into_atom(atom, "null")
+				atom = null_atom
 		return atom
 
 	def aux_get(self, cpv, wants):
@@ -4997,10 +5081,10 @@ class _dep_check_composite_db(portage.dbapi):
 def ambiguous_package_name(arg, atoms, root_config, spinner, myopts):
 
 	if "--quiet" in myopts:
-		print "!!! The short ebuild name \"%s\" is ambiguous. Please specify" % arg
-		print "!!! one of the following fully-qualified ebuild names instead:\n"
+		print("!!! The short ebuild name \"%s\" is ambiguous. Please specify" % arg)
+		print("!!! one of the following fully-qualified ebuild names instead:\n")
 		for cp in sorted(set(portage.dep_getkey(atom) for atom in atoms)):
-			print "    " + colorize("INFORM", cp)
+			print("    " + colorize("INFORM", cp))
 		return
 
 	s = search(root_config, spinner, "--searchdesc" in myopts,
@@ -5013,8 +5097,8 @@ def ambiguous_package_name(arg, atoms, root_config, spinner, myopts):
 	for cp in sorted(set(portage.dep_getkey(atom) for atom in atoms)):
 		s.addCP(cp)
 	s.output()
-	print "!!! The short ebuild name \"%s\" is ambiguous. Please specify" % arg
-	print "!!! one of the above fully-qualified ebuild names instead.\n"
+	print("!!! The short ebuild name \"%s\" is ambiguous. Please specify" % arg)
+	print("!!! one of the above fully-qualified ebuild names instead.\n")
 
 def insert_category_into_atom(atom, category):
 	alphanum = re.search(r'\w', atom)
@@ -5080,7 +5164,7 @@ def resume_depgraph(settings, trees, mtimedb, myopts, myparams, spinner):
 		try:
 			success = mydepgraph._loadResumeCommand(mtimedb["resume"],
 				skip_masked=skip_masked)
-		except depgraph.UnsatisfiedResumeDep, e:
+		except depgraph.UnsatisfiedResumeDep as e:
 			if not skip_unsatisfied:
 				raise
 
@@ -5141,7 +5225,7 @@ def get_mask_info(root_config, cpv, pkgsettings,
 	db, pkg_type, built, installed, db_keys):
 	eapi_masked = False
 	try:
-		metadata = dict(izip(db_keys,
+		metadata = dict(zip(db_keys,
 			db.aux_get(cpv, db_keys)))
 	except KeyError:
 		metadata = None
@@ -5193,7 +5277,7 @@ def show_masked_packages(masked_packages):
 				# above via mreasons.
 				pass
 
-		print "- "+cpv+" (masked by: "+", ".join(mreasons)+")"
+		print("- "+cpv+" (masked by: "+", ".join(mreasons)+")")
 
 		if comment and comment not in shown_comments:
 			writemsg_stdout(filename + ":\n" + comment + "\n",
@@ -5206,14 +5290,14 @@ def show_masked_packages(masked_packages):
 				continue
 			msg = ("A copy of the '%s' license" + \
 			" is located at '%s'.") % (l, l_path)
-			print msg
-			print
+			print(msg)
+			print()
 			shown_licenses.add(l)
 	return have_eapi_mask
 
 def show_mask_docs():
-	print "For more information, see the MASKED PACKAGES section in the emerge"
-	print "man page or refer to the Gentoo Handbook."
+	print("For more information, see the MASKED PACKAGES section in the emerge")
+	print("man page or refer to the Gentoo Handbook.")
 
 def filter_iuse_defaults(iuse):
 	for flag in iuse:
@@ -5223,12 +5307,12 @@ def filter_iuse_defaults(iuse):
 			yield flag
 
 def show_blocker_docs_link():
-	print
-	print "For more information about " + bad("Blocked Packages") + ", please refer to the following"
-	print "section of the Gentoo Linux x86 Handbook (architecture is irrelevant):"
-	print
-	print "http://www.gentoo.org/doc/en/handbook/handbook-x86.xml?full=1#blocked"
-	print
+	print()
+	print("For more information about " + bad("Blocked Packages") + ", please refer to the following")
+	print("section of the Gentoo Linux x86 Handbook (architecture is irrelevant):")
+	print()
+	print("http://www.gentoo.org/doc/en/handbook/handbook-x86.xml?full=1#blocked")
+	print()
 
 def get_masking_status(pkg, pkgsettings, root_config):
 
@@ -5241,7 +5325,7 @@ def get_masking_status(pkg, pkgsettings, root_config):
 			mreasons.append("CHOST: %s" % \
 				pkg.metadata["CHOST"])
 		if pkg.invalid:
-			for msg_type, msgs in pkg.invalid.iteritems():
+			for msg_type, msgs in pkg.invalid.items():
 				for msg in msgs:
 					mreasons.append("invalid: %s" % (msg,))
 

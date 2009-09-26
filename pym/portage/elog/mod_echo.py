@@ -3,9 +3,15 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+from __future__ import print_function
+
+import sys
 from portage.output import EOutput, colorize
 from portage.const import EBUILD_PHASES
 from portage.localization import _
+
+if sys.hexversion >= 0x3000000:
+	basestring = str
 
 _items = []
 def process(mysettings, key, logentries, fulltext):
@@ -19,14 +25,14 @@ def finalize(mysettings=None):
 	global _items
 	printer = EOutput()
 	for root, key, logentries in _items:
-		print
+		print()
 		if root == "/":
 			printer.einfo(_("Messages for package %s:") %
 				colorize("INFORM", key))
 		else:
 			printer.einfo(_("Messages for package %(pkg)s merged to %(root)s:") %
 				{"pkg": colorize("INFORM", key), "root": root})
-		print
+		print()
 		for phase in EBUILD_PHASES:
 			if phase not in logentries:
 				continue

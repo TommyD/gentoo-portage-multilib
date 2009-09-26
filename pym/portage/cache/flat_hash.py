@@ -8,9 +8,14 @@ from portage.cache import fs_template
 from portage.cache import cache_errors
 import errno
 import stat
+import sys
+import os as _os
 from portage import os
 from portage import _encodings
 from portage import _unicode_encode
+
+if sys.hexversion >= 0x3000000:
+	long = int
 
 class database(fs_template.FsBased):
 
@@ -28,33 +33,36 @@ class database(fs_template.FsBased):
 			self._ensure_dirs()
 
 	def _getitem(self, cpv):
-		fp = os.path.join(self.location, cpv)
+		# Don't use os.path.join, for better performance.
+		fp = self.location + _os.sep + cpv
 		try:
 			myf = codecs.open(_unicode_encode(fp,
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['repo.content'],
 				errors='replace')
 			try:
-				d = self._parse_data(myf.readlines(), cpv)
+				lines = myf.read().split("\n")
+				if not lines[-1]:
+					lines.pop()
+				d = self._parse_data(lines, cpv)
 				if '_mtime_' not in d:
 					# Backward compatibility with old cache
 					# that uses mtime mangling.
-					d['_mtime_'] = long(os.fstat(myf.fileno()).st_mtime)
+					d['_mtime_'] = long(_os.fstat(myf.fileno()).st_mtime)
 				return d
 			finally:
 				myf.close()
-		except (IOError, OSError), e:
+		except (IOError, OSError) as e:
 			if e.errno != errno.ENOENT:
 				raise cache_errors.CacheCorruption(cpv, e)
-			raise KeyError(cpv)
+			raise KeyError(cpv, e)
 
 	def _parse_data(self, data, cpv):
 		try:
-			d = dict(map(lambda x:x.rstrip("\n").split("=", 1), data))
-		except ValueError, e:
+			return dict( x.split("=", 1) for x in data )
+		except ValueError as e:
 			# If a line is missing an "=", the split length is 1 instead of 2.
 			raise cache_errors.CacheCorruption(cpv, e)
-		return d
 
 	def _setitem(self, cpv, values):
 #		import pdb;pdb.set_trace()
@@ -65,7 +73,7 @@ class database(fs_template.FsBased):
 				encoding=_encodings['fs'], errors='strict'),
 				mode='w', encoding=_encodings['repo.content'],
 				errors='backslashreplace')
-		except (IOError, OSError), e:
+		except (IOError, OSError) as e:
 			if errno.ENOENT == e.errno:
 				try:
 					self._ensure_dirs(cpv)
@@ -73,7 +81,7 @@ class database(fs_template.FsBased):
 						encoding=_encodings['fs'], errors='strict'),
 						mode='w', encoding=_encodings['repo.content'],
 						errors='backslashreplace')
-				except (OSError, IOError),e:
+				except (OSError, IOError) as e:
 					raise cache_errors.CacheCorruption(cpv, e)
 			else:
 				raise cache_errors.CacheCorruption(cpv, e)
@@ -93,25 +101,22 @@ class database(fs_template.FsBased):
 		new_fp = os.path.join(self.location,cpv)
 		try:
 			os.rename(fp, new_fp)
-		except (OSError, IOError), e:
+		except (OSError, IOError) as e:
 			os.remove(fp)
 			raise cache_errors.CacheCorruption(cpv, e)
-
 
 	def _delitem(self, cpv):
 #		import pdb;pdb.set_trace()
 		try:
 			os.remove(os.path.join(self.location,cpv))
-		except OSError, e:
+		except OSError as e:
 			if errno.ENOENT == e.errno:
 				raise KeyError(cpv)
 			else:
 				raise cache_errors.CacheCorruption(cpv, e)
 
-
 	def __contains__(self, cpv):
 		return os.path.exists(os.path.join(self.location, cpv))
-
 
 	def __iter__(self):
 		"""generator for walking the dir struct"""
@@ -120,7 +125,7 @@ class database(fs_template.FsBased):
 		while len(dirs):
 			try:
 				dir_list = os.listdir(dirs[0])
-			except OSError, e:
+			except OSError as e:
 				if e.errno != errno.ENOENT:
 					raise
 				del e
@@ -136,4 +141,3 @@ class database(fs_template.FsBased):
 					continue
 				yield p[len_base+1:]
 			dirs.pop(0)
-

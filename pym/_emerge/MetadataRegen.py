@@ -89,8 +89,8 @@ class MetadataRegen(PollScheduler):
 		if self._global_cleanse:
 			for mytree in portdb.porttrees:
 				try:
-					dead_nodes[mytree] = set(portdb.auxdb[mytree].iterkeys())
-				except CacheError, e:
+					dead_nodes[mytree] = set(portdb.auxdb[mytree])
+				except CacheError as e:
 					portage.writemsg("Error listing cache entries for " + \
 						"'%s': %s, continuing...\n" % (mytree, e),
 						noiselevel=-1)
@@ -103,9 +103,9 @@ class MetadataRegen(PollScheduler):
 			for mytree in portdb.porttrees:
 				try:
 					dead_nodes[mytree] = set(cpv for cpv in \
-						portdb.auxdb[mytree].iterkeys() \
+						portdb.auxdb[mytree] \
 						if cpv_getkey(cpv) in cp_set)
-				except CacheError, e:
+				except CacheError as e:
 					portage.writemsg("Error listing cache entries for " + \
 						"'%s': %s, continuing...\n" % (mytree, e),
 						noiselevel=-1)
@@ -119,7 +119,7 @@ class MetadataRegen(PollScheduler):
 					if portdb.findname2(y, mytree=mytree)[0]:
 						dead_nodes[mytree].discard(y)
 
-			for mytree, nodes in dead_nodes.iteritems():
+			for mytree, nodes in dead_nodes.items():
 				auxdb = portdb.auxdb[mytree]
 				for y in nodes:
 					try:
@@ -135,7 +135,7 @@ class MetadataRegen(PollScheduler):
 		"""
 		while self._can_add_job():
 			try:
-				metadata_process = self._process_iter.next()
+				metadata_process = next(self._process_iter)
 			except StopIteration:
 				return False
 

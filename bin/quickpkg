@@ -3,8 +3,11 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-import errno, signal, sys
-from itertools import izip
+from __future__ import print_function
+
+import errno
+import signal
+import sys
 
 try:
 	import portage
@@ -45,7 +48,7 @@ def quickpkg_main(options, args, eout):
 	for arg in args:
 		try:
 			atom = dep_expand(arg, mydb=vardb, settings=vartree.settings)
-		except ValueError, e:
+		except ValueError as e:
 			# Multiple matches thrown from cpv_expand
 			eout.eerror("Please use a more specific atom: %s" % \
 				" ".join(e.args[0]))
@@ -83,7 +86,7 @@ def quickpkg_main(options, args, eout):
 				try:
 					restrict = flatten(use_reduce(
 						paren_reduce(restrict), uselist=use))
-				except InvalidDependString, e:
+				except InvalidDependString as e:
 					eout.eerror("Invalid RESTRICT metadata " + \
 						"for '%s': %s; skipping" % (cpv, str(e)))
 					del e
@@ -114,14 +117,14 @@ def quickpkg_main(options, args, eout):
 									return False
 						excluded_config_files.append(filename)
 						return True
-				existing_metadata = dict(izip(fix_metadata_keys,
+				existing_metadata = dict(zip(fix_metadata_keys,
 					vardb.aux_get(cpv, fix_metadata_keys)))
 				category, pf = portage.catsplit(cpv)
 				required_metadata = {}
 				required_metadata["CATEGORY"] = category
 				required_metadata["PF"] = pf
 				update_metadata = {}
-				for k, v in required_metadata.iteritems():
+				for k, v in required_metadata.items():
 					if v != existing_metadata[k]:
 						update_metadata[k] = v
 				if update_metadata:
@@ -140,7 +143,7 @@ def quickpkg_main(options, args, eout):
 			binpkg_path = bintree.getname(cpv)
 			try:
 				s = os.stat(binpkg_path)
-			except OSError, e:
+			except OSError as e:
 				# Sanity check, shouldn't happen normally.
 				eout.eend(1)
 				eout.eerror(str(e))
@@ -159,7 +162,7 @@ def quickpkg_main(options, args, eout):
 	if not successes:
 		eout.eerror("No packages found")
 		return 1
-	print
+	print()
 	eout.einfo("Packages now in '%s':" % bintree.pkgdir)
 	import math
 	units = {10:'K', 20:'M', 30:'G', 40:'T',
@@ -183,11 +186,11 @@ def quickpkg_main(options, args, eout):
 				size_str = str(size)
 		eout.einfo("%s: %s" % (cpv, size_str))
 	if config_files_excluded:
-		print
+		print()
 		eout.ewarn("Excluded config files: %d" % config_files_excluded)
 		eout.ewarn("See --help if you would like to include config files.")
 	if missing:
-		print
+		print()
 		eout.ewarn("The following packages could not be found:")
 		eout.ewarn(" ".join(missing))
 		return 2

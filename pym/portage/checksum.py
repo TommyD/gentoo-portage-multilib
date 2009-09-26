@@ -12,7 +12,10 @@ from portage import _unicode_encode
 import errno
 import stat
 import tempfile
-import commands
+try:
+	from subprocess import getstatusoutput as subprocess_getstatusoutput
+except ImportError:
+	from commands import getstatusoutput as subprocess_getstatusoutput
 
 #dict of all available hash functions
 hashfunc_map = {}
@@ -31,7 +34,7 @@ def _generate_hash_function(hashtype, hashobject, origin="unknown"):
 			encoding=_encodings['fs'], errors='strict'), 'rb')
 		blocksize = HASHING_BLOCKSIZE
 		data = f.read(blocksize)
-		size = 0L
+		size = 0
 		checksum = hashobject()
 		while data:
 			checksum.update(data)
@@ -67,7 +70,7 @@ try:
 	from Crypto.Hash import SHA256, RIPEMD
 	sha256hash = _generate_hash_function("SHA256", SHA256.new, origin="pycrypto")
 	rmd160hash = _generate_hash_function("RMD160", RIPEMD.new, origin="pycrypto")
-except ImportError, e:
+except ImportError as e:
 	pass
 
 # Use hashlib from python-2.5 if available and prefer it over pycrypto and internal fallbacks.
@@ -86,7 +89,7 @@ try:
 		def rmd160():
 			return hashlib.new('ripemd160')
 		rmd160hash = _generate_hash_function("RMD160", rmd160, origin="hashlib")
-except ImportError, e:
+except ImportError as e:
 	pass
 	
 
@@ -112,7 +115,7 @@ hashfunc_map["size"] = getsize
 
 prelink_capable = False
 if os.path.exists(PRELINK_BINARY):
-	results = commands.getstatusoutput(PRELINK_BINARY+" --version > /dev/null 2>&1")
+	results = subprocess_getstatusoutput(PRELINK_BINARY+" --version > /dev/null 2>&1")
 	if (results[0] >> 8) == 0:
 		prelink_capable=1
 	del results
@@ -131,7 +134,7 @@ def perform_all(x, calc_prelink=0):
 	return mydict
 
 def get_valid_checksum_keys():
-	return hashfunc_map.keys()
+	return list(hashfunc_map)
 
 def get_hash_origin(hashtype):
 	if hashtype not in hashfunc_map:
@@ -163,7 +166,7 @@ def verify_all(filename, mydict, calc_prelink=0, strict=0):
 		mysize = os.stat(filename)[stat.ST_SIZE]
 		if mydict["size"] != mysize:
 			return False,(_("Filesize does not match recorded size"), mysize, mydict["size"])
-	except OSError, e:
+	except OSError as e:
 		if e.errno == errno.ENOENT:
 			raise portage.exception.FileNotFound(filename)
 		return False, (str(e), None, None)
@@ -244,7 +247,7 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 				raise portage.exception.DigestException(hashname + \
 					" hash function not available (needs dev-python/pycrypto)")
 			myhash, mysize = hashfunc_map[hashname](myfilename)
-		except (OSError, IOError), e:
+		except (OSError, IOError) as e:
 			if e.errno == errno.ENOENT:
 				raise portage.exception.FileNotFound(myfilename)
 			raise
@@ -253,7 +256,7 @@ def perform_checksum(filename, hashname="MD5", calc_prelink=0):
 		if prelink_tmpfile:
 			try:
 				os.unlink(prelink_tmpfile)
-			except OSError, e:
+			except OSError as e:
 				if e.errno != errno.ENOENT:
 					raise
 				del e
@@ -276,6 +279,6 @@ def perform_multiple_checksums(filename, hashes=["MD5"], calc_prelink=0):
 	rVal = {}
 	for x in hashes:
 		if x not in hashfunc_map:
-			raise portage.exception.DigestException, x+" hash function not available (needs dev-python/pycrypto or >=dev-lang/python-2.5)"
+			raise portage.exception.DigestException(x+" hash function not available (needs dev-python/pycrypto or >=dev-lang/python-2.5)")
 		rVal[x] = perform_checksum(filename, x, calc_prelink)[0]
 	return rVal

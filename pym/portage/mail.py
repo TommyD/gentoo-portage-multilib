@@ -18,6 +18,9 @@ from portage import _unicode_encode
 from portage.localization import _
 import portage
 
+if sys.hexversion >= 0x3000000:
+	basestring = str
+
 def create_message(sender, recipient, subject, body, attachments=None):
 
 	if sys.hexversion < 0x3000000:
@@ -79,7 +82,7 @@ def send_mail(mysettings, message):
 			try:
 				mymailuser,mymailpasswd = myauthdata.split(":")
 			except ValueError:
-				print _("!!! invalid SMTP AUTH configuration, trying unauthenticated ...")
+				print(_("!!! invalid SMTP AUTH configuration, trying unauthenticated ..."))
 		else:
 			myconndata = mymailuri
 		if ":" in myconndata:
@@ -126,9 +129,9 @@ def send_mail(mysettings, message):
 				myconn.login(mymailuser, mymailpasswd)
 			myconn.sendmail(myfrom, myrecipient, message.as_string())
 			myconn.quit()
-		except smtplib.SMTPException, e:
+		except smtplib.SMTPException as e:
 			raise portage.exception.PortageException(_("!!! An error occured while trying to send logmail:\n")+str(e))
-		except socket.error, e:
+		except socket.error as e:
 			raise portage.exception.PortageException(_("!!! A network error occured while trying to send logmail:\n%s\nSure you configured PORTAGE_ELOG_MAILURI correctly?") % str(e))
 	return
 	

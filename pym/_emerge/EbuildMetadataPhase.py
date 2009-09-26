@@ -9,8 +9,8 @@ from portage.cache.mappings import slot_dict_class
 import portage
 from portage import os
 from portage import _encodings
+from portage import _unicode_decode
 from portage import _unicode_encode
-from itertools import izip
 import fcntl
 import codecs
 
@@ -70,7 +70,7 @@ class EbuildMetadataPhase(SubProcess):
 		fd_pipes.setdefault(2, sys.stderr.fileno())
 
 		# flush any pending output
-		for fd in fd_pipes.itervalues():
+		for fd in fd_pipes.values():
 			if fd == sys.stdout.fileno():
 				sys.stdout.flush()
 			if fd == sys.stderr.fileno():
@@ -123,7 +123,7 @@ class EbuildMetadataPhase(SubProcess):
 	def _set_returncode(self, wait_retval):
 		SubProcess._set_returncode(self, wait_retval)
 		if self.returncode == os.EX_OK:
-			metadata_lines = ''.join(unicode(chunk,
+			metadata_lines = ''.join(_unicode_decode(chunk,
 				encoding=_encodings['repo.content'], errors='replace')
 				for chunk in self._raw_metadata).splitlines()
 			if len(portage.auxdbkeys) != len(metadata_lines):
@@ -131,7 +131,7 @@ class EbuildMetadataPhase(SubProcess):
 				# number of lines is incorrect.
 				self.returncode = 1
 			else:
-				metadata = izip(portage.auxdbkeys, metadata_lines)
+				metadata = zip(portage.auxdbkeys, metadata_lines)
 				self.metadata = self.metadata_callback(self.cpv,
 					self.ebuild_path, self.repo_path, metadata,
 					self.ebuild_mtime)

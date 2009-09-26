@@ -2,6 +2,8 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+from __future__ import print_function
+
 __all__ = ["PreservedLibsRegistry", "LinkageMap",
 	"vardbapi", "vartree", "dblink"] + \
 	["write_contents", "tar_contents"]
@@ -48,13 +50,18 @@ from portage.cache.mappings import slot_dict_class
 import codecs
 import re, shutil, stat, errno, copy, subprocess
 import logging
+import os as _os
 import sys
-from itertools import izip
+import warnings
 
 try:
 	import cPickle as pickle
 except ImportError:
 	import pickle
+
+if sys.hexversion >= 0x3000000:
+	basestring = str
+	long = int
 
 class PreservedLibsRegistry(object):
 	""" This class handles the tracking of preserved library objects """
@@ -80,10 +87,10 @@ class PreservedLibsRegistry(object):
 			self._data = pickle.load(
 				open(_unicode_encode(self._filename,
 					encoding=_encodings['fs'], errors='strict'), 'rb'))
-		except (ValueError, pickle.UnpicklingError), e:
+		except (ValueError, pickle.UnpicklingError) as e:
 			writemsg_level(_("!!! Error loading '%s': %s\n") % \
 				(self._filename, e), level=logging.ERROR, noiselevel=-1)
-		except (EOFError, IOError), e:
+		except (EOFError, IOError) as e:
 			if isinstance(e, EOFError) or e.errno == errno.ENOENT:
 				pass
 			elif e.errno == PermissionDenied.errno:
@@ -104,7 +111,7 @@ class PreservedLibsRegistry(object):
 			f = atomic_ofstream(self._filename, 'wb')
 			pickle.dump(self._data, f, protocol=2)
 			f.close()
-		except EnvironmentError, e:
+		except EnvironmentError as e:
 			if e.errno != PermissionDenied.errno:
 				writemsg("!!! %s %s\n" % (e, self._filename), noiselevel=-1)
 		else:
@@ -147,7 +154,7 @@ class PreservedLibsRegistry(object):
 
 		os = _os_merge
 
-		for cps in self._data.keys():
+		for cps in list(self._data):
 			cpv, counter, paths = self._data[cps]
 			paths = [f for f in paths \
 				if os.path.exists(os.path.join(self._root, f.lstrip(os.sep)))]
@@ -335,7 +342,7 @@ class LinkageMap(object):
 					for x in items)
 			try:
 				proc = subprocess.Popen(args, stdout=subprocess.PIPE)
-			except EnvironmentError, e:
+			except EnvironmentError as e:
 				if e.errno != errno.ENOENT:
 					raise
 				raise CommandNotFound(args[0])
@@ -380,7 +387,7 @@ class LinkageMap(object):
 				for x in filter(None, fields[3].replace(
 				"${ORIGIN}", os.path.dirname(obj)).replace(
 				"$ORIGIN", os.path.dirname(obj)).split(":"))])
-			needed = filter(None, fields[4].split(","))
+			needed = [x for x in fields[4].split(",") if x]
 
 			obj_key = self._obj_key(obj)
 			indexed = True
@@ -514,19 +521,19 @@ class LinkageMap(object):
 							# XXX This is most often due to soname symlinks not in
 							# a library's directory.  We could catalog symlinks in
 							# LinkageMap to avoid checking for this edge case here.
-							print _("Found provider outside of findProviders:"), \
+							print(_("Found provider outside of findProviders:"), \
 									os.path.join(directory, soname), "->", \
-									self._obj_properties[cachedKey][4], libraries
+									self._obj_properties[cachedKey][4], libraries)
 						# A valid library has been found, so there is no need to
 						# continue.
 						break
 					if debug and cachedArch == arch and \
 							cachedKey in self._obj_properties:
-						print _("Broken symlink or missing/bad soname: %(dir_soname)s -> %(cachedKey)s "
+						print(_("Broken symlink or missing/bad soname: %(dir_soname)s -> %(cachedKey)s "
 							"with soname %(cachedSoname)s but expecting %(soname)s") % \
 							{"dir_soname":os.path.join(directory, soname),
 							"cachedKey": self._obj_properties[cachedKey],
-							"cachedSoname": cachedSoname, "soname":soname}
+							"cachedSoname": cachedSoname, "soname":soname})
 				# This conditional checks if there are no libraries to satisfy the
 				# soname (empty set).
 				if not validLibraries:
@@ -542,10 +549,10 @@ class LinkageMap(object):
 						rValue.setdefault(lib, set()).add(soname)
 						if debug:
 							if not os.path.isfile(lib):
-								print _("Missing library:"), lib
+								print(_("Missing library:"), lib)
 							else:
-								print _("Possibly missing symlink:"), \
-										os.path.join(os.path.dirname(lib), soname)
+								print(_("Possibly missing symlink:"), \
+										os.path.join(os.path.dirname(lib), soname))
 		return rValue
 
 	def listProviders(self):
@@ -600,8 +607,8 @@ class LinkageMap(object):
 		rValue = []
 		if not self._libs:
 			self.rebuild()
-		for arch_map in self._libs.itervalues():
-			for soname_map in arch_map.itervalues():
+		for arch_map in self._libs.values():
+			for soname_map in arch_map.values():
 				for obj_key in soname_map.providers:
 					rValue.extend(self._obj_properties[obj_key][4])
 		return rValue
@@ -833,9 +840,13 @@ class vardbapi(dbapi):
 		self._owners = self._owners_db(self)
 
 	def getpath(self, mykey, filename=None):
-		rValue = os.path.join(self.root, VDB_PATH, mykey)
-		if filename != None:
-			rValue = os.path.join(rValue, filename)
+		# This is an optimized hotspot, so don't use unicode-wrapped
+		# os module and don't use os.path.join().
+		rValue = self.root + _os.sep + VDB_PATH + _os.sep + mykey
+		if filename is not None:
+			# If filename is always relative, we can do just
+			# rValue += _os.sep + filename
+			rValue = _os.path.join(rValue, filename)
 		return rValue
 
 	def cpv_exists(self, mykey):
@@ -881,12 +892,12 @@ class vardbapi(dbapi):
 		if not origmatches:
 			return moves
 		for mycpv in origmatches:
-			mycpsplit = catpkgsplit(mycpv)
-			mynewcpv = newcp + "-" + mycpsplit[2]
-			mynewcat = newcp.split("/")[0]
-			if mycpsplit[3] != "r0":
-				mynewcpv += "-" + mycpsplit[3]
-			mycpsplit_new = catpkgsplit(mynewcpv)
+			mycpv_cp = cpv_getkey(mycpv)
+			if mycpv_cp != origcp:
+				# Ignore PROVIDE virtual match.
+				continue
+			mynewcpv = mycpv.replace(mycpv_cp, str(newcp), 1)
+			mynewcat = catsplit(newcp)[0]
 			origpath = self.getpath(mycpv)
 			if not os.path.exists(origpath):
 				continue
@@ -907,7 +918,7 @@ class vardbapi(dbapi):
 				try:
 					os.rename(os.path.join(newpath, old_pf + ".ebuild"),
 						os.path.join(newpath, new_pf + ".ebuild"))
-				except EnvironmentError, e:
+				except EnvironmentError as e:
 					if e.errno != errno.ENOENT:
 						raise
 					del e
@@ -931,7 +942,7 @@ class vardbapi(dbapi):
 		cat_dir = self.getpath(mysplit[0])
 		try:
 			dir_list = os.listdir(cat_dir)
-		except EnvironmentError, e:
+		except EnvironmentError as e:
 			if e.errno == PermissionDenied.errno:
 				raise PermissionDenied(cat_dir)
 			del e
@@ -972,7 +983,7 @@ class vardbapi(dbapi):
 				try:
 					return [x for x in os.listdir(p) \
 						if os.path.isdir(os.path.join(p, x))]
-				except EnvironmentError, e:
+				except EnvironmentError as e:
 					if e.errno == PermissionDenied.errno:
 						raise PermissionDenied(p)
 					del e
@@ -1014,7 +1025,7 @@ class vardbapi(dbapi):
 				self.invalidentry(self.getpath(y))
 				continue
 			d[mysplit[0]+"/"+mysplit[1]] = None
-		return d.keys()
+		return list(d)
 
 	def checkblockers(self, origdep):
 		pass
@@ -1087,7 +1098,7 @@ class vardbapi(dbapi):
 			secpass >= 2:
 			self._owners.populate() # index any unindexed contents
 			valid_nodes = set(self.cpv_all())
-			for cpv in self._aux_cache["packages"].keys():
+			for cpv in list(self._aux_cache["packages"]):
 				if cpv not in valid_nodes:
 					del self._aux_cache["packages"][cpv]
 			del self._aux_cache["modified"]
@@ -1096,8 +1107,8 @@ class vardbapi(dbapi):
 				pickle.dump(self._aux_cache, f, protocol=2)
 				f.close()
 				apply_secpass_permissions(
-					self._aux_cache_filename, gid=portage_gid, mode=0644)
-			except (IOError, OSError), e:
+					self._aux_cache_filename, gid=portage_gid, mode=0o644)
+			except (IOError, OSError) as e:
 				pass
 			self._aux_cache["modified"] = set()
 
@@ -1129,7 +1140,7 @@ class vardbapi(dbapi):
 			aux_cache = mypickle.load()
 			f.close()
 			del f
-		except (IOError, OSError, EOFError, ValueError, pickle.UnpicklingError), e:
+		except (IOError, OSError, EOFError, ValueError, pickle.UnpicklingError) as e:
 			if isinstance(e, pickle.UnpicklingError):
 				writemsg(_("!!! Error loading '%s': %s\n") % \
 					(self._aux_cache_filename, str(e)), noiselevel=-1)
@@ -1193,7 +1204,7 @@ class vardbapi(dbapi):
 		mydir_stat = None
 		try:
 			mydir_stat = os.stat(mydir)
-		except OSError, e:
+		except OSError as e:
 			if e.errno != errno.ENOENT:
 				raise
 			raise KeyError(mycpv)
@@ -1219,7 +1230,7 @@ class vardbapi(dbapi):
 			cache_valid = cache_mtime == mydir_mtime
 		if cache_valid:
 			# Migrate old metadata to unicode.
-			for k, v in metadata.iteritems():
+			for k, v in metadata.items():
 				metadata[k] = _unicode_decode(v,
 					encoding=_encodings['repo.content'], errors='replace')
 
@@ -1229,7 +1240,7 @@ class vardbapi(dbapi):
 		if pull_me:
 			# pull any needed data and cache it
 			aux_keys = list(pull_me)
-			for k, v in izip(aux_keys,
+			for k, v in zip(aux_keys,
 				self._aux_get(mycpv, aux_keys, st=mydir_stat)):
 				mydata[k] = v
 			if not cache_valid or cache_these.difference(metadata):
@@ -1243,7 +1254,7 @@ class vardbapi(dbapi):
 		if not mydata['SLOT']:
 			# Empty slot triggers InvalidAtom exceptions when generating slot
 			# atoms for packages, so translate it to '0' here.
-			mydata['SLOT'] = u'0'
+			mydata['SLOT'] = _unicode_decode('0')
 		return [mydata[x] for x in wants]
 
 	def _aux_get(self, mycpv, wants, st=None):
@@ -1251,7 +1262,7 @@ class vardbapi(dbapi):
 		if st is None:
 			try:
 				st = os.stat(mydir)
-			except OSError, e:
+			except OSError as e:
 				if e.errno == errno.ENOENT:
 					raise KeyError(mycpv)
 				elif e.errno == PermissionDenied.errno:
@@ -1280,9 +1291,9 @@ class vardbapi(dbapi):
 				if self._aux_multi_line_re.match(x) is None:
 					myd = " ".join(myd.split())
 			except IOError:
-				myd = u''
+				myd = _unicode_decode('')
 			if x == "EAPI" and not myd:
-				results.append(u'0')
+				results.append(_unicode_decode('0'))
 			else:
 				results.append(myd)
 		return results
@@ -1293,7 +1304,7 @@ class vardbapi(dbapi):
 		treetype="vartree", vartree=self.vartree)
 		if not mylink.exists():
 			raise KeyError(cpv)
-		for k, v in values.iteritems():
+		for k, v in values.items():
 			if v:
 				mylink.setfile(k, v)
 			else:
@@ -1343,7 +1354,7 @@ class vardbapi(dbapi):
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['repo.content'],
 				errors='replace')
-		except EnvironmentError, e:
+		except EnvironmentError as e:
 			new_vdb = not bool(self.cpv_all())
 			if not new_vdb:
 				writemsg(_("!!! Unable to read COUNTER file: '%s'\n") % \
@@ -1356,7 +1367,7 @@ class vardbapi(dbapi):
 					counter = long(cfile.readline().strip())
 				finally:
 					cfile.close()
-			except (OverflowError, ValueError), e:
+			except (OverflowError, ValueError) as e:
 				writemsg(_("!!! COUNTER file is corrupt: '%s'\n") % \
 					self._counter_path, noiselevel=-1)
 				writemsg("!!! %s\n" % str(e), noiselevel=-1)
@@ -1509,7 +1520,7 @@ class vardbapi(dbapi):
 			base_names = self._vardb._aux_cache["owners"]["base_names"]
 
 			# Take inventory of all cached package hashes.
-			for name, hash_values in base_names.items():
+			for name, hash_values in list(base_names.items()):
 				if not isinstance(hash_values, dict):
 					del base_names[name]
 					continue
@@ -1532,7 +1543,7 @@ class vardbapi(dbapi):
 			# Delete any stale cache.
 			stale_hashes = cached_hashes.difference(valid_pkg_hashes)
 			if stale_hashes:
-				for base_name_hash, bucket in base_names.items():
+				for base_name_hash, bucket in list(base_names.items()):
 					for hash_value in stale_hashes.intersection(bucket):
 						del bucket[hash_value]
 					if not bucket:
@@ -1556,7 +1567,7 @@ class vardbapi(dbapi):
 		def getFileOwnerMap(self, path_iter):
 			owners = self.get_owners(path_iter)
 			file_owners = {}
-			for pkg_dblink, files in owners.iteritems():
+			for pkg_dblink, files in owners.items():
 				for f in files:
 					owner_set = file_owners.get(f)
 					if owner_set is None:
@@ -1674,9 +1685,9 @@ class vartree(object):
 						mys = myprovide.split("/")
 					myprovides += [mys[0] + "/" + mys[1]]
 			return myprovides
-		except SystemExit, e:
+		except SystemExit as e:
 			raise
-		except Exception, e:
+		except Exception as e:
 			mydir = os.path.join(self.root, VDB_PATH, mycpv)
 			writemsg(_("\nParse Error reading PROVIDE and USE in '%s'\n") % mydir,
 				noiselevel=-1)
@@ -1730,6 +1741,9 @@ class vartree(object):
 		return self.dbapi.cp_all()
 
 	def exists_specific_cat(self, cpv, use_cache=1):
+		warnings.warn(
+			"portage.dbapi.vartree.vartree.exists_specific_cat() is deprecated",
+			DeprecationWarning)
 		cpv = key_expand(cpv, mydb=self.dbapi, use_cache=use_cache,
 			settings=self.settings)
 		a = catpkgsplit(cpv)
@@ -1750,6 +1764,9 @@ class vartree(object):
 		return self.getpath(fullpackage, filename=package+".ebuild")
 
 	def getnode(self, mykey, use_cache=1):
+		warnings.warn(
+			"portage.dbapi.vartree.vartree.getnode() is deprecated",
+			DeprecationWarning)
 		mykey = key_expand(mykey, mydb=self.dbapi, use_cache=use_cache,
 			settings=self.settings)
 		if not mykey:
@@ -1776,6 +1793,9 @@ class vartree(object):
 
 	def hasnode(self, mykey, use_cache):
 		"""Does the particular node (cat/pkg key) exist?"""
+		warnings.warn(
+			"portage.dbapi.vartree.vartree.hadnode() is deprecated",
+			DeprecationWarning)
 		mykey = key_expand(mykey, mydb=self.dbapi, use_cache=use_cache,
 			settings=self.settings)
 		mysplit = catsplit(mykey)
@@ -1931,7 +1951,7 @@ class dblink(object):
 				encoding=_encodings['fs'], errors='strict'),
 				mode='r', encoding=_encodings['repo.content'],
 				errors='replace')
-		except EnvironmentError, e:
+		except EnvironmentError as e:
 			if e.errno != errno.ENOENT:
 				raise
 			del e
@@ -2089,7 +2109,7 @@ class dblink(object):
 			try:
 				doebuild_environment(myebuildpath, "prerm", self.myroot,
 					self.settings, 0, 0, self.vartree.dbapi)
-			except UnsupportedAPIException, e:
+			except UnsupportedAPIException as e:
 				# Sometimes this happens due to corruption of the EAPI file.
 				writemsg(_("!!! FAILED prerm: %s\n") % \
 					os.path.join(self.dbdir, "EAPI"), noiselevel=-1)
@@ -2098,7 +2118,7 @@ class dblink(object):
 			else:
 				catdir = os.path.dirname(self.settings["PORTAGE_BUILDDIR"])
 				ensure_dirs(os.path.dirname(catdir), uid=portage_uid,
-					gid=portage_gid, mode=070, mask=0)
+					gid=portage_gid, mode=0o70, mask=0)
 
 		builddir_lock = None
 		catdir_lock = None
@@ -2110,7 +2130,7 @@ class dblink(object):
 				catdir_lock = lockdir(catdir)
 				ensure_dirs(catdir,
 					uid=portage_uid, gid=portage_gid,
-					mode=070, mask=0)
+					mode=0o70, mask=0)
 				builddir_lock = lockdir(
 					self.settings["PORTAGE_BUILDDIR"])
 				try:
@@ -2169,7 +2189,7 @@ class dblink(object):
 			cpv_lib_map = self._find_unused_preserved_libs()
 			if cpv_lib_map:
 				self._remove_preserved_libs(cpv_lib_map)
-				for cpv, removed in cpv_lib_map.iteritems():
+				for cpv, removed in cpv_lib_map.items():
 					if not self.vartree.dbapi.cpv_exists(cpv):
 						for dblnk in others_in_slot:
 							if dblnk.mycpv == cpv:
@@ -2249,7 +2269,7 @@ class dblink(object):
 				if catdir_lock:
 					try:
 						os.rmdir(catdir)
-					except OSError, e:
+					except OSError as e:
 						if e.errno not in (errno.ENOENT,
 							errno.ENOTEMPTY, errno.EEXIST):
 							raise
@@ -2345,7 +2365,7 @@ class dblink(object):
 
 		if pkgfiles:
 			self.updateprotect()
-			mykeys = pkgfiles.keys()
+			mykeys = list(pkgfiles)
 			mykeys.sort()
 			mykeys.reverse()
 
@@ -2468,7 +2488,7 @@ class dblink(object):
 					not self.isprotected(obj):
 					try:
 						unlink(obj, lstatobj)
-					except EnvironmentError, e:
+					except EnvironmentError as e:
 						if e.errno not in ignored_unlink_errnos:
 							raise
 						del e
@@ -2499,7 +2519,7 @@ class dblink(object):
 					try:
 						unlink(obj, lstatobj)
 						show_unmerge("<<<", "", file_type, obj)
-					except (OSError, IOError),e:
+					except (OSError, IOError) as e:
 						if e.errno not in ignored_unlink_errnos:
 							raise
 						del e
@@ -2511,7 +2531,7 @@ class dblink(object):
 					mymd5 = None
 					try:
 						mymd5 = perf_md5(obj, calc_prelink=1)
-					except FileNotFound, e:
+					except FileNotFound as e:
 						# the file has disappeared between now and our stat call
 						show_unmerge("---", unmerge_desc["!obj"], file_type, obj)
 						continue
@@ -2523,7 +2543,7 @@ class dblink(object):
 						continue
 					try:
 						unlink(obj, lstatobj)
-					except (OSError, IOError), e:
+					except (OSError, IOError) as e:
 						if e.errno not in ignored_unlink_errnos:
 							raise
 						del e
@@ -2558,7 +2578,7 @@ class dblink(object):
 							# Restore the parent flags we saved before unlinking
 							bsd_chflags.chflags(parent_name, pflags)
 					show_unmerge("<<<", "", "dir", obj)
-				except EnvironmentError, e:
+				except EnvironmentError as e:
 					if e.errno not in ignored_rmdir_errnos:
 						raise
 					if e.errno != errno.ENOENT:
@@ -2678,7 +2698,7 @@ class dblink(object):
 			parent_path = os_filename_arg.path.dirname(destfile)
 			try:
 				parent_stat = os_filename_arg.stat(parent_path)
-			except EnvironmentError, e:
+			except EnvironmentError as e:
 				if e.errno != errno.ENOENT:
 					raise
 				del e
@@ -2742,7 +2762,7 @@ class dblink(object):
 			return
 		try:
 			self.vartree.dbapi.linkmap.rebuild(**kwargs)
-		except CommandNotFound, e:
+		except CommandNotFound as e:
 			self._linkmap_broken = True
 			self._display_merge(_("!!! Disabling preserve-libs " \
 				"due to error: Command Not Found: %s\n") % (e,),
@@ -2815,7 +2835,7 @@ class dblink(object):
 
 		# Create consumer nodes and add them to the graph.
 		# Note that consumers can also be providers.
-		for provider_node, consumers in consumer_map.iteritems():
+		for provider_node, consumers in consumer_map.items():
 			for c in consumers:
 				if self.isowner(c, root):
 					continue
@@ -2941,7 +2961,7 @@ class dblink(object):
 			return node
 
 		linkmap = self.vartree.dbapi.linkmap
-		for cpv, plibs in plib_dict.iteritems():
+		for cpv, plibs in plib_dict.items():
 			for f in plibs:
 				path_cpv_map[f] = cpv
 				preserved_node = path_to_node(f)
@@ -3022,7 +3042,7 @@ class dblink(object):
 		os = _os_merge
 
 		files_to_remove = set()
-		for files in cpv_lib_map.itervalues():
+		for files in cpv_lib_map.values():
 			files_to_remove.update(files)
 		files_to_remove = sorted(files_to_remove)
 		showMessage = self._display_merge
@@ -3038,7 +3058,7 @@ class dblink(object):
 				obj_type = _("obj")
 			try:
 				os.unlink(obj)
-			except OSError, e:
+			except OSError as e:
 				if e.errno != errno.ENOENT:
 					raise
 				del e
@@ -3074,7 +3094,7 @@ class dblink(object):
 			plib_dict = self.vartree.dbapi.plib_registry.getPreservedLibs()
 			plib_cpv_map = {}
 			plib_paths = set()
-			for cpv, paths in plib_dict.iteritems():
+			for cpv, paths in plib_dict.items():
 				plib_paths.update(paths)
 				for f in paths:
 					plib_cpv_map[f] = cpv
@@ -3101,7 +3121,7 @@ class dblink(object):
 					os.path.join(destroot, f.lstrip(os.path.sep)))
 				try:
 					dest_lstat = os.lstat(dest_path)
-				except EnvironmentError, e:
+				except EnvironmentError as e:
 					if e.errno == errno.ENOENT:
 						del e
 						continue
@@ -3116,7 +3136,7 @@ class dblink(object):
 							try:
 								dest_lstat = os.lstat(parent_path)
 								break
-							except EnvironmentError, e:
+							except EnvironmentError as e:
 								if e.errno != errno.ENOTDIR:
 									raise
 								del e
@@ -3185,7 +3205,7 @@ class dblink(object):
 			path = os.path.join(root, f.lstrip(os.sep))
 			try:
 				st = os.lstat(path)
-			except OSError, e:
+			except OSError as e:
 				if e.errno not in (errno.ENOENT, errno.ENOTDIR):
 					raise
 				del e
@@ -3236,7 +3256,7 @@ class dblink(object):
 
 			try:
 				s = os.lstat(path)
-			except OSError, e:
+			except OSError as e:
 				if e.errno not in (errno.ENOENT, errno.ENOTDIR):
 					raise
 				del e
@@ -3252,7 +3272,7 @@ class dblink(object):
 				k = (s.st_dev, s.st_ino)
 				inode_map.setdefault(k, []).append((path, s))
 		suspicious_hardlinks = []
-		for path_list in inode_map.itervalues():
+		for path_list in inode_map.values():
 			path, s = path_list[0]
 			if len(path_list) == s.st_nlink:
 				# All hardlinks seem to be owned by this package.
@@ -3360,7 +3380,7 @@ class dblink(object):
 					encoding=_encodings['fs'], errors='strict'),
 					mode='r', encoding=_encodings['repo.content'],
 					errors='replace').readline().strip()
-			except EnvironmentError, e:
+			except EnvironmentError as e:
 				if e.errno != errno.ENOENT:
 					raise
 				del e
@@ -3630,7 +3650,7 @@ class dblink(object):
 			owners = self.vartree.dbapi._owners.get_owners(collisions)
 			self.vartree.dbapi.flush_cache()
 
-			for pkg, owned_files in owners.iteritems():
+			for pkg, owned_files in owners.items():
 				cpv = pkg.mycpv
 				msg = []
 				msg.append("%s" % cpv)
@@ -3669,7 +3689,7 @@ class dblink(object):
 		try:
 			os.unlink(os.path.join(
 				os.path.dirname(normalize_path(srcroot)), ".installed"))
-		except OSError, e:
+		except OSError as e:
 			if e.errno != errno.ENOENT:
 				raise
 			del e
@@ -3785,7 +3805,7 @@ class dblink(object):
 		cfgfiledict.pop("IGNORE", None)
 		if cfgfiledict != cfgfiledict_orig:
 			ensure_dirs(os.path.dirname(conf_mem_file),
-				gid=portage_gid, mode=02750, mask=02)
+				gid=portage_gid, mode=0o2750, mask=0o2)
 			writedict(cfgfiledict, conf_mem_file)
 
 		# These caches are populated during collision-protect and the data
@@ -3877,7 +3897,7 @@ class dblink(object):
 		# and update the contents of the packages that owned them.
 		plib_registry = self.vartree.dbapi.plib_registry
 		plib_dict = plib_registry.getPreservedLibs()
-		for cpv, paths in plib_collisions.iteritems():
+		for cpv, paths in plib_collisions.items():
 			if cpv not in plib_dict:
 				continue
 			if cpv == self.mycpv:
@@ -3934,7 +3954,7 @@ class dblink(object):
 		cpv_lib_map = self._find_unused_preserved_libs()
 		if cpv_lib_map:
 			self._remove_preserved_libs(cpv_lib_map)
-			for cpv, removed in cpv_lib_map.iteritems():
+			for cpv, removed in cpv_lib_map.items():
 				if not self.vartree.dbapi.cpv_exists(cpv):
 					continue
 				self.vartree.dbapi.removeFromContents(cpv, removed)
@@ -4006,7 +4026,7 @@ class dblink(object):
 			try:
 				mydstat = os.lstat(mydest)
 				mydmode = mydstat.st_mode
-			except OSError, e:
+			except OSError as e:
 				if e.errno != errno.ENOENT:
 					raise
 				del e
@@ -4258,7 +4278,7 @@ class dblink(object):
 				settings["PORTAGE_TMPDIR"])
 			from portage.process import atexit_register
 			atexit_register(shutil.rmtree, base_path_tmp)
-			dir_perms = 0755
+			dir_perms = 0o755
 			for subdir in "bin", "pym":
 				var_name = "PORTAGE_%s_PATH" % subdir.upper()
 				var_orig = settings[var_name]
@@ -4414,13 +4434,13 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None):
 	curval = 0
 	if onProgress:
 		onProgress(maxval, 0)
-	paths = contents.keys()
+	paths = list(contents)
 	paths.sort()
 	for path in paths:
 		curval += 1
 		try:
 			lst = os.lstat(path)
-		except OSError, e:
+		except OSError as e:
 			if e.errno != errno.ENOENT:
 				raise
 			del e

@@ -2,10 +2,11 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+from __future__ import print_function
+
 import logging
 import sys
 import textwrap
-from itertools import izip
 import portage
 from portage import os
 from portage.output import bold, colorize, darkgreen, green
@@ -40,7 +41,7 @@ def unmerge(root_config, myopts, unmerge_action,
 		pkg = pkg_cache.get(cpv)
 		if pkg is None:
 			pkg = Package(cpv=cpv, installed=True,
-				metadata=izip(db_keys, vartree.dbapi.aux_get(cpv, db_keys)),
+				metadata=zip(db_keys, vartree.dbapi.aux_get(cpv, db_keys)),
 				root_config=root_config,
 				type_name="installed")
 			pkg_cache[cpv] = pkg
@@ -74,9 +75,9 @@ def unmerge(root_config, myopts, unmerge_action,
 	
 		if not unmerge_files:
 			if unmerge_action == "unmerge":
-				print
-				print bold("emerge unmerge") + " can only be used with specific package names"
-				print
+				print()
+				print(bold("emerge unmerge") + " can only be used with specific package names")
+				print()
 				return 0
 			else:
 				global_unmerge = 1
@@ -90,7 +91,7 @@ def unmerge(root_config, myopts, unmerge_action,
 		else:
 			#we've got command-line arguments
 			if not unmerge_files:
-				print "\nNo packages to unmerge have been provided.\n"
+				print("\nNo packages to unmerge have been provided.\n")
 				return 0
 			for x in unmerge_files:
 				arg_parts = x.split('/')
@@ -99,14 +100,14 @@ def unmerge(root_config, myopts, unmerge_action,
 					#possible cat/pkg or dep; treat as such
 					candidate_catpkgs.append(x)
 				elif unmerge_action in ["prune","clean"]:
-					print "\n!!! Prune and clean do not accept individual" + \
-						" ebuilds as arguments;\n    skipping.\n"
+					print("\n!!! Prune and clean do not accept individual" + \
+						" ebuilds as arguments;\n    skipping.\n")
 					continue
 				else:
 					# it appears that the user is specifying an installed
 					# ebuild and we're in "unmerge" mode, so it's ok.
 					if not os.path.exists(x):
-						print "\n!!! The path '"+x+"' doesn't exist.\n"
+						print("\n!!! The path '"+x+"' doesn't exist.\n")
 						return 0
 	
 					absx   = os.path.abspath(x)
@@ -124,26 +125,26 @@ def unmerge(root_config, myopts, unmerge_action,
 					sp_vdb_len = len(sp_vdb)
 	
 					if not os.path.exists(absx+"/CONTENTS"):
-						print "!!! Not a valid db dir: "+str(absx)
+						print("!!! Not a valid db dir: "+str(absx))
 						return 0
 	
 					if sp_absx_len <= sp_vdb_len:
 						# The Path is shorter... so it can't be inside the vdb.
-						print sp_absx
-						print absx
-						print "\n!!!",x,"cannot be inside "+ \
-							vdb_path+"; aborting.\n"
+						print(sp_absx)
+						print(absx)
+						print("\n!!!",x,"cannot be inside "+ \
+							vdb_path+"; aborting.\n")
 						return 0
 	
 					for idx in range(0,sp_vdb_len):
 						if idx >= sp_absx_len or sp_vdb[idx] != sp_absx[idx]:
-							print sp_absx
-							print absx
-							print "\n!!!", x, "is not inside "+\
-								vdb_path+"; aborting.\n"
+							print(sp_absx)
+							print(absx)
+							print("\n!!!", x, "is not inside "+\
+								vdb_path+"; aborting.\n")
 							return 0
 	
-					print "="+"/".join(sp_absx[sp_vdb_len:])
+					print("="+"/".join(sp_absx[sp_vdb_len:]))
 					candidate_catpkgs.append(
 						"="+"/".join(sp_absx[sp_vdb_len:]))
 	
@@ -171,14 +172,14 @@ def unmerge(root_config, myopts, unmerge_action,
 			# what will and will not get unmerged
 			try:
 				mymatch = vartree.dbapi.match(x)
-			except portage.exception.AmbiguousPackageName, errpkgs:
-				print "\n\n!!! The short ebuild name \"" + \
-					x + "\" is ambiguous.  Please specify"
-				print "!!! one of the following fully-qualified " + \
-					"ebuild names instead:\n"
+			except portage.exception.AmbiguousPackageName as errpkgs:
+				print("\n\n!!! The short ebuild name \"" + \
+					x + "\" is ambiguous.  Please specify")
+				print("!!! one of the following fully-qualified " + \
+					"ebuild names instead:\n")
 				for i in errpkgs[0]:
-					print "    " + green(i)
-				print
+					print("    " + green(i))
+				print()
 				sys.exit(1)
 	
 			if not mymatch and x[0] not in "<>=~":
@@ -242,7 +243,7 @@ def unmerge(root_config, myopts, unmerge_action,
 					slotmap[myslot][vartree.dbapi.cpv_counter(mypkg)] = mypkg
 
 				for myslot in slotmap:
-					counterkeys = slotmap[myslot].keys()
+					counterkeys = list(slotmap[myslot])
 					if not counterkeys:
 						continue
 					counterkeys.sort()
@@ -304,7 +305,7 @@ def unmerge(root_config, myopts, unmerge_action,
 	# listed in "world" as they would be remerged on the next update of "world" or the 
 	# relevant package sets.
 	unknown_sets = set()
-	for cp in xrange(len(pkgmap)):
+	for cp in range(len(pkgmap)):
 		for cpv in pkgmap[cp]["selected"].copy():
 			try:
 				pkg = _pkg(cpv)
@@ -379,9 +380,9 @@ def unmerge(root_config, myopts, unmerge_action,
 				#print colorize("WARN", "Package %s is going to be unmerged," % cpv)
 				#print colorize("WARN", "but still listed in the following package sets:")
 				#print "    %s\n" % ", ".join(parents)
-				print colorize("WARN", "Not unmerging package %s as it is" % cpv)
-				print colorize("WARN", "still referenced by the following package sets:")
-				print "    %s\n" % ", ".join(parents)
+				print(colorize("WARN", "Not unmerging package %s as it is" % cpv))
+				print(colorize("WARN", "still referenced by the following package sets:"))
+				print("    %s\n" % ", ".join(parents))
 				# adjust pkgmap so the display output is correct
 				pkgmap[cp]["selected"].remove(cpv)
 				all_selected.remove(cpv)
@@ -403,26 +404,26 @@ def unmerge(root_config, myopts, unmerge_action,
 			selected = d["selected"]
 			if not selected:
 				continue
-			cp = portage.cpv_getkey(iter(selected).next())
+			cp = portage.cpv_getkey(next(iter(selected)))
 			cp_dict = unordered.get(cp)
 			if cp_dict is None:
 				cp_dict = {}
 				unordered[cp] = cp_dict
 				for k in d:
 					cp_dict[k] = set()
-			for k, v in d.iteritems():
+			for k, v in d.items():
 				cp_dict[k].update(v)
 		pkgmap = [unordered[cp] for cp in sorted(unordered)]
 
-	for x in xrange(len(pkgmap)):
+	for x in range(len(pkgmap)):
 		selected = pkgmap[x]["selected"]
 		if not selected:
 			continue
-		for mytype, mylist in pkgmap[x].iteritems():
+		for mytype, mylist in pkgmap[x].items():
 			if mytype == "selected":
 				continue
 			mylist.difference_update(all_selected)
-		cp = portage.cpv_getkey(iter(selected).next())
+		cp = portage.cpv_getkey(next(iter(selected)))
 		for y in localtree.dep_match(cp):
 			if y not in pkgmap[x]["omitted"] and \
 				y not in pkgmap[x]["selected"] and \
@@ -484,15 +485,15 @@ def unmerge(root_config, myopts, unmerge_action,
 		if userquery("Would you like to unmerge these packages?")=="No":
 			# enter pretend mode for correct formatting of results
 			myopts["--pretend"] = True
-			print
-			print "Quitting."
-			print
+			print()
+			print("Quitting.")
+			print()
 			return 0
 	#the real unmerging begins, after a short delay....
 	if clean_delay and not autoclean:
 		countdown(int(settings["CLEAN_DELAY"]), ">>> Unmerging")
 
-	for x in xrange(len(pkgmap)):
+	for x in range(len(pkgmap)):
 		for y in pkgmap[x]["selected"]:
 			writemsg_level(">>> Unmerging "+y+"...\n", noiselevel=-1)
 			emergelog(xterm_titles, "=== Unmerging... ("+y+")")

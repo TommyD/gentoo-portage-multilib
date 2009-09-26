@@ -2,8 +2,9 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
+from __future__ import print_function
+
 import re
-from itertools import izip
 import portage
 from portage import os
 from portage.output import  bold, bold as white, darkgreen, green, red
@@ -140,7 +141,7 @@ class search(object):
 				else:
 					db_keys = list(db._aux_cache_keys)
 					for cpv in db.match(atom):
-						metadata = izip(db_keys,
+						metadata = zip(db_keys,
 							db.aux_get(cpv, db_keys))
 						if not self._visible(db, cpv, metadata):
 							continue
@@ -163,7 +164,7 @@ class search(object):
 					for cpv in reversed(db.match(atom)):
 						if portage.cpv_getkey(cpv) != cp:
 							continue
-						metadata = izip(db_keys,
+						metadata = zip(db_keys,
 							db.aux_get(cpv, db_keys))
 						if not self._visible(db, cpv, metadata):
 							continue
@@ -185,7 +186,7 @@ class search(object):
 		else:
 			self.searchdesc=0
 			self.matches = {"pkg":[], "set":[]}
-		print "Searching...   ",
+		print("Searching...   ", end=' ')
 
 		regexsearch = False
 		if self.searchkey.startswith('%'):
@@ -225,7 +226,7 @@ class search(object):
 					full_desc = self.portdb.aux_get(
 						full_package, ["DESCRIPTION"])[0]
 				except KeyError:
-					print "emerge: search: aux_get() failed, skipping"
+					print("emerge: search: aux_get() failed, skipping")
 					continue
 				if self.searchre.search(full_desc):
 					self.matches["desc"].append([full_package,masked])
@@ -261,9 +262,9 @@ class search(object):
 
 	def output(self):
 		"""Outputs the results of the search."""
-		print "\b\b  \n[ Results for search key : "+white(self.searchkey)+" ]"
-		print "[ Applications found : "+white(str(self.mlen))+" ]"
-		print " "
+		print("\b\b  \n[ Results for search key : "+white(self.searchkey)+" ]")
+		print("[ Applications found : "+white(str(self.mlen))+" ]")
+		print(" ")
 		vardb = self.vartree.dbapi
 		for mtype in self.matches:
 			for match,masked in self.matches[mtype]:
@@ -294,12 +295,12 @@ class search(object):
 						desc, homepage, license = self.portdb.aux_get(
 							full_package, ["DESCRIPTION","HOMEPAGE","LICENSE"])
 					except KeyError:
-						print "emerge: search: aux_get() failed, skipping"
+						print("emerge: search: aux_get() failed, skipping")
 						continue
 					if masked:
-						print green("*")+"  "+white(match)+" "+red("[ Masked ]")
+						print(green("*")+"  "+white(match)+" "+red("[ Masked ]"))
 					else:
-						print green("*")+"  "+white(match)
+						print(green("*")+"  "+white(match))
 					myversion = self.getVersion(full_package, search.VERSION_RELEASE)
 
 					mysum = [0,0]
@@ -315,13 +316,13 @@ class search(object):
 							pkgdir, self.settings["DISTDIR"])
 						try:
 							uri_map = self.portdb.getFetchMap(mycpv)
-						except portage.exception.InvalidDependString, e:
+						except portage.exception.InvalidDependString as e:
 							file_size_str = "Unknown (%s)" % (e,)
 							del e
 						else:
 							try:
 								mysum[0] = mf.getDistfilesSize(uri_map)
-							except KeyError, e:
+							except KeyError as e:
 								file_size_str = "Unknown (missing " + \
 									"digest for %s)" % (e,)
 								del e
@@ -340,7 +341,7 @@ class search(object):
 							break
 
 					if myebuild and file_size_str is None:
-						mystr = str(mysum[0] / 1024)
+						mystr = str(mysum[0] // 1024)
 						mycount = len(mystr)
 						while (mycount > 3):
 							mycount -= 3
@@ -350,11 +351,11 @@ class search(object):
 					if self.verbose:
 						msg = []
 						if available:
-							print "     ", darkgreen("Latest version available:"),myversion
-						print "     ", self.getInstallationStatus(mycat+'/'+mypkg)
+							print("     ", darkgreen("Latest version available:"),myversion)
+						print("     ", self.getInstallationStatus(mycat+'/'+mypkg))
 						if myebuild:
-							print "      %s %s" % \
-								(darkgreen("Size of files:"), file_size_str)
+							print("      %s %s" % \
+								(darkgreen("Size of files:"), file_size_str))
 						msg.append("      " + darkgreen("Homepage:") + \
 							"      " + homepage + "\n")
 						msg.append("      " + darkgreen("Description:") \
