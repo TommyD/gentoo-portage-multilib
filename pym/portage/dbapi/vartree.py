@@ -12,7 +12,7 @@ import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.checksum:_perform_md5_merge@perform_md5',
 	'portage.dep:dep_getkey,isjustname,match_from_list,' + \
-	 	'use_reduce,paren_reduce',
+	 	'use_reduce,paren_reduce,_slot_re',
 	'portage.elog:elog_process',
 	'portage.elog.filtering:filter_mergephases,filter_unmergephases',
 	'portage.locks:lockdir,unlockdir',
@@ -1251,10 +1251,12 @@ class vardbapi(dbapi):
 					cache_data[aux_key] = mydata[aux_key]
 				self._aux_cache["packages"][mycpv] = (mydir_mtime, cache_data)
 				self._aux_cache["modified"].add(mycpv)
-		if not mydata['SLOT']:
-			# Empty slot triggers InvalidAtom exceptions when generating slot
-			# atoms for packages, so translate it to '0' here.
+
+		if _slot_re.match(mydata['SLOT']) is None:
+			# Empty or invalid slot triggers InvalidAtom exceptions when
+			# generating slot atoms for packages, so translate it to '0' here.
 			mydata['SLOT'] = _unicode_decode('0')
+
 		return [mydata[x] for x in wants]
 
 	def _aux_get(self, mycpv, wants, st=None):
@@ -3063,7 +3065,7 @@ class dblink(object):
 					raise
 				del e
 			else:
-				showMessage(_("<<< !needed   %s %s\n") % (obj_type, obj),
+				showMessage(_("<<< !needed  %s %s\n") % (obj_type, obj),
 					noiselevel=-1)
 
 		# Remove empty parent directories if possible.
@@ -3961,6 +3963,26 @@ class dblink(object):
 
 		return os.EX_OK
 
+	def _new_backup_path(self, p):
+		"""
+		The works for any type path, such as a regular file, symlink,
+		or directory. The parent directory is assumed to exist.
+		The returned filename is of the form p + '.backup.' + x, where
+		x guarantees that the returned path does not exist yet.
+		"""
+		os = _os_merge
+
+		x = -1
+		while True:
+			x += 1
+			backup_p = p + '.backup.' + str(x).rjust(4, '0')
+			try:
+				os.lstat(backup_p)
+			except OSError:
+				break
+
+		return backup_p
+
 	def mergeme(self, srcroot, destroot, outfile, secondhand, stufftomerge, cfgfiledict, thismtime):
 		"""
 		
@@ -4118,7 +4140,16 @@ class dblink(object):
 							bsd_chflags.lchflags(mydest, dflags)
 					else:
 						# a non-directory and non-symlink-to-directory.  Won't work for us.  Move out of the way.
-						if movefile(mydest, mydest+".backup",
+						backup_dest = self._new_backup_path(mydest)
+						msg = []
+						msg.append("")
+						msg.append("Installation of a directory is blocked by a file:")
+						msg.append("  '%s'" % mydest)
+						msg.append("This file will be renamed to a different name:")
+						msg.append("  '%s'" % backup_dest)
+						msg.append("")
+						self._eerror("preinst", msg)
+						if movefile(mydest, backup_dest,
 							mysettings=self.settings,
 							encoding=_encodings['merge']) is None:
 							return 1
@@ -4159,12 +4190,20 @@ class dblink(object):
 				protected = self.isprotected(mydest)
 				if mydmode != None:
 					# destination file exists
-					cfgprot = 0
+					
 					if stat.S_ISDIR(mydmode):
 						# install of destination is blocked by an existing directory with the same name
-						cfgprot = 1
-						showMessage("!!! %s\n" % mydest,
-							level=logging.ERROR, noiselevel=-1)
+						newdest = self._new_backup_path(mydest)
+						msg = []
+						msg.append("")
+						msg.append("Installation of a regular file is blocked by a directory:")
+						msg.append("  '%s'" % mydest)
+						msg.append("This file will be merged with a different name:")
+						msg.append("  '%s'" % newdest)
+						msg.append("")
+						self._eerror("preinst", msg)
+						mydest = newdest
+
 					elif stat.S_ISREG(mydmode) or (stat.S_ISLNK(mydmode) and os.path.exists(mydest) and stat.S_ISREG(os.stat(mydest)[stat.ST_MODE])):
 						# install of destination is blocked by an existing regular file,
 						# or by a symlink to an existing regular file;
@@ -4172,6 +4211,7 @@ class dblink(object):
 						# we only need to tweak mydest if cfg file management is in play.
 						if protected:
 							# we have a protection path; enable config file management.
+							cfgprot = 0
 							destmd5 = perform_md5(mydest, calc_prelink=1)
 							if mymd5 == destmd5:
 								#file already in place; simply update mtimes of destination
@@ -4196,8 +4236,9 @@ class dblink(object):
 								"""A previously remembered update has been
 								accepted, so it is removed from confmem."""
 								del cfgfiledict[myrealdest]
-					if cfgprot:
-						mydest = new_protect_filename(mydest, newmd5=mymd5)
+
+							if cfgprot:
+								mydest = new_protect_filename(mydest, newmd5=mymd5)
 
 				# whether config protection or not, we merge the new file the
 				# same way.  Unless moveme=0 (blocking directory)
