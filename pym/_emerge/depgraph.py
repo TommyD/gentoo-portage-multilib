@@ -318,8 +318,18 @@ class depgraph(object):
 			return
 
 		write = sys.stderr.write
+		backtrack_masked = []
 
 		for pkg, parent_atoms in missed_updates:
+
+			try:
+				for parent, root, atom in parent_atoms:
+					self._show_unsatisfied_dep(root, atom, myparent=parent,
+						check_backtrack=True)
+			except self._backtrack_mask:
+				# This is displayed below in abbreviated form.
+				backtrack_masked.append((pkg, parent_atoms))
+				continue
 
 			write("\n!!! The following update has been skipped " + \
 				"due to unsatisfied dependencies:\n\n")
@@ -331,6 +341,18 @@ class depgraph(object):
 
 			for parent, root, atom in parent_atoms:
 				self._show_unsatisfied_dep(root, atom, myparent=parent)
+				write("\n")
+
+		if backtrack_masked:
+			# These are shown in abbreviated form, in order to avoid terminal
+			# flooding from mask messages as reported in bug #285832.
+			write("\n!!! The following update(s) have been skipped " + \
+				"due to unsatisfied dependencies\n" + \
+				"!!! triggered by backtracking:\n\n")
+			for pkg, parent_atoms in backtrack_masked:
+				write(str(pkg.slot_atom))
+				if pkg.root != '/':
+					write(" for %s" % (pkg.root,))
 				write("\n")
 
 		sys.stderr.flush()
@@ -1578,7 +1600,7 @@ class depgraph(object):
 			for x in lookup_owners:
 				if not search_for_multiple and os.path.isdir(x):
 					search_for_multiple = True
-				relative_paths.append(x[len(myroot):])
+				relative_paths.append(x[len(myroot)-1:])
 
 			owners = set()
 			for pkg, relative_path in \
@@ -1993,7 +2015,14 @@ class depgraph(object):
 
 		return selected_atoms
 
-	def _show_unsatisfied_dep(self, root, atom, myparent=None, arg=None):
+	def _show_unsatisfied_dep(self, root, atom, myparent=None, arg=None,
+		check_backtrack=False):
+		"""
+		When check_backtrack=True, no output is produced and
+		the method either returns or raises _backtrack_mask if
+		a matching package has been masked by backtracking.
+		"""
+		backtrack_mask = False
 		atom_set = InternalPackageSet(initial_atoms=(atom,))
 		xinfo = '"%s"' % atom
 		if arg:
@@ -2038,6 +2067,7 @@ class depgraph(object):
 							self._dynamic_config._runtime_pkg_mask[pkg]
 						mreasons.append('backtracking: %s' % \
 							', '.join(sorted(backtrack_reasons)))
+						backtrack_mask = True
 					if mreasons:
 						masked_pkg_instances.add(pkg)
 					if atom.use:
@@ -2046,6 +2076,12 @@ class depgraph(object):
 							continue
 				masked_packages.append(
 					(root_config, pkgsettings, cpv, metadata, mreasons))
+
+		if check_backtrack:
+			if backtrack_mask:
+				raise self._backtrack_mask()
+			else:
+				return
 
 		missing_use_reasons = []
 		missing_iuse_reasons = []
@@ -2308,8 +2344,7 @@ class depgraph(object):
 					reinstall_for_flags = None
 
 					if not pkg.installed or \
-						(pkg.built and matched_packages and \
-						not (avoid_update and pkg.installed)):
+						(matched_packages and not avoid_update):
 						# Only enforce visibility on installed packages
 						# if there is at least one other visible package
 						# available. By filtering installed masked packages
@@ -2327,8 +2362,8 @@ class depgraph(object):
 						# with visible KEYWORDS when the installed
 						# version is masked by KEYWORDS, but never
 						# reinstall the same exact version only due
-						# to a KEYWORDS mask.
-						if built and matched_packages:
+						# to a KEYWORDS mask. See bug #252167.
+						if matched_packages:
 
 							different_version = None
 							for avail_pkg in matched_packages:
@@ -2337,18 +2372,17 @@ class depgraph(object):
 									different_version = avail_pkg
 									break
 							if different_version is not None:
-
-								if installed and \
-									pkgsettings._getMissingKeywords(
-									pkg.cpv, pkg.metadata):
-									continue
-
 								# If the ebuild no longer exists or it's
 								# keywords have been dropped, reject built
 								# instances (installed or binary).
 								# If --usepkgonly is enabled, assume that
 								# the ebuild status should be ignored.
-								if not usepkgonly:
+								if usepkgonly:
+									if installed and \
+										pkgsettings._getMissingKeywords(
+										pkg.cpv, pkg.metadata):
+										continue
+								else:
 									try:
 										pkg_eb = self._pkg(
 											pkg.cpv, "ebuild", root_config)
@@ -4104,10 +4138,11 @@ class depgraph(object):
 				metadata = pkg.metadata
 				ebuild_path = None
 				repo_name = metadata["repository"]
-				if pkg_type == "ebuild":
-					ebuild_path = portdb.findname(pkg_key)
-					if not ebuild_path: # shouldn't happen
-						raise portage.exception.PackageNotFound(pkg_key)
+				if pkg.type_name == "ebuild":
+					ebuild_path = portdb.findname(pkg.cpv)
+					if ebuild_path is None:
+						raise AssertionError(
+							"ebuild not found for '%s'" % pkg.cpv)
 					repo_path_real = os.path.dirname(os.path.dirname(
 						os.path.dirname(ebuild_path)))
 				else:
@@ -4170,9 +4205,14 @@ class depgraph(object):
 					if "--changelog" in self._frozen_config.myopts:
 						inst_matches = vardb.match(pkg.slot_atom)
 						if inst_matches:
-							changelogs.extend(calc_changelog(
-								portdb.findname(pkg_key),
-								inst_matches[0], pkg_key))
+							ebuild_path_cl = ebuild_path
+							if ebuild_path_cl is None:
+								# binary package
+								ebuild_path_cl = portdb.findname(pkg.cpv)
+
+							if ebuild_path_cl is not None:
+								changelogs.extend(calc_changelog(
+									ebuild_path_cl, inst_matches[0], pkg.cpv))
 				else:
 					addl = " " + green("N") + " " + fetch + "  "
 					if ordered:
@@ -4940,6 +4980,13 @@ class depgraph(object):
 		be called again for some reason. The only case that it's currently
 		used for is when neglected dependencies need to be added to the
 		graph in order to avoid making a potentially unsafe decision.
+		"""
+
+	class _backtrack_mask(_internal_exception):
+		"""
+		This is raised by _show_unsatisfied_dep() when it's called with
+		check_backtrack=True and a matching package has been masked by
+		backtracking.
 		"""
 
 	def need_restart(self):

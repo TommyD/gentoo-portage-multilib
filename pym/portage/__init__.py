@@ -3749,7 +3749,9 @@ def _test_pty_eof():
 	Raises an EnvironmentError from openpty() if it fails.
 	"""
 
-	import array, pty, termios
+	use_fork = False
+
+	import array, fcntl, pty, select, termios
 	test_string = 2 * "blah blah blah\n"
 	test_string = _unicode_decode(test_string,
 		encoding='utf_8', errors='strict')
@@ -3757,8 +3759,9 @@ def _test_pty_eof():
 	# may raise EnvironmentError
 	master_fd, slave_fd = pty.openpty()
 
-	master_file = os.fdopen(master_fd, 'rb')
-	slave_file = os.fdopen(slave_fd, 'wb')
+	# Non-blocking mode is required for Darwin kernel.
+	fcntl.fcntl(master_fd, fcntl.F_SETFL,
+		fcntl.fcntl(master_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
 
 	# Disable post-processing of output since otherwise weird
 	# things like \n -> \r\n transformations may occur.
@@ -3768,14 +3771,41 @@ def _test_pty_eof():
 
 	# Simulate a subprocess writing some data to the
 	# slave end of the pipe, and then exiting.
-	slave_file.write(_unicode_encode(test_string,
-		encoding='utf_8', errors='strict'))
-	slave_file.close()
+	pid = None
+	if use_fork:
+		pids = process.spawn_bash(_unicode_encode("echo -n '%s'" % test_string,
+			encoding='utf_8', errors='strict'), env=os.environ,
+			fd_pipes={0:sys.stdin.fileno(), 1:slave_fd, 2:slave_fd},
+			returnpid=True)
+		if isinstance(pids, int):
+			os.close(master_fd)
+			os.close(slave_fd)
+			raise EnvironmentError('spawn failed')
+		pid = pids[0]
+	else:
+		os.write(slave_fd, _unicode_encode(test_string,
+			encoding='utf_8', errors='strict'))
+	os.close(slave_fd)
 
+	# If using a fork, we must wait for the child here,
+	# in order to avoid a race condition that would
+	# lead to inconsistent results.
+	if pid is not None:
+		os.waitpid(pid, 0)
+
+	master_file = os.fdopen(master_fd, 'rb')
 	eof = False
 	data = []
+	iwtd = [master_file]
+	owtd = []
+	ewtd = []
 
 	while not eof:
+
+		events = select.select(iwtd, owtd, ewtd)
+		if not events[0]:
+			eof = True
+			break
 
 		buf = array.array('B')
 		try:
@@ -8150,7 +8180,7 @@ def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
 					return None
 	return deplist
 
-_cpv_key_re = re.compile('^' + dep._cpv + '$', re.VERBOSE)
+_cpv_key_re = re.compile('^' + versions._cpv + '$', re.VERBOSE)
 def cpv_getkey(mycpv):
 	"""Calls pkgsplit on a cpv and returns only the cp."""
 	m = _cpv_key_re.match(mycpv)
@@ -8569,11 +8599,14 @@ def pkgmerge(mytbz2, myroot, mysettings, mydbapi=None,
 
 		mypkg = os.path.basename(mytbz2)[:-5]
 		xptbz2 = portage.xpak.tbz2(mytbz2)
-		mycat = xptbz2.getfile("CATEGORY")
+		mycat = xptbz2.getfile(_unicode_encode("CATEGORY",
+			encoding=_encodings['repo.content']))
 		if not mycat:
 			writemsg(_("!!! CATEGORY info missing from info chunk, aborting...\n"),
 				noiselevel=-1)
 			return 1
+		mycat = _unicode_decode(mycat,
+			encoding=_encodings['repo.content'], errors='replace')
 		mycat = mycat.strip()
 
 		# These are the same directories that would be used at build time.
