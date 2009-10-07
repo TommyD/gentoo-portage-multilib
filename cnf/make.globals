@@ -24,6 +24,9 @@ SYNC="rsync://rsync.gentoo.org/gentoo-portage"
 # Default distfiles mirrors
 GENTOO_MIRRORS="http://distfiles.gentoo.org http://distro.ibiblio.org/pub/linux/distributions/gentoo"
 
+ACCEPT_LICENSE="* -@EULA"
+ACCEPT_PROPERTIES="*"
+
 # Repository Paths
 PORTDIR=/usr/portage
 DISTDIR=/usr/portage/distfiles
@@ -38,7 +41,7 @@ FETCHCOMMAND="/usr/bin/wget -t 5 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\"
 RESUMECOMMAND="/usr/bin/wget -c -t 5 -T 60 --passive-ftp -O \"\${DISTDIR}/\${FILE}\" \"\${URI}\""
 
 # Default user options
-FEATURES="assume-digests distlocks fixpackages parallel-fetch protect-owned
+FEATURES="assume-digests distlocks fixpackages news parallel-fetch protect-owned
           sandbox sfperms strict unmerge-logs unmerge-orphans userfetch"
 
 # Ignore file collisions in /lib/modules since files inside this directory
