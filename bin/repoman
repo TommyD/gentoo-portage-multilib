@@ -261,7 +261,8 @@ qahelp={
 	"changelog.notadded":"ChangeLogs that exist but have not been added to cvs",
 	"filedir.missing":"Package lacks a files directory",
 	"file.executable":"Ebuilds, digests, metadata.xml, Manifest, and ChangeLog do note need the executable bit",
-	"file.size":"Files in the files directory must be under 20k",
+	"file.size":"Files in the files directory must be under 20 KiB",
+	"file.size.fatal":"Files in the files directory must be under 60 KiB",
 	"file.name":"File/dir name must be composed of only the following chars: %s " % allowed_filename_chars,
 	"file.UTF8":"File is not UTF8 compliant",
 	"inherit.autotools":"Ebuild inherits autotools but does not call eautomake, eautoconf or eautoreconf",
@@ -314,7 +315,9 @@ qahelp={
 	"RDEPEND.implicit":"RDEPEND is unset in the ebuild which triggers implicit RDEPEND=$DEPEND assignment",
 	"RDEPEND.suspect":"RDEPEND contains a package that usually only belongs in DEPEND.",
 	"RESTRICT.invalid":"This ebuild contains invalid RESTRICT values.",
-	"digestentry.unused":"Some files listed in the Manifest aren't referenced in SRC_URI",
+	"digest.assumed":"Existing digest must be assumed correct (Package level only)",
+	"digest.missing":"Some files listed in SRC_URI aren't referenced in the Manifest",
+	"digest.unused":"Some files listed in the Manifest aren't referenced in SRC_URI",
 	"ebuild.nostable":"There are no ebuilds that are marked as stable for your ARCH",
 	"ebuild.allmasked":"All ebuilds are masked for this package (Package level only)",
 	"ebuild.majorsyn":"This ebuild has a major syntax error that may cause the ebuild to fail partially or fully",
@@ -336,7 +339,8 @@ qacats.sort()
 qawarnings = set((
 "changelog.missing",
 "changelog.notadded",
-"digestentry.unused",
+"digest.assumed",
+"digest.unused",
 "ebuild.notadded",
 "ebuild.nostable",
 "ebuild.allmasked",
@@ -1094,8 +1098,12 @@ for x in scanlist:
 		myfiles_all = set(myfiles_all)
 		for entry in mydigests:
 			if entry not in myfiles_all:
-				stats["digestentry.unused"] += 1
-				fails["digestentry.unused"].append(checkdir+"::"+entry)
+				stats["digest.unused"] += 1
+				fails["digest.unused"].append(checkdir+"::"+entry)
+		for entry in myfiles_all:
+			if entry not in mydigests:
+				stats["digest.missing"] += 1
+				fails["digest.missing"].append(checkdir+"::"+entry)
 	del myfiles_all
 
 	if os.path.exists(checkdir+"/files"):
@@ -1123,10 +1131,14 @@ for x in scanlist:
 					if z == "CVS" or z == ".svn":
 						continue
 					filesdirlist.append(y+"/"+z)
-			# current policy is no files over 20k, this is the check.
+			# Current policy is no files over 20 KiB, these are the checks. File size between
+			# 20 KiB and 60 KiB causes a warning, while file size over 60 KiB causes an error.
+			elif mystat.st_size > 61440:
+				stats["file.size.fatal"] += 1
+				fails["file.size.fatal"].append("("+ str(mystat.st_size//1024) + " KiB) "+x+"/files/"+y)
 			elif mystat.st_size > 20480:
 				stats["file.size"] += 1
-				fails["file.size"].append("("+ str(mystat.st_size//1024) + "K) "+x+"/files/"+y)
+				fails["file.size"].append("("+ str(mystat.st_size//1024) + " KiB) "+x+"/files/"+y)
 
 			m = disallowed_filename_chars_re.search(
 				os.path.basename(y.rstrip(os.sep)))
@@ -1496,8 +1508,8 @@ for x in scanlist:
 			stats[m+".syntax"] += 1
 			fails[m+".syntax"].append(catpkg+".ebuild "+m+": "+b)
 
-		badlicsyntax = len([x for x in type_list if x == "LICENSE"])
-		badprovsyntax = len([x for x in type_list if x == "PROVIDE"])
+		badlicsyntax = len([z for z in type_list if z == "LICENSE"])
+		badprovsyntax = len([z for z in type_list if z == "PROVIDE"])
 		baddepsyntax = len(type_list) != badlicsyntax + badprovsyntax 
 		badlicsyntax = badlicsyntax > 0
 		badprovsyntax = badprovsyntax > 0
