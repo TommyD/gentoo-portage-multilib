@@ -50,6 +50,7 @@ if sys.hexversion >= 0x3000000:
 options=[
 "--ask",          "--alphabetical",
 "--buildpkg",     "--buildpkgonly",
+"--changed-use",
 "--changelog",    "--columns",
 "--debug",
 "--digest",
@@ -382,6 +383,7 @@ def insert_optional_args(args):
 		'--deep'       : valid_integers,
 		'--deselect'   : ('n',),
 		'--binpkg-respect-use'   : ('n', 'y',),
+		'--fail-clean'           : ('n',),
 		'--getbinpkg'            : ('n',),
 		'--getbinpkgonly'        : ('n',),
 		'--jobs'       : valid_integers,
@@ -537,6 +539,12 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices" : ("True", "n")
 		},
 
+		"--fail-clean": {
+			"help"    : "clean temp files after build failure",
+			"type"    : "choice",
+			"choices" : ("True", "n")
+		},
+
 		"--jobs": {
 
 			"shortopt" : "-j",
@@ -658,6 +666,10 @@ def parse_opts(tmpcmdline, silent=False):
 
 	myoptions, myargs = parser.parse_args(args=tmpcmdline)
 
+	if myoptions.changed_use is not False:
+		myoptions.reinstall = "changed-use"
+		myoptions.changed_use = False
+
 	if myoptions.deselect == "True":
 		myoptions.deselect = True
 
@@ -670,6 +682,9 @@ def parse_opts(tmpcmdline, silent=False):
 		myoptions.complete_graph = True
 	else:
 		myoptions.complete_graph = None
+
+	if myoptions.fail_clean == "True":
+		myoptions.fail_clean = True
 
 	if myoptions.getbinpkg in ("True",):
 		myoptions.getbinpkg = True

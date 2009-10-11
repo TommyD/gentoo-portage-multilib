@@ -291,6 +291,11 @@ def help(myopts, havecolor=1):
 		print("              must not exist for the desired package as they cannot be used if")
 		print("              they do not exist on the system.")
 		print()
+		print("       " + green("--changed-use"))
+		desc = "This is an alias for --reinstall=changed-use."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
 		print("       "+green("--changelog")+" ("+green("-l")+" short option)")
 		print("              When pretending, also display the ChangeLog entries for packages")
 		print("              that will be upgraded.")
@@ -345,6 +350,15 @@ def help(myopts, havecolor=1):
 		print("              nothing. This is great to use together with --pretend. This makes")
 		print("              it possible for developers to get a complete overview of the")
 		print("              complete dependency tree of a certain package.")
+		print()
+		print("       "+green("--fail-clean[=n]"))
+		desc = "Clean up temporary files after a build failure. This is " + \
+			"particularly useful if you have PORTAGE_TMPDIR on " + \
+			"tmpfs. If this option is enabled, you probably also want " + \
+			"to enable PORT_LOGDIR (see make.conf(5)) in " + \
+			"order to save the build log."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
 		print()
 		print("       "+green("--fetchonly")+" ("+green("-f")+" short option)")
 		print("              Instead of doing any package building, just perform fetches for")
