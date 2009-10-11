@@ -1182,7 +1182,7 @@ class depgraph(object):
 			return 0
 
 		if debug:
-			print("Candidates:", selected_atoms)
+			print("Candidates:", [str(x) for x in selected_atoms[pkg]])
 
 		root_config = self._frozen_config.roots[dep_root]
 		vardb = root_config.trees["vartree"].dbapi
@@ -1208,6 +1208,10 @@ class depgraph(object):
 		# here in order to avoid distorting the dependency graph like
 		# <=portage-2.1.6.x did.
 		for virt_pkg, atoms in selected_atoms.items():
+
+			if debug:
+				print("Candidates: %s: %s" % \
+					(virt_pkg.cpv, [str(x) for x in atoms]))
 
 			# Just assume depth + 1 here for now, though it's not entirely
 			# accurate since multilple levels of indirect virtual deps may
@@ -1569,6 +1573,18 @@ class depgraph(object):
 					installed_cp = next(iter(installed_cp_set))
 					expanded_atoms = [atom for atom in expanded_atoms \
 						if atom.cp == installed_cp]
+
+				# If a non-virtual package and one or more virtual packages
+				# are in expanded_atoms, use the non-virtual package.
+				if len(expanded_atoms) > 1:
+					number_of_virtuals = 0
+					for expanded_atom in expanded_atoms:
+						if expanded_atom.cp.startswith("virtual/"):
+							number_of_virtuals += 1
+						else:
+							candidate = expanded_atom
+					if len(expanded_atoms) - number_of_virtuals == 1:
+						expanded_atoms = [ candidate ]
 
 				if len(expanded_atoms) > 1:
 					print()
@@ -4161,6 +4177,8 @@ class depgraph(object):
 					if ordered:
 						if pkg_merge:
 							counters.reinst += 1
+							if pkg_type == "binary":
+								counters.binary += 1
 						elif pkg_status == "uninstall":
 							counters.uninst += 1
 				# filter out old-style virtual matches
@@ -4183,17 +4201,23 @@ class depgraph(object):
 							addl += turquoise("U")+blue("D")
 							if ordered:
 								counters.downgrades += 1
+								if pkg_type == "binary":
+									counters.binary += 1
 						else:
 							# Update in slot
 							addl += turquoise("U") + " "
 							if ordered:
 								counters.upgrades += 1
+								if pkg_type == "binary":
+									counters.binary += 1
 					else:
 						# New slot, mark it new.
 						addl = " " + green("NS") + fetch + "  "
 						myoldbest = vardb.match(portage.cpv_getkey(pkg_key))
 						if ordered:
 							counters.newslot += 1
+							if pkg_type == "binary":
+								counters.binary += 1
 
 					if "--changelog" in self._frozen_config.myopts:
 						inst_matches = vardb.match(pkg.slot_atom)
@@ -4210,6 +4234,8 @@ class depgraph(object):
 					addl = " " + green("N") + " " + fetch + "  "
 					if ordered:
 						counters.new += 1
+						if pkg_type == "binary":
+							counters.binary += 1
 
 				verboseadd = ""
 				repoadd = None

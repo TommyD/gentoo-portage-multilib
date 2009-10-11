@@ -258,9 +258,11 @@ _os_overrides = {
 	id(_os.fdopen)        : _os.fdopen,
 	id(_os.popen)         : _os.popen,
 	id(_os.read)          : _os.read,
-	id(_os.statvfs)       : _os.statvfs,
 	id(_os.system)        : _os.system,
 }
+
+if hasattr(_os, 'statvfs'):
+	_os_overrides[id(_os.statvfs)] = _os.statvfs
 
 os = _unicode_module_wrapper(_os, overrides=_os_overrides,
 	encoding=_encodings['fs'])
@@ -1485,6 +1487,10 @@ class config(object):
 		('ACCEPT_PROPERTIES',        '*'),
 	)
 
+	# To enhance usability, make some vars case insensitive
+	# by forcing them to lower case.
+	_case_insensitive_vars = ('AUTOCLEAN', 'NOCOLOR',)
+
 	def __init__(self, clone=None, mycpv=None, config_profile_path=None,
 		config_incrementals=None, config_root=None, target_root=None,
 		local_config=True, env=None):
@@ -2206,6 +2212,11 @@ class config(object):
 				_glep_55_enabled = True
 
 			self._init_dirs()
+
+		for k in self._case_insensitive_vars:
+			if k in self:
+				self[k] = self[k].lower()
+				self.backup_changes(k)
 
 		if mycpv:
 			self.setcpv(mycpv)
@@ -3852,7 +3863,21 @@ def _test_pty_eof():
 
 # In some cases, openpty can be slow when it fails. Therefore,
 # stop trying to use it after the first failure.
-_disable_openpty = False
+if platform.system() not in ["FreeBSD", "Linux"]:
+	# Disable the use of openpty on Solaris as it seems Python's openpty
+	# implementation doesn't play nice on Solaris with Portage's
+	# behaviour causing hangs/deadlocks.
+	# Disable on Darwin also, it used to work fine, but since the
+	# introduction of _test_pty_eof Portage hangs (on the
+	# slave_file.close()) indicating some other problems with openpty on
+	# Darwin there
+	# On AIX, haubi reported that the openpty code doesn't work any
+	# longer since the introduction of _test_pty_eof either.
+	# Looks like Python's openpty module is too fragile to use on UNIX,
+	# so only use it on Linux
+	_disable_openpty = True
+else:
+	_disable_openpty = False
 _tested_pty = False
 
 def _create_pty_or_pipe(copy_term_size=None):
@@ -6453,10 +6478,18 @@ def _prepare_workdir(mysettings):
 		logid_time = _unicode_decode(time.strftime("%Y%m%d-%H%M%S",
 			time.gmtime(os.stat(logid_path).st_mtime)),
 			encoding=_encodings['content'], errors='replace')
-		mysettings["PORTAGE_LOG_FILE"] = os.path.join(
-			mysettings["PORT_LOGDIR"], "%s:%s:%s.log" % \
-			(mysettings["CATEGORY"], mysettings["PF"], logid_time))
-		del logid_path, logid_time
+
+		if "split-log" in mysettings.features:
+			mysettings["PORTAGE_LOG_FILE"] = os.path.join(
+				mysettings["PORT_LOGDIR"], "build", "%s/%s:%s.log" % \
+				(mysettings["CATEGORY"], mysettings["PF"], logid_time))
+		else:
+			mysettings["PORTAGE_LOG_FILE"] = os.path.join(
+				mysettings["PORT_LOGDIR"], "%s:%s:%s.log" % \
+				(mysettings["CATEGORY"], mysettings["PF"], logid_time))
+
+		util.ensure_dirs(os.path.dirname(mysettings["PORTAGE_LOG_FILE"]))
+
 	else:
 		# NOTE: When sesandbox is enabled, the local SELinux security policies
 		# may not allow output to be piped out of the sesandbox domain. The
@@ -6555,7 +6588,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 	@type dbkey: Dict or String
 	@param use_cache: Enables the cache
 	@type use_cache: Boolean
-	@param fetchall: Used to wrap fetch(), fetches all URI's (even ones invalid due to USE conditionals)
+	@param fetchall: Used to wrap fetch(), fetches all URIs (even ones invalid due to USE conditionals)
 	@type fetchall: Boolean
 	@param tree: Which tree to use ('vartree','porttree','bintree', etc..), defaults to 'porttree'
 	@type tree: String
