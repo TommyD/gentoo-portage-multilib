@@ -365,7 +365,7 @@ _finalize_abi_install() {
 	fi
 
 	# Create wrapper symlink for *-config files
-	local i= files=( $(find "${D}"usr/bin -type f \( -name '*-config' -o -name '*-config-2' \)) )
+	local i= files=( $(find "${D}"usr/bin -type f \( -name '*-config' -o -name '*-config-2' \) 2>/dev/null) )
 	_debug files ${files}
 	for i in ${files}; do
 		prep_ml_binaries "${i}"
