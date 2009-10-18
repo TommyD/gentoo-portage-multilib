@@ -263,8 +263,8 @@ _setup_abi_env() {
 	local LIBDIR=$(get_abi_var LIBDIR $1)
 	export LDFLAGS="${LDFLAGS} -L/${LIBDIR} -L/usr/${LIBDIR}"
 	export PKG_CONFIG_PATH="/usr/${LIBDIR}/pkgconfig"
-	if ! [[ "${ABI}" == "${DEFAULT_ABI}" ]]; then
-		pyver=$(python --version 2>&1)
+	if [[ "${ABI}" != "${DEFAULT_ABI}" ]]; then
+		local pyver=$(python --version 2>&1)
 		pyver=${pyver/Python /python}
 		pyver=${pyver%.*}
 		export PYTHON="/usr/bin/${pyver}-${ABI}"
