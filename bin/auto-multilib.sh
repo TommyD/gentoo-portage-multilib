@@ -32,11 +32,11 @@ _abi_to_index_key() {
 # @VARIABLE: EMULTILIB_SAVE_VARS
 # @DESCRIPTION: Environment variables to save
 # EMULTILIB_SAVE_VARS="${EMULTILIB_SAVE_VARS}
-#		AS CC CXX FC LD ASFLAGS CFLAGS CPPFLAGS CXXFLAGS FCFLAGS FFLAGS 
+#		AS CC CXX FC ASFLAGS CFLAGS CPPFLAGS CXXFLAGS FCFLAGS FFLAGS 
 #		LDFLAGS	CHOST CBUILD CDEFINE LIBDIR CCACHE_DIR PYTHON PERLBIN
 #		PKG_CONFIG_PATH"
 EMULTILIB_SAVE_VARS="${EMULTILIB_SAVE_VARS}
-		AS CC CXX FC LD ASFLAGS CFLAGS CPPFLAGS CXXFLAGS FCFLAGS FFLAGS 
+		AS CC CXX FC ASFLAGS CFLAGS CPPFLAGS CXXFLAGS FCFLAGS FFLAGS 
 		LDFLAGS	CHOST CBUILD CDEFINE LIBDIR CCACHE_DIR PYTHON PERLBIN
 		PKG_CONFIG_PATH"
 
@@ -249,7 +249,6 @@ _setup_abi_env() {
 	export CC="$(tc-getPROG CC gcc)"
 	export CXX="$(tc-getPROG CXX g++)"
 	export FC="$(tc-getPROG FC gfortran)"
-	export LD="$(tc-getPROG LD ld)"
 	export CHOST=$(get_abi_var CHOST $1)
 	export CBUILD=$(get_abi_var CHOST $1)
 	export CDEFINE="${CDEFINE} $(get_abi_var CDEFINE $1)"
@@ -261,7 +260,7 @@ _setup_abi_env() {
 	export FFLAGS="${FFLAGS} ${CFLAGS}"
 	export ASFLAGS="${ASFLAGS} $(get_abi_var ASFLAGS)"
 	local LIBDIR=$(get_abi_var LIBDIR $1)
-	export LDFLAGS="${LDFLAGS} -L/${LIBDIR} -L/usr/${LIBDIR}"
+	export LDFLAGS="${LDFLAGS}"
 	export PKG_CONFIG_PATH="/usr/${LIBDIR}/pkgconfig"
 	if [[ "${ABI}" != "${DEFAULT_ABI}" ]]; then
 		local pyver=$(python --version 2>&1)
