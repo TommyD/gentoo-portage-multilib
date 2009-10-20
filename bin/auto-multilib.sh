@@ -252,7 +252,6 @@ _setup_abi_env() {
 	export CHOST=$(get_abi_var CHOST $1)
 	export CBUILD=$(get_abi_var CHOST $1)
 	export CDEFINE="${CDEFINE} $(get_abi_var CDEFINE $1)"
-	export LD="${LD} $(get_abi_var LDFLAGS)"
 	export CFLAGS="${CFLAGS} $(get_abi_var CFLAGS)"
 	export CPPFLAGS="${CXXFLAGS} $(get_abi_var CPPFLAGS)"
 	export CXXFLAGS="${CXXFLAGS} $(get_abi_var CFLAGS)"
@@ -260,7 +259,6 @@ _setup_abi_env() {
 	export FFLAGS="${FFLAGS} ${CFLAGS}"
 	export ASFLAGS="${ASFLAGS} $(get_abi_var ASFLAGS)"
 	local LIBDIR=$(get_abi_var LIBDIR $1)
-	export LDFLAGS="${LDFLAGS}"
 	export PKG_CONFIG_PATH="/usr/${LIBDIR}/pkgconfig"
 	if [[ "${ABI}" != "${DEFAULT_ABI}" ]]; then
 		local pyver=$(python --version 2>&1)
