@@ -1152,7 +1152,10 @@ dyn_install() {
 		fi
 	done
 	unset_abi
+
 	find "${D}" -name '*.la' -exec grep -q shouldnotlink=no {} \; -exec rm {} \;
+	fixlafiles
+
 	touch "${PORTAGE_BUILDDIR}/.installed" || die "IO Failure -- Failed to 'touch .installed'"
 	vecho ">>> Completed installing ${PF} into ${D}"
 	vecho
