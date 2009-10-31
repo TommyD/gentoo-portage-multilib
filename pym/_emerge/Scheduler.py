@@ -10,6 +10,15 @@ import sys
 import textwrap
 import time
 import weakref
+
+try:
+	from io import StringIO
+except ImportError:
+	# Needed for python-2.6 with USE=build since
+	# io imports threading which imports thread
+	# which is unavailable.
+	from StringIO import StringIO
+
 import portage
 from portage import os
 from portage import _encodings
@@ -495,23 +504,19 @@ class Scheduler(PollScheduler):
 	def _dblink_elog(self, pkg_dblink, phase, func, msgs):
 
 		log_path = pkg_dblink.settings.get("PORTAGE_LOG_FILE")
-		log_file = None
-		out = sys.stdout
 		background = self._background
+		out = StringIO()
 
-		if background and log_path is not None:
-			log_file = codecs.open(_unicode_encode(log_path,
-				encoding=_encodings['fs'], errors='strict'),
-				mode='a', encoding=_encodings['content'],
-				errors='backslashreplace')
-			out = log_file
+		for msg in msgs:
+			func(msg, phase=phase, key=pkg_dblink.mycpv, out=out)
 
-		try:
-			for msg in msgs:
-				func(msg, phase=phase, key=pkg_dblink.mycpv, out=out)
-		finally:
-			if log_file is not None:
-				log_file.close()
+		out_str = out.getvalue()
+
+		if not background:
+			portage.util.writemsg_stdout(out_str, noiselevel=-1)
+
+		if log_path is not None:
+			self._append_to_log_path(log_path, out_str)
 
 	def _dblink_emerge_log(self, msg):
 		self._logger.log(msg)
@@ -1485,23 +1490,6 @@ class Scheduler(PollScheduler):
 		"""
 		print(colorize("GOOD", "*** Resuming merge..."))
 
-		if self._show_list():
-			if "--tree" in self.myopts:
-				portage.writemsg_stdout("\n" + \
-					darkgreen("These are the packages that " + \
-					"would be merged, in reverse order:\n\n"))
-
-			else:
-				portage.writemsg_stdout("\n" + \
-					darkgreen("These are the packages that " + \
-					"would be merged, in order:\n\n"))
-
-		show_spinner = "--quiet" not in self.myopts and \
-			"--nodeps" not in self.myopts
-
-		if show_spinner:
-			print("Calculating dependencies  ", end=' ')
-
 		myparams = create_depgraph_params(self.myopts, None)
 		success = False
 		e = None
@@ -1516,9 +1504,6 @@ class Scheduler(PollScheduler):
 			e = exc
 			mydepgraph = e.depgraph
 			dropped_tasks = set()
-
-		if show_spinner:
-			print("\b\b... done!")
 
 		if e is not None:
 			def unsatisfied_resume_dep_msg():
@@ -1624,7 +1609,7 @@ class Scheduler(PollScheduler):
 		logger = self._logger
 		pkg_count = self._pkg_count
 		root_config = pkg.root_config
-		world_set = root_config.sets["world"]
+		world_set = root_config.sets["selected"]
 		world_locked = False
 		if hasattr(world_set, "lock"):
 			world_set.lock()

@@ -49,6 +49,7 @@ if sys.hexversion >= 0x3000000:
 
 options=[
 "--ask",          "--alphabetical",
+"--ask-enter-invalid",
 "--buildpkg",     "--buildpkgonly",
 "--changed-use",
 "--changelog",    "--columns",
@@ -66,6 +67,7 @@ options=[
 "--searchdesc",
 "--skipfirst",
 "--tree",
+"--unordered-display",
 "--update",
 "--verbose",
 ]
@@ -74,7 +76,8 @@ shortmapping={
 "1":"--oneshot",
 "a":"--ask",
 "b":"--buildpkg",  "B":"--buildpkgonly",
-"c":"--clean",     "C":"--unmerge",
+"c":"--depclean",
+"C":"--unmerge",
 "d":"--debug",
 "e":"--emptytree",
 "f":"--fetchonly", "F":"--fetch-all-uri",
@@ -389,7 +392,9 @@ def insert_optional_args(args):
 		'--jobs'       : valid_integers,
 		'--keep-going'           : ('n',),
 		'--root-deps'  : ('rdeps',),
+		'--select'               : ('n',),
 		'--selective'            : ('n',),
+		"--use-ebuild-visibility": ('n',),
 		'--usepkg'               : ('n',),
 		'--usepkgonly'           : ('n',),
 	}
@@ -613,11 +618,24 @@ def parse_opts(tmpcmdline, silent=False):
 			"choices" :("True", "rdeps")
 		},
 
+		"--select": {
+			"help"    : "add specified packages to the world set " + \
+			            "(inverse of --oneshot)",
+			"type"    : "choice",
+			"choices" : ("True", "n")
+		},
+
 		"--selective": {
 			"help"    : "similar to the --noreplace but does not take " + \
 			            "precedence over options such as --newuse",
 			"type"    : "choice",
 			"choices" : ("True", "n")
+		},
+
+		"--use-ebuild-visibility": {
+			"help"     : "use unbuilt ebuild metadata for visibility checks on built packages",
+			"type"     : "choice",
+			"choices"  : ("True", "n")
 		},
 
 		"--usepkg": {
@@ -704,6 +722,12 @@ def parse_opts(tmpcmdline, silent=False):
 	if myoptions.root_deps == "True":
 		myoptions.root_deps = True
 
+	if myoptions.select == "True":
+		myoptions.select = True
+		myoptions.oneshot = False
+	elif myoptions.select == "n":
+		myoptions.oneshot = True
+
 	if myoptions.selective == "True":
 		myoptions.selective = True
 
@@ -757,6 +781,11 @@ def parse_opts(tmpcmdline, silent=False):
 					(myoptions.load_average,), noiselevel=-1)
 
 		myoptions.load_average = load_average
+
+	if myoptions.use_ebuild_visibility in ("True",):
+		myoptions.use_ebuild_visibility = True
+	else:
+		myoptions.use_ebuild_visibility = None
 
 	if myoptions.usepkg in ("True",):
 		myoptions.usepkg = True
@@ -843,6 +872,56 @@ def ionice(settings):
 		out.eerror("PORTAGE_IONICE_COMMAND returned %d" % (rval,))
 		out.eerror("See the make.conf(5) man page for PORTAGE_IONICE_COMMAND usage instructions.")
 
+def setconfig_fallback(root_config):
+	from portage.sets.base import DummyPackageSet
+	from portage.sets.files import WorldSelectedSet
+	from portage.sets.profiles import PackagesSystemSet
+	setconfig = root_config.setconfig
+	setconfig.psets['world'] = DummyPackageSet(atoms=['@selected', '@system'])
+	setconfig.psets['selected'] = WorldSelectedSet(root_config.root)
+	setconfig.psets['system'] = \
+		PackagesSystemSet(root_config.settings.profiles)
+	root_config.sets = setconfig.getSets()
+
+def get_missing_sets(root_config):
+	# emerge requires existence of "world", "selected", and "system"
+	missing_sets = []
+
+	for s in ("selected", "system", "world",):
+		if s not in root_config.sets:
+			missing_sets.append(s)
+
+	return missing_sets
+
+def missing_sets_warning(root_config, missing_sets):
+	if len(missing_sets) > 2:
+		missing_sets_str = ", ".join('"%s"' % s for s in missing_sets[:-1])
+		missing_sets_str += ', and "%s"' % missing_sets[-1]
+	elif len(missing_sets) == 2:
+		missing_sets_str = '"%s" and "%s"' % tuple(missing_sets)
+	else:
+		missing_sets_str = '"%s"' % missing_sets[-1]
+	msg = ["emerge: incomplete set configuration, " + \
+		"missing set(s): %s" % missing_sets_str]
+	if root_config.sets:
+		msg.append("        sets defined: %s" % ", ".join(root_config.sets))
+	msg.append("        This usually means that '%s'" % \
+		(os.path.join(portage.const.GLOBAL_CONFIG_PATH, "sets.conf"),))
+	msg.append("        is missing or corrupt.")
+	msg.append("        Falling back to default world and system set configuration!!!")
+	for line in msg:
+		writemsg_level(line + "\n", level=logging.ERROR, noiselevel=-1)
+
+def ensure_required_sets(trees):
+	warning_shown = False
+	for root_trees in trees.values():
+		missing_sets = get_missing_sets(root_trees["root_config"])
+		if missing_sets and not warning_shown:
+			warning_shown = True
+			missing_sets_warning(root_trees["root_config"], missing_sets)
+		if missing_sets:
+			setconfig_fallback(root_trees["root_config"])
+
 def expand_set_arguments(myfiles, myaction, root_config):
 	retval = os.EX_OK
 	setconfig = root_config.setconfig
@@ -904,31 +983,6 @@ def expand_set_arguments(myfiles, myaction, root_config):
 	for e in setconfig.errors:
 		print(colorize("BAD", "Error during set creation: %s" % e))
 
-	# emerge relies on the existance of sets with names "world" and "system"
-	required_sets = ("world", "system")
-	missing_sets = []
-
-	for s in required_sets:
-		if s not in sets:
-			missing_sets.append(s)
-	if missing_sets:
-		if len(missing_sets) > 2:
-			missing_sets_str = ", ".join('"%s"' % s for s in missing_sets[:-1])
-			missing_sets_str += ', and "%s"' % missing_sets[-1]
-		elif len(missing_sets) == 2:
-			missing_sets_str = '"%s" and "%s"' % tuple(missing_sets)
-		else:
-			missing_sets_str = '"%s"' % missing_sets[-1]
-		msg = ["emerge: incomplete set configuration, " + \
-			"missing set(s): %s" % missing_sets_str]
-		if sets:
-			msg.append("        sets defined: %s" % ", ".join(sets))
-		msg.append("        This usually means that '%s'" % \
-			(os.path.join(portage.const.GLOBAL_CONFIG_PATH, "sets.conf"),))
-		msg.append("        is missing or corrupt.")
-		for line in msg:
-			writemsg_level(line + "\n", level=logging.ERROR, noiselevel=-1)
-		return (None, 1)
 	unmerge_actions = ("unmerge", "prune", "clean", "depclean")
 
 	for a in myfiles:
@@ -1152,6 +1206,8 @@ def emerge_main():
 	if myaction == "list-sets":
 		writemsg_stdout("".join("%s\n" % s for s in sorted(root_config.sets)))
 		return os.EX_OK
+
+	ensure_required_sets(trees)
 
 	# only expand sets for actions taking package arguments
 	oldargs = myfiles[:]

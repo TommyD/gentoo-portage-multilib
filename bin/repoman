@@ -9,6 +9,7 @@
 
 from __future__ import print_function
 
+import calendar
 import codecs
 try:
 	from subprocess import getstatusoutput as subprocess_getstatusoutput
@@ -25,6 +26,11 @@ import sys
 import tempfile
 import time
 import platform
+
+try:
+	from urllib.request import urlopen as urllib_request_urlopen
+except ImportError:
+	from urllib import urlopen as urllib_request_urlopen
 
 from io import StringIO
 from itertools import chain
@@ -295,6 +301,9 @@ qahelp={
 	"DEPEND.syntax":"Syntax error in DEPEND (usually an extra/missing space/parenthesis)",
 	"RDEPEND.syntax":"Syntax error in RDEPEND (usually an extra/missing space/parenthesis)",
 	"PDEPEND.syntax":"Syntax error in PDEPEND (usually an extra/missing space/parenthesis)",
+	"DEPEND.badtilde":"DEPEND uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)",
+	"RDEPEND.badtilde":"RDEPEND uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)",
+	"PDEPEND.badtilde":"PDEPEND uses the ~ dep operator with a non-zero revision part, which is useless (the revision is ignored)",
 	"LICENSE.syntax":"Syntax error in LICENSE (usually an extra/missing space/parenthesis)",
 	"PROVIDE.syntax":"Syntax error in PROVIDE (usually an extra/missing space/parenthesis)",
 	"PROPERTIES.syntax":"Syntax error in PROPERTIES (usually an extra/missing space/parenthesis)",
@@ -308,7 +317,7 @@ qahelp={
 	"variable.readonly":"Assigning a readonly variable",
 	"LIVEVCS.stable":"This ebuild is a live checkout from a VCS but has stable keywords.",
 	"LIVEVCS.unmasked":"This ebuild is a live checkout from a VCS but has keywords and is not masked in the global package.mask.",
-	"IUSE.invalid":"This ebuild has a variable in IUSE that is not in the use.desc or use.local.desc file",
+	"IUSE.invalid":"This ebuild has a variable in IUSE that is not in the use.desc or its metadata.xml file",
 	"IUSE.undefined":"This ebuild does not define IUSE (style guideline says to define IUSE even when empty)",
 	"LICENSE.invalid":"This ebuild is listing a license that doesnt exist in portages license/ dir.",
 	"KEYWORDS.invalid":"This ebuild contains KEYWORDS that are not listed in profiles/arch.list or for which no valid profile was found",
@@ -349,6 +358,7 @@ qawarnings = set((
 "DEPEND.badmasked","RDEPEND.badmasked","PDEPEND.badmasked",
 "DEPEND.badindev","RDEPEND.badindev","PDEPEND.badindev",
 "DEPEND.badmaskedindev","RDEPEND.badmaskedindev","PDEPEND.badmaskedindev",
+"DEPEND.badtilde", "RDEPEND.badtilde", "PDEPEND.badtilde",
 "DESCRIPTION.toolong",
 "KEYWORDS.dropped",
 "KEYWORDS.stupid",
@@ -435,6 +445,10 @@ suspect_rdepend = frozenset([
 	"x11-misc/bdftopcf",
 	"x11-misc/imake",
 ])
+
+metadata_dtd_uri = 'http://www.gentoo.org/dtd/metadata.dtd'
+# force refetch if the local copy creation time is older than this
+metadata_dtd_ctime_interval = 60 * 60 * 24 * 7 # 7 days
 
 # file.executable
 no_exec = frozenset(["Manifest","ChangeLog","metadata.xml"])
@@ -761,8 +775,100 @@ desktop_pattern = re.compile(r'.*\.desktop$')
 for x in qacats:
 	stats[x]=0
 	fails[x]=[]
+
 xmllint_capable = False
 metadata_dtd = os.path.join(repoman_settings["DISTDIR"], 'metadata.dtd')
+
+def parsedate(s):
+	"""Parse a RFC 822 date and time string.
+	This is required for python3 compatibility, since the
+	rfc822.parsedate() function is not available."""
+
+	s_split = []
+	for x in s.upper().split():
+		for y in x.split(','):
+			if y:
+				s_split.append(y)
+
+	if len(s_split) != 6:
+		return None
+
+	# %a, %d %b %Y %H:%M:%S %Z
+	a, d, b, Y, H_M_S, Z = s_split
+
+	# Convert month to integer, since strptime %w is locale-dependent.
+	month_map = {'JAN':1, 'FEB':2, 'MAR':3, 'APR':4, 'MAY':5, 'JUN':6,
+		'JUL':7, 'AUG':8, 'SEP':9, 'OCT':10, 'NOV':11, 'DEC':12}
+	m = month_map.get(b)
+	if m is None:
+		return None
+	m = str(m).rjust(2, '0')
+
+	return time.strptime(':'.join((Y, m, d, H_M_S)), '%Y:%m:%d:%H:%M:%S')
+
+def fetch_metadata_dtd():
+	"""
+	Fetch metadata.dtd if it doesn't exist or the ctime is older than
+	metadata_dtd_ctime_interval.
+	@rtype: bool
+	@returns: True if successful, otherwise False
+	"""
+
+	must_fetch = True
+	metadata_dtd_st = None
+	current_time = int(time.time())
+	try:
+		metadata_dtd_st = os.stat(metadata_dtd)
+	except EnvironmentError as e:
+		if e.errno not in (errno.ENOENT, errno.ESTALE):
+			raise
+		del e
+	else:
+		# Trigger fetch if metadata.dtd mtime is old or clock is wrong.
+		if abs(current_time - metadata_dtd_st.st_ctime) \
+			< metadata_dtd_ctime_interval:
+			must_fetch = False
+
+	if must_fetch:
+		print()
+		print(green("***") + " the local copy of metadata.dtd " + \
+			"needs to be refetched, doing that now")
+		print()
+		try:
+			url_f = urllib_request_urlopen(metadata_dtd_uri)
+			msg_info = url_f.info()
+			last_modified = msg_info.get('last-modified')
+			if last_modified is not None:
+				last_modified = parsedate(last_modified)
+				if last_modified is not None:
+					last_modified = calendar.timegm(last_modified)
+
+			metadata_dtd_tmp = "%s.%s" % (metadata_dtd, os.getpid())
+			try:
+				local_f = open(metadata_dtd_tmp, mode='wb')
+				local_f.write(url_f.read())
+				local_f.close()
+				if last_modified is not None:
+					os.utime(metadata_dtd_tmp,
+						(int(last_modified), int(last_modified)))
+				os.rename(metadata_dtd_tmp, metadata_dtd)
+			finally:
+				try:
+					os.unlink(metadata_dtd_tmp)
+				except OSError:
+					pass
+
+			url_f.close()
+
+		except EnvironmentError as e:
+			print()
+			print(red("!!!")+" attempting to fetch '%s', caught" % metadata_dtd_uri)
+			print(red("!!!")+" exception '%s' though." % (e,))
+			print(red("!!!")+" fetching new metadata.dtd failed, aborting")
+			return False
+
+	return True
+
 if options.mode == "manifest":
 	pass
 elif not find_binary('xmllint'):
@@ -771,49 +877,8 @@ elif not find_binary('xmllint'):
 		print(red("!!!")+" sorry, xmllint is needed.  failing\n")
 		sys.exit(1)
 else:
-	#hardcoded paths/urls suck. :-/
-	must_fetch=1
-	backup_exists=0
-	try:
-		# if it's been over a week since fetching (or the system clock is fscked), grab an updated copy of metadata.dtd 
-		# clock is fscked or it's been a week. time to grab a new one.
-		ct = os.stat(metadata_dtd)[ST_CTIME]
-		if abs(time.time() - ct) > (60*60*24*7):
-			# don't trap the exception, we're watching for errno 2 (file not found), anything else is a bug.
-			backup_exists=1
-		else:
-			must_fetch=0
-
-	except (OSError,IOError) as e:
-		if e.errno != 2:
-			print(red("!!!")+" caught exception '%s' for %s/metadata.dtd, bailing" % (str(e), portage.CACHE_PATH))
-			sys.exit(1)
-
-	if must_fetch:
-		print() 
-		print(green("***")+" the local copy of metadata.dtd needs to be refetched, doing that now")
-		print()
-		val = 0
-		try:
-			try:
-				os.unlink(metadata_dtd)
-			except OSError as e:
-				if e.errno != errno.ENOENT:
-					raise
-				del e
-			val=portage.fetch(['http://www.gentoo.org/dtd/metadata.dtd'],repoman_settings,fetchonly=0, \
-				try_mirrors=0)
-
-		except SystemExit as e:
-			raise  # Need to propogate this
-		except Exception as e:
-			print()
-			print(red("!!!")+" attempting to fetch 'http://www.gentoo.org/dtd/metadata.dtd', caught")
-			print(red("!!!")+" exception '%s' though." % str(e))
-			val=0
-		if not val:
-			print(red("!!!")+" fetching new metadata.dtd failed, aborting")
-			sys.exit(1)
+	if not fetch_metadata_dtd():
+		sys.exit(1)
 	#this can be problematic if xmllint changes their output
 	xmllint_capable=True
 
@@ -1501,6 +1566,14 @@ for x in scanlist:
 								(relative_path + ": %s new blocker syntax" + \
 								" not supported with EAPI='%s':" + \
 								" '%s'") % (mytype, eapi, atom))
+
+						if atom.operator == "~" and \
+							portage.versions.catpkgsplit(atom.cpv)[3] != "r0":
+							stats[mytype + '.badtilde'] += 1
+							fails[mytype + '.badtilde'].append(
+								(relative_path + ": %s uses the ~ operator"
+								 " with a non-zero revision:" + \
+								 " '%s'") % (mytype, atom))
 
 			type_list.extend([mytype] * (len(badsyntax) - len(type_list)))
 
