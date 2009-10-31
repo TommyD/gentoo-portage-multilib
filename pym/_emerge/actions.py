@@ -134,6 +134,7 @@ def action_build(settings, trees, mtimedb,
 	pretend = "--pretend" in myopts
 	fetchonly = "--fetchonly" in myopts or "--fetch-all-uri" in myopts
 	ask = "--ask" in myopts
+	enter_invalid = '--ask-enter-invalid' in myopts
 	nodeps = "--nodeps" in myopts
 	oneshot = "--oneshot" in myopts or "--onlydeps" in myopts
 	tree = "--tree" in myopts
@@ -165,36 +166,10 @@ def action_build(settings, trees, mtimedb,
 			writemsg("%s%s\n" % (prefix, line))
 		writemsg(prefix + "\n")
 
-	if "--quiet" not in myopts and \
-		("--pretend" in myopts or "--ask" in myopts or \
-		"--tree" in myopts or "--verbose" in myopts):
-		action = ""
-		if "--fetchonly" in myopts or "--fetch-all-uri" in myopts:
-			action = "fetched"
-		elif "--buildpkgonly" in myopts:
-			action = "built"
-		else:
-			action = "merged"
-		if "--tree" in myopts and action != "fetched": # Tree doesn't work with fetching
-			print()
-			print(darkgreen("These are the packages that would be %s, in reverse order:") % action)
-			print()
-		else:
-			print()
-			print(darkgreen("These are the packages that would be %s, in order:") % action)
-			print()
-
-	show_spinner = "--quiet" not in myopts and "--nodeps" not in myopts
-	if not show_spinner:
-		spinner.update = spinner.update_quiet
-
 	if resume:
 		favorites = mtimedb["resume"].get("favorites")
 		if not isinstance(favorites, list):
 			favorites = []
-
-		if show_spinner:
-			print("Calculating dependencies  ", end=' ')
 		myparams = create_depgraph_params(myopts, myaction)
 
 		resume_data = mtimedb["resume"]
@@ -215,8 +190,7 @@ def action_build(settings, trees, mtimedb,
 			depgraph.UnsatisfiedResumeDep) as e:
 			if isinstance(e, depgraph.UnsatisfiedResumeDep):
 				mydepgraph = e.depgraph
-			if show_spinner:
-				print()
+
 			from textwrap import wrap
 			from portage.output import EOutput
 			out = EOutput()
@@ -268,9 +242,6 @@ def action_build(settings, trees, mtimedb,
 					"the operation manually."
 				for line in wrap(msg, 72):
 					out.eerror(line)
-		else:
-			if show_spinner:
-				print("\b\b... done!")
 
 		if success:
 			if dropped_tasks:
@@ -298,23 +269,14 @@ def action_build(settings, trees, mtimedb,
 			print(darkgreen("emerge: It seems we have nothing to resume..."))
 			return os.EX_OK
 
-		if "--quiet" not in myopts and "--nodeps" not in myopts:
-			print("Calculating dependencies  ", end=' ')
-			sys.stdout.flush()
-
 		myparams = create_depgraph_params(myopts, myaction)
 		try:
 			success, mydepgraph, favorites = backtrack_depgraph(
 				settings, trees, myopts, myparams, myaction, myfiles, spinner)
 		except portage.exception.PackageSetNotFound as e:
-			if show_spinner:
-				print("\b\b... done!")
 			root_config = trees[settings["ROOT"]]["root_config"]
 			display_missing_pkg_set(root_config, e.value)
 			return 1
-
-		if show_spinner:
-			print("\b\b... done!")
 
 		if not success:
 			mydepgraph.display_problems()
@@ -379,7 +341,7 @@ def action_build(settings, trees, mtimedb,
 			else:
 				prompt="Would you like to merge these packages?"
 		print()
-		if "--ask" in myopts and userquery(prompt) == "No":
+		if "--ask" in myopts and userquery(prompt, enter_invalid) == "No":
 			print()
 			print("Quitting.")
 			print()
@@ -480,6 +442,7 @@ def action_build(settings, trees, mtimedb,
 		return retval
 
 def action_config(settings, trees, myopts, myfiles):
+	enter_invalid = '--ask-enter-invalid' in myopts
 	if len(myfiles) != 1:
 		print(red("!!! config can only take a single package atom at this time\n"))
 		sys.exit(1)
@@ -509,7 +472,7 @@ def action_config(settings, trees, myopts, myfiles):
 				print(options[-1]+") "+pkg)
 			print("X) Cancel")
 			options.append("X")
-			idx = userquery("Selection?", options)
+			idx = userquery("Selection?", enter_invalid, responses=options)
 			if idx == "X":
 				sys.exit(0)
 			pkg = pkgs[int(idx)-1]
@@ -524,7 +487,7 @@ def action_config(settings, trees, myopts, myfiles):
 
 	print()
 	if "--ask" in myopts:
-		if userquery("Ready to configure "+pkg+"?") == "No":
+		if userquery("Ready to configure %s?" % pkg, enter_invalid) == "No":
 			sys.exit(0)
 	else:
 		print("Configuring pkg...")
@@ -566,7 +529,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 	msg.append("unless *all* required dependencies have been resolved.  As a\n")
 	msg.append("consequence, it is often necessary to run %s\n" % \
 		good("`emerge --update"))
-	msg.append(good("--newuse --deep @system @world`") + \
+	msg.append(good("--newuse --deep @world`") + \
 		" prior to depclean.\n")
 
 	if action == "depclean" and "--quiet" not in myopts and not myfiles:
@@ -614,7 +577,7 @@ def action_depclean(settings, trees, ldpath_mtimes,
 
 	print("Packages installed:   " + str(len(vardb.cpv_all())))
 	print("Packages in world:    " + \
-		str(len(root_config.sets["world"].getAtoms())))
+		str(len(root_config.sets["selected"].getAtoms())))
 	print("Packages in system:   " + \
 		str(len(root_config.sets["system"].getAtoms())))
 	print("Required packages:    "+str(req_pkg_count))
@@ -630,32 +593,44 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	xterm_titles = "notitles" not in settings.features
 	myroot = settings["ROOT"]
 	root_config = trees[myroot]["root_config"]
-	getSetAtoms = root_config.setconfig.getSetAtoms
+	psets = root_config.setconfig.psets
 	vardb = trees[myroot]["vartree"].dbapi
 	deselect = myopts.get('--deselect') != 'n'
 
-	required_set_names = ("system", "world")
+	required_set_stack = ["world"]
 	required_sets = {}
 	set_args = []
 
-	for s in required_set_names:
-		required_sets[s] = InternalPackageSet(
-			initial_atoms=getSetAtoms(s))
+	# Recursively create InternalPackageSet instances for world
+	# and any sets nested within it.
+	while required_set_stack:
+		s = required_set_stack.pop()
+		if s in required_sets:
+			continue
+		pset = psets.get(s)
+		if pset is not None:
+			required_sets[s] = InternalPackageSet(
+				initial_atoms=pset.getAtoms())
+			for n in pset.getNonAtoms():
+				if n.startswith(SETPREFIX):
+					required_set_stack.append(n[len(SETPREFIX):])
 
-
-	# When removing packages, use a temporary version of world
-	# which excludes packages that are intended to be eligible for
+	# When removing packages, use a temporary version of world 'selected'
+	# set which excludes packages that are intended to be eligible for
 	# removal.
-	world_temp_set = required_sets["world"]
-	system_set = required_sets["system"]
+	selected_set = required_sets["selected"]
+	protected_set = InternalPackageSet()
+	protected_set_name = '____depclean_protected_set____'
+	required_sets[protected_set_name] = protected_set
+	system_set = required_sets.get("system")
 
-	if not system_set or not world_temp_set:
+	if not system_set or not selected_set:
 
 		if not system_set:
 			writemsg_level("!!! You have no system list.\n",
 				level=logging.ERROR, noiselevel=-1)
 
-		if not world_temp_set:
+		if not selected_set:
 			writemsg_level("!!! You have no world file.\n",
 					level=logging.WARNING, noiselevel=-1)
 
@@ -678,7 +653,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 		if args_set:
 
 			if deselect:
-				world_temp_set.clear()
+				selected_set.clear()
 
 			# Pull in everything that's installed but not matched
 			# by an argument atom since we don't want to clean any
@@ -688,23 +663,23 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 
 				try:
 					if args_set.findAtomForPackage(pkg) is None:
-						world_temp_set.add("=" + pkg.cpv)
+						protected_set.add("=" + pkg.cpv)
 						continue
 				except portage.exception.InvalidDependString as e:
 					show_invalid_depstring_notice(pkg,
 						pkg.metadata["PROVIDE"], str(e))
 					del e
-					world_temp_set.add("=" + pkg.cpv)
+					protected_set.add("=" + pkg.cpv)
 					continue
 
 	elif action == "prune":
 
 		if deselect:
-			world_temp_set.clear()
+			selected_set.clear()
 
 		# Pull in everything that's installed since we don't
 		# to prune a package if something depends on it.
-		world_temp_set.update(vardb.cp_all())
+		protected_set.update(vardb.cp_all())
 
 		if not args_set:
 
@@ -727,7 +702,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			highest_version = pkgs_for_cp[-1]
 			if pkg == highest_version:
 				# pkg is the highest version
-				world_temp_set.add("=" + pkg.cpv)
+				protected_set.add("=" + pkg.cpv)
 				continue
 
 			if len(pkgs_for_cp) <= 1:
@@ -737,27 +712,16 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 
 			try:
 				if args_set.findAtomForPackage(pkg) is None:
-					world_temp_set.add("=" + pkg.cpv)
+					protected_set.add("=" + pkg.cpv)
 					continue
 			except portage.exception.InvalidDependString as e:
 				show_invalid_depstring_notice(pkg,
 					pkg.metadata["PROVIDE"], str(e))
 				del e
-				world_temp_set.add("=" + pkg.cpv)
+				protected_set.add("=" + pkg.cpv)
 				continue
 
-	set_args = {}
-	for s, package_set in required_sets.items():
-		set_atom = SETPREFIX + s
-		set_arg = SetArg(arg=set_atom, set=package_set,
-			root_config=resolver._frozen_config.roots[myroot])
-		set_args[s] = set_arg
-		for atom in set_arg.set:
-			resolver._dynamic_config._dep_stack.append(
-				Dependency(atom=atom, root=myroot, parent=set_arg))
-			resolver._dynamic_config.digraph.add(set_arg, None)
-
-	success = resolver._complete_graph()
+	success = resolver._complete_graph(required_sets={myroot:required_sets})
 	writemsg_level("\b\b... done!\n")
 
 	resolver.display_problems()
@@ -787,7 +751,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 				msg.append("    %s" % (parent,))
 				msg.append("")
 			msg.append("Have you forgotten to run " + \
-				good("`emerge --update --newuse --deep @system @world`") + " prior")
+				good("`emerge --update --newuse --deep @world`") + " prior")
 			msg.append(("to %s? It may be necessary to manually " + \
 				"uninstall packages that no longer") % action)
 			msg.append("exist in the portage tree since " + \
@@ -841,6 +805,13 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			return -1
 
 	def create_cleanlist():
+
+		# Never display the special internal protected_set.
+		for node in graph:
+			if isinstance(node, SetArg) and node.name == protected_set_name:
+				graph.remove(node)
+				break
+
 		pkgs_to_remove = []
 
 		if action == "depclean":
@@ -868,9 +839,6 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 						show_parents(pkg)
 
 		elif action == "prune":
-			# Prune really uses all installed instead of world. It's not
-			# a real reverse dependency so don't display it as such.
-			graph.remove(set_args["world"])
 
 			for atom in args_set:
 				for pkg in vardb.match_pkgs(atom):
@@ -905,7 +873,6 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 		linkmap = real_vardb.linkmap
 		consumer_cache = {}
 		provider_cache = {}
-		soname_cache = {}
 		consumer_map = {}
 
 		writemsg_level(">>> Checking for lib consumers...\n")
@@ -942,10 +909,7 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 
 			for lib, lib_consumers in consumers.items():
 
-				soname = soname_cache.get(lib)
-				if soname is None:
-					soname = linkmap.getSoname(lib)
-					soname_cache[lib] = soname
+				soname = linkmap.getSoname(lib)
 
 				consumer_providers = []
 				for lib_consumer in lib_consumers:
@@ -1032,13 +996,20 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 			msg = []
 			for pkg in sorted(consumer_map, key=cmp_sort_key(cmp_pkg_cpv)):
 				consumers = consumer_map[pkg]
+				consumer_libs = {}
+				for lib, lib_consumers in consumers.items():
+					for consumer in lib_consumers:
+						consumer_libs.setdefault(
+							consumer.mycpv, set()).add(linkmap.getSoname(lib))
 				unique_consumers = set(chain(*consumers.values()))
 				unique_consumers = sorted(consumer.mycpv \
 					for consumer in unique_consumers)
 				msg.append("")
 				msg.append("  %s pulled in by:" % (pkg.cpv,))
 				for consumer in unique_consumers:
-					msg.append("    %s" % (consumer,))
+					libs = consumer_libs[consumer]
+					msg.append("    %s needs %s" % \
+						(consumer, ', '.join(sorted(libs))))
 			msg.append("")
 			writemsg_level("".join(prefix + "%s\n" % line for line in msg),
 				level=logging.WARNING, noiselevel=-1)
@@ -1059,7 +1030,8 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 						return 1, [], False, 0
 
 			writemsg_level("\nCalculating dependencies  ")
-			success = resolver._complete_graph()
+			success = resolver._complete_graph(
+				required_sets={myroot:required_sets})
 			writemsg_level("\b\b... done!\n")
 			resolver.display_problems()
 			if not success:
@@ -1172,10 +1144,11 @@ def calc_depclean(settings, trees, ldpath_mtimes,
 	return 0, [], False, required_pkgs_total
 
 def action_deselect(settings, trees, opts, atoms):
+	enter_invalid = '--ask-enter-invalid' in opts
 	root_config = trees[settings['ROOT']]['root_config']
-	world_set = root_config.sets['world']
+	world_set = root_config.sets['selected']
 	if not hasattr(world_set, 'update'):
-		writemsg_level("World set does not appear to be mutable.\n",
+		writemsg_level("World @selected set does not appear to be mutable.\n",
 			level=logging.ERROR, noiselevel=-1)
 		return 1
 
@@ -1214,7 +1187,7 @@ def action_deselect(settings, trees, opts, atoms):
 			if '--ask' in opts:
 				prompt = "Would you like to remove these " + \
 					"packages from your world favorites?"
-				if userquery(prompt) == 'No':
+				if userquery(prompt, enter_invalid) == 'No':
 					return os.EX_OK
 
 			remaining = set(world_set)
@@ -1709,6 +1682,7 @@ def action_search(root_config, myopts, myfiles, spinner):
 			searchinstance.output()
 
 def action_sync(settings, trees, mtimedb, myopts, myaction):
+	enter_invalid = '--ask-enter-invalid' in myopts
 	xterm_titles = "notitles" not in settings.features
 	emergelog(xterm_titles, " === sync")
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
@@ -1954,7 +1928,9 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 			if (retries==0):
 				if "--ask" in myopts:
-					if userquery("Do you want to sync your Portage tree with the mirror at\n" + blue(dosyncuri) + bold("?"))=="No":
+					if userquery("Do you want to sync your Portage tree " + \
+						"with the mirror at\n" + blue(dosyncuri) + bold("?"),
+						enter_invalid) == "No":
 						print()
 						print("Quitting.")
 						print()
@@ -2596,6 +2572,7 @@ def load_emerge_config(trees=None):
 
 	for root, root_trees in trees.items():
 		settings = root_trees["vartree"].settings
+		settings._init_dirs()
 		setconfig = load_default_config(settings, root_trees)
 		root_trees["root_config"] = RootConfig(settings, root_trees, setconfig)
 

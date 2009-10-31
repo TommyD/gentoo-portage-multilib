@@ -497,10 +497,6 @@ save_ebuild_env() {
 			fi
 		fi
 
-		# misc variables set by bash
-		unset BASH HOSTTYPE IFS MACHTYPE OLDPWD \
-			OPTERR OPTIND OSTYPE PS4 PWD SHELL SHLVL
-
 		# misc variables inherited from the calling environment
 		unset COLORTERM DISPLAY EDITOR LESS LESSOPEN LOGNAME LS_COLORS PAGER \
 			TERM TERMCAP USER
@@ -525,6 +521,7 @@ save_ebuild_env() {
 		unset -f dump_trace die diefunc quiet_mode vecho elog_base eqawarn elog \
 			esyslog einfo einfon ewarn eerror ebegin _eend eend KV_major \
 			KV_minor KV_micro KV_to_int get_KV unset_colors set_colors has \
+			has_phase_defined_up_to \
 			hasg hasgq hasv hasq qa_source qa_call \
 			addread addwrite adddeny addpredict _sb_append_var \
 			lchown lchgrp esyslog use usev useq has_version portageq \
@@ -542,7 +539,7 @@ save_ebuild_env() {
 			source_all_bashrcs ebuild_main \
 			ebuild_phase ebuild_phase_with_hooks \
 			_ebuild_arg_to_phase _ebuild_phase_funcs default \
-			_source_ebuild \
+			_pipestatus \
 			${QA_INTERCEPTORS}
 
 		# portage config variables and variables set directly by portage
@@ -550,7 +547,7 @@ save_ebuild_env() {
 			DISTCC_DIR DISTDIR DOC_SYMLINKS_DIR \
 			EBUILD_EXIT_STATUS_FILE EBUILD_FORCE_TEST EBUILD_MASTER_PID \
 			ECLASSDIR ECLASS_DEPTH ENDCOL FAKEROOTKEY \
-			GOOD HILITE HOME IMAGE \
+			GOOD HILITE HOME \
 			LAST_E_CMD LAST_E_LEN LD_PRELOAD MISC_FUNCTIONS_ARGS MOPREFIX \
 			NOCOLOR NORMAL PKGDIR PKGUSE PKG_LOGDIR PKG_TMPDIR \
 			PORTAGE_ACTUAL_DISTDIR PORTAGE_ARCHLIST \
@@ -572,8 +569,8 @@ save_ebuild_env() {
 		# user config variables
 		unset DOC_SYMLINKS_DIR INSTALL_MASK PKG_INSTALL_MASK
 
-		set
-		export
+		declare -p
+		declare -fp
 	)
 }
 

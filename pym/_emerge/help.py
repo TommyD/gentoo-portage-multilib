@@ -42,7 +42,7 @@ def help(myopts, havecolor=1):
 		print("              emerge to display detailed help.")
 		print()
 		print(turquoise("Actions:"))
-		print("       "+green("--clean")+" ("+green("-c")+" short option)")
+		print("       "+green("--clean"))
 		print("              Cleans the system by removing outdated packages which will not")
 		print("              remove functionalities or prevent your system from working.")
 		print("              The arguments can be in several different formats :")
@@ -66,12 +66,12 @@ def help(myopts, havecolor=1):
 		print("              emerge process has completed.  This usually entails configuration")
 		print("              file setup or other similar setups that the user may wish to run.")
 		print()
-		print("       "+green("--depclean"))
+		print("       "+green("--depclean")+" ("+green("-c")+" short option)")
 
 		paragraph = "Cleans the system by removing packages that are " + \
 		"not associated with explicitly merged packages. Depclean works " + \
-		"by creating the full dependency tree from the @system and " + \
-		"@world sets, then comparing it to installed packages. Packages " + \
+		"by creating the full dependency tree from the " + \
+		"@world set, then comparing it to installed packages. Packages " + \
 		"installed, but not part of the dependency tree, will be " + \
 		"uninstalled by depclean. See --with-bdeps for behavior with " + \
 		"respect to build time dependencies that are not strictly " + \
@@ -80,7 +80,7 @@ def help(myopts, havecolor=1):
 		"emerge --noreplace <atom>. As a safety measure, depclean " + \
 		"will not remove any packages unless *all* required dependencies " + \
 		"have been resolved. As a consequence, it is often necessary to " + \
-		"run emerge --update --newuse --deep @system @world " + \
+		"run emerge --update --newuse --deep @world " + \
 		"prior to depclean."
 
 		for line in wrap(paragraph, desc_width):
@@ -255,16 +255,29 @@ def help(myopts, havecolor=1):
 		print("              be displayed as USE=\"-bar dar -foo\"")
 		print()
 		print("       "+green("--ask")+" ("+green("-a")+" short option)")
-		print("              before performing the merge, display what ebuilds and tbz2s will")
-		print("              be installed, in the same format as when using --pretend; then")
-		print("              ask whether to continue with the merge or abort. Using --ask is")
-		print("              more efficient than using --pretend and then executing the same")
-		print("              command without --pretend, as dependencies will only need to be")
-		print("              calculated once. WARNING: If the \"Enter\" key is pressed at the")
-		print("              prompt (with no other input), it is interpreted as acceptance of")
-		print("              the first choice.  Note that the input buffer is not cleared prior")
-		print("              to the prompt, so an accidental press of the \"Enter\" key at any")
-		print("              time prior to the prompt will be interpreted as a choice!")
+		desc = "Before performing the action, display what will take place (server info for " + \
+			"--sync, --pretend output for merge, and so forth), then ask " + \
+			"whether to proceed with the action or abort.  Using --ask is more " + \
+			"efficient than using --pretend and then executing the same command " + \
+			"without --pretend, as dependencies will only need to be calculated once. " + \
+			"WARNING: If the \"Enter\" key is pressed at the prompt (with no other input), " + \
+			"it is interpreted as acceptance of the first choice.  Note that the input " + \
+			"buffer is not cleared prior to the prompt, so an accidental press of the " + \
+			"\"Enter\" key at any time prior to the prompt will be interpreted as a choice! " + \
+			"Use the --ask-enter-invalid option if you want a single \"Enter\" key " + \
+			"press to be interpreted as invalid input."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
+		print("        " + green("--ask-enter-invalid"))
+		desc = "When used together with the --ask option, " + \
+			"interpret a single \"Enter\" key press as " + \
+			"invalid input. This helps prevent accidental " + \
+			"acceptance of the first choice. This option is " + \
+			"intended to be set in the make.conf(5) " + \
+			"EMERGE_DEFAULT_OPTS variable."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
 		print()
 		print("        " + green("--binpkg-respect-use") + \
 			" < " + turquoise("y") + " | " + turquoise("n") + " >")
@@ -312,7 +325,7 @@ def help(myopts, havecolor=1):
 		print()
 		print("       "+green("--complete-graph") + "[=%s]" % turquoise("n"))
 		desc = "This causes emerge to consider the deep dependencies of all" + \
-			" packages from the system and world sets. With this option enabled," + \
+			" packages from the world set. With this option enabled," + \
 			" emerge will bail out if it determines that the given operation will" + \
 			" break any dependencies of the packages that have been added to the" + \
 			" graph. Like the --deep option, the --complete-graph" + \
@@ -502,6 +515,14 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
+		print("       " + green("--select") + "[=%s]" % turquoise("n"))
+		desc = "Add specified packages to the world set (inverse of " + \
+			"--oneshot). This is useful if you want to " + \
+			"use EMERGE_DEFAULT_OPTS to make " + \
+			"--oneshot behavior default."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
 		print("       " + green("--selective") + "[=%s]" % turquoise("n"))
 		desc = "This is similar to the --noreplace option, except that it " + \
 			"does not take precedence over options such as --newuse. " + \
@@ -529,6 +550,21 @@ def help(myopts, havecolor=1):
 		print("              The packages are also listed in reverse merge order so that")
 		print("              a package's dependencies follow the package. Only really useful")
 		print("              in combination with --emptytree, --update or --deep.")
+		print()
+		print("       " + green("--unordered-display"))
+		desc = "By default the displayed merge list is sorted using the " + \
+			"order in which the packages will be merged. When " + \
+			"--tree is used together with this option, this " + \
+			"constraint is removed, hopefully leading to a more " + \
+			"readable dependency tree."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
+		print("       " + green("--use-ebuild-visibility") + "[=%s]" % turquoise("n"))
+		desc = "Use unbuilt ebuild metadata for visibility " + \
+			"checks on built packages."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
 		print()
 		print("       "+green("--usepkg")+ "[=%s]" % turquoise("n") + " ("+green("-k")+" short option)")
 		print("              Tell emerge to use binary packages (from $PKGDIR) if they are")

@@ -2132,9 +2132,11 @@ class config(object):
 					self.pprovideddict[mycatpkg]=[x]
 
 			# parse licensegroups
+			license_groups = self._license_groups
 			for x in locations:
-				self._license_groups.update(
-					grabdict(os.path.join(x, "license_groups")))
+				for k, v in grabdict(
+					os.path.join(x, "license_groups")).items():
+					license_groups.setdefault(k, []).extend(v)
 
 			# reasonable defaults; this is important as without USE_ORDER,
 			# USE will always be "" (nothing set)!
@@ -2210,8 +2212,6 @@ class config(object):
 			if 'parse-eapi-glep-55' in self.features:
 				_validate_cache_for_unsupported_eapis = False
 				_glep_55_enabled = True
-
-			self._init_dirs()
 
 		for k in self._case_insensitive_vars:
 			if k in self:
@@ -2728,7 +2728,7 @@ class config(object):
 			not hasattr(self, "_ebuild_force_test_msg_shown"):
 				self._ebuild_force_test_msg_shown = True
 				writemsg(_("Forcing test.\n"), noiselevel=-1)
-		if "test" in self.features and "test" in iuse_implicit:
+		if "test" in self.features:
 			if "test" in self.usemask and not ebuild_force_test:
 				# "test" is in IUSE and USE=test is masked, so execution
 				# of src_test() probably is not reliable. Therefore,
@@ -2817,6 +2817,13 @@ class config(object):
 		# build and bootstrap flags used by bootstrap.sh
 		iuse_implicit.add("build")
 		iuse_implicit.add("bootstrap")
+
+		# Controlled by FEATURES=test. Make this implicit, so handling
+		# of FEATURES=test is consistent regardless of explicit IUSE.
+		# Users may use use.mask/package.use.mask to control
+		# FEATURES=test for all ebuilds, regardless of explicit IUSE.
+		iuse_implicit.add("test")
+
 		return iuse_implicit
 
 	def _getUseMask(self, pkg):
@@ -3695,6 +3702,7 @@ class config(object):
 		mydict={}
 		environ_filter = self._environ_filter
 
+		eapi = self.get('EAPI')
 		phase = self.get('EBUILD_PHASE')
 		filter_calling_env = False
 		if phase not in ('clean', 'cleanrm', 'depend'):
@@ -3739,6 +3747,10 @@ class config(object):
 		# Filtered by IUSE and implicit IUSE.
 		mydict["USE"] = self.get("PORTAGE_USE", "")
 
+		# Don't export AA to the ebuild environment in EAPIs that forbid it
+		if eapi not in ("0", "1", "2"):
+			mydict.pop("AA", None)
+
 		# sandbox's bashrc sources /etc/profile which unsets ROOTPATH,
 		# so we have to back it up and restore it.
 		rootpath = mydict.get("ROOTPATH")
@@ -3779,6 +3791,20 @@ class config(object):
 	if sys.hexversion >= 0x3000000:
 		keys = __iter__
 		items = iteritems
+
+def _can_test_pty_eof():
+	"""
+	The _test_pty_eof() function seems to hang on most
+	kernels other than Linux.
+	This was reported for the following kernels which used to work fine
+	without this EOF test: Darwin, AIX, FreeBSD.  They seem to hang on
+	the slave_file.close() call.  Note that Python's implementation of
+	openpty on Solaris already caused random hangs without this EOF test
+	and hence is globally disabled.
+	@rtype: bool
+	@returns: True if _test_pty_eof() won't hang, False otherwise.
+	"""
+	return platform.system() in ("Linux",)
 
 def _test_pty_eof():
 	"""
@@ -3864,24 +3890,26 @@ def _test_pty_eof():
 
 	return test_string == ''.join(data)
 
-# In some cases, openpty can be slow when it fails. Therefore,
-# stop trying to use it after the first failure.
-if platform.system() not in ["FreeBSD", "Linux"]:
+# If _test_pty_eof() can't be used for runtime detection of
+# http://bugs.python.org/issue5380, openpty can't safely be used
+# unless we can guarantee that the current version of python has
+# been fixed (affects all current versions of python3). When
+# this issue is fixed in python3, we can add another sys.hexversion
+# conditional to enable openpty support in the fixed versions.
+if sys.hexversion >= 0x3000000 and not _can_test_pty_eof():
+	_disable_openpty = True
+else:
 	# Disable the use of openpty on Solaris as it seems Python's openpty
 	# implementation doesn't play nice on Solaris with Portage's
 	# behaviour causing hangs/deadlocks.
-	# Disable on Darwin also, it used to work fine, but since the
-	# introduction of _test_pty_eof Portage hangs (on the
-	# slave_file.close()) indicating some other problems with openpty on
-	# Darwin there
-	# On AIX, haubi reported that the openpty code doesn't work any
-	# longer since the introduction of _test_pty_eof either.
-	# Looks like Python's openpty module is too fragile to use on UNIX,
-	# so only use it on Linux
-	_disable_openpty = True
-else:
-	_disable_openpty = False
+	# Additional note for the future: on Interix, pipes do NOT work, so
+	# _disable_openpty on Interix must *never* be True
+	_disable_openpty = platform.system() in ("SunOS",)
 _tested_pty = False
+
+if not _can_test_pty_eof():
+	# Skip _test_pty_eof() on systems where it hangs.
+	_tested_pty = True
 
 def _create_pty_or_pipe(copy_term_size=None):
 	"""
@@ -3950,7 +3978,7 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 	Optiosn include:
 
 	Sandbox: Sandbox means the spawned process will be limited in its ability t
-	read and write files (normally this means it is restricted to ${IMAGE}/)
+	read and write files (normally this means it is restricted to ${D}/)
 	SElinux Sandbox: Enables sandboxing on SElinux
 	Reduced Privileges: Drops privilages such that the process runs as portage:portage
 	instead of as root.
@@ -7629,8 +7657,10 @@ def dep_virtual(mysplit, mysettings):
 
 def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 	trees=None, use_mask=None, use_force=None, **kwargs):
-	"""Recursively expand new-style virtuals so as to collapse one or more
-	levels of indirection.  In dep_zapdeps, new-style virtuals will be assigned
+	"""
+	In order to solve bug #141118, recursively expand new-style virtuals so
+	as to collapse one or more levels of indirection, generating an expanded
+	search space. In dep_zapdeps, new-style virtuals will be assigned
 	zero cost regardless of whether or not they are currently installed. Virtual
 	blockers are supported but only when the virtual expands to a single
 	atom because it wouldn't necessarily make sense to block all the components
@@ -7910,6 +7940,19 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 	unsat_use_non_installed = []
 	other = []
 
+	# unsat_use_* must come after preferred_non_installed
+	# for correct ordering in cases like || ( foo[a] foo[b] ).
+	choice_bins = (
+		preferred_in_graph,
+		preferred_installed,
+		preferred_any_slot,
+		preferred_non_installed,
+		unsat_use_in_graph,
+		unsat_use_installed,
+		unsat_use_non_installed,
+		other,
+	)
+
 	# Alias the trees we'll be checking availability against
 	parent   = trees[myroot].get("parent")
 	priority = trees[myroot].get("priority")
@@ -7931,14 +7974,15 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 				use_binaries=use_binaries, trees=trees)
 		else:
 			atoms = [x]
-		if not vardb:
-			# called by repoman
-			other.append((atoms, None, False))
-			continue
+		if vardb is None:
+			# When called by repoman, we can simply return the first choice
+			# because dep_eval() handles preference selection.
+			return atoms
 
 		all_available = True
 		all_use_satisfied = True
-		versions = {}
+		slot_map = {}
+		cp_map = {}
 		for atom in atoms:
 			if atom.blocker:
 				continue
@@ -7966,9 +8010,15 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						avail_slot = dep.Atom("%s:%s" % (atom.cp,
 							mydbapi.aux_get(avail_pkg, ["SLOT"])[0]))
 
-			versions[avail_slot] = avail_pkg
+			slot_map[avail_slot] = avail_pkg
+			pkg_cp = cpv_getkey(avail_pkg)
+			highest_cpv = cp_map.get(pkg_cp)
+			if highest_cpv is None or \
+				pkgcmp(catpkgsplit(avail_pkg)[1:],
+				catpkgsplit(highest_cpv)[1:]) > 0:
+				cp_map[pkg_cp] = avail_pkg
 
-		this_choice = (atoms, versions, all_available)
+		this_choice = (atoms, slot_map, cp_map, all_available)
 		if all_available:
 			# The "all installed" criterion is not version or slot specific.
 			# If any version of a package is already in the graph then we
@@ -7983,7 +8033,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 			all_installed_slots = False
 			if all_installed:
 				all_installed_slots = True
-				for slot_atom in versions:
+				for slot_atom in slot_map:
 					# New-style virtuals have zero cost to install.
 					if not vardb.match(slot_atom) and \
 						not slot_atom.startswith("virtual/"):
@@ -8005,7 +8055,7 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 						unsat_use_non_installed.append(this_choice)
 			else:
 				all_in_graph = True
-				for slot_atom in versions:
+				for slot_atom in slot_map:
 					# New-style virtuals have zero cost to install.
 					if not graph_db.match(slot_atom) and \
 						not slot_atom.startswith("virtual/"):
@@ -8057,17 +8107,52 @@ def dep_zapdeps(unreduced, reduced, myroot, use_binaries=0, trees=None):
 		else:
 			other.append(this_choice)
 
-	# unsat_use_* must come after preferred_non_installed
-	# for correct ordering in cases like || ( foo[a] foo[b] ).
-	preferred = preferred_in_graph + preferred_installed + \
-		preferred_any_slot + preferred_non_installed + \
-		unsat_use_in_graph + unsat_use_installed + unsat_use_non_installed + \
-		other
+	# Prefer choices which contain upgrades to higher slots. This helps
+	# for deps such as || ( foo:1 foo:2 ), where we want to prefer the
+	# atom which matches the higher version rather than the atom furthest
+	# to the left. Sorting is done separately for each of choice_bins, so
+	# as not to interfere with the ordering of the bins. Because of the
+	# bin separation, the main function of this code is to allow
+	# --depclean to remove old slots (rather than to pull in new slots).
+	for choices in choice_bins:
+		if len(choices) < 2:
+			continue
+		for choice_1 in choices[1:]:
+			atoms_1, slot_map_1, cp_map_1, all_available_1 = choice_1
+			cps = set(cp_map_1)
+			for choice_2 in choices:
+				if choice_1 is choice_2:
+					# choice_1 will not be promoted, so move on
+					break
+				atoms_2, slot_map_2, cp_map_2, all_available_2 = choice_2
+				intersecting_cps = cps.intersection(cp_map_2)
+				if not intersecting_cps:
+					continue
+				has_upgrade = False
+				has_downgrade = False
+				for cp in intersecting_cps:
+					version_1 = cp_map_1[cp]
+					version_2 = cp_map_2[cp]
+					difference = pkgcmp(catpkgsplit(version_1)[1:],
+						catpkgsplit(version_2)[1:])
+					if difference != 0:
+						if difference > 0:
+							has_upgrade = True
+						else:
+							has_downgrade = True
+							break
+				if has_upgrade and not has_downgrade:
+					# promote choice_1 in front of choice_2
+					choices.remove(choice_1)
+					index_2 = choices.index(choice_2)
+					choices.insert(index_2, choice_1)
+					break
 
 	for allow_masked in (False, True):
-		for atoms, versions, all_available in preferred:
-			if all_available or allow_masked:
-				return atoms
+		for choices in choice_bins:
+			for atoms, slot_map, cp_map, all_available in choices:
+				if all_available or allow_masked:
+					return atoms
 
 	assert(False) # This point should not be reachable
 
@@ -8240,12 +8325,11 @@ def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
 					return None
 	return deplist
 
-_cpv_key_re = re.compile('^' + versions._cpv + '$', re.VERBOSE)
 def cpv_getkey(mycpv):
 	"""Calls pkgsplit on a cpv and returns only the cp."""
-	m = _cpv_key_re.match(mycpv)
-	if m is not None:
-		return m.group(2)
+	mysplit = versions.catpkgsplit(mycpv)
+	if mysplit is not None:
+		return mysplit[0] + '/' + mysplit[1]
 
 	warnings.warn("portage.cpv_getkey() called with invalid cpv: '%s'" \
 		% (mycpv,), DeprecationWarning)

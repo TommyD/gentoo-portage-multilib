@@ -74,10 +74,6 @@ unset GZIP BZIP BZIP2 CDPATH GREP_OPTIONS GREP_COLOR GLOBIGNORE
 source "${PORTAGE_BIN_PATH}/isolated-functions.sh"  &>/dev/null
 source "${PORTAGE_BIN_PATH}/auto-multilib.sh"  &>/dev/null
 
-# Set IMAGE for minimal backward compatibility with
-# overlays or user's bashrc, but don't export it.
-[ "${EBUILD_PHASE}" == "preinst" ] && IMAGE=${D}
-
 [[ $PORTAGE_QUIET != "" ]] && export PORTAGE_QUIET
 
 # the sandbox is disabled by default except when overridden in the relevant stages
@@ -237,15 +233,8 @@ use_with() {
 		return 1
 	fi
 
-	local UW_SUFFIX=""
-	if [ ! -z "${3}" ]; then
-		UW_SUFFIX="=${3}"
-	fi
-
-	local UWORD="$2"
-	if [ -z "${UWORD}" ]; then
-		UWORD="$1"
-	fi
+	local UW_SUFFIX=${3:+=$3}
+	local UWORD=${2:-$1}
 
 	if useq $1; then
 		echo "--with-${UWORD}${UW_SUFFIX}"
@@ -262,15 +251,8 @@ use_enable() {
 		return 1
 	fi
 
-	local UE_SUFFIX=""
-	if [ ! -z "${3}" ]; then
-		UE_SUFFIX="=${3}"
-	fi
-
-	local UWORD="$2"
-	if [ -z "${UWORD}" ]; then
-		UWORD="$1"
-	fi
+	local UE_SUFFIX=${3:+=$3}
+	local UWORD=${2:-$1}
 
 	if useq $1; then
 		echo "--enable-${UWORD}${UE_SUFFIX}"
@@ -562,7 +544,7 @@ einstall() {
 		CONF_LIBDIR="${!LIBDIR_VAR}"
 	fi
 	unset LIBDIR_VAR
-	if [ -n "${CONF_LIBDIR}" ] && [ "${CONF_PREFIX:-unset}" != "unset" ]; then
+	if [ -n "${CONF_LIBDIR}" ] && [ "${CONF_PREFIX:+set}" = set ]; then
 		EI_DESTLIBDIR="${D}/${CONF_PREFIX}/${CONF_LIBDIR}"
 		EI_DESTLIBDIR="$(strip_duplicate_slashes ${EI_DESTLIBDIR})"
 		LOCAL_EXTRA_EINSTALL="libdir=${EI_DESTLIBDIR} ${LOCAL_EXTRA_EINSTALL}"
@@ -696,7 +678,7 @@ dyn_unpack() {
 		if [ -e "${WORKDIR}" ]; then
 			local x
 			local checkme
-			for x in ${AA}; do
+			for x in $A ; do
 				vecho ">>> Checking ${x}'s mtime..."
 				if [ "${PORTAGE_ACTUAL_DISTDIR:-${DISTDIR}}/${x}" -nt "${WORKDIR}" ]; then
 					vecho ">>> ${x} has been updated; recreating WORKDIR..."
@@ -917,6 +899,16 @@ abort_install() {
 	exit 1
 }
 
+has_phase_defined_up_to() {
+	local phase
+	for phase in unpack prepare configure compile install; do
+		has ${phase} ${DEFINED_PHASES} && return 0
+		[[ ${phase} == $1 ]] && return 1
+	done
+	# We shouldn't actually get here
+	return 1
+}
+
 dyn_prepare() {
 
 	if ! is_auto-multilib && [[ -e $PORTAGE_BUILDDIR/.prepared ]] ; then
@@ -927,6 +919,15 @@ dyn_prepare() {
 
 	for LOOP_ABI in $(get_abi_order); do
 		set_abi ${LOOP_ABI}
+		if [[ -d $S ]] ; then
+			cd "${S}"
+		elif hasq $EAPI 0 1 2; then
+			cd "${WORKDIR}"
+		elif [[ -z ${A} ]] && ! has_phase_defined_up_to prepare; then
+			cd "${WORKDIR}"
+		else
+			die "The source directory '${S}' doesn't exist"
+		fi
 
 		if is_auto-multilib; then
 			if [ ${PORTAGE_BUILDDIR}/.prepared.${LOOP_ABI} -nt "${WORKDIR}" ]; then
@@ -935,15 +936,6 @@ dyn_prepare() {
 				continue
 			fi
 		fi
-
-		local srcdir
-		if [[ -d $S ]] ; then
-			srcdir=$S
-		else
-			srcdir=$WORKDIR
-		fi
-		cd "$srcdir"
-
 		trap abort_prepare SIGINT SIGQUIT
 
 		[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
@@ -980,13 +972,15 @@ dyn_configure() {
 				continue
 			fi
 		fi
-		local srcdir
 		if [[ -d $S ]] ; then
-			srcdir=$S
+			cd "${S}"
+		elif hasq $EAPI 0 1 2; then
+			cd "${WORKDIR}"
+		elif [[ -z ${A} ]] && ! has_phase_defined_up_to configure; then
+			cd "${WORKDIR}"
 		else
-			srcdir=$WORKDIR
+			die "The source directory '${S}' doesn't exist"
 		fi
-		cd "$srcdir"
 
 		trap abort_configure SIGINT SIGQUIT
 
@@ -1026,15 +1020,17 @@ dyn_compile() {
 			fi
 		fi
 
-		local srcdir
 		if [[ -d $S ]] ; then
-			srcdir=$S
+			cd "${S}"
+		elif hasq $EAPI 0 1 2; then
+			cd "${WORKDIR}"
+		elif [[ -z ${A} ]] && ! has_phase_defined_up_to compile; then
+			cd "${WORKDIR}"
 		else
-			srcdir=$WORKDIR
+			die "The source directory '${S}' doesn't exist"
 		fi
-		cd "$srcdir"
 
-		trap abort_compile SIGINT SIGQUIT
+	trap abort_compile SIGINT SIGQUIT
 
 		[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
 		ebuild_phase pre_src_compile
@@ -1082,11 +1078,11 @@ dyn_test() {
 				fi
 			fi
 
-			if [ -d "${S}" ]; then
-				cd "${S}"
-			else
-				cd "${WORKDIR}"
-			fi
+		if [ -d "${S}" ]; then
+			cd "${S}"
+		else
+			cd "${WORKDIR}"
+		fi
 			local save_sp=${SANDBOX_PREDICT}
 			addpredict /
 			[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
@@ -1110,8 +1106,7 @@ dyn_install() {
 	[ -z "$PORTAGE_BUILDDIR" ] && die "${FUNCNAME}: PORTAGE_BUILDDIR is unset"
 	if hasq noauto $FEATURES ; then
 		rm -f "${PORTAGE_BUILDDIR}"/.{installed,installed.*}
-	fi
-	if ! is_auto-multilib && [[ -e $PORTAGE_BUILDDIR/.installed ]] ; then
+	elif ! is_auto-multilib && [[ -e $PORTAGE_BUILDDIR/.installed ]] ; then
 		vecho ">>> It appears that '${PF}' is already installed; skipping."
 		vecho ">>> Remove '${PORTAGE_BUILDDIR}/.installed' to force install."
 		return 0
@@ -1123,13 +1118,17 @@ dyn_install() {
 	mkdir "${PORTAGE_BUILDDIR}/image"
 	for LOOP_ABI in $(get_abi_order); do
 		set_abi ${LOOP_ABI}
-		if [ -d "${S}" ]; then
+		if [[ -d $S ]] ; then
 			cd "${S}"
-		else
+		elif hasq $EAPI 0 1 2; then
 			cd "${WORKDIR}"
+		elif [[ -z ${A} ]] && ! has_phase_defined_up_to install; then
+			cd "${WORKDIR}"
+		else
+			die "The source directory '${S}' doesn't exist"
 		fi
 		vecho
-		vecho ">>> Install ${PF} into ${D} category ${CATEGORY}$(_get_abi_string)"
+		vecho ">>> Install ${PF} into ${D} category ${CATEGORY}"
 		#our custom version of libtool uses $S and $D to fix
 		#invalid paths in .la files
 		export S D
@@ -1386,10 +1385,10 @@ inherit() {
 
 		# Retain the old data and restore it later.
 		unset B_IUSE B_DEPEND B_RDEPEND B_PDEPEND
-		[ "${IUSE-unset}"    != "unset" ] && B_IUSE="${IUSE}"
-		[ "${DEPEND-unset}"  != "unset" ] && B_DEPEND="${DEPEND}"
-		[ "${RDEPEND-unset}" != "unset" ] && B_RDEPEND="${RDEPEND}"
-		[ "${PDEPEND-unset}" != "unset" ] && B_PDEPEND="${PDEPEND}"
+		[ "${IUSE+set}"       = set ] && B_IUSE="${IUSE}"
+		[ "${DEPEND+set}"     = set ] && B_DEPEND="${DEPEND}"
+		[ "${RDEPEND+set}"    = set ] && B_RDEPEND="${RDEPEND}"
+		[ "${PDEPEND+set}"    = set ] && B_PDEPEND="${PDEPEND}"
 		unset IUSE DEPEND RDEPEND PDEPEND
 		#turn on glob expansion
 		set +f
@@ -1401,22 +1400,22 @@ inherit() {
 
 		# If each var has a value, append it to the global variable E_* to
 		# be applied after everything is finished. New incremental behavior.
-		[ "${IUSE-unset}"    != "unset" ] && export E_IUSE="${E_IUSE} ${IUSE}"
-		[ "${DEPEND-unset}"  != "unset" ] && export E_DEPEND="${E_DEPEND} ${DEPEND}"
-		[ "${RDEPEND-unset}" != "unset" ] && export E_RDEPEND="${E_RDEPEND} ${RDEPEND}"
-		[ "${PDEPEND-unset}" != "unset" ] && export E_PDEPEND="${E_PDEPEND} ${PDEPEND}"
+		[ "${IUSE+set}"       = set ] && export E_IUSE="${E_IUSE} ${IUSE}"
+		[ "${DEPEND+set}"     = set ] && export E_DEPEND="${E_DEPEND} ${DEPEND}"
+		[ "${RDEPEND+set}"    = set ] && export E_RDEPEND="${E_RDEPEND} ${RDEPEND}"
+		[ "${PDEPEND+set}"    = set ] && export E_PDEPEND="${E_PDEPEND} ${PDEPEND}"
 
-		[ "${B_IUSE-unset}"    != "unset" ] && IUSE="${B_IUSE}"
-		[ "${B_IUSE-unset}"    != "unset" ] || unset IUSE
+		[ "${B_IUSE+set}"     = set ] && IUSE="${B_IUSE}"
+		[ "${B_IUSE+set}"     = set ] || unset IUSE
 
-		[ "${B_DEPEND-unset}"  != "unset" ] && DEPEND="${B_DEPEND}"
-		[ "${B_DEPEND-unset}"  != "unset" ] || unset DEPEND
+		[ "${B_DEPEND+set}"   = set ] && DEPEND="${B_DEPEND}"
+		[ "${B_DEPEND+set}"   = set ] || unset DEPEND
 
-		[ "${B_RDEPEND-unset}" != "unset" ] && RDEPEND="${B_RDEPEND}"
-		[ "${B_RDEPEND-unset}" != "unset" ] || unset RDEPEND
+		[ "${B_RDEPEND+set}"  = set ] && RDEPEND="${B_RDEPEND}"
+		[ "${B_RDEPEND+set}"  = set ] || unset RDEPEND
 
-		[ "${B_PDEPEND-unset}" != "unset" ] && PDEPEND="${B_PDEPEND}"
-		[ "${B_PDEPEND-unset}" != "unset" ] || unset PDEPEND
+		[ "${B_PDEPEND+set}"  = set ] && PDEPEND="${B_PDEPEND}"
+		[ "${B_PDEPEND+set}"  = set ] || unset PDEPEND
 
 		#turn on glob expansion
 		set +f
@@ -1722,13 +1721,17 @@ PORTAGE_MUTABLE_FILTERED_VARS="AA HOSTNAME"
 # variables out and discards them. See bug #190128.
 filter_readonly_variables() {
 	local x filtered_vars
-	local readonly_bash_vars="DIRSTACK EUID FUNCNAME GROUPS
-		PIPESTATUS PPID SHELLOPTS UID"
+	local readonly_bash_vars="BASHPID DIRSTACK EUID FUNCNAME
+		GROUPS PIPESTATUS PPID SHELLOPTS UID"
+	local bash_misc_vars="BASH BASH_.* COMP_WORDBREAKS HISTCMD
+		HISTFILE HOSTNAME HOSTTYPE IFS LINENO MACHTYPE OLDPWD
+		OPTERR OPTIND OSTYPE POSIXLY_CORRECT PS4 PWD RANDOM
+		SECONDS SHELL SHLVL"
 	local filtered_sandbox_vars="SANDBOX_ACTIVE SANDBOX_BASHRC
 		SANDBOX_DEBUG_LOG SANDBOX_DISABLED SANDBOX_LIB
 		SANDBOX_LOG SANDBOX_ON"
-	filtered_vars="${readonly_bash_vars} ${READONLY_PORTAGE_VARS}
-		BASH_.* HISTFILE PATH POSIXLY_CORRECT"
+	filtered_vars="$readonly_bash_vars $bash_misc_vars
+		$READONLY_PORTAGE_VARS PATH"
 	if hasq --filter-sandbox $* ; then
 		filtered_vars="${filtered_vars} SANDBOX_.*"
 	else
@@ -1906,78 +1909,75 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm depend && \
 	[[ -n $EAPI ]] || EAPI=0
 fi
 
-_source_ebuild() {
-	# The bashrcs get an opportunity here to set aliases that will be expanded
-	# during sourcing of ebuilds and eclasses.
-	source_all_bashrcs
-
-	# *DEPEND and IUSE will be set during the sourcing of the ebuild.
-	# In order to ensure correct interaction between ebuilds and
-	# eclasses, they need to be unset before this process of
-	# interaction begins.
-	unset DEPEND RDEPEND PDEPEND IUSE
-	source "${EBUILD}" || die "error sourcing ebuild"
-
-	if [ "${EBUILD_PHASE}" != "depend" ] ; then
-		RESTRICT=${PORTAGE_RESTRICT}
-		[[ -e $PORTAGE_BUILDDIR/.ebuild_changed ]] && \
-			rm "$PORTAGE_BUILDDIR/.ebuild_changed"
-	fi
-
-	[[ -n $EAPI ]] || EAPI=0
-
-	if has "$EAPI" 0 1 2 ; then
-		export RDEPEND=${RDEPEND-${DEPEND}}
-		debug-print "RDEPEND: not set... Setting to: ${DEPEND}"
-	fi
-
-	# add in dependency info from eclasses
-	IUSE="${IUSE} ${E_IUSE}"
-	DEPEND="${DEPEND} ${E_DEPEND}"
-	RDEPEND="${RDEPEND} ${E_RDEPEND}"
-	PDEPEND="${PDEPEND} ${E_PDEPEND}"
-
-	unset ECLASS E_IUSE E_DEPEND E_RDEPEND E_PDEPEND
-
-	# alphabetically ordered by $EBUILD_PHASE value
-	local f valid_phases
-	case "$EAPI" in
-		0|1)
-			valid_phases="src_compile pkg_config pkg_info src_install
-				pkg_nofetch pkg_postinst pkg_postrm pkg_preinst pkg_prerm
-				pkg_setup src_test src_unpack"
-			;;
-		2)
-			valid_phases="src_compile pkg_config src_configure pkg_info
-				src_install pkg_nofetch pkg_postinst pkg_postrm pkg_preinst
-				src_prepare pkg_prerm pkg_setup src_test src_unpack"
-			;;
-		*)
-			valid_phases="src_compile pkg_config src_configure pkg_info
-				src_install pkg_nofetch pkg_postinst pkg_postrm pkg_preinst
-				src_prepare pkg_prerm pkg_pretend pkg_setup src_test src_unpack"
-			;;
-	esac
-
-	DEFINED_PHASES=
-	for f in $valid_phases ; do
-		if declare -F $f >/dev/null ; then
-			f=${f#pkg_}
-			DEFINED_PHASES+=" ${f#src_}"
-		fi
-	done
-	[[ -n $DEFINED_PHASES ]] || DEFINED_PHASES=-
-
-	# This needs to be exported since prepstrip is a separate shell script.
-	[[ -n $QA_PRESTRIPPED ]] && export QA_PRESTRIPPED
-	eval "[[ -n \$QA_PRESTRIPPED_${ARCH/-/_} ]] && export QA_PRESTRIPPED_${ARCH/-/_}"
-}
-
 if ! hasq "$EBUILD_PHASE" clean cleanrm ; then
 	if [[ $EBUILD_PHASE = depend || ! -f $T/environment || \
 		-f $PORTAGE_BUILDDIR/.ebuild_changed ]] || \
 		hasq noauto $FEATURES ; then
-		_source_ebuild
+		# The bashrcs get an opportunity here to set aliases that will be expanded
+		# during sourcing of ebuilds and eclasses.
+		source_all_bashrcs
+
+		# *DEPEND and IUSE will be set during the sourcing of the ebuild.
+		# In order to ensure correct interaction between ebuilds and
+		# eclasses, they need to be unset before this process of
+		# interaction begins.
+		unset DEPEND RDEPEND PDEPEND IUSE
+		source "${EBUILD}" || die "error sourcing ebuild"
+
+		if [[ "${EBUILD_PHASE}" != "depend" ]] ; then
+			RESTRICT=${PORTAGE_RESTRICT}
+			[[ -e $PORTAGE_BUILDDIR/.ebuild_changed ]] && \
+			rm "$PORTAGE_BUILDDIR/.ebuild_changed"
+		fi
+
+		[[ -n $EAPI ]] || EAPI=0
+
+		if has "$EAPI" 0 1 2 ; then
+			export RDEPEND=${RDEPEND-${DEPEND}}
+			debug-print "RDEPEND: not set... Setting to: ${DEPEND}"
+		fi
+
+		# add in dependency info from eclasses
+		IUSE="${IUSE} ${E_IUSE}"
+		DEPEND="${DEPEND} ${E_DEPEND}"
+		RDEPEND="${RDEPEND} ${E_RDEPEND}"
+		PDEPEND="${PDEPEND} ${E_PDEPEND}"
+
+		unset ECLASS E_IUSE E_DEPEND E_RDEPEND E_PDEPEND
+
+		# alphabetically ordered by $EBUILD_PHASE value
+		case "$EAPI" in
+			0|1)
+				_valid_phases="src_compile pkg_config pkg_info src_install
+					pkg_nofetch pkg_postinst pkg_postrm pkg_preinst pkg_prerm
+					pkg_setup src_test src_unpack"
+				;;
+			2)
+				_valid_phases="src_compile pkg_config src_configure pkg_info
+					src_install pkg_nofetch pkg_postinst pkg_postrm pkg_preinst
+					src_prepare pkg_prerm pkg_setup src_test src_unpack"
+				;;
+			*)
+				_valid_phases="src_compile pkg_config src_configure pkg_info
+					src_install pkg_nofetch pkg_postinst pkg_postrm pkg_preinst
+					src_prepare pkg_prerm pkg_pretend pkg_setup src_test src_unpack"
+				;;
+		esac
+
+		DEFINED_PHASES=
+		for _f in $_valid_phases ; do
+			if declare -F $_f >/dev/null ; then
+				_f=${_f#pkg_}
+				DEFINED_PHASES+=" ${_f#src_}"
+			fi
+		done
+		[[ -n $DEFINED_PHASES ]] || DEFINED_PHASES=-
+
+		unset _f _valid_phases
+
+		# This needs to be exported since prepstrip is a separate shell script.
+		[[ -n $QA_PRESTRIPPED ]] && export QA_PRESTRIPPED
+		eval "[[ -n \$QA_PRESTRIPPED_${ARCH/-/_} ]] && export QA_PRESTRIPPED_${ARCH/-/_}"
 	fi
 fi
 
@@ -2091,7 +2091,7 @@ ebuild_main() {
 
 			for x in ASFLAGS CCACHE_DIR CCACHE_SIZE \
 				CFLAGS CXXFLAGS LDFLAGS LIBCFLAGS LIBCXXFLAGS ; do
-				[[ ${!x-unset} != unset ]] && export $x
+				[[ ${!x+set} = set ]] && export $x
 			done
 
 			hasq distcc $FEATURES && [[ -n $DISTCC_DIR ]] && \
