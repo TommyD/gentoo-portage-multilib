@@ -1269,7 +1269,8 @@ def action_info(settings, trees, myopts, myfiles):
 		myvars = ['GENTOO_MIRRORS', 'CONFIG_PROTECT', 'CONFIG_PROTECT_MASK',
 		          'PORTDIR', 'DISTDIR', 'PKGDIR', 'PORTAGE_TMPDIR',
 		          'PORTDIR_OVERLAY', 'USE', 'CHOST', 'CFLAGS', 'CXXFLAGS',
-		          'ACCEPT_KEYWORDS', 'SYNC', 'FEATURES', 'EMERGE_DEFAULT_OPTS']
+		          'ACCEPT_KEYWORDS', 'ACCEPT_LICENSE', 'SYNC', 'FEATURES',
+		          'EMERGE_DEFAULT_OPTS']
 
 		myvars.extend(portage.util.grabfile(settings["PORTDIR"]+"/profiles/info_vars"))
 
@@ -2144,6 +2145,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 
 	# Reload the whole config from scratch.
 	settings, trees, mtimedb = load_emerge_config(trees=trees)
+	adjust_configs(myopts, trees)
 	root_config = trees[settings["ROOT"]]["root_config"]
 	portdb = trees[settings["ROOT"]]["porttree"].dbapi
 
@@ -2158,6 +2160,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		mtimedb.commit()
 		# Reload the whole config from scratch.
 		settings, trees, mtimedb = load_emerge_config(trees=trees)
+		adjust_configs(myopts, trees)
 		portdb = trees[settings["ROOT"]]["porttree"].dbapi
 		root_config = trees[settings["ROOT"]]["root_config"]
 
@@ -2290,6 +2293,13 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 
 	return rval
 
+def adjust_configs(myopts, trees):
+	for myroot in trees:
+		mysettings =  trees[myroot]["vartree"].settings
+		mysettings.unlock()
+		adjust_config(myopts, mysettings)
+		mysettings.lock()
+
 def adjust_config(myopts, settings):
 	"""Make emerge specific adjustments to the config."""
 
@@ -2333,7 +2343,7 @@ def adjust_config(myopts, settings):
 	settings["EMERGE_WARNING_DELAY"] = str(EMERGE_WARNING_DELAY)
 	settings.backup_changes("EMERGE_WARNING_DELAY")
 
-	if "--quiet" in myopts:
+	if "--quiet" in myopts or "--quiet-build" in myopts:
 		settings["PORTAGE_QUIET"]="1"
 		settings.backup_changes("PORTAGE_QUIET")
 

@@ -48,6 +48,7 @@ from portage import _unicode_encode
 from portage.cache.mappings import slot_dict_class
 
 import codecs
+from collections import deque
 import re, shutil, stat, errno, copy, subprocess
 import logging
 import os as _os
@@ -336,9 +337,11 @@ class LinkageMap(object):
 
 		# have to call scanelf for preserved libs here as they aren't 
 		# registered in NEEDED.ELF.2 files
+		plibs = set()
 		if self._dbapi.plib_registry and self._dbapi.plib_registry.getPreservedLibs():
 			args = ["/usr/bin/scanelf", "-qF", "%a;%F;%S;%r;%n"]
 			for items in self._dbapi.plib_registry.getPreservedLibs().values():
+				plibs.update(items)
 				args.extend(os.path.join(root, x.lstrip("." + os.sep)) \
 					for x in items)
 			try:
@@ -368,8 +371,19 @@ class LinkageMap(object):
 							level=logging.ERROR, noiselevel=-1)
 						continue
 					fields[1] = fields[1][root_len:]
+					plibs.discard(fields[1])
 					lines.append(";".join(fields))
 				proc.wait()
+
+		if plibs:
+			# Preserved libraries that did not appear in the scanelf output.
+			# This is known to happen with statically linked libraries.
+			# Generate dummy lines for these, so we can assume that every
+			# preserved library has an entry in self._obj_properties. This
+			# is important in order to prevent findConsumers from raising
+			# an unwanted KeyError.
+			for x in plibs:
+				lines.append(";".join(['', x, '', '', '']))
 
 		for l in lines:
 			l = l.rstrip("\n")
@@ -1618,12 +1632,17 @@ class vardbapi(dbapi):
 			base_names = self._vardb._aux_cache["owners"]["base_names"]
 
 			dblink_cache = {}
+			dblink_fifo = deque()
 
 			def dblink(cpv):
 				x = dblink_cache.get(cpv)
 				if x is None:
+					if len(dblink_fifo) >= 100:
+						# Ensure that we don't run out of memory.
+						del dblink_cache[dblink_fifo.popleft().mycpv]
 					x = self._vardb._dblink(cpv)
 					dblink_cache[cpv] = x
+					dblink_fifo.append(x)
 				return x
 
 			for path in path_iter:
@@ -1912,6 +1931,14 @@ class dblink(object):
 		self._contents_basenames = None
 		self._linkmap_broken = False
 		self._md5_merge_map = {}
+		self._hash_key = (self.myroot, self.mycpv)
+
+	def __hash__(self):
+		return hash(self._hash_key)
+
+	def __eq__(self, other):
+		return isinstance(other, dblink) and \
+			self._hash_key == other._hash_key
 
 	def lockdb(self):
 		if self._lock_vdb:
