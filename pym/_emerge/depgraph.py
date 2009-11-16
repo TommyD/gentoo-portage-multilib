@@ -152,6 +152,7 @@ class _dynamic_depgraph_config(object):
 		self._pprovided_args = []
 		self._missing_args = []
 		self._masked_installed = set()
+		self._masked_license_updates = set()
 		self._unsatisfied_deps_for_display = []
 		self._unsatisfied_blockers_for_display = None
 		self._circular_deps_for_display = None
@@ -2196,6 +2197,8 @@ class depgraph(object):
 			else:
 				show_missing_use = unmasked_iuse_reasons
 
+		mask_docs = False
+
 		if show_missing_use:
 			print("\nemerge: there are no ebuilds built with USE flags to satisfy "+green(xinfo)+".")
 			print("!!! One of the following packages is required to complete your request:")
@@ -2219,7 +2222,7 @@ class depgraph(object):
 				for line in wrap(msg, 75):
 					print(line)
 			print()
-			show_mask_docs()
+			mask_docs = True
 		else:
 			print("\nemerge: there are no ebuilds to satisfy "+green(xinfo)+".")
 
@@ -2253,6 +2256,10 @@ class depgraph(object):
 			print(line)
 
 		print()
+
+		if mask_docs:
+			show_mask_docs()
+			print()
 
 	def _iter_match_pkgs(self, root_config, pkg_type, atom, onlydeps=False):
 		"""
@@ -2767,7 +2774,9 @@ class depgraph(object):
 			"--nodeps" in self._frozen_config.myopts:
 			return True
 
-		#if "deep" in self._dynamic_config.myparams:
+		complete = "complete" in self._dynamic_config.myparams
+		deep = "deep" in self._dynamic_config.myparams
+
 		if True:
 			# Pull in blockers from all installed packages that haven't already
 			# been pulled into the depgraph.  This is not enabled by default
@@ -2779,6 +2788,8 @@ class depgraph(object):
 				vardb = self._frozen_config.trees[myroot]["vartree"].dbapi
 				portdb = self._frozen_config.trees[myroot]["porttree"].dbapi
 				pkgsettings = self._frozen_config.pkgsettings[myroot]
+				root_config = self._frozen_config.roots[myroot]
+				dbs = self._dynamic_config._filtered_trees[myroot]["dbs"]
 				final_db = self._dynamic_config.mydbapi[myroot]
 
 				blocker_cache = BlockerCache(myroot, vardb)
@@ -2791,10 +2802,38 @@ class depgraph(object):
 					# Check for masked installed packages. Only warn about
 					# packages that are in the graph in order to avoid warning
 					# about those that will be automatically uninstalled during
-					# the merge process or by --depclean.
+					# the merge process or by --depclean. Always warn about
+					# packages masked by license, since the user likely wants
+					# to adjust ACCEPT_LICENSE.
 					if pkg in final_db:
 						if pkg_in_graph and not visible(pkgsettings, pkg):
 							self._dynamic_config._masked_installed.add(pkg)
+						elif pkgsettings._getMissingLicenses(pkg.cpv, pkg.metadata):
+							self._dynamic_config._masked_installed.add(pkg)
+						elif complete or deep:
+							# Check for upgrades in the same slot that are
+							# masked due to a LICENSE change in a newer
+							# version that is not masked for any other reason.
+							# Only do this for complete or deep graphs since
+							# otherwise it is likely a waste of time.
+							got_mask = False
+							for db, pkg_type, built, installed, db_keys in dbs:
+								if installed:
+									continue
+								if got_mask:
+									break
+								for upgrade_pkg in self._iter_match_pkgs(
+									root_config, pkg_type, pkg.slot_atom):
+									if upgrade_pkg <= pkg:
+										break
+									if not visible(pkgsettings,
+										upgrade_pkg, ignore=('LICENSE',)):
+										continue
+									if pkgsettings._getMissingLicenses(
+										upgrade_pkg.cpv, upgrade_pkg.metadata):
+										self._dynamic_config._masked_license_updates.add(upgrade_pkg)
+										got_mask = True
+										break
 
 					blocker_atoms = None
 					blockers = None
@@ -4825,6 +4864,21 @@ class depgraph(object):
 			sys.stderr.write("".join(msg))
 
 		masked_packages = []
+		for pkg in self._dynamic_config._masked_license_updates:
+			root_config = pkg.root_config
+			pkgsettings = self._frozen_config.pkgsettings[pkg.root]
+			mreasons = get_masking_status(pkg, pkgsettings, root_config)
+			masked_packages.append((root_config, pkgsettings,
+				pkg.cpv, pkg.metadata, mreasons))
+		if masked_packages:
+			writemsg("\n" + colorize("BAD", "!!!") + \
+				" The following updates are masked by LICENSE changes:\n",
+				noiselevel=-1)
+			show_masked_packages(masked_packages)
+			show_mask_docs()
+			writemsg("\n", noiselevel=-1)
+
+		masked_packages = []
 		for pkg in self._dynamic_config._masked_installed:
 			root_config = pkg.root_config
 			pkgsettings = self._frozen_config.pkgsettings[pkg.root]
@@ -4832,11 +4886,12 @@ class depgraph(object):
 			masked_packages.append((root_config, pkgsettings,
 				pkg.cpv, pkg.metadata, mreasons))
 		if masked_packages:
-			sys.stderr.write("\n" + colorize("BAD", "!!!") + \
-				" The following installed packages are masked:\n")
+			writemsg("\n" + colorize("BAD", "!!!") + \
+				" The following installed packages are masked:\n",
+				noiselevel=-1)
 			show_masked_packages(masked_packages)
 			show_mask_docs()
-			print()
+			writemsg("\n", noiselevel=-1)
 
 	def saveNomergeFavorites(self):
 		"""Find atoms in favorites that are not in the mergelist and add them
