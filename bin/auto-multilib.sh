@@ -166,11 +166,11 @@ _abi_to_index_key() {
 # @DESCRIPTION: Environment variables to save
 # EMULTILIB_SAVE_VARS="${EMULTILIB_SAVE_VARS}
 #		AS CC CXX FC ASFLAGS CFLAGS CPPFLAGS CXXFLAGS FCFLAGS FFLAGS 
-#		LDFLAGS	CHOST CBUILD CDEFINE LIBDIR CCACHE_DIR PYTHON PERLBIN
+#		LDFLAGS	CHOST CBUILD CDEFINE LIBDIR CCACHE_DIR PYTHON
 #		PKG_CONFIG_PATH"
 EMULTILIB_SAVE_VARS="${EMULTILIB_SAVE_VARS}
 		AS CC CXX FC ASFLAGS CFLAGS CPPFLAGS CXXFLAGS FCFLAGS FFLAGS 
-		LDFLAGS	CHOST CBUILD CDEFINE LIBDIR CCACHE_DIR PYTHON PERLBIN
+		LDFLAGS	CHOST CBUILD CDEFINE LIBDIR CCACHE_DIR PYTHON
 		PKG_CONFIG_PATH"
 
 # @VARIABLE: EMULTILIB_SOURCE_TOP_DIRNAME
@@ -398,7 +398,6 @@ _setup_abi_env() {
 		pyver=${pyver/Python /python}
 		pyver=${pyver%.*}
 		export PYTHON="/usr/bin/${pyver}-${ABI}"
-		export PERLBIN="/usr/bin/perl-${ABI}"
 	fi
 }
 
@@ -507,13 +506,8 @@ _finalize_abi_install() {
 			prep_ml_binaries "${i}"
 		done
 	fi
-	if [[ "${ABI}" != "${DEFAULT_ABI}" ]]; then
-		if [[ ${PN} == python ]]; then
-			prep_ml_binaries "${D}"usr/bin/${PN}${PYVER}
-		elif [[ ${PN} == perl ]]; then
-			cp "${D}"usr/bin/perl${MY_PV}{,-${ABI}} || die
-			ln -s perl${MY_PV}-${ABI} "${D}"/usr/bin/perl-${ABI} || die
-		fi
+	if [[ "${ABI}" != "${DEFAULT_ABI}" ]] && [[ ${PN} == python ]]; then
+		prep_ml_binaries "${D}"usr/bin/${PN}${PYVER}
 	fi
 }
 
