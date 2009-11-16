@@ -506,9 +506,6 @@ _finalize_abi_install() {
 			prep_ml_binaries "${i}"
 		done
 	fi
-	if [[ "${ABI}" != "${DEFAULT_ABI}" ]] && [[ ${PN} == python ]]; then
-		prep_ml_binaries "${D}"usr/bin/${PN}${PYVER}
-	fi
 }
 
 #
