@@ -1152,8 +1152,8 @@ dyn_install() {
 	done
 	unset_abi
 
-	find "${D}" -name '*.la' -exec grep -q shouldnotlink=no {} \; -exec rm {} \;
-	fixlafiles
+	find "${D}" -name '*.la' -exec grep -v -q shouldnotlink=yes {} \; -exec rm {} \;
+	/usr/bin/lafilefixer "${D}"
 
 	touch "${PORTAGE_BUILDDIR}/.installed" || die "IO Failure -- Failed to 'touch .installed'"
 	vecho ">>> Completed installing ${PF} into ${D}"
