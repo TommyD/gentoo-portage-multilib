@@ -49,7 +49,6 @@ from _emerge.search import search
 from _emerge.SetArg import SetArg
 from _emerge.show_invalid_depstring_notice import show_invalid_depstring_notice
 from _emerge.UnmergeDepPriority import UnmergeDepPriority
-from _emerge.visible import visible
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
@@ -74,6 +73,7 @@ class _frozen_depgraph_config(object):
 		self.roots = {}
 		# All Package instances
 		self._pkg_cache = {}
+		self._highest_license_masked = {}
 		for myroot in trees:
 			self.trees[myroot] = {}
 			# Create a RootConfig instance that references
@@ -989,6 +989,7 @@ class depgraph(object):
 				self._dynamic_config._slot_pkg_map[pkg.root][pkg.slot_atom] = pkg
 				self._dynamic_config.mydbapi[pkg.root].cpv_inject(pkg)
 				self._dynamic_config._filtered_trees[pkg.root]["porttree"].dbapi._clear_cache()
+				self._check_masks(pkg)
 
 			if not pkg.installed:
 				# Allow this package to satisfy old-style virtuals in case it
@@ -1046,6 +1047,17 @@ class depgraph(object):
 		if not previously_added:
 			dep_stack.append(pkg)
 		return 1
+
+	def _check_masks(self, pkg):
+
+		slot_key = (pkg.root, pkg.slot_atom)
+
+		# Check for upgrades in the same slot that are
+		# masked due to a LICENSE change in a newer
+		# version that is not masked for any other reason.
+		other_pkg = self._frozen_config._highest_license_masked.get(slot_key)
+		if other_pkg is not None and pkg < other_pkg:
+			self._dynamic_config._masked_license_updates.add(other_pkg)
 
 	def _add_parent_atom(self, pkg, parent_atom):
 		parent_atoms = self._dynamic_config._parent_atoms.get(pkg)
@@ -2354,7 +2366,7 @@ class depgraph(object):
 		pkg, existing = ret
 		if pkg is not None:
 			settings = pkg.root_config.settings
-			if visible(settings, pkg) and not (pkg.installed and \
+			if pkg.visible and not (pkg.installed and \
 				settings._getMissingKeywords(pkg.cpv, pkg.metadata)):
 				self._dynamic_config._visible_pkgs[pkg.root].cpv_inject(pkg)
 		return ret
@@ -2429,12 +2441,9 @@ class depgraph(object):
 						# here, packages that have been masked since they
 						# were installed can be automatically downgraded
 						# to an unmasked version.
-						try:
-							if not visible(pkgsettings, pkg):
-								continue
-						except portage.exception.InvalidDependString:
-							if not installed:
-								continue
+
+						if not pkg.visible:
+							continue
 
 						# Enable upgrade or downgrade to a version
 						# with visible KEYWORDS when the installed
@@ -2467,7 +2476,7 @@ class depgraph(object):
 									except portage.exception.PackageNotFound:
 										continue
 									else:
-										if not visible(pkgsettings, pkg_eb):
+										if not pkg_eb.visible:
 											continue
 
 					# Calculation of USE for unbuilt ebuilds is relatively
@@ -2769,6 +2778,14 @@ class depgraph(object):
 				installed=installed, metadata=metadata, onlydeps=onlydeps,
 				root_config=root_config, type_name=type_name)
 			self._frozen_config._pkg_cache[pkg] = pkg
+
+			if not pkg.visible and \
+				'LICENSE' in pkg.masks and len(pkg.masks) == 1:
+				slot_key = (pkg.root, pkg.slot_atom)
+				other_pkg = self._frozen_config._highest_license_masked.get(slot_key)
+				if other_pkg is None or pkg > other_pkg:
+					self._frozen_config._highest_license_masked[slot_key] = pkg
+
 		return pkg
 
 	def _validate_blockers(self):
@@ -2813,34 +2830,11 @@ class depgraph(object):
 					# packages masked by license, since the user likely wants
 					# to adjust ACCEPT_LICENSE.
 					if pkg in final_db:
-						if pkg_in_graph and not visible(pkgsettings, pkg):
+						if not pkg.visible and \
+							(pkg_in_graph or 'LICENSE' in pkg.masks):
 							self._dynamic_config._masked_installed.add(pkg)
-						elif pkgsettings._getMissingLicenses(pkg.cpv, pkg.metadata):
-							self._dynamic_config._masked_installed.add(pkg)
-						elif complete or deep:
-							# Check for upgrades in the same slot that are
-							# masked due to a LICENSE change in a newer
-							# version that is not masked for any other reason.
-							# Only do this for complete or deep graphs since
-							# otherwise it is likely a waste of time.
-							got_mask = False
-							for db, pkg_type, built, installed, db_keys in dbs:
-								if installed:
-									continue
-								if got_mask:
-									break
-								for upgrade_pkg in self._iter_match_pkgs(
-									root_config, pkg_type, pkg.slot_atom):
-									if upgrade_pkg <= pkg:
-										break
-									if not visible(pkgsettings,
-										upgrade_pkg, ignore=('LICENSE',)):
-										continue
-									if pkgsettings._getMissingLicenses(
-										upgrade_pkg.cpv, upgrade_pkg.metadata):
-										self._dynamic_config._masked_license_updates.add(upgrade_pkg)
-										got_mask = True
-										break
+						else:
+							self._check_masks(pkg)
 
 					blocker_atoms = None
 					blockers = None
@@ -3765,7 +3759,9 @@ class depgraph(object):
 					for blocker in blocker_nodes:
 						if not myblocker_uninstalls.child_nodes(blocker):
 							myblocker_uninstalls.remove(blocker)
-							solved_blockers.add(blocker)
+							if blocker not in \
+								self._dynamic_config._unsolvable_blockers:
+								solved_blockers.add(blocker)
 
 				retlist.append(node)
 
@@ -3778,9 +3774,8 @@ class depgraph(object):
 					# it serves as an indicator that blocking packages
 					# will be temporarily installed simultaneously.
 					for blocker in solved_blockers:
-						retlist.append(Blocker(atom=blocker.atom,
-							root=blocker.root, eapi=blocker.eapi,
-							satisfied=True))
+						blocker.satisfied = True
+						retlist.append(blocker)
 
 		unsolvable_blockers = set(self._dynamic_config._unsolvable_blockers.leaf_nodes())
 		for node in myblocker_uninstalls.root_nodes():
@@ -4059,8 +4054,13 @@ class depgraph(object):
 		unsatisfied_blockers = []
 		ordered_nodes = []
 		for x in mylist:
-			if isinstance(x, Blocker) and not x.satisfied:
-				unsatisfied_blockers.append(x)
+			if isinstance(x, Blocker):
+				counters.blocks += 1
+				if x.satisfied:
+					ordered_nodes.append(x)
+					counters.blocks_satisfied += 1
+				else:
+					unsatisfied_blockers.append(x)
 			else:
 				ordered_nodes.append(x)
 
@@ -4102,10 +4102,6 @@ class depgraph(object):
 				else:
 					blocker_style = "PKG_BLOCKER"
 					addl = "%s  %s  " % (colorize(blocker_style, "B"), fetch)
-				if ordered:
-					counters.blocks += 1
-					if x.satisfied:
-						counters.blocks_satisfied += 1
 				resolved = portage.dep_expand(
 					str(x.atom).lstrip("!"), mydb=vardb, settings=pkgsettings)
 				if "--columns" in self._frozen_config.myopts and "--quiet" in self._frozen_config.myopts:
@@ -4662,7 +4658,7 @@ class depgraph(object):
 			else:
 				seen_nodes.add(node)
 
-				if isinstance(node, Package):
+				if isinstance(node, (Blocker, Package)):
 					display_list.append((node, depth, True))
 				else:
 					depth = -1
@@ -4750,7 +4746,7 @@ class depgraph(object):
 				del display_list[i]
 				continue
 			if ordered and isinstance(node, Package) \
-				and node.operation == 'merge':
+				and node.operation in ('merge', 'uninstall'):
 				last_merge_depth = depth
 				continue
 			if depth >= last_merge_depth or \
@@ -5002,8 +4998,7 @@ class depgraph(object):
 					continue
 				raise
 
-			if "merge" == pkg.operation and \
-				not visible(root_config.settings, pkg):
+			if "merge" == pkg.operation and not pkg.visible:
 				if skip_masked:
 					masked_tasks.append(Dependency(root=pkg.root, parent=pkg))
 				else:
@@ -5275,13 +5270,8 @@ class _dep_check_composite_db(portage.dbapi):
 				arg = None
 			if arg:
 				return False
-		if pkg.installed:
-			try:
-				if not visible(
-					self._depgraph._frozen_config.pkgsettings[pkg.root], pkg):
-					return False
-			except portage.exception.InvalidDependString:
-				pass
+		if pkg.installed and not pkg.visible:
+			return False
 		in_graph = self._depgraph._dynamic_config._slot_pkg_map[
 			self._root].get(pkg.slot_atom)
 		if in_graph is None:
@@ -5290,7 +5280,10 @@ class _dep_check_composite_db(portage.dbapi):
 			# conflicts).
 			highest_visible, in_graph = self._depgraph._select_package(
 				self._root, pkg.slot_atom)
-			if pkg != highest_visible:
+			# Note: highest_visible is not necessarily the real highest
+			# visible, especially when --update is not enabled, so use
+			# < operator instead of !=.
+			if pkg < highest_visible:
 				return False
 		elif in_graph != pkg:
 			# Mask choices for packages that would trigger a slot
@@ -5431,7 +5424,7 @@ def _backtrack_depgraph(settings, trees, myopts, myparams,
 
 	backtrack_max = myopts.get('--backtrack', 5)
 	runtime_pkg_mask = None
-	allow_backtracking = True
+	allow_backtracking = backtrack_max > 0
 	backtracked = 0
 	frozen_config = _frozen_depgraph_config(settings, trees,
 		myopts, spinner)
