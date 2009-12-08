@@ -761,7 +761,7 @@ dyn_clean() {
 
 	if [[ $EMERGE_FROM = binary ]] || ! hasq keepwork $FEATURES; then
 		rm -f "$PORTAGE_BUILDDIR"/.{ebuild_changed,exit_status,logid,abi,unpacked,unpacked.*,prepared,prepared.*} \
-			"$PORTAGE_BUILDDIR"/.{configured,configured.*,compiled,compiled.*,tested,tested.*,packaged}
+			"$PORTAGE_BUILDDIR"/.{configured,configured.*,compiled,compiled.*,tested,tested.*,packaged} \
 			"$PORTAGE_BUILDDIR"/.die_hooks
 
 		rm -rf "${PORTAGE_BUILDDIR}/build-info"
