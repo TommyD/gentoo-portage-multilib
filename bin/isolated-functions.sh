@@ -54,7 +54,7 @@ dump_trace() {
 }
 
 nonfatal() {
-	if has "${EAPI:-0}" 0 1 2; then
+	if has "${EAPI:-0}" 0 1 2 3; then
 		die "$FUNCNAME() not supported in this EAPI"
 	fi
 	if [[ $# -lt 1 ]]; then
@@ -506,6 +506,11 @@ save_ebuild_env() {
 		unset ECHANGELOG_USER GPG_AGENT_INFO \
 		SSH_AGENT_PID SSH_AUTH_SOCK STY WINDOW XAUTHORITY
 
+		# localization settings
+		unset LANG LC_COLLATE LC_CTYPE LC_MESSAGES \
+			LC_MONETARY LC_NUMERIC LC_TIME LC_PAPER \
+			LC_ALL
+
 		# CCACHE and DISTCC config
 		unset ${!CCACHE_*} ${!DISTCC_*}
 
@@ -515,7 +520,7 @@ save_ebuild_env() {
 		for x in pkg_setup pkg_nofetch src_unpack src_prepare src_configure \
 			src_compile src_test src_install pkg_preinst pkg_postinst \
 			pkg_prerm pkg_postrm ; do
-			unset -f default_$x _eapi{0,1,2}_$x
+			unset -f default_$x _eapi{0,1,2,3,4}_$x
 		done
 		unset x
 
@@ -564,7 +569,7 @@ save_ebuild_env() {
 			PROFILE_PATHS PWORKDIR QA_INTERCEPTORS \
 			RC_DEFAULT_INDENT RC_DOT_PATTERN RC_ENDCOL \
 			RC_INDENTATION READONLY_EBUILD_METADATA READONLY_PORTAGE_VARS \
-			ROOT ROOTPATH RPMDIR STARTDIR TMP TMPDIR USE_EXPAND \
+			ROOT ROOTPATH RPMDIR STARTDIR TEMP TMP TMPDIR USE_EXPAND \
 			WARN XARGS _RC_GET_KV_CACHE
 
 		# user config variables
