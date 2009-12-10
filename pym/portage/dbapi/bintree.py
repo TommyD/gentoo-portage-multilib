@@ -711,8 +711,10 @@ class binarytree(object):
 				# protocols and requires the base url to have a trailing
 				# slash, so join manually...
 				f = urllib_request_urlopen(base_url.rstrip("/") + "/Packages")
+				f_dec = codecs.iterdecode(f,
+					_encodings['repo.content'], errors='replace')
 				try:
-					rmt_idx.readHeader(f)
+					rmt_idx.readHeader(f_dec)
 					remote_timestamp = rmt_idx.header.get("TIMESTAMP", None)
 					if not remote_timestamp:
 						# no timestamp in the header, something's wrong
@@ -724,7 +726,7 @@ class binarytree(object):
 							rmt_idx.header.get("VERSION"), noiselevel=-1)
 							pkgindex = None
 						elif local_timestamp != remote_timestamp:
-							rmt_idx.readBody(f)
+							rmt_idx.readBody(f_dec)
 							pkgindex = rmt_idx
 				finally:
 					f.close()
@@ -737,12 +739,17 @@ class binarytree(object):
 			if pkgindex is rmt_idx:
 				pkgindex.modified = False # don't update the header
 				from portage.util import atomic_ofstream, ensure_dirs
-				ensure_dirs(os.path.dirname(pkgindex_file))
-				f = atomic_ofstream(pkgindex_file)
 				try:
+					ensure_dirs(os.path.dirname(pkgindex_file))
+					f = atomic_ofstream(pkgindex_file)
 					pkgindex.write(f)
-				finally:
 					f.close()
+				except PortageException:
+					if os.access(os.path.join(
+						self.settings["ROOT"], CACHE_PATH), os.W_OK):
+						raise
+					# The current user doesn't have permission to cache the
+					# file, but that's alright.
 			if pkgindex:
 				self._remotepkgs = {}
 				for d in pkgindex.packages:
