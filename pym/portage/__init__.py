@@ -67,6 +67,12 @@ except ImportError as e:
 	raise
 
 try:
+
+	try:
+		from collections import OrderedDict
+	except ImportError:
+		from portage.cache.mappings import OrderedDict
+
 	from portage.cache.cache_errors import CacheError
 	import portage.proxy.lazyimport
 	import portage.proxy as proxy
@@ -1369,7 +1375,7 @@ class config(object):
 
 	_env_blacklist = [
 		"A", "AA", "CATEGORY", "DEPEND", "DESCRIPTION", "EAPI",
-		"EBUILD_PHASE", "EMERGE_FROM", "EPREFIX", "EROOT",
+		"EBUILD_PHASE", "ED", "EMERGE_FROM", "EPREFIX", "EROOT",
 		"HOMEPAGE", "INHERITED", "IUSE",
 		"KEYWORDS", "LICENSE", "PDEPEND", "PF", "PKGUSE",
 		"PORTAGE_CONFIGROOT", "PORTAGE_IUSE",
@@ -1390,7 +1396,7 @@ class config(object):
 	# in it's bashrc (causing major leakage).
 	_environ_whitelist += [
 		"ACCEPT_LICENSE", "BASH_ENV", "BUILD_PREFIX", "D",
-		"DISTDIR", "DOC_SYMLINKS_DIR", "EBUILD",
+		"DISTDIR", "DOC_SYMLINKS_DIR", "EAPI", "EBUILD",
 		"EBUILD_EXIT_STATUS_FILE", "EBUILD_FORCE_TEST",
 		"EBUILD_PHASE", "ECLASSDIR", "ECLASS_DEPTH", "ED",
 		"EMERGE_FROM", "EPREFIX", "EROOT",
@@ -1412,7 +1418,7 @@ class config(object):
 		"PORTAGE_TMPDIR", "PORTAGE_UPDATE_ENV",
 		"PORTAGE_VERBOSE", "PORTAGE_WORKDIR_MODE",
 		"PORTDIR", "PORTDIR_OVERLAY", "PREROOTPATH", "PROFILE_PATHS",
-		"ROOT", "ROOTPATH", "STARTDIR", "T", "TMP", "TMPDIR",
+		"ROOT", "ROOTPATH", "T", "TMP", "TMPDIR",
 		"USE_EXPAND", "USE_ORDER", "WORKDIR",
 		"XARGS",
 	]
@@ -2222,10 +2228,6 @@ class config(object):
 			if 'parse-eapi-glep-55' in self.features:
 				_validate_cache_for_unsupported_eapis = False
 				_glep_55_enabled = True
-
-			# inject EPREFIX as it needs to be available using portageq
-			# TODO: this is just forward compatability, need to use EPREFIX
-			self["EPREFIX"] = ''
 
 		for k in self._case_insensitive_vars:
 			if k in self:
@@ -3774,8 +3776,14 @@ class config(object):
 		mydict["USE"] = self.get("PORTAGE_USE", "")
 
 		# Don't export AA to the ebuild environment in EAPIs that forbid it
-		if eapi not in ("0", "1", "2", "3"):
+		if eapi not in ("0", "1", "2", "3", "3_pre2"):
 			mydict.pop("AA", None)
+
+		# Prefix variables are supported starting with EAPI 3.
+		if phase == 'depend' or eapi in (None, "0", "1", "2"):
+			mydict.pop("ED", None)
+			mydict.pop("EPREFIX", None)
+			mydict.pop("EROOT", None)
 
 		# sandbox's bashrc sources /etc/profile which unsets ROOTPATH,
 		# so we have to back it up and restore it.
@@ -4534,7 +4542,7 @@ def fetch(myuris, mysettings, listonly=0, fetchonly=0, locks_in_subdir=".locks",
 		for myuri in myuris:
 			file_uri_tuples.append((os.path.basename(myuri), myuri))
 
-	filedict={}
+	filedict = OrderedDict()
 	primaryuri_indexes={}
 	primaryuri_dict = {}
 	thirdpartymirror_uris = {}
@@ -5640,7 +5648,7 @@ def spawnebuild(mydo, actionmap, mysettings, debug, alwaysdep=0,
 	if mydo == "prepare" and eapi in ("0", "1"):
 		return os.EX_OK
 
-	if mydo == "pretend" and eapi in ("0", "1", "2", "3"):
+	if mydo == "pretend" and eapi in ("0", "1", "2", "3", "3_pre2"):
 		return os.EX_OK
 
 	kwargs = actionmap[mydo]["args"]
@@ -6068,14 +6076,18 @@ def _spawn_misc_sh(mysettings, commands, phase=None, **kwargs):
 
 	return rval
 
-_testing_eapis = frozenset()
+_testing_eapis = frozenset(["3_pre2"])
 _deprecated_eapis = frozenset(["3_pre1", "2_pre3", "2_pre2", "2_pre1"])
 
 def _eapi_is_deprecated(eapi):
 	return eapi in _deprecated_eapis
 
 def eapi_is_supported(eapi):
-	eapi = str(eapi).strip()
+	if not isinstance(eapi, basestring):
+		# Only call str() when necessary since with python2 it
+		# can trigger UnicodeEncodeError if EAPI is corrupt.
+		eapi = str(eapi)
+	eapi = eapi.strip()
 
 	if _eapi_is_deprecated(eapi):
 		return True
@@ -6190,12 +6202,6 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		# due to how it's coded... Don't overwrite this so we can use it.
 		mysettings["PORTAGE_DEBUG"] = "1"
 
-	# Prefix forward compatability
-	mysettings["EPREFIX"]  = ''
-	mysettings["EROOT"]    = myroot
-
-	mysettings["ROOT"]     = myroot
-	mysettings["STARTDIR"] = getcwd()
 	mysettings["EBUILD"]   = ebuild_path
 	mysettings["O"]        = pkg_dir
 	mysettings.configdict["pkg"]["CATEGORY"] = cat
@@ -6295,7 +6301,7 @@ def doebuild_environment(myebuild, mydo, myroot, mysettings, debug, use_cache, m
 		mysettings["PORTAGE_BUILDDIR"], ".exit_status")
 
 	#set up KV variable -- DEP SPEEDUP :: Don't waste time. Keep var persistent.
-	if eapi not in ('0', '1', '2', '3'):
+	if eapi not in ('0', '1', '2', '3', '3_pre2'):
 		# Discard KV for EAPIs that don't support it. Cache KV is restored
 		# from the backupenv whenever config.reset() is called.
 		mysettings.pop('KV', None)
@@ -7658,30 +7664,17 @@ def movefile(src, dest, newmtime=None, sstat=None, mysettings=None,
 			if newmtime is not None:
 				os.utime(dest, (newmtime, newmtime))
 			else:
-				if renamefailed:
-					# If rename succeeded then this is not necessary, since
-					# rename automatically preserves timestamps with complete
-					# precision.
-					if sstat[stat.ST_MTIME] == long(sstat.st_mtime):
-						newmtime = sstat.st_mtime
-					else:
-						# Prevent mtime from rounding up to the next second.
-						int_mtime = sstat[stat.ST_MTIME]
-						mtime_str = "%i.9999999" % int_mtime
-						min_len = len(str(int_mtime)) + 2
-						while True:
-							mtime_str = mtime_str[:-1]
-							newmtime = float(mtime_str)
-							if int_mtime == long(newmtime):
-								break
-							elif len(mtime_str) <= min_len:
-								# This shouldn't happen, but let's make sure
-								# we can never have an infinite loop.
-								newmtime = int_mtime
-								break
-
-					os.utime(dest, (newmtime, newmtime))
 				newmtime = sstat[stat.ST_MTIME]
+				if renamefailed:
+					# If rename succeeded then timestamps are automatically
+					# preserved with complete precision because the source
+					# and destination inode are the same. Otherwise, round
+					# down to the nearest whole second since python's float
+					# st_mtime cannot be used to preserve the st_mtim.tv_nsec
+					# field with complete precision. Note that we have to use
+					# stat_obj[stat.ST_MTIME] here because the float
+					# stat_obj.st_mtime rounds *up* sometimes.
+					os.utime(dest, (newmtime, newmtime))
 	except OSError:
 		# The utime can fail here with EPERM even though the move succeeded.
 		# Instead of failing, use stat to return the mtime if possible.

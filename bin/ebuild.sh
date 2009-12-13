@@ -145,7 +145,7 @@ useq() {
 		# Skip this for older EAPIs since lots of ebuilds/eclasses
 		# have stuff in global scope that really belongs somewhere
 		# like pkg_setup or src_configure.
-		if [[ -n $EAPI ]] && ! hasq "$EAPI" 0 1 2 3 ; then
+		if [[ -n $EAPI ]] && ! hasq "$EAPI" 0 1 2 3 3_pre2 ; then
 			die "use() called during invalid phase: $EBUILD_PHASE"
 		fi
 
@@ -442,7 +442,7 @@ unpack() {
 				_unpack_tar lzma
 				;;
 			xz)
-				if hasq $eapi 0 1 2 3 ; then
+				if hasq $eapi 0 1 2 ; then
 					vecho "unpack ${x}: file format not recognized. Ignoring."
 				else
 					_unpack_tar xz
@@ -504,7 +504,7 @@ econf() {
 		fi
 
 		# EAPI=3 adds --disable-dependency-tracking to econf
-		if ! hasq "$EAPI" 0 1 2 3 ; then
+		if ! hasq "$EAPI" 0 1 2 3 3_pre2 ; then
 			set -- --disable-dependency-tracking "$@"
 		fi
 
@@ -940,7 +940,7 @@ dyn_prepare() {
 		set_abi ${LOOP_ABI}
 		if [[ -d $S ]] ; then
 			cd "${S}"
-		elif hasq $EAPI 0 1 2 3; then
+		elif hasq $EAPI 0 1 2 3 3_pre2; then
 			cd "${WORKDIR}"
 		elif [[ -z ${A} ]] && ! has_phase_defined_up_to prepare; then
 			cd "${WORKDIR}"
@@ -993,7 +993,7 @@ dyn_configure() {
 		fi
 		if [[ -d $S ]] ; then
 			cd "${S}"
-		elif hasq $EAPI 0 1 2 3; then
+		elif hasq $EAPI 0 1 2 3 3_pre2; then
 			cd "${WORKDIR}"
 		elif [[ -z ${A} ]] && ! has_phase_defined_up_to configure; then
 			cd "${WORKDIR}"
@@ -1041,7 +1041,7 @@ dyn_compile() {
 
 		if [[ -d $S ]] ; then
 			cd "${S}"
-		elif hasq $EAPI 0 1 2 3; then
+		elif hasq $EAPI 0 1 2 3 3_pre2; then
 			cd "${WORKDIR}"
 		elif [[ -z ${A} ]] && ! has_phase_defined_up_to compile; then
 			cd "${WORKDIR}"
@@ -1139,7 +1139,7 @@ dyn_install() {
 		set_abi ${LOOP_ABI}
 		if [[ -d $S ]] ; then
 			cd "${S}"
-		elif hasq $EAPI 0 1 2 3; then
+		elif hasq $EAPI 0 1 2 3 3_pre2; then
 			cd "${WORKDIR}"
 		elif [[ -z ${A} ]] && ! has_phase_defined_up_to install; then
 			cd "${WORKDIR}"
@@ -1506,7 +1506,7 @@ _ebuild_arg_to_phase() {
 
 	case "$arg" in
 		pretend)
-			! hasq $eapi 0 1 2 3 && \
+			! hasq $eapi 0 1 2 3 3_pre2 && \
 				phase_func=pkg_pretend
 			;;
 		setup)
@@ -1602,7 +1602,7 @@ _ebuild_phase_funcs() {
 			declare -F src_compile >/dev/null || \
 				src_compile() { _eapi2_src_compile "$@" ; }
 
-			has $eapi 2 3 || declare -F src_install >/dev/null || \
+			has $eapi 2 3 3_pre2 || declare -F src_install >/dev/null || \
 				src_install() { _eapi4_src_install "$@" ; }
 
 			if hasq $phase_func $default_phases ; then
@@ -1696,7 +1696,7 @@ READONLY_EBUILD_METADATA="DEFINED_PHASES DEPEND DESCRIPTION
 	PDEPEND PROVIDE RDEPEND RESTRICT SLOT SRC_URI"
 
 READONLY_PORTAGE_VARS="D EBUILD EBUILD_PHASE \
-	EBUILD_SH_ARGS ED EMERGE_FROM EROOT FILESDIR \
+	EBUILD_SH_ARGS EMERGE_FROM FILESDIR \
 	PORTAGE_BINPKG_FILE PORTAGE_BIN_PATH PORTAGE_IUSE \
 	PORTAGE_PYM_PATH PORTAGE_MUTABLE_FILTERED_VARS \
 	PORTAGE_SAVED_READONLY_VARS PORTAGE_TMPDIR T WORKDIR"
@@ -1751,6 +1751,17 @@ filter_readonly_variables() {
 		SANDBOX_LOG SANDBOX_ON"
 	filtered_vars="$readonly_bash_vars $bash_misc_vars
 		$READONLY_PORTAGE_VARS PATH"
+
+	# Don't filter/interfere with prefix variables unless they are
+	# supported by the current EAPI.
+	case "${EAPI:-0}" in
+		0|1|2)
+			;;
+		*)
+			filtered_vars+=" ED EPREFIX EROOT"
+			;;
+	esac
+
 	if hasq --filter-sandbox $* ; then
 		filtered_vars="${filtered_vars} SANDBOX_.*"
 	else
@@ -1958,7 +1969,7 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm ; then
 
 		[[ -n $EAPI ]] || EAPI=0
 
-		if has "$EAPI" 0 1 2 3 ; then
+		if has "$EAPI" 0 1 2 3 3_pre2 ; then
 			export RDEPEND=${RDEPEND-${DEPEND}}
 			debug-print "RDEPEND: not set... Setting to: ${DEPEND}"
 		fi
@@ -1978,7 +1989,7 @@ if ! hasq "$EBUILD_PHASE" clean cleanrm ; then
 					pkg_nofetch pkg_postinst pkg_postrm pkg_preinst pkg_prerm
 					pkg_setup src_test src_unpack"
 				;;
-			2|3)
+			2|3|3_pre2)
 				_valid_phases="src_compile pkg_config src_configure pkg_info
 					src_install pkg_nofetch pkg_postinst pkg_postrm pkg_preinst
 					src_prepare pkg_prerm pkg_setup src_test src_unpack"
@@ -2031,6 +2042,13 @@ export TMPDIR="${T}"
 # declare them only after it has already run.
 if [ "${EBUILD_PHASE}" != "depend" ] ; then
 	declare -r ${READONLY_EBUILD_METADATA} ${READONLY_PORTAGE_VARS}
+	case "$EAPI" in
+		0|1|2)
+			;;
+		*)
+			declare -r ED EPREFIX EROOT
+			;;
+	esac
 fi
 
 ebuild_main() {
