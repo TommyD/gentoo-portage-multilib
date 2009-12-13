@@ -54,7 +54,7 @@ dump_trace() {
 }
 
 nonfatal() {
-	if has "${EAPI:-0}" 0 1 2 3; then
+	if has "${EAPI:-0}" 0 1 2 3 3_pre2 ; then
 		die "$FUNCNAME() not supported in this EAPI"
 	fi
 	if [[ $# -lt 1 ]]; then
@@ -569,7 +569,7 @@ save_ebuild_env() {
 			PROFILE_PATHS PWORKDIR QA_INTERCEPTORS \
 			RC_DEFAULT_INDENT RC_DOT_PATTERN RC_ENDCOL \
 			RC_INDENTATION READONLY_EBUILD_METADATA READONLY_PORTAGE_VARS \
-			ROOT ROOTPATH RPMDIR STARTDIR TEMP TMP TMPDIR USE_EXPAND \
+			ROOT ROOTPATH RPMDIR TEMP TMP TMPDIR USE_EXPAND \
 			WARN XARGS _RC_GET_KV_CACHE
 
 		# user config variables
