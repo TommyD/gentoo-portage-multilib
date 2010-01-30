@@ -288,20 +288,19 @@ import shutil as _shutil
 shutil = _unicode_module_wrapper(_shutil, encoding=_encodings['fs'])
 
 # Imports below this point rely on the above unicode wrapper definitions.
-_selinux = None
-selinux = None
-_selinux_merge = None
 try:
 	import portage._selinux
 	selinux = _unicode_module_wrapper(_selinux,
 		encoding=_encodings['fs'])
 	_selinux_merge = _unicode_module_wrapper(_selinux,
 		encoding=_encodings['merge'])
-except OSError as e:
-	sys.stderr.write("!!! SELinux not loaded: %s\n" % str(e))
+except (ImportError, OSError) as e:
+	if isinstance(e, OSError):
+		sys.stderr.write("!!! SELinux not loaded: %s\n" % str(e))
 	del e
-except ImportError:
-	pass
+	_selinux = None
+	selinux = None
+	_selinux_merge = None
 
 from portage.manifest import Manifest
 
@@ -1582,23 +1581,26 @@ class config(object):
 		self._local_repo_conf_path = None
 
 		if clone:
-			self.incrementals = copy.deepcopy(clone.incrementals)
-			self.profile_path = copy.deepcopy(clone.profile_path)
+			# For immutable attributes, use shallow copy for
+			# speed and memory conservation.
+			self.categories = clone.categories
+			self.depcachedir = clone.depcachedir
+			self.incrementals = clone.incrementals
+			self.module_priority = clone.module_priority
+			self.profile_path = clone.profile_path
+			self.profiles = clone.profiles
+			self.packages = clone.packages
+			self.useforce_list = clone.useforce_list
+			self.usemask_list = clone.usemask_list
+
 			self.user_profile_dir = copy.deepcopy(clone.user_profile_dir)
 			self.local_config = copy.deepcopy(clone.local_config)
 			self._local_repo_configs = \
 				copy.deepcopy(clone._local_repo_configs)
 			self._local_repo_conf_path = \
 				copy.deepcopy(clone._local_repo_conf_path)
-
-			self.module_priority = copy.deepcopy(clone.module_priority)
 			self.modules         = copy.deepcopy(clone.modules)
-
-			self.depcachedir = copy.deepcopy(clone.depcachedir)
-
-			self.packages = copy.deepcopy(clone.packages)
 			self.virtuals = copy.deepcopy(clone.virtuals)
-
 			self.dirVirtuals = copy.deepcopy(clone.dirVirtuals)
 			self.treeVirtuals = copy.deepcopy(clone.treeVirtuals)
 			self.userVirtuals = copy.deepcopy(clone.userVirtuals)
@@ -1607,10 +1609,8 @@ class config(object):
 
 			self.use_defs = copy.deepcopy(clone.use_defs)
 			self.usemask  = copy.deepcopy(clone.usemask)
-			self.usemask_list = copy.deepcopy(clone.usemask_list)
 			self.pusemask_list = copy.deepcopy(clone.pusemask_list)
 			self.useforce      = copy.deepcopy(clone.useforce)
-			self.useforce_list = copy.deepcopy(clone.useforce_list)
 			self.puseforce_list = copy.deepcopy(clone.puseforce_list)
 			self.puse     = copy.deepcopy(clone.puse)
 			self.make_defaults_use = copy.deepcopy(clone.make_defaults_use)
@@ -1632,10 +1632,8 @@ class config(object):
 			self.lookuplist = self.configlist[:]
 			self.lookuplist.reverse()
 			self._use_expand_dict = copy.deepcopy(clone._use_expand_dict)
-			self.profiles = copy.deepcopy(clone.profiles)
 			self.backupenv  = self.configdict["backupenv"]
 			self.pusedict   = copy.deepcopy(clone.pusedict)
-			self.categories = copy.deepcopy(clone.categories)
 			self.pkeywordsdict = copy.deepcopy(clone.pkeywordsdict)
 			self._pkeywords_list = copy.deepcopy(clone._pkeywords_list)
 			self.pmaskdict = copy.deepcopy(clone.pmaskdict)
@@ -1676,14 +1674,16 @@ class config(object):
 				else:
 					self.profile_path = None
 			else:
-				self.profile_path = config_profile_path[:]
+				self.profile_path = config_profile_path
 
 			if config_incrementals is None:
-				self.incrementals = copy.deepcopy(portage.const.INCREMENTALS)
+				self.incrementals = portage.const.INCREMENTALS
 			else:
-				self.incrementals = copy.deepcopy(config_incrementals)
+				self.incrementals = config_incrementals
+			if not isinstance(self.incrementals, tuple):
+				self.incrementals = tuple(self.incrementals)
 
-			self.module_priority    = ["user","default"]
+			self.module_priority    = ("user", "default")
 			self.modules            = {}
 			modules_loader = portage.env.loaders.KeyValuePairFileLoader(
 				os.path.join(config_root, MODULES_FILE_PATH), None, None)
@@ -1761,8 +1761,9 @@ class config(object):
 					self.profiles.append(custom_prof)
 				del custom_prof
 
+			self.profiles = tuple(self.profiles)
 			self.packages_list = [grabfile_package(os.path.join(x, "packages")) for x in self.profiles]
-			self.packages      = stack_lists(self.packages_list, incremental=1)
+			self.packages      = tuple(stack_lists(self.packages_list, incremental=1))
 			del self.packages_list
 			#self.packages = grab_stacked("packages", self.profiles, grabfile, incremental_lines=1)
 
@@ -1785,8 +1786,9 @@ class config(object):
 				self._pkeywords_list.append(cpdict)
 
 			# get profile-masked use flags -- INCREMENTAL Child over parent
-			self.usemask_list = [grabfile(os.path.join(x, "use.mask"),
-				recursive=1) for x in self.profiles]
+			self.usemask_list = tuple(
+				tuple(grabfile(os.path.join(x, "use.mask"), recursive=1))
+				for x in self.profiles)
 			self.usemask  = set(stack_lists(
 				self.usemask_list, incremental=True))
 			use_defs_lists = [grabdict(os.path.join(x, "use.defaults")) for x in self.profiles]
@@ -1813,8 +1815,9 @@ class config(object):
 				self.pkgprofileuse.append(cpdict)
 			del rawprofileuse
 
-			self.useforce_list = [grabfile(os.path.join(x, "use.force"),
-				recursive=1) for x in self.profiles]
+			self.useforce_list = tuple(
+				tuple(grabfile(os.path.join(x, "use.force"), recursive=1))
+				for x in self.profiles)
 			self.useforce  = set(stack_lists(
 				self.useforce_list, incremental=True))
 
@@ -2289,7 +2292,7 @@ class config(object):
 			rValue.append(token)
 			return rValue
 		group_name = license_name[1:]
-		if not traversed_groups:
+		if traversed_groups is None:
 			traversed_groups = set()
 		license_group = self._license_groups.get(group_name)
 		if group_name in traversed_groups:
@@ -3785,6 +3788,9 @@ class config(object):
 			mydict.pop("EPREFIX", None)
 			mydict.pop("EROOT", None)
 
+		if phase == 'depend':
+			mydict.pop('FILESDIR', None)
+
 		return mydict
 
 	def thirdpartymirrors(self):
@@ -4159,6 +4165,8 @@ def spawn(mystring, mysettings, debug=0, free=0, droppriv=0, sesandbox=0, fakero
 
 	if logfile:
 		log_file = open(_unicode_encode(logfile), mode='ab')
+		apply_secpass_permissions(logfile,
+			uid=portage_uid, gid=portage_gid, mode=0o664)
 		stdout_file = os.fdopen(os.dup(fd_pipes_orig[1]), 'wb')
 		master_file = os.fdopen(master_fd, 'rb')
 		iwtd = [master_file]
@@ -6070,8 +6078,8 @@ def _spawn_misc_sh(mysettings, commands, phase=None, **kwargs):
 
 	return rval
 
-_testing_eapis = frozenset(["3_pre2"])
-_deprecated_eapis = frozenset(["3_pre1", "2_pre3", "2_pre2", "2_pre1"])
+_testing_eapis = frozenset()
+_deprecated_eapis = frozenset(["3_pre2", "3_pre1", "2_pre3", "2_pre2", "2_pre1"])
 
 def _eapi_is_deprecated(eapi):
 	return eapi in _deprecated_eapis
@@ -7816,6 +7824,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 				use_mask, use_force))
 			x = portage.dep.Atom(evaluated_atom)
 
+<<<<<<< HEAD
 		if not repoman:
 			if 'lib32' not in x and portage.dep_getkey(x) not in mysettings.get("NO_AUTO_FLAG", None):
 				if ']' in x:
@@ -7831,11 +7840,7 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 
 			if myuse is not None and isinstance(x, portage.dep.Atom) and x.use:
 				if x.use.conditional:
-					evaluated_atom = portage.dep.remove_slot(x)
-					if x.slot:
-						evaluated_atom += ":%s" % x.slot
-					evaluated_atom += str(x.use.evaluate_conditionals(myuse))
-					x = portage.dep.Atom(evaluated_atom)
+					x = x.evaluate_conditionals(myuse)
 
 		mykey = x.cp
 		if not mykey.startswith("virtual/"):

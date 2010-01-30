@@ -1169,7 +1169,8 @@ def emerge_main():
 	if rval != os.EX_OK:
 		return rval
 
-	if portage._global_updates(trees, mtimedb["updates"]):
+	if myaction not in ('help', 'info', 'version') and \
+		portage._global_updates(trees, mtimedb["updates"]):
 		mtimedb.commit()
 		# Reload the whole config from scratch.
 		settings, trees, mtimedb = load_emerge_config(trees=trees)
@@ -1323,7 +1324,9 @@ def emerge_main():
 			portage.debug.set_trace(True)
 
 	if not ("--quiet" in myopts):
-		if not sys.stdout.isatty() or ("--nospinner" in myopts):
+		if '--nospinner' in myopts or \
+			settings.get('TERM') == 'dumb' or \
+			not sys.stdout.isatty():
 			spinner.update = spinner.update_basic
 
 	if myaction == 'version':

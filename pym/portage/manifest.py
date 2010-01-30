@@ -59,7 +59,10 @@ def parseManifest2(mysplit):
 	if len(mysplit) > 4 and mysplit[0] in portage.const.MANIFEST2_IDENTIFIERS:
 		mytype = mysplit[0]
 		myname = mysplit[1]
-		mysize = int(mysplit[2])
+		try:
+			mysize = int(mysplit[2])
+		except ValueError:
+			return None
 		myhashes = dict(zip(mysplit[3::2], mysplit[4::2]))
 		myhashes["size"] = mysize
 		myentry = Manifest2Entry(type=mytype, name=myname, hashes=myhashes)
@@ -202,6 +205,8 @@ class Manifest(object):
 		return myhashdict
 
 	def _createManifestEntries(self):
+		valid_hashes = set(portage.const.MANIFEST2_HASH_FUNCTIONS)
+		valid_hashes.add('size')
 		mytypes = list(self.fhashdict)
 		mytypes.sort()
 		for t in mytypes:
@@ -210,10 +215,8 @@ class Manifest(object):
 			for f in myfiles:
 				myentry = Manifest2Entry(
 					type=t, name=f, hashes=self.fhashdict[t][f].copy())
-				myhashkeys = list(myentry.hashes)
-				myhashkeys.sort()
-				for h in myhashkeys:
-					if h not in ["size"] + portage.const.MANIFEST2_HASH_FUNCTIONS:
+				for h in list(myentry.hashes):
+					if h not in valid_hashes:
 						del myentry.hashes[h]
 				yield myentry
 
