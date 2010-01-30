@@ -7824,7 +7824,6 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 				use_mask, use_force))
 			x = portage.dep.Atom(evaluated_atom)
 
-<<<<<<< HEAD
 		if not repoman:
 			if 'lib32' not in x and portage.dep_getkey(x) not in mysettings.get("NO_AUTO_FLAG", None):
 				if ']' in x:
