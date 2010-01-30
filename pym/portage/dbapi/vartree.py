@@ -53,6 +53,7 @@ import logging
 import os as _os
 import stat
 import sys
+import tempfile
 import time
 import warnings
 
@@ -2533,6 +2534,10 @@ class dblink(object):
 				# upgraded. We effectively only want one half of the config protection
 				# functionality for /lib/modules. For portage-ng both capabilities
 				# should be able to be independently specified.
+				# TODO: For rebuilds, re-parent previous modules to the new
+				# installed instance (so they are not orphans). For normal
+				# uninstall (not rebuild/reinstall), remove the modules along
+				# with all other files (leave no orphans).
 				if obj.startswith(modprotect):
 					show_unmerge("---", unmerge_desc["cfgpro"], file_type, obj)
 					continue
@@ -3988,11 +3993,11 @@ class dblink(object):
 		finally:
 			self.settings.pop("PORTAGE_UPDATE_ENV", None)
 
-		# XXX: Decide how to handle failures here.
 		if a != os.EX_OK:
+			# It's stupid to bail out here, so keep going regardless of
+			# phase return code.
 			showMessage(_("!!! FAILED postinst: ")+str(a)+"\n",
 				level=logging.ERROR, noiselevel=-1)
-			return a
 
 		downgrade = False
 		for v in otherversions:
@@ -4587,8 +4592,15 @@ def tar_contents(contents, root, tar, protect=None, onProgress=None):
 			if protect and protect(path):
 				# Create an empty file as a place holder in order to avoid
 				# potential collision-protect issues.
-				tarinfo.size = 0
-				tar.addfile(tarinfo)
+				f = tempfile.TemporaryFile()
+				f.write(_unicode_encode(
+					"# empty file because --include-config=n " + \
+					"when `quickpkg` was used\n"))
+				f.flush()
+				f.seek(0)
+				tarinfo.size = os.fstat(f.fileno()).st_size
+				tar.addfile(tarinfo, f)
+				f.close()
 			else:
 				f = open(_unicode_encode(path,
 					encoding=object.__getattribute__(os, '_encoding'),
