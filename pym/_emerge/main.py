@@ -40,6 +40,7 @@ from _emerge.actions import action_config, action_sync, action_metadata, \
 	action_regen, action_search, action_uninstall, action_info, action_build, \
 	adjust_configs, chk_updated_cfg_files, display_missing_pkg_set, \
 	display_news_notification, getportageversion, load_emerge_config
+import _emerge
 from _emerge.emergelog import emergelog
 from _emerge._flush_elog_mod_echo import _flush_elog_mod_echo
 from _emerge.is_valid_package_atom import is_valid_package_atom
@@ -1080,7 +1081,7 @@ def repo_name_duplicate_check(trees):
 	for root, root_trees in trees.items():
 		if 'porttree' in root_trees:
 			portdb = root_trees['porttree'].dbapi
-			if portdb.mysettings.get('PORTAGE_REPO_DUPLICATE_WARN') != '0':
+			if portdb.settings.get('PORTAGE_REPO_DUPLICATE_WARN') != '0':
 				for repo_name, paths in portdb._ignored_repos:
 					k = (root, repo_name, portdb.getRepositoryPath(repo_name))
 					ignored_repos.setdefault(k, []).extend(paths)
@@ -1395,9 +1396,7 @@ def emerge_main():
 		operations.  This helps minimize parallel emerge.log entries that can
 		confuse log parsers.  We especially want it disabled during
 		parallel-fetch, which uses --resume --fetchonly."""
-		global emergelog
-		def emergelog(*pargs, **kargs):
-			pass
+		_emerge.emergelog._disable = True
 
 	else:
 		if 'EMERGE_LOG_DIR' in settings:

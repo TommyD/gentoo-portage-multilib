@@ -2102,7 +2102,8 @@ class config(object):
 			#getting categories from an external file now
 			categories = [grabfile(os.path.join(x, "categories")) for x in locations]
 			self.categories = tuple(sorted(
-				stack_lists(categories, incremental=1)))
+				x for x in stack_lists(categories, incremental=1)
+				if dbapi._category_re.match(x) is not None))
 			del categories
 
 			archlist = [grabfile(os.path.join(x, "arch.list")) for x in locations]
@@ -7197,7 +7198,7 @@ def doebuild(myebuild, mydo, myroot, mysettings, debug=0, listonly=0,
 			mydo not in ("digest", "manifest") and "noauto" not in features)
 		alist = mysettings.configdict["pkg"].get("A")
 		aalist = mysettings.configdict["pkg"].get("AA")
-		if need_distfiles or alist is None or aalist is None:
+		if alist is None or aalist is None:
 			# Make sure we get the correct tree in case there are overlays.
 			mytree = os.path.realpath(
 				os.path.dirname(os.path.dirname(mysettings["O"])))
@@ -8590,10 +8591,9 @@ def getmaskingreason(mycpv, metadata=None, settings=None, portdb=None, return_lo
 	if mycp in settings.pmaskdict:
 		for x in settings.pmaskdict[mycp]:
 			if match_from_list(x, cpv_slot_list):
-				comment = ""
-				l = "\n"
-				comment_valid = -1
 				for pmask in pmasklists:
+					comment = ""
+					comment_valid = -1
 					pmask_filename = os.path.join(pmask[0], "package.mask")
 					for i in range(len(pmask[1])):
 						l = pmask[1][i].strip()
