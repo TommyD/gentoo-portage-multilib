@@ -148,20 +148,22 @@ is_auto-multilib() {
 	return 1
 }
 
+is_ebuild() {
+	[[ ${PORTAGE_CALLER} == ebuild ]] && return 0 || return 1
+}
+
 get_abi_order() {
 	local order= dodefault=
 
 	if is_auto-multilib; then
+		order=${DEFAULT_ABI}
 		for x in ${MULTILIB_ABIS}; do
 			if [ "${x}" != "${DEFAULT_ABI}" ]; then
 				order="${order} ${x}"
-			else
-				dodefault=1
 			fi
 		done
-		[ "$dodefault" ] && order="${order} ${DEFAULT_ABI}"
 	else
-		order="${DEFAULT_ABI}"
+		order=${DEFAULT_ABI}
 	fi
 
 	if [ -z "${order}" ]; then
@@ -185,13 +187,15 @@ set_abi() {
 		ABI_SAVE=${ABI}
 	fi
 
-	if [ -d "${WORKDIR}" ]; then
-		_unset_abi_dir
-	fi
+	if is_ebuild; then
+		if [ -d "${WORKDIR}" ]; then
+			_unset_abi_dir
+		fi
 
-	if [ -d "${WORKDIR}.${abi}" ]; then
-		# If it doesn't exist, then we're making it soon in dyn_unpack
-		mv ${WORKDIR}.${abi} ${WORKDIR} || die "IO Failure -- Failed to 'mv work.${abi} work'"
+		if [ -d "${WORKDIR}.${abi}" ]; then
+			# If it doesn't exist, then we're making it soon in dyn_unpack
+			mv ${WORKDIR}.${abi} ${WORKDIR} || die "IO Failure -- Failed to 'mv work.${abi} work'"
+		fi
 	fi
 
 	echo "${abi}" > ${PORTAGE_BUILDDIR}/.abi || die "IO Failure -- Failed to create .abi."
@@ -219,9 +223,10 @@ set_abi() {
 _unset_abi_dir() {
 	if [ -f "${PORTAGE_BUILDDIR}/.abi" ]; then
 		local abi=$(cat ${PORTAGE_BUILDDIR}/.abi)
-		[ ! -d "${WORKDIR}" ] && die "unset_abi: .abi present (${abi}) but workdir not present."
-
-		mv ${WORKDIR} ${WORKDIR}.${abi} || die "IO Failure -- Failed to 'mv work work.${abi}'."
+		if [[ ${EBUILD_PHASE} != setup ]]; then
+			[ ! -d "${WORKDIR}" ] && die "unset_abi: .abi present (${abi}) but workdir not present."
+			mv ${WORKDIR} ${WORKDIR}.${abi} || die "IO Failure -- Failed to 'mv work work.${abi}'."
+		fi
 		rm -rf ${PORTAGE_BUILDDIR}/.abi || die "IO Failure -- Failed to 'rm -rf .abi'."
 	fi
 }
@@ -229,10 +234,12 @@ _unset_abi_dir() {
 unset_abi() {
 	is_auto-multilib || return 0;
 
-        _unset_abi_dir
-		_save_abi_env "${ABI}"
-		export ABI=${DEFAULT_ABI}
-		_restore_abi_env "${ABI}"
+	if is_ebuild; then
+		_unset_abi_dir
+	fi
+	_save_abi_env "${ABI}"
+	export ABI=${DEFAULT_ABI}
+	_restore_abi_env "${ABI}"
 }
 
 _get_abi_string() {
@@ -278,21 +285,21 @@ _setup_abi_env() {
 #
 _finalize_abi_install() {
 	local ALL_ABIS=$(get_abi_order)
-	local ALTERNATE_ABIS=${ALL_ABIS% *}
+	local ALTERNATE_ABIS=${ALL_ABIS#* }
 	local dirs=${ABI_HEADER_DIRS-/usr/include}
 	local base=
 
 	# Sanity check  ABI variables
-	[ "${ALL_ABIS}" != "${ALL_ABIS/ /}" ] || return 0;
-	[ -n "${ABI}" ] && [ -n "${DEFAULT_ABI}" ] || return 0;
+#	[ "${ALL_ABIS}" != "${ALL_ABIS/ /}" ] || return 0;
+#	[ -n "${ABI}" ] && [ -n "${DEFAULT_ABI}" ] || return 0;
 
 	# Save header files for each ABI
 	for dir in ${dirs}; do
 		[ -d "${D}/${dir}" ] || continue
 		vecho ">>> Saving headers $(_get_abi_string)"
-		base=${T}/gentoo-multilib/${dir}/gentoo-multilib
+		base=${PORTAGE_BUILDDIR}/abi-code/gentoo-multilib/${dir}/gentoo-multilib
 		mkdir -p ${base}
-		[ -d ${base}/${ABI} ] && rm -rf ${base}/${ABI}
+		[ -d ${base}/${ABI} ] && rm -rvf ${base}/${ABI}
 		mv ${D}/${dir} ${base}/${ABI} || die "ABI header save failed"
 	done
 
@@ -303,63 +310,6 @@ _finalize_abi_install() {
 		find ${D} -type l ! -regex '.*/lib[0-9]*/.*' -exec rm -f {} \;
 	fi
 
-	# After final ABI is installed, if headers differ
-	# then create multilib header redirects
-	if [ "${ABI}" = "${DEFAULT_ABI}" ]; then
-		local diffabi= abis_differ=
-		for dir in ${dirs}; do
-			base=${T}/gentoo-multilib/${dir}/gentoo-multilib
-			[ -d "${base}" ] || continue
-			for diffabi in ${ALTERNATE_ABIS}; do
-				diff -rNq ${base}/${ABI} ${base}/${diffabi} >/dev/null || abis_differ=1
-			done
-		done
-
-		#FIXME: workaround:no multiabi-headers for linux-headers
-		if [ -z "${abis_differ}" ] || [[ ${PN} == linux-headers ]]; then
-			# No differences, restore original header files for default ABI
-			for dir in ${dirs}; do
-				base=${T}/gentoo-multilib/${dir}/gentoo-multilib
-				[ -d "${base}" ] || continue
-				mv ${base}/${ABI} ${D}/${dir} \
-					|| die "ABI header restore failed"
-			done
-		else # ABIS differ
-			vecho ">>> Creating multilib headers"
-			base=${T}/gentoo-multilib
-			local files_differ=
-			for dir in ${dirs}; do
-				cd "${base}${dir}/gentoo-multilib/${ABI}"
-				for i in $(find . -type f); do
-					for diffabi in ${ALTERNATE_ABIS}; do
-						diff -q "${i}" ../${diffabi}/"${i}" >/dev/null || files_differ=1
-					done
-					if [ -z "${files_differ}" ]; then
-						[ -d "${D}${dir}/${i%/*}" ] || mkdir -p "${D}${dir}/${i%/*}"
-						mv ${base}${dir}/gentoo-multilib/${ABI}/"${i}" "${D}${dir}/${i}"
-						rm -rf ${base}${dir}/gentoo-multilib/*/"${i}"
-					fi
-					files_differ=
-				done
-			done
-			pushd "${base}"
-			find . | tar -c -T - -f - | tar -x --no-same-owner -f - -C ${D}
-			popd
-
-			# This 'set' stuff is required by mips profiles to properly pass
-			# CDEFINE's (which have spaces) to sub-functions
-			set --
-			for dir in ${dirs} ; do
-				set -- "$@" "${dir}"
-				for diffabi in ${ALL_ABIS}; do
-					local define_var=CDEFINE_${diffabi}
-					set -- "$@" "${!define_var}:${dir}/gentoo-multilib/${diffabi}"
-				done
-				_create_abi_includes "$@"
-			done
-		fi
-	fi
-
 	# Create wrapper symlink for *-config files
 	local i= 
 	prep_ml_binaries $(find "${D}"usr/bin -type f \( -name '*-config' -o -name '*-config-2' \) 2>/dev/null)
@@ -368,10 +318,99 @@ _finalize_abi_install() {
 	for i in ${MULTILIB_ABIS}; do
 		noabi+=( ! -name '*-'${i} )
 	done
-	if [[ ${MULTILIB_BINARIES} == *${PN}* ]]; then
+	if [[ ${MULTILIB_BINARIES} == *${CATEGORY}/${PN}* ]]; then
 		for i in $(find "${D}"usr/bin/ -type f ${noabi[@]}); do
 			prep_ml_binaries "${i}"
 		done
+	fi
+	local LIBDIR=$(get_abi_var LIBDIR $1)
+	if ( [[ -d "${D}${LIBDIR}" ]] || [[ -d "${D}usr/${LIBDIR}" ]] || [[ -d "${base}" ]] || \
+		( [[ ${MULTILIB_BINARIES} == *${CATEGORY}/${PN}* ]] && [[ -d "${D}"usr/bin ]] ) ); then
+
+		mv "${D}" "${D%/}".${ABI} || die
+		for my_abi in ${ALL_ABIS}; do
+			[[ -e "${D%/}".${my_abi} ]] || return 0
+		done
+	else
+		if is_ebuild; then
+			mv "${D}" "${D%/}".${ABI} || die
+			for my_abi in ${ALL_ABIS}; do
+				[[ -e "${D%/}".${my_abi} ]] || return 0
+			done
+		fi
+	fi
+
+	unset_abi
+	mkdir -p "${D}"
+	# After final ABI is installed, if headers differ
+	# then create multilib header redirects
+	local diffabi= abis_differ=
+	for dir in ${dirs}; do
+		base=${PORTAGE_BUILDDIR}/abi-code/gentoo-multilib/${dir}/gentoo-multilib
+		[ -d "${base}" ] || continue
+		for diffabi in ${ALTERNATE_ABIS}; do
+			diff -rNq ${base}/${ABI} ${base}/${diffabi} >/dev/null || abis_differ=1
+		done
+	done
+
+	#FIXME: workaround:no multiabi-headers for linux-headers
+	if [ -z "${abis_differ}" ] || [[ ${PN} == linux-headers ]]; then
+		# No differences, restore original header files for default ABI
+		for dir in ${dirs}; do
+			base=${PORTAGE_BUILDDIR}/abi-code/gentoo-multilib/${dir}/gentoo-multilib
+			[ -d "${base}" ] || continue
+			[[ -d "${D}"/${dir} ]] || mkdir -p "${D}"/${dir}
+			if ! rmdir "${base}"/${DEFAULT_ABI} 2>/dev/null; then
+				mv "${base}"/${DEFAULT_ABI}/* "${D}"/${dir} || die "ABI header restore failed"
+			fi
+		done
+	else # ABIS differ
+		vecho ">>> Creating multilib headers"
+		base=${PORTAGE_BUILDDIR}/abi-code/gentoo-multilib
+		local files_differ=
+		for dir in ${dirs}; do
+			cd "${base}${dir}/gentoo-multilib/${DEFAULT_ABI}" || die
+			for i in $(find . -type f); do
+				for diffabi in ${ALTERNATE_ABIS}; do
+					diff -q "${i}" ../${diffabi}/"${i}" >/dev/null || files_differ=1
+				done
+				if [ -z "${files_differ}" ]; then
+					[ -d "${D}${dir}/${i%/*}" ] || mkdir -p "${D}${dir}/${i%/*}"
+					mv ${base}${dir}/gentoo-multilib/${DEFAULT_ABI}/"${i}" "${D}${dir}/${i}" || die "$DEFAULT_ABI failed"
+					rm -rf ${base}${dir}/gentoo-multilib/*/"${i}"
+				fi
+				files_differ=
+			done
+		done
+		pushd "${base}" >/dev/null
+		find . | tar -c -T - -f - | tar -x --no-same-owner -f - -C ${D}
+		popd >/dev/null
+
+		# This 'set' stuff is required by mips profiles to properly pass
+		# CDEFINE's (which have spaces) to sub-functions
+		set --
+		for dir in ${dirs} ; do
+			set -- "$@" "${dir}"
+			for diffabi in ${ALL_ABIS}; do
+				local define_var=CDEFINE_${diffabi}
+				set -- "$@" "${!define_var}:${dir}/gentoo-multilib/${diffabi}"
+			done
+			_create_abi_includes "$@"
+		done
+	fi
+
+	for my_abi in ${ALTERNATE_ABIS}; do
+		[[ -d "${D%/}.${my_abi}" ]] || continue
+		cd "${D%/}.${my_abi}"
+		find . | tar -c -T - -f - | tar -x --no-same-owner -f - -C "${D}"
+		cd ..
+		rm -rf "${D%/}.${my_abi}"
+	done
+	if [[ -d "${D%/}.${DEFAULT_ABI}" ]]; then
+		cd "${D%/}.${DEFAULT_ABI}"
+		find . | tar -c -T - -f - | tar -x --no-same-owner -f - -C "${D}"
+		cd ..
+		rm -rf "${D%/}.${DEFAULT_ABI}"
 	fi
 }
 

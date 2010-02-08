@@ -95,5 +95,30 @@ class EbuildExecuter(CompositeTask):
 				pkg=self.pkg, phase=phase, scheduler=self.scheduler,
 				settings=self.settings, tree=self._tree))
 
-		self._start_task(ebuild_phases, self._default_final_exit)
+		self._start_task(ebuild_phases, self._install_exit)
 
+	def _install_exit(self, install_phase):
+
+		if self._default_exit(install_phase) != os.EX_OK:
+			self.wait()
+			return
+		if not os.path.exists(self.settings["D"]):
+			pkg = self.pkg
+			scheduler = self.scheduler
+			settings = self.settings
+			cleanup = 1
+
+			# This initializes PORTAGE_LOG_FILE.
+			portage.prepare_build_dirs(pkg.root, settings, cleanup)
+
+			setup_phase = EbuildPhase(background=self.background,
+				pkg=pkg, phase="setup", scheduler=scheduler,
+				settings=settings, tree=self._tree)
+
+			setup_phase.addExitListener(self._setup_exit)
+			self._current_task = setup_phase
+			self.scheduler.scheduleSetup(setup_phase)
+		else:
+			self.returncode = os.EX_OK
+			self.wait()
+			return

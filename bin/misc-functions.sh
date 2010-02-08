@@ -18,6 +18,7 @@ shift $#
 source "${PORTAGE_BIN_PATH:-/usr/lib/portage/bin}/ebuild.sh"
 
 install_symlink_html_docs() {
+	[[ -e "${D}" ]] || return 0
 	cd "${D}" || die "cd failed"
 	#symlink the html documentation (if DOC_SYMLINKS_DIR is set in make.conf)
 	if [ -n "${DOC_SYMLINKS_DIR}" ] ; then
@@ -42,6 +43,7 @@ install_symlink_html_docs() {
 }
 
 install_qa_check() {
+	[[ -d "${D}" ]] || return 0
 	cd "${D}" || die "cd failed"
 
 	export STRIP_MASK

@@ -76,7 +76,8 @@ INCREMENTALS             = ("USE", "USE_EXPAND", "USE_EXPAND_HIDDEN",
                            "FEATURES", "ACCEPT_KEYWORDS",
                            "CONFIG_PROTECT_MASK", "CONFIG_PROTECT",
                            "PRELINK_PATH", "PRELINK_PATH_MASK",
-                           "PROFILE_ONLY_VARIABLES")
+                           "PROFILE_ONLY_VARIABLES","NO_AUTO_FLAG",
+                           "MULTILIB_BINARIES")
 EBUILD_PHASES            = ("setup", "unpack", "prepare", "configure",
                            "compile", "test", "install",
                            "package", "preinst", "postinst","prerm", "postrm",

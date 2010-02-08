@@ -679,60 +679,79 @@ dyn_pretend() {
 }
 
 dyn_setup() {
-	ebuild_phase_with_hooks pkg_setup
+	if is_ebuild; then
+		for LOOP_ABI in $(get_abi_order); do
+			set_abi ${LOOP_ABI}
+			ebuild_phase_with_hooks pkg_setup
+			unset_abi
+		done
+	else
+		for my_abi in $(get_abi_order); do
+			[[ -e "${D%/}".${my_abi} ]] || break
+		done
+		set_abi ${my_abi}
+		ebuild_phase_with_hooks pkg_setup
+	fi
+}
+
+main_dyn_unpack() {
+	if [ -e "${WORKDIR}" ]; then
+		local x
+		local checkme
+		for x in $A ; do
+			vecho ">>> Checking ${x}'s mtime..."
+			if [ "${PORTAGE_ACTUAL_DISTDIR:-${DISTDIR}}/${x}" -nt "${WORKDIR}" ]; then
+				vecho ">>> ${x} has been updated; recreating WORKDIR..."
+				newstuff="yes"
+				break
+			fi
+		done
+		if [ ! -f "${PORTAGE_BUILDDIR}/.unpacked" ] ; then
+			vecho ">>> Not marked as unpacked; recreating WORKDIR..."
+			newstuff="yes"
+		fi
+	fi
+	if [ "${newstuff}" == "yes" ]; then
+		# We don't necessarily have privileges to do a full dyn_clean here.
+		rm -rf "${PORTAGE_BUILDDIR}"/{.unpacked*,.prepared*,.configured*,.compiled*,.tested*,.installed*,.packaged*,build-info}
+		rm -rf "${WORKDIR}"
+		rm -rf "${D}".*
+		if [ -d "${T}" ] && \
+			! hasq keeptemp $FEATURES && ! hasq keepwork $FEATURES ; then
+			rm -rf "${T}" && mkdir "${T}"
+		fi
+	fi
+	if [ -e "${WORKDIR}" ]; then
+		if [ "$newstuff" == "no" ]; then
+			vecho ">>> WORKDIR is up-to-date, keeping..."
+			return 0
+		fi
+	fi
+
+	if [ ! -d "${WORKDIR}" ]; then
+		install -m${PORTAGE_WORKDIR_MODE:-0700} -d "${WORKDIR}" || die "Failed to create dir '${WORKDIR}'"
+	fi
+	[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
+	cd "${WORKDIR}" || die "Directory change failed: \`cd '${WORKDIR}'\`"
+	ebuild_phase pre_src_unpack
+	vecho ">>> Unpacking source$(_get_abi_string)..."
+	ebuild_phase src_unpack
 }
 
 dyn_unpack() {
 	local newstuff="no"
-	for LOOP_ABI in $(get_abi_order); do
-		set_abi ${LOOP_ABI}
-		if [ -e "${WORKDIR}" ]; then
-			local x
-			local checkme
-			for x in $A ; do
-				vecho ">>> Checking ${x}'s mtime..."
-				if [ "${PORTAGE_ACTUAL_DISTDIR:-${DISTDIR}}/${x}" -nt "${WORKDIR}" ]; then
-					vecho ">>> ${x} has been updated; recreating WORKDIR..."
-					newstuff="yes"
-					break
-				fi
-			done
-			if [ ! -f "${PORTAGE_BUILDDIR}/.unpacked" ] ; then
-				vecho ">>> Not marked as unpacked; recreating WORKDIR..."
-				newstuff="yes"
+	if is_ebuild; then
+		for LOOP_ABI in $(get_abi_order); do
+			set_abi ${LOOP_ABI}
+			main_dyn_unpack
+			if is_auto-multilib; then
+				touch "$PORTAGE_BUILDDIR"/.unpacked."${LOOP_ABI}" || die "IO Failure -- Failed to 'touch .unpacked.${LOOP_ABI}'"
 			fi
-		fi
-		if [ "${newstuff}" == "yes" ]; then
-			# We don't necessarily have privileges to do a full dyn_clean here.
-			rm -rf "${PORTAGE_BUILDDIR}"/{.unpacked,.unpacked.*,.prepared,.prepared.*,.configured,.configured.*,\
-				.compiled,.compiled.*,.tested,.tested.*,.installed,.installed.*,.packaged,.packaged.*,build-info}
-			rm -rf "${WORKDIR}"
-			if [ -d "${T}" ] && \
-				! hasq keeptemp $FEATURES && ! hasq keepwork $FEATURES ; then
-				rm -rf "${T}" && mkdir "${T}"
-			fi
-		fi
-		if [ -e "${WORKDIR}" ]; then
-			if [ "$newstuff" == "no" ]; then
-				vecho ">>> WORKDIR is up-to-date, keeping..."
-				unset_abi
-				return 0
-			fi
-		fi
-
-		if [ ! -d "${WORKDIR}" ]; then
-			install -m${PORTAGE_WORKDIR_MODE:-0700} -d "${WORKDIR}" || die "Failed to create dir '${WORKDIR}'"
-		fi
-		[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
-		cd "${WORKDIR}" || die "Directory change failed: \`cd '${WORKDIR}'\`"
-		ebuild_phase pre_src_unpack
-		vecho ">>> Unpacking source$(_get_abi_string)..."
-		ebuild_phase src_unpack
-		if is_auto-multilib; then
-			touch "$PORTAGE_BUILDDIR"/.unpacked."${LOOP_ABI}" || die "IO Failure -- Failed to 'touch .unpacked.${LOOP_ABI}'"
-		fi
-	done
-	unset_abi
+			unset_abi
+		done
+	else
+		main_dyn_unpack
+	fi
 	touch "${PORTAGE_BUILDDIR}/.unpacked" || die "IO Failure -- Failed 'touch .unpacked' in ${PORTAGE_BUILDDIR}"
 	vecho ">>> Source unpacked in ${WORKDIR}"
 	ebuild_phase post_src_unpack
@@ -750,8 +769,8 @@ dyn_clean() {
 		chflags -R nosunlnk,nouunlnk "${PORTAGE_BUILDDIR}" 2>/dev/null
 	fi
 
-	rm -rf "${PORTAGE_BUILDDIR}/image" "${PORTAGE_BUILDDIR}/homedir"
-	rm -f "${PORTAGE_BUILDDIR}"/.{installed,installed.*}
+	rm -rf "${PORTAGE_BUILDDIR}"/image* "${PORTAGE_BUILDDIR}/homedir"
+	rm -f "${PORTAGE_BUILDDIR}"/.installed*
 
 	if [[ $EMERGE_FROM = binary ]] || \
 		! hasq keeptemp $FEATURES && ! hasq keepwork $FEATURES ; then
@@ -759,13 +778,12 @@ dyn_clean() {
 	fi
 
 	if [[ $EMERGE_FROM = binary ]] || ! hasq keepwork $FEATURES; then
-		rm -f "$PORTAGE_BUILDDIR"/.{ebuild_changed,exit_status,logid,abi,unpacked,unpacked.*,prepared,prepared.*} \
-			"$PORTAGE_BUILDDIR"/.{configured,configured.*,compiled,compiled.*,tested,tested.*,packaged} \
-			"$PORTAGE_BUILDDIR"/.die_hooks
+		rm -f "$PORTAGE_BUILDDIR"/.{ebuild_changed,exit_status,logid,unpacked*,prepared*} \
+			"$PORTAGE_BUILDDIR"/.{configured*,compiled*,tested*,packaged*} \
+			"$PORTAGE_BUILDDIR"/.{die_hooks,abi}
 
-		rm -rf "${PORTAGE_BUILDDIR}/build-info"
-		rm -rf "${WORKDIR}."*
-		rm -rf "${WORKDIR}"
+		rm -rf "${PORTAGE_BUILDDIR}/"{build-info,abi-code}
+		rm -rf "${WORKDIR}"*
 	fi
 
 	if [ -f "${PORTAGE_BUILDDIR}/.unpacked" ]; then
@@ -883,31 +901,18 @@ abort_configure() {
 abort_compile() {
 	abort_handler "src_compile" $1
 	rm -f "${PORTAGE_BUILDDIR}/.compiled"
-	if is_auto-multilib && [ -n "${ABI}" ]; then
-		rm -f "${PORTAGE_BUILDDIR}/.compiled.${ABI}"
-		mv ${WORKDIR} ${WORKDIR}.${ABI}
-		rm -f ${PORTAGE_BUILDDIR}/.abi
-	fi
 	exit 1
 }
 
 abort_test() {
 	abort_handler "dyn_test" $1
 	rm -f "${PORTAGE_BUILDDIR}/.tested"
-	if is_auto-multilib && [ -n "${ABI}" ]; then
-		mv ${WORKDIR} ${WORKDIR}.${ABI}
-		rm -f ${PORTAGE_BUILDDIR}/.abi
-	fi
 	exit 1
 }
 
 abort_install() {
 	abort_handler "src_install" $1
-	rm -rf "${PORTAGE_BUILDDIR}/image"
-	if is_auto-multilib && [ -n "${ABI}" ]; then
-		mv ${WORKDIR} ${WORKDIR}.${ABI}
-		rm -f ${PORTAGE_BUILDDIR}/.abi
-	fi
+	rm -rf "${PORTAGE_BUILDDIR}"/{image,image.*}
 	exit 1
 }
 
@@ -921,144 +926,177 @@ has_phase_defined_up_to() {
 	return 1
 }
 
-dyn_prepare() {
+main_dyn_prepare() {
 
-	if ! is_auto-multilib && [[ -e $PORTAGE_BUILDDIR/.prepared ]] ; then
-		vecho ">>> It appears that '$PF' is already prepared; skipping."
-		vecho ">>> Remove '$PORTAGE_BUILDDIR/.prepared' to force prepare."
-		return 0
+	if [[ -d $S ]] ; then
+		cd "${S}"
+	elif hasq $EAPI 0 1 2 3 3_pre2 ; then
+		cd "${WORKDIR}"
+	elif [[ -z ${A} ]] && ! has_phase_defined_up_to prepare; then
+		cd "${WORKDIR}"
+	else
+		die "The source directory '${S}' doesn't exist"
 	fi
 
-	for LOOP_ABI in $(get_abi_order); do
-		set_abi ${LOOP_ABI}
-		if [[ -d $S ]] ; then
-			cd "${S}"
-		elif hasq $EAPI 0 1 2 3 3_pre2; then
-			cd "${WORKDIR}"
-		elif [[ -z ${A} ]] && ! has_phase_defined_up_to prepare; then
-			cd "${WORKDIR}"
-		else
-			die "The source directory '${S}' doesn't exist"
-		fi
+	trap abort_prepare SIGINT SIGQUIT
 
-		if is_auto-multilib; then
-			if [ ${PORTAGE_BUILDDIR}/.prepared.${LOOP_ABI} -nt "${WORKDIR}" ]; then
+	[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
+	ebuild_phase pre_src_prepare
+	vecho ">>> Preparing source in ${PWD}$(_get_abi_string) ..."
+	ebuild_phase src_prepare
+}
+
+dyn_prepare() {
+	if [[ -e "${PORTAGE_BUILDDIR}"/.prepared ]] ; then
+			vecho ">>> It appears that '$PF' is already prepared; skipping."
+			vecho ">>> Remove '$PORTAGE_BUILDDIR/.prepared' to force prepare."
+			return 0
+	fi
+
+	if is_ebuild; then
+		for LOOP_ABI in $(get_abi_order); do
+			set_abi ${LOOP_ABI}
+			if [ "${PORTAGE_BUILDDIR}"/.prepared.${LOOP_ABI} -nt "${WORKDIR}" ]; then
 				echo ">>> It appears that ${PN} is already prepared for ABI=${LOOP_ABI}; skipping."
 				echo ">>> Remove '$PORTAGE_BUILDDIR/.prepared.${LOOP_ABI}' to force prepare."
 				continue
 			fi
-		fi
-		trap abort_prepare SIGINT SIGQUIT
+			main_dyn_prepare
+			if is_auto-multilib; then
+				touch "$PORTAGE_BUILDDIR"/.prepared."${LOOP_ABI}" || die "IO Failure -- Failed to 'touch .prepared.${LOOP_ABI}'"
+			fi
+			unset_abi
+		done
+	else
+		main_dyn_prepare
+	fi
 
-		[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
-		ebuild_phase pre_src_prepare
-		vecho ">>> Preparing source in ${srcdir}$(_get_abi_string) ..."
-		ebuild_phase src_prepare
-		if is_auto-multilib; then
-			touch "$PORTAGE_BUILDDIR"/.prepared."${LOOP_ABI}" || die "IO Failure -- Failed to 'touch .prepared.${LOOP_ABI}'"
-		fi
-	done
-	unset_abi
+	touch "${PORTAGE_BUILDDIR}"/.prepared || die "IO Failure -- Failed 'touch .prepared' in ${PORTAGE_BUILDDIR}"
 	vecho ">>> Source prepared."
-	touch "$PORTAGE_BUILDDIR"/.prepared || die "IO Failure -- Failed to 'touch .prepared'"
 	ebuild_phase post_src_prepare
 
 	trap - SIGINT SIGQUIT
 }
 
-dyn_configure() {
+main_dyn_configure() {
 
-	if ! is_auto-multilib && [[ -e $PORTAGE_BUILDDIR/.configured ]] ; then
-		vecho ">>> It appears that '$PF' is already configured; skipping."
-		vecho ">>> Remove '$PORTAGE_BUILDDIR/.configured' to force configuration."
-		return 0
+	if [[ -d $S ]] ; then
+		cd "${S}"
+	elif hasq $EAPI 0 1 2 3 3_pre2 ; then
+		cd "${WORKDIR}"
+	elif [[ -z ${A} ]] && ! has_phase_defined_up_to configure; then
+		cd "${WORKDIR}"
+	else
+		die "The source directory '${S}' doesn't exist"
 	fi
 
-	for LOOP_ABI in $(get_abi_order); do
-		set_abi ${LOOP_ABI}
+	trap abort_configure SIGINT SIGQUIT
 
-		if is_auto-multilib; then
+	[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
+	ebuild_phase pre_src_configure
+
+	vecho ">>> Configuring source in ${PWD}$(_get_abi_string) ..."
+	ebuild_phase src_configure
+}
+
+dyn_configure() {
+	if  [[ -e $PORTAGE_BUILDDIR/.configured ]] ; then
+			vecho ">>> It appears that '$PF' is already configured; skipping."
+			vecho ">>> Remove '$PORTAGE_BUILDDIR/.configured' to force configure."
+			return 0
+	fi
+
+	if is_ebuild; then
+		for LOOP_ABI in $(get_abi_order); do
+			set_abi ${LOOP_ABI}
 			if [ ${PORTAGE_BUILDDIR}/.configured.${LOOP_ABI} -nt "${WORKDIR}" ]; then
-				echo ">>> It appears that ${PN} is already configured for ABI=${LOOP_ABI}; skipping."
-				echo ">>> Remove '$PORTAGE_BUILDDIR/.configured.${LOOP_ABI}' to force configuration."
-				continue
+					echo ">>> It appears that ${PN} is already configured for ABI=${LOOP_ABI}; skipping."
+					echo ">>> Remove '$PORTAGE_BUILDDIR/.configured.${LOOP_ABI}' to force configuration."
+					continue
 			fi
-		fi
-		if [[ -d $S ]] ; then
-			cd "${S}"
-		elif hasq $EAPI 0 1 2 3 3_pre2; then
-			cd "${WORKDIR}"
-		elif [[ -z ${A} ]] && ! has_phase_defined_up_to configure; then
-			cd "${WORKDIR}"
-		else
-			die "The source directory '${S}' doesn't exist"
-		fi
-
-		trap abort_configure SIGINT SIGQUIT
-
-		[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
-		ebuild_phase pre_src_configure
-
-		vecho ">>> Configuring source in ${srcdir}$(_get_abi_string) ..."
-		ebuild_phase src_configure
-		if is_auto-multilib; then
-			touch "$PORTAGE_BUILDDIR"/.configured."${LOOP_ABI}" || die "IO Failure -- Failed to 'touch .configured.${LOOP_ABI}'"
-		fi
-	done
-	unset_abi
+			main_dyn_configure
+			if is_auto-multilib; then
+				touch "$PORTAGE_BUILDDIR"/.configured."${LOOP_ABI}" || die "IO Failure -- Failed to 'touch .configured.${LOOP_ABI}'"
+			fi
+			unset_abi
+		done
+	else
+		main_dyn_configure
+	fi
+	touch "${PORTAGE_BUILDDIR}"/.configured || die "IO Failure -- Failed 'touch .configured' in ${PORTAGE_BUILDDIR}"
 	vecho ">>> Source configured."
-	touch "$PORTAGE_BUILDDIR"/.configured || die "IO Failure -- Failed to 'touch .configured'"
+
 	ebuild_phase post_src_configure
 
 	trap - SIGINT SIGQUIT
 }
 
-dyn_compile() {
+main_dyn_compile() {
 
-	if ! is_auto-multilib && [[ -e $PORTAGE_BUILDDIR/.compiled ]] ; then
+	if [[ -d $S ]] ; then
+		cd "${S}"
+	elif hasq $EAPI 0 1 2 3 3_pre2 ; then
+		cd "${WORKDIR}"
+	elif [[ -z ${A} ]] && ! has_phase_defined_up_to compile; then
+		cd "${WORKDIR}"
+	else
+		die "The source directory '${S}' doesn't exist"
+	fi
+
+	trap abort_compile SIGINT SIGQUIT
+
+	[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
+	ebuild_phase pre_src_compile
+
+	vecho ">>> Compiling source in ${PWD}$(_get_abi_string) ..."
+	ebuild_phase src_compile
+}
+
+dyn_compile() {
+	if [[ -e $PORTAGE_BUILDDIR/.compiled ]] ; then
 		vecho ">>> It appears that '${PF}' is already compiled; skipping."
 		vecho ">>> Remove '$PORTAGE_BUILDDIR/.compiled' to force compilation."
 		return 0
 	fi
 
-	for LOOP_ABI in $(get_abi_order); do
-		set_abi ${LOOP_ABI}
-
-		if is_auto-multilib; then
+	if is_ebuild; then
+		for LOOP_ABI in $(get_abi_order); do
+			set_abi ${LOOP_ABI}
 			if [ ${PORTAGE_BUILDDIR}/.compiled.${LOOP_ABI} -nt "${WORKDIR}" ]; then
 				echo ">>> It appears that ${PN} is already compiled for ABI=${LOOP_ABI}; skipping."
 				echo ">>> Remove '$PORTAGE_BUILDDIR/.compiled.${LOOP_ABI}' to force compilation."
 				continue
 			fi
-		fi
-
-		if [[ -d $S ]] ; then
-			cd "${S}"
-		elif hasq $EAPI 0 1 2 3 3_pre2; then
-			cd "${WORKDIR}"
-		elif [[ -z ${A} ]] && ! has_phase_defined_up_to compile; then
-			cd "${WORKDIR}"
-		else
-			die "The source directory '${S}' doesn't exist"
-		fi
-
-	trap abort_compile SIGINT SIGQUIT
-
-		[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
-		ebuild_phase pre_src_compile
-
-		vecho ">>> Compiling source in ${srcdir}$(_get_abi_string) ..."
-		ebuild_phase src_compile
-
-		if is_auto-multilib; then
-			touch "$PORTAGE_BUILDDIR"/.compiled."${LOOP_ABI}" || die "IO Failure -- Failed to 'touch .compiled.${LOOP_ABI}'"
-		fi
-	done
+			main_dyn_compile
+			if is_auto-multilib; then
+				touch "$PORTAGE_BUILDDIR"/.compiled."${LOOP_ABI}" || die "IO Failure -- Failed to 'touch .compiled.${LOOP_ABI}'"
+			fi
+			unset_abi
+		done
+	else
+		main_dyn_compile
+	fi
+	touch "${PORTAGE_BUILDDIR}"/.compiled || die "IO Failure -- Failed 'touch .compiled' in ${PORTAGE_BUILDDIR}"
 	vecho ">>> Source compiled."
-	touch "$PORTAGE_BUILDDIR"/.compiled || die "IO Failure -- Failed to 'touch .compiled'"
+
 	ebuild_phase post_src_compile
 
 	trap - SIGINT SIGQUIT
+}
+
+main_dyn_test() {
+	if [ -d "${S}" ]; then
+		cd "${S}"
+	else
+		cd "${WORKDIR}"
+	fi
+
+	local save_sp=${SANDBOX_PREDICT}
+	addpredict /
+	[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
+	ebuild_phase pre_src_test
+	ebuild_phase src_test
+	SANDBOX_PREDICT=${save_sp}
 }
 
 dyn_test() {
@@ -1068,57 +1106,81 @@ dyn_test() {
 		# like it's supposed to here.
 		! hasq test ${USE} && export USE="${USE} test"
 	fi
-	if ! is_auto-multilib && [[ -e $PORTAGE_BUILDDIR/.tested ]] ; then
+	if [[ -e $PORTAGE_BUILDDIR/.tested ]] ; then
 		vecho ">>> It appears that ${PN} has already been tested; skipping."
 		return
 	fi
 	trap "abort_test" SIGINT SIGQUIT
+
 	if ! hasq test $FEATURES && [ "${EBUILD_FORCE_TEST}" != "1" ]; then
 		vecho ">>> Test phase [not enabled]: ${CATEGORY}/${PF}"
 	elif hasq test $RESTRICT; then
 		einfo "Skipping make test/check due to ebuild restriction."
 		vecho ">>> Test phase [explicitly disabled]: ${CATEGORY}/${PF}"
 	else
-		for LOOP_ABI in $(get_abi_order); do
-			set_abi ${LOOP_ABI}
-
-			if is_auto-multilib; then
-				if [ ${PORTAGE_BUILDDIR}/.tested.${LOOP_ABI} -nt "${WORKDIR}" ]; then
-					echo ">>> It appears that ${PN} is already tested for ABI=${LOOP_ABI}; skipping."
-					echo ">>> Remove '$PORTAGE_BUILDDIR/.tested.${LOOP_ABI}' to force testing."
-					continue
-				fi
-			fi
-
-		if [ -d "${S}" ]; then
-			cd "${S}"
-		else
-			cd "${WORKDIR}"
+		if [ ${PORTAGE_BUILDDIR}/.tested.${LOOP_ABI} -nt "${WORKDIR}" ]; then
+			echo ">>> It appears that ${PN} is already tested for ABI=${LOOP_ABI}; skipping."
+			echo ">>> Remove '$PORTAGE_BUILDDIR/.tested.${LOOP_ABI}' to force testing."
+			continue
 		fi
-			local save_sp=${SANDBOX_PREDICT}
-			addpredict /
-			[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
-			ebuild_phase pre_src_test
-			ebuild_phase src_test
-			if is_auto-multilib; then
-				touch "$PORTAGE_BUILDDIR"/.tested."${LOOP_ABI}" || die "IO Failure -- Failed to 'touch .tested.${LOOP_ABI}'"
-			fi
-		done
-		unset_abi
-		touch "$PORTAGE_BUILDDIR/.tested" || \
-			die "Failed to 'touch .tested' in $PORTAGE_BUILDDIR"
+		if is_ebuild; then
+			for LOOP_ABI in $(get_abi_order); do
+				set_abi ${LOOP_ABI}
+				main_dyn_test
+				if is_auto-multilib; then
+					touch "$PORTAGE_BUILDDIR"/.tested."${LOOP_ABI}" || die "IO Failure -- Failed to 'touch .tested.${LOOP_ABI}'"
+				fi
+				unset_abi
+			done
+		else
+			main_dyn_test
+		fi
+		touch "${PORTAGE_BUILDDIR}"/.tested || die "IO Failure -- Failed 'touch .tested' in ${PORTAGE_BUILDDIR}"
 		ebuild_phase post_src_test
-		SANDBOX_PREDICT=${save_sp}
 	fi
 
 	trap - SIGINT SIGQUIT
 }
 
+main_dyn_install() {
+
+	if [[ -d $S ]] ; then
+		cd "${S}"
+	elif hasq $EAPI 0 1 2 3 3_pre2 ; then
+		cd "${WORKDIR}"
+	elif [[ -z ${A} ]] && ! has_phase_defined_up_to install; then
+		cd "${WORKDIR}"
+	else
+		die "The source directory '${S}' doesn't exist"
+	fi
+
+	vecho
+	vecho ">>> Install ${PF} into ${D} category ${CATEGORY}"
+	#our custom version of libtool uses $S and $D to fix
+	#invalid paths in .la files
+	export S D
+	#some packages uses an alternative to $S to build in, cause
+	#our libtool to create problematic .la files
+	export PWORKDIR="$WORKDIR"
+
+	# Reset exeinto(), docinto(), insinto(), and into() state variables
+	# in case the user is running the install phase multiple times
+	# consecutively via the ebuild command.
+	export DESTTREE=/usr
+	export INSDESTTREE=""
+	export _E_EXEDESTTREE_=""
+	export _E_DOCDESTTREE_=""
+
+	ebuild_phase src_install
+
+	is_auto-multilib && _finalize_abi_install
+}
+
 dyn_install() {
 	[ -z "$PORTAGE_BUILDDIR" ] && die "${FUNCNAME}: PORTAGE_BUILDDIR is unset"
 	if hasq noauto $FEATURES ; then
-		rm -f "${PORTAGE_BUILDDIR}"/.{installed,installed.*}
-	elif ! is_auto-multilib && [[ -e $PORTAGE_BUILDDIR/.installed ]] ; then
+		rm -f "${PORTAGE_BUILDDIR}/.installed"
+	elif [[ -e $PORTAGE_BUILDDIR/.installed ]] ; then
 		vecho ">>> It appears that '${PF}' is already installed; skipping."
 		vecho ">>> Remove '${PORTAGE_BUILDDIR}/.installed' to force install."
 		return 0
@@ -1127,85 +1189,78 @@ dyn_install() {
 	[ -n "$EBUILD_PHASE" ] && rm -f "$T/logging/$EBUILD_PHASE"
 	ebuild_phase pre_src_install
 	rm -rf "${PORTAGE_BUILDDIR}/image"
+	is_auto-multilib && rm -rf "${PORTAGE_BUILDDIR}"/image.${ABI}
 	mkdir "${PORTAGE_BUILDDIR}/image"
-	for LOOP_ABI in $(get_abi_order); do
-		set_abi ${LOOP_ABI}
-		if [[ -d $S ]] ; then
-			cd "${S}"
-		elif hasq $EAPI 0 1 2 3 3_pre2; then
-			cd "${WORKDIR}"
-		elif [[ -z ${A} ]] && ! has_phase_defined_up_to install; then
-			cd "${WORKDIR}"
-		else
-			die "The source directory '${S}' doesn't exist"
-		fi
+	if is_ebuild; then
+		for LOOP_ABI in $(get_abi_order); do
+			set_abi ${LOOP_ABI}
+			main_dyn_install
+			if is_auto-multilib; then
+				touch "$PORTAGE_BUILDDIR"/.installed."${LOOP_ABI}" || die "IO Failure -- Failed to 'touch .installed.${LOOP_ABI}'"
+			fi
+			unset_abi
+		done
+	else
+		main_dyn_install
+	fi
+	if [[ -d "${D}" ]]; then
+		find "${D}" -name '*.la' ! -exec grep -q shouldnotlink=yes {} \; -exec rm {} \;
+		/usr/bin/lafilefixer "${D}"
+
+		touch "${PORTAGE_BUILDDIR}"/.installed || die "IO Failure -- Failed 'touch .installed' in ${PORTAGE_BUILDDIR}"
+		vecho ">>> Completed installing ${PF} into ${D}"
 		vecho
-		vecho ">>> Install ${PF} into ${D} category ${CATEGORY}"
-		#our custom version of libtool uses $S and $D to fix
-		#invalid paths in .la files
-		export S D
-		#some packages uses an alternative to $S to build in, cause
-		#our libtool to create problematic .la files
-		export PWORKDIR="$WORKDIR"
+		ebuild_phase post_src_install
 
-		# Reset exeinto(), docinto(), insinto(), and into() state variables
-		# in case the user is running the install phase multiple times
-		# consecutively via the ebuild command.
-		export DESTTREE=/usr
-		export INSDESTTREE=""
-		export _E_EXEDESTTREE_=""
-		export _E_DOCDESTTREE_=""
-
-		ebuild_phase src_install
-		_finalize_abi_install
+		cd "${PORTAGE_BUILDDIR}"/build-info
+		set -f
+		local f x
+		IFS=$' \t\n\r'
+		for f in ASFLAGS CATEGORY CBUILD CC CFLAGS CHOST CTARGET CXX \
+			CXXFLAGS DEFINED_PHASES DEPEND EXTRA_ECONF EXTRA_EINSTALL EXTRA_MAKE \
+			FEATURES INHERITED IUSE LDFLAGS LIBCFLAGS LIBCXXFLAGS \
+			LICENSE PDEPEND PF PKGUSE PROPERTIES PROVIDE RDEPEND RESTRICT SLOT \
+			KEYWORDS HOMEPAGE SRC_URI DESCRIPTION; do
+			x=$(echo -n ${!f})
+			[[ -n $x ]] && echo "$x" > $f
+		done
+		has_multilib_profile && echo "${IUSE} lib32"	> IUSE
+		echo "${USE}"       > USE
+		echo "${EAPI:-0}"   > EAPI
 		if is_auto-multilib; then
-			touch "$PORTAGE_BUILDDIR"/.installed."${LOOP_ABI}" || die "IO Failure -- Failed to 'touch .installed.${LOOP_ABI}'"
+			echo "$(get_abi_order)" > MULTILIB_ABIS
 		fi
-	done
-	unset_abi
+		set +f
 
-	find "${D}" -name '*.la' ! -exec grep -q shouldnotlink=yes {} \; -exec rm {} \;
-	/usr/bin/lafilefixer "${D}"
+		# local variables can leak into the saved environment.
+		unset f
 
-	touch "${PORTAGE_BUILDDIR}/.installed" || die "IO Failure -- Failed to 'touch .installed'"
-	vecho ">>> Completed installing ${PF} into ${D}"
-	vecho
-	ebuild_phase post_src_install
+		save_ebuild_env --exclude-init-phases | filter_readonly_variables \
+			--filter-path --filter-sandbox --allow-extra-vars > environment
 
-	cd "${PORTAGE_BUILDDIR}"/build-info
-	set -f
-	local f x
-	IFS=$' \t\n\r'
-	for f in ASFLAGS CATEGORY CBUILD CC CFLAGS CHOST CTARGET CXX \
-		CXXFLAGS DEFINED_PHASES DEPEND EXTRA_ECONF EXTRA_EINSTALL EXTRA_MAKE \
-		FEATURES INHERITED IUSE LDFLAGS LIBCFLAGS LIBCXXFLAGS \
-		LICENSE PDEPEND PF PKGUSE PROPERTIES PROVIDE RDEPEND RESTRICT SLOT \
-		KEYWORDS HOMEPAGE SRC_URI DESCRIPTION; do
-		x=$(echo -n ${!f})
-		[[ -n $x ]] && echo "$x" > $f
-	done
-	has_multilib_profile && echo "${IUSE} lib32"	> IUSE
-	echo "${USE}"       > USE
-	echo "${EAPI:-0}"   > EAPI
-	if is_auto-multilib; then
-		echo "$(get_abi_order)" > MULTILIB_ABIS
+		bzip2 -f9 environment
+
+		cp "${EBUILD}" "${PF}.ebuild"
+		[ -n "${PORTAGE_REPO_NAME}" ]  && echo "${PORTAGE_REPO_NAME}" > repository
+		if hasq nostrip ${FEATURES} ${RESTRICT} || hasq strip ${RESTRICT}; then
+			touch DEBUGBUILD
+		fi
+	else
+		cd "${PORTAGE_BUILDDIR}"
+		if [[ $EMERGE_FROM = binary ]] || ! hasq keepwork $FEATURES; then
+			rm -f "$PORTAGE_BUILDDIR"/.{ebuild_changed,exit_status,logid,unpacked,prepared} \
+				"$PORTAGE_BUILDDIR"/.{configured,compiled,tested,packaged} \
+				"$PORTAGE_BUILDDIR"/.die_hooks
+
+#			rm -rf "${PORTAGE_BUILDDIR}/build-info"
+			rm -rf "${WORKDIR}"
+		fi
+
+		if [ -f "${PORTAGE_BUILDDIR}/.unpacked" ]; then
+			find "${PORTAGE_BUILDDIR}" -type d ! -regex "^${WORKDIR}" | sort -r | tr "\n" "\0" | $XARGS -0 rmdir &>/dev/null
+		fi
 	fi
-	set +f
 
-	# local variables can leak into the saved environment.
-	unset f
-
-	save_ebuild_env --exclude-init-phases | filter_readonly_variables \
-		--filter-path --filter-sandbox --allow-extra-vars > environment
-
-	bzip2 -f9 environment
-
-	cp "${EBUILD}" "${PF}.ebuild"
-	[ -n "${PORTAGE_REPO_NAME}" ]  && echo "${PORTAGE_REPO_NAME}" > repository
-	if hasq nostrip ${FEATURES} ${RESTRICT} || hasq strip ${RESTRICT}
-	then
-		touch DEBUGBUILD
-	fi
 	trap - SIGINT SIGQUIT
 }
 
