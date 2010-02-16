@@ -289,10 +289,6 @@ _finalize_abi_install() {
 	local dirs=${ABI_HEADER_DIRS-/usr/include}
 	local base=
 
-	# Sanity check  ABI variables
-#	[ "${ALL_ABIS}" != "${ALL_ABIS/ /}" ] || return 0;
-#	[ -n "${ABI}" ] && [ -n "${DEFAULT_ABI}" ] || return 0;
-
 	# Save header files for each ABI
 	for dir in ${dirs}; do
 		[ -d "${D}/${dir}" ] || continue
@@ -325,6 +321,7 @@ _finalize_abi_install() {
 	fi
 	local LIBDIR=$(get_abi_var LIBDIR $1)
 	if ( [[ -d "${D}${LIBDIR}" ]] || [[ -d "${D}usr/${LIBDIR}" ]] || [[ -d "${base}" ]] || \
+		find "${D}"usr/bin \( -name '*-config' -o -name '*-config-2' \) 2>/dev/null || \
 		( [[ ${MULTILIB_BINARIES} == *${CATEGORY}/${PN}* ]] && [[ -d "${D}"usr/bin ]] ) ); then
 
 		mv "${D}" "${D%/}".${ABI} || die
