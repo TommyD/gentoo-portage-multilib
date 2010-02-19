@@ -303,7 +303,9 @@ _finalize_abi_install() {
 	# remove them in non-default ABI
 	if [ "${ABI}" != "${DEFAULT_ABI}" ]; then
 		vecho ">>> Removing installed symlinks $(_get_abi_string)"
-		find ${D} -type l ! -regex '.*/lib[0-9]*/.*' -exec rm -f {} \;
+		for i in $(find ${D} -type l) ; do
+			[[ -e "${D%/}".${DEFAULT_ABI}/${i/${D}} ]] && rm -f ${i}
+		done
 	fi
 
 	# Create wrapper symlink for *-config files
