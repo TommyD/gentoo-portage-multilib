@@ -442,8 +442,11 @@ def help(myopts, havecolor=1):
 			print(desc_indent + line)
 		print()
 		print("       "+green("--newuse")+" ("+green("-N")+" short option)")
-		print("              Tells emerge to include installed packages where USE flags have ")
-		print("              changed since installation.")
+		desc = "Tells emerge to include installed packages where USE " + \
+			"flags have changed since compilation. This option " + \
+			"also implies the --selective option."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
 		print()
 		print("       "+green("--noconfmem"))
 		print("              Portage keeps track of files that have been placed into")
@@ -500,6 +503,16 @@ def help(myopts, havecolor=1):
 		print("       "+green("--quiet-build"))
 		desc = "Redirect all build output to logs alone, and do not " + \
 			"display it on stdout."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
+		print("       "+green("--rebuilt-binaries") + "[=%s]" % turquoise("n"))
+		desc = "Replace installed packages with binary packages that have " + \
+			"been rebuilt. Rebuilds are detected by comparison of " + \
+			"BUILD_TIME package metadata. This option is enabled " + \
+			"automatically when using binary packages " + \
+			"(--usepkg or --getbinpkg) together with " + \
+			"--update and --deep."
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()

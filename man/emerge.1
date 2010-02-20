@@ -403,8 +403,10 @@ analogous options that should be configured via \fBMAKEOPTS\fR in
 \fBmake.conf\fR(5).
 .TP
 .BR "\-\-newuse " (\fB\-N\fR)
-Tells emerge to include installed packages where USE flags have changed since 
-compilation.  USE flag changes include:
+Tells emerge to include installed packages where USE
+flags have changed since compilation. This option
+also implies the \fB\-\-selective\fR option.
+USE flag changes include:
 
 A USE flag was added to a package.
 A USE flag was removed from a package.
@@ -474,6 +476,14 @@ output from portage's displays.
 .BR \-\-quiet\-build
 Redirect all build output to logs alone, and do not
 display it on stdout.
+.TP
+.BR "\-\-rebuilt\-binaries[=n]"
+Replace installed packages with binary packages that have
+been rebuilt. Rebuilds are detected by comparison of
+BUILD_TIME package metadata. This option is enabled
+automatically when using binary packages
+(\fB\-\-usepkg\fR or \fB\-\-getbinpkg\fR) together with
+\fB\-\-update\fR and \fB\-\-deep\fR.
 .TP
 .BR "\-\-reinstall changed\-use"
 Tells emerge to include installed packages where USE flags have

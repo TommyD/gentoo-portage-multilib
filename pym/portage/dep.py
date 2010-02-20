@@ -708,7 +708,7 @@ def dep_getcpv(mydep):
 	# Fall back to legacy code for backward compatibility.
 	warnings.warn(_("%s is deprecated, use %s instead") % \
 		('portage.dep.dep_getcpv()', 'portage.dep.Atom.cpv'),
-		DeprecationWarning)
+		DeprecationWarning, stacklevel=2)
 	mydep_orig = mydep
 	if mydep:
 		mydep = remove_slot(mydep)
@@ -923,7 +923,7 @@ def dep_getkey(mydep):
 	Return the category/package-name of a depstring.
 
 	Example usage:
-		>>> dep_getkey('media-libs/test-3.0')
+		>>> dep_getkey('=media-libs/test-3.0')
 		'media-libs/test'
 
 	@param mydep: The depstring to retrieve the category/package-name of
@@ -937,14 +937,19 @@ def dep_getkey(mydep):
 		return Atom(mydep).cp
 	except InvalidAtom:
 		try:
-			return Atom('=' + mydep).cp
+			atom = Atom('=' + mydep)
 		except InvalidAtom:
 			pass
+		else:
+			warnings.warn(_("invalid input to %s: '%s', use %s instead") % \
+				('portage.dep.dep_getkey()', mydep, 'portage.cpv_getkey()'),
+				DeprecationWarning, stacklevel=2)
+			return atom.cp
 
 	# Fall back to legacy code for backward compatibility.
 	warnings.warn(_("%s is deprecated, use %s instead") % \
 		('portage.dep.dep_getkey()', 'portage.dep.Atom.cp'),
-		DeprecationWarning)
+		DeprecationWarning, stacklevel=2)
 	mydep = dep_getcpv(mydep)
 	if mydep and isspecific(mydep):
 		mysplit = catpkgsplit(mydep)
@@ -1051,7 +1056,9 @@ def match_from_list(mydep, candidate_list):
 		for x in candidate_list:
 			cp = getattr(x, "cp", None)
 			if cp is None:
-				cp = dep_getkey(x)
+				mysplit = catpkgsplit(remove_slot(x))
+				if mysplit is not None:
+					cp = mysplit[0] + '/' + mysplit[1]
 			if cp != mycpv:
 				continue
 			mylist.append(x)

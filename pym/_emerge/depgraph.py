@@ -229,11 +229,6 @@ class _dynamic_depgraph_config(object):
 				]["vartree"].dbapi._aux_cache_keys)
 			dbs.append((vardb, "installed", True, True, db_keys))
 			self._filtered_trees[myroot]["dbs"] = dbs
-			if "--usepkg" in depgraph._frozen_config.myopts:
-				depgraph._frozen_config._trees_orig[myroot
-					]["bintree"].populate(
-					"--getbinpkg" in depgraph._frozen_config.myopts,
-					"--getbinpkgonly" in depgraph._frozen_config.myopts)
 
 class depgraph(object):
 
@@ -1140,9 +1135,14 @@ class depgraph(object):
 		deps = (
 			(bdeps_root, edepend["DEPEND"],
 				self._priority(buildtime=(not bdeps_optional),
-				optional=bdeps_optional)),
-			(myroot, edepend["RDEPEND"], self._priority(runtime=True)),
-			(myroot, edepend["PDEPEND"], self._priority(runtime_post=True))
+				optional=bdeps_optional),
+				pkg.built),
+			(myroot, edepend["RDEPEND"],
+				self._priority(runtime=True),
+				False),
+			(myroot, edepend["PDEPEND"],
+				self._priority(runtime_post=True),
+				False)
 		)
 
 		debug = "--debug" in self._frozen_config.myopts
@@ -1151,7 +1151,7 @@ class depgraph(object):
 			if not strict:
 				portage.dep._dep_check_strict = False
 
-			for dep_root, dep_string, dep_priority in deps:
+			for dep_root, dep_string, dep_priority, ignore_blockers in deps:
 				if not dep_string:
 					continue
 				if debug:
@@ -1186,7 +1186,7 @@ class depgraph(object):
 
 				if not self._add_pkg_dep_string(
 					pkg, dep_root, dep_priority, dep_string,
-					allow_unsatisfied):
+					allow_unsatisfied, ignore_blockers=ignore_blockers):
 					return 0
 
 		except portage.exception.AmbiguousPackageName as e:
@@ -1213,7 +1213,7 @@ class depgraph(object):
 		return 1
 
 	def _add_pkg_dep_string(self, pkg, dep_root, dep_priority, dep_string,
-		allow_unsatisfied):
+		allow_unsatisfied, ignore_blockers=False):
 		depth = pkg.depth + 1
 		debug = "--debug" in self._frozen_config.myopts
 		strict = pkg.type_name != "installed"
@@ -1247,6 +1247,11 @@ class depgraph(object):
 
 		for atom, child in self._minimize_children(
 			pkg, dep_priority, root_config, selected_atoms[pkg]):
+
+			if ignore_blockers and atom.blocker:
+				# For --with-bdeps, ignore build-time only blockers
+				# that originate from built packages.
+				continue
 
 			mypriority = dep_priority.copy()
 			if not atom.blocker and vardb.match(atom):
@@ -1571,7 +1576,7 @@ class depgraph(object):
 						print(colorize("BAD", "\n*** You need to adjust PORTDIR or PORTDIR_OVERLAY to emerge this package.\n"))
 						return 0, myfavorites
 					if mykey not in portdb.xmatch(
-						"match-visible", portage.dep_getkey(mykey)):
+						"match-visible", portage.cpv_getkey(mykey)):
 						print(colorize("BAD", "\n*** You are emerging a masked package. It is MUCH better to use"))
 						print(colorize("BAD", "*** /etc/portage/package.* to accomplish this. See portage(5) man"))
 						print(colorize("BAD", "*** page for details."))
@@ -1814,8 +1819,7 @@ class depgraph(object):
 						pprovided_match = False
 						for virt_choice in virtuals.get(atom.cp, []):
 							expanded_atom = portage.dep.Atom(
-								atom.replace(atom.cp,
-								portage.dep_getkey(virt_choice), 1))
+								atom.replace(atom.cp, virt_choice.cp, 1))
 							pprovided = pprovideddict.get(expanded_atom.cp)
 							if pprovided and \
 								portage.match_from_list(expanded_atom, pprovided):
@@ -2395,6 +2399,7 @@ class depgraph(object):
 		atom_set = InternalPackageSet(initial_atoms=(atom,))
 		existing_node = None
 		myeb = None
+		rebuilt_binaries = 'rebuilt_binaries' in self._dynamic_config.myparams
 		usepkgonly = "--usepkgonly" in self._frozen_config.myopts
 		empty = "empty" in self._dynamic_config.myparams
 		selective = "selective" in self._dynamic_config.myparams
@@ -2617,10 +2622,25 @@ class depgraph(object):
 					if pkg.cp == cp]
 				break
 
+		if existing_node is not None and \
+			existing_node in matched_packages:
+			return existing_node, existing_node
+
 		if len(matched_packages) > 1:
+			if rebuilt_binaries:
+				inst_pkg = None
+				built_pkg = None
+				for pkg in matched_packages:
+					if pkg.installed:
+						inst_pkg = pkg
+					elif pkg.built:
+						built_pkg = pkg
+				if built_pkg is not None and inst_pkg is not None:
+					if built_pkg.metadata['BUILD_TIME'] != \
+						inst_pkg.metadata['BUILD_TIME']:
+						return built_pkg, built_pkg
+
 			if avoid_update:
-				if existing_node is not None:
-					return existing_node, existing_node
 				for pkg in matched_packages:
 					if pkg.installed:
 						return pkg, existing_node
@@ -2990,10 +3010,8 @@ class depgraph(object):
 			if provider_virtual:
 				atoms = []
 				for provider_entry in virtuals[blocker.cp]:
-					provider_cp = \
-						portage.dep_getkey(provider_entry)
 					atoms.append(Atom(blocker.atom.replace(
-						blocker.cp, provider_cp)))
+						blocker.cp, provider_entry.cp, 1)))
 			else:
 				atoms = [blocker.atom]
 
@@ -3332,6 +3350,15 @@ class depgraph(object):
 				runtime_deps.update(atom for atom in atoms \
 					if not atom.blocker)
 
+		# Merge libc asap, in order to account for implicit
+		# dependencies. See bug #303567.
+		libc_pkg = self._dynamic_config.mydbapi[running_root].match_pkgs(
+			portage.const.LIBC_PACKAGE_ATOM)
+		if libc_pkg:
+			libc_pkg = libc_pkg[0]
+			if libc_pkg.operation == 'merge':
+				asap_nodes.append(libc_pkg)
+
 		def gather_deps(ignore_priority, mergeable_nodes,
 			selected_nodes, node):
 			"""
@@ -3520,6 +3547,10 @@ class depgraph(object):
 
 				min_parent_deps = None
 				uninst_task = None
+
+				# FIXME: This loop can be extremely slow when
+				#        there of lots of blockers to solve
+				#        (especially the gather_deps part).
 				for task in myblocker_uninstalls.leaf_nodes():
 					# Do some sanity checks so that system or world packages
 					# don't get uninstalled inappropriately here (only really
@@ -3643,6 +3674,7 @@ class depgraph(object):
 					# best possible choice, but the current algorithm
 					# is simple and should be near optimal for most
 					# common cases.
+					self._spinner_update()
 					mergeable_parent = False
 					parent_deps = set()
 					for parent in mygraph.parent_nodes(task):
@@ -4386,9 +4418,7 @@ class depgraph(object):
 					# assign index for a previous version in the same slot
 					has_previous = False
 					repo_name_prev = None
-					slot_atom = "%s:%s" % (portage.dep_getkey(pkg_key),
-						metadata["SLOT"])
-					slot_matches = vardb.match(slot_atom)
+					slot_matches = vardb.match(pkg.slot_atom)
 					if slot_matches:
 						has_previous = True
 						repo_name_prev = vardb.aux_get(slot_matches[0],
@@ -5332,14 +5362,14 @@ class _dep_check_composite_db(portage.dbapi):
 		if len(expanded_atoms) > 1:
 			non_virtual_atoms = []
 			for x in expanded_atoms:
-				if not portage.dep_getkey(x).startswith("virtual/"):
+				if not x.cp.startswith("virtual/"):
 					non_virtual_atoms.append(x)
 			if len(non_virtual_atoms) == 1:
 				expanded_atoms = non_virtual_atoms
 		if len(expanded_atoms) > 1:
 			# compatible with portage.cpv_expand()
 			raise portage.exception.AmbiguousPackageName(
-				[portage.dep_getkey(x) for x in expanded_atoms])
+				[x.cp for x in expanded_atoms])
 		if expanded_atoms:
 			atom = expanded_atoms[0]
 		else:

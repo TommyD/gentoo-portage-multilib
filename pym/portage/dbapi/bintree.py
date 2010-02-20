@@ -32,6 +32,7 @@ import errno
 import re
 import stat
 import sys
+import warnings
 from itertools import chain
 
 if sys.hexversion >= 0x3000000:
@@ -49,7 +50,7 @@ class bindbapi(fakedbapi):
 		self.cpdict={}
 		# Selectively cache metadata in order to optimize dep matching.
 		self._aux_cache_keys = set(
-			["CHOST", "DEPEND", "EAPI", "IUSE", "KEYWORDS",
+			["BUILD_TIME", "CHOST", "DEPEND", "EAPI", "IUSE", "KEYWORDS",
 			"LICENSE", "PDEPEND", "PROPERTIES", "PROVIDE",
 			"RDEPEND", "repository", "RESTRICT", "SLOT", "USE"])
 		self._aux_cache_slot_dict = slot_dict_class(self._aux_cache_keys)
@@ -149,20 +150,8 @@ class bindbapi(fakedbapi):
 
 class binarytree(object):
 	"this tree scans for a list of all packages available in PKGDIR"
-	def __init__(self, root, pkgdir, virtual=None, settings=None, clone=None):
-		if clone:
-			writemsg("binartree.__init__(): deprecated " + \
-				"use of clone parameter\n", noiselevel=-1)
-			# XXX This isn't cloning. It's an instance of the same thing.
-			self.root = clone.root
-			self.pkgdir = clone.pkgdir
-			self.dbapi = clone.dbapi
-			self.populated = clone.populated
-			self.tree = clone.tree
-			self.remotepkgs = clone.remotepkgs
-			self.invalids = clone.invalids
-			self.settings = clone.settings
-		else:
+	def __init__(self, root, pkgdir, virtual=None, settings=None):
+		if True:
 			self.root = root
 			#self.pkgdir=settings["PKGDIR"]
 			self.pkgdir = normalize_path(pkgdir)
@@ -174,7 +163,7 @@ class binarytree(object):
 			self._remote_has_index = False
 			self._remote_base_uri = None
 			self._remotepkgs = None # remote metadata indexed by cpv
-			self.remotepkgs = {}  # indexed by tbz2 name (deprecated)
+			self.__remotepkgs = {}  # indexed by tbz2 name (deprecated)
 			self.invalids = []
 			self.settings = settings
 			self._pkg_paths = {}
@@ -187,7 +176,7 @@ class binarytree(object):
 			self._pkgindex_keys = self.dbapi._aux_cache_keys.copy()
 			self._pkgindex_keys.update(["CPV", "MTIME", "SIZE"])
 			self._pkgindex_aux_keys = \
-				["CHOST", "DEPEND", "DESCRIPTION", "EAPI",
+				["BUILD_TIME", "CHOST", "DEPEND", "DESCRIPTION", "EAPI",
 				"IUSE", "KEYWORDS", "LICENSE", "PDEPEND", "PROPERTIES",
 				"PROVIDE", "RDEPEND", "repository", "SLOT", "USE"]
 			self._pkgindex_aux_keys = list(self._pkgindex_aux_keys)
@@ -200,6 +189,7 @@ class binarytree(object):
 				"CHOST", "CONFIG_PROTECT", "CONFIG_PROTECT_MASK", "FEATURES",
 				"GENTOO_MIRRORS", "INSTALL_MASK", "SYNC", "USE"])
 			self._pkgindex_default_pkg_data = {
+				"BUILD_TIME"         : "",
 				"DEPEND"  : "",
 				"EAPI"    : "0",
 				"IUSE"    : "",
@@ -232,6 +222,24 @@ class binarytree(object):
 				self._pkgindex_default_header_data,
 				chain(*self._pkgindex_translated_keys)
 			))
+
+	def _get_remotepkgs(self):
+		warnings.warn("Use binarytree._remotepkgs insead of binarytree.remotepkgs",
+			DeprecationWarning)
+		return self.__remotepkgs
+
+	def _set_remotepkgs(self, remotepkgs):
+		warnings.warn("Use binarytree._remotepkgs insead of binarytree.remotepkgs",
+			DeprecationWarning)
+		self.__remotepkgs = remotepkgs
+
+	def _del_remotepkgs(self):
+		warnings.warn("Use binarytree._remotepkgs insead of binarytree.remotepkgs",
+			DeprecationWarning)
+		del self.__remotepkgs
+
+	remotepkgs = property(_get_remotepkgs, _set_remotepkgs, _del_remotepkgs,
+		"Deprecated self.remotepkgs, only for backward compatibility")
 
 	def move_ent(self, mylist):
 		if not self.populated:
@@ -442,8 +450,15 @@ class binarytree(object):
 		_movefile(src_path, dest_path, mysettings=self.settings)
 		self._pkg_paths[cpv] = mypath
 
-	def populate(self, getbinpkgs=0, getbinpkgsonly=0):
+	def populate(self, getbinpkgs=0, getbinpkgsonly=None):
 		"populates the binarytree"
+
+		if getbinpkgsonly is not None:
+			warnings.warn(
+				"portage.dbapi.bintree.binarytree.populate(): " + \
+				"getbinpkgsonly parameter is deprecated",
+				DeprecationWarning, stacklevel=2)
+
 		if self._populating:
 			return
 		from portage.locks import lockfile, unlockfile
@@ -453,13 +468,13 @@ class binarytree(object):
 				pkgindex_lock = lockfile(self._pkgindex_file,
 					wantnewlockfile=1)
 			self._populating = True
-			self._populate(getbinpkgs, getbinpkgsonly)
+			self._populate(getbinpkgs)
 		finally:
 			if pkgindex_lock:
 				unlockfile(pkgindex_lock)
 			self._populating = False
 
-	def _populate(self, getbinpkgs=0, getbinpkgsonly=0):
+	def _populate(self, getbinpkgs=0):
 		if (not os.path.isdir(self.pkgdir) and not getbinpkgs):
 			return 0
 
@@ -756,7 +771,7 @@ class binarytree(object):
 					self._remotepkgs[d["CPV"]] = d
 				self._remote_has_index = True
 				self._remote_base_uri = pkgindex.header.get("URI", base_url)
-				self.remotepkgs = {}
+				self.__remotepkgs = {}
 				for cpv in self._remotepkgs:
 					self.dbapi.cpv_inject(cpv)
 				self.populated = 1
@@ -801,18 +816,18 @@ class binarytree(object):
 			writemsg_stdout(
 				colorize("GOOD", _("Fetching bininfo from ")) + \
 				re.sub(r'//(.+):.+@(.+)/', r'//\1:*password*@\2/', base_url) + "\n")
-			self.remotepkgs = portage.getbinpkg.dir_get_metadata(
+			self.__remotepkgs = portage.getbinpkg.dir_get_metadata(
 				self.settings["PORTAGE_BINHOST"], chunk_size=chunk_size)
 			#writemsg(green("  -- DONE!\n\n"))
 
-			for mypkg in list(self.remotepkgs):
-				if "CATEGORY" not in self.remotepkgs[mypkg]:
+			for mypkg in list(self.__remotepkgs):
+				if "CATEGORY" not in self.__remotepkgs[mypkg]:
 					#old-style or corrupt package
 					writemsg(_("!!! Invalid remote binary package: %s\n") % mypkg,
 						noiselevel=-1)
-					del self.remotepkgs[mypkg]
+					del self.__remotepkgs[mypkg]
 					continue
-				mycat = self.remotepkgs[mypkg]["CATEGORY"].strip()
+				mycat = self.__remotepkgs[mypkg]["CATEGORY"].strip()
 				fullpkg = mycat+"/"+mypkg[:-5]
 
 				if fullpkg in metadata:
@@ -830,14 +845,25 @@ class binarytree(object):
 						(fullpkg, self.settings["PORTAGE_CONFIGROOT"]),
 						noiselevel=-1)
 					continue
-				mykey = dep_getkey(fullpkg)
+				mykey = portage.cpv_getkey(fullpkg)
 				try:
 					# invalid tbz2's can hurt things.
 					#print "cpv_inject("+str(fullpkg)+")"
 					self.dbapi.cpv_inject(fullpkg)
-					remote_metadata = self.remotepkgs[mypkg]
+					remote_metadata = self.__remotepkgs[mypkg]
 					for k, v in remote_metadata.items():
 						remote_metadata[k] = v.strip()
+
+					# Eliminate metadata values with names that digestCheck
+					# uses, since they are not valid when using the old
+					# protocol. Typically this is needed for SIZE metadata
+					# which corresponds to the size of the unpacked files
+					# rather than the binpkg file size, triggering digest
+					# verification failures as reported in bug #303211.
+					remote_metadata.pop('SIZE', None)
+					for k in portage.checksum.hashfunc_map:
+						remote_metadata.pop(k, None)
+
 					self._remotepkgs[fullpkg] = remote_metadata
 					#print "  -- Injected"
 				except SystemExit as e:
@@ -845,7 +871,7 @@ class binarytree(object):
 				except:
 					writemsg(_("!!! Failed to inject remote binary package: %s\n") % fullpkg,
 						noiselevel=-1)
-					del self.remotepkgs[mypkg]
+					del self.__remotepkgs[mypkg]
 					continue
 		self.populated=1
 
@@ -1020,7 +1046,7 @@ class binarytree(object):
 		return False
 
 	def _eval_use_flags(self, cpv, metadata):
-		use = metadata["USE"].split()
+		use = frozenset(metadata["USE"].split())
 		raw_use = use
 		iuse = set(f.lstrip("-+") for f in metadata["IUSE"].split())
 		use = [f for f in use if f in iuse]
@@ -1038,6 +1064,16 @@ class binarytree(object):
 				writemsg("%s: %s\n" % (k, str(e)),
 					noiselevel=-1)
 				raise
+			if k in portage._vdb_use_conditional_atoms:
+				v_split = []
+				for x in deps.split():
+					try:
+						x = portage.dep.Atom(x)
+					except portage.exception.InvalidAtom:
+						v_split.append(x)
+					else:
+						v_split.append(str(x.evaluate_conditionals(raw_use)))
+				deps = ' '.join(v_split)
 			metadata[k] = deps
 
 	def exists_specific(self, cpv):
@@ -1092,11 +1128,6 @@ class binarytree(object):
 		# Presence in self._remotepkgs implies that it's remote. When a
 		# package is downloaded, state is updated by self.inject().
 		return True
-
-	def get_use(self, pkgname):
-		writemsg("deprecated use of binarytree.get_use()," + \
-			" use dbapi.aux_get() instead", noiselevel=-1)
-		return self.dbapi.aux_get(pkgname, ["USE"])[0].split()
 
 	def gettbz2(self, pkgname):
 		"""Fetches the package from a remote site, if necessary.  Attempts to
