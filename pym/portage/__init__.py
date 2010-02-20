@@ -110,7 +110,8 @@ try:
 			'stack_lists,unique_array,varexpand,writedict,writemsg,' + \
 			'writemsg_stdout,write_atomic',
 		'portage.versions',
-		'portage.versions:best,catpkgsplit,catsplit,endversion_keys,' + \
+		'portage.versions:best,catpkgsplit,catsplit,cpv_getkey,' + \
+			'cpv_getkey@getCPFromCPV,endversion_keys,' + \
 			'suffix_value@endversion,pkgcmp,pkgsplit,vercmp,ververify',
 		'portage.xpak',
 	)
@@ -1365,12 +1366,10 @@ class config(object):
 	virtuals ...etc you look in here.
 	"""
 
-	# Don't include anything that could be extremely long here (like SRC_URI)
-	# since that could cause execve() calls to fail with E2BIG errors. For
-	# example, see bug #262647.
-	_setcpv_aux_keys = ('SLOT', 'RESTRICT', 'LICENSE',
-		'KEYWORDS',  'INHERITED', 'IUSE', 'PROVIDE', 'EAPI',
-		'PROPERTIES', 'DEFINED_PHASES', 'repository')
+	_setcpv_aux_keys = ('DEFINED_PHASES', 'DEPEND', 'EAPI',
+		'INHERITED', 'IUSE', 'KEYWORDS', 'LICENSE', 'PDEPEND',
+		'PROPERTIES', 'PROVIDE', 'RDEPEND', 'SLOT',
+		'repository', 'RESTRICT', 'LICENSE',)
 
 	_env_blacklist = [
 		"A", "AA", "CATEGORY", "DEPEND", "DESCRIPTION", "EAPI",
@@ -1466,9 +1465,16 @@ class config(object):
 	# they don't needlessly propagate down into the ebuild environment.
 	_environ_filter = []
 
+	# Exclude anything that could be extremely long here (like SRC_URI)
+	# since that could cause execve() calls to fail with E2BIG errors. For
+	# example, see bug #262647.
+	_environ_filter += [
+		'DEPEND', 'RDEPEND', 'PDEPEND', 'SRC_URI',
+	]
+
 	# misc variables inherited from the calling environment
 	_environ_filter += [
-		"INFOPATH", "MANPATH",
+		"INFOPATH", "MANPATH", "USER",
 	]
 
 	# variables that break bash
@@ -2436,11 +2442,6 @@ class config(object):
 				self.useforce_list, incremental=True))
 		self.regenerate(use_cache=use_cache)
 
-	def load_infodir(self,infodir):
-		warnings.warn("portage.config.load_infodir() is deprecated",
-			DeprecationWarning)
-		return 1
-
 	class _lazy_vars(object):
 
 		__slots__ = ('built_use', 'settings', 'values')
@@ -2621,7 +2622,7 @@ class config(object):
 		has_changed = False
 		self.mycpv = mycpv
 		cat, pf = catsplit(mycpv)
-		cp = dep_getkey(mycpv)
+		cp = cpv_getkey(mycpv)
 		cpv_slot = self.mycpv
 		pkginternaluse = ""
 		iuse = ""
@@ -3066,7 +3067,7 @@ class config(object):
 		@return: A list of licenses that have not been accepted.
 		"""
 		accept_license = self._accept_license
-		cpdict = self._plicensedict.get(dep_getkey(cpv), None)
+		cpdict = self._plicensedict.get(cpv_getkey(cpv), None)
 		if cpdict:
 			accept_license = list(self._accept_license)
 			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
@@ -3145,7 +3146,7 @@ class config(object):
 		@return: A list of properties that have not been accepted.
 		"""
 		accept_properties = self._accept_properties
-		cpdict = self._ppropertiesdict.get(dep_getkey(cpv), None)
+		cpdict = self._ppropertiesdict.get(cpv_getkey(cpv), None)
 		if cpdict:
 			accept_properties = list(self._accept_properties)
 			cpv_slot = "%s:%s" % (cpv, metadata["SLOT"])
@@ -3237,8 +3238,9 @@ class config(object):
 						(" ".join(accept_chost), e), noiselevel=-1)
 					self._accept_chost_re = re.compile("^$")
 
-		return self._accept_chost_re.match(
-			metadata.get('CHOST', '')) is not None
+		pkg_chost = metadata.get('CHOST', '')
+		return not pkg_chost or \
+			self._accept_chost_re.match(pkg_chost) is not None
 
 	def setinst(self,mycpv,mydbapi):
 		"""This updates the preferences for old-style virtuals,
@@ -3270,7 +3272,10 @@ class config(object):
 		modified = False
 		cp = dep.Atom(cpv_getkey(mycpv))
 		for virt in virts:
-			virt = dep_getkey(virt)
+			try:
+				virt = dep.Atom(virt).cp
+			except exception.InvalidAtom:
+				continue
 			providers = self.virtuals.get(virt)
 			if providers and cp in providers:
 				continue
@@ -3676,7 +3681,7 @@ class config(object):
 	def has_key(self,mykey):
 		warnings.warn("portage.config.has_key() is deprecated, "
 			"use the in operator instead",
-			DeprecationWarning)
+			DeprecationWarning, stacklevel=2)
 		return mykey in self
 
 	def __contains__(self, mykey):
@@ -4243,7 +4248,7 @@ def _spawn_fetch(settings, args, **kwargs):
 		if args[0] != BASH_BINARY:
 			args = [BASH_BINARY, "-c", "exec \"$@\"", args[0]] + args
 
-	rval = spawn_func(args, env=dict(iter(settings.items())), **kwargs)
+	rval = spawn_func(args, env=settings.environ(), **kwargs)
 
 	return rval
 
@@ -5860,10 +5865,17 @@ def _post_src_install_chost_fix(settings):
 	CHOST variable, so revert it to the initial
 	setting.
 	"""
+	if settings.get('CATEGORY') == 'virtual':
+		return
+
 	chost = settings.get('CHOST')
 	if chost:
 		write_atomic(os.path.join(settings['PORTAGE_BUILDDIR'],
 			'build-info', 'CHOST'), chost + '\n')
+
+_vdb_use_conditional_keys = ('DEPEND', 'LICENSE', 'PDEPEND',
+	'PROPERTIES', 'PROVIDE', 'RDEPEND', 'RESTRICT',)
+_vdb_use_conditional_atoms = frozenset(['DEPEND', 'PDEPEND', 'RDEPEND'])
 
 def _post_src_install_uid_fix(mysettings, out=None):
 	"""
@@ -5967,8 +5979,44 @@ def _post_src_install_uid_fix(mysettings, out=None):
 		for l in _merge_unicode_error(unicode_errors):
 			eerror(l, phase='install', key=mysettings.mycpv, out=out)
 
-	open(_unicode_encode(os.path.join(mysettings['PORTAGE_BUILDDIR'],
-		'build-info', 'SIZE')), 'w').write(str(size) + '\n')
+	build_info_dir = os.path.join(mysettings['PORTAGE_BUILDDIR'],
+		'build-info')
+
+	codecs.open(_unicode_encode(os.path.join(build_info_dir,
+		'SIZE'), encoding=_encodings['fs'], errors='strict'),
+		'w', encoding=_encodings['repo.content'],
+		errors='strict').write(str(size) + '\n')
+
+	codecs.open(_unicode_encode(os.path.join(build_info_dir,
+		'BUILD_TIME'), encoding=_encodings['fs'], errors='strict'),
+		'w', encoding=_encodings['repo.content'],
+		errors='strict').write(str(int(time.time())) + '\n')
+
+	use = frozenset(mysettings['PORTAGE_USE'].split())
+	for k in _vdb_use_conditional_keys:
+		v = mysettings.configdict['pkg'].get(k)
+		if v is None:
+			continue
+		v = dep.paren_reduce(v)
+		v = dep.use_reduce(v, uselist=use)
+		v = dep.paren_normalize(v)
+		v = dep.paren_enclose(v)
+		if not v:
+			continue
+		if v in _vdb_use_conditional_atoms:
+			v_split = []
+			for x in v.split():
+				try:
+					x = dep.Atom(x)
+				except exception.InvalidAtom:
+					v_split.append(x)
+				else:
+					v_split.append(str(x.evaluate_conditionals(use)))
+			v = ' '.join(v_split)
+		codecs.open(_unicode_encode(os.path.join(build_info_dir,
+			k), encoding=_encodings['fs'], errors='strict'),
+			mode='w', encoding=_encodings['repo.content'],
+			errors='strict').write(v + '\n')
 
 	if bsd_chflags:
 		# Restore all of the flags saved above.
@@ -7727,6 +7775,8 @@ def unmerge(cat, pkg, myroot, mysettings, mytrimworld=1, vartree=None,
 
 def dep_virtual(mysplit, mysettings):
 	"Does virtual dependency conversion"
+	warnings.warn("portage.dep_virtual() is deprecated",
+		DeprecationWarning, stacklevel=2)
 	newsplit=[]
 	myvirtuals = mysettings.getvirtuals()
 	for x in mysplit:
@@ -8405,53 +8455,6 @@ def dep_wordreduce(mydeplist,mysettings,mydbapi,mode,use_cache=1):
 					return None
 	return deplist
 
-def cpv_getkey(mycpv):
-	"""Calls pkgsplit on a cpv and returns only the cp."""
-	mysplit = versions.catpkgsplit(mycpv)
-	if mysplit is not None:
-		return mysplit[0] + '/' + mysplit[1]
-
-	warnings.warn("portage.cpv_getkey() called with invalid cpv: '%s'" \
-		% (mycpv,), DeprecationWarning)
-
-	myslash = mycpv.split("/", 1)
-	mysplit = versions._pkgsplit(myslash[-1])
-	if mysplit is None:
-		return None
-	mylen=len(myslash)
-	if mylen==2:
-		return myslash[0]+"/"+mysplit[0]
-	else:
-		return mysplit[0]
-
-getCPFromCPV = cpv_getkey
-
-def key_expand(mykey, mydb=None, use_cache=1, settings=None):
-	"""This is deprecated because it just returns the first match instead of
-	raising AmbiguousPackageName like cpv_expand does."""
-	warnings.warn("portage.key_expand() is deprecated", DeprecationWarning)
-	mysplit=mykey.split("/")
-	if settings is None:
-		settings = globals()["settings"]
-	virts = settings.getvirtuals("/")
-	virts_p = settings.get_virts_p("/")
-	if len(mysplit)==1:
-		if hasattr(mydb, "cp_list"):
-			for x in mydb.categories:
-				if mydb.cp_list(x+"/"+mykey,use_cache=use_cache):
-					return dep.Atom(x + "/" + mykey)
-			if mykey in virts_p:
-				return(virts_p[mykey][0])
-		return dep.Atom("null/" + mykey)
-	elif mydb:
-		if hasattr(mydb, "cp_list"):
-			if not mydb.cp_list(mykey, use_cache=use_cache) and \
-				virts and mykey in virts:
-				return virts[mykey][0]
-		if not isinstance(mykey, dep.Atom):
-			mykey = dep.Atom(mykey)
-		return mykey
-
 def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 	"""Given a string (packagename or virtual) expand it into a valid
 	cat/package string. Virtuals use the mydb to determine which provided
@@ -8483,7 +8486,7 @@ def cpv_expand(mycpv, mydb=None, use_cache=1, settings=None):
 						# it may be necessary to remove the operator and
 						# version from the atom before it is passed into
 						# dbapi.cp_list().
-						if mydb.cp_list(dep_getkey(vkey), use_cache=use_cache):
+						if mydb.cp_list(vkey.cp):
 							mykey = str(vkey)
 							writemsg(_("virts chosen: %s\n") % (mykey), 1)
 							break
@@ -8668,7 +8671,7 @@ def getmaskingstatus(mycpv, settings=None, portdb=None):
 		valid keyword."""
 		myarch = pgroups[0].lstrip("~")
 
-	cp = dep_getkey(mycpv)
+	cp = cpv_getkey(mycpv)
 	pkgdict = settings.pkeywordsdict.get(cp)
 	matches = False
 	if pkgdict:
@@ -9198,8 +9201,13 @@ def create_trees(config_root=None, target_root=None, trees=None):
 
 		# When ROOT != "/" we only want overrides from the calling
 		# environment to apply to the config that's associated
-		# with ROOT != "/", so pass an empty dict for the env parameter.
-		settings = config(config_root=None, target_root="/", env={})
+		# with ROOT != "/", so pass a nearly empty dict for the env parameter.
+		clean_env = {}
+		for k in ('PATH', 'TERM'):
+			v = settings.get(k)
+			if v is not None:
+				clean_env[k] = v
+		settings = config(config_root=None, target_root="/", env=clean_env)
 		settings.lock()
 		myroots.append((settings["ROOT"], settings))
 

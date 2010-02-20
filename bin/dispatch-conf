@@ -267,6 +267,9 @@ class dispatch:
                     merged = SCRATCH_DIR+"/"+os.path.basename(conf['current'])
                     print()
                     ret = os.system (self.options['merge'] % (merged, conf ['current'], newconf))
+                    ret = os.WEXITSTATUS(ret)
+                    if ret < 2:
+                        ret = 0
                     if ret:
                         print("Failure running 'merge' command")
                         continue

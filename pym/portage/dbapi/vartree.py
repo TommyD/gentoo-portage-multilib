@@ -32,7 +32,7 @@ from portage.exception import CommandNotFound, \
 	FileNotFound, PermissionDenied, UnsupportedAPIException
 from portage.localization import _
 
-from portage import listdir, dep_expand, digraph, flatten, key_expand, \
+from portage import listdir, dep_expand, digraph, flatten, \
 	doebuild_environment, doebuild, env_update, prepare_build_dirs, \
 	abssymlink, movefile, _movefile, bsd_chflags, cpv_getkey
 
@@ -835,7 +835,7 @@ class vardbapi(dbapi):
 			vartree = db[root]["vartree"]
 		self.vartree = vartree
 		self._aux_cache_keys = set(
-			["CHOST", "COUNTER", "DEPEND", "DESCRIPTION",
+			["BUILD_TIME", "CHOST", "COUNTER", "DEPEND", "DESCRIPTION",
 			"EAPI", "HOMEPAGE", "IUSE", "KEYWORDS",
 			"LICENSE", "PDEPEND", "PROPERTIES", "PROVIDE", "RDEPEND",
 			"repository", "RESTRICT" , "SLOT", "USE"])
@@ -1698,7 +1698,7 @@ class vartree(object):
 			self.root = root[:]
 			if settings is None:
 				from portage import settings
-			self.settings = settings # for key_expand calls
+			self.settings = settings
 			if categories is None:
 				categories = settings.categories
 			self.dbapi = vardbapi(self.root, categories=categories,
@@ -1783,49 +1783,9 @@ class vartree(object):
 		masked package for nodes in this nodes list."""
 		return self.dbapi.cp_all()
 
-	def exists_specific_cat(self, cpv, use_cache=1):
-		warnings.warn(
-			"portage.dbapi.vartree.vartree.exists_specific_cat() is deprecated",
-			DeprecationWarning)
-		cpv = key_expand(cpv, mydb=self.dbapi, use_cache=use_cache,
-			settings=self.settings)
-		a = catpkgsplit(cpv)
-		if not a:
-			return 0
-		mylist = listdir(self.getpath(a[0]), EmptyOnError=1)
-		for x in mylist:
-			b = pkgsplit(x)
-			if not b:
-				self.dbapi.invalidentry(self.getpath(a[0], filename=x))
-				continue
-			if a[1] == b[0]:
-				return 1
-		return 0
-
 	def getebuildpath(self, fullpackage):
 		cat, package = catsplit(fullpackage)
 		return self.getpath(fullpackage, filename=package+".ebuild")
-
-	def getnode(self, mykey, use_cache=1):
-		warnings.warn(
-			"portage.dbapi.vartree.vartree.getnode() is deprecated",
-			DeprecationWarning)
-		mykey = key_expand(mykey, mydb=self.dbapi, use_cache=use_cache,
-			settings=self.settings)
-		if not mykey:
-			return []
-		mysplit = catsplit(mykey)
-		mydirlist = listdir(self.getpath(mysplit[0]),EmptyOnError=1)
-		returnme = []
-		for x in mydirlist:
-			mypsplit = pkgsplit(x)
-			if not mypsplit:
-				self.dbapi.invalidentry(self.getpath(mysplit[0], filename=x))
-				continue
-			if mypsplit[0] == mysplit[1]:
-				appendme = [mysplit[0]+"/"+x, [mysplit[0], mypsplit[0], mypsplit[1], mypsplit[2]]]
-				returnme.append(appendme)
-		return returnme
 
 	def getslot(self, mycatpkg):
 		"Get a slot for a catpkg; assume it exists."
@@ -1833,24 +1793,6 @@ class vartree(object):
 			return self.dbapi.aux_get(mycatpkg, ["SLOT"])[0]
 		except KeyError:
 			return ""
-
-	def hasnode(self, mykey, use_cache):
-		"""Does the particular node (cat/pkg key) exist?"""
-		warnings.warn(
-			"portage.dbapi.vartree.vartree.hadnode() is deprecated",
-			DeprecationWarning)
-		mykey = key_expand(mykey, mydb=self.dbapi, use_cache=use_cache,
-			settings=self.settings)
-		mysplit = catsplit(mykey)
-		mydirlist = listdir(self.getpath(mysplit[0]), EmptyOnError=1)
-		for x in mydirlist:
-			mypsplit = pkgsplit(x)
-			if not mypsplit:
-				self.dbapi.invalidentry(self.getpath(mysplit[0], filename=x))
-				continue
-			if mypsplit[0] == mysplit[1]:
-				return 1
-		return 0
 
 	def populate(self):
 		self.populated=1
@@ -2131,7 +2073,7 @@ class dblink(object):
 		if others_in_slot is None:
 			slot = self.vartree.dbapi.aux_get(self.mycpv, ["SLOT"])[0]
 			slot_matches = self.vartree.dbapi.match(
-				"%s:%s" % (dep_getkey(self.mycpv), slot))
+				"%s:%s" % (portage.cpv_getkey(self.mycpv), slot))
 			others_in_slot = []
 			for cur_cpv in slot_matches:
 				if cur_cpv == self.mycpv:
@@ -2403,7 +2345,7 @@ class dblink(object):
 			others_in_slot = []
 			slot = self.vartree.dbapi.aux_get(self.mycpv, ["SLOT"])[0]
 			slot_matches = self.vartree.dbapi.match(
-				"%s:%s" % (dep_getkey(self.mycpv), slot))
+				"%s:%s" % (portage.cpv_getkey(self.mycpv), slot))
 			for cur_cpv in slot_matches:
 				if cur_cpv == self.mycpv:
 					continue
@@ -2454,6 +2396,18 @@ class dblink(object):
 						# suid/sgid files are rendered harmless.
 						os.chmod(file_name, 0)
 					os.unlink(file_name)
+				except OSError as ose:
+					# If the chmod or unlink fails, you are in trouble.
+					# With Prefix this can be because the file is owned
+					# by someone else (a screwup by root?), on a normal
+					# system maybe filesystem corruption.  In any case,
+					# if we backtrace and die here, we leave the system
+					# in a totally undefined state, hence we just bleed
+					# like hell and continue to hopefully finish all our
+					# administrative and pkg_postinst stuff.
+					self._eerror("postrm", 
+						["Could not chmod or unlink '%s': %s" % \
+						(file_name, ose)])
 				finally:
 					if bsd_chflags and pflags != 0:
 						# Restore the parent flags we saved before unlinking
@@ -3436,6 +3390,13 @@ class dblink(object):
 
 		slot = ''
 		for var_name in ('CHOST', 'SLOT'):
+			if var_name == 'CHOST' and self.cat == 'virtual':
+				try:
+					os.unlink(os.path.join(inforoot, var_name))
+				except OSError:
+					pass
+				continue
+
 			try:
 				val = codecs.open(_unicode_encode(
 					os.path.join(inforoot, var_name),
