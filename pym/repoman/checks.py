@@ -35,16 +35,12 @@ class PhaseCheck(LineCheck):
 
 	ignore_line = re.compile(r'(^\s*#)')
 	func_end_re = re.compile(r'^\}$')
+	phases_re = re.compile('(%s)' % '|'.join((
+		'pkg_pretend', 'pkg_setup', 'src_unpack', 'src_prepare',
+		'src_configure', 'src_compile', 'src_test', 'src_install',
+		'pkg_preinst', 'pkg_postinst', 'pkg_prerm', 'pkg_postrm',
+		'pkg_config')))
 	in_phase = ''
-
-	def __init__(self):
-		self.phases = ('pkg_pretend', 'pkg_setup', 'src_unpack', 'src_prepare', 'src_configure', 'src_compile',
-			'src_test', 'src_install', 'pkg_preinst', 'pkg_postinst', 'pkg_prerm', 'pkg_postrm', 'pkg_config')
-		phase_re = '('
-		for phase in self.phases:
-			phase_re += phase + '|'
-		phase_re = phase_re[:-1] + ')'
-		self.phases_re = re.compile(phase_re)
 
 	def check(self, num, line):
 		m = self.phases_re.match(line)
@@ -438,6 +434,24 @@ class BuiltWithUse(LineCheck):
 	re = re.compile('^.*built_with_use')
 	error = errors.BUILT_WITH_USE
 
+# EAPI-3 checks
+class Eapi3DeprecatedFuncs(LineCheck):
+	repoman_check_name = 'EAPI.deprecated'
+	ignore_line = re.compile(r'(^\s*#)')
+	deprecated_commands_re = re.compile(r'^\s*(check_license)\b')
+
+	def new(self, pkg):
+		self.eapi = pkg.metadata['EAPI']
+
+	def check_eapi(self, eapi):
+		return self.eapi not in ('0', '1', '2')
+
+	def check(self, num, line):
+		m = self.deprecated_commands_re.match(line)
+		if m is not None:
+			return ("'%s'" % m.group(1)) + \
+				" has been deprecated in EAPI=3 on line: %d"
+
 # EAPI-4 checks
 class Eapi4IncompatibleFuncs(LineCheck):
 	repoman_check_name = 'EAPI.incompatible'
@@ -481,7 +495,8 @@ _constant_checks = tuple((c() for c in (
 	IUseUndefined, InheritAutotools,
 	EMakeParallelDisabled, EMakeParallelDisabledViaMAKEOPTS, NoAsNeeded,
 	DeprecatedBindnowFlags, SrcUnpackPatches, WantAutoDefaultValue,
-	SrcCompileEconf, Eapi4IncompatibleFuncs, Eapi4GoneVars, BuiltWithUse)))
+	SrcCompileEconf, Eapi3DeprecatedFuncs,
+	Eapi4IncompatibleFuncs, Eapi4GoneVars, BuiltWithUse)))
 
 _here_doc_re = re.compile(r'.*\s<<[-]?(\w+)$')
 

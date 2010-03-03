@@ -506,12 +506,20 @@ def help(myopts, havecolor=1):
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)
 		print()
+		print("       "+green("--quiet-unmerge-warn"))
+		desc = "Disable the warning message that's shown prior to " + \
+			"--unmerge actions. This option is intended " + \
+			"to be set in the make.conf(5) " + \
+			"EMERGE_DEFAULT_OPTS variable."
+		for line in wrap(desc, desc_width):
+			print(desc_indent + line)
+		print()
 		print("       "+green("--rebuilt-binaries") + "[=%s]" % turquoise("n"))
 		desc = "Replace installed packages with binary packages that have " + \
 			"been rebuilt. Rebuilds are detected by comparison of " + \
 			"BUILD_TIME package metadata. This option is enabled " + \
 			"automatically when using binary packages " + \
-			"(--usepkg or --getbinpkg) together with " + \
+			"(--usepkgonly or --getbinpkgonly) together with " + \
 			"--update and --deep."
 		for line in wrap(desc, desc_width):
 			print(desc_indent + line)

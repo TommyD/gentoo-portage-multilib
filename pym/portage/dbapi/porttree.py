@@ -2,20 +2,24 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-from __future__ import print_function
-
-__all__ = ["portdbapi", "close_portdbapi_caches", "portagetree"]
+__all__ = [
+	"close_portdbapi_caches", "FetchlistDict", "portagetree", "portdbapi"
+]
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
 	'portage.checksum',
-	'portage.dep:dep_getkey,match_from_list,paren_reduce,use_reduce',
+	'portage.dbapi.dep_expand:dep_expand',
+	'portage.dep:dep_getkey,flatten,match_from_list,paren_reduce,use_reduce',
 	'portage.env.loaders:KeyValuePairFileLoader',
+	'portage.package.ebuild.doebuild:doebuild',
 	'portage.util:ensure_dirs,writemsg,writemsg_level',
+	'portage.util.listdir:listdir',
 	'portage.versions:best,catpkgsplit,_pkgsplit@pkgsplit,ver_regexp',
 )
 
 from portage.cache.cache_errors import CacheError
+from portage.cache.mappings import Mapping
 from portage.const import REPO_NAME_LOC
 from portage.data import portage_gid, secpass
 from portage.dbapi import dbapi
@@ -24,8 +28,8 @@ from portage.exception import PortageException, \
 from portage.localization import _
 from portage.manifest import Manifest
 
-from portage import eclass_cache, auxdbkeys, doebuild, flatten, \
-	listdir, dep_expand, eapi_is_supported, dep_check, \
+from portage import eclass_cache, auxdbkeys, \
+	eapi_is_supported, dep_check, \
 	_eapi_is_deprecated
 from portage import os
 from portage import _encodings
@@ -125,17 +129,17 @@ class portdbapi(dbapi):
 	_use_mutable = True
 
 	def _get_settings(self):
-		warnings.warn("Use portdbapi.settings insead of portdbapi.mysettings",
+		warnings.warn("Use portdbapi.settings instead of portdbapi.mysettings",
 			DeprecationWarning)
 		return self.settings
 
 	def _set_settings(self, settings):
-		warnings.warn("Use portdbapi.settings insead of portdbapi.mysettings",
+		warnings.warn("Use portdbapi.settings instead of portdbapi.mysettings",
 			DeprecationWarning)
 		self.settings = settings
 
 	def _del_settings (self):
-		warnings.warn("Use portdbapi.settings insead of portdbapi.mysettings",
+		warnings.warn("Use portdbapi.settings instead of portdbapi.mysettings",
 			DeprecationWarning)
 		del self.settings
 
@@ -803,8 +807,8 @@ class portdbapi(dbapi):
 		checksums = mf.getDigests()
 		if not checksums:
 			if debug: 
-				print("[empty/missing/bad digest]: "+mypkg)
-			return None
+				writemsg("[empty/missing/bad digest]: %s\n" % (mypkg,))
+			return {}
 		filesdict={}
 		myfiles = self.getFetchMap(mypkg, useflags=useflags)
 		#XXX: maybe this should be improved: take partial downloads
@@ -1085,8 +1089,8 @@ class portdbapi(dbapi):
 			else:
 				myval = list(self._iter_match(mydep, self.cp_list(mykey)))
 		else:
-			print("ERROR: xmatch doesn't handle", level, "query!")
-			raise KeyError
+			raise AssertionError(
+				"Invalid level argument: '%s'" % level)
 
 		if self.frozen and (level not in ["match-list", "bestmatch-list"]):
 			self.xcache[level][mydep] = myval
@@ -1240,3 +1244,44 @@ class portagetree(object):
 		except Exception as e:
 			pass
 		return myslot
+
+class FetchlistDict(Mapping):
+	"""
+	This provide a mapping interface to retrieve fetch lists. It's used
+	to allow portage.manifest.Manifest to access fetch lists via a standard
+	mapping interface rather than use the dbapi directly.
+	"""
+	def __init__(self, pkgdir, settings, mydbapi):
+		"""pkgdir is a directory containing ebuilds and settings is passed into
+		portdbapi.getfetchlist for __getitem__ calls."""
+		self.pkgdir = pkgdir
+		self.cp = os.sep.join(pkgdir.split(os.sep)[-2:])
+		self.settings = settings
+		self.mytree = os.path.realpath(os.path.dirname(os.path.dirname(pkgdir)))
+		self.portdb = mydbapi
+
+	def __getitem__(self, pkg_key):
+		"""Returns the complete fetch list for a given package."""
+		return list(self.portdb.getFetchMap(pkg_key, mytree=self.mytree))
+
+	def __contains__(self, cpv):
+		return cpv in self.__iter__()
+
+	def has_key(self, pkg_key):
+		"""Returns true if the given package exists within pkgdir."""
+		return pkg_key in self
+
+	def __iter__(self):
+		return iter(self.portdb.cp_list(self.cp, mytree=self.mytree))
+
+	def __len__(self):
+		"""This needs to be implemented in order to avoid
+		infinite recursion in some cases."""
+		return len(self.portdb.cp_list(self.cp, mytree=self.mytree))
+
+	def keys(self):
+		"""Returns keys for all packages within pkgdir"""
+		return self.portdb.cp_list(self.cp, mytree=self.mytree)
+
+	if sys.hexversion >= 0x3000000:
+		keys = __iter__

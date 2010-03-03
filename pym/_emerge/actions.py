@@ -27,6 +27,7 @@ from portage import digraph
 from portage import _unicode_decode
 from portage.cache.cache_errors import CacheError
 from portage.const import NEWS_LIB_PATH
+from portage.dbapi.dep_expand import dep_expand
 from portage.output import blue, bold, colorize, create_color_func, darkgreen, \
 	red, yellow
 good = create_color_func("GOOD")
@@ -34,6 +35,7 @@ bad = create_color_func("BAD")
 from portage.sets import load_default_config, SETPREFIX
 from portage.sets.base import InternalPackageSet
 from portage.util import cmp_sort_key, writemsg, writemsg_level
+from portage._global_updates import _global_updates
 
 from _emerge.clear_caches import clear_caches
 from _emerge.countdown import countdown
@@ -2158,7 +2160,7 @@ def action_sync(settings, trees, mtimedb, myopts, myaction):
 		# the only one that's been synced here.
 		action_metadata(settings, portdb, myopts, porttrees=[myportdir])
 
-	if portage._global_updates(trees, mtimedb["updates"]):
+	if _global_updates(trees, mtimedb["updates"]):
 		mtimedb.commit()
 		# Reload the whole config from scratch.
 		settings, trees, mtimedb = load_emerge_config(trees=trees)
@@ -2212,7 +2214,7 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 
 			try:
 				valid_atoms.append(
-					portage.dep_expand(x, mydb=vardb, settings=settings))
+					dep_expand(x, mydb=vardb, settings=settings))
 			except portage.exception.AmbiguousPackageName as e:
 				msg = "The short ebuild name \"" + x + \
 					"\" is ambiguous.  Please specify " + \
@@ -2280,7 +2282,9 @@ def action_uninstall(settings, trees, ldpath_mtimes,
 	if files and not valid_atoms:
 		return 1
 
-	if action == 'unmerge' and '--quiet' not in opts:
+	if action == 'unmerge' and \
+		'--quiet' not in opts and \
+		'--quiet-unmerge-warn' not in opts:
 		msg = "This action can remove important packages! " + \
 			"In order to be safer, use " + \
 			"`emerge -pv --depclean <atom>` to check for " + \
