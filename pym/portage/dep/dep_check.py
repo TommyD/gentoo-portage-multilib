@@ -85,10 +85,22 @@ def _expand_new_virtuals(mysplit, edebug, mydbapi, mysettings, myroot="/",
 				use_mask, use_force))
 			x = Atom(evaluated_atom)
 
-		if not repoman and \
-			myuse is not None and isinstance(x, Atom) and x.use:
-			if x.use.conditional:
-				x = x.evaluate_conditionals(myuse)
+		if not repoman :
+			if 'lib32' not in x and portage.dep_getkey(x) not in mysettings.get("NO_AUTO_FLAG", None):
+				if ']' in x:
+					x = str(x).replace(']',',lib32?]')
+				else:
+					x = str(x) + '[lib32?]'
+				try:
+					x = portage.dep.Atom(x)
+				except portage.exception.InvalidAtom:
+					if portage.dep._dep_check_strict:
+						raise portage.exception.ParseError(
+							"invalid atom: '%s'" % x)
+
+			if myuse is not None and isinstance(x, Atom) and x.use:
+				if x.use.conditional:
+					x = x.evaluate_conditionals(myuse)
 
 		mykey = x.cp
 		if not mykey.startswith("virtual/"):

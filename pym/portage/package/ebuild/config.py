@@ -1426,6 +1426,9 @@ class config(object):
 				pkg_configdict["PORTAGE_REPO_NAME"] = repository
 			slot = pkg_configdict["SLOT"]
 			iuse = pkg_configdict["IUSE"]
+			if self['MULTILIB_ABIS'].count(' ') is not 0:
+				if 'lib32' not in iuse and ( self['ARCH'] == "amd64" or self['ARCH'] == "ppc64" ):
+					iuse = iuse + ' lib32'
 			if pkg is None:
 				cpv_slot = "%s:%s" % (self.mycpv, slot)
 			else:
