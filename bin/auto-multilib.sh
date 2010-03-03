@@ -173,6 +173,16 @@ get_abi_order() {
 	echo ${order}
 }
 
+get_abi_list() {
+	if ! is_ebuild; then
+		for my_abi in $(get_abi_order); do
+			[[ -e "${D%/}".${my_abi} ]] || break
+		done
+	fi
+
+	is_ebuild && echo $(get_abi_order) || echo ${my_abi}
+}
+
 set_abi() {
 	is_auto-multilib || return 0;
 
