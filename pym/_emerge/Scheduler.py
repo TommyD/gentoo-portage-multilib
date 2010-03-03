@@ -24,6 +24,8 @@ bad = create_color_func("BAD")
 from portage.sets import SETPREFIX
 from portage.sets.base import InternalPackageSet
 from portage.util import writemsg, writemsg_level
+from portage.package.ebuild.digestcheck import digestcheck
+from portage.package.ebuild.digestgen import digestgen
 
 from _emerge.BinpkgPrefetcher import BinpkgPrefetcher
 from _emerge.Blocker import Blocker
@@ -355,6 +357,9 @@ class Scheduler(PollScheduler):
 		Find system packages and their deep runtime dependencies. Before being
 		merged, these packages go to merge_wait_queue, to be merged when no
 		other packages are building.
+		NOTE: This can only find deep system deps if the system set has been
+		added to the graph and traversed deeply (the depgraph "complete"
+		parameter will do this, triggered by emerge --complete-graph option).
 		"""
 		deep_system_deps = self._deep_system_deps
 		deep_system_deps.clear()
@@ -591,7 +596,7 @@ class Scheduler(PollScheduler):
 			if ebuild_path is None:
 				raise AssertionError("ebuild not found for '%s'" % x.cpv)
 			pkgsettings['O'] = os.path.dirname(ebuild_path)
-			if not portage.digestgen([], pkgsettings, myportdb=portdb):
+			if not digestgen(mysettings=pkgsettings, myportdb=portdb):
 				writemsg_level(
 					"!!! Unable to generate manifest for '%s'.\n" \
 					% x.cpv, level=logging.ERROR, noiselevel=-1)
@@ -637,7 +642,7 @@ class Scheduler(PollScheduler):
 			if ebuild_path is None:
 				raise AssertionError("ebuild not found for '%s'" % x.cpv)
 			quiet_config["O"] = os.path.dirname(ebuild_path)
-			if not portage.digestcheck([], quiet_config, strict=True):
+			if not digestcheck([], quiet_config, strict=True):
 				failures |= 1
 
 		if failures:

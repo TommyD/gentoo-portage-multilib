@@ -14,6 +14,8 @@ from itertools import chain
 import portage
 from portage import os
 from portage import digraph
+from portage.dbapi import dbapi
+from portage.dbapi.dep_expand import dep_expand
 from portage.dep import Atom
 from portage.output import bold, blue, colorize, create_color_func, darkblue, \
 	darkgreen, green, nc_len, red, teal, turquoise, yellow
@@ -140,6 +142,10 @@ class _dynamic_depgraph_config(object):
 		# uninstallation but may not have been added to the graph
 		# if the graph is not complete yet.
 		self._blocked_world_pkgs = {}
+		# Contains packages whose dependencies have been traversed.
+		# This use used to check if we have accounted for blockers
+		# relevant to a package.
+		self._traversed_pkg_deps = set()
 		self._slot_collision_info = {}
 		# Slot collision nodes are not allowed to block other packages since
 		# blocker validation is only able to account for one package per slot.
@@ -821,6 +827,10 @@ class depgraph(object):
 						# should have been masked.
 						raise
 			if not myarg:
+				# Existing child selection may not be valid unless
+				# it's added to the graph immediately, since "complete"
+				# mode may select a different child later.
+				dep.child = None
 				self._dynamic_config._ignored_deps.append(dep)
 				return 1
 
@@ -1210,6 +1220,7 @@ class depgraph(object):
 			return 0
 		finally:
 			portage.dep._dep_check_strict = True
+		self._dynamic_config._traversed_pkg_deps.add(pkg)
 		return 1
 
 	def _add_pkg_dep_string(self, pkg, dep_root, dep_priority, dep_string,
@@ -2629,8 +2640,13 @@ class depgraph(object):
 					elif pkg.built:
 						built_pkg = pkg
 				if built_pkg is not None and inst_pkg is not None:
-					if built_pkg.metadata['BUILD_TIME'] != \
-						inst_pkg.metadata['BUILD_TIME']:
+					# Only reinstall if binary package BUILD_TIME is
+					# non-empty, in order to avoid cases like to
+					# bug #306659 where BUILD_TIME fields are missing
+					# in local and/or remote Packages file.
+					if built_pkg.metadata['BUILD_TIME'] and \
+						(built_pkg.metadata['BUILD_TIME'] != \
+						inst_pkg.metadata['BUILD_TIME']):
 						return built_pkg, built_pkg
 
 			if avoid_update:
@@ -2847,6 +2863,8 @@ class depgraph(object):
 					cpv = pkg.cpv
 					stale_cache.discard(cpv)
 					pkg_in_graph = self._dynamic_config.digraph.contains(pkg)
+					pkg_deps_added = \
+						pkg in self._dynamic_config._traversed_pkg_deps
 
 					# Check for masked installed packages. Only warn about
 					# packages that are in the graph in order to avoid warning
@@ -2863,7 +2881,7 @@ class depgraph(object):
 
 					blocker_atoms = None
 					blockers = None
-					if pkg_in_graph:
+					if pkg_deps_added:
 						blockers = []
 						try:
 							blockers.extend(
@@ -4152,7 +4170,7 @@ class depgraph(object):
 				else:
 					blocker_style = "PKG_BLOCKER"
 					addl = "%s  %s  " % (colorize(blocker_style, "B"), fetch)
-				resolved = portage.dep_expand(
+				resolved = dep_expand(
 					str(x.atom).lstrip("!"), mydb=vardb, settings=pkgsettings)
 				if "--columns" in self._frozen_config.myopts and "--quiet" in self._frozen_config.myopts:
 					addl += " " + colorize(blocker_style, str(resolved))
@@ -4482,12 +4500,20 @@ class depgraph(object):
 
 				def pkgprint(pkg_str):
 					if pkg_merge:
-						if pkg_system:
-							return colorize("PKG_MERGE_SYSTEM", pkg_str)
-						elif pkg_world:
-							return colorize("PKG_MERGE_WORLD", pkg_str)
+						if built:
+							if pkg_system:
+								return colorize("PKG_BINARY_MERGE_SYSTEM", pkg_str)
+							elif pkg_world:
+								return colorize("PKG_BINARY_MERGE_WORLD", pkg_str)
+							else:
+								return colorize("PKG_BINARY_MERGE", pkg_str)
 						else:
-							return colorize("PKG_MERGE", pkg_str)
+							if pkg_system:
+								return colorize("PKG_MERGE_SYSTEM", pkg_str)
+							elif pkg_world:
+								return colorize("PKG_MERGE_WORLD", pkg_str)
+							else:
+								return colorize("PKG_MERGE", pkg_str)
 					elif pkg_status == "uninstall":
 						return colorize("PKG_UNINSTALL", pkg_str)
 					else:
@@ -5236,7 +5262,7 @@ class depgraph(object):
 	def get_runtime_pkg_mask(self):
 		return self._dynamic_config._runtime_pkg_mask.copy()
 
-class _dep_check_composite_db(portage.dbapi):
+class _dep_check_composite_db(dbapi):
 	"""
 	A dbapi-like interface that is optimized for use in dep_check() calls.
 	This is built on top of the existing depgraph package selection logic.
@@ -5245,7 +5271,7 @@ class _dep_check_composite_db(portage.dbapi):
 	via dep_check().
 	"""
 	def __init__(self, depgraph, root):
-		portage.dbapi.__init__(self)
+		dbapi.__init__(self)
 		self._depgraph = depgraph
 		self._root = root
 		self._match_cache = {}

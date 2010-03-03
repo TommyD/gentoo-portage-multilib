@@ -2,16 +2,17 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-from __future__ import print_function
-
 __all__ = ["bindbapi", "binarytree"]
 
 import portage
 portage.proxy.lazyimport.lazyimport(globals(),
+	'portage.dbapi.dep_expand:dep_expand',
 	'portage.dep:dep_getkey,isjustname,match_from_list',
 	'portage.output:EOutput,colorize',
+	'portage.package.ebuild.doebuild:_vdb_use_conditional_atoms',
 	'portage.update:update_dbentries',
 	'portage.util:ensure_dirs,normalize_path,writemsg,writemsg_stdout',
+	'portage.util.listdir:listdir',
 	'portage.versions:best,catpkgsplit,catsplit',
 )
 
@@ -21,11 +22,12 @@ from portage.exception import InvalidPackageName, \
 	PermissionDenied, PortageException
 from portage.localization import _
 
-from portage import dep_expand, listdir, _check_distfile, _movefile
+from portage import _movefile
 from portage import os
 from portage import _encodings
 from portage import _unicode_decode
 from portage import _unicode_encode
+from portage.package.ebuild.fetch import _check_distfile
 
 import codecs
 import errno
@@ -60,6 +62,14 @@ class bindbapi(fakedbapi):
 		if self.bintree and not self.bintree.populated:
 			self.bintree.populate()
 		return fakedbapi.match(self, *pargs, **kwargs)
+
+	def cpv_inject(self, cpv, **kwargs):
+		self._aux_cache.pop(cpv, None)
+		fakedbapi.cpv_inject(self, cpv, **kwargs)
+
+	def cpv_remove(self, cpv):
+		self._aux_cache.pop(cpv, None)
+		fakedbapi.cpv_remove(self, cpv)
 
 	def aux_get(self, mycpv, wants):
 		if self.bintree and not self.bintree.populated:
@@ -131,6 +141,7 @@ class bindbapi(fakedbapi):
 			if not v:
 				del mydata[k]
 		mytbz2.recompose_mem(portage.xpak.xpak_mem(mydata))
+		# inject will clear stale caches via cpv_inject.
 		self.bintree.inject(cpv)
 
 	def cp_list(self, *pargs, **kwargs):
@@ -478,6 +489,13 @@ class binarytree(object):
 		if (not os.path.isdir(self.pkgdir) and not getbinpkgs):
 			return 0
 
+		# Clear all caches in case populate is called multiple times
+		# as may be the case when _global_updates calls populate()
+		# prior to performing package moves since it only wants to
+		# operate on local packages (getbinpkgs=0).
+		self._remotepkgs = None
+		self.dbapi._clear_cache()
+		self.dbapi._aux_cache.clear()
 		if True:
 			pkg_paths = {}
 			self._pkg_paths = pkg_paths
@@ -689,10 +707,7 @@ class binarytree(object):
 			writemsg(_("!!! PORTAGE_BINHOST unset, but use is requested.\n"),
 				noiselevel=-1)
 
-		if getbinpkgs and \
-			"PORTAGE_BINHOST" in self.settings and \
-			not self._remotepkgs:
-
+		if getbinpkgs and 'PORTAGE_BINHOST' in self.settings:
 			base_url = self.settings["PORTAGE_BINHOST"]
 			from portage.const import CACHE_PATH
 			try:
@@ -848,7 +863,6 @@ class binarytree(object):
 				mykey = portage.cpv_getkey(fullpkg)
 				try:
 					# invalid tbz2's can hurt things.
-					#print "cpv_inject("+str(fullpkg)+")"
 					self.dbapi.cpv_inject(fullpkg)
 					remote_metadata = self.__remotepkgs[mypkg]
 					for k, v in remote_metadata.items():
@@ -865,7 +879,6 @@ class binarytree(object):
 						remote_metadata.pop(k, None)
 
 					self._remotepkgs[fullpkg] = remote_metadata
-					#print "  -- Injected"
 				except SystemExit as e:
 					raise
 				except:
@@ -909,7 +922,6 @@ class binarytree(object):
 			return
 		slot = slot.strip()
 		self.dbapi.cpv_inject(cpv)
-		self.dbapi._aux_cache.pop(cpv, None)
 
 		# Reread the Packages index (in case it's been changed by another
 		# process) and then updated it, all while holding a lock.
@@ -1064,7 +1076,7 @@ class binarytree(object):
 				writemsg("%s: %s\n" % (k, str(e)),
 					noiselevel=-1)
 				raise
-			if k in portage._vdb_use_conditional_atoms:
+			if k in _vdb_use_conditional_atoms:
 				v_split = []
 				for x in deps.split():
 					try:
@@ -1132,7 +1144,6 @@ class binarytree(object):
 	def gettbz2(self, pkgname):
 		"""Fetches the package from a remote site, if necessary.  Attempts to
 		resume if the file appears to be partially downloaded."""
-		print("Fetching '"+str(pkgname)+"'")
 		tbz2_path = self.getname(pkgname)
 		tbz2name = os.path.basename(tbz2_path)
 		resume = False
