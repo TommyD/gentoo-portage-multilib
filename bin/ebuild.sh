@@ -1159,8 +1159,13 @@ dyn_install() {
 		is_ebuild && unset_abi
 	done
 	if [[ -d "${D}" ]]; then
-		find "${D}" -name '*.la' ! -exec grep -q shouldnotlink=yes {} \; -exec rm {} \;
-		/usr/bin/lafilefixer "${D}"
+		if [[ "${CATEGORY}/${PN}" == "sys-devel/libtool" ]] ; then
+			ewarn "Preserving libltdl.la because of extensive usage"
+			ewarn "even in m4 macros of libtool"
+		else
+			find "${D}" -name '*.la' ! -exec grep -q shouldnotlink=yes {} \; -exec rm {} \;
+			/usr/bin/lafilefixer "${D}"
+		fi
 
 	touch "${PORTAGE_BUILDDIR}"/.installed || die "IO Failure -- Failed 'touch .installed' in ${PORTAGE_BUILDDIR}"
 	vecho ">>> Completed installing ${PF} into ${D}"
