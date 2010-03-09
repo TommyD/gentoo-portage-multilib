@@ -3,33 +3,40 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart as MultipartMessage
-from email.mime.base import MIMEBase as BaseMessage
-from email.header import Header
-import smtplib
+# Since python ebuilds remove the 'email' module when USE=build
+# is enabled, use a local import so that
+# portage.proxy.lazyimport._preload_portage_submodules()
+# can load this module even though the 'email' module is missing.
+# The elog mail modules won't work, but at least an ImportError
+# won't cause portage to crash during stage builds. Since the
+# 'smtlib' module imports the 'email' module, that's imported
+# locally as well.
+
 import socket
 import sys
 import time
 
 from portage import os
 from portage import _encodings
-from portage import _unicode_encode
+from portage import _unicode_decode, _unicode_encode
 from portage.localization import _
 import portage
 
 if sys.hexversion >= 0x3000000:
 	basestring = str
 
-if sys.hexversion >= 0x3000000:
-	def TextMessage(_text):
-		mimetext = MIMEText(_text)
+def TextMessage(_text):
+	from email.mime.text import MIMEText
+	mimetext = MIMEText(_text)
+	if sys.hexversion >= 0x3000000:
 		mimetext.set_charset("UTF-8")
-		return mimetext
-else:
-	TextMessage = MIMEText
+	return mimetext
 
 def create_message(sender, recipient, subject, body, attachments=None):
+
+	from email.header import Header
+	from email.mime.base import MIMEBase as BaseMessage
+	from email.mime.multipart import MIMEMultipart as MultipartMessage
 
 	if sys.hexversion < 0x3000000:
 		sender = _unicode_encode(sender,
@@ -69,6 +76,9 @@ def create_message(sender, recipient, subject, body, attachments=None):
 	return mymessage
 
 def send_mail(mysettings, message):
+
+	import smtplib
+
 	mymailhost = "localhost"
 	mymailport = 25
 	mymailuser = ""
@@ -135,7 +145,17 @@ def send_mail(mysettings, message):
 				myconn = smtplib.SMTP(mymailhost, mymailport)
 			if mymailuser != "" and mymailpasswd != "":
 				myconn.login(mymailuser, mymailpasswd)
-			myconn.sendmail(myfrom, myrecipient, message.as_string())
+
+			message_str = message.as_string()
+			if sys.hexversion >= 0x3000000:
+				# Force ascii encoding in order to avoid UnicodeEncodeError
+				# from smtplib.sendmail with python3 (bug #291331).
+				message_str = _unicode_encode(message_str,
+					encoding='ascii', errors='backslashreplace')
+				message_str = _unicode_decode(message_str,
+					encoding='ascii', errors='replace')
+
+			myconn.sendmail(myfrom, myrecipient, message_str)
 			myconn.quit()
 		except smtplib.SMTPException as e:
 			raise portage.exception.PortageException(_("!!! An error occured while trying to send logmail:\n")+str(e))

@@ -53,6 +53,7 @@ from _emerge.Scheduler import Scheduler
 from _emerge.search import search
 from _emerge.SetArg import SetArg
 from _emerge.show_invalid_depstring_notice import show_invalid_depstring_notice
+from _emerge.sync.old_tree_timestamp import old_tree_timestamp_warn
 from _emerge.unmerge import unmerge
 from _emerge.UnmergeDepPriority import UnmergeDepPriority
 from _emerge.UseFlagDisplay import UseFlagDisplay
@@ -63,6 +64,9 @@ if sys.hexversion >= 0x3000000:
 
 def action_build(settings, trees, mtimedb,
 	myopts, myaction, myfiles, spinner):
+
+	if '--usepkgonly' not in myopts:
+		old_tree_timestamp_warn(settings['PORTDIR'], settings)
 
 	# validate the state of the resume data
 	# so that we can make assumptions later.
@@ -2425,19 +2429,38 @@ def display_missing_pkg_set(root_config, set_name):
 	writemsg_level("".join("%s\n" % l for l in msg),
 		level=logging.ERROR, noiselevel=-1)
 
+def relative_profile_path(portdir, abs_profile):
+	realpath = os.path.realpath(abs_profile)
+	basepath   = os.path.realpath(os.path.join(portdir, "profiles"))
+	if realpath.startswith(basepath):
+		profilever = realpath[1 + len(basepath):]
+	else:
+		profilever = None
+	return profilever
+
 def getportageversion(portdir, target_root, profile, chost, vardb):
-	profilever = "unavailable"
+	profilever = None
 	if profile:
-		realpath = os.path.realpath(profile)
-		basepath   = os.path.realpath(os.path.join(portdir, "profiles"))
-		if realpath.startswith(basepath):
-			profilever = realpath[1 + len(basepath):]
-		else:
+		profilever = relative_profile_path(portdir, profile)
+		if profilever is None:
 			try:
-				profilever = "!" + os.readlink(profile)
-			except (OSError):
+				for parent in portage.grabfile(
+					os.path.join(profile, 'parent')):
+					profilever = relative_profile_path(portdir,
+						os.path.join(profile, parent))
+					if profilever is not None:
+						break
+			except portage.exception.PortageException:
 				pass
-		del realpath, basepath
+
+			if profilever is None:
+				try:
+					profilever = "!" + os.readlink(profile)
+				except (OSError):
+					pass
+
+	if profilever is None:
+		profilever = "unavailable"
 
 	libcver=[]
 	libclist  = vardb.match("virtual/libc")
