@@ -270,7 +270,7 @@ _setup_abi_env() {
 	export CBUILD=$(get_abi_var CHOST $1)
 	export CDEFINE="${CDEFINE} $(get_abi_var CDEFINE $1)"
 	export CFLAGS="${CFLAGS} $(get_abi_var CFLAGS)"
-	export CPPFLAGS="${CXXFLAGS} $(get_abi_var CPPFLAGS)"
+	export CPPFLAGS="${CPPFLAGS} $(get_abi_var CPPFLAGS)"
 	export CXXFLAGS="${CXXFLAGS} $(get_abi_var CFLAGS)"
 	export FCFLAGS="${FCFLAGS} ${CFLAGS}"
 	export FFLAGS="${FFLAGS} ${CFLAGS}"
