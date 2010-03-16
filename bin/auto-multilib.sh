@@ -235,6 +235,8 @@ _unset_abi_dir() {
 		local abi=$(cat ${PORTAGE_BUILDDIR}/.abi)
 		if [[ ${EBUILD_PHASE} != setup ]]; then
 			[ ! -d "${WORKDIR}" ] && die "unset_abi: .abi present (${abi}) but workdir not present."
+		fi
+		if [ -d "${WORKDIR}" ] ; then
 			mv ${WORKDIR} ${WORKDIR}.${abi} || die "IO Failure -- Failed to 'mv work work.${abi}'."
 		fi
 		rm -rf ${PORTAGE_BUILDDIR}/.abi || die "IO Failure -- Failed to 'rm -rf .abi'."
