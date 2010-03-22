@@ -319,7 +319,7 @@ _finalize_abi_install() {
 
 	# Create wrapper symlink for *-config files
 	local i= 
-	prep_ml_binaries $(find "${D}"usr/bin -type f \( -name '*-config' -o -name '*-config-2' \) 2>/dev/null)
+	prep_ml_binaries $(find "${D}"usr/bin -type f -name '*-config' 2>/dev/null)
 
 	local noabi=()
 	for i in ${MULTILIB_ABIS}; do
