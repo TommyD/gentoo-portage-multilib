@@ -332,7 +332,7 @@ _finalize_abi_install() {
 	fi
 	local LIBDIR=$(get_abi_var LIBDIR $1)
 	if ( [[ -d "${D}${LIBDIR}" ]] || [[ -d "${D}usr/${LIBDIR}" ]] || [[ -d "${base}" ]] || \
-		find "${D}"usr/bin \( -name '*-config' -o -name '*-config-2' \) 2>/dev/null || \
+		(shopt -s nullglob dotglob; f=("${D}"usr/bin/*-config); ((${#f[@]}))) || \
 		( [[ ${MULTILIB_BINARIES} == *${CATEGORY}/${PN}* ]] && [[ -d "${D}"usr/bin ]] ) ); then
 
 		mv "${D}" "${D%/}".${ABI} || die
