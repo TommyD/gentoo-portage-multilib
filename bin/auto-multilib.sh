@@ -11,41 +11,6 @@ _debug() {
 }
 
 # Internal function
-# @FUNCTION: _abi_to_index_key
-# @USAGE: <ABI>
-# @RETURN: <index key>
-_abi_to_index_key() {
-	# Until we can count on bash version > 4, we can't use associative
-	# arrays.
-	local index=0 element=""
-	if [[ -z "${EMULTILIB_ARRAY_INDEX}" ]]; then
-		local abilist=""
-		abilist=$(get_abi_order)
-		EMULTILIB_ARRAY_INDEX=(INIT ${abilist})
-	fi
-	for element in ${EMULTILIB_ARRAY_INDEX[@]}; do
-		[[ "${element}" == "${1}" ]] && echo "${index}"
-		let index++
-	done
-}
-
-# @VARIABLE: EMULTILIB_SAVE_VARS
-# @DESCRIPTION: Environment variables to save
-# EMULTILIB_SAVE_VARS="${EMULTILIB_SAVE_VARS}
-#		AS CC CXX FC ASFLAGS CFLAGS CPPFLAGS CXXFLAGS FCFLAGS FFLAGS 
-#		LDFLAGS	CHOST CBUILD CDEFINE CCACHE_DIR PYTHON
-#		PKG_CONFIG_PATH"
-EMULTILIB_SAVE_VARS="${EMULTILIB_SAVE_VARS}
-		AS CC CXX FC ASFLAGS CFLAGS CPPFLAGS CXXFLAGS FCFLAGS FFLAGS 
-		LDFLAGS	CHOST CBUILD CDEFINE CCACHE_DIR PYTHON
-		PKG_CONFIG_PATH"
-
-# @VARIABLE: EMULTILIB_SOURCE_TOP_DIRNAME
-# @DESCRIPTION: On initialisation of multilib environment this gets incremented by 1
-# EMULTILIB_INITIALISED=""
-EMULTILIB_INITIALISED="0"
-
-# Internal function
 # @FUNCTION: _save_abi_env
 # @USAGE: <ABI>
 # @DESCRIPTION: Save environment for ABI
@@ -56,11 +21,6 @@ _save_abi_env() {
 	save_ebuild_env --exclude-init-phases | filter_readonly_variables \
 		--filter-path --filter-sandbox --allow-extra-vars --filter-metadata > ${PORTAGE_BUILDDIR}/abi-code/environment."${1}"
 	[[ $UID == 0 ]] && chown portage:portage ${PORTAGE_BUILDDIR}/abi-code/environment."${1}"
-	local _var _array
-	for _var in ${EMULTILIB_SAVE_VARS}; do
-		_array="EMULTILIB_${_var}"
-		_debug ${_array}[$(_abi_to_index_key ${1})] "${!_var}"
-	done
 }
 
 # Internal function
