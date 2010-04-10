@@ -680,18 +680,19 @@ dyn_pretend() {
 
 dyn_setup() {
 	for LOOP_ABI in $(get_abi_list); do
-		set_abi ${LOOP_ABI}
+		set_abi ${LOOP_ABI}; source "${T}"/environment || die
 
 	ebuild_phase_with_hooks pkg_setup
 
-		is_ebuild && unset_abi
+		is_ebuild && { unset_abi; source "${T}"/environment || die ; }
 	done
+	is_ebuild && { rm "${T}"/environment || die ; }
 }
 
 dyn_unpack() {
 	local newstuff="no"
 	for LOOP_ABI in $(get_abi_list); do
-		is_ebuild && set_abi ${LOOP_ABI}
+		is_ebuild && { set_abi ${LOOP_ABI}; source "${T}"/environment || die ; }
 
 	if [ -e "${WORKDIR}" ]; then
 		local x
@@ -738,8 +739,10 @@ dyn_unpack() {
 		if is_auto-multilib && is_ebuild; then
 			touch "$PORTAGE_BUILDDIR"/.unpacked."${LOOP_ABI}" || die "IO Failure -- Failed to 'touch .unpacked.${LOOP_ABI}'"
 		fi
-		is_ebuild && unset_abi
+		is_ebuild && { unset_abi; source "${T}"/environment || die ; }
+
 	done
+	is_ebuild && { rm "${T}"/environment || die ; }
 	touch "${PORTAGE_BUILDDIR}/.unpacked" || die "IO Failure -- Failed 'touch .unpacked' in ${PORTAGE_BUILDDIR}"
 	vecho ">>> Source unpacked in ${WORKDIR}"
 	ebuild_phase post_src_unpack
@@ -923,7 +926,7 @@ dyn_prepare() {
 	fi
 
 	for LOOP_ABI in $(get_abi_list); do
-		is_ebuild && set_abi ${LOOP_ABI}
+		is_ebuild && { set_abi ${LOOP_ABI}; source "${T}"/environment || die ; }
 
 	if [ "${PORTAGE_BUILDDIR}"/.prepared.${LOOP_ABI} -nt "${WORKDIR}" ]; then
 		echo ">>> It appears that ${PN} is already prepared for ABI=${LOOP_ABI}; skipping."
@@ -950,8 +953,9 @@ dyn_prepare() {
 		if is_auto-multilib && is_ebuild; then
 			touch "$PORTAGE_BUILDDIR"/.prepared."${LOOP_ABI}" || die "IO Failure -- Failed to 'touch .prepared.${LOOP_ABI}'"
 		fi
-		is_ebuild && unset_abi
+		is_ebuild && { unset_abi; source "${T}"/environment || die ; }
 	done
+	is_ebuild && { rm "${T}"/environment || die ; }
 
 	touch "${PORTAGE_BUILDDIR}"/.prepared || die "IO Failure -- Failed 'touch .prepared' in ${PORTAGE_BUILDDIR}"
 	vecho ">>> Source prepared."
@@ -969,7 +973,7 @@ dyn_configure() {
 	fi
 
 	for LOOP_ABI in $(get_abi_list); do
-		is_ebuild && set_abi ${LOOP_ABI}
+		is_ebuild && { set_abi ${LOOP_ABI}; source "${T}"/environment || die ; }
 
 	if [ ${PORTAGE_BUILDDIR}/.configured.${LOOP_ABI} -nt "${WORKDIR}" ]; then
 			echo ">>> It appears that ${PN} is already configured for ABI=${LOOP_ABI}; skipping."
@@ -997,8 +1001,9 @@ dyn_configure() {
 		if is_auto-multilib && is_ebuild; then
 			touch "$PORTAGE_BUILDDIR"/.configured."${LOOP_ABI}" || die "IO Failure -- Failed to 'touch .configured.${LOOP_ABI}'"
 		fi
-		is_ebuild && unset_abi
+		is_ebuild && { unset_abi; source "${T}"/environment || die ; }
 	done
+	is_ebuild && { rm "${T}"/environment || die ; }
 	touch "${PORTAGE_BUILDDIR}"/.configured || die "IO Failure -- Failed 'touch .configured' in ${PORTAGE_BUILDDIR}"
 	vecho ">>> Source configured."
 
@@ -1016,7 +1021,7 @@ dyn_compile() {
 	fi
 
 	for LOOP_ABI in $(get_abi_list); do
-		is_ebuild && set_abi ${LOOP_ABI}
+		is_ebuild && { set_abi ${LOOP_ABI}; source "${T}"/environment || die ; }
 
 	if [ ${PORTAGE_BUILDDIR}/.compiled.${LOOP_ABI} -nt "${WORKDIR}" ]; then
 		echo ">>> It appears that ${PN} is already compiled for ABI=${LOOP_ABI}; skipping."
@@ -1044,8 +1049,9 @@ dyn_compile() {
 		if is_auto-multilib && is_ebuild; then
 			touch "$PORTAGE_BUILDDIR"/.compiled."${LOOP_ABI}" || die "IO Failure -- Failed to 'touch .compiled.${LOOP_ABI}'"
 		fi
-		is_ebuild && unset_abi
+		is_ebuild && { unset_abi; source "${T}"/environment || die ; }
 	done
+	is_ebuild && { rm "${T}"/environment || die ; }
 	touch "${PORTAGE_BUILDDIR}"/.compiled || die "IO Failure -- Failed 'touch .compiled' in ${PORTAGE_BUILDDIR}"
 	vecho ">>> Source compiled."
 
@@ -1066,6 +1072,9 @@ dyn_test() {
 		return
 	fi
 	trap "abort_test" SIGINT SIGQUIT
+	for LOOP_ABI in $(get_abi_list); do
+		is_ebuild && { set_abi ${LOOP_ABI}; source "${T}"/environment || die ; }
+
 	if [ -d "${S}" ]; then
 		cd "${S}"
 	else
@@ -1083,8 +1092,6 @@ dyn_test() {
 			echo ">>> Remove '$PORTAGE_BUILDDIR/.tested.${LOOP_ABI}' to force testing."
 			continue
 		fi
-		for LOOP_ABI in $(get_abi_list); do
-			is_ebuild && set_abi ${LOOP_ABI}
 
 		local save_sp=${SANDBOX_PREDICT}
 		addpredict /
@@ -1096,11 +1103,13 @@ dyn_test() {
 			if is_auto-multilib && is_ebuild; then
 				touch "$PORTAGE_BUILDDIR"/.tested."${LOOP_ABI}" || die "IO Failure -- Failed to 'touch .tested.${LOOP_ABI}'"
 			fi
-			is_ebuild && unset_abi
-		done
 		touch "${PORTAGE_BUILDDIR}"/.tested || die "IO Failure -- Failed 'touch .tested' in ${PORTAGE_BUILDDIR}"
 		ebuild_phase post_src_test
 	fi
+
+		is_ebuild && { unset_abi; source "${T}"/environment || die ; }
+	done
+	is_ebuild && { rm "${T}"/environment || die ; }
 
 	trap - SIGINT SIGQUIT
 }
@@ -1121,7 +1130,7 @@ dyn_install() {
 	is_auto-multilib && rm -rf "${PORTAGE_BUILDDIR}"/image.${ABI}
 	mkdir "${PORTAGE_BUILDDIR}/image"
 	for LOOP_ABI in $(get_abi_list); do
-		is_ebuild && set_abi ${LOOP_ABI}
+		is_ebuild && { set_abi ${LOOP_ABI}; source "${T}"/environment || die ; }
 
 	if [[ -d $S ]] ; then
 		cd "${S}"
@@ -1152,11 +1161,11 @@ dyn_install() {
 
 	ebuild_phase src_install
 
-		is_auto-multilib && _finalize_abi_install
+		is_auto-multilib && _finalize_abi_install && { cp "${PORTAGE_BUILDDIR}"/abi-code/environment.${LOOP_ABI} "${PORTAGE_BUILDDIR}"/build-info/ || die ; }
 		if is_auto-multilib && is_ebuild; then
 			touch "$PORTAGE_BUILDDIR"/.installed."${LOOP_ABI}" || die "IO Failure -- Failed to 'touch .installed.${LOOP_ABI}'"
 		fi
-		is_ebuild && unset_abi
+		is_ebuild && { unset_abi; source "${T}"/environment || die ; }
 	done
 	if [[ -d "${D}" ]]; then
 		if [[ "${CATEGORY}/${PN}" == "sys-devel/libtool" ]] ; then
@@ -1203,7 +1212,7 @@ dyn_install() {
 	save_ebuild_env --exclude-init-phases | filter_readonly_variables \
 		--filter-path --filter-sandbox --allow-extra-vars > environment
 
-	bzip2 -f9 environment
+	bzip2 -f9 environment*
 
 	cp "${EBUILD}" "${PF}.ebuild"
 	[ -n "${PORTAGE_REPO_NAME}" ]  && echo "${PORTAGE_REPO_NAME}" > repository
@@ -1235,7 +1244,13 @@ dyn_preinst() {
 		eerror "${FUNCNAME}: D is unset"
 		return 1
 	fi
+	for LOOP_ABI in $(get_abi_order); do
+		set_abi ${LOOP_ABI}; source "${T}"/environment || die
+
 	ebuild_phase_with_hooks pkg_preinst
+
+		unset_abi; source "${T}"/environment || die
+	done
 }
 
 dyn_help() {
@@ -1810,6 +1825,9 @@ filter_readonly_variables() {
 			${PORTAGE_MUTABLE_FILTERED_VARS}
 		"
 	fi
+	if hasq --filter-metadata $* ; then
+		filtered_vars+=" ${READONLY_EBUILD_METADATA} filter_opts"
+	fi
 
 	EPYTHON= "${PORTAGE_BIN_PATH}"/filter-bash-environment.py "${filtered_vars}"
 }
@@ -1861,7 +1879,7 @@ preprocess_ebuild_env() {
 	) > "${T}/environment.filtered"
 	local retval
 	if [ -e "${T}/environment.success" ] ; then
-		filter_readonly_variables < \
+		filter_readonly_variables $1 < \
 			"${T}/environment.filtered" > "${T}/environment"
 		retval=$?
 	else

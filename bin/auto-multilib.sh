@@ -33,11 +33,11 @@ _abi_to_index_key() {
 # @DESCRIPTION: Environment variables to save
 # EMULTILIB_SAVE_VARS="${EMULTILIB_SAVE_VARS}
 #		AS CC CXX FC ASFLAGS CFLAGS CPPFLAGS CXXFLAGS FCFLAGS FFLAGS 
-#		LDFLAGS	CHOST CBUILD CDEFINE LIBDIR CCACHE_DIR PYTHON
+#		LDFLAGS	CHOST CBUILD CDEFINE CCACHE_DIR PYTHON
 #		PKG_CONFIG_PATH"
 EMULTILIB_SAVE_VARS="${EMULTILIB_SAVE_VARS}
 		AS CC CXX FC ASFLAGS CFLAGS CPPFLAGS CXXFLAGS FCFLAGS FFLAGS 
-		LDFLAGS	CHOST CBUILD CDEFINE LIBDIR CCACHE_DIR PYTHON
+		LDFLAGS	CHOST CBUILD CDEFINE CCACHE_DIR PYTHON
 		PKG_CONFIG_PATH"
 
 # @VARIABLE: EMULTILIB_SOURCE_TOP_DIRNAME
@@ -52,11 +52,14 @@ EMULTILIB_INITIALISED="0"
 _save_abi_env() {
 	[[ -n ${MULTILIB_DEBUG} ]] && \
 		einfo "MULTILIB_DEBUG: Saving Environment:" "${1}"
+	mkdir -p ${PORTAGE_BUILDDIR}/abi-code
+	save_ebuild_env --exclude-init-phases | filter_readonly_variables \
+		--filter-path --filter-sandbox --allow-extra-vars --filter-metadata > ${PORTAGE_BUILDDIR}/abi-code/environment."${1}"
+	[[ $UID == 0 ]] && chown portage:portage ${PORTAGE_BUILDDIR}/abi-code/environment."${1}"
 	local _var _array
 	for _var in ${EMULTILIB_SAVE_VARS}; do
 		_array="EMULTILIB_${_var}"
 		_debug ${_array}[$(_abi_to_index_key ${1})] "${!_var}"
-		eval "${_array}[$(_abi_to_index_key ${1})]"=\"${!_var}\"
 	done
 }
 
@@ -67,12 +70,8 @@ _save_abi_env() {
 _restore_abi_env() {
 	[[ -n ${MULTILIB_DEBUG} ]] && \
 		einfo "MULTILIB_DEBUG: Restoring Environment:" "${1}"
-	local _var _array
-	for _var in ${EMULTILIB_SAVE_VARS}; do
-		_array="EMULTILIB_${_var}[$(_abi_to_index_key ${1})]"
-		_debug "${_var}" "${!_array}"
-		export ${_var}="${!_array}"
-	done
+	cp ${PORTAGE_BUILDDIR}/abi-code/environment."${1}" "${T}"/environment || die
+	preprocess_ebuild_env --filter-metadata
 }
 
 # @FUNCTION: get_abi_var
@@ -213,20 +212,16 @@ set_abi() {
 	# Export variables we need for toolchain
 	export ABI="${abi}"
 	echo ">>> ABI=${ABI}"
-	if [[ "${EMULTILIB_INITIALISED}" == "1" ]]; then
+	if [[ -f ${PORTAGE_BUILDDIR}/abi-code/environment."${ABI}" ]]; then
+		[ -n "${SAVE_ABI}" ] && local ABI=${SAVE_ABI}
 		_save_abi_env "${ABI_SAVE}"
-		_restore_abi_env "${ABI}"
+		ABI=${abi} _restore_abi_env "${ABI}"
 	else
 		_save_abi_env "INIT"
-		for i in ${MULTILIB_ABIS}; do
-			export ABI="${i}"
-			_restore_abi_env "INIT"
-			_setup_abi_env "${i}"
-			_save_abi_env "${i}"
-		done
-		export ABI="${abi}"
+		_restore_abi_env "INIT"
+		_setup_abi_env "${ABI}"
+		_save_abi_env "${ABI}"
 		_restore_abi_env "${ABI}"
-		EMULTILIB_INITIALISED="1"
 	fi
 }
 
@@ -270,12 +265,12 @@ _setup_abi_env() {
 	export FC="$(tc-getPROG FC gfortran)"
 	export CHOST=$(get_abi_var CHOST $1)
 	export CBUILD=$(get_abi_var CHOST $1)
-	export CDEFINE="${CDEFINE} $(get_abi_var CDEFINE $1)"
+	export CDEFINE="$(get_abi_var CDEFINE $1)"
 	export CFLAGS="${CFLAGS} $(get_abi_var CFLAGS)"
 	export CPPFLAGS="${CPPFLAGS} $(get_abi_var CPPFLAGS)"
 	export CXXFLAGS="${CXXFLAGS} $(get_abi_var CFLAGS)"
-	export FCFLAGS="${FCFLAGS} ${CFLAGS}"
-	export FFLAGS="${FFLAGS} ${CFLAGS}"
+	export FCFLAGS="${FCFLAGS} $(get_abi_var FCFLAGS)"
+	export FFLAGS="${FFLAGS} $(get_abi_var FFLAGS)"
 	export ASFLAGS="${ASFLAGS} $(get_abi_var ASFLAGS)"
 	local LIBDIR=$(get_abi_var LIBDIR $1)
 	export PKG_CONFIG_PATH="/usr/${LIBDIR}/pkgconfig"
