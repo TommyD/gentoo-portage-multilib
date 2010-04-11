@@ -1165,7 +1165,7 @@ dyn_install() {
 		if is_auto-multilib && is_ebuild; then
 			touch "$PORTAGE_BUILDDIR"/.installed."${LOOP_ABI}" || die "IO Failure -- Failed to 'touch .installed.${LOOP_ABI}'"
 		fi
-		is_ebuild && { unset_abi; source "${T}"/environment || die ; }
+		unset_abi; source "${T}"/environment || die
 	done
 	if [[ -d "${D}" ]]; then
 		if [[ "${CATEGORY}/${PN}" == "sys-devel/libtool" ]] ; then
@@ -1244,13 +1244,14 @@ dyn_preinst() {
 		eerror "${FUNCNAME}: D is unset"
 		return 1
 	fi
-	for LOOP_ABI in $(get_abi_order); do
-		set_abi ${LOOP_ABI}; source "${T}"/environment || die
+#	for LOOP_ABI in $(get_abi_order); do
+#		set_abi ${LOOP_ABI}; source "${T}"/environment || die
 
 	ebuild_phase_with_hooks pkg_preinst
 
-		unset_abi; source "${T}"/environment || die
-	done
+#		unset_abi; source "${T}"/environment || die
+#		grep "declare -x CFLAGS" "${PORTAGE_BUILDDIR}"/abi-code/environment.* "${T}"/environment
+#	done
 }
 
 dyn_help() {

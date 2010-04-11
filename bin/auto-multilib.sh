@@ -154,6 +154,8 @@ set_abi() {
 	# Save ABI if it is already set
 	if [[ -n "${ABI}" ]]; then
 		ABI_SAVE=${ABI}
+	else
+		unset ABI_SAVE
 	fi
 
 	if is_ebuild; then
@@ -173,8 +175,7 @@ set_abi() {
 	export ABI="${abi}"
 	echo ">>> ABI=${ABI}"
 	if [[ -f ${PORTAGE_BUILDDIR}/abi-code/environment."${ABI}" ]]; then
-		[ -n "${SAVE_ABI}" ] && local ABI=${SAVE_ABI}
-		_save_abi_env "${ABI_SAVE}"
+		[ -n "${SAVE_ABI}" ] && local ABI=${SAVE_ABI} && _save_abi_env "${ABI_SAVE}"
 		ABI=${abi} _restore_abi_env "${ABI}"
 	else
 		_save_abi_env "INIT"
@@ -303,7 +304,6 @@ _finalize_abi_install() {
 		fi
 	fi
 
-	unset_abi
 	mkdir -p "${D}"
 	# After final ABI is installed, if headers differ
 	# then create multilib header redirects
