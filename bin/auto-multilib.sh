@@ -143,8 +143,6 @@ get_abi_list() {
 }
 
 set_abi() {
-	is_auto-multilib || return 0;
-
 	if [ "$#" != "1" ]; then
 		die "set_abi needs to be given the ABI to use."
 	fi
