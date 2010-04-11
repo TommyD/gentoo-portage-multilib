@@ -1161,11 +1161,14 @@ dyn_install() {
 
 	ebuild_phase src_install
 
-		is_auto-multilib && _finalize_abi_install && { cp "${PORTAGE_BUILDDIR}"/abi-code/environment.${LOOP_ABI} "${PORTAGE_BUILDDIR}"/build-info/ || die ; }
-		if is_auto-multilib && is_ebuild; then
-			touch "$PORTAGE_BUILDDIR"/.installed."${LOOP_ABI}" || die "IO Failure -- Failed to 'touch .installed.${LOOP_ABI}'"
+		if is_auto-multilib ; then
+			_finalize_abi_install
+			cp "${PORTAGE_BUILDDIR}"/abi-code/environment.${LOOP_ABI} "${PORTAGE_BUILDDIR}"/build-info/ || die
+			unset_abi; source "${T}"/environment || die
+			if is_ebuild; then
+				touch "$PORTAGE_BUILDDIR"/.installed."${LOOP_ABI}" || die "IO Failure -- Failed to 'touch .installed.${LOOP_ABI}'"
+			fi
 		fi
-		unset_abi; source "${T}"/environment || die
 	done
 	if [[ -d "${D}" ]]; then
 		if [[ "${CATEGORY}/${PN}" == "sys-devel/libtool" ]] ; then
@@ -1244,14 +1247,13 @@ dyn_preinst() {
 		eerror "${FUNCNAME}: D is unset"
 		return 1
 	fi
-#	for LOOP_ABI in $(get_abi_order); do
-#		set_abi ${LOOP_ABI}; source "${T}"/environment || die
+	for LOOP_ABI in $(get_abi_order); do
+		set_abi ${LOOP_ABI}; source "${T}"/environment || die
 
 	ebuild_phase_with_hooks pkg_preinst
 
-#		unset_abi; source "${T}"/environment || die
-#		grep "declare -x CFLAGS" "${PORTAGE_BUILDDIR}"/abi-code/environment.* "${T}"/environment
-#	done
+		unset_abi; source "${T}"/environment || die
+	done
 }
 
 dyn_help() {
@@ -2154,7 +2156,7 @@ ebuild_main() {
 		ebuild_phase_with_hooks pkg_nofetch
 		exit 1
 		;;
-	prerm|postrm|postinst|config|info)
+	config|info)
 		if hasq "$EBUILD_SH_ARGS" config info && \
 			! declare -F "pkg_$EBUILD_SH_ARGS" >/dev/null ; then
 			ewarn  "pkg_${EBUILD_SH_ARGS}() is not defined: '${EBUILD##*/}'"
@@ -2167,14 +2169,52 @@ ebuild_main() {
 			ebuild_phase_with_hooks pkg_${EBUILD_SH_ARGS}
 			set +x
 		fi
-		if [[ $EBUILD_PHASE == postinst ]] && [[ -n $PORTAGE_UPDATE_ENV ]]; then
-			# Update environment.bz2 in case installation phases
-			# need to pass some variables to uninstallation phases.
-			save_ebuild_env --exclude-init-phases | \
-				filter_readonly_variables --filter-path \
-				--filter-sandbox --allow-extra-vars \
-				| bzip2 -c -f9 > "$PORTAGE_UPDATE_ENV"
-		fi
+		;;
+	prerm|postrm|postinst)
+		for LOOP_ABI in $(get_abi_order); do
+			if is_auto-multilib ; then
+				case ${EBUILD_SH_ARGS} in
+					postinst)
+						set_abi ${LOOP_ABI}
+						;;
+					prerm|postrm)
+						bzcat "${ROOT}"var/db/pkg/${CATEGORY}/${PF}/environment.${LOOP_ABI}.bz2 > "${T}"/environment || die
+						preprocess_ebuild_env --filter-metadata
+						;;
+				esac
+				source "${T}"/environment || die
+			fi
+			export SANDBOX_ON="0"
+			if [ "${PORTAGE_DEBUG}" != "1" ] || [ "${-/x/}" != "$-" ]; then
+				ebuild_phase_with_hooks pkg_${EBUILD_SH_ARGS}
+			else
+				set -x
+				ebuild_phase_with_hooks pkg_${EBUILD_SH_ARGS}
+				set +x
+			fi
+			if [[ $EBUILD_PHASE == postinst ]] && [[ -n $PORTAGE_UPDATE_ENV ]]; then
+				# Update environment.bz2 in case installation phases
+				# need to pass some variables to uninstallation phases.
+				save_ebuild_env --exclude-init-phases | \
+					filter_readonly_variables --filter-path \
+					--filter-sandbox --allow-extra-vars \
+					| bzip2 -c -f9 > "$PORTAGE_UPDATE_ENV"
+			fi
+			if is_auto-multilib ; then
+				case ${EBUILD_SH_ARGS} in
+					postinst)
+						unset_abi
+						;;
+					prerm|postrm)
+						if is_auto-multilib; then
+							bzcat "${ROOT}"var/db/pkg/${CATEGORY}/${PF}/environment.${DEFAULT_ABI}.bz2 > "${T}"/environment || die
+							preprocess_ebuild_env --filter-metadata
+						fi
+						;;
+				esac
+				source "${T}"/environment 2>/dev/null || die
+			fi
+		done
 		;;
 	unpack|prepare|configure|compile|test|clean|install)
 		if [[ ${SANDBOX_DISABLED:-0} = 0 ]] ; then
