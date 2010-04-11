@@ -310,7 +310,7 @@ _finalize_abi_install() {
 		base=${PORTAGE_BUILDDIR}/abi-code/gentoo-multilib/${dir}/gentoo-multilib
 		[ -d "${base}" ] || continue
 		for diffabi in ${ALTERNATE_ABIS}; do
-			diff -rNq ${base}/${ABI} ${base}/${diffabi} >/dev/null || abis_differ=1
+			diff -rNq ${base}/${DEFAULT_ABI} ${base}/${diffabi} >/dev/null || abis_differ=1
 		done
 	done
 
