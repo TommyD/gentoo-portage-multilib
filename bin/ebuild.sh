@@ -2178,11 +2178,16 @@ ebuild_main() {
 						set_abi ${LOOP_ABI}
 						;;
 					prerm|postrm)
-						bzcat "${ROOT}"var/db/pkg/${CATEGORY}/${PF}/environment.${LOOP_ABI}.bz2 > "${T}"/environment || die
-						preprocess_ebuild_env --filter-metadata
+						# if = backward compactibility for previous versions, which did not
+						# install a per-ABI environment
+						if [[ -f "${ROOT}"var/db/pkg/${CATEGORY}/${PF}/environment.${LOOP_ABI}.bz2 ]] ; then
+							bzcat "${ROOT}"var/db/pkg/${CATEGORY}/${PF}/environment.${LOOP_ABI}.bz2 > "${T}"/environment || die
+							preprocess_ebuild_env --filter-metadata
+						fi
 						;;
 				esac
-				source "${T}"/environment || die
+				# >/dev/null = backward compactibility for prerm/postrm
+				source "${T}"/environment 2>/dev/null|| die
 			fi
 			export SANDBOX_ON="0"
 			if [ "${PORTAGE_DEBUG}" != "1" ] || [ "${-/x/}" != "$-" ]; then
@@ -2206,12 +2211,15 @@ ebuild_main() {
 						unset_abi
 						;;
 					prerm|postrm)
-						if is_auto-multilib; then
-							bzcat "${ROOT}"var/db/pkg/${CATEGORY}/${PF}/environment.${DEFAULT_ABI}.bz2 > "${T}"/environment || die
+						#if = backward compactibility for previous versions, which did not
+						#install a per-ABI environment
+						if [[ -f "${ROOT}"var/db/pkg/${CATEGORY}/${PF}/environment.${LOOP_ABI}.bz2 ]] ; then
 							preprocess_ebuild_env --filter-metadata
+							bzcat "${ROOT}"var/db/pkg/${CATEGORY}/${PF}/environment.${DEFAULT_ABI}.bz2 > "${T}"/environment || die
 						fi
 						;;
 				esac
+				# >/dev/null = backward compactibility for prerm/postrm
 				source "${T}"/environment 2>/dev/null || die
 			fi
 		done
